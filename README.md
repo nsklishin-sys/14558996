@@ -1,6 +1,6 @@
 # Greeting site (Go + TypeScript)
 
-Небольшой стартовый проект: Go-сервер отдает API и статику, TypeScript подгружает приветственное сообщение для сайта.
+Небольшой проект: Go-сервер отдает API и статику, а страницы регистрации/входа работают с реальной базой данных SQLite.
 
 ## Запуск
 
@@ -12,7 +12,11 @@ go run ./cmd/server
 
 ## Что внутри
 
-- `cmd/server/main.go` — HTTP-сервер и endpoint `/api/greeting`
+- `cmd/server/main.go` — HTTP-сервер, endpoint `/api/greeting`, а также auth API:
+  - `POST /api/auth/register` — регистрация пользователя в SQLite
+  - `POST /api/auth/login` — вход по email/паролю из SQLite
+- `web/register.html` — UI регистрации
+- `web/login.html` — UI авторизации
 - `web/index.html` — стартовая страница
-- `web/src/app.ts` — TypeScript-логика загрузки приветствия
-- `web/app.js` — скомпилированный JS для запуска без отдельной сборки
+
+База данных создается автоматически в `data/app.db` при первом запуске.
