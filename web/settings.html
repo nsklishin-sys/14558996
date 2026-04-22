@@ -530,8 +530,8 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
               <input class="field-input" id="phone" placeholder="+7 999 000-00-00">
             </div>
             <div class="field-row">
-              <label class="field-label">Сайт / ссылка</label>
-              <input class="field-input" id="website" placeholder="https://company.ru">
+              <label class="field-label">Сайт (почта аккаунта)</label>
+              <input class="field-input" id="website" type="email" placeholder="email@company.com" readonly>
             </div>
           </div>
           <div class="field-row">
@@ -900,7 +900,10 @@ function populateUI(){
   document.getElementById('company').value=currentUser.company_name||'';
   document.getElementById('bio').value=currentUser.bio||'';
   document.getElementById('phone').value=currentUser.phone||'';
+  document.getElementById('city').value=currentUser.location||currentUser.city||'';
   document.getElementById('emailField').value=currentUser.email||'';
+  updateWebsiteField();
+  pendingAvatarURL=currentUser.avatar_url||'';
   /* Настройки внешнего вида */
   document.getElementById('wideMode').checked=(localStorage.getItem('lastop-layout-mode')==='wide');
 }
@@ -947,12 +950,21 @@ function selectTheme(card, theme){
 }
 
 /* ── АВАТАР ── */
+let pendingAvatarURL='';
+
+function updateWebsiteField(){
+  const websiteInput=document.getElementById('website');
+  if(!websiteInput)return;
+  websiteInput.value=(document.getElementById('emailField')?.value||'').trim();
+}
+
 function previewAvatar(input){
   const file=input.files?.[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=()=>{
+    pendingAvatarURL=String(reader.result||'');
     const av=document.getElementById('avatarPreview');
-    av.innerHTML=`<img src="${reader.result}" alt="avatar">`;
+    av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;
     av.style.background='transparent';
   };
   reader.readAsDataURL(file);
@@ -989,22 +1001,46 @@ async function saveProfile(){
     full_name:name,
     position:document.getElementById('position').value.trim()||null,
     company_name:document.getElementById('company').value.trim()||null,
+    bio:document.getElementById('bio').value.trim()||null,
     phone:document.getElementById('phone').value.trim()||null,
+    location:document.getElementById('city').value.trim()||null,
+    city:document.getElementById('city').value.trim()||null,
+    avatar_url:pendingAvatarURL||currentUser.avatar_url||null,
   };
-  try{
-    if(tk()){
+
+  currentUser={...currentUser,...payload};
+  localStorage.setItem('user',JSON.stringify(currentUser));
+
+  const color=avc(name);
+  const ltr=letter(name);
+  const topbarAv=document.getElementById('topbarAv');
+  topbarAv.textContent=ltr;
+  topbarAv.style.background=color;
+  document.getElementById('topbarName').textContent=name||'Пользователь';
+  document.getElementById('pddName').textContent=name||'Пользователь';
+  document.getElementById('topbarRole').textContent=payload.position||'Участник LASTOP';
+  document.getElementById('pddRole').textContent=payload.position||'Участник LASTOP';
+
+  if(payload.avatar_url){
+    document.getElementById('avatarPreview').innerHTML=`<img src="${payload.avatar_url}" alt="${esc(name)}">`;
+  }
+
+  let synced=true;
+  if(tk()){
+    try{
       const r=await fetch(API+'/profile',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(payload)});
-      if(!r.ok)throw 0;
-    }
-    currentUser={...currentUser,...payload};
-    localStorage.setItem('user',JSON.stringify(currentUser));
-    document.getElementById('topbarName').textContent=name;
-    showToast('Профиль сохранён ✓');
-  }catch{showToast('Не удалось сохранить');}
+      if(!r.ok)synced=false;
+    }catch{synced=false;}
+  }
+
+  showToast(synced?'Профиль сохранён ✓':'Профиль сохранён локально ✓');
 }
 async function saveAccount(){
   const email=document.getElementById('emailField').value.trim();
   if(!email){showToast('Введите email');return;}
+  currentUser={...currentUser,email};
+  localStorage.setItem('user',JSON.stringify(currentUser));
+  updateWebsiteField();
   showToast('Email обновлён ✓');
 }
 function saveSettings(section){showToast('Настройки сохранены ✓');}
@@ -1013,6 +1049,8 @@ function confirmDelete(){
     showToast('Запрос на удаление отправлен');
   }
 }
+document.getElementById('emailField').addEventListener('input',updateWebsiteField);
+
 function logout(){
   localStorage.removeItem('token');localStorage.removeItem('user');
   location.href='/login.html';
