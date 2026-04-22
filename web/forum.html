@@ -28,8 +28,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* TOPBAR */
 .topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative}
-.search-dot{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
-.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
+.search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
 .search-wrap input:focus{border-color:var(--gm)}
 .search-wrap input::placeholder{color:var(--gmt)}
 .topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
@@ -307,7 +308,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <!-- TOPBAR -->
 <header class="topbar">
   <div class="search-wrap">
-    <span class="search-dot"></span>
+    <span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
     <input type="search" id="searchInput" placeholder="Поиск по форуму…" oninput="handleSearch(this.value)">
   </div>
   <div class="profile-dd-wrap">
