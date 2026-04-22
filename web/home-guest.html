@@ -25,8 +25,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
 .topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative;display:flex;align-items:center}
-.search-dot{position:absolute;left:12px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
-.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;cursor:pointer}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
+.search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:13px;color:var(--t);outline:none;cursor:pointer}
 .search-wrap input::placeholder{color:var(--gmt)}
 .topbar-guest{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .btn-login{height:36px;padding:0 18px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center}
@@ -203,7 +204,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="shell">
 <a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP" onerror="this.style.display='none'"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
 <header class="topbar">
-  <div class="search-wrap"><span class="search-dot"></span><input type="search" placeholder="Поиск пользователей, компаний, форума…" autocomplete="off" onclick="openModal('search')" readonly></div>
+  <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input type="search" placeholder="Поиск пользователей, компаний, форума…" autocomplete="off" onclick="openModal('search')" readonly></div>
   <div class="topbar-guest">
     <a href="/login.html" class="btn-login">Войти</a>
     <a href="/register.html" class="btn-reg"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Регистрация</a>
