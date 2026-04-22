@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Резюме и вакансии</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* SHELL */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-dot{position:absolute;left:13px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-info{display:flex;flex-direction:column;line-height:1.25}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px;flex-shrink:0}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
+
+/* NAV */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ── ТУЛБАР ── */
+.jobs-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 14px;box-shadow:var(--sh);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.jobs-title{font-size:16px;font-weight:900;color:var(--t);white-space:nowrap}
+.mode-switch{display:flex;background:var(--gp);border:1.5px solid var(--bdr);border-radius:99px;padding:3px;gap:2px;flex-shrink:0}
+.mode-btn{padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;color:var(--gmt);background:transparent;transition:all .15s;white-space:nowrap}
+.mode-btn.active{background:var(--g);color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.jobs-tabs{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+.jobs-tabs::-webkit-scrollbar{display:none}
+.jtab{padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.jtab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.jtab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.jtab-count{font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;background:rgba(255,255,255,.25);margin-left:3px}
+.jtab:not(.active) .jtab-count{background:var(--bdr);color:var(--gmt)}
+.btn-create-job{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap;flex-shrink:0}
+.btn-create-job:hover{background:var(--gm)}
+.btn-create-job svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* ── ФИЛЬТРЫ ── */
+.jobs-filter{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:8px 14px;box-shadow:var(--sh);flex-shrink:0;display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:none}
+.jobs-filter::-webkit-scrollbar{display:none}
+.pf-div{width:1px;height:16px;background:var(--bdr);flex-shrink:0}
+.pf-group{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.pf-label{font-size:10px;font-weight:700;color:var(--gmt);white-space:nowrap}
+.pf-select{height:28px;padding:0 7px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:11px;color:var(--tm);outline:none;cursor:pointer;transition:border-color .2s}
+.pf-select:focus,.pf-select:hover{border-color:var(--gb)}
+.pf-select.active{border-color:var(--g);background:var(--gl);color:var(--g);font-weight:700}
+.pf-count{font-size:11px;color:var(--gmt);white-space:nowrap;margin-left:auto;flex-shrink:0}
+.pf-reset{height:28px;padding:0 10px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--gp);font-family:inherit;font-size:11px;font-weight:600;color:var(--gmt);cursor:pointer;transition:all .15s;white-space:nowrap;display:none;align-items:center;gap:4px;flex-shrink:0}
+.pf-reset.visible{display:inline-flex}
+.pf-reset:hover{border-color:#FABCBC;color:var(--red);background:#FFF5F5}
+.pf-reset svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* ── ВАКАНСИЯ ── */
+.job-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .18s,transform .15s,border-color .15s;animation:fadeUp .3s ease both}
+.job-card:hover{box-shadow:var(--shm);transform:translateY(-1px);border-color:var(--gb)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.jc-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.jc-logo{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
+.jc-meta{flex:1;min-width:0}
+.jc-company{font-size:12px;font-weight:700;color:var(--tm);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jc-time{font-size:10px;color:var(--gmt)}
+.jc-badges{display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.jc-badge{padding:3px 9px;border-radius:99px;font-size:9px;font-weight:700}
+.b-hot{background:#FEE2E2;color:var(--red);border:1px solid #FBCFB0}
+.b-new{background:#EDE8FA;color:#6040A0;border:1px solid #C8B8EF}
+.b-active{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.b-paused{background:#F1F5F9;color:#475569;border:1px solid #CBD5E1}
+.jc-title{font-size:15px;font-weight:800;color:var(--t);line-height:1.3;letter-spacing:-.005em;margin-bottom:6px}
+.jc-salary{font-size:14px;font-weight:800;color:var(--g);margin-bottom:8px}
+.jc-info{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.jc-info-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gmt)}
+.jc-info-item svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.jc-desc{font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.jc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.jc-tag{padding:3px 9px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:10px;font-weight:600;color:var(--gmt)}
+.jc-foot{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--bdr)}
+.jc-stat{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gmt)}
+.jc-stat svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+.jc-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.btn-respond{padding:7px 18px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(30,138,76,.18)}
+.btn-respond:hover{background:var(--gm)}
+.btn-respond.done{background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none}
+.btn-save{width:32px;height:32px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
+.btn-save:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-save.saved{color:var(--red);border-color:#FABCBC;background:#FFF5F5}
+.btn-save svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+/* ── РЕЗЮМЕ ── */
+.cv-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .18s,transform .15s,border-color .15s;animation:fadeUp .3s ease both}
+.cv-card:hover{box-shadow:var(--shm);transform:translateY(-1px);border-color:var(--gb)}
+.cc-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.cc-av{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0}
+.cc-meta{flex:1;min-width:0}
+.cc-name{font-size:14px;font-weight:800;color:var(--t);margin-bottom:2px}
+.cc-title{font-size:13px;font-weight:700;color:var(--gm);margin-bottom:3px}
+.cc-updated{font-size:10px;color:var(--gmt)}
+.cc-status{padding:3px 9px;border-radius:99px;font-size:9px;font-weight:700;flex-shrink:0}
+.s-seeking{background:#FEE2E2;color:var(--red);border:1px solid #FBCFB0}
+.s-open{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.s-passive{background:#F1F5F9;color:#475569;border:1px solid #CBD5E1}
+.cc-salary{font-size:14px;font-weight:800;color:var(--g);margin-bottom:8px}
+.cc-info{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.cc-info-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gmt)}
+.cc-info-item svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.cc-about{font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-skills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.cc-skill{padding:3px 9px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:10px;font-weight:600;color:var(--gmt)}
+.cc-foot{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--bdr)}
+.btn-invite{padding:7px 18px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(30,138,76,.18)}
+.btn-invite:hover{background:var(--gm)}
+
+/* ── МОДАЛКИ ── */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.4);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal::-webkit-scrollbar{display:none}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--w);z-index:1}
+.modal-title{font-size:15px;font-weight:800;color:var(--t)}
+.modal-close{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.modal-close:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
+.mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
+.mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.mf-input:focus{border-color:var(--gm);background:var(--w)}
+.mf-input::placeholder{color:var(--gmt)}
+.mf-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s}
+.mf-textarea:focus{border-color:var(--gm);background:var(--w)}
+.mf-textarea::placeholder{color:var(--gmt)}
+.mf-select{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--tm);outline:none;cursor:pointer}
+.mf-select:focus{border-color:var(--gm)}
+.mf-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mf-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-submit{padding:9px 22px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-submit:hover{background:var(--gm)}
+/* Секции модалки */
+.mf-section{font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--gl);margin-top:4px}
+
+/* RIGHT */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.stat-val{font-size:13px;font-weight:800;color:var(--t)}
+
+/* Горячие вакансии в сайдбаре */
+.hot-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+.hot-item:hover{background:var(--gp)}
+.hot-ico{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.hot-body{flex:1;min-width:0}
+.hot-title{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hot-meta{font-size:10px;color:var(--gmt);margin-top:1px}
+.hot-sal{font-size:11px;font-weight:700;color:var(--g);flex-shrink:0;white-space:nowrap}
+
+/* Мои отклики */
+.resp-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+.resp-item:hover{background:var(--gp)}
+.resp-body{flex:1;min-width:0}
+.resp-title{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.resp-meta{font-size:10px;color:var(--gmt);margin-top:1px}
+.resp-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0}
+.rs-new{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.rs-viewed{background:#FEF3C7;color:#B45309;border:1px solid #FCD34D}
+.rs-declined{background:#F1F5F9;color:#475569;border:1px solid #CBD5E1}
+
+/* Категории в сайдбаре */
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:6px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+.cat-item:hover{background:var(--gp)}
+.cat-name{font-size:12px;font-weight:600;color:var(--t);flex:1;margin-left:6px}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-num{font-size:11px;color:var(--gmt)}
+
+/* Зарплатная аналитика */
+.sal-bar-row{margin-bottom:8px}
+.sal-bar-head{display:flex;justify-content:space-between;font-size:10px;color:var(--gmt);margin-bottom:3px;font-weight:600}
+.sal-bar{height:6px;border-radius:3px;background:var(--bdr);overflow:hidden}
+.sal-fill{height:100%;border-radius:3px;background:var(--g)}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap"><span class="search-dot"></span><input type="search" id="searchInput" placeholder="Должность, компания, навык…" oninput="applyFilters()"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div class="tp-info"><span class="tp-name" id="topbarName">Никита Клишин</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div class="pdd-info"><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/dashboard.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item active" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+
+  <!-- Тулбар -->
+  <div class="jobs-toolbar">
+    <span class="jobs-title">Резюме и вакансии</span>
+    <div class="mode-switch">
+      <button class="mode-btn active" id="modeJobs" onclick="setMode('jobs',this)">Вакансии</button>
+      <button class="mode-btn" id="modeCvs" onclick="setMode('cvs',this)">Резюме</button>
+    </div>
+    <div class="jobs-tabs" id="jobsTabs">
+      <button class="jtab active" onclick="setTab('all',this)">Все<span class="jtab-count" id="tc-all">24</span></button>
+      <button class="jtab" onclick="setTab('hot',this)">🔥 Срочные<span class="jtab-count" id="tc-hot">3</span></button>
+      <button class="jtab" onclick="setTab('new',this)">Новые<span class="jtab-count" id="tc-new">7</span></button>
+      <button class="jtab" onclick="setTab('my',this)">Мои отклики<span class="jtab-count" id="tc-my">2</span></button>
+      <button class="jtab" onclick="setTab('saved',this)">Сохранённые<span class="jtab-count" id="tc-saved">5</span></button>
+    </div>
+    <button class="btn-create-job" id="createBtn" onclick="openCreateModal()">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span id="createBtnLabel">Разместить вакансию</span>
+    </button>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="jobs-filter">
+    <div class="pf-group"><span class="pf-label">Категория</span>
+      <select class="pf-select" id="filterCat" onchange="applyFilters()">
+        <option value="">Все</option>
+        <option>Логистика и транспорт</option>
+        <option>ВЭД и таможня</option>
+        <option>IT в логистике</option>
+        <option>Управление</option>
+        <option>Складская логистика</option>
+        <option>Другое</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Город</span>
+      <select class="pf-select" id="filterCity" onchange="applyFilters()">
+        <option value="">Все</option>
+        <option>Москва</option>
+        <option>Санкт-Петербург</option>
+        <option>Самара</option>
+        <option>Екатеринбург</option>
+        <option>Новосибирск</option>
+        <option>Казань</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Формат</span>
+      <select class="pf-select" id="filterFormat" onchange="applyFilters()">
+        <option value="">Любой</option>
+        <option>Офис</option>
+        <option>Удалённо</option>
+        <option>Гибрид</option>
+        <option>Разъездная</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Опыт</span>
+      <select class="pf-select" id="filterExp" onchange="applyFilters()">
+        <option value="">Любой</option>
+        <option value="0">Без опыта</option>
+        <option value="1">от 1 года</option>
+        <option value="3">от 3 лет</option>
+        <option value="5">от 5 лет</option>
+        <option value="10">от 10 лет</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Зарплата от (₽)</span>
+      <select class="pf-select" id="filterSal" onchange="applyFilters()">
+        <option value="">Любая</option>
+        <option value="80">от 80 000</option>
+        <option value="120">от 120 000</option>
+        <option value="180">от 180 000</option>
+        <option value="250">от 250 000</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Занятость</span>
+      <select class="pf-select" id="filterEmpl" onchange="applyFilters()">
+        <option value="">Любая</option>
+        <option>Полная</option>
+        <option>Частичная</option>
+        <option>Проектная</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Сортировка</span>
+      <select class="pf-select" id="filterSort" onchange="applyFilters()">
+        <option value="new">Новые</option>
+        <option value="sal">По зарплате</option>
+        <option value="views">По просмотрам</option>
+        <option value="resp">По откликам</option>
+      </select></div>
+    <button class="pf-reset" id="filterReset" onclick="resetFilters()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Сбросить
+    </button>
+    <span class="pf-count" id="resultsCount">24 вакансии</span>
+  </div>
+
+  <!-- Лента -->
+  <div id="feed"></div>
+
+</div>
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Статистика -->
+  <div class="card">
+    <div class="block-title">Статистика</div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Активных вакансий</span><span class="stat-val" style="color:var(--g)">247</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Резюме в базе</span><span class="stat-val">184</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Откликов сегодня</span><span class="stat-val">38</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Новых за неделю</span><span class="stat-val">+21</span></div>
+  </div>
+
+  <!-- Горячие вакансии -->
+  <div class="card">
+    <div class="block-title">🔥 Горячие вакансии</div>
+    <div class="hot-item" onclick="showToast('Открываем вакансию…')">
+      <div class="hot-ico" style="background:#1E8A4C">N</div>
+      <div class="hot-body"><div class="hot-title">Логист международных перевозок</div><div class="hot-meta">NorthBridge · Москва</div></div>
+      <span class="hot-sal">200к ₽</span>
+    </div>
+    <div class="hot-item" onclick="showToast('Открываем вакансию…')">
+      <div class="hot-ico" style="background:#3A90C0">L</div>
+      <div class="hot-body"><div class="hot-title">Product Manager · TMS</div><div class="hot-meta">LASTOP Digital · Москва</div></div>
+      <span class="hot-sal">280к ₽</span>
+    </div>
+    <div class="hot-item" onclick="showToast('Открываем вакансию…')">
+      <div class="hot-ico" style="background:#C07030">G</div>
+      <div class="hot-body"><div class="hot-title">Нач. отдела таможни</div><div class="hot-meta">GlobalFreight · Москва</div></div>
+      <span class="hot-sal">250к ₽</span>
+    </div>
+  </div>
+
+  <!-- Мои отклики -->
+  <div class="card">
+    <div class="block-title">Мои отклики</div>
+    <div class="resp-item" onclick="showToast('Открываем вакансию…')">
+      <div class="resp-body"><div class="resp-title">Логист-экспедитор</div><div class="resp-meta">NorthBridge · 2 дня назад</div></div>
+      <span class="resp-status rs-new">Новый</span>
+    </div>
+    <div class="resp-item" onclick="showToast('Открываем вакансию…')">
+      <div class="resp-body"><div class="resp-title">Специалист ВЭД</div><div class="resp-meta">Volga Industrial · 5 дней назад</div></div>
+      <span class="resp-status rs-viewed">Просмотрен</span>
+    </div>
+    <div style="padding:8px 6px 0;text-align:center">
+      <a href="#" onclick="setTab('my');return false" style="font-size:11px;font-weight:700;color:var(--g);text-decoration:none">Все отклики →</a>
+    </div>
+  </div>
+
+  <!-- Зарплатная аналитика -->
+  <div class="card">
+    <div class="block-title">Зарплаты в отрасли</div>
+    <div class="sal-bar-row">
+      <div class="sal-bar-head"><span>Логист ВЭД</span><span style="color:var(--g);font-weight:700">150–220к ₽</span></div>
+      <div class="sal-bar"><div class="sal-fill" style="width:75%"></div></div>
+    </div>
+    <div class="sal-bar-row">
+      <div class="sal-bar-head"><span>Декларант</span><span style="color:var(--g);font-weight:700">100–160к ₽</span></div>
+      <div class="sal-bar"><div class="sal-fill" style="width:55%"></div></div>
+    </div>
+    <div class="sal-bar-row">
+      <div class="sal-bar-head"><span>Product Manager</span><span style="color:var(--g);font-weight:700">220–320к ₽</span></div>
+      <div class="sal-bar"><div class="sal-fill" style="width:90%"></div></div>
+    </div>
+    <div class="sal-bar-row">
+      <div class="sal-bar-head"><span>Руководитель лог.</span><span style="color:var(--g);font-weight:700">200–280к ₽</span></div>
+      <div class="sal-bar"><div class="sal-fill" style="width:80%"></div></div>
+    </div>
+    <div class="sal-bar-row">
+      <div class="sal-bar-head"><span>Складской логист</span><span style="color:var(--g);font-weight:700">80–130к ₽</span></div>
+      <div class="sal-bar"><div class="sal-fill" style="width:42%"></div></div>
+    </div>
+  </div>
+
+  <!-- Категории -->
+  <div class="card">
+    <div class="block-title">Категории</div>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='Логистика и транспорт';applyFilters()"><div class="cat-dot" style="background:var(--g)"></div><span class="cat-name">Логистика и транспорт</span><span class="cat-num">94</span></div>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='ВЭД и таможня';applyFilters()"><div class="cat-dot" style="background:#3A90C0"></div><span class="cat-name">ВЭД и таможня</span><span class="cat-num">61</span></div>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='IT в логистике';applyFilters()"><div class="cat-dot" style="background:#9060C0"></div><span class="cat-name">IT в логистике</span><span class="cat-num">38</span></div>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='Управление';applyFilters()"><div class="cat-dot" style="background:#C07030"></div><span class="cat-name">Управление</span><span class="cat-num">29</span></div>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='Складская логистика';applyFilters()"><div class="cat-dot" style="background:#B05090"></div><span class="cat-name">Складская логистика</span><span class="cat-num">25</span></div>
+  </div>
+
+</aside>
+
+<!-- МОДАЛКА: СОЗДАТЬ ВАКАНСИЮ -->
+<div class="modal-bg" id="modalJob" onclick="if(event.target===this)closeModal('modalJob')">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Создать вакансию</span>
+      <button class="modal-close" onclick="closeModal('modalJob')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div><label class="mf-label">Название вакансии *</label><input class="mf-input" id="jobTitle" placeholder="Логист международных перевозок…"></div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Компания</label><input class="mf-input" id="jobCo" placeholder="Название компании"></div>
+        <div><label class="mf-label">Категория</label>
+          <select class="mf-select" id="jobCat"><option value="">Выбрать…</option><option>Логистика и транспорт</option><option>ВЭД и таможня</option><option>IT в логистике</option><option>Управление</option><option>Складская логистика</option><option>Другое</option></select>
+        </div>
+      </div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Город</label><input class="mf-input" id="jobCity" placeholder="Москва"></div>
+        <div><label class="mf-label">Формат работы</label>
+          <select class="mf-select" id="jobFormat"><option value="">Любой</option><option>Офис</option><option>Удалённо</option><option>Гибрид</option><option>Разъездная работа</option></select>
+        </div>
+      </div>
+      <div class="mf-row3">
+        <div><label class="mf-label">Зарплата от (₽)</label><input class="mf-input" id="jobSalFrom" type="number" placeholder="100000"></div>
+        <div><label class="mf-label">Зарплата до (₽)</label><input class="mf-input" id="jobSalTo" type="number" placeholder="180000"></div>
+        <div><label class="mf-label">Занятость</label>
+          <select class="mf-select" id="jobEmpl"><option>Полная</option><option>Частичная</option><option>Проектная</option></select>
+        </div>
+      </div>
+      <div><label class="mf-label">Опыт работы</label>
+        <select class="mf-select" id="jobExp"><option value="">Не важно</option><option value="1">от 1 года</option><option value="3">от 3 лет</option><option value="5">от 5 лет</option><option value="10">от 10 лет</option></select>
+      </div>
+      <div><label class="mf-label">Описание вакансии</label><textarea class="mf-textarea" id="jobDesc" style="height:80px" placeholder="Чем предстоит заниматься, задачи, условия…"></textarea></div>
+      <div><label class="mf-label">Требования</label><textarea class="mf-textarea" id="jobReqs" style="height:60px" placeholder="Необходимый опыт, навыки, образование…"></textarea></div>
+      <div><label class="mf-label">Теги через запятую</label><input class="mf-input" id="jobTags" placeholder="таможня, снг, тн вэд, tms…"></div>
+      <div><label class="mf-label">Статус</label>
+        <select class="mf-select" id="jobStatus"><option value="active">Активная</option><option value="hot">🔥 Срочная</option><option value="paused">На паузе</option></select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('modalJob')">Отмена</button>
+      <button class="btn-submit" onclick="submitJob()">Опубликовать вакансию</button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА: СОЗДАТЬ РЕЗЮМЕ -->
+<div class="modal-bg" id="modalCv" onclick="if(event.target===this)closeModal('modalCv')">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Создать резюме</span>
+      <button class="modal-close" onclick="closeModal('modalCv')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div><label class="mf-label">Желаемая должность *</label><input class="mf-input" id="cvTitle" placeholder="Логист-экспедитор, Специалист ВЭД…"></div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Категория</label>
+          <select class="mf-select" id="cvCat"><option value="">Выбрать…</option><option>Логистика и транспорт</option><option>ВЭД и таможня</option><option>IT в логистике</option><option>Управление</option><option>Складская логистика</option><option>Другое</option></select>
+        </div>
+        <div><label class="mf-label">Статус поиска</label>
+          <select class="mf-select" id="cvStatus"><option value="active">Активно ищу</option><option value="open">Рассматриваю</option><option value="passive">Открыт к офферам</option></select>
+        </div>
+      </div>
+      <div class="mf-row3">
+        <div><label class="mf-label">Город</label><input class="mf-input" id="cvCity" placeholder="Москва"></div>
+        <div><label class="mf-label">Опыт (лет)</label><input class="mf-input" id="cvExp" type="number" placeholder="5"></div>
+        <div><label class="mf-label">Зарплата от (₽)</label><input class="mf-input" id="cvSalary" type="number" placeholder="150000"></div>
+      </div>
+      <div><label class="mf-label">Формат работы</label>
+        <select class="mf-select" id="cvFormat"><option value="">Любой</option><option>Полная занятость</option><option>Частичная занятость</option><option>Удалённо</option><option>Гибрид</option><option>Проектная работа</option></select>
+      </div>
+      <div class="mf-section">Опыт работы</div>
+      <div><label class="mf-label">Последнее место работы</label><input class="mf-input" id="cvExpCo" placeholder="Компания · Должность" style="margin-bottom:8px"></div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Начало</label><input class="mf-input" id="cvExpFrom" placeholder="2020"></div>
+        <div><label class="mf-label">Конец</label><input class="mf-input" id="cvExpTo" placeholder="2024 (или «н.в.»)"></div>
+      </div>
+      <div><label class="mf-label">О себе</label><textarea class="mf-textarea" id="cvAbout" style="height:70px" placeholder="Кратко об опыте, достижениях и специализации…"></textarea></div>
+      <div><label class="mf-label">Навыки через запятую</label><input class="mf-input" id="cvSkills" placeholder="Таможенное оформление, TMS, 1С:Логистика…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('modalCv')">Отмена</button>
+      <button class="btn-submit" onclick="submitCv()">Опубликовать резюме</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+const tk=()=>localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){return((s||'?')[0]).toUpperCase();}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
+function fmtSal(from,to){if(!from&&!to)return'Зарплата не указана';if(from&&to)return`${(from/1000).toFixed(0)}–${(to/1000).toFixed(0)}к ₽`;if(from)return`от ${(from/1000).toFixed(0)}к ₽`;return`до ${(to/1000).toFixed(0)}к ₽`;}
+function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2500);}
+
+/* ── DROPDOWN ── */
+function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
+document.addEventListener('click',e=>{const dd=document.getElementById('profileDD'),btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal('modalJob');closeModal('modalCv');document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+
+/* ── DEMO DATA ── */
+const JOBS=[
+  {id:1,title:'Логист международных перевозок',company:'NorthBridge Logistics',city:'Москва',format:'Офис',salFrom:150000,salTo:200000,cat:'Логистика и транспорт',exp:3,empl:'Полная',desc:'Ищем опытного логиста для работы с международными грузоперевозками по маршрутам СНГ–ЕС. Организация мультимодальных перевозок, взаимодействие с таможенными брокерами.',tags:['снг','таможня','перевозки','мультимодал'],status:'hot',views:312,responses:18,ts:new Date(Date.now()-172800000).toISOString()},
+  {id:2,title:'Специалист по ВЭД и декларированию',company:'Volga Industrial Group',city:'Самара',format:'Удалённо',salFrom:120000,salTo:null,cat:'ВЭД и таможня',exp:2,empl:'Полная',desc:'Оформление импортных и экспортных деклараций, взаимодействие с таможенными органами, подготовка разрешительной документации.',tags:['декларирование','вэд','тн вэд'],status:'active',views:187,responses:9,ts:new Date(Date.now()-432000000).toISOString()},
+  {id:3,title:'Product Manager · TMS платформа',company:'LASTOP Digital',city:'Москва',format:'Гибрид',salFrom:220000,salTo:320000,cat:'IT в логистике',exp:3,empl:'Полная',desc:'Развиваем собственную TMS. Ищем PM с опытом в логистическом IT для управления продуктом и работы с enterprise-клиентами.',tags:['tms','product','logtech','agile'],status:'new',views:94,responses:3,ts:new Date(Date.now()-86400000).toISOString()},
+  {id:4,title:'Начальник отдела таможенного оформления',company:'GlobalFreight',city:'Москва',format:'Офис',salFrom:180000,salTo:250000,cat:'Управление',exp:5,empl:'Полная',desc:'Руководство отделом из 8 деклараторов, контроль сроков и качества оформления, взаимодействие с таможенными органами.',tags:['управление','таможня','руководитель'],status:'active',views:241,responses:14,ts:new Date(Date.now()-259200000).toISOString()},
+  {id:5,title:'Аналитик логистических данных',company:'LASTOP Digital',city:'Москва',format:'Удалённо',salFrom:160000,salTo:220000,cat:'IT в логистике',exp:2,empl:'Полная',desc:'Анализ данных цепочек поставок, построение дашбордов в Tableau/Power BI, SQL-запросы к хранилищу данных.',tags:['analytics','sql','powerbi','tableau'],status:'new',views:67,responses:4,ts:new Date(Date.now()-43200000).toISOString()},
+  {id:6,title:'Кладовщик-оператор WMS',company:'NorthBridge Logistics',city:'Москва',format:'Офис',salFrom:85000,salTo:110000,cat:'Складская логистика',exp:1,empl:'Полная',desc:'Приёмка, хранение, отгрузка товаров. Работа с WMS-системой. Сменный график.',tags:['склад','wms','приёмка'],status:'hot',views:423,responses:31,ts:new Date(Date.now()-604800000).toISOString()},
+  {id:7,title:'Таможенный брокер (фриланс)',company:'Самозанятый',city:'Москва',format:'Удалённо',salFrom:200000,salTo:null,cat:'ВЭД и таможня',exp:5,empl:'Проектная',desc:'Оформление таможенных деклараций на проектной основе. Приоритет — электронное декларирование и сложные позиции ТН ВЭД.',tags:['брокер','таможня','фриланс','тн вэд'],status:'active',views:155,responses:7,ts:new Date(Date.now()-518400000).toISOString()},
+];
+
+const CVS=[
+  {id:1,name:'Алексей Иванов',title:'Логист-экспедитор',city:'Москва',format:'Полная занятость',salFrom:180000,cat:'Логистика и транспорт',exp:7,status:'active',about:'Опытный логист с 7-летним стажем в международных перевозках. Специализируюсь на маршрутах СНГ–ЕС, мультимодальных перевозках и взаимодействии с таможней.',skills:['Таможенное оформление','Мультимодальные перевозки','1С:Логистика','СНГ','TMS'],ts:new Date(Date.now()-172800000).toISOString()},
+  {id:2,name:'Марина Соколова',title:'Специалист ВЭД',city:'Санкт-Петербург',format:'Гибрид',salFrom:150000,cat:'ВЭД и таможня',exp:5,status:'open',about:'Специалист по внешнеэкономической деятельности с опытом в декларировании, классификации ТН ВЭД, работе с регуляторами.',skills:['Декларирование','ТН ВЭД','Incoterms','СБКТС','1С'],ts:new Date(Date.now()-432000000).toISOString()},
+  {id:3,name:'Дмитрий Козлов',title:'Product Manager · TMS/WMS',city:'Москва',format:'Удалённо',salFrom:280000,cat:'IT в логистике',exp:9,status:'passive',about:'Продуктовый менеджер с опытом запуска и развития TMS/WMS-систем в enterprise-сегменте. Строил команды и продукты с нуля.',skills:['TMS','WMS','Agile','SQL','Интеграции','API'],ts:new Date(Date.now()-1209600000).toISOString()},
+  {id:4,name:'Ольга Павлова',title:'Руководитель отдела логистики',city:'Екатеринбург',format:'Офис',salFrom:220000,cat:'Управление',exp:12,status:'active',about:'12 лет в логистике, последние 5 лет в роли руководителя. Выстраиваю процессы с нуля, оптимизирую КПЭ и управляю распределёнными командами.',skills:['Управление командой','KPI','ERP','Бюджетирование','Оптимизация'],ts:new Date(Date.now()-86400000).toISOString()},
+  {id:5,name:'Кирилл Громов',title:'Аналитик данных в логистике',city:'Москва',format:'Гибрид',salFrom:190000,cat:'IT в логистике',exp:4,status:'open',about:'Анализирую цепочки поставок, строю предиктивные модели и дашборды. Опыт работы с крупными датасетами и автоматизацией отчётности.',skills:['SQL','Python','Power BI','Tableau','ML'],ts:new Date(Date.now()-259200000).toISOString()},
+];
+
+let currentMode='jobs';
+let currentTab='all';
+let allItems=[...JOBS];
+const respondedSet=new Set();
+const savedSet=new Set();
+
+/* ── РЕНДЕР ВАКАНСИИ ── */
+function renderJob(j,i){
+  const badgeCls={hot:'b-hot',new:'b-new',active:'b-active',paused:'b-paused'}[j.status]||'b-active';
+  const badgeLbl={hot:'🔥 Срочная',new:'Новая',active:'Активная',paused:'На паузе'}[j.status]||'';
+  const responded=respondedSet.has(j.id);
+  const saved=savedSet.has(j.id);
+  return`<div class="job-card" style="animation-delay:${i*.05}s">
+    <div class="jc-head">
+      <div class="jc-logo" style="background:${avc(j.company)}">${letter(j.company)}</div>
+      <div class="jc-meta"><div class="jc-company">${esc(j.company)}</div><div class="jc-time">${ago(j.ts)}</div></div>
+      <div class="jc-badges"><span class="jc-badge ${badgeCls}">${badgeLbl}</span></div>
+    </div>
+    <div class="jc-title">${esc(j.title)}</div>
+    <div class="jc-salary">${fmtSal(j.salFrom,j.salTo)}</div>
+    <div class="jc-info">
+      <span class="jc-info-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(j.city)}</span>
+      <span class="jc-info-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>${esc(j.format)}</span>
+      <span class="jc-info-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Опыт от ${j.exp} лет</span>
+      <span class="jc-info-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${esc(j.empl)}</span>
+    </div>
+    <div class="jc-desc">${esc(j.desc)}</div>
+    ${j.tags.length?`<div class="jc-tags">${j.tags.map(t=>`<span class="jc-tag">${esc(t)}</span>`).join('')}</div>`:''}
+    <div class="jc-foot">
+      <span class="jc-stat"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${j.views}</span>
+      <span class="jc-stat" style="margin-left:6px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${j.responses} откл.</span>
+      <div class="jc-actions">
+        <button class="btn-save${saved?' saved':''}" id="save-${j.id}" onclick="toggleSave(${j.id},this)" title="${saved?'Убрать':'Сохранить'}">
+          <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" ${saved?'fill="var(--red)"':''}></path></svg>
+        </button>
+        <button class="btn-respond${responded?' done':''}" id="resp-${j.id}" onclick="toggleRespond(${j.id},this)">${responded?'Отклик отправлен ✓':'Откликнуться'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── РЕНДЕР РЕЗЮМЕ ── */
+function renderCv(cv,i){
+  const stCls={active:'s-seeking',open:'s-open',passive:'s-passive'}[cv.status]||'s-open';
+  const stLbl={active:'Ищет работу',open:'Рассматривает',passive:'Открыт к офферам'}[cv.status]||'';
+  return`<div class="cv-card" style="animation-delay:${i*.05}s">
+    <div class="cc-head">
+      <div class="cc-av" style="background:${avc(cv.name)}">${letter(cv.name)}</div>
+      <div class="cc-meta">
+        <div class="cc-name">${esc(cv.name)}</div>
+        <div class="cc-title">${esc(cv.title)}</div>
+        <div class="cc-updated">Обновлено ${ago(cv.ts)}</div>
+      </div>
+      <span class="cc-status ${stCls}">${stLbl}</span>
+    </div>
+    <div class="cc-salary">${fmtSal(cv.salFrom,null)}</div>
+    <div class="cc-info">
+      <span class="cc-info-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(cv.city)}</span>
+      <span class="cc-info-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Опыт ${cv.exp} лет</span>
+      <span class="cc-info-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>${esc(cv.format)}</span>
+    </div>
+    ${cv.about?`<div class="cc-about">${esc(cv.about)}</div>`:''}
+    <div class="cc-skills">${cv.skills.map(s=>`<span class="cc-skill">${esc(s)}</span>`).join('')}</div>
+    <div class="cc-foot">
+      <button class="btn-save" onclick="showToast('Сохранено в избранное')" title="Сохранить резюме">
+        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn-save" onclick="showToast('Открываем профиль…')" title="Профиль">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <button class="btn-invite" onclick="showToast('Приглашение отправлено ✓','success')">Пригласить</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderFeed(items){
+  const feed=document.getElementById('feed');
+  if(!items.length){
+    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Ничего не найдено</div><div style="font-size:12px;color:var(--gmt)">Попробуйте изменить фильтры</div></div>';
+    return;
+  }
+  const fn=currentMode==='jobs'?renderJob:renderCv;
+  feed.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">${items.map((x,i)=>fn(x,i)).join('')}</div>`;
+}
+
+/* ── РЕЖИМЫ / ТАБЫ / ФИЛЬТРЫ ── */
+function setMode(mode,btn){
+  currentMode=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  allItems=mode==='jobs'?[...JOBS]:[...CVS];
+  document.getElementById('createBtnLabel').textContent=mode==='jobs'?'Разместить вакансию':'Создать резюме';
+  const tabsEl=document.getElementById('jobsTabs');
+  if(mode==='cvs'){
+    tabsEl.innerHTML=`
+      <button class="jtab active" onclick="setTab('all',this)">Все<span class="jtab-count">5</span></button>
+      <button class="jtab" onclick="setTab('active',this)">Ищут работу<span class="jtab-count">2</span></button>
+      <button class="jtab" onclick="setTab('open',this)">Рассматривают<span class="jtab-count">2</span></button>
+      <button class="jtab" onclick="setTab('passive',this)">Открыты к офферам<span class="jtab-count">1</span></button>`;
+  } else {
+    tabsEl.innerHTML=`
+      <button class="jtab active" onclick="setTab('all',this)">Все<span class="jtab-count">24</span></button>
+      <button class="jtab" onclick="setTab('hot',this)">🔥 Срочные<span class="jtab-count">3</span></button>
+      <button class="jtab" onclick="setTab('new',this)">Новые<span class="jtab-count">7</span></button>
+      <button class="jtab" onclick="setTab('my',this)">Мои отклики<span class="jtab-count">2</span></button>
+      <button class="jtab" onclick="setTab('saved',this)">Сохранённые<span class="jtab-count">5</span></button>`;
+  }
+  currentTab='all';
+  applyFilters();
+}
+
+function setTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.jtab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  applyFilters();
+}
+
+const FILTER_IDS=['filterCat','filterCity','filterFormat','filterExp','filterSal','filterEmpl'];
+
+function applyFilters(){
+  const q=(document.getElementById('searchInput').value||'').toLowerCase();
+  const cat=document.getElementById('filterCat').value;
+  const city=document.getElementById('filterCity').value;
+  const fmt=document.getElementById('filterFormat').value;
+  const exp=document.getElementById('filterExp').value;
+  const sal=document.getElementById('filterSal').value;
+  const empl=document.getElementById('filterEmpl').value;
+  const sort=document.getElementById('filterSort').value;
+
+  FILTER_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',el.value!=='');});
+  const hasActive=FILTER_IDS.some(id=>{const el=document.getElementById(id);return el&&el.value!=='';});
+  document.getElementById('filterReset').classList.toggle('visible',hasActive||!!q);
+
+  let items=[...allItems];
+
+  if(currentMode==='jobs'){
+    if(currentTab==='hot') items=items.filter(j=>j.status==='hot');
+    else if(currentTab==='new') items=items.filter(j=>j.status==='new'||Date.now()-new Date(j.ts)<7*86400000);
+    else if(currentTab==='my') items=items.filter(j=>respondedSet.has(j.id));
+    else if(currentTab==='saved') items=items.filter(j=>savedSet.has(j.id));
+    if(cat) items=items.filter(j=>j.cat===cat);
+    if(city) items=items.filter(j=>j.city===city);
+    if(fmt) items=items.filter(j=>j.format===fmt||j.format.includes(fmt));
+    if(exp) items=items.filter(j=>j.exp>=(+exp));
+    if(sal) items=items.filter(j=>j.salFrom>=(+sal*1000));
+    if(empl) items=items.filter(j=>j.empl===empl||j.empl.includes(empl));
+    if(q) items=items.filter(j=>j.title.toLowerCase().includes(q)||j.company.toLowerCase().includes(q)||j.desc.toLowerCase().includes(q)||j.tags.some(t=>t.includes(q)));
+    if(sort==='sal') items.sort((a,b)=>(b.salFrom||0)-(a.salFrom||0));
+    else if(sort==='views') items.sort((a,b)=>b.views-a.views);
+    else if(sort==='resp') items.sort((a,b)=>b.responses-a.responses);
+    else items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  } else {
+    if(currentTab==='active') items=items.filter(c=>c.status==='active');
+    else if(currentTab==='open') items=items.filter(c=>c.status==='open');
+    else if(currentTab==='passive') items=items.filter(c=>c.status==='passive');
+    if(cat) items=items.filter(c=>c.cat===cat);
+    if(city) items=items.filter(c=>c.city.includes(city));
+    if(fmt) items=items.filter(c=>c.format.includes(fmt));
+    if(exp) items=items.filter(c=>c.exp>=(+exp));
+    if(sal) items=items.filter(c=>c.salFrom>=(+sal*1000));
+    if(q) items=items.filter(c=>c.title.toLowerCase().includes(q)||c.name.toLowerCase().includes(q)||c.skills.some(s=>s.toLowerCase().includes(q)));
+  }
+
+  const n=items.length;
+  document.getElementById('resultsCount').textContent=n+' '+(currentMode==='jobs'?(n===1?'вакансия':n<5?'вакансии':'вакансий'):(n===1?'резюме':n<5?'резюме':'резюме'));
+  renderFeed(items);
+}
+
+function resetFilters(){
+  [...FILTER_IDS,'filterSort'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('searchInput').value='';
+  document.querySelectorAll('.pf-select').forEach(el=>el.classList.remove('active'));
+  document.getElementById('filterReset').classList.remove('visible');
+  applyFilters();
+}
+
+/* ── ДЕЙСТВИЯ ── */
+function toggleRespond(id,btn){
+  if(respondedSet.has(id)){respondedSet.delete(id);btn.classList.remove('done');btn.textContent='Откликнуться';}
+  else{respondedSet.add(id);btn.classList.add('done');btn.textContent='Отклик отправлен ✓';showToast('Отклик отправлен ✓','success');}
+}
+function toggleSave(id,btn){
+  if(savedSet.has(id)){savedSet.delete(id);btn.classList.remove('saved');btn.querySelector('svg path')?.removeAttribute('fill');showToast('Удалено из сохранённых');}
+  else{savedSet.add(id);btn.classList.add('saved');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');showToast('Сохранено ✓','success');}
+}
+
+/* ── МОДАЛКИ ── */
+function openCreateModal(){
+  if(currentMode==='jobs')document.getElementById('modalJob').classList.add('open');
+  else document.getElementById('modalCv').classList.add('open');
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function submitJob(){
+  const title=document.getElementById('jobTitle').value.trim();
+  if(!title){showToast('Введите название вакансии');return;}
+  const newJob={
+    id:Date.now(),title,company:document.getElementById('jobCo').value||'Моя компания',
+    city:document.getElementById('jobCity').value||'Москва',
+    format:document.getElementById('jobFormat').value||'Офис',
+    salFrom:+document.getElementById('jobSalFrom').value||0,
+    salTo:+document.getElementById('jobSalTo').value||null,
+    cat:document.getElementById('jobCat').value||'Логистика и транспорт',
+    exp:+document.getElementById('jobExp').value||0,
+    empl:document.getElementById('jobEmpl').value||'Полная',
+    desc:document.getElementById('jobDesc').value||'',
+    tags:(document.getElementById('jobTags').value||'').split(',').map(t=>t.trim()).filter(Boolean),
+    status:document.getElementById('jobStatus').value||'active',
+    views:0,responses:0,ts:new Date().toISOString()
+  };
+  JOBS.unshift(newJob);allItems=currentMode==='jobs'?[...JOBS]:[...CVS];
+  closeModal('modalJob');applyFilters();showToast('Вакансия опубликована ✓','success');
+}
+function submitCv(){
+  const title=document.getElementById('cvTitle').value.trim();
+  if(!title){showToast('Укажите желаемую должность');return;}
+  const newCv={
+    id:Date.now(),name:document.getElementById('topbarName').textContent||'Пользователь',
+    title,city:document.getElementById('cvCity').value||'Москва',
+    format:document.getElementById('cvFormat').value||'Любой',
+    salFrom:+document.getElementById('cvSalary').value||0,
+    cat:document.getElementById('cvCat').value||'',
+    exp:+document.getElementById('cvExp').value||0,
+    status:document.getElementById('cvStatus').value||'active',
+    about:document.getElementById('cvAbout').value||'',
+    skills:(document.getElementById('cvSkills').value||'').split(',').map(s=>s.trim()).filter(Boolean),
+    ts:new Date().toISOString()
+  };
+  CVS.unshift(newCv);allItems=currentMode==='cvs'?[...CVS]:[...JOBS];
+  closeModal('modalCv');applyFilters();showToast('Резюме опубликовано ✓','success');
+}
+
+/* ── АВТОРИЗАЦИЯ ── */
+(async()=>{
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
+    const color=C[name.charCodeAt(0)%C.length];const ltr=letter(name);
+    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
+    document.getElementById('topbarName').textContent=name;
+    document.getElementById('topbarRole').textContent=user.role||user.position||'Участник LASTOP';
+    document.getElementById('pddName').textContent=name;
+    document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
+  }catch{}
+  applyFilters();
+})();
+</script>
+</body>
+</html>
