@@ -559,7 +559,10 @@ function getPublicID(userLike){
 }
 function profileHref(userLike){
   const uid=getPublicID(userLike)||getPublicID(currentUser)||'u_demo_nikita';
-  return `/profile.html?uid=${encodeURIComponent(uid)}`;
+  const currentUID=getPublicID(currentUser);
+  const isSelf=!!currentUID && uid===currentUID;
+  const base=isSelf?'/profile.html':'/profile_user.html';
+  return `${base}?uid=${encodeURIComponent(uid)}`;
 }
 function skels(n,h=50){return Array(n).fill(0).map(()=>`
   <div class="skeleton" style="height:${h}px;margin-bottom:6px;padding:9px 11px">

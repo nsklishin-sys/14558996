@@ -52,6 +52,14 @@ type authResponse struct {
 	User  user   `json:"user"`
 }
 
+type publicUserProfile struct {
+	PublicID  string `json:"public_id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	FullName  string `json:"full_name"`
+	Email     string `json:"email"`
+}
+
 var emailRe = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
 func main() {
@@ -151,6 +159,32 @@ func main() {
 		}
 
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
+	})
+
+	mux.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		publicID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/users/"))
+		if publicID == "" {
+			writeError(w, http.StatusBadRequest, "public_id обязателен")
+			return
+		}
+
+		profile, err := getPublicUserProfile(db, publicID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			log.Printf("get public user profile error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{"user": profile})
 	})
 
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
@@ -335,6 +369,20 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	}
 
 	return u, nil
+}
+
+func getPublicUserProfile(db *sql.DB, publicID string) (publicUserProfile, error) {
+	var profile publicUserProfile
+	err := db.QueryRow(`
+		SELECT public_id, first_name, last_name, full_name, email
+		FROM users
+		WHERE public_id = $1
+	`, publicID).Scan(&profile.PublicID, &profile.FirstName, &profile.LastName, &profile.FullName, &profile.Email)
+	if err != nil {
+		return publicUserProfile{}, err
+	}
+
+	return profile, nil
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
