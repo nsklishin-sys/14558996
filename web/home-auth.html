@@ -524,6 +524,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script>
 const API = '/api';
 const tk = () => localStorage.getItem('token');
+const USER_NAME_TO_PUBLIC_ID = {
+  'Никита Клишин': 'u_demo_nikita',
+  'Мария Захарова': 'u_demo_maria',
+  'Алексей Петров': 'u_demo_alex',
+};
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
@@ -542,6 +547,20 @@ function ago(ts){
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
 function greet(){const h=new Date().getHours();if(h<6)return'Доброй ночи';if(h<12)return'Доброе утро';if(h<18)return'Добрый день';return'Добрый вечер';}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function getPublicID(userLike){
+  if(!userLike)return '';
+  if(typeof userLike==='string')return USER_NAME_TO_PUBLIC_ID[userLike]||'';
+  if(userLike.public_id)return userLike.public_id;
+  if(userLike.user_public_id)return userLike.user_public_id;
+  if(userLike.user_id!=null)return 'u'+userLike.user_id;
+  if(userLike.id!=null)return 'u'+userLike.id;
+  if(userLike.name)return USER_NAME_TO_PUBLIC_ID[userLike.name]||'';
+  return '';
+}
+function profileHref(userLike){
+  const uid=getPublicID(userLike)||getPublicID(currentUser)||'u_demo_nikita';
+  return `/profile.html?uid=${encodeURIComponent(uid)}`;
+}
 function skels(n,h=50){return Array(n).fill(0).map(()=>`
   <div class="skeleton" style="height:${h}px;margin-bottom:6px;padding:9px 11px">
     <div style="display:flex;gap:8px"><div class="sl" style="width:26px;height:26px;border-radius:7px;flex-shrink:0"></div>
@@ -584,6 +603,8 @@ function populateUser(){
   document.getElementById('pddAv').style.background=color;
   document.getElementById('pddName').textContent=name;
   document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+  const selfProfileHref = profileHref(currentUser);
+  document.querySelectorAll('a[href=\"/profile.html\"]').forEach((a)=>{a.href=selfProfileHref;});
 }
 
 /* ── ДРОПДАУН ПРОФИЛЯ ── */
@@ -707,8 +728,8 @@ function renderChats(items){
     const msg=c.last_message||c.preview||'';
     const time=c.last_time?ago(c.last_time):(c.time||'');
     const unread=c.unread_count||0;
-    const id=c.id?'?id='+c.id:'';
-    return`<div class="chat-item" onclick="location.href='/chat.html${id}'">
+    const chatHref = (c.user_id || USER_NAME_TO_PUBLIC_ID[name]) ? profileHref(c) : `/chat.html${c.id?'?id='+c.id:''}`;
+    return`<div class="chat-item" onclick="location.href='${chatHref}'">
       <div class="ch-av" style="background:${avc(name)}">${letter(name)}${c.is_online?'<div class="ch-online"></div>':''}</div>
       <div class="ch-info"><div class="ch-name">${esc(name)}</div><div class="ch-msg">${esc(msg)}</div></div>
       <div class="ch-right"><div class="ch-time">${esc(time)}</div>${unread?`<div class="ch-bdg">${unread}</div>`:''}</div>
@@ -853,10 +874,11 @@ function renderFeedFiltered(type){
     const time=p.created_at?ago(p.created_at):(p.ago||'');
     const href=p.type==='forum'?'/forum.html':'/dashboard.html';
     const id=p.id?'?id='+p.id:'';
+    const authorHref = profileHref({name, user_id:p.user_id, public_id:p.author_public_id});
     return`<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
       <div class="pc-head">
-        <div class="pc-av" style="background:${avc(name)}">${letter(name)}</div>
-        <div><div class="pc-name">${esc(name)}</div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div></div>
+        <div class="pc-av" style="background:${avc(name)}" onclick="event.stopPropagation();location.href='${authorHref}'">${letter(name)}</div>
+        <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div></div>
         <span class="pc-tag ${tag}">${lbl}</span>
       </div>
       <div class="pc-text">${esc(p.text||p.content||p.body||'')}</div>
