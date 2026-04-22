@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -10,13 +11,13 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
-	_ "modernc.org/sqlite"
 )
 
 type greetingResponse struct {
@@ -53,13 +54,25 @@ type authResponse struct {
 var emailRe = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
 func main() {
-	db, err := initDB("data/app.db")
+	db, err := initDBFromEnv()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := db.PingContext(ctx); err != nil {
+			writeError(w, http.StatusServiceUnavailable, "database down")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "database": "up"})
+	})
 
 	mux.HandleFunc("/api/greeting", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, greetingResponse{Message: "Привет! Добро пожаловать в новый проект на Go + TypeScript 🚀"})
@@ -148,36 +161,72 @@ func main() {
 	}
 }
 
-func initDB(dbPath string) (*sql.DB, error) {
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		return nil, fmt.Errorf("create db dir: %w", err)
+func initDBFromEnv() (*sql.DB, error) {
+	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	if databaseURL == "" {
+		return nil, errors.New("DATABASE_URL is required")
 	}
 
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open("pgx", databaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("open db: %w", err)
+		return nil, fmt.Errorf("open postgres db: %w", err)
 	}
 
-	db.SetMaxOpenConns(1)
-	db.SetConnMaxLifetime(time.Minute)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(30 * time.Minute)
 
+	if err := waitForDB(db, 30*time.Second); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	if err := ensureSchema(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func waitForDB(db *sql.DB, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		if err := db.PingContext(ctx); err == nil {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("database ping timeout after %s: %w", timeout, ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func ensureSchema(db *sql.DB) error {
 	const schema = `
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `
-	if _, err = db.Exec(schema); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("create schema: %w", err)
+
+	if _, err := db.Exec(schema); err != nil {
+		return fmt.Errorf("create schema: %w", err)
 	}
 
-	return db, nil
+	return nil
 }
 
 var (
@@ -214,23 +263,22 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 		fullName = strings.TrimSpace(req.FirstName + " " + req.LastName)
 	}
 
-	res, err := db.Exec(`
+	var created user
+	err = db.QueryRow(`
 		INSERT INTO users(first_name, last_name, full_name, email, password_hash)
-		VALUES (?, ?, ?, ?, ?)
-	`, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash))
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, first_name, last_name, full_name, email
+	`, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
+		Scan(&created.ID, &created.FirstName, &created.LastName, &created.FullName, &created.Email)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return user{}, errEmailTaken
 		}
 		return user{}, err
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		return user{}, fmt.Errorf("last insert id: %w", err)
-	}
-
-	return user{ID: id, FirstName: strings.TrimSpace(req.FirstName), LastName: strings.TrimSpace(req.LastName), FullName: fullName, Email: email}, nil
+	return created, nil
 }
 
 func loginUser(db *sql.DB, req loginRequest) (user, error) {
@@ -247,7 +295,7 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, first_name, last_name, full_name, email, password_hash
 		FROM users
-		WHERE email = ?
+		WHERE email = $1
 	`, email).Scan(&u.ID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
