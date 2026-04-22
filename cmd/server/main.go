@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -60,6 +61,30 @@ type publicUserProfile struct {
 	Email     string `json:"email"`
 }
 
+type sessionStore struct {
+	mu         sync.RWMutex
+	tokenToUID map[string]int64
+}
+
+func newSessionStore() *sessionStore {
+	return &sessionStore{
+		tokenToUID: make(map[string]int64),
+	}
+}
+
+func (s *sessionStore) put(token string, userID int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tokenToUID[token] = userID
+}
+
+func (s *sessionStore) getUserID(token string) (int64, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	userID, ok := s.tokenToUID[token]
+	return userID, ok
+}
+
 var emailRe = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
 func main() {
@@ -70,6 +95,7 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
+	sessions := newSessionStore()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -122,6 +148,7 @@ func main() {
 		}
 
 		writeJSON(w, http.StatusCreated, authResponse{Token: token, User: createdUser})
+		sessions.put(token, createdUser.ID)
 	})
 
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
@@ -159,6 +186,44 @@ func main() {
 		}
 
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
+		sessions.put(token, authUser.ID)
+	})
+
+	mux.HandleFunc("/api/me", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
+		}
+		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		if token == "" {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
+		}
+
+		userID, ok := sessions.getUserID(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Сессия не найдена")
+			return
+		}
+
+		authUser, err := getUserByID(db, userID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusUnauthorized, "Пользователь не найден")
+				return
+			}
+			log.Printf("get current user error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{"user": authUser})
 	})
 
 	mux.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
@@ -383,6 +448,20 @@ func getPublicUserProfile(db *sql.DB, publicID string) (publicUserProfile, error
 	}
 
 	return profile, nil
+}
+
+func getUserByID(db *sql.DB, userID int64) (user, error) {
+	var u user
+	err := db.QueryRow(`
+		SELECT id, public_id, first_name, last_name, full_name, email
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email)
+	if err != nil {
+		return user{}, err
+	}
+
+	return u, nil
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
