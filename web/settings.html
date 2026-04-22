@@ -444,23 +444,23 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
     <!-- Левое меню разделов -->
     <div class="settings-menu">
-      <button class="sm-item active" onclick="switchPanel('profile', this)">
+      <button class="sm-item active" data-panel="profile" type="button">
         <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Профиль
       </button>
-      <button class="sm-item" onclick="switchPanel('account', this)">
+      <button class="sm-item" data-panel="account" type="button">
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         Аккаунт
       </button>
-      <button class="sm-item" onclick="switchPanel('notifications', this)">
+      <button class="sm-item" data-panel="notifications" type="button">
         <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Уведомления
       </button>
-      <button class="sm-item" onclick="switchPanel('privacy', this)">
+      <button class="sm-item" data-panel="privacy" type="button">
         <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Приватность
       </button>
-      <button class="sm-item" onclick="switchPanel('appearance', this)">
+      <button class="sm-item" data-panel="appearance" type="button">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         Внешний вид
       </button>
@@ -906,12 +906,21 @@ function populateUI(){
 }
 
 /* ── ПЕРЕКЛЮЧЕНИЕ ПАНЕЛЕЙ ── */
+function initSettingsPanels(){
+  document.querySelectorAll('.settings-menu .sm-item[data-panel]').forEach((btn)=>{
+    btn.addEventListener('click',()=>switchPanel(btn.dataset.panel,btn));
+  });
+}
 function switchPanel(id, btn){
+  if(!id)return;
   document.querySelectorAll('.s-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sm-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('panel-'+id).classList.add('active');
-  btn.classList.add('active');
+  const panel=document.getElementById('panel-'+id);
+  if(!panel)return;
+  panel.classList.add('active');
+  if(btn)btn.classList.add('active');
 }
+initSettingsPanels();
 
 /* ── ТОГГЛЫ ── */
 function toggleCheck(row){
