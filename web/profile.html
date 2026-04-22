@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Профиль</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Manrope',sans-serif;background:#F2F5F3;margin:0;color:#1A2A22}
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo top top" "nav main right";gap:10px;padding:10px;height:100vh;box-sizing:border-box}
+.logo,.top,.nav,.main,.right .card{background:#fff;border:1px solid #DDE8E2;border-radius:18px}
+.logo{grid-area:logo;display:flex;align-items:center;padding:0 16px;text-decoration:none;color:#1E8A4C;font-weight:800}
+.top{grid-area:top;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.nav{grid-area:nav;padding:10px;overflow:auto}.nav a{display:block;padding:8px 10px;border-radius:8px;text-decoration:none;color:#3A5245}.nav a.active{background:#E8F5EE;color:#1E8A4C;font-weight:700}
+.main{grid-area:main;overflow:auto;padding:0;border-radius:24px}
+.right{grid-area:right;overflow:auto;display:flex;flex-direction:column;gap:10px}.right .card{padding:14px}
+.cover{height:110px;background:linear-gradient(135deg,#1E8A4C,#0E5128)}
+.head{padding:0 22px 18px}.row{display:flex;gap:16px}.av{margin-top:-42px;width:96px;height:96px;border-radius:24px;background:#1E8A4C;color:#fff;display:grid;place-items:center;font-size:30px;font-weight:900;border:4px solid #fff}
+.name{font-size:24px;font-weight:900;margin-top:14px}.meta{color:#5A8A6A;font-size:12px;margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #DDE8E2}.stat{text-align:center;padding:12px 6px;border-right:1px solid #DDE8E2}.stat:last-child{border-right:none}.n{color:#1E8A4C;font-size:18px;font-weight:900}
+.tabs{display:flex;gap:6px;padding:10px;border-bottom:1px solid #DDE8E2;position:sticky;top:0;background:#fff}.tab{padding:8px 12px;border-radius:12px;cursor:pointer}.tab.active{background:#E8F5EE;color:#1E8A4C;font-weight:700}
+.content{padding:14px}.section{background:#fff;border:1px solid #DDE8E2;border-radius:18px;padding:16px;margin-bottom:10px}
+.person-link{color:inherit;text-decoration:none}.person-link:hover{color:#1E8A4C;text-decoration:underline}
+@media (max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo top" "nav main"}.right{display:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+<a class="logo" href="/">LASTOP GROUP</a>
+<div class="top"><input style="width:60%;border:1px solid #DDE8E2;border-radius:999px;padding:9px 14px" placeholder="Поиск пользователей…"><a id="myProfileTop" href="/profile.html" class="person-link">Мой профиль</a></div>
+<div class="nav">
+  <a href="/">Главная</a>
+  <a href="/dashboard.html">Новости</a>
+  <a href="/projects.html">Проекты</a>
+  <a class="active" href="/profile.html">Профиль</a>
+  <a href="/settings.html">Настройки</a>
+</div>
+<div class="main">
+  <div class="cover"></div>
+  <div class="head">
+    <div class="row">
+      <div class="av" id="profileAvatar">НК</div>
+      <div>
+        <div class="name" id="profileName">Никита Клишин</div>
+        <div id="profileRole">Продуктовый логист · NorthBridge Logistics</div>
+        <div class="meta" id="profileMeta">Москва · на платформе с января 2024</div>
+      </div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n">38</div><div>Публикаций</div></div>
+    <div class="stat"><div class="n">12</div><div>Проектов</div></div>
+    <div class="stat"><div class="n">247</div><div>Друзей</div></div>
+    <div class="stat"><div class="n">89</div><div>Подписок</div></div>
+    <div class="stat"><div class="n">14</div><div>Мероприятий</div></div>
+  </div>
+  <div class="tabs"><div class="tab active" data-tab="about">О себе</div><div class="tab" data-tab="posts">Публикации</div><div class="tab" data-tab="friends">Друзья</div></div>
+  <div class="content">
+    <div class="panel" id="about">
+      <div class="section">Занимаюсь мультимодальной логистикой и ВЭД более 8 лет. Выстраиваю маршруты СНГ–ЕС, работаю с таможенным оформлением.</div>
+    </div>
+    <div class="panel" id="posts" style="display:none">
+      <div class="section">Рады сообщить об открытии нового маршрута СНГ–ЕС. <a class="person-link" id="postAuthorLink" href="#">Никита Клишин</a></div>
+    </div>
+    <div class="panel" id="friends" style="display:none">
+      <div class="section"><a class="person-link" href="/profile.html?uid=u_demo_maria">Мария Захарова</a></div>
+      <div class="section"><a class="person-link" href="/profile.html?uid=u_demo_alex">Алексей Петров</a></div>
+    </div>
+  </div>
+</div>
+<aside class="right">
+  <div class="card"><b>Контакты</b><div id="emailLine" style="margin-top:8px;color:#3A5245">n.klishin@northbridge.ru</div></div>
+</aside>
+</div>
+<script>
+const KNOWN_USERS={
+  u_demo_nikita:{id:101,public_id:'u_demo_nikita',full_name:'Никита Клишин',role:'Продуктовый логист · NorthBridge Logistics',city:'Москва',email:'n.klishin@northbridge.ru',member_since:'января 2024'},
+  u_demo_maria:{id:102,public_id:'u_demo_maria',full_name:'Мария Захарова',role:'Логист · NorthBridge Logistics',city:'Москва',email:'m.zaharova@northbridge.ru',member_since:'февраля 2024'},
+  u_demo_alex:{id:103,public_id:'u_demo_alex',full_name:'Алексей Петров',role:'Специалист ВЭД',city:'Санкт-Петербург',email:'a.petrov@example.ru',member_since:'марта 2024'}
+};
+function userPublicId(u){
+  if(!u) return 'u_demo_nikita';
+  if(u.public_id) return u.public_id;
+  if(u.id!=null) return `u${u.id}`;
+  return 'u_demo_nikita';
+}
+function profileHrefByUser(u){return `/profile.html?uid=${encodeURIComponent(userPublicId(u))}`;}
+function initTabs(){document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelectorAll('.panel').forEach(p=>{p.style.display='none';});document.getElementById(t.dataset.tab).style.display='block';});}
+function applyProfile(user){
+  const name=user.full_name||'Пользователь';
+  document.getElementById('profileName').textContent=name;
+  document.getElementById('profileRole').textContent=user.role||'Участник LASTOP';
+  document.getElementById('profileMeta').textContent=`${user.city||'—'} · на платформе с ${user.member_since||'2024'}`;
+  document.getElementById('profileAvatar').textContent=name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('emailLine').textContent=user.email||'—';
+  document.getElementById('postAuthorLink').textContent=name;
+  document.getElementById('postAuthorLink').href=profileHrefByUser(user);
+}
+(function(){
+  const me=JSON.parse(localStorage.getItem('user')||'{}');
+  document.getElementById('myProfileTop').href=profileHrefByUser(me);
+  const uid=new URLSearchParams(location.search).get('uid');
+  const fallback=uid||userPublicId(me);
+  const selected=KNOWN_USERS[fallback]||KNOWN_USERS.u_demo_nikita;
+  applyProfile(selected);
+  initTabs();
+})();
+</script>
+</body>
+</html>

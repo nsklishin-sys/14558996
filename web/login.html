@@ -457,8 +457,10 @@ async function handleLogin(e){
       btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
       return;
     }
+    const u=d.user||{};
+    if(!u.public_id && u.id!=null)u.public_id='u'+u.id;
     localStorage.setItem('token',d.token);
-    localStorage.setItem('user',JSON.stringify(d.user));
+    localStorage.setItem('user',JSON.stringify(u));
     showToast('Добро пожаловать!','success');
     setTimeout(()=>location.href='/',900);
   }catch{
