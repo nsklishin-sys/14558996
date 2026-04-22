@@ -42,13 +42,62 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .search-wrap input::placeholder{color:var(--gmt)}
 
 /* Профиль в топбаре */
-.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
 .topbar-profile:hover{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
 .tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
 .tp-info{display:flex;flex-direction:column;line-height:1.25}
 .tp-name{font-size:12px;font-weight:700;color:var(--t)}
 .tp-role{font-size:10px;color:var(--gmt)}
-.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+
+/* ═══ ДРОПДАУН ПРОФИЛЯ ═══ */
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{
+  position:absolute;top:calc(100% + 8px);right:0;
+  width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);
+  box-shadow:0 12px 36px rgba(30,138,76,.15);
+  opacity:0;pointer-events:none;transform:translateY(-6px);
+  transition:opacity .2s,transform .2s;z-index:200;overflow:hidden
+}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{
+  padding:14px 14px;border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:10px;
+  background:var(--gp)
+}
+.pdd-av{
+  width:40px;height:40px;border-radius:10px;background:var(--g);
+  display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0
+}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{
+  display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);
+  background:var(--gl);border:1px solid var(--gb);
+  color:var(--g);font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;text-align:center;text-decoration:none;transition:all .15s
+}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-radius:var(--r);cursor:pointer;text-decoration:none;
+  color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s
+}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{
+  font-size:10px;font-weight:700;color:var(--g);
+  background:var(--gl);border:1px solid var(--gb);border-radius:99px;
+  padding:1px 7px;flex-shrink:0
+}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
 
 /* ═══ NAV — с группами как на скриншоте ═══ */
 .nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
@@ -240,13 +289,54 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="search-dot"></span>
     <input type="search" id="searchInput" placeholder="Поиск пользователей, компаний, форума…" autocomplete="off">
   </div>
-  <div class="topbar-profile" onclick="location.href='/profile.html'">
-    <div class="tp-av" id="topbarAv">?</div>
-    <div class="tp-info">
-      <span class="tp-name" id="topbarName">Загрузка…</span>
-      <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">?</div>
+      <div class="tp-info">
+        <span class="tp-name" id="topbarName">Загрузка…</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head">
+        <div class="pdd-av" id="pddAv">?</div>
+        <div class="pdd-info">
+          <div class="pdd-name" id="pddName">Загрузка…</div>
+          <div class="pdd-role" id="pddRole">Участник LASTOP</div>
+        </div>
+      </div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="pdd-item-label">Друзья</span>
+          <span class="pdd-count" id="pddFriends">24</span>
+        </a>
+        <a href="/my-company.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span class="pdd-item-label">Моя компания</span>
+        </a>
+        <a href="/communities.html?filter=my" class="pdd-item">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="pdd-item-label">Мои сообщества</span>
+          <span class="pdd-count" id="pddComm">3</span>
+        </a>
+        <a href="/analytics.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="pdd-item-label">Аналитика</span>
+        </a>
+
+        <div class="pdd-div"></div>
+
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="pdd-item-label">Выход</span>
+        </a>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -461,7 +551,7 @@ function skels(n,h=50){return Array(n).fill(0).map(()=>`
 /* ── АВТОРИЗАЦИЯ ── */
 let currentUser={};
 (async()=>{
-  if(!tk()){location.href='/home-guest.html';return;}
+  if(!tk()){location.href='/login.html';return;}
   try{
     const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
@@ -470,7 +560,7 @@ let currentUser={};
     localStorage.setItem('user',JSON.stringify(user));
   }catch{
     currentUser=JSON.parse(localStorage.getItem('user')||'{}');
-    if(!currentUser.id){location.href='/home-guest.html';return;}
+    if(!currentUser.id){location.href='/login.html';return;}
   }
   populateUser();
 })();
@@ -489,6 +579,37 @@ function populateUser(){
   document.getElementById('topbarAv').style.background=color;
   document.getElementById('topbarName').textContent=name;
   document.getElementById('topbarRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+  /* Дропдаун профиля */
+  document.getElementById('pddAv').textContent=ltr;
+  document.getElementById('pddAv').style.background=color;
+  document.getElementById('pddName').textContent=name;
+  document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+}
+
+/* ── ДРОПДАУН ПРОФИЛЯ ── */
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('topbarProfile').classList.toggle('open');
+  document.getElementById('profileDD').classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('profileDD');
+  const btn=document.getElementById('topbarProfile');
+  if(dd && !dd.contains(e.target) && !btn.contains(e.target)){
+    dd.classList.remove('open');
+    btn.classList.remove('open');
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.getElementById('profileDD').classList.remove('open');
+    document.getElementById('topbarProfile').classList.remove('open');
+  }
+});
+function logout(){
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  location.href='/login.html';
 }
 
 /* ── ИНИЦИАЛИЗАЦИЯ ── */
@@ -517,6 +638,8 @@ async function loadPlatformStats(){
     document.getElementById('statMembers').textContent=num(d.members||d.users||0);
     document.getElementById('statNews').textContent=num(d.news||d.posts||0);
     document.getElementById('statEvents').textContent=num(d.events||0);
+    if(d.my_contacts!=null)document.getElementById('pddFriends').textContent=num(d.my_contacts);
+    if(d.my_communities!=null)document.getElementById('pddComm').textContent=num(d.my_communities);
   }catch{
     document.getElementById('statMembers').textContent='1 247';
     document.getElementById('statNews').textContent='48';
