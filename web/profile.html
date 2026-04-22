@@ -793,19 +793,23 @@ function applyCurrentUserProfile(){
   const fullName=(currentUser.full_name||`${firstName} ${lastName}`.trim()||currentUser.name||'Пользователь').trim();
   const role=currentUser.position||'Участник LASTOP';
   const company=currentUser.company_name||'—';
-  const location=currentUser.location||'Не указано';
+  const location=currentUser.location||currentUser.city||'Не указано';
   const phone=currentUser.phone||'Не указан';
   const email=currentUser.email||'Не указан';
   const bio=currentUser.bio||'Информация о пользователе пока не заполнена.';
-  const websiteRaw=(email.includes('@')?email.split('@')[1]:'').trim();
-  const website=websiteRaw||'Добавьте сайт в настройках';
+  const website=email||'Добавьте почту в настройках';
   const initials=avatarLetters(fullName);
 
   document.getElementById('topbarAv').textContent=initials;
   document.getElementById('pddAv').textContent=initials;
   document.getElementById('topbarName').textContent=fullName;
   document.getElementById('pddName').textContent=fullName;
-  document.getElementById('profileAvatarText').textContent=initials;
+  const profileAvatar=document.querySelector('.prof-av');
+  if(currentUser.avatar_url){
+    profileAvatar.innerHTML=`<img src="${currentUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
+  }else{
+    document.getElementById('profileAvatarText').textContent=initials;
+  }
   document.getElementById('profileFullName').textContent=fullName;
   document.querySelectorAll('.profile-post-name').forEach((node)=>{node.textContent=fullName;});
 
@@ -822,7 +826,7 @@ function applyCurrentUserProfile(){
 
   const websiteNode=document.getElementById('profileWebsite');
   websiteNode.textContent=website;
-  websiteNode.href=websiteRaw?`https://${websiteRaw}`:'#';
+  websiteNode.href=email?`mailto:${email}`:'#';
 }
 applyCurrentUserProfile();
 
