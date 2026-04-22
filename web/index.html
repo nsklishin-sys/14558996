@@ -3,39 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Новый проект</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        font-family: Inter, system-ui, -apple-system, sans-serif;
-        background: linear-gradient(135deg, #0f172a, #1d4ed8);
-        color: #e2e8f0;
-      }
-      .card {
-        width: min(90vw, 720px);
-        padding: 2rem;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.65);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-        backdrop-filter: blur(8px);
-      }
-      h1 {
-        margin-top: 0;
-      }
-      p {
-        font-size: 1.1rem;
-        line-height: 1.6;
-      }
-    </style>
+    <title>LASTOP GROUP</title>
+    <script>
+      (function redirectHomeByAuth() {
+        function hasAccount() {
+          const token = localStorage.getItem("token");
+          if (token && token.trim()) return true;
+
+          try {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            return Boolean(user && (user.id || user.email || user.name));
+          } catch {
+            return false;
+          }
+        }
+
+        const target = hasAccount() ? "/home-auth.html" : "/home-guest.html";
+        location.replace(target);
+      })();
+    </script>
   </head>
-  <body>
-    <main class="card">
-      <h1>Старт нового проекта</h1>
-      <p id="greeting">Загрузка приветствия...</p>
-    </main>
-    <script type="module" src="/app.js"></script>
-  </body>
+  <body></body>
 </html>
