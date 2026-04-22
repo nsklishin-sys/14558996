@@ -849,8 +849,11 @@ function getPublicID(userLike){
   return '';
 }
 function profileHref(userLike){
-  const uid=getPublicID(userLike)||'u_demo_nikita';
-  return `/profile.html?uid=${encodeURIComponent(uid)}`;
+  const uid=getPublicID(userLike)||getPublicID(currentUser)||'u_demo_nikita';
+  const currentUID=getPublicID(currentUser);
+  const isSelf=!!currentUID && uid===currentUID;
+  const base=isSelf?'/profile.html':'/profile_user.html';
+  return `${base}?uid=${encodeURIComponent(uid)}`;
 }
 
 /* ── AUTH ── */
