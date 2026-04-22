@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Выставки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* ═══ SHELL ═══ */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+
+/* TOPBAR */
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-dot{position:absolute;left:13px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-info{display:flex;flex-direction:column;line-height:1.25}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px;flex-shrink:0}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
+
+/* NAV */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ── ТУЛБАР ── */
+.ex-toolbar{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  padding:12px 14px;box-shadow:var(--sh);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap
+}
+.ex-title{font-size:16px;font-weight:900;color:var(--t);white-space:nowrap}
+.ex-tabs{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+.ex-tabs::-webkit-scrollbar{display:none}
+.etab{padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.etab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.etab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.toolbar-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.view-btn{width:32px;height:32px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.view-btn:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.view-btn.active{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.view-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.btn-add{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap}
+.btn-add:hover{background:var(--gm);box-shadow:0 4px 12px rgba(30,138,76,.3)}
+.btn-add svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* ── ФИЛЬТРЫ ── */
+.ex-filter-row{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:8px 14px;box-shadow:var(--sh);flex-shrink:0;display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:none}
+.ex-filter-row::-webkit-scrollbar{display:none}
+.ex-filter-row-inner{display:contents}
+.pf-div{width:1px;height:16px;background:var(--bdr);flex-shrink:0}
+.pf-group{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.pf-label{font-size:10px;font-weight:700;color:var(--gmt);white-space:nowrap}
+.pf-select{height:28px;padding:0 7px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:11px;color:var(--tm);outline:none;cursor:pointer;transition:border-color .2s,background .15s;max-width:120px}
+.pf-select:focus,.pf-select:hover{border-color:var(--gb);background:var(--w)}
+.pf-select.active{border-color:var(--g);background:var(--gl);color:var(--g);font-weight:700}
+.pf-count{font-size:11px;color:var(--gmt);white-space:nowrap;margin-left:auto}
+.pf-reset{
+  height:28px;padding:0 10px;border-radius:99px;border:1.5px solid var(--bdr);
+  background:var(--gp);font-family:inherit;font-size:11px;font-weight:600;
+  color:var(--gmt);cursor:pointer;transition:all .15s;white-space:nowrap;
+  display:none;align-items:center;gap:4px;flex-shrink:0
+}
+.pf-reset.visible{display:inline-flex}
+.pf-reset:hover{border-color:#FABCBC;color:var(--red);background:#FFF5F5}
+.pf-reset svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.pf-filter-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+
+/* ── HERO-БАННЕР ── */
+.ex-hero{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  overflow:hidden;flex-shrink:0;box-shadow:var(--sh);cursor:pointer;
+  transition:box-shadow .2s,transform .15s
+}
+.ex-hero:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.eh-cover{
+  height:150px;position:relative;overflow:hidden;
+  background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2),transparent 40%),
+    radial-gradient(circle at 80% 60%,rgba(255,255,255,.12),transparent 40%),
+    linear-gradient(135deg,#3A90C0 0%,#185FA5 50%,#0D3F7A 100%);
+  display:flex;align-items:flex-end;padding:16px 20px
+}
+.eh-cover::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)}
+.eh-cover::after{content:'';position:absolute;bottom:-60px;left:15%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+.eh-badges{display:flex;align-items:center;gap:8px;position:relative;z-index:1}
+.eh-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-size:10px;font-weight:700;color:#fff}
+.eh-body{padding:18px 20px}
+.eh-cat{font-size:10px;font-weight:700;color:#185FA5;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.eh-title{font-size:18px;font-weight:900;color:var(--t);line-height:1.25;letter-spacing:-.01em;margin-bottom:6px}
+.eh-desc{font-size:12px;color:var(--gmt);line-height:1.6;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eh-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.eh-meta-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tm);font-weight:600}
+.eh-meta-item svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.eh-foot{display:flex;align-items:center;gap:10px;padding-top:14px;border-top:1px solid var(--bdr)}
+.eh-stats{display:flex;align-items:center;gap:14px}
+.eh-stat{display:flex;flex-direction:column;align-items:center}
+.eh-stat-n{font-size:16px;font-weight:900;color:var(--t);line-height:1}
+.eh-stat-l{font-size:9px;color:var(--gmt);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.eh-stat-div{width:1px;height:28px;background:var(--bdr)}
+.eh-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.btn-reg{padding:9px 20px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-reg:hover{background:var(--gm);box-shadow:0 4px 12px rgba(30,138,76,.3)}
+.btn-reg svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.btn-sec{padding:9px 14px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-sec:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-sec svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.btn-fav{width:36px;height:36px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
+.btn-fav:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-fav.active{color:var(--red);border-color:#FABCBC;background:#FFF5F5}
+.btn-fav svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+/* ── КАРТОЧКА ВЫСТАВКИ (grid) ── */
+.ex-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ex-list-wrap{display:flex;flex-direction:column;gap:8px}
+.ex-card{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  overflow:hidden;box-shadow:var(--sh);cursor:pointer;
+  transition:box-shadow .18s,transform .15s,border-color .15s;
+  animation:fadeUp .3s ease both;display:flex;flex-direction:column
+}
+.ex-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ec-cover{
+  height:80px;position:relative;overflow:hidden;flex-shrink:0
+}
+.ec-cover-inner{position:absolute;inset:0}
+.ec-date-pill{
+  position:absolute;top:8px;right:8px;
+  padding:3px 8px;border-radius:99px;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);
+  font-size:10px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.2)
+}
+.ec-cat-pill{
+  position:absolute;top:8px;left:8px;
+  padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);
+  font-size:9px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.25)
+}
+.ec-body{padding:12px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.ec-title{font-size:13px;font-weight:800;color:var(--t);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ec-desc{font-size:11px;color:var(--gmt);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ec-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ec-meta-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--gmt)}
+.ec-meta-item svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.ec-foot{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid var(--bdr);margin-top:auto}
+.ec-stat{font-size:10px;color:var(--gmt);display:flex;align-items:center;gap:4px}
+.ec-stat svg{width:11px;height:11px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round}
+.ec-btn{
+  padding:5px 12px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);
+  color:var(--g);font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s
+}
+.ec-btn:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.ec-btn.registered{background:var(--g);color:#fff;border-color:var(--g)}
+
+/* ── КАРТОЧКА (список) ── */
+.ex-row{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  padding:14px 16px;box-shadow:var(--sh);cursor:pointer;
+  transition:box-shadow .15s,border-color .15s;
+  display:flex;align-items:center;gap:14px;
+  animation:fadeUp .25s ease both
+}
+.ex-row:hover{box-shadow:var(--shm);border-color:var(--gb)}
+.er-thumb{width:56px;height:56px;border-radius:12px;flex-shrink:0;overflow:hidden;position:relative}
+.er-thumb-inner{position:absolute;inset:0}
+.er-body{flex:1;min-width:0}
+.er-top{display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap}
+.er-title{font-size:13px;font-weight:800;color:var(--t)}
+.er-badge{padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700}
+.er-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.er-meta-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gmt)}
+.er-meta-item svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.er-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.er-btn{padding:7px 14px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.er-btn:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.er-btn.registered{background:var(--g);color:#fff;border-color:var(--g)}
+
+/* ── МОДАЛКА ЗАЯВКИ НА СТЕНД ── */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.4);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
+.modal::-webkit-scrollbar{display:none}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:800;color:var(--t)}
+.modal-close{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.modal-close:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.modal-body{padding:20px}
+.mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
+.mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;margin-bottom:12px}
+.mf-input:focus{border-color:var(--gm);background:var(--w)}
+.mf-input::placeholder{color:var(--gmt)}
+.mf-textarea{width:100%;height:72px;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;margin-bottom:12px;transition:border-color .2s}
+.mf-textarea:focus{border-color:var(--gm);background:var(--w)}
+.mf-textarea::placeholder{color:var(--gmt)}
+.mf-select{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--tm);outline:none;cursor:pointer;margin-bottom:12px}
+.mf-select:focus{border-color:var(--gm)}
+.mf-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.mf-row2 .mf-input{margin-bottom:0}
+/* Типы участия */
+.part-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.part-card{padding:12px 10px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;text-align:center;transition:all .15s}
+.part-card:hover{border-color:var(--gb)}
+.part-card.selected{border-color:var(--g);background:var(--gl)}
+.part-card svg{width:18px;height:18px;stroke:var(--gmt);fill:none;stroke-width:1.6;stroke-linecap:round;margin:0 auto 6px;display:block}
+.part-card.selected svg{stroke:var(--g)}
+.part-card-t{font-size:11px;font-weight:700;color:var(--tm)}
+.part-card.selected .part-card-t{color:var(--g)}
+.part-card-s{font-size:9px;color:var(--gmt);margin-top:2px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-submit{padding:9px 22px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-submit:hover{background:var(--gm)}
+
+/* RIGHT */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.stat-val{font-size:13px;font-weight:800;color:var(--t)}
+/* Ближайшие выставки */
+.near-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .12s}
+.near-item:last-child{border-bottom:none;padding-bottom:0}
+.near-item:hover .near-title{color:var(--g)}
+.near-date{
+  width:38px;flex-shrink:0;text-align:center;
+  background:var(--gl);border:1px solid var(--gb);border-radius:var(--r);
+  padding:4px 0;display:flex;flex-direction:column;align-items:center
+}
+.near-d{font-size:16px;font-weight:900;color:var(--g);line-height:1}
+.near-m{font-size:9px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
+.near-body{flex:1;min-width:0}
+.near-title{font-size:12px;font-weight:700;color:var(--t);margin-bottom:2px;transition:color .12s;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.near-meta{font-size:10px;color:var(--gmt);display:flex;align-items:center;gap:4px}
+.near-meta svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+/* Города */
+.city-item{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+.city-item:hover{background:var(--gp)}
+.city-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.city-name{font-size:12px;font-weight:600;color:var(--t);flex:1;margin-left:8px}
+.city-count{font-size:11px;color:var(--gmt)}
+/* Участие */
+.my-reg-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+.my-reg-item:hover{background:var(--gp)}
+.mri-cover{width:34px;height:34px;border-radius:9px;flex-shrink:0;overflow:hidden;position:relative}
+.mri-body{flex:1;min-width:0}
+.mri-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mri-meta{font-size:10px;color:var(--gmt);margin-top:1px}
+.mri-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0}
+.mri-confirmed{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.mri-pending{background:#FEF3C7;color:#B45309;border:1px solid #FCD34D}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}.ex-grid{grid-template-columns:1fr}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="" onerror="this.style.display='none'"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap"><span class="search-dot"></span><input type="search" id="searchInput" placeholder="Поиск выставок…" autocomplete="off" oninput="applyFilters()"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div class="tp-info"><span class="tp-name" id="topbarName">Никита Клишин</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div class="pdd-info"><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/news_new.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects_new.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item active" href="/exhibitions_new.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat_new.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile_new.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings_new.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+
+  <!-- Тулбар -->
+  <div class="ex-toolbar">
+    <span class="ex-title">Выставки</span>
+    <div class="ex-tabs" id="exTabs">
+      <button class="etab active" onclick="setTab('all',this)">Все</button>
+      <button class="etab" onclick="setTab('upcoming',this)">Предстоящие</button>
+      <button class="etab" onclick="setTab('registered',this)">Мои заявки</button>
+      <button class="etab" onclick="setTab('past',this)">Прошедшие</button>
+    </div>
+    <div class="toolbar-right">
+      <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </button>
+      <button class="view-btn" id="viewList" onclick="setView('list',this)" title="Список">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+      <button class="btn-add" onclick="openStandModal()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Заявка на стенд
+      </button>
+    </div>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="ex-filter-row">
+    <span class="pf-filter-title">Фильтры</span>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Тематика</span>
+      <select class="pf-select" id="filterCat" onchange="applyFilters()">
+        <option value="">Все</option><option>Логистика</option><option>Строительство</option><option>Промышленность</option><option>Технологии</option><option>АПК</option><option>Фармацевтика</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Город</span>
+      <select class="pf-select" id="filterCity" onchange="applyFilters()">
+        <option value="">Все</option><option>Москва</option><option>Санкт-Петербург</option><option>Екатеринбург</option><option>Новосибирск</option><option>Казань</option><option>Сочи</option><option>Нижний Новгород</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Формат</span>
+      <select class="pf-select" id="filterFormat" onchange="applyFilters()">
+        <option value="">Любой</option><option value="offline">Офлайн</option><option value="online">Онлайн</option><option value="hybrid">Гибрид</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Участие</span>
+      <select class="pf-select" id="filterPart" onchange="applyFilters()">
+        <option value="">Любое</option><option value="free">Бесплатное</option><option value="paid">Платное</option><option value="stand">Со стендом</option>
+      </select></div>
+    <div class="pf-div"></div>
+    <div class="pf-group"><span class="pf-label">Сортировка</span>
+      <select class="pf-select" id="filterSort" onchange="applyFilters()">
+        <option value="date">По дате</option><option value="visitors">Посетители</option><option value="exhibitors">Экспоненты</option><option value="alpha">А–Я</option>
+      </select></div>
+    <button class="pf-reset" id="filterReset" onclick="resetFilters()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      Сбросить
+    </button>
+    <span class="pf-count" id="resultsCount">7 выставок</span>
+  </div>
+
+  <!-- Hero — главная выставка -->
+  <div class="ex-hero" onclick="openExhibition(1)">
+    <div class="eh-cover">
+      <div class="eh-badges">
+        <span class="eh-badge">🏆 Главное событие сезона</span>
+        <span class="eh-badge">14–16 мая 2026</span>
+      </div>
+    </div>
+    <div class="eh-body">
+      <div class="eh-cat">Логистика · Транспорт · Цепочки поставок</div>
+      <div class="eh-title">LogisticsPro 2026 — крупнейшая отраслевая выставка России</div>
+      <div class="eh-desc">МВЦ «Крокус Экспо», Москва. Три дня деловой программы, нетворкинга и демонстрации решений от 280+ экспонентов.</div>
+      <div class="eh-meta">
+        <span class="eh-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва · МВЦ «Крокус Экспо»</span>
+        <span class="eh-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>14–16 мая 2026</span>
+        <span class="eh-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>До начала: 22 дня</span>
+      </div>
+      <div class="eh-foot">
+        <div class="eh-stats">
+          <div class="eh-stat"><div class="eh-stat-n">280</div><div class="eh-stat-l">Экспонентов</div></div>
+          <div class="eh-stat-div"></div>
+          <div class="eh-stat"><div class="eh-stat-n">10к+</div><div class="eh-stat-l">Посетителей</div></div>
+          <div class="eh-stat-div"></div>
+          <div class="eh-stat"><div class="eh-stat-n">48</div><div class="eh-stat-l">Докладов</div></div>
+          <div class="eh-stat-div"></div>
+          <div class="eh-stat"><div class="eh-stat-n">3</div><div class="eh-stat-l">Дня</div></div>
+        </div>
+        <div class="eh-actions">
+          <button class="btn-fav" id="heroFav" onclick="event.stopPropagation();toggleFav('heroFav',this)" title="В избранное">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+          <button class="btn-sec" onclick="event.stopPropagation();showToast('Ссылка скопирована')">
+            <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Поделиться
+          </button>
+          <button class="btn-reg" id="heroRegBtn" onclick="event.stopPropagation();registerExhibition(1,'heroRegBtn')">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Зарегистрироваться
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Лента выставок -->
+  <div id="exFeed"></div>
+
+</div><!-- /main -->
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Статистика -->
+  <div class="card">
+    <div class="block-title">Статистика</div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>Выставок в базе</span><span class="stat-val">184</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Предстоящих</span><span class="stat-val" style="color:var(--g)">47</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Международных</span><span class="stat-val">23</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Мои заявки</span><span class="stat-val">2</span></div>
+  </div>
+
+  <!-- Ближайшие -->
+  <div class="card">
+    <div class="block-title">Ближайшие события</div>
+    <div class="near-item" onclick="openExhibition(1)">
+      <div class="near-date"><div class="near-d">14</div><div class="near-m">Май</div></div>
+      <div class="near-body"><div class="near-title">LogisticsPro 2026</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва · Крокус Экспо</div></div>
+    </div>
+    <div class="near-item" onclick="openExhibition(2)">
+      <div class="near-date"><div class="near-d">2</div><div class="near-m">Июн</div></div>
+      <div class="near-body"><div class="near-title">BuildExpo Russia 2026</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Санкт-Петербург</div></div>
+    </div>
+    <div class="near-item" onclick="openExhibition(3)">
+      <div class="near-date"><div class="near-d">11</div><div class="near-m">Июн</div></div>
+      <div class="near-body"><div class="near-title">Digital Freight Forum</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва · Экспоцентр</div></div>
+    </div>
+    <div class="near-item" onclick="openExhibition(5)">
+      <div class="near-date"><div class="near-d">18</div><div class="near-m">Сен</div></div>
+      <div class="near-body"><div class="near-title">IndustrialTech 2026</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Екатеринбург</div></div>
+    </div>
+  </div>
+
+  <!-- Мои заявки -->
+  <div class="card">
+    <div class="block-title">Мои заявки</div>
+    <div class="my-reg-item" onclick="openExhibition(1)">
+      <div class="mri-cover"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#3A90C0,#185FA5)"></div></div>
+      <div class="mri-body"><div class="mri-name">LogisticsPro 2026</div><div class="mri-meta">Стенд 12м² · 14 мая</div></div>
+      <span class="mri-status mri-confirmed">Подтверждено</span>
+    </div>
+    <div class="my-reg-item" onclick="openExhibition(3)">
+      <div class="mri-cover"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#1E8A4C,#22A05A)"></div></div>
+      <div class="mri-body"><div class="mri-name">Digital Freight Forum</div><div class="mri-meta">Посетитель · 11 июня</div></div>
+      <span class="mri-status mri-pending">На рассмотрении</span>
+    </div>
+  </div>
+
+  <!-- Города -->
+  <div class="card">
+    <div class="block-title">По городам</div>
+    <div class="city-item" onclick="document.getElementById('filterCity').value='Москва';applyFilters()"><div class="city-dot" style="background:#1E8A4C"></div><span class="city-name">Москва</span><span class="city-count">28</span></div>
+    <div class="city-item" onclick="document.getElementById('filterCity').value='Санкт-Петербург';applyFilters()"><div class="city-dot" style="background:#3A90C0"></div><span class="city-name">Санкт-Петербург</span><span class="city-count">11</span></div>
+    <div class="city-item" onclick="document.getElementById('filterCity').value='Екатеринбург';applyFilters()"><div class="city-dot" style="background:#9060C0"></div><span class="city-name">Екатеринбург</span><span class="city-count">7</span></div>
+    <div class="city-item" onclick="document.getElementById('filterCity').value='Новосибирск';applyFilters()"><div class="city-dot" style="background:#C07030"></div><span class="city-name">Новосибирск</span><span class="city-count">5</span></div>
+    <div class="city-item" onclick="document.getElementById('filterCity').value='Казань';applyFilters()"><div class="city-dot" style="background:#B05090"></div><span class="city-name">Казань</span><span class="city-count">4</span></div>
+  </div>
+
+</aside>
+
+<!-- МОДАЛКА ЗАЯВКИ НА СТЕНД -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Заявка на участие / стенд</span>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <label class="mf-label">Выставка</label>
+      <select class="mf-select" id="mExpo">
+        <option>LogisticsPro 2026 — 14–16 мая, Москва</option>
+        <option>BuildExpo Russia 2026 — 2–5 июня, СПб</option>
+        <option>Digital Freight Forum 2026 — 11–12 июня, Москва</option>
+        <option>AgroLogistics 2026 — 3–5 июля, Новосибирск</option>
+        <option>IndustrialTech 2026 — 18–20 сентября, Екатеринбург</option>
+        <option>PharmaLogistica 2026 — 8–9 октября, Казань</option>
+      </select>
+
+      <label class="mf-label">Тип участия</label>
+      <div class="part-grid" id="partGrid">
+        <div class="part-card selected" onclick="selectPart(this)">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg>
+          <div class="part-card-t">Стенд</div>
+          <div class="part-card-s">Аренда площади</div>
+        </div>
+        <div class="part-card" onclick="selectPart(this)">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div class="part-card-t">Посетитель</div>
+          <div class="part-card-s">Бейдж участника</div>
+        </div>
+        <div class="part-card" onclick="selectPart(this)">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+          <div class="part-card-t">Спонсор</div>
+          <div class="part-card-s">Спонсорский пакет</div>
+        </div>
+        <div class="part-card" onclick="selectPart(this)">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <div class="part-card-t">Докладчик</div>
+          <div class="part-card-s">Выступление / панель</div>
+        </div>
+      </div>
+
+      <label class="mf-label">Компания</label>
+      <input class="mf-input" id="mCompany" placeholder="Название вашей компании">
+      <div class="mf-row2">
+        <div>
+          <label class="mf-label">Контактное лицо</label>
+          <input class="mf-input" id="mContact" placeholder="Имя Фамилия">
+        </div>
+        <div>
+          <label class="mf-label">Телефон</label>
+          <input class="mf-input" id="mPhone" placeholder="+7 999 000-00-00">
+        </div>
+      </div>
+      <label class="mf-label">Комментарий к заявке</label>
+      <textarea class="mf-textarea" id="mComment" placeholder="Опишите ваши цели участия, размер стенда, дополнительные пожелания…"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-submit" onclick="submitStand()">Отправить заявку</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+const tk=()=>localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){return((s||'?')[0]).toUpperCase();}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
+function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2500);}
+
+/* ── DROPDOWN ── */
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('topbarProfile').classList.toggle('open');
+  document.getElementById('profileDD').classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('profileDD'),btn=document.getElementById('topbarProfile');
+  if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
+});
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+
+/* ── ДАННЫЕ ── */
+const GRADIENTS={
+  'Логистика':'linear-gradient(135deg,#3A90C0,#185FA5)',
+  'Строительство':'linear-gradient(135deg,#C07030,#633806)',
+  'Промышленность':'linear-gradient(135deg,#6040A0,#9060C0)',
+  'Технологии':'linear-gradient(135deg,#1E8A4C,#22A05A)',
+  'АПК':'linear-gradient(135deg,#3B6D11,#5AB080)',
+  'Фармацевтика':'linear-gradient(135deg,#B05090,#9060C0)',
+};
+
+const EXPOS=[
+  {id:1,title:'LogisticsPro 2026',cat:'Логистика',city:'Москва',venue:'МВЦ «Крокус Экспо»',dates:'14–16 мая 2026',dateSort:'2026-05-14',desc:'Главная отраслевая выставка логистики, транспорта и управления цепочками поставок.',exhibitors:280,visitors:'10к+',visitorsNum:10000,days:3,paid:false,online:false,hybrid:false,international:false,registered:true,past:false,featured:true},
+  {id:2,title:'BuildExpo Russia 2026',cat:'Строительство',city:'Санкт-Петербург',venue:'Экспофорум',dates:'2–5 июня 2026',dateSort:'2026-06-02',desc:'Международная выставка строительных материалов, технологий и оборудования.',exhibitors:430,visitors:'25к+',visitorsNum:25000,days:4,paid:true,online:false,hybrid:false,international:true,registered:false,past:false},
+  {id:3,title:'Digital Freight Forum 2026',cat:'Технологии',city:'Москва',venue:'Экспоцентр',dates:'11–12 июня 2026',dateSort:'2026-06-11',desc:'Форум и выставка цифровых решений для грузовой логистики: TMS, WMS, EDI, ИИ.',exhibitors:120,visitors:'3к+',visitorsNum:3000,days:2,paid:false,online:false,hybrid:false,international:false,registered:false,past:false},
+  {id:4,title:'AgroLogistics 2026',cat:'АПК',city:'Новосибирск',venue:'МВК «Новосибирск Экспоцентр»',dates:'3–5 июля 2026',dateSort:'2026-07-03',desc:'Специализированная выставка агрологистики, хранения и транспортировки сельхозпродукции.',exhibitors:95,visitors:'2к+',visitorsNum:2000,days:3,paid:true,online:false,hybrid:false,international:false,registered:false,past:false},
+  {id:5,title:'IndustrialTech 2026',cat:'Промышленность',city:'Екатеринбург',venue:'МВЦ «Екатеринбург-ЭКСПО»',dates:'18–20 сентября 2026',dateSort:'2026-09-18',desc:'Крупнейшая выставка промышленного оборудования, станков и автоматизации производства на Урале.',exhibitors:190,visitors:'8к+',visitorsNum:8000,days:3,paid:true,online:false,hybrid:false,international:false,registered:false,past:false},
+  {id:6,title:'PharmaLogistica 2026',cat:'Фармацевтика',city:'Казань',venue:'КВЦ «Казань Экспо»',dates:'8–9 октября 2026',dateSort:'2026-10-08',desc:'Отраслевая выставка решений для фармацевтической логистики: холодовая цепь, сертификация, GDP.',exhibitors:68,visitors:'1к+',visitorsNum:1000,days:2,paid:true,online:false,hybrid:false,international:false,registered:false,past:false},
+  {id:7,title:'TransRussia 2025',cat:'Логистика',city:'Москва',venue:'МВЦ «Крокус Экспо»',dates:'15–17 апреля 2025',dateSort:'2025-04-15',desc:'Международная выставка транспортно-логистических услуг, прошедшая в апреле 2025 года.',exhibitors:310,visitors:'12к+',visitorsNum:12000,days:3,paid:false,online:false,hybrid:false,international:true,registered:false,past:true},
+];
+
+let currentTab='all';
+let currentView='grid';
+const favSet=new Set();
+const regSet=new Set([1]);
+
+/* ── РЕНДЕР ── */
+function renderCard(ex,i){
+  const grad=GRADIENTS[ex.cat]||GRADIENTS['Логистика'];
+  const isReg=regSet.has(ex.id);
+  return`<div class="ex-card" style="animation-delay:${i*.05}s" onclick="openExhibition(${ex.id})">
+    <div class="ec-cover">
+      <div class="ec-cover-inner" style="background:${grad}"></div>
+      <span class="ec-cat-pill">${esc(ex.cat)}</span>
+      <span class="ec-date-pill">${esc(ex.dates.split(' ')[0])} ${esc(ex.dates.split(' ')[1]||'')}</span>
+    </div>
+    <div class="ec-body">
+      <div class="ec-title">${esc(ex.title)}</div>
+      <div class="ec-desc">${esc(ex.desc)}</div>
+      <div class="ec-meta">
+        <span class="ec-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(ex.city)}</span>
+        <span class="ec-meta-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>${esc(ex.venue)}</span>
+      </div>
+      <div class="ec-foot">
+        <span class="ec-stat"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>${ex.exhibitors} экспон.</span>
+        <span class="ec-stat" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${ex.visitors}</span>
+        <button class="ec-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition(${ex.id},'ec-reg-${ex.id}')" id="ec-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderRow(ex,i){
+  const grad=GRADIENTS[ex.cat]||GRADIENTS['Логистика'];
+  const isReg=regSet.has(ex.id);
+  const badgeCls=ex.past?'s-done':ex.cat==='Логистика'?'s-active':'s-planned';
+  const stLabel=ex.past?'Прошедшая':'Предстоящая';
+  return`<div class="ex-row" style="animation-delay:${i*.04}s" onclick="openExhibition(${ex.id})">
+    <div class="er-thumb"><div class="er-thumb-inner" style="background:${grad}"></div></div>
+    <div class="er-body">
+      <div class="er-top">
+        <span class="er-title">${esc(ex.title)}</span>
+        <span class="er-badge ${badgeCls}" style="font-size:9px;padding:2px 7px">${stLabel}</span>
+        <span style="padding:2px 7px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:9px;font-weight:600;color:var(--gmt)">${esc(ex.cat)}</span>
+      </div>
+      <div class="er-meta">
+        <span class="er-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(ex.city)} · ${esc(ex.venue)}</span>
+        <span class="er-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(ex.dates)}</span>
+        <span class="er-meta-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>${ex.exhibitors} экспон.</span>
+      </div>
+    </div>
+    <div class="er-right">
+      <button class="er-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition(${ex.id},'er-reg-${ex.id}')" id="er-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
+    </div>
+  </div>`;
+}
+
+function renderFeed(list){
+  const feed=document.getElementById('exFeed');
+  if(!list.length){
+    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Выставки не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте изменить фильтры</div></div>';
+    return;
+  }
+  // Убираем featured (hero) из ленты
+  const filtered=list.filter(e=>!e.featured);
+  if(currentView==='grid'){
+    feed.innerHTML=`<div class="ex-grid">${filtered.map((e,i)=>renderCard(e,i)).join('')}</div>`;
+  } else {
+    feed.innerHTML=`<div class="ex-list-wrap">${filtered.map((e,i)=>renderRow(e,i)).join('')}</div>`;
+  }
+}
+
+/* ── ФИЛЬТРЫ ── */
+const FILTER_IDS=['filterCat','filterCity','filterFormat','filterPart','filterSort'];
+
+function applyFilters(){
+  const cat=document.getElementById('filterCat').value;
+  const city=document.getElementById('filterCity').value;
+  const format=document.getElementById('filterFormat').value;
+  const month=document.getElementById('filterMonth').value;
+  const scale=document.getElementById('filterScale').value;
+  const country=document.getElementById('filterCountry').value;
+  const part=document.getElementById('filterPart').value;
+  const visitors=document.getElementById('filterVisitors').value;
+  const duration=document.getElementById('filterDuration').value;
+  const sort=document.getElementById('filterSort').value;
+
+  // Подсветить активные фильтры
+  FILTER_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.classList.toggle('active',el.value!==''&&el.id!=='filterSort');
+  });
+  const hasActive=FILTER_IDS.filter(id=>id!=='filterSort').some(id=>{const el=document.getElementById(id);return el&&el.value!=='';});
+  document.getElementById('filterReset').classList.toggle('visible',hasActive);
+
+  let items=[...EXPOS];
+  if(currentTab==='upcoming') items=items.filter(e=>!e.past);
+  else if(currentTab==='registered') items=items.filter(e=>regSet.has(e.id));
+  else if(currentTab==='past') items=items.filter(e=>e.past);
+
+  if(cat) items=items.filter(e=>e.cat===cat);
+  if(city) items=items.filter(e=>e.city===city);
+  if(format==='offline') items=items.filter(e=>!e.online);
+  if(format==='online') items=items.filter(e=>e.online);
+  if(format==='hybrid') items=items.filter(e=>e.hybrid);
+  if(month) items=items.filter(e=>e.dateSort&&e.dateSort.split('-')[1]===month);
+  if(scale==='large') items=items.filter(e=>e.exhibitors>=200);
+  if(scale==='mid') items=items.filter(e=>e.exhibitors>=50&&e.exhibitors<200);
+  if(scale==='small') items=items.filter(e=>e.exhibitors<50);
+  if(country==='int') items=items.filter(e=>e.international);
+  else if(country==='ru') items=items.filter(e=>!e.international);
+  if(part==='free') items=items.filter(e=>!e.paid);
+  if(part==='paid') items=items.filter(e=>e.paid);
+  if(visitors==='5k') items=items.filter(e=>e.visitorsNum<5000);
+  if(visitors==='10k') items=items.filter(e=>e.visitorsNum>=5000&&e.visitorsNum<=10000);
+  if(visitors==='10kp') items=items.filter(e=>e.visitorsNum>10000);
+  if(duration==='1') items=items.filter(e=>e.days===1);
+  if(duration==='2') items=items.filter(e=>e.days===2);
+  if(duration==='3') items=items.filter(e=>e.days>=3);
+
+  // Сортировка
+  if(sort==='visitors') items.sort((a,b)=>b.visitorsNum-a.visitorsNum);
+  else if(sort==='exhibitors') items.sort((a,b)=>b.exhibitors-a.exhibitors);
+  else if(sort==='alpha') items.sort((a,b)=>a.title.localeCompare(b.title,'ru'));
+  else items.sort((a,b)=>a.dateSort.localeCompare(b.dateSort));
+
+  const n=items.length;
+  document.getElementById('resultsCount').textContent=n+' выстав'+(n===1?'ка':n<5?'ки':'ок');
+  renderFeed(items);
+}
+
+function resetFilters(){
+  FILTER_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.pf-select').forEach(el=>el.classList.remove('active'));
+  document.getElementById('filterReset').classList.remove('visible');
+  applyFilters();
+}
+
+function setTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.etab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  applyFilters();
+}
+function setView(view,btn){
+  currentView=view;
+  document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+/* ── РЕГИСТРАЦИЯ ── */
+function registerExhibition(id, btnId){
+  if(regSet.has(id)){
+    showToast('Регистрация отменена');
+    regSet.delete(id);
+  } else {
+    showToast('Вы зарегистрированы ✓','success');
+    regSet.add(id);
+  }
+  // Обновляем все кнопки для этой выставки
+  const isReg=regSet.has(id);
+  document.querySelectorAll(`[id*="-reg-${id}"]`).forEach(btn=>{
+    if(btn.classList.contains('btn-reg')||btn.classList.contains('ec-btn')||btn.classList.contains('er-btn')){
+      btn.textContent=isReg?'Зарегистрирован':'Участвовать';
+      isReg?btn.classList.add('registered'):btn.classList.remove('registered');
+    }
+  });
+  if(id===1){
+    const h=document.getElementById('heroRegBtn');
+    if(h){h.innerHTML=`<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>${isReg?'Зарегистрирован':'Зарегистрироваться'}`;if(isReg)h.style.background='var(--gm)';else h.style.background='';}
+  }
+}
+
+function toggleFav(id,btn){
+  if(favSet.has(id)){favSet.delete(id);btn.classList.remove('active');showToast('Удалено из избранного');}
+  else{favSet.add(id);btn.classList.add('active');showToast('Добавлено в избранное ✓','success');}
+}
+
+function openExhibition(id){
+  const ex=EXPOS.find(e=>e.id===id);
+  if(ex)showToast('Открываем: '+ex.title);
+}
+
+/* ── МОДАЛКА СТЕНДА ── */
+function openStandModal(){document.getElementById('modalBg').classList.add('open');}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');}
+function selectPart(card){
+  document.querySelectorAll('.part-card').forEach(c=>c.classList.remove('selected'));
+  card.classList.add('selected');
+}
+function submitStand(){
+  const company=document.getElementById('mCompany').value.trim();
+  if(!company){showToast('Укажите название компании');return;}
+  closeModal();
+  showToast('Заявка на участие отправлена ✓','success');
+}
+
+/* ── АВТОРИЗАЦИЯ ── */
+(async()=>{
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
+    const color=C[name.charCodeAt(0)%C.length];
+    const ltr=letter(name);
+    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
+    document.getElementById('topbarName').textContent=name;
+    document.getElementById('topbarRole').textContent=user.role||user.position||'Участник LASTOP';
+    document.getElementById('pddName').textContent=name;
+    document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
+  }catch{}
+  applyFilters();
+})();
+</script>
+</body>
+</html>
