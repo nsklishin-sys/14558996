@@ -835,6 +835,16 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function getPublicID(userLike){
+  if(!userLike)return '';
+  if(userLike.public_id)return userLike.public_id;
+  if(userLike.id!=null)return 'u'+userLike.id;
+  return '';
+}
+function profileHref(userLike){
+  const uid=getPublicID(userLike)||'u_demo_nikita';
+  return `/profile.html?uid=${encodeURIComponent(uid)}`;
+}
 
 /* ── AUTH ── */
 let currentUser={};
@@ -865,6 +875,10 @@ function populateUI(){
   document.getElementById('pddAv').style.background=color;
   document.getElementById('pddName').textContent=name;
   document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+  const selfProfileHref=profileHref(currentUser);
+  document.querySelectorAll('a[href=\"/profile.html\"]').forEach((a)=>{a.href=selfProfileHref;});
+  const openProfileBtn=document.querySelector('button[onclick=\"location.href=\\'/profile.html\\'\"]');
+  if(openProfileBtn){openProfileBtn.setAttribute('onclick',`location.href='${selfProfileHref}'`);}
   /* Аватар */
   const av=document.getElementById('avatarPreview');
   if(currentUser.avatar_url){av.innerHTML=`<img src="${currentUser.avatar_url}" alt="${esc(name)}">`;} else{av.textContent=ltr;av.style.background=color;}

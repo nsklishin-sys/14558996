@@ -26,6 +26,7 @@ type greetingResponse struct {
 
 type user struct {
 	ID        int64  `json:"id"`
+	PublicID  string `json:"public_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	FullName  string `json:"full_name"`
@@ -213,6 +214,7 @@ func ensureSchema(db *sql.DB) error {
 	const schema = `
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     full_name TEXT NOT NULL,
@@ -220,6 +222,15 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS public_id TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_uniq_idx ON users(public_id);
+
+UPDATE users
+SET public_id = CONCAT('u', id)
+WHERE public_id IS NULL OR public_id = '';
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -263,22 +274,37 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 		fullName = strings.TrimSpace(req.FirstName + " " + req.LastName)
 	}
 
-	var created user
-	err = db.QueryRow(`
-		INSERT INTO users(first_name, last_name, full_name, email, password_hash)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, first_name, last_name, full_name, email
-	`, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
-		Scan(&created.ID, &created.FirstName, &created.LastName, &created.FullName, &created.Email)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return user{}, errEmailTaken
+	for attempts := 0; attempts < 5; attempts++ {
+		publicID, genErr := newPublicUserID()
+		if genErr != nil {
+			return user{}, fmt.Errorf("generate public_id: %w", genErr)
 		}
+
+		var created user
+		err = db.QueryRow(`
+			INSERT INTO users(public_id, first_name, last_name, full_name, email, password_hash)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, public_id, first_name, last_name, full_name, email
+		`, publicID, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
+			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email)
+		if err == nil {
+			return created, nil
+		}
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" && pgErr.ConstraintName == "users_email_key" {
+				return user{}, errEmailTaken
+			}
+			if pgErr.Code == "23505" {
+				continue
+			}
+		}
+
 		return user{}, err
 	}
 
-	return created, nil
+	return user{}, fmt.Errorf("failed to allocate public_id")
 }
 
 func loginUser(db *sql.DB, req loginRequest) (user, error) {
@@ -293,10 +319,10 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	var u user
 	var passwordHash string
 	err := db.QueryRow(`
-		SELECT id, first_name, last_name, full_name, email, password_hash
+		SELECT id, public_id, first_name, last_name, full_name, email, password_hash
 		FROM users
 		WHERE email = $1
-	`, email).Scan(&u.ID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &passwordHash)
+	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user{}, errInvalidCredentials
@@ -327,4 +353,12 @@ func newToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
+}
+
+func newPublicUserID() (string, error) {
+	buf := make([]byte, 5)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return "u" + hex.EncodeToString(buf), nil
 }
