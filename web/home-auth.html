@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Главная</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* ═══ SHELL ═══ */
+.shell{
+  display:grid;
+  grid-template-columns:240px 1fr 300px;
+  grid-template-rows:56px 1fr;
+  grid-template-areas:"logo topbar topbar""nav main right";
+  height:100vh;gap:10px;padding:10px
+}
+
+/* ═══ LOGO ═══ */
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.logo-text{display:flex;flex-direction:column;line-height:1.2}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase}
+
+/* ═══ TOPBAR — как на скриншоте ═══ */
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-dot{position:absolute;left:13px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none;flex-shrink:0}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+
+/* Профиль в топбаре */
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0}
+.topbar-profile:hover{border-color:var(--gb);background:var(--gl)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-info{display:flex;flex-direction:column;line-height:1.25}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* ═══ NAV — с группами как на скриншоте ═══ */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-div{height:1px;background:var(--bdr);margin:6px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+/* Активный пункт — зелёный фон как на скриншоте */
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* ═══ MAIN — БЕЗ ИЗМЕНЕНИЙ ═══ */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+.home-banner{background:var(--gl);border:1px solid var(--gb);border-radius:var(--rxl);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:var(--sh)}
+.hb-left h2{font-size:15px;font-weight:800;color:var(--t);margin-bottom:3px}
+.hb-left p{font-size:11px;color:var(--gmt)}
+.hb-stats{display:flex;gap:18px}
+.hbs-num{font-size:20px;font-weight:800;color:var(--g);line-height:1}
+.hbs-lbl{font-size:9px;color:var(--gmt);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+
+.compose-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:9px 13px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh);flex-shrink:0}
+.cb-av{width:28px;height:28px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
+.cb-ph{flex:1;font-size:12px;color:var(--gmt);cursor:text}
+.cb-btn{padding:5px 14px;border-radius:99px;background:var(--g);border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.cb-btn:hover{background:var(--gm)}
+
+.widgets-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0}
+.widget{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:11px 12px;box-shadow:var(--sh);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.wh{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-shrink:0}
+.wt{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--t)}
+.wt svg{width:13px;height:13px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.wmore{font-size:10px;font-weight:600;color:var(--g);border:none;background:none;cursor:pointer;font-family:inherit;text-decoration:none;flex-shrink:0}
+.wmore:hover{text-decoration:underline}
+
+.task-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr)}
+.task-item:last-of-type{border-bottom:none;padding-bottom:0}
+.tcheck{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--gb);flex-shrink:0;display:grid;place-items:center;margin-top:2px;cursor:pointer;transition:all .15s}
+.tcheck:hover{border-color:var(--g)}
+.tcheck.done{background:var(--g);border-color:var(--g)}
+.tcheck.done .tck-ico{display:block}
+.tck-ico{display:none;width:8px;height:8px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+.task-body{flex:1;min-width:0}
+.task-ttl{font-size:11px;font-weight:600;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-ttl.done-t{text-decoration:line-through;color:var(--gmt)}
+.task-due{font-size:10px;color:var(--gmt);margin-top:1px}
+.task-due.overdue{color:var(--red)}
+.task-pri{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.pri-hi{background:var(--red)}.pri-md{background:#EF9F27}.pri-lo{background:var(--g)}
+.add-task-btn{width:100%;padding:5px;border-radius:var(--rm);border:1.5px dashed var(--gb);background:transparent;color:var(--gmt);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:7px;transition:all .15s}
+.add-task-btn:hover{background:var(--gp);color:var(--g);border-color:var(--g)}
+
+.chat-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr);cursor:pointer}
+.chat-item:last-child{border-bottom:none;padding-bottom:0}
+.chat-item:hover .ch-name{color:var(--g)}
+.ch-av{width:28px;height:28px;border-radius:8px;font-size:10px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0;position:relative}
+.ch-online{position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:11px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .12s}
+.ch-msg{font-size:10px;color:var(--gmt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.ch-right{text-align:right;flex-shrink:0}
+.ch-time{font-size:9px;color:var(--gmt)}
+.ch-bdg{display:inline-block;background:var(--g);color:#fff;border-radius:99px;font-size:9px;font-weight:700;padding:1px 5px;margin-top:2px}
+
+.forum-item{display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr);cursor:pointer}
+.forum-item:last-child{border-bottom:none;padding-bottom:0}
+.forum-item:hover .fi-title{color:var(--g)}
+.fi-dot{width:5px;height:5px;border-radius:50%;background:var(--gb);flex-shrink:0;margin-top:5px}
+.fi-dot.hot{background:var(--g)}
+.fi-body{min-width:0;flex:1}
+.fi-title{font-size:11px;font-weight:600;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;transition:color .12s}
+.fi-meta{display:flex;align-items:center;gap:5px}
+.fi-cnt{font-size:10px;color:var(--gmt)}
+.fi-new{padding:1px 6px;border-radius:99px;background:var(--gl);border:1px solid var(--gb);color:var(--g);font-size:9px;font-weight:700}
+
+.cal-month{font-size:11px;font-weight:700;color:var(--t);margin-bottom:5px;text-align:center}
+.cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px}
+.cal-dow{font-size:8.5px;font-weight:700;color:var(--gmt);text-align:center;text-transform:uppercase}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:8px}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:5px;font-size:10px;font-weight:600;color:var(--tm);cursor:pointer;position:relative;transition:background .12s}
+.cal-day:hover:not(.today){background:var(--gp);color:var(--g)}
+.cal-day.other-month{color:var(--bdr);cursor:default}
+.cal-day.other-month:hover{background:none;color:var(--bdr)}
+.cal-day.today{background:var(--g);color:#fff;font-weight:800}
+.cal-day.has-event::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--gm)}
+.cal-day.today.has-event::after{background:rgba(255,255,255,.7)}
+.cal-day.event-day{background:var(--gl);color:var(--g);font-weight:700}
+.ev-list{display:flex;flex-direction:column;gap:4px}
+.ev-item{display:flex;gap:7px;align-items:flex-start;padding:5px 7px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);cursor:pointer;transition:border-color .12s}
+.ev-item:hover{border-color:var(--gb)}
+.ev-date-box{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0}
+.ev-d{font-size:13px;font-weight:800;color:var(--g);line-height:1}
+.ev-m{font-size:8px;font-weight:700;color:var(--gmt);text-transform:uppercase}
+.ev-info{min-width:0;flex:1}
+.ev-title{font-size:10px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+.ev-sub{font-size:9px;color:var(--gmt)}
+.ev-tag{display:inline-block;padding:1px 5px;border-radius:99px;font-size:8px;font-weight:700;margin-left:2px}
+.ev-online{background:#E6F1FB;color:#185FA5}
+.ev-live{background:var(--gl);color:#3B6D11}
+
+.feed-wrap{display:flex;flex-direction:column}
+.feed-toolbar{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.ftab{padding:5px 12px;border-radius:var(--rm);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s}
+.ftab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.ftab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.feed{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.post-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;cursor:pointer;box-shadow:var(--sh);transition:box-shadow .2s,transform .2s;animation:fadeUp .3s ease both;flex-shrink:0}
+.post-card:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.pc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pc-av{width:36px;height:36px;border-radius:10px;font-size:12px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
+.pc-name{font-size:13px;font-weight:700;color:var(--t)}
+.pc-meta{font-size:11px;color:var(--gmt);margin-top:1px}
+.pc-tag{margin-left:auto;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;flex-shrink:0}
+.t-proj{background:#EAF3DE;color:#3B6D11}
+.t-news{background:#E6F1FB;color:#185FA5}
+.t-co{background:#FAEEDA;color:#633806}
+.t-forum{background:#F1EFE8;color:#5F5E5A}
+.pc-text{font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc-foot{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--bdr)}
+.pc-act{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--gmt);cursor:pointer;transition:color .12s}
+.pc-act:hover{color:var(--g)}
+.pc-act svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+.pc-time{margin-left:auto;font-size:11px;color:var(--gmt)}
+
+/* ═══ RIGHT — как на скриншоте ═══ */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+
+/* Сейчас на главной */
+.live-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr)}
+.live-row:last-child{border-bottom:none;padding-bottom:0}
+.live-emoji{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.live-label{font-size:12px;color:var(--gmt);flex:1}
+.live-val{font-size:12px;font-weight:700;color:var(--g);text-decoration:none;flex-shrink:0}
+.live-val:hover{text-decoration:underline}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#22CC66;flex-shrink:0;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.live-n{font-size:13px;font-weight:800;color:var(--t)}
+
+/* Рекомендации */
+.rec-item{display:flex;align-items:center;gap:9px;padding:6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+.rec-item:hover{background:var(--gp)}
+.rec-av{width:32px;height:32px;border-radius:9px;font-size:11px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
+.rec-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-sub{font-size:10px;color:var(--gmt);margin-top:1px}
+
+/* Реклама */
+.ad-block{background:#F8F5FF;border:1px solid #DDD0F0;border-radius:var(--rxl);padding:14px;position:relative;overflow:hidden}
+.ad-label{position:absolute;top:10px;left:10px;background:#EAE0FA;color:#8060C0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px}
+.ad-content{margin-top:20px;text-align:center}
+.ad-title{font-size:13px;font-weight:700;color:#5040A0}
+.ad-sub{font-size:11px;color:#7060B0;margin-top:3px}
+.ad-btn{display:block;margin:10px auto 0;padding:7px 20px;border-radius:var(--rm);background:#7060B0;color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.ad-btn:hover{opacity:.88}
+
+/* Скелетон */
+.skeleton{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px}
+.sl{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── LOGO ── -->
+<a class="logo-cell" href="/">
+  <img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'">
+  <div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div>
+</a>
+
+<!-- ── TOPBAR — поиск + профиль справа ── -->
+<header class="topbar">
+  <div class="search-wrap">
+    <span class="search-dot"></span>
+    <input type="search" id="searchInput" placeholder="Поиск пользователей, компаний, форума…" autocomplete="off">
+  </div>
+  <div class="topbar-profile" onclick="location.href='/profile.html'">
+    <div class="tp-av" id="topbarAv">?</div>
+    <div class="tp-info">
+      <span class="tp-name" id="topbarName">Загрузка…</span>
+      <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+    </div>
+    <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</header>
+
+<!-- ── NAV — группы как на скриншоте ── -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item active" href="/">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    <span>Главная</span>
+  </a>
+  <a class="nav-item" href="/dashboard.html">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    <span>Новости</span>
+  </a>
+  <a class="nav-item" href="/projects.html">
+    <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    <span>Проекты</span>
+  </a>
+  <a class="nav-item" href="/events.html">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Мероприятия</span>
+  </a>
+  <a class="nav-item" href="/exhibitions.html">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg>
+    <span>Выставки</span>
+  </a>
+  <a class="nav-item" href="/jobs.html">
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>
+    <span>Резюме</span>
+  </a>
+  <a class="nav-item" href="/catalog.html">
+    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    <span>Товары и услуги</span>
+  </a>
+
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Форум</span>
+  </a>
+  <a class="nav-item" href="/companies.html">
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+    <span>Компании</span>
+  </a>
+  <a class="nav-item" href="/communities.html">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Сообщества</span>
+  </a>
+
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html">
+    <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+    <span>Чат</span>
+  </a>
+  <a class="nav-item" href="/profile.html">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Профиль</span>
+  </a>
+
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Настройки</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════
+     MAIN — без изменений из index_10.html
+     ════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- Баннер -->
+  <div class="home-banner">
+    <div class="hb-left">
+      <h2 id="greetingText">Добрый день 👋</h2>
+      <p id="greetingDate">Загрузка…</p>
+    </div>
+    <div class="hb-stats">
+      <div class="hb-stat"><div class="hbs-num" id="statMembers">—</div><div class="hbs-lbl">Участников</div></div>
+      <div class="hb-stat"><div class="hbs-num" id="statNews">—</div><div class="hbs-lbl">Новостей</div></div>
+      <div class="hb-stat"><div class="hbs-num" id="statEvents">—</div><div class="hbs-lbl">Событий</div></div>
+    </div>
+  </div>
+
+  <!-- Строка публикации -->
+  <div class="compose-bar">
+    <div class="cb-av" id="composeAv">?</div>
+    <span class="cb-ph" onclick="location.href='/dashboard.html'">Поделитесь новостью или проектом…</span>
+    <button class="cb-btn" onclick="location.href='/dashboard.html'">Опубликовать</button>
+  </div>
+
+  <!-- Виджеты в ряд -->
+  <div class="widgets-row">
+    <!-- Задачи -->
+    <div class="widget">
+      <div class="wh">
+        <div class="wt"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Мои задачи</div>
+        <span class="wmore" onclick="showToast('Раздел задач в разработке')">Все →</span>
+      </div>
+      <div id="tasksList"></div>
+      <button class="add-task-btn" onclick="openAddTask()">+ Добавить задачу</button>
+    </div>
+    <!-- Чаты -->
+    <div class="widget">
+      <div class="wh">
+        <div class="wt"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>Активные чаты</div>
+        <a class="wmore" href="/chat.html">Все →</a>
+      </div>
+      <div id="chatsList"></div>
+    </div>
+    <!-- Форум -->
+    <div class="widget">
+      <div class="wh">
+        <div class="wt"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Форум</div>
+        <a class="wmore" href="/forum.html">Все →</a>
+      </div>
+      <div id="forumList"></div>
+    </div>
+    <!-- Мероприятия + календарь -->
+    <div class="widget">
+      <div class="wh">
+        <div class="wt"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Мероприятия</div>
+        <a class="wmore" href="/events.html">Все →</a>
+      </div>
+      <div id="calendarWidget"></div>
+    </div>
+  </div>
+
+  <!-- Лента -->
+  <div class="feed-wrap">
+    <div class="feed-toolbar">
+      <button class="ftab active" data-type="all">Все</button>
+      <button class="ftab" data-type="news">Новости</button>
+      <button class="ftab" data-type="projects">Проекты</button>
+      <button class="ftab" data-type="companies">Компании</button>
+      <button class="ftab" data-type="forum">Форум</button>
+    </div>
+    <div class="feed" id="feed"></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ── RIGHT — как на скриншоте: «Сейчас на главной» + «Рекомендации» + реклама ── -->
+<aside class="right">
+
+  <div class="card">
+    <div class="block-title">Сейчас на главной</div>
+    <div class="live-row">
+      <span class="live-emoji">⭐</span>
+      <span class="live-label">Топ новость недели</span>
+      <a class="live-val" href="/dashboard.html" id="liveTopNews">Экспорт стройматериалов ↗</a>
+    </div>
+    <div class="live-row">
+      <span class="live-emoji">📈</span>
+      <span class="live-label">Тренд дня</span>
+      <a class="live-val" href="/dashboard.html" id="liveTrend">Логистика фармпродукции</a>
+    </div>
+    <div class="live-row">
+      <span class="live-dot"></span>
+      <span class="live-label">Активных сейчас</span>
+      <span class="live-n" id="liveActive">124</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="block-title">Рекомендации</div>
+    <div id="recList"></div>
+  </div>
+
+  <div class="ad-block">
+    <div class="ad-label">реклама</div>
+    <div class="ad-content">
+      <div class="ad-title">LogisticsPro 2026</div>
+      <div class="ad-sub">Выставка · Москва · май</div>
+      <button class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button>
+    </div>
+  </div>
+
+</aside>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+const tk = () => localStorage.getItem('token');
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){return((s||'?')[0]).toUpperCase();}
+function avc(s){
+  const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
+  return C[(s||'').charCodeAt(0)%C.length]||C[0];
+}
+function ago(ts){
+  if(!ts)return'';
+  const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));
+  if(m<60)return m+' мин назад';
+  if(m<1440)return Math.floor(m/60)+' ч назад';
+  if(m<10080)return Math.floor(m/1440)+' д назад';
+  return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});
+}
+function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
+function greet(){const h=new Date().getHours();if(h<6)return'Доброй ночи';if(h<12)return'Доброе утро';if(h<18)return'Добрый день';return'Добрый вечер';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function skels(n,h=50){return Array(n).fill(0).map(()=>`
+  <div class="skeleton" style="height:${h}px;margin-bottom:6px;padding:9px 11px">
+    <div style="display:flex;gap:8px"><div class="sl" style="width:26px;height:26px;border-radius:7px;flex-shrink:0"></div>
+    <div style="flex:1;padding-top:1px"><div class="sl" style="height:11px;width:60%;margin-bottom:5px;border-radius:4px"></div>
+    <div class="sl" style="height:9px;width:40%;border-radius:4px"></div></div></div></div>`).join('');}
+
+/* ── АВТОРИЗАЦИЯ ── */
+let currentUser={};
+(async()=>{
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    currentUser=user;
+    localStorage.setItem('user',JSON.stringify(user));
+  }catch{
+    currentUser=JSON.parse(localStorage.getItem('user')||'{}');
+    if(!currentUser.id){location.href='/login.html';return;}
+  }
+  populateUser();
+})();
+
+function populateUser(){
+  const name=currentUser.name||currentUser.full_name||'Пользователь';
+  const first=name.split(' ')[0];
+  const color=avc(name);
+  const ltr=letter(name);
+  document.getElementById('greetingText').textContent=greet()+', '+first+' 👋';
+  document.getElementById('greetingDate').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('composeAv').textContent=ltr;
+  document.getElementById('composeAv').style.background=color;
+  /* Топбар */
+  document.getElementById('topbarAv').textContent=ltr;
+  document.getElementById('topbarAv').style.background=color;
+  document.getElementById('topbarName').textContent=name;
+  document.getElementById('topbarRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+}
+
+/* ── ИНИЦИАЛИЗАЦИЯ ── */
+window.addEventListener('DOMContentLoaded',()=>{
+  loadPlatformStats();
+  loadTasks();
+  loadChats();
+  loadForumThreads();
+  loadEvents();
+  loadFeed();
+  loadRec();
+  document.querySelector('.feed-toolbar').addEventListener('click',e=>{
+    const btn=e.target.closest('.ftab');if(!btn)return;
+    document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFeedFiltered(btn.dataset.type);
+  });
+});
+
+/* ── СТАТИСТИКА ── */
+async function loadPlatformStats(){
+  try{
+    const r=await fetch(API+'/stats',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    document.getElementById('statMembers').textContent=num(d.members||d.users||0);
+    document.getElementById('statNews').textContent=num(d.news||d.posts||0);
+    document.getElementById('statEvents').textContent=num(d.events||0);
+  }catch{
+    document.getElementById('statMembers').textContent='1 247';
+    document.getElementById('statNews').textContent='48';
+    document.getElementById('statEvents').textContent='12';
+  }
+}
+
+/* ── ЗАДАЧИ ── */
+let TASKS=[
+  {id:1,title:'Ответить на тендер GlobalFreight',due:'Сегодня',overdue:true,pri:'hi',done:false},
+  {id:2,title:'Презентация для форума',due:'23 апреля',overdue:false,pri:'md',done:false},
+  {id:3,title:'Обновить резюме в профиле',due:'Выполнено',overdue:false,pri:'lo',done:true},
+  {id:4,title:'Связаться с NorthBridge',due:'26 апреля',overdue:false,pri:'lo',done:false},
+];
+async function loadTasks(){
+  try{
+    const r=await fetch(API+'/tasks',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    if(d.tasks&&d.tasks.length)TASKS=d.tasks.map(t=>({id:t.id,title:t.title,due:t.due_date?new Date(t.due_date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):'',overdue:!!t.is_overdue,pri:t.priority||'lo',done:t.status==='done'}));
+  }catch{}
+  renderTasks();
+}
+function renderTasks(){
+  document.getElementById('tasksList').innerHTML=TASKS.slice(0,4).map(t=>`
+    <div class="task-item">
+      <div class="tcheck ${t.done?'done':''}" onclick="toggleTask(${t.id})">
+        <svg class="tck-ico" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg>
+      </div>
+      <div class="task-body">
+        <div class="task-ttl ${t.done?'done-t':''}">${esc(t.title)}</div>
+        <div class="task-due ${t.overdue?'overdue':''}">${esc(t.due)}</div>
+      </div>
+      <div class="task-pri pri-${esc(t.pri)}"></div>
+    </div>`).join('');
+}
+function toggleTask(id){
+  const t=TASKS.find(x=>x.id===id);if(!t)return;
+  t.done=!t.done;if(t.done){t.due='Выполнено';t.overdue=false;}
+  renderTasks();
+  fetch(API+'/tasks/'+id,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({status:t.done?'done':'active'})}).catch(()=>{});
+}
+function openAddTask(){
+  const title=prompt('Название задачи:');if(!title||!title.trim())return;
+  const task={id:Date.now(),title:title.trim(),due:'',overdue:false,pri:'lo',done:false};
+  TASKS.unshift(task);renderTasks();
+  fetch(API+'/tasks',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title:task.title})}).catch(()=>{});
+}
+
+/* ── ЧАТЫ ── */
+async function loadChats(){
+  document.getElementById('chatsList').innerHTML=skels(3,42);
+  try{
+    const r=await fetch(API+'/chat/conversations?limit=4',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const items=d.conversations||d.chats||[];
+    if(items.length){renderChats(items);return;}
+  }catch{}
+  renderChats(demoChats());
+}
+function renderChats(items){
+  document.getElementById('chatsList').innerHTML=items.slice(0,4).map(c=>{
+    const name=c.name||c.title||'Чат';
+    const msg=c.last_message||c.preview||'';
+    const time=c.last_time?ago(c.last_time):(c.time||'');
+    const unread=c.unread_count||0;
+    const id=c.id?'?id='+c.id:'';
+    return`<div class="chat-item" onclick="location.href='/chat.html${id}'">
+      <div class="ch-av" style="background:${avc(name)}">${letter(name)}${c.is_online?'<div class="ch-online"></div>':''}</div>
+      <div class="ch-info"><div class="ch-name">${esc(name)}</div><div class="ch-msg">${esc(msg)}</div></div>
+      <div class="ch-right"><div class="ch-time">${esc(time)}</div>${unread?`<div class="ch-bdg">${unread}</div>`:''}</div>
+    </div>`;
+  }).join('');
+}
+function demoChats(){return[
+  {name:'Мария Захарова',last_message:'Отправила документы на проверку',time:'14:32',unread_count:2,is_online:true},
+  {name:'LASTOP Digital',last_message:'Вы: Спасибо, посмотрим!',time:'12:05',unread_count:0},
+  {name:'Алексей Петров',last_message:'Когда удобно созвониться?',time:'10:47',unread_count:5,is_online:true},
+  {name:'NorthBridge Logistics',last_message:'Новый маршрут согласован',time:'Вчера',unread_count:0},
+];}
+
+/* ── ФОРУМ ── */
+async function loadForumThreads(){
+  document.getElementById('forumList').innerHTML=skels(3,38);
+  try{
+    const r=await fetch(API+'/forum/topics/active?limit=5',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const items=d.topics||d.threads||[];
+    if(items.length){renderForum(items);return;}
+  }catch{}
+  renderForum(demoForum());
+}
+function renderForum(items){
+  document.getElementById('forumList').innerHTML=items.slice(0,5).map(t=>{
+    const cnt=t.messages_count||t.replies||0;
+    const nw=t.new_count||t.unread||0;
+    const id=t.id?'?topic='+t.id:'';
+    return`<div class="forum-item" onclick="location.href='/forum.html${id}'">
+      <div class="fi-dot ${nw?'hot':''}"></div>
+      <div class="fi-body">
+        <div class="fi-title">${esc(t.title||t.name||'')}</div>
+        <div class="fi-meta"><span class="fi-cnt">${cnt} ответов</span>${nw?`<span class="fi-new">+${nw} новых</span>`:''}</div>
+      </div></div>`;
+  }).join('');
+}
+function demoForum(){return[
+  {title:'Мультимодальные перевозки СНГ–ЕС',messages_count:37,new_count:4},
+  {title:'Как ускорить сертификацию продукции',messages_count:19,new_count:1},
+  {title:'TMS vs самописная система: 2026',messages_count:11,new_count:0},
+  {title:'Таможенные риски при экспорте в ЕС',messages_count:8,new_count:2},
+  {title:'Выбор брокера для импорта из Китая',messages_count:5,new_count:0},
+];}
+
+/* ── МЕРОПРИЯТИЯ И КАЛЕНДАРЬ ── */
+let ALL_EVENTS=[];
+async function loadEvents(){
+  try{
+    const r=await fetch(API+'/events?limit=20',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    ALL_EVENTS=d.events||[];
+  }catch{ALL_EVENTS=demoEvents();}
+  renderCalendar();
+}
+function demoEvents(){
+  const y=new Date().getFullYear(),m=new Date().getMonth();
+  return[
+    {id:1,title:'Форум «Логистика 2026»',date:new Date(y,m,24).toISOString(),format:'offline',subtitle:'Москва · панельная дискуссия'},
+    {id:2,title:'Вебинар по таможенному комплаенсу',date:new Date(y,m,26).toISOString(),format:'online',subtitle:'LASTOP Digital · 15:00'},
+    {id:3,title:'LogisticsPro 2026',date:new Date(y,m,30).toISOString(),format:'offline',subtitle:'Москва · выставка'},
+  ];
+}
+function renderCalendar(){
+  const now=new Date(),year=now.getFullYear(),month=now.getMonth(),today=now.getDate();
+  const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const DOWS=['пн','вт','ср','чт','пт','сб','вс'];
+  const eventDays=new Set(ALL_EVENTS.map(e=>{const d=new Date(e.date);return(d.getFullYear()===year&&d.getMonth()===month)?d.getDate():null;}).filter(Boolean));
+  const firstDow=(new Date(year,month,1).getDay()+6)%7;
+  const totalDays=new Date(year,month+1,0).getDate();
+  const prevLast=new Date(year,month,0).getDate();
+  let html=`<div class="cal-month">${MONTHS[month]} ${year}</div>
+    <div class="cal-header">${DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div>
+    <div class="cal-grid">`;
+  for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-day other-month">${prevLast-i}</div>`;
+  for(let d=1;d<=totalDays;d++){
+    const isToday=d===today,hasEvent=eventDays.has(d);
+    let cls='cal-day';
+    if(isToday)cls+=' today';else if(hasEvent)cls+=' event-day';
+    if(hasEvent)cls+=' has-event';
+    html+=`<div class="${cls}">${d}</div>`;
+  }
+  const cells=Math.ceil((firstDow+totalDays)/7)*7;
+  for(let i=1;i<=cells-firstDow-totalDays;i++)html+=`<div class="cal-day other-month">${i}</div>`;
+  html+='</div>';
+  const upcoming=ALL_EVENTS.filter(e=>new Date(e.date)>=new Date(year,month,today)).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,3);
+  html+='<div class="ev-list">'+upcoming.map(e=>{
+    const d=new Date(e.date),day=d.getDate(),mon=d.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');
+    const online=e.format==='online'||e.is_online;
+    const id=e.id?'?id='+e.id:'';
+    return`<div class="ev-item" onclick="location.href='/events.html${id}'">
+      <div class="ev-date-box"><div class="ev-d">${day}</div><div class="ev-m">${mon}</div></div>
+      <div class="ev-info">
+        <div class="ev-title">${esc(e.title)}<span class="ev-tag ${online?'ev-online':'ev-live'}">${online?'онлайн':'офлайн'}</span></div>
+        <div class="ev-sub">${esc(e.subtitle||e.city||'')}</div>
+      </div></div>`;
+  }).join('')+'</div>';
+  document.getElementById('calendarWidget').innerHTML=html;
+}
+
+/* ── РЕКОМЕНДАЦИИ (правый сайдбар) ── */
+function loadRec(){
+  const recs=[
+    {name:'NorthBridge Logistics',sub:'Партнёр LASTOP · Логистика',c:'#1A8A6A',href:'/companies.html'},
+    {name:'GlobalFreight',sub:'Таможенное оформление · Москва',c:'#3A90C0',href:'/companies.html'},
+    {name:'Форум «Логистика 2026»',sub:'24 апреля · Москва · офлайн',c:'#9060C0',href:'/events.html'},
+  ];
+  document.getElementById('recList').innerHTML=recs.map(r=>`
+    <div class="rec-item" onclick="location.href='${r.href}'">
+      <div class="rec-av" style="background:${r.c}">${letter(r.name)}</div>
+      <div style="min-width:0;flex:1">
+        <div class="rec-name">${esc(r.name)}</div>
+        <div class="rec-sub">${esc(r.sub)}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ── ЛЕНТА ── */
+let allPosts=[];
+async function loadFeed(){
+  document.getElementById('feed').innerHTML=skels(3,100);
+  try{
+    const r=await fetch(API+'/feed?limit=30',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    allPosts=d.posts||d.items||[];
+    if(!allPosts.length)throw 0;
+  }catch{allPosts=demoFeedPosts();}
+  renderFeedFiltered('all');
+}
+function renderFeedFiltered(type){
+  const posts=type==='all'?allPosts:allPosts.filter(p=>p.type===type);
+  const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum',events:'t-proj'};
+  const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум',events:'Мероприятия'};
+  const feed=document.getElementById('feed');
+  if(!posts.length){feed.innerHTML=`<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">В этом разделе пока нет публикаций</span></div>`;return;}
+  feed.innerHTML=posts.map((p,i)=>{
+    const name=p.author||p.author_name||'Участник';
+    const tag=TAG[p.type]||'t-news',lbl=LBL[p.type]||'Публикация';
+    const time=p.created_at?ago(p.created_at):(p.ago||'');
+    const href=p.type==='forum'?'/forum.html':'/dashboard.html';
+    const id=p.id?'?id='+p.id:'';
+    return`<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
+      <div class="pc-head">
+        <div class="pc-av" style="background:${avc(name)}">${letter(name)}</div>
+        <div><div class="pc-name">${esc(name)}</div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div></div>
+        <span class="pc-tag ${tag}">${lbl}</span>
+      </div>
+      <div class="pc-text">${esc(p.text||p.content||p.body||'')}</div>
+      <div class="pc-foot">
+        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||p.likes||0}</div>
+        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||p.comments||0}</div>
+        <span class="pc-time">${esc(time)}</span>
+      </div></div>`;
+  }).join('');
+}
+function demoFeedPosts(){return[
+  {id:1,type:'projects',author:'Мария Захарова',role:'Логист · NorthBridge',text:'Рады сообщить об открытии нового маршрута СНГ–ЕС. Мультимодальная перевозка с таможенным сопровождением. Принимаем грузы от 5 тонн.',likes_count:8,comments_count:1,created_at:new Date(Date.now()-10800000).toISOString()},
+  {id:2,type:'news',author:'LASTOP Digital',role:'Компания',text:'Обновление платформы v2.4: добавлен модуль аналитики по резюме и вакансиям, улучшен поиск по навыкам, новый дашборд для компаний.',likes_count:34,comments_count:9,created_at:new Date(Date.now()-18000000).toISOString()},
+  {id:3,type:'companies',author:'Никита Клишин',role:'Участник LASTOP',text:'ООО «Ластоп Групп» — российская интеграционная компания, формирующая инфраструктуру системного взаимодействия бизнеса. Платформа фиксирует роли участников, объединяет коммерческие и образовательные контуры.',likes_count:12,comments_count:3,created_at:new Date(Date.now()-86400000).toISOString()},
+  {id:4,type:'news',author:'NorthBridge Logistics',role:'Партнёр LASTOP',text:'Открываем новый офис в Алматы — теперь обслуживаем маршруты через Казахстан с полным таможенным сопровождением и расширенной сетью агентов.',likes_count:21,comments_count:5,created_at:new Date(Date.now()-172800000).toISOString()},
+];}
+</script>
+</body>
+</html>
