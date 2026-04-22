@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Новости</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* ═══ SHELL ═══ */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+
+/* ═══ LOGO ═══ */
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+
+/* ═══ TOPBAR ═══ */
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-dot{position:absolute;left:13px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+/* Dropdown */
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-info{display:flex;flex-direction:column;line-height:1.25}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px;flex-shrink:0}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
+
+/* ═══ NAV ═══ */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* ═══ MAIN ═══ */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ── Тулбар ── */
+.news-toolbar{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  padding:12px 14px;box-shadow:var(--sh);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap
+}
+.news-title{font-size:16px;font-weight:900;color:var(--t);margin-right:4px;white-space:nowrap}
+.news-tabs{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+.news-tabs::-webkit-scrollbar{display:none}
+.ntab{
+  padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--bdr);background:transparent;
+  color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0
+}
+.ntab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.ntab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.btn-write{
+  padding:8px 18px;border-radius:99px;background:var(--g);border:none;
+  color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  transition:all .15s;display:inline-flex;align-items:center;gap:6px;
+  box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap;flex-shrink:0
+}
+.btn-write:hover{background:var(--gm);box-shadow:0 4px 12px rgba(30,138,76,.3)}
+.btn-write svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* ── Compose ── */
+.compose{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  padding:12px 14px;box-shadow:var(--sh);flex-shrink:0
+}
+.compose-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.c-av{width:34px;height:34px;border-radius:9px;background:var(--g);display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.c-input{
+  flex:1;height:36px;padding:0 14px;border:1.5px solid var(--bdr);border-radius:99px;
+  background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;
+  transition:border-color .2s;cursor:pointer
+}
+.c-input:focus{border-color:var(--gm);background:var(--w);cursor:text}
+.c-input::placeholder{color:var(--gmt)}
+.compose-actions{display:flex;align-items:center;gap:6px}
+.c-action{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
+  border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);
+  color:var(--gmt);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;
+  transition:all .15s
+}
+.c-action:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.c-action svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.c-submit{
+  margin-left:auto;padding:7px 18px;border-radius:99px;background:var(--g);border:none;
+  color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  transition:background .15s
+}
+.c-submit:hover{background:var(--gm)}
+
+/* ── Главная новость (hero-пост) ── */
+.news-hero{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  box-shadow:var(--sh);overflow:hidden;flex-shrink:0;cursor:pointer;
+  transition:box-shadow .2s,transform .15s
+}
+.news-hero:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.nh-cover{
+  height:160px;
+  background:linear-gradient(135deg,var(--g) 0%,#146A38 60%,#0E5128 100%);
+  position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:16px
+}
+.nh-cover::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.nh-cover::after{content:'';position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+.nh-badge{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
+  font-size:10px;font-weight:700;color:#fff;position:relative;z-index:1
+}
+.nh-body{padding:16px 18px}
+.nh-cat{font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.nh-title{font-size:17px;font-weight:900;color:var(--t);line-height:1.3;letter-spacing:-.01em;margin-bottom:8px}
+.nh-text{font-size:12px;color:var(--gmt);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nh-foot{display:flex;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--bdr)}
+.nh-author{display:flex;align-items:center;gap:8px}
+.nh-av{width:24px;height:24px;border-radius:7px;font-size:9px;font-weight:800;color:#fff;display:grid;place-items:center}
+.nh-name{font-size:11px;font-weight:600;color:var(--tm)}
+.nh-time{font-size:11px;color:var(--gmt);margin-left:auto}
+.nh-stats{display:flex;align-items:center;gap:10px}
+.nh-stat{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gmt)}
+.nh-stat svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+
+/* ── Сортировка ── */
+.news-sort-row{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ns-label{font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em}
+.sort-btn{
+  padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--bdr);background:transparent;
+  color:var(--tm);font-family:inherit;transition:all .15s
+}
+.sort-btn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.sort-btn.active{background:var(--gl);color:var(--g);border-color:var(--gb);font-weight:700}
+
+/* ── Новостная карточка ── */
+.news-card{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  padding:16px 18px;box-shadow:var(--sh);cursor:pointer;
+  transition:box-shadow .2s,transform .15s;
+  animation:fadeUp .3s ease both
+}
+.news-card:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.nc-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.nc-av{width:38px;height:38px;border-radius:10px;font-size:12px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
+.nc-meta{flex:1;min-width:0}
+.nc-author{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc-info{font-size:10px;color:var(--gmt);margin-top:2px;display:flex;align-items:center;gap:5px}
+.nc-dot{width:3px;height:3px;border-radius:50%;background:var(--gmt)}
+.nc-badge{
+  display:inline-block;padding:2px 9px;border-radius:99px;
+  font-size:9px;font-weight:700;flex-shrink:0;margin-left:auto
+}
+.badge-news{background:#E6F1FB;color:#185FA5}
+.badge-proj{background:#EAF3DE;color:#3B6D11}
+.badge-co{background:#FAEEDA;color:#633806}
+.badge-reg{background:#F0EBF8;color:#6040A0}
+.badge-tech{background:#E8F7FF;color:#0369A1}
+.badge-forum{background:#F1EFE8;color:#5F5E5A}
+.nc-title{font-size:14px;font-weight:800;color:var(--t);line-height:1.35;margin-bottom:6px;letter-spacing:-.005em}
+.nc-text{font-size:12px;color:var(--gmt);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Блок с картинкой — float right, текст обтекает */
+.nc-img-wrap{float:right;margin:0 0 8px 14px;flex-shrink:0}
+.nc-img{
+  width:88px;height:88px;border-radius:var(--rm);object-fit:cover;
+  background:var(--bg);border:1px solid var(--bdr);display:block;overflow:hidden
+}
+.nc-img-placeholder{
+  width:88px;height:88px;border-radius:var(--rm);
+  background:linear-gradient(135deg,var(--gl) 0%,var(--gp) 100%);
+  border:1px solid var(--bdr);display:grid;place-items:center
+}
+.nc-img-placeholder svg{width:24px;height:24px;stroke:var(--gb);fill:none;stroke-width:1.5;stroke-linecap:round}
+/* Контент обтекает картинку — overflow hidden чтобы не вылезал под float */
+.nc-content{overflow:hidden}
+/* Clamp с учётом картинки: 3 строки для заголовка + 2 для текста */
+.nc-title-clamp{
+  font-size:14px;font-weight:800;color:var(--t);line-height:1.35;
+  letter-spacing:-.005em;margin-bottom:5px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden
+}
+.nc-text-clamp{
+  font-size:12px;color:var(--gmt);line-height:1.6;margin-bottom:0;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden
+}
+/* clearfix для float */
+.nc-body::after{content:'';display:table;clear:both}
+.nc-foot{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--bdr)}
+.nc-action{
+  display:inline-flex;align-items:center;gap:4px;font-size:11px;
+  color:var(--gmt);cursor:pointer;transition:color .12s;padding:3px 6px;
+  border-radius:var(--r);border:none;background:transparent;font-family:inherit
+}
+.nc-action:hover{color:var(--g);background:var(--gp)}
+.nc-action.liked{color:var(--red)}
+.nc-action svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+.nc-action.liked svg{fill:var(--red);stroke:var(--red)}
+.nc-views{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gmt);margin-left:auto}
+.nc-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+.nc-source{
+  display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;
+  background:var(--gp);border:1px solid var(--bdr);font-size:9px;font-weight:700;color:var(--gmt)
+}
+
+/* Скелетон */
+.skeleton{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px}
+.sl{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* Загрузить ещё */
+.load-more{
+  display:flex;justify-content:center;padding-top:4px;flex-shrink:0
+}
+.btn-load-more{
+  padding:10px 28px;border-radius:99px;border:1.5px solid var(--bdr);
+  background:var(--w);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px
+}
+.btn-load-more:hover{border-color:var(--gb);color:var(--g);background:var(--gp)}
+.btn-load-more svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+
+/* ═══ RIGHT ═══ */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+
+/* Поиск по новостям */
+.news-search-wrap{position:relative;margin-bottom:10px}
+.news-search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
+.news-search{width:100%;height:34px;padding:0 12px 0 32px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:12px;color:var(--t);outline:none;transition:border-color .2s}
+.news-search:focus{border-color:var(--gm);background:var(--w)}
+.news-search::placeholder{color:var(--gmt)}
+
+/* Топ недели */
+.top-item{
+  display:flex;align-items:flex-start;gap:8px;padding:8px 0;
+  border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .12s
+}
+.top-item:last-child{border-bottom:none;padding-bottom:0}
+.top-item:hover .top-title{color:var(--g)}
+.top-num{
+  width:20px;height:20px;border-radius:6px;background:var(--gl);border:1px solid var(--gb);
+  display:grid;place-items:center;font-size:9px;font-weight:900;color:var(--g);flex-shrink:0;margin-top:1px
+}
+.top-num.gold{background:#FEF3C7;border-color:#FCD34D;color:#B45309}
+.top-num.silver{background:#F1F5F9;border-color:#CBD5E1;color:#475569}
+.top-num.bronze{background:#FDF4EF;border-color:#FBCFB0;color:#9A3412}
+.top-body{flex:1;min-width:0}
+.top-title{font-size:11px;font-weight:700;color:var(--t);line-height:1.35;margin-bottom:2px;transition:color .12s}
+.top-meta{font-size:10px;color:var(--gmt);display:flex;align-items:center;gap:5px}
+.top-views{font-size:10px;font-weight:700;color:var(--gmt);flex-shrink:0;margin-left:auto;padding-left:8px}
+
+/* Источники */
+.source-item{
+  display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rm);
+  cursor:pointer;transition:background .15s
+}
+.source-item:hover{background:var(--gp)}
+.src-av{
+  width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+  font-size:10px;font-weight:800;color:#fff;flex-shrink:0
+}
+.src-body{flex:1;min-width:0}
+.src-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-count{font-size:10px;color:var(--gmt);margin-top:1px}
+.src-follow{
+  font-size:10px;font-weight:700;color:var(--g);cursor:pointer;
+  border:none;background:none;font-family:inherit;flex-shrink:0
+}
+.src-follow:hover{text-decoration:underline}
+.src-follow.following{color:var(--gmt)}
+
+/* Категории */
+.cat-chips{display:flex;flex-wrap:wrap;gap:5px}
+.cat-chip{
+  padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1.5px solid var(--bdr);background:var(--gp);
+  color:var(--tm);transition:all .15s
+}
+.cat-chip:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.cat-chip.active{background:var(--g);color:#fff;border-color:var(--g)}
+
+/* Тренды */
+.trend-item{
+  display:flex;align-items:center;gap:9px;padding:7px 0;
+  border-bottom:1px solid var(--bdr);cursor:pointer
+}
+.trend-item:last-child{border-bottom:none;padding-bottom:0}
+.trend-item:hover .trend-tag{color:var(--g)}
+.trend-num{font-size:10px;font-weight:700;color:var(--gmt);width:16px;flex-shrink:0;text-align:right}
+.trend-body{flex:1;min-width:0}
+.trend-tag{font-size:12px;font-weight:700;color:var(--t);transition:color .12s}
+.trend-count{font-size:10px;color:var(--gmt);margin-top:1px}
+.trend-arrow{
+  width:20px;height:20px;border-radius:6px;display:grid;place-items:center;flex-shrink:0
+}
+.trend-up{background:var(--gl);color:var(--g)}
+.trend-down{background:#FFF5F5;color:var(--red)}
+.trend-arrow svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap"><span class="search-dot"></span><input type="search" id="searchInput" placeholder="Поиск по новостям платформы…" autocomplete="off" oninput="filterNews(this.value)"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div class="tp-info"><span class="tp-name" id="topbarName">Никита Клишин</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div class="pdd-info"><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item active" href="/dashboard.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+
+  <!-- Тулбар: табы + кнопка написать -->
+  <div class="news-toolbar">
+    <span class="news-title">Новости</span>
+    <div class="news-tabs" id="newsTabs">
+      <button class="ntab active" onclick="setTab('all',this)">Все</button>
+      <button class="ntab" onclick="setTab('Логистика',this)">Логистика</button>
+      <button class="ntab" onclick="setTab('ВЭД',this)">ВЭД</button>
+      <button class="ntab" onclick="setTab('Регуляторика',this)">Регуляторика</button>
+      <button class="ntab" onclick="setTab('Технологии',this)">Технологии</button>
+      <button class="ntab" onclick="setTab('Компании',this)">Компании</button>
+      <button class="ntab" onclick="setTab('Форум',this)">Форум</button>
+    </div>
+    <button class="btn-write" onclick="openCompose()">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Написать
+    </button>
+  </div>
+
+  <!-- Компоуз -->
+  <div class="compose" id="composeBox" style="display:none">
+    <div class="compose-row">
+      <div class="c-av" id="composeAv">НК</div>
+      <input class="c-input" id="composeTitleInput" placeholder="Заголовок публикации…">
+    </div>
+    <textarea id="composeTextInput" style="width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:10px 14px;font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;height:72px;line-height:1.55;background:var(--gp);transition:border-color .2s;margin-bottom:10px" placeholder="Расскажите о событии, поделитесь кейсом или инсайдом…" onfocus="this.style.borderColor='var(--gm)';this.style.background='var(--w)'" onblur="this.style.borderColor='var(--bdr)';this.style.background='var(--gp)'"></textarea>
+    <div class="compose-actions">
+      <button class="c-action" onclick="showToast('Прикрепить файл')"><svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Файл</button>
+      <button class="c-action" onclick="showToast('Прикрепить изображение')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Фото</button>
+      <button class="c-action" onclick="showToast('Добавить тег')"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Тег</button>
+      <button class="c-action" onclick="closeCompose()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Отмена</button>
+      <button class="c-submit" onclick="submitPost()">Опубликовать</button>
+    </div>
+  </div>
+
+  <!-- Главная новость (hero) -->
+  <div class="news-hero" id="heroCard" onclick="showToast('Открываем публикацию…')">
+    <div class="nh-cover">
+      <span class="nh-badge">🔥 Главная новость дня</span>
+    </div>
+    <div class="nh-body">
+      <div class="nh-cat">Логистика · LASTOP</div>
+      <div class="nh-title">Экспорт стройматериалов из России вырос на 12% в Q2 2026 — рекордный показатель за 5 лет</div>
+      <div class="nh-text">Аналитики фиксируют устойчивый рост на фоне расширения контейнерных маршрутов через Казахстан и Беларусь. Ключевые направления — Ближний Восток и Средняя Азия.</div>
+      <div class="nh-foot">
+        <div class="nh-author">
+          <div class="nh-av" style="background:#1E8A4C">L</div>
+          <span class="nh-name">LASTOP Digital</span>
+        </div>
+        <div class="nh-stats">
+          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>3 847</span>
+          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>124</span>
+          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>38</span>
+        </div>
+        <span class="nh-time">Сегодня · 09:40</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Сортировка -->
+  <div class="news-sort-row">
+    <span class="ns-label">Сортировка</span>
+    <button class="sort-btn active" onclick="setSort('new',this)">Новые</button>
+    <button class="sort-btn" onclick="setSort('popular',this)">Популярные</button>
+    <button class="sort-btn" onclick="setSort('discussed',this)">Обсуждаемые</button>
+  </div>
+
+  <!-- Лента новостей -->
+  <div id="newsFeed"></div>
+
+  <!-- Загрузить ещё -->
+  <div class="load-more" id="loadMoreWrap">
+    <button class="btn-load-more" onclick="loadMore()">
+      <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Загрузить ещё
+    </button>
+  </div>
+
+</div><!-- /main -->
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Поиск по новостям -->
+  <div class="card">
+    <div class="block-title">Поиск по новостям</div>
+    <div class="news-search-wrap">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="news-search" type="search" placeholder="Ключевое слово…" oninput="filterNews(this.value)">
+    </div>
+    <!-- Категории -->
+    <div class="block-title" style="margin-top:10px">Категории</div>
+    <div class="cat-chips">
+      <span class="cat-chip active" onclick="toggleCat(this)">Все</span>
+      <span class="cat-chip" onclick="toggleCat(this)">Логистика</span>
+      <span class="cat-chip" onclick="toggleCat(this)">ВЭД</span>
+      <span class="cat-chip" onclick="toggleCat(this)">Регуляторика</span>
+      <span class="cat-chip" onclick="toggleCat(this)">Технологии</span>
+      <span class="cat-chip" onclick="toggleCat(this)">Компании</span>
+      <span class="cat-chip" onclick="toggleCat(this)">Форум</span>
+    </div>
+  </div>
+
+  <!-- Топ недели -->
+  <div class="card">
+    <div class="block-title">Топ недели</div>
+    <div id="topList"></div>
+  </div>
+
+  <!-- Тренды -->
+  <div class="card">
+    <div class="block-title">Тренды</div>
+    <div class="trend-item" onclick="setTab('Логистика')">
+      <span class="trend-num">1</span>
+      <div class="trend-body"><div class="trend-tag">#экспорт_2026</div><div class="trend-count">2 340 публикаций</div></div>
+      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
+    </div>
+    <div class="trend-item" onclick="setTab('ВЭД')">
+      <span class="trend-num">2</span>
+      <div class="trend-body"><div class="trend-tag">#таможня_ЕАЭС</div><div class="trend-count">1 820 публикаций</div></div>
+      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
+    </div>
+    <div class="trend-item" onclick="showToast('Тренд: мультимодальные перевозки')">
+      <span class="trend-num">3</span>
+      <div class="trend-body"><div class="trend-tag">#мультимодал</div><div class="trend-count">1 104 публикации</div></div>
+      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
+    </div>
+    <div class="trend-item" onclick="showToast('Тренд: фармлогистика')">
+      <span class="trend-num">4</span>
+      <div class="trend-body"><div class="trend-tag">#фармлогистика</div><div class="trend-count">873 публикации</div></div>
+      <div class="trend-arrow trend-down"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+    </div>
+    <div class="trend-item" onclick="showToast('Тренд: TMS')">
+      <span class="trend-num">5</span>
+      <div class="trend-body"><div class="trend-tag">#TMS_2026</div><div class="trend-count">651 публикация</div></div>
+      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
+    </div>
+  </div>
+
+  <!-- Источники -->
+  <div class="card">
+    <div class="block-title">Источники</div>
+    <div class="source-item">
+      <div class="src-av" style="background:#1E8A4C">L</div>
+      <div class="src-body"><div class="src-name">LASTOP Digital</div><div class="src-count">48 публикаций</div></div>
+      <button class="src-follow following" onclick="toggleFollow(this)">Читаю</button>
+    </div>
+    <div class="source-item">
+      <div class="src-av" style="background:#3A90C0">G</div>
+      <div class="src-body"><div class="src-name">GlobalFreight</div><div class="src-count">31 публикация</div></div>
+      <button class="src-follow" onclick="toggleFollow(this)">Читать</button>
+    </div>
+    <div class="source-item">
+      <div class="src-av" style="background:#C07030">РБ</div>
+      <div class="src-body"><div class="src-name">РБК Логистика</div><div class="src-count">124 публикации</div></div>
+      <button class="src-follow following" onclick="toggleFollow(this)">Читаю</button>
+    </div>
+    <div class="source-item">
+      <div class="src-av" style="background:#9060C0">Т</div>
+      <div class="src-body"><div class="src-name">Таможня.ру</div><div class="src-count">87 публикаций</div></div>
+      <button class="src-follow" onclick="toggleFollow(this)">Читать</button>
+    </div>
+    <div class="source-item">
+      <div class="src-av" style="background:#1A8A6A">N</div>
+      <div class="src-body"><div class="src-name">NorthBridge</div><div class="src-count">22 публикации</div></div>
+      <button class="src-follow" onclick="toggleFollow(this)">Читать</button>
+    </div>
+  </div>
+
+</aside>
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+const tk=()=>localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){return((s||'?')[0]).toUpperCase();}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
+function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
+function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+/* ── DROPDOWN ── */
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('topbarProfile').classList.toggle('open');
+  document.getElementById('profileDD').classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('profileDD');
+  const btn=document.getElementById('topbarProfile');
+  if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
+});
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+
+/* ── ДАННЫЕ ── */
+const BADGE={
+  'Логистика':'badge-news','ВЭД':'badge-reg','Регуляторика':'badge-reg',
+  'Технологии':'badge-tech','Компании':'badge-co','Форум':'badge-forum','Публикации':'badge-proj'
+};
+
+const DEMO_NEWS=[
+  {id:1,cat:'ВЭД',author:'Мария Захарова',role:'NorthBridge',text:'Новый маршрут СНГ–ЕС запущен на этой неделе. Мультимодальные перевозки оборудования с таможенным сопровождением. Принимаем грузы от 5 тонн по конкурентным ставкам.',title:'NorthBridge запускает маршрут СНГ–ЕС с мультимодальным сопровождением',views:2410,likes:31,comments:9,shares:4,ts:new Date(Date.now()-10800000).toISOString(),src:'NorthBridge'},
+  {id:2,cat:'Регуляторика',author:'Таможня.ру',role:'Источник',text:'Федеральная таможенная служба внесла изменения в порядок декларирования ряда категорий товаров. Новые правила вступают в силу с 1 мая 2026 года и затронут более 40 тысяч участников ВЭД.',title:'ФТС обновила требования к таможенному декларированию импорта',views:1820,likes:47,comments:14,shares:8,ts:new Date(Date.now()-18000000).toISOString(),src:'Таможня.ру'},
+  {id:3,cat:'Технологии',author:'LASTOP Digital',role:'Платформа',text:'Цифровая платформа LASTOP обновила модуль управления транспортными заказами. Добавлены предиктивная аналитика SLA, автоматический трекинг и интеграция с 1С:Логистика.',title:'LASTOP Digital запустил новый модуль аналитики TMS с ИИ-прогнозированием',views:940,likes:34,comments:9,shares:6,ts:new Date(Date.now()-86400000).toISOString(),src:'LASTOP'},
+  {id:4,cat:'Компании',author:'GlobalFreight',role:'Компания',text:'GlobalFreight открывает офис в Алматы и расширяет маршрутную сеть через Казахстан. Теперь компания обслуживает более 120 направлений на постсоветском пространстве.',title:'GlobalFreight открывает офис в Алматы и усиливает маршрутную сеть',views:750,likes:18,comments:5,shares:2,ts:new Date(Date.now()-172800000).toISOString(),src:'GlobalFreight'},
+  {id:5,cat:'Логистика',author:'Никита Клишин',role:'Участник LASTOP',text:'Разбор практических кейсов: как грамотно составить CMR-накладную, чтобы избежать задержек на границе. Топ-5 ошибок от практикующего логиста с 8-летним стажем.',title:'Топ-5 ошибок в CMR, которые задерживают груз на границе — разбор кейсов',views:3100,likes:89,comments:27,shares:15,ts:new Date(Date.now()-259200000).toISOString(),src:'LASTOP'},
+  {id:6,cat:'ВЭД',author:'РБК Логистика',role:'СМИ',text:'Участники рынка отмечают рост контейнерных перевозок на 18% в Q2 по сравнению с аналогичным периодом прошлого года. Аналитики связывают динамику с диверсификацией маршрутов.',title:'Контейнерные перевозки в России выросли на 18% в Q2 2026',views:2400,likes:52,comments:11,shares:9,ts:new Date(Date.now()-345600000).toISOString(),src:'РБК'},
+  {id:7,cat:'Форум',author:'Сергей Иванов',role:'Экспедитор',text:'Открываю тему для обсуждения TMS-систем в 2026 году. Кто что использует? Есть ли опыт самописных решений против коммерческих платформ? Собираем мнения рынка.',title:'TMS в 2026: самописное решение или коммерческая платформа — что выбрать?',views:640,likes:14,comments:43,shares:1,ts:new Date(Date.now()-432000000).toISOString(),src:'Форум'},
+  {id:8,cat:'Технологии',author:'LASTOP Digital',role:'Платформа',text:'Мы выпустили аналитический отчёт по рынку труда в логистике Q2 2026: самые востребованные специальности, зарплатные ожидания и прогноз на Q3. Доступно для всех участников платформы.',title:'LASTOP выпустил рейтинг вакансий и зарплат в логистике за Q2 2026',views:1560,likes:63,comments:22,shares:18,ts:new Date(Date.now()-518400000).toISOString(),src:'LASTOP'},
+];
+
+let allNews=[...DEMO_NEWS];
+let visibleNews=[...DEMO_NEWS];
+let currentTab='all';
+let currentSort='new';
+let likedSet=new Set();
+let page=1;
+const PAGE_SIZE=5;
+
+/* ── РЕНДЕР КАРТОЧКИ ── */
+/* Демо-изображения по категориям */
+const CAT_GRADIENTS={
+  'Логистика':'linear-gradient(135deg,#1E8A4C,#22A05A)',
+  'ВЭД':'linear-gradient(135deg,#185FA5,#3A90C0)',
+  'Регуляторика':'linear-gradient(135deg,#6040A0,#9060C0)',
+  'Технологии':'linear-gradient(135deg,#0369A1,#0EA5E9)',
+  'Компании':'linear-gradient(135deg,#633806,#C07030)',
+  'Форум':'linear-gradient(135deg,#3B6D11,#5AB080)',
+  'Публикации':'linear-gradient(135deg,#1A8A6A,#5AB080)',
+};
+const CAT_ICONS={
+  'Логистика':'<path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  'ВЭД':'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  'Регуляторика':'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  'Технологии':'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+  'Компании':'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>',
+  'Форум':'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  'Публикации':'<path d="M4 6h16M4 12h16M4 18h10"/>',
+};
+
+function renderCard(n,idx){
+  const badgeCls=BADGE[n.cat]||'badge-news';
+  const isLiked=likedSet.has(n.id);
+  const gradient=CAT_GRADIENTS[n.cat]||'linear-gradient(135deg,var(--g),var(--gm))';
+  const icon=CAT_ICONS[n.cat]||CAT_ICONS['Публикации'];
+  const imgHtml=n.img
+    ?`<img class="nc-img" src="${esc(n.img)}" alt="" loading="lazy">`
+    :`<div class="nc-img-placeholder" style="background:${gradient}"><svg viewBox="0 0 24 24" style="width:28px;height:28px;stroke:rgba(255,255,255,.7);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">${icon}</svg></div>`;
+
+  return`<div class="news-card" style="animation-delay:${idx*.06}s" id="nc-${n.id}">
+    <div class="nc-head">
+      <div class="nc-av" style="background:${avc(n.author)}">${letter(n.author)}</div>
+      <div class="nc-meta">
+        <div class="nc-author">${esc(n.author)}</div>
+        <div class="nc-info">${esc(n.role)}<span class="nc-dot"></span>${ago(n.ts)}</div>
+      </div>
+      <span class="nc-badge ${badgeCls}">${esc(n.cat)}</span>
+    </div>
+    <div class="nc-body">
+      <div class="nc-img-wrap">${imgHtml}</div>
+      <div class="nc-content">
+        <div class="nc-title-clamp">${esc(n.title)}</div>
+        <div class="nc-text-clamp">${esc(n.text)}</div>
+      </div>
+    </div>
+    <div class="nc-foot" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:8px">
+      <button class="nc-action ${isLiked?'liked':''}" onclick="toggleLike(${n.id},this)">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isLiked?'fill="var(--red)"':''}></path></svg>
+        <span id="lc-${n.id}">${n.likes+(isLiked?1:0)}</span>
+      </button>
+      <button class="nc-action" onclick="showToast('Открываем комментарии…')">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        ${n.comments}
+      </button>
+      <button class="nc-action" onclick="sharePost(${n.id})">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        ${n.shares}
+      </button>
+      <button class="nc-action" onclick="showToast('Сохранено в закладки')">
+        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <span class="nc-source">${esc(n.src)}</span>
+      <span class="nc-views" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${num(n.views)}</span>
+    </div>
+  </div>`;
+}
+
+function renderFeed(){
+  const feed=document.getElementById('newsFeed');
+  const slice=visibleNews.slice(0,page*PAGE_SIZE);
+  if(!slice.length){
+    feed.innerHTML='<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Нет публикаций по этому фильтру</span></div>';
+    document.getElementById('loadMoreWrap').style.display='none';
+    return;
+  }
+  feed.innerHTML=slice.map((n,i)=>renderCard(n,i)).join('');
+  document.getElementById('loadMoreWrap').style.display=visibleNews.length>page*PAGE_SIZE?'flex':'none';
+}
+
+/* ── ФИЛЬТРАЦИЯ И СОРТИРОВКА ── */
+function applyFilters(){
+  let items=[...allNews];
+  if(currentTab!=='all') items=items.filter(n=>n.cat===currentTab);
+  if(searchQuery) items=items.filter(n=>
+    n.title.toLowerCase().includes(searchQuery)||
+    n.text.toLowerCase().includes(searchQuery)||
+    n.author.toLowerCase().includes(searchQuery)
+  );
+  if(currentSort==='popular') items.sort((a,b)=>b.views-a.views);
+  else if(currentSort==='discussed') items.sort((a,b)=>b.comments-a.comments);
+  else items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  visibleNews=items;
+  page=1;
+  renderFeed();
+}
+
+let searchQuery='';
+function filterNews(q){searchQuery=q.toLowerCase();applyFilters();}
+function setTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  applyFilters();
+}
+function setSort(sort,btn){
+  currentSort=sort;
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+function loadMore(){page++;renderFeed();}
+function toggleCat(chip){
+  document.querySelectorAll('.cat-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  const cat=chip.textContent.trim();
+  currentTab=cat==='Все'?'all':cat;
+  applyFilters();
+}
+
+/* ── ЛАЙКИ / РЕПОСТЫ ── */
+function toggleLike(id,btn){
+  const n=allNews.find(x=>x.id===id);if(!n)return;
+  if(likedSet.has(id)){likedSet.delete(id);btn.classList.remove('liked');btn.querySelector('svg path')?.removeAttribute('fill');}
+  else{likedSet.add(id);btn.classList.add('liked');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');}
+  document.getElementById('lc-'+id).textContent=n.likes+(likedSet.has(id)?1:0);
+}
+function sharePost(id){showToast('Ссылка скопирована');}
+
+/* ── COMPOSE ── */
+function openCompose(){document.getElementById('composeBox').style.display='block';document.getElementById('composeTitleInput').focus();}
+function closeCompose(){document.getElementById('composeBox').style.display='none';document.getElementById('composeTitleInput').value='';document.getElementById('composeTextInput').value='';}
+function submitPost(){
+  const title=document.getElementById('composeTitleInput').value.trim();
+  const text=document.getElementById('composeTextInput').value.trim();
+  if(!text){showToast('Добавьте текст публикации');return;}
+  const newPost={
+    id:Date.now(),cat:'Публикации',
+    author:document.getElementById('topbarName').textContent||'Никита Клишин',
+    role:'Участник LASTOP',
+    title:title||'Публикация',text,
+    views:0,likes:0,comments:0,shares:0,
+    ts:new Date().toISOString(),src:'LASTOP'
+  };
+  allNews.unshift(newPost);
+  closeCompose();
+  applyFilters();
+  showToast('Публикация опубликована ✓');
+  fetch(API+'/posts?author_type=user',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title:newPost.title,content:text,privacy_level:'public'})}).catch(()=>{});
+}
+
+/* ── ТОП НЕДЕЛИ ── */
+function renderTopList(){
+  const top=[...DEMO_NEWS].sort((a,b)=>b.views-a.views).slice(0,5);
+  const medals=['gold','silver','bronze','',''];
+  document.getElementById('topList').innerHTML=top.map((n,i)=>`
+    <div class="top-item" onclick="showToast('Открываем публикацию…')">
+      <div class="top-num ${medals[i]}">${i+1}</div>
+      <div class="top-body">
+        <div class="top-title">${esc(n.title)}</div>
+        <div class="top-meta">${esc(n.cat)} · ${esc(n.src)}</div>
+      </div>
+      <span class="top-views">${num(n.views)}</span>
+    </div>`).join('');
+}
+
+/* ── ИСТОЧНИКИ ── */
+function toggleFollow(btn){
+  const isFollowing=btn.classList.contains('following');
+  if(isFollowing){btn.classList.remove('following');btn.textContent='Читать';showToast('Отписались от источника');}
+  else{btn.classList.add('following');btn.textContent='Читаю';showToast('Подписались на источник ✓');}
+}
+
+/* ── АВТОРИЗАЦИЯ ── */
+(async()=>{
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const color=avc(name);const ltr=letter(name);
+    ['topbarAv','pddAv','composeAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
+    document.getElementById('topbarName').textContent=name;
+    document.getElementById('topbarRole').textContent=user.role||user.position||'Участник LASTOP';
+    document.getElementById('pddName').textContent=name;
+    document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
+  }catch{}
+
+  /* Загрузка с API */
+  try{
+    const r=await fetch(API+'/news/dashboard?limit=30',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    if(d.news&&d.news.length){
+      allNews=d.news.map(n=>({
+        id:n.id||Math.random(),cat:n.cat||'Публикации',
+        author:n.src||'LASTOP',role:'',
+        title:n.title||'',text:n.text||'',
+        views:n.views||0,likes:n.likes_count||0,
+        comments:n.comments_count||0,shares:n.shares_count||0,
+        ts:n.created_at||new Date().toISOString(),src:n.src||'LASTOP'
+      }));
+    }
+  }catch{}
+
+  applyFilters();
+  renderTopList();
+})();
+</script>
+</body>
+</html>
