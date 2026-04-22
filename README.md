@@ -1,10 +1,11 @@
 # Greeting site (Go + TypeScript)
 
-Небольшой проект: Go-сервер отдает API и статику, а страницы регистрации/входа работают с реальной базой данных SQLite.
+Небольшой проект: Go-сервер отдает API и статику, а страницы регистрации/входа работают с PostgreSQL.
 
 ## Запуск
 
 ```bash
+export DATABASE_URL='postgresql://user:password@host:5432/dbname?sslmode=require'
 go run ./cmd/server
 ```
 
@@ -12,11 +13,12 @@ go run ./cmd/server
 
 ## Что внутри
 
-- `cmd/server/main.go` — HTTP-сервер, endpoint `/api/greeting`, а также auth API:
-  - `POST /api/auth/register` — регистрация пользователя в SQLite
-  - `POST /api/auth/login` — вход по email/паролю из SQLite
+- `cmd/server/main.go` — HTTP-сервер, endpoint `/api/greeting`, `/health` и auth API:
+  - `POST /api/auth/register` — регистрация пользователя в PostgreSQL
+  - `POST /api/auth/login` — вход по email/паролю из PostgreSQL
+  - `GET /health` — проверка статуса БД (возвращает `database: up`, если соединение доступно)
 - `web/register.html` — UI регистрации
 - `web/login.html` — UI авторизации
 - `web/index.html` — стартовая страница
 
-База данных создается автоматически в `data/app.db` при первом запуске.
+При старте сервер ожидает `DATABASE_URL`, подключается к PostgreSQL и автоматически создает таблицу `users` через `CREATE TABLE IF NOT EXISTS`.
