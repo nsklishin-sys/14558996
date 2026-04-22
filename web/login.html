@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Вход</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+.page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:linear-gradient(135deg,var(--bg) 0%,var(--gp) 50%,var(--gl) 100%)
+}
+
+.auth-card{
+  width:100%;max-width:980px;min-height:600px;
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  box-shadow:0 20px 60px rgba(30,138,76,.12);
+  display:grid;grid-template-columns:1fr 380px;overflow:hidden
+}
+
+.auth-form{
+  padding:40px 48px;display:flex;flex-direction:column;
+  overflow-y:auto
+}
+.auth-form::-webkit-scrollbar{width:4px}
+.auth-form::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:28px;text-decoration:none}
+.logo-img{
+  width:36px;height:36px;border-radius:10px;background:var(--g);
+  display:grid;place-items:center;flex-shrink:0
+}
+.logo-img svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.logo-text{display:flex;flex-direction:column;line-height:1.1}
+.logo-text .lt1{font-size:16px;font-weight:900;color:var(--g);letter-spacing:.03em}
+.logo-text .lt2{font-size:10px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase}
+
+.auth-title{font-size:24px;font-weight:900;color:var(--t);margin-bottom:6px;letter-spacing:-.01em}
+.auth-sub{font-size:13px;color:var(--gmt);margin-bottom:24px}
+.auth-sub a{color:var(--g);font-weight:700;text-decoration:none}
+.auth-sub a:hover{text-decoration:underline}
+
+.field{margin-bottom:14px}
+.field-label{font-size:11px;font-weight:600;color:var(--gmt);display:block;margin-bottom:5px}
+.field-input-wrap{position:relative}
+.field-input{
+  width:100%;height:42px;padding:0 14px;
+  border:1.5px solid var(--bdr);border-radius:var(--rm);
+  background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);
+  outline:none;transition:border-color .2s,background .2s
+}
+.field-input:focus{border-color:var(--gm);background:var(--w)}
+.field-input::placeholder{color:var(--gmt)}
+.field-input.error{border-color:var(--red);background:#FFF5F5}
+.field-input.has-ico{padding-left:40px}
+.field-input.has-btn{padding-right:44px}
+.field-ico{
+  position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none
+}
+.field-input:focus ~ .field-ico{stroke:var(--g)}
+.field-toggle{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  width:30px;height:30px;border:none;background:transparent;cursor:pointer;
+  display:grid;place-items:center;color:var(--gmt);transition:color .15s
+}
+.field-toggle:hover{color:var(--g)}
+.field-toggle svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.field-err{font-size:10px;color:var(--red);margin-top:3px;min-height:14px;font-weight:600}
+
+.captcha-wrap{
+  padding:12px 14px;border-radius:var(--rm);
+  background:var(--gp);border:1.5px solid var(--bdr);margin-bottom:14px
+}
+.captcha-label{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.captcha-label svg{width:12px;height:12px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round}
+.captcha-row{display:flex;align-items:center;gap:10px}
+.captcha-q{
+  flex-shrink:0;padding:7px 14px;background:var(--w);border:1.5px solid var(--gb);
+  border-radius:var(--rm);font-size:15px;font-weight:800;color:var(--t);
+  letter-spacing:.02em;font-family:'Courier New',monospace;
+  position:relative;user-select:none
+}
+.captcha-q::before,.captcha-q::after{
+  content:'';position:absolute;left:8px;right:8px;height:1px;
+  background:repeating-linear-gradient(90deg,var(--gb) 0,var(--gb) 2px,transparent 2px,transparent 5px)
+}
+.captcha-q::before{top:6px}
+.captcha-q::after{bottom:6px}
+.captcha-reload{
+  width:32px;height:32px;border-radius:var(--rm);border:1.5px solid var(--bdr);
+  background:var(--w);display:grid;place-items:center;cursor:pointer;
+  color:var(--gmt);transition:all .15s;flex-shrink:0
+}
+.captcha-reload:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.captcha-reload:active{transform:rotate(180deg)}
+.captcha-reload svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.captcha-input{
+  flex:1;height:32px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);
+  background:var(--w);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s
+}
+.captcha-input:focus{border-color:var(--gm)}
+.captcha-input.ok{border-color:var(--g);background:var(--gl)}
+.captcha-input.err{border-color:var(--red);background:#FFF5F5}
+.captcha-check{
+  width:32px;height:32px;border-radius:var(--rm);display:grid;place-items:center;
+  flex-shrink:0;background:var(--bdr);color:var(--w);transition:all .2s
+}
+.captcha-check.ok{background:var(--g)}
+.captcha-check.err{background:var(--red)}
+.captcha-check svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+.check-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
+.check-box{
+  width:18px;height:18px;border:1.5px solid var(--bdr);border-radius:5px;
+  background:var(--w);cursor:pointer;flex-shrink:0;display:grid;place-items:center;
+  margin-top:1px;transition:all .15s
+}
+.check-box:hover{border-color:var(--gb)}
+.check-box.checked{background:var(--g);border-color:var(--g)}
+.check-box svg{width:10px;height:10px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.check-box.checked svg{opacity:1}
+.check-label{font-size:11px;color:var(--tm);line-height:1.5;cursor:pointer;user-select:none}
+
+.row-between{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.link-forgot{font-size:11px;color:var(--g);font-weight:700;text-decoration:none}
+.link-forgot:hover{text-decoration:underline}
+
+.btn-main{
+  width:100%;height:46px;border-radius:var(--rm);border:none;background:var(--g);
+  color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  transition:all .15s;box-shadow:0 4px 14px rgba(30,138,76,.28);
+  display:flex;align-items:center;justify-content:center;gap:8px
+}
+.btn-main:hover:not(:disabled){background:var(--gm);box-shadow:0 6px 18px rgba(30,138,76,.35);transform:translateY(-1px)}
+.btn-main:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+.btn-main svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+.divider{display:flex;align-items:center;gap:12px;margin:18px 0}
+.divider-line{flex:1;height:1px;background:var(--bdr)}
+.divider-text{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase}
+
+.social-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn-social{
+  height:38px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--w);
+  color:var(--tm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px
+}
+.btn-social:hover{border-color:var(--gb);background:var(--gp)}
+.btn-social svg{width:14px;height:14px;flex-shrink:0}
+
+.auth-side{
+  background:linear-gradient(165deg,var(--g) 0%,#146A38 100%);
+  padding:40px 36px;display:flex;flex-direction:column;justify-content:space-between;
+  position:relative;overflow:hidden
+}
+.auth-side::before{
+  content:'';position:absolute;top:-80px;right:-80px;
+  width:260px;height:260px;border-radius:50%;
+  background:rgba(255,255,255,.06);pointer-events:none
+}
+.auth-side::after{
+  content:'';position:absolute;bottom:-120px;left:-40px;
+  width:280px;height:280px;border-radius:50%;
+  background:rgba(255,255,255,.04);pointer-events:none
+}
+.side-badge{
+  display:inline-flex;align-items:center;gap:6px;align-self:flex-start;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  border-radius:99px;padding:4px 11px;font-size:10px;font-weight:700;color:#fff;
+  position:relative;z-index:1;margin-bottom:18px
+}
+.side-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+.side-h1{font-size:22px;font-weight:900;color:#fff;line-height:1.2;letter-spacing:-.01em;margin-bottom:10px;position:relative;z-index:1}
+.side-p{font-size:12px;color:rgba(255,255,255,.72);line-height:1.6;margin-bottom:24px;position:relative;z-index:1}
+.side-features{display:flex;flex-direction:column;gap:11px;margin-bottom:24px;position:relative;z-index:1}
+.side-feat{display:flex;align-items:flex-start;gap:10px}
+.side-feat-ico{
+  width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.2);display:grid;place-items:center;flex-shrink:0;margin-top:1px
+}
+.side-feat-ico svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.side-feat-t{font-size:12px;font-weight:700;color:#fff;margin-bottom:2px}
+.side-feat-s{font-size:10px;color:rgba(255,255,255,.65);line-height:1.4}
+.side-stats{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;
+  padding-top:18px;border-top:1px solid rgba(255,255,255,.15);position:relative;z-index:1
+}
+.side-stat-n{font-size:16px;font-weight:900;color:#fff;line-height:1}
+.side-stat-l{font-size:9px;color:rgba(255,255,255,.55);margin-top:2px;text-transform:uppercase;letter-spacing:.06em}
+
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#1A2A22;color:#fff;padding:12px 20px;border-radius:var(--rm);
+  font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;
+  pointer-events:none;white-space:nowrap;display:flex;align-items:center;gap:8px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2)
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+.toast.error{background:var(--red)}
+.toast svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+@media(max-width:880px){
+  .auth-card{grid-template-columns:1fr;max-width:440px}
+  .auth-side{display:none}
+  .auth-form{padding:32px 28px}
+}
+@media(max-width:420px){
+  .auth-form{padding:24px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="auth-card">
+
+    <div class="auth-form">
+
+      <a href="/" class="logo">
+        <div class="logo-img">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </div>
+        <div class="logo-text">
+          <span class="lt1">LASTOP</span>
+          <span class="lt2">GROUP</span>
+        </div>
+      </a>
+
+      <h1 class="auth-title">С возвращением 👋</h1>
+      <p class="auth-sub">Войдите в аккаунт, чтобы продолжить. Впервые на LASTOP? <a href="/register.html">Создать аккаунт</a></p>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <div class="field-input-wrap">
+            <input type="email" id="email" class="field-input has-ico" placeholder="you@company.ru" autocomplete="email" required>
+            <svg class="field-ico" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+          </div>
+          <div class="field-err" id="emailErr"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="password">Пароль</label>
+          <div class="field-input-wrap">
+            <input type="password" id="password" class="field-input has-ico has-btn" placeholder="••••••••" autocomplete="current-password" required>
+            <svg class="field-ico" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <button type="button" class="field-toggle" onclick="togglePwd('password',this)" tabindex="-1">
+              <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="field-err" id="passwordErr"></div>
+        </div>
+
+        <div class="captcha-wrap">
+          <div class="captcha-label">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Проверка безопасности
+          </div>
+          <div class="captcha-row">
+            <div class="captcha-q" id="captchaQ">3 + 7 = ?</div>
+            <input type="text" class="captcha-input" id="captchaInput" placeholder="Ответ" inputmode="numeric" oninput="checkCaptcha()">
+            <div class="captcha-check" id="captchaCheck">
+              <svg viewBox="0 0 24 24" style="opacity:0" id="captchaCheckIco"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <button type="button" class="captcha-reload" onclick="newCaptcha()" title="Обновить">
+              <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <div class="check-row" style="margin-bottom:0">
+            <div class="check-box checked" id="rememberBox" onclick="this.classList.toggle('checked')">
+              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <label class="check-label" onclick="document.getElementById('rememberBox').classList.toggle('checked')">Запомнить меня</label>
+          </div>
+          <a href="/forgot.html" class="link-forgot">Забыли пароль?</a>
+        </div>
+
+        <button type="submit" class="btn-main" id="submitBtn">
+          Войти
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+        <div class="divider">
+          <div class="divider-line"></div>
+          <span class="divider-text">или войти через</span>
+          <div class="divider-line"></div>
+        </div>
+
+        <div class="social-row">
+          <button type="button" class="btn-social" onclick="socialLogin('yandex')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#FC3F1D"/><text x="12" y="17" text-anchor="middle" fill="#fff" font-size="14" font-weight="800" font-family="Arial">Я</text></svg>
+            Яндекс ID
+          </button>
+          <button type="button" class="btn-social" onclick="socialLogin('vk')">
+            <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#0077FF"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="10" font-weight="800" font-family="Arial">VK</text></svg>
+            VK ID
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <div class="auth-side">
+      <div>
+        <div class="side-badge">Деловая B2B-платформа</div>
+        <div class="side-h1">Вся логистика и ВЭД в одном пространстве</div>
+        <p class="side-p">Компании, специалисты, проекты, мероприятия — в одной экосистеме, где доверие и репутация работают на вас.</p>
+
+        <div class="side-features">
+          <div class="side-feat">
+            <div class="side-feat-ico">
+              <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            </div>
+            <div>
+              <div class="side-feat-t">Партнёры и клиенты</div>
+              <div class="side-feat-s">342 компании и 1 247 специалистов уже на платформе</div>
+            </div>
+          </div>
+          <div class="side-feat">
+            <div class="side-feat-ico">
+              <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div>
+              <div class="side-feat-t">Проекты и тендеры</div>
+              <div class="side-feat-s">Публикуйте инициативы и находите исполнителей</div>
+            </div>
+          </div>
+          <div class="side-feat">
+            <div class="side-feat-ico">
+              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+            </div>
+            <div>
+              <div class="side-feat-t">Мероприятия отрасли</div>
+              <div class="side-feat-s">Форумы, вебинары и выставки с регистрацией на месте</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-stats">
+        <div><div class="side-stat-n">1 247</div><div class="side-stat-l">Участников</div></div>
+        <div><div class="side-stat-n">342</div><div class="side-stat-l">Компаний</div></div>
+        <div><div class="side-stat-n">47</div><div class="side-stat-l">Событий</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  const ico=type==='success'?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  t.innerHTML=ico+'<span>'+msg+'</span>';
+  t.className='toast show '+type;
+  setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+let captchaAnswer=0;
+function newCaptcha(){
+  const ops=[
+    ()=>{const a=2+Math.floor(Math.random()*8),b=2+Math.floor(Math.random()*8);captchaAnswer=a+b;return`${a} + ${b} = ?`;},
+    ()=>{const a=5+Math.floor(Math.random()*10),b=1+Math.floor(Math.random()*4);captchaAnswer=a-b;return`${a} − ${b} = ?`;},
+    ()=>{const a=2+Math.floor(Math.random()*5),b=2+Math.floor(Math.random()*5);captchaAnswer=a*b;return`${a} × ${b} = ?`;},
+  ];
+  document.getElementById('captchaQ').textContent=ops[Math.floor(Math.random()*ops.length)]();
+  document.getElementById('captchaInput').value='';
+  document.getElementById('captchaInput').classList.remove('ok','err');
+  document.getElementById('captchaCheck').classList.remove('ok','err');
+  document.getElementById('captchaCheckIco').style.opacity='0';
+}
+function checkCaptcha(){
+  const inp=document.getElementById('captchaInput');
+  const chk=document.getElementById('captchaCheck');
+  const ico=document.getElementById('captchaCheckIco');
+  const v=inp.value.trim();
+  if(!v){inp.classList.remove('ok','err');chk.classList.remove('ok','err');ico.style.opacity='0';return false;}
+  if(parseInt(v,10)===captchaAnswer){
+    inp.classList.remove('err');inp.classList.add('ok');
+    chk.classList.remove('err');chk.classList.add('ok');
+    ico.style.opacity='1';
+    ico.innerHTML='<polyline points="20 6 9 17 4 12"/>';
+    return true;
+  }
+  if(v.length>=String(captchaAnswer).length){
+    inp.classList.remove('ok');inp.classList.add('err');
+    chk.classList.remove('ok');chk.classList.add('err');
+    ico.style.opacity='1';
+    ico.innerHTML='<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+    return false;
+  }
+  inp.classList.remove('ok','err');chk.classList.remove('ok','err');ico.style.opacity='0';
+  return false;
+}
+
+function togglePwd(id,btn){
+  const inp=document.getElementById(id);
+  const isPwd=inp.type==='password';
+  inp.type=isPwd?'text':'password';
+  btn.innerHTML=isPwd
+    ?'<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+    :'<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+}
+
+async function handleLogin(e){
+  e.preventDefault();
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const emailErr=document.getElementById('emailErr');
+  const pwdErr=document.getElementById('passwordErr');
+  emailErr.textContent='';pwdErr.textContent='';
+  document.getElementById('email').classList.remove('error');
+  document.getElementById('password').classList.remove('error');
+
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    emailErr.textContent='Введите корректный email';
+    document.getElementById('email').classList.add('error');return;
+  }
+  if(password.length<6){
+    pwdErr.textContent='Пароль должен быть не короче 6 символов';
+    document.getElementById('password').classList.add('error');return;
+  }
+  if(!checkCaptcha()){
+    showToast('Решите пример для проверки','error');
+    document.getElementById('captchaInput').focus();return;
+  }
+
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.innerHTML='Вход…';
+
+  try{
+    const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){
+      showToast(d.error||'Неверный email или пароль','error');
+      newCaptcha();
+      btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
+      return;
+    }
+    localStorage.setItem('token',d.token);
+    localStorage.setItem('user',JSON.stringify(d.user));
+    showToast('Добро пожаловать!','success');
+    setTimeout(()=>location.href='/',900);
+  }catch{
+    showToast('Ошибка соединения с сервером','error');
+    btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
+  }
+}
+
+function socialLogin(p){showToast('Вход через '+(p==='yandex'?'Яндекс ID':'VK ID')+' скоро появится','success');}
+
+window.addEventListener('DOMContentLoaded',newCaptcha);
+</script>
+</body>
+</html>
