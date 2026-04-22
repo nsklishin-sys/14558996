@@ -719,12 +719,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <button class="sec-more">Все (247) →</button>
       </div>
       <div class="friends-grid">
-        <div class="friend-card" onclick="location.href='/profile_user.html?uid=u1'"><div class="friend-av" style="background:#5AB080">М</div><div class="friend-name">Мария Захарова</div><div class="friend-role">NorthBridge</div></div>
-        <div class="friend-card" onclick="location.href='/profile_user.html?uid=u2'"><div class="friend-av" style="background:#3A90C0">А</div><div class="friend-name">Алексей Петров</div><div class="friend-role">Специалист ВЭД</div></div>
-        <div class="friend-card" onclick="location.href='/profile_user.html?uid=u3'"><div class="friend-av" style="background:#9060C0">С</div><div class="friend-name">Сергей Иванов</div><div class="friend-role">SGL Logistics</div></div>
-        <div class="friend-card" onclick="location.href='/profile_user.html?uid=u4'"><div class="friend-av" style="background:#C07030">Д</div><div class="friend-name">Дмитрий Орлов</div><div class="friend-role">Экспедитор</div></div>
-        <div class="friend-card" onclick="location.href='/profile_user.html?uid=u5'"><div class="friend-av" style="background:#1A8A6A">А</div><div class="friend-name">Анна Лебедева</div><div class="friend-role">Product · LASTOP</div></div>
-        <div class="friend-card" onclick="location.href='/profile_user.html?uid=u6'"><div class="friend-av" style="background:#B05090">Е</div><div class="friend-name">Елена Морозова</div><div class="friend-role">Таможенный брокер</div></div>
+        <div class="friend-card" onclick="location.href='/profile.html?id=1'"><div class="friend-av" style="background:#5AB080">М</div><div class="friend-name">Мария Захарова</div><div class="friend-role">NorthBridge</div></div>
+        <div class="friend-card" onclick="location.href='/profile.html?id=2'"><div class="friend-av" style="background:#3A90C0">А</div><div class="friend-name">Алексей Петров</div><div class="friend-role">Специалист ВЭД</div></div>
+        <div class="friend-card" onclick="location.href='/profile.html?id=3'"><div class="friend-av" style="background:#9060C0">С</div><div class="friend-name">Сергей Иванов</div><div class="friend-role">SGL Logistics</div></div>
+        <div class="friend-card" onclick="location.href='/profile.html?id=4'"><div class="friend-av" style="background:#C07030">Д</div><div class="friend-name">Дмитрий Орлов</div><div class="friend-role">Экспедитор</div></div>
+        <div class="friend-card" onclick="location.href='/profile.html?id=5'"><div class="friend-av" style="background:#1A8A6A">А</div><div class="friend-name">Анна Лебедева</div><div class="friend-role">Product · LASTOP</div></div>
+        <div class="friend-card" onclick="location.href='/profile.html?id=6'"><div class="friend-av" style="background:#B05090">Е</div><div class="friend-name">Елена Морозова</div><div class="friend-role">Таможенный брокер</div></div>
       </div>
     </div>
   </div>
@@ -758,15 +758,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Друзья онлайн -->
   <div class="card">
     <div class="block-title">Друзья · онлайн</div>
-    <div class="fmini" onclick="location.href='/profile_user.html?uid=u1'">
+    <div class="fmini" onclick="location.href='/profile.html?id=1'">
       <div class="fmini-av" style="background:#5AB080">М<div class="fmini-online"></div></div>
       <div style="min-width:0;flex:1"><div class="fmini-name">Мария Захарова</div><div class="fmini-role">NorthBridge Logistics</div></div>
     </div>
-    <div class="fmini" onclick="location.href='/profile_user.html?uid=u2'">
+    <div class="fmini" onclick="location.href='/profile.html?id=2'">
       <div class="fmini-av" style="background:#3A90C0">А<div class="fmini-online"></div></div>
       <div style="min-width:0;flex:1"><div class="fmini-name">Алексей Петров</div><div class="fmini-role">Специалист ВЭД</div></div>
     </div>
-    <div class="fmini" onclick="location.href='/profile_user.html?uid=u5'">
+    <div class="fmini" onclick="location.href='/profile.html?id=5'">
       <div class="fmini-av" style="background:#1A8A6A">А<div class="fmini-online"></div></div>
       <div style="min-width:0;flex:1"><div class="fmini-name">Анна Лебедева</div><div class="fmini-role">Product · LASTOP</div></div>
     </div>
@@ -783,7 +783,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 function letter(s){return String(s||'?').trim().slice(0,1).toUpperCase()||'?';}
 function avatarLetters(name){const parts=String(name||'').trim().split(/\s+/).filter(Boolean);if(parts.length>=2)return (letter(parts[0])+letter(parts[1])).slice(0,2);return letter(parts[0]||name);}
 function userColor(seed){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[String(seed||'A').charCodeAt(0)%C.length]||C[0];}
-function getViewedUid(){const q=new URLSearchParams(location.search);const uid=q.get('uid');if(uid)return uid;const id=q.get('id');return id?(id.startsWith('u')?id:'u'+id):'';}
+function getViewedUid(){return new URLSearchParams(location.search).get('uid')||'';}
 function getCurrentUser(){try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return {}}}
 
 function applyTopbarUser(){
@@ -803,15 +803,13 @@ function applyViewedUserProfile(u){
   document.getElementById('profileAvatarText').textContent=initials;
   document.getElementById('profileFullName').textContent=fullName;
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
-  const role=u.role||u.position||'Участник LASTOP';
-  const company=u.company_name||u.company||'';
-  document.getElementById('profileRole').textContent=company?`${role} · ${company}`:role;
+  document.getElementById('profileRole').textContent='Участник LASTOP';
   document.getElementById('profileBio').textContent='Профиль пользователя LASTOP.';
   document.getElementById('profileLocation').textContent='Не указано';
   document.getElementById('contactLocation').textContent='Не указано';
   document.getElementById('contactEmail').textContent=u.email||'Не указан';
   document.getElementById('contactPhone').textContent='Не указан';
-  document.getElementById('contactCompany').textContent=u.company_name||u.company||'Не указана';
+  document.getElementById('contactCompany').textContent='Не указана';
   const websiteNode=document.getElementById('profileWebsite');
   const domain=(u.email||'').includes('@')?(u.email.split('@')[1]):'';
   websiteNode.textContent=domain||'—';
@@ -842,5 +840,6 @@ function goToChat(){const uid=getViewedUid();location.href='/chat.html'+(uid?`?u
 applyTopbarUser();
 loadViewedUser();
 </script>
+<script src="/site-search.js" defer></script>
 </body>
 </html>
