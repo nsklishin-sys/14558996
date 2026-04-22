@@ -134,13 +134,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cb-btn{padding:5px 14px;border-radius:99px;background:var(--g);border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
 .cb-btn:hover{background:var(--gm)}
 
-.widgets-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0}
-.widget{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:11px 12px;box-shadow:var(--sh);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.widgets-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0;align-items:stretch}
+.widget{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);display:flex;flex-direction:column;min-width:0;overflow:hidden;min-height:350px}
 .wh{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-shrink:0}
 .wt{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--t)}
+.wt-link{text-decoration:none;cursor:pointer}
+.wt-link:hover{color:var(--g)}
 .wt svg{width:13px;height:13px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .wmore{font-size:10px;font-weight:600;color:var(--g);border:none;background:none;cursor:pointer;font-family:inherit;text-decoration:none;flex-shrink:0}
 .wmore:hover{text-decoration:underline}
+.widget-body{flex:1;min-height:0;overflow:auto;padding-right:2px}
 
 .task-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr)}
 .task-item:last-of-type{border-bottom:none;padding-bottom:0}
@@ -206,6 +209,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ev-tag{display:inline-block;padding:1px 5px;border-radius:99px;font-size:8px;font-weight:700;margin-left:2px}
 .ev-online{background:#E6F1FB;color:#185FA5}
 .ev-live{background:var(--gl);color:#3B6D11}
+
+@media (min-width:1700px){
+  html,body{font-size:16px}
+  .widget{min-height:410px;padding:16px}
+  .wt{font-size:13px}
+  .task-ttl,.ch-name,.fi-title,.ev-title{font-size:12.5px}
+  .task-due,.ch-msg,.fi-cnt,.ev-sub{font-size:11px}
+  .ch-av{width:32px;height:32px}
+  .cal-day{font-size:11px}
+  .ev-d{font-size:14px}
+}
 
 .feed-wrap{display:flex;flex-direction:column}
 .feed-toolbar{display:flex;align-items:center;gap:6px;flex-shrink:0}
@@ -438,35 +452,35 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <!-- Задачи -->
     <div class="widget">
       <div class="wh">
-        <div class="wt"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Мои задачи</div>
-        <span class="wmore" onclick="showToast('Раздел задач в разработке')">Все →</span>
+        <a class="wt wt-link" href="/projects.html"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Мои задачи</a>
+        <a class="wmore" href="/projects.html">Все →</a>
       </div>
-      <div id="tasksList"></div>
+      <div id="tasksList" class="widget-body"></div>
       <button class="add-task-btn" onclick="openAddTask()">+ Добавить задачу</button>
     </div>
     <!-- Чаты -->
     <div class="widget">
       <div class="wh">
-        <div class="wt"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>Активные чаты</div>
+        <a class="wt wt-link" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>Активные чаты</a>
         <a class="wmore" href="/chat.html">Все →</a>
       </div>
-      <div id="chatsList"></div>
+      <div id="chatsList" class="widget-body"></div>
     </div>
     <!-- Форум -->
     <div class="widget">
       <div class="wh">
-        <div class="wt"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Форум</div>
+        <a class="wt wt-link" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Форум</a>
         <a class="wmore" href="/forum.html">Все →</a>
       </div>
-      <div id="forumList"></div>
+      <div id="forumList" class="widget-body"></div>
     </div>
     <!-- Мероприятия + календарь -->
     <div class="widget">
       <div class="wh">
-        <div class="wt"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Мероприятия</div>
+        <a class="wt wt-link" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Мероприятия</a>
         <a class="wmore" href="/events.html">Все →</a>
       </div>
-      <div id="calendarWidget"></div>
+      <div id="calendarWidget" class="widget-body"></div>
     </div>
   </div>
 
@@ -676,19 +690,64 @@ async function loadPlatformStats(){
 }
 
 /* ── ЗАДАЧИ ── */
-let TASKS=[
+const TASKS_STORAGE_PREFIX='homeTasks:v1:';
+const DEFAULT_TASKS=[
   {id:1,title:'Ответить на тендер GlobalFreight',due:'Сегодня',overdue:true,pri:'hi',done:false},
   {id:2,title:'Презентация для форума',due:'23 апреля',overdue:false,pri:'md',done:false},
   {id:3,title:'Обновить резюме в профиле',due:'Выполнено',overdue:false,pri:'lo',done:true},
   {id:4,title:'Связаться с NorthBridge',due:'26 апреля',overdue:false,pri:'lo',done:false},
 ];
+let TASKS=[];
+function taskStorageKey(){
+  const uid=getPublicID(currentUser)||currentUser.id||currentUser.email||'guest';
+  return TASKS_STORAGE_PREFIX+uid;
+}
+function normalizeTask(t,idx=0){
+  return{
+    id:t.id||Date.now()+idx,
+    title:(t.title||'Новая задача').trim(),
+    due:t.done?'Выполнено':(t.due||''),
+    overdue:!!t.overdue,
+    pri:['hi','md','lo'].includes(t.pri)?t.pri:'lo',
+    done:!!t.done,
+  };
+}
+function readTasksLocal(){
+  try{
+    const raw=localStorage.getItem(taskStorageKey());
+    if(!raw)return [];
+    const parsed=JSON.parse(raw);
+    if(!Array.isArray(parsed))return [];
+    return parsed.map((t,i)=>normalizeTask(t,i)).slice(0,30);
+  }catch{return [];}
+}
+function writeTasksLocal(){
+  localStorage.setItem(taskStorageKey(),JSON.stringify(TASKS));
+}
 async function loadTasks(){
+  const localTasks=readTasksLocal();
+  if(localTasks.length){
+    TASKS=localTasks;
+    renderTasks();
+    return;
+  }
   try{
     const r=await fetch(API+'/tasks',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
-    if(d.tasks&&d.tasks.length)TASKS=d.tasks.map(t=>({id:t.id,title:t.title,due:t.due_date?new Date(t.due_date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):'',overdue:!!t.is_overdue,pri:t.priority||'lo',done:t.status==='done'}));
+    if(d.tasks&&d.tasks.length){
+      TASKS=d.tasks.map((t,i)=>normalizeTask({
+        id:t.id,
+        title:t.title,
+        due:t.due_date?new Date(t.due_date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):'',
+        overdue:!!t.is_overdue,
+        pri:t.priority||'lo',
+        done:t.status==='done'
+      },i));
+    }
   }catch{}
+  if(!TASKS.length)TASKS=DEFAULT_TASKS.map((t,i)=>normalizeTask(t,i));
+  writeTasksLocal();
   renderTasks();
 }
 function renderTasks(){
@@ -707,13 +766,15 @@ function renderTasks(){
 function toggleTask(id){
   const t=TASKS.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;if(t.done){t.due='Выполнено';t.overdue=false;}
+  writeTasksLocal();
   renderTasks();
   fetch(API+'/tasks/'+id,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({status:t.done?'done':'active'})}).catch(()=>{});
 }
 function openAddTask(){
   const title=prompt('Название задачи:');if(!title||!title.trim())return;
-  const task={id:Date.now(),title:title.trim(),due:'',overdue:false,pri:'lo',done:false};
+  const task=normalizeTask({id:Date.now(),title,due:'Без срока',overdue:false,pri:'lo',done:false});
   TASKS.unshift(task);renderTasks();
+  writeTasksLocal();
   fetch(API+'/tasks',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title:task.title})}).catch(()=>{});
 }
 
