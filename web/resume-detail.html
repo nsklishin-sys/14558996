@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Резюме</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative}
+.search-dot{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5}
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);flex-shrink:0;flex-wrap:wrap}
+.bc-item{font-size:12px;color:var(--gmt);text-decoration:none;cursor:pointer;transition:color .15s;white-space:nowrap}
+.bc-item:hover{color:var(--g)}
+.bc-item.cur{color:var(--t);font-weight:700;cursor:default}
+.bc-sep{color:var(--bdr);font-size:12px}
+.cv-profile{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);animation:fadeUp .3s ease both}
+.cv-accent-bar{height:5px;background:linear-gradient(90deg,var(--g),var(--gm))}
+.cv-profile-body{padding:24px 26px}
+.cv-top{display:flex;align-items:flex-start;gap:20px}
+.cv-photo-wrap{flex-shrink:0;position:relative}
+.cv-photo-ph{width:96px;height:96px;border-radius:var(--rl);display:grid;place-items:center;font-size:32px;font-weight:900;color:#fff;border:3px solid var(--w);box-shadow:0 4px 16px rgba(30,138,76,.18);flex-shrink:0}
+.cv-status-dot{position:absolute;bottom:4px;right:4px;width:14px;height:14px;border-radius:50%;border:2.5px solid var(--w)}
+.cv-status-dot.active{background:#22CC66}
+.cv-info{flex:1;min-width:0}
+.cv-status-badge{display:inline-flex;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:800;margin-bottom:8px}
+.sb-active{background:#E8FFF0;color:#16A34A;border:1px solid #86EFAC}
+.cv-name{font-size:22px;font-weight:900;color:var(--t);line-height:1.2;margin-bottom:3px;letter-spacing:-.02em}
+.cv-age{font-size:13px;color:var(--gmt);margin-bottom:6px}
+.cv-position{font-size:16px;font-weight:700;color:var(--g);margin-bottom:10px;padding-left:12px;border-left:3px solid var(--g)}
+.cv-salary{font-size:20px;font-weight:900;color:var(--t);margin-bottom:12px}
+.cv-salary span{font-size:13px;font-weight:600;color:var(--gmt)}
+.cv-pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+.cv-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:99px;font-size:12px;font-weight:600;color:var(--tm)}
+.cv-pill svg{width:12px;height:12px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.cv-cta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--bdr)}
+.btn-invite{padding:11px 24px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 10px rgba(30,138,76,.25);display:inline-flex;align-items:center;gap:7px}
+.btn-invite:hover{background:var(--gm)}
+.btn-invite svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.btn-invite.done{background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none}
+.btn-msg{padding:11px 20px;border-radius:var(--rm);background:var(--w);border:1.5px solid var(--g);color:var(--g);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.btn-msg:hover{background:var(--gl)}
+.btn-msg svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.btn-share-cv{padding:11px 14px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--gmt);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-share-cv:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-share-cv svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.cv-views{margin-left:auto;font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:4px;flex-shrink:0}
+.cv-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.cv-section{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:22px 26px;box-shadow:var(--sh);animation:fadeUp .3s ease both}
+.sec-title{font-size:13px;font-weight:800;color:var(--t);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec-title svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.sec-divider{height:1px;background:var(--bdr);margin:18px 0}
+.contacts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.contact-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);transition:border-color .15s;cursor:pointer}
+.contact-item:hover{border-color:var(--gb)}
+.contact-icon{width:34px;height:34px;border-radius:9px;background:var(--gl);border:1px solid var(--gb);display:grid;place-items:center;flex-shrink:0}
+.contact-icon svg{width:15px;height:15px;stroke:var(--g);fill:none;stroke-width:1.7;stroke-linecap:round}
+.contact-label{font-size:10px;color:var(--gmt);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.contact-value{font-size:13px;font-weight:700;color:var(--t)}
+.personal-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bdr)}
+.personal-row:last-child{border-bottom:none}
+.personal-label{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.personal-label svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.personal-value{font-size:13px;font-weight:700;color:var(--t)}
+.exp-timeline{display:flex;flex-direction:column;gap:0}
+.exp-item{display:flex;gap:16px;padding:14px 0;position:relative}
+.exp-item:not(:last-child)::after{content:'';position:absolute;left:15px;top:44px;bottom:-14px;width:1.5px;background:var(--bdr)}
+.exp-dot{width:30px;height:30px;border-radius:50%;background:var(--g);display:grid;place-items:center;flex-shrink:0;position:relative;z-index:1;border:3px solid var(--w);box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.exp-dot svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+.exp-dot.past{background:var(--gmt)}
+.exp-body{flex:1;min-width:0}
+.exp-company-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.exp-co-av{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.exp-company{font-size:13px;font-weight:800;color:var(--t)}
+.exp-position{font-size:14px;font-weight:700;color:var(--g);margin-bottom:3px}
+.exp-period{font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:5px;margin-bottom:6px}
+.exp-duration{padding:2px 8px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--gmt)}
+.exp-desc{font-size:12px;color:var(--gmt);line-height:1.6}
+.edu-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--bdr)}
+.edu-item:last-child{border-bottom:none;padding-bottom:0}
+.edu-icon{width:44px;height:44px;border-radius:12px;background:var(--gl);border:1px solid var(--gb);display:grid;place-items:center;flex-shrink:0}
+.edu-icon svg{width:20px;height:20px;stroke:var(--g);fill:none;stroke-width:1.6;stroke-linecap:round}
+.edu-body{flex:1;min-width:0}
+.edu-name{font-size:13px;font-weight:800;color:var(--t);margin-bottom:2px}
+.edu-faculty{font-size:12px;color:var(--tm);margin-bottom:2px}
+.edu-year{font-size:11px;color:var(--gmt)}
+.edu-degree{display:inline-flex;padding:2px 9px;border-radius:99px;background:var(--gl);color:var(--g);border:1px solid var(--gb);font-size:10px;font-weight:700;margin-left:6px}
+.skill-group-title{font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.skills-tags{display:flex;flex-wrap:wrap;gap:7px}
+.skill-tag{padding:6px 14px;border-radius:99px;background:var(--gp);border:1.5px solid var(--bdr);font-size:12px;font-weight:700;color:var(--tm);transition:all .15s;cursor:default}
+.skill-tag:hover{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.skill-tag.core{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.skill-bar-item{display:flex;align-items:center;gap:10px;padding:5px 0}
+.skill-bar-name{font-size:12px;font-weight:600;color:var(--tm);width:160px;flex-shrink:0}
+.skill-bar-track{flex:1;height:5px;background:var(--gp);border-radius:99px;overflow:hidden;border:1px solid var(--bdr)}
+.skill-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--g),var(--gm));transition:width .6s ease}
+.skill-bar-label{font-size:10px;font-weight:700;color:var(--gmt);width:60px;text-align:right;flex-shrink:0}
+.cv-about{font-size:14px;color:var(--tm);line-height:1.75}
+.cv-about p{margin-bottom:12px}
+.cv-about p:last-child{margin-bottom:0}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.stat-val{font-size:13px;font-weight:800;color:var(--t)}
+.sim-item{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:var(--rm);cursor:pointer;transition:background .12s;border-bottom:1px solid var(--bdr)}
+.sim-item:last-child{border-bottom:none}
+.sim-item:hover{background:var(--gp)}
+.sim-av{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.sim-body{flex:1;min-width:0}
+.sim-name{font-size:12px;font-weight:700;color:var(--t)}
+.sim-pos{font-size:11px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sim-sal{font-size:11px;font-weight:800;color:var(--g);margin-top:2px}
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.42);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal::-webkit-scrollbar{display:none}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--w);z-index:1}
+.modal-title{font-size:15px;font-weight:800;color:var(--t)}
+.modal-close{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.modal-close:hover{border-color:var(--gb);color:var(--g)}
+.modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
+.mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
+.mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.mf-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-submit{padding:9px 22px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-submit:hover{background:var(--gm)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+@media(max-width:1400px){.shell{grid-template-columns:220px 1fr 280px}}
+@media(max-width:1200px){.shell{grid-template-columns:200px 1fr 260px}.contacts-grid{grid-template-columns:repeat(2,1fr)}.skills-bar-section .skill-bar-name{width:120px}}
+@media(max-width:1000px){.shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}.cv-section{padding:16px 18px}}
+@media(max-width:840px){.shell{grid-template-columns:180px 1fr}.cv-profile-body{padding:18px}.cv-name{font-size:18px}.contacts-grid{grid-template-columns:1fr}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}.cv-top{flex-wrap:wrap}.cv-photo-ph{width:80px;height:80px}.cv-name{font-size:16px}}
+@media(max-width:520px){.shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"topbar""nav""main";padding:8px;gap:8px}.logo-cell{display:none}.nav{grid-area:nav;flex-direction:row;border-radius:var(--rl);padding:6px 8px;height:auto;overflow-x:auto;overflow-y:hidden;gap:2px}.nav-group,.nav-bottom{display:none}.nav-item{flex-direction:column;gap:2px;padding:6px 8px;min-width:46px;text-align:center}.nav-item span{display:block;font-size:9px}.nav-item svg{width:16px;height:16px}.cv-cta{flex-wrap:wrap}.btn-invite,.btn-msg{flex:1;justify-content:center}.skill-bar-name{width:100px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<a class="logo-cell" href="/"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+<header class="topbar">
+  <div class="search-wrap"><span class="search-dot"></span><input type="search" placeholder="Поиск резюме…"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25"><span class="tp-name" id="topbarName">Никита Клишин</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD"><div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div><a href="/profile.html" class="pdd-view">Открыть профиль</a><div class="pdd-body"><a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a><a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a><div class="pdd-div"></div><a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a></div></div>
+  </div>
+</header>
+<nav class="nav"><div class="nav-group">Навигация</div><a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a><a class="nav-item" href="/news.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a><a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a><a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a><a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg><span>Выставки</span></a><a class="nav-item active" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме и вакансии</span></a><a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg><span>Товары и услуги</span></a><div class="nav-group">Общение</div><a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a><a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a><a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Сообщества</span></a><div class="nav-group">Профиль</div><a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a><a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a></nav>
+<div class="main">
+<nav class="breadcrumb"><a class="bc-item" href="/">Главная</a><span class="bc-sep">›</span><a class="bc-item" href="/jobs.html">Резюме</a><span class="bc-sep">›</span><a class="bc-item" href="/jobs.html?cat=logistics">Логистика</a><span class="bc-sep">›</span><span class="bc-item cur">Алексей Иванов — Логист международных перевозок</span></nav>
+<div class="cv-profile"><div class="cv-accent-bar"></div><div class="cv-profile-body"><div class="cv-top"><div class="cv-photo-wrap"><div class="cv-photo-ph" style="background:#1E8A4C">АИ</div><span class="cv-status-dot active"></span></div><div class="cv-info"><span class="cv-status-badge sb-active">● Активно ищет работу</span><div class="cv-name">Алексей Иванов</div><div class="cv-age">34 года · Мужской · Не женат · Детей нет</div><div class="cv-position">Логист международных перевозок</div><div class="cv-salary">от 180 000 <span>₽ / месяц</span></div><div class="cv-pills"><div class="cv-pill">Москва</div><div class="cv-pill">7 лет опыта</div><div class="cv-pill">Полная занятость</div><div class="cv-pill">Высшее образование</div><div class="cv-pill">Гражданство РФ</div></div></div></div><div class="cv-cta"><button class="btn-invite" id="btnInvite" onclick="openInviteModal()">Пригласить на вакансию</button><button class="btn-msg" onclick="goToChat()">Написать соискателю</button><button class="btn-share-cv" onclick="toast('Ссылка скопирована ✓',true)">Поделиться</button><span class="cv-views">248</span></div></div></div>
+<div class="cv-section"><div class="sec-title">Контакты</div><div class="contacts-grid"><div class="contact-item" onclick="toast('Номер скопирован ✓',true)"><div><div class="contact-label">Телефон</div><div class="contact-value">+7 (916) 123-45-67</div></div></div><div class="contact-item" onclick="toast('Email скопирован ✓',true)"><div><div class="contact-label">Email</div><div class="contact-value">a.ivanov@mail.ru</div></div></div></div></div>
+<div class="cv-section"><div class="sec-title">О себе</div><div class="cv-about"><p>Логист с 7-летним опытом в международных грузоперевозках. Специализируюсь на мультимодальных маршрутах по направлениям СНГ–ЕС и Китай–Россия.</p><p>Умею выстраивать долгосрочные партнёрские отношения с перевозчиками и оперативно решать нештатные ситуации в пути.</p></div></div>
+<div class="cv-section"><div class="sec-title">Опыт работы · 7 лет</div><div class="exp-timeline"><div class="exp-item"><div class="exp-dot"></div><div class="exp-body"><div class="exp-company-row"><div class="exp-co-av" style="background:#1E8A4C">N</div><span class="exp-company">NorthBridge Logistics</span></div><div class="exp-position">Старший логист международных перевозок</div><div class="exp-period">2020 — 2024 <span class="exp-duration">4 года</span></div><div class="exp-desc">Организация мультимодальных перевозок по маршрутам СНГ–ЕС.</div></div></div></div></div>
+</div>
+<aside class="right"><div class="card"><div class="block-title">Резюме</div><div class="stat-row"><span class="stat-lbl">Зарплата</span><span class="stat-val" style="color:var(--g);font-size:11px">от 180 тыс. ₽</span></div><div class="stat-row"><span class="stat-lbl">Город</span><span class="stat-val">Москва</span></div></div></aside>
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><span class="modal-title">Пригласить на вакансию</span><button class="modal-close" onclick="closeModal()">×</button></div><div class="modal-body"><div><label class="mf-label">Вакансия для приглашения *</label><select class="mf-input" id="mVacancy"><option>Логист международных перевозок — NorthBridge</option></select></div><div><label class="mf-label">Сообщение кандидату</label><textarea class="mf-textarea" id="mMsg"></textarea></div></div><div class="modal-foot"><button class="btn-cancel" onclick="closeModal()">Отмена</button><button class="btn-submit" onclick="submitInvite()">Отправить приглашение</button></div></div></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API='/api',tk=()=>localStorage.getItem('token');
+function ltr(s){return((s||'?')[0]).toUpperCase()}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
+function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
+function logout(){localStorage.removeItem('token');location.href='/login.html'}
+function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
+document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
+function goToChat(){toast('Переходим в чат с Алексеем Ивановым…',true);setTimeout(()=>{location.href='/chat.html?user=alexey-ivanov'},800)}
+function openInviteModal(){document.getElementById('modalBg').classList.add('open')}
+function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+function submitInvite(){closeModal();const btn=document.getElementById('btnInvite');btn.classList.add('done');btn.textContent='Приглашение отправлено';toast('Приглашение отправлено Алексею Иванову ✓',true)}
+(async()=>{if(!tk()){location.href='/login.html';return}try{const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw 0;const{user={}}=await r.json();const name=user.full_name||user.name||'Пользователь';const color=avc(name);const L=ltr(name);['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});const role=user.role||user.position||'Участник LASTOP';['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role})}catch{}})();
+</script>
+</body>
+</html>
