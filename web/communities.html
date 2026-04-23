@@ -651,7 +651,7 @@ function toggleHeroJoin(){
   toast(heroJoined?'Вы вступили в сообщество ✓':'Вы покинули сообщество',heroJoined);
 }
 function joinRec(btn){btn.textContent='✓ Вступил';btn.style.background='var(--g)';btn.style.color='#fff';btn.disabled=true;toast('Вы вступили в сообщество ✓',true)}
-function openCommunity(c){if(c)toast('Открываем сообщество: '+c.name)}
+function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.id)}
 
 /* ── МОДАЛКА СОЗДАНИЯ ── */
 function openModal(){document.getElementById('modalBg').classList.add('open')}
