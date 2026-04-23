@@ -1126,7 +1126,7 @@ func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
 
 func listCommunities(db *sql.DB) ([]community, error) {
 	rows, err := db.Query(`
-		SELECT c.id, c.name, c.category, c.description, c.tags, c.privacy_level, u.public_id, c.created_at
+		SELECT c.id, c.name, c.category, c.description, COALESCE(array_to_json(c.tags), '[]'::json), c.privacy_level, u.public_id, c.created_at
 		FROM communities c
 		JOIN users u ON u.id = c.creator_id
 		ORDER BY c.created_at DESC
@@ -1139,17 +1139,21 @@ func listCommunities(db *sql.DB) ([]community, error) {
 	var result []community
 	for rows.Next() {
 		var item community
+		var rawTags []byte
 		if scanErr := rows.Scan(
 			&item.ID,
 			&item.Name,
 			&item.Category,
 			&item.Description,
-			&item.Tags,
+			&rawTags,
 			&item.Privacy,
 			&item.CreatorID,
 			&item.CreatedAt,
 		); scanErr != nil {
 			return nil, scanErr
+		}
+		if err := json.Unmarshal(rawTags, &item.Tags); err != nil {
+			return nil, fmt.Errorf("decode community tags: %w", err)
 		}
 		result = append(result, item)
 	}
@@ -1201,16 +1205,35 @@ func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (c
 	}
 
 	var created community
+	var rawTags []byte
 	err := db.QueryRow(`
 		INSERT INTO communities(name, category, description, tags, privacy_level, creator_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, name, category, description, tags, privacy_level, created_at
-	`, name, category, description, tags, privacy, creatorID).
-		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &created.Tags, &created.Privacy, &created.CreatedAt)
+		VALUES ($1, $2, $3, $4::text[], $5, $6)
+		RETURNING id, name, category, description, COALESCE(array_to_json(tags), '[]'::json), privacy_level, created_at
+	`, name, category, description, toPGTextArray(tags), privacy, creatorID).
+		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &rawTags, &created.Privacy, &created.CreatedAt)
 	if err != nil {
 		return community{}, err
 	}
+	if err := json.Unmarshal(rawTags, &created.Tags); err != nil {
+		return community{}, fmt.Errorf("decode created community tags: %w", err)
+	}
 	return created, nil
+}
+
+func toPGTextArray(values []string) string {
+	if len(values) == 0 {
+		return "{}"
+	}
+
+	escaped := make([]string, 0, len(values))
+	for _, value := range values {
+		v := strings.ReplaceAll(value, `\`, `\\`)
+		v = strings.ReplaceAll(v, `"`, `\"`)
+		escaped = append(escaped, `"`+v+`"`)
+	}
+
+	return "{" + strings.Join(escaped, ",") + "}"
 }
 
 func normalizePrivacyLevel(value string) string {
