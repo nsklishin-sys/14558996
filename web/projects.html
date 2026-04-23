@@ -742,7 +742,7 @@ function setView(view,btn){
   btn.classList.add('active');
   applyFilters();
 }
-function openProject(id){showToast('Открываем проект #'+id+'…');}
+function openProject(id){location.href='/project-detail.html?id='+encodeURIComponent(id);}
 function joinProject(btn){
   btn.textContent='Участвую ✓';btn.style.color='var(--gmt)';btn.disabled=true;
   showToast('Вы присоединились к проекту ✓','success');
