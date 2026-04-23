@@ -9,6 +9,18 @@ export DATABASE_URL='postgresql://user:password@host:5432/dbname?sslmode=require
 go run ./cmd/server
 ```
 
+Также можно подключиться без `DATABASE_URL`, через переменные:
+
+```bash
+export PGHOST=localhost
+export PGPORT=5432
+export PGUSER=postgres
+export PGPASSWORD=postgres
+export PGDATABASE=greeting_site
+export PGSSLMODE=disable
+go run ./cmd/server
+```
+
 После старта откройте: http://localhost:8080
 
 ## Что внутри
