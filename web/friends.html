@@ -320,7 +320,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div style="display:flex;gap:8px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 18px;box-shadow:var(--sh);flex-shrink:0">
       <div style="position:relative;flex:1">
         <svg viewBox="0 0 24 24" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="add-input" id="searchInput" style="padding-left:38px" placeholder="Поиск по имени или должности…" oninput="filterCandidates(this.value)">
+        <input class="add-input" id="searchInput" style="padding-left:38px" placeholder="Поиск по имени или email…" oninput="filterCandidates(this.value)">
       </div>
     </div>
     <div class="friends-grid" id="listSearch"></div>
@@ -382,7 +382,7 @@ function buildCard(user, type){
   const id=user.friend_id||user.user_id||user.id||'';
   const color=avc(name);
   const letter=ltr(name);
-  const pos=user.position||user.role||'';
+  const pos=user.position||user.role||user.email||'';
   const company=user.company_name||'';
   const online=user.is_online||false;
   const mutual=user.mutual_friends||0;
@@ -493,7 +493,8 @@ function filterCandidates(q){
   renderCandidates(candidates.filter(c=>{
     const name=(c.full_name||c.friend_name||'').toLowerCase();
     const pos=(c.position||'').toLowerCase();
-    return name.includes(lq)||pos.includes(lq);
+    const email=(c.email||'').toLowerCase();
+    return name.includes(lq)||pos.includes(lq)||email.includes(lq);
   }));
 }
 
