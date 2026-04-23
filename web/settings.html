@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LASTOP GROUP — Настройки</title>
@@ -353,6 +354,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
   .nav{padding:14px 12px 12px}
 }
 </style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
 <div class="shell">
@@ -746,7 +748,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
         <div class="panel-section">
           <div class="ps-label">Тема</div>
           <div class="theme-grid" id="themeGrid">
-            <div class="theme-card selected" onclick="selectTheme(this,'light')">
+            <div class="theme-card selected" data-theme-card="light" onclick="selectTheme(this,'light')">
               <div class="theme-preview" style="background:#F2F5F3">
                 <div style="width:28px;height:36px;background:#fff;border-radius:4px;border:1px solid #DDE8E2"></div>
                 <div style="width:36px;display:flex;flex-direction:column;gap:3px">
@@ -757,7 +759,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
               </div>
               <div class="tc-title">Светлая</div>
             </div>
-            <div class="theme-card" onclick="selectTheme(this,'dark')">
+            <div class="theme-card" data-theme-card="dark" onclick="selectTheme(this,'dark')">
               <div class="theme-preview" style="background:#1A2A22">
                 <div style="width:28px;height:36px;background:#243830;border-radius:4px;border:1px solid #2D4035"></div>
                 <div style="width:36px;display:flex;flex-direction:column;gap:3px">
@@ -766,7 +768,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
                   <div style="height:6px;background:#2D4035;border-radius:2px;width:70%"></div>
                 </div>
               </div>
-              <div class="tc-title">Тёмная <span style="font-size:9px;color:var(--gmt)">(скоро)</span></div>
+              <div class="tc-title">Тёмная</div>
             </div>
           </div>
         </div>
@@ -915,6 +917,8 @@ function populateUI(){
   pendingAvatarURL=currentUser.avatar_url||'';
   /* Настройки внешнего вида */
   document.getElementById('wideMode').checked=(localStorage.getItem('lastop-layout-mode')==='wide');
+  const initialTheme=(window.LastopTheme && typeof window.LastopTheme.current==='function')?window.LastopTheme.current():(localStorage.getItem('lastop-theme')||'light');
+  markThemeCard(initialTheme);
 }
 
 /* ── ПЕРЕКЛЮЧЕНИЕ ПАНЕЛЕЙ ── */
@@ -952,10 +956,22 @@ function setMsgPerm(row, val){
 }
 
 /* ── ТЕМА ── */
+function markThemeCard(theme){
+  document.querySelectorAll('.theme-card').forEach((c)=>{
+    c.classList.toggle('selected', c.dataset.themeCard===theme);
+  });
+}
+
 function selectTheme(card, theme){
   document.querySelectorAll('.theme-card').forEach(c=>c.classList.remove('selected'));
   card.classList.add('selected');
-  if(theme==='dark')showToast('Тёмная тема скоро будет доступна');
+  if(window.LastopTheme && typeof window.LastopTheme.set==='function'){
+    window.LastopTheme.set(theme);
+    showToast(theme==='dark'?'Тёмная тема включена':'Светлая тема включена');
+    return;
+  }
+  localStorage.setItem('lastop-theme', theme);
+  showToast('Тема сохранена');
 }
 
 /* ── АВАТАР ── */

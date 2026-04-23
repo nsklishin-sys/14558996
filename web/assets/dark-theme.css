@@ -1,0 +1,325 @@
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  LASTOP GROUP — Dark Theme
+ *  Файл: web/assets/dark-theme.css
+ *
+ *  Покрывает два слоя фронтенда:
+ *  1. CSS-переменные страницы (events, news, jobs, projects…)
+ *  2. Tailwind-страницы (dashboard, index, settings…)
+ *
+ *  Подключение: добавьте в <head> каждой страницы ДО </head>
+ *  <link rel="stylesheet" href="/assets/dark-theme.css">
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/* ─────────────────────────────────────────────────────────────
+   СЛОЙ 1 — Страницы на CSS-переменных
+   (events, news, jobs, projects, communities, exhibitions…)
+   Переопределяем :root-переменные когда <html data-theme="dark">
+   ───────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  /* Фоны */
+  --bg:  #0F1712;
+  --w:   #161E1A;
+  --gp:  #111A14;
+  --gl:  #0D2016;
+
+  /* Текст */
+  --t:   #E8F0EB;
+  --tm:  #A8BDB0;
+  --gmt: #6A9A7A;
+
+  /* Зелёный акцент */
+  --g:   #26A85A;
+  --gm:  #2EBF66;
+  --gb:  #1E5C30;
+
+  /* Границы */
+  --bdr: #1F2E24;
+
+  /* Тени */
+  --sh:  0 2px 12px rgba(0,0,0,.35);
+  --shm: 0 6px 24px rgba(0,0,0,.5);
+
+  /* Красный — чуть мягче на тёмном */
+  --red: #F06060;
+}
+
+/* Скроллбар для CSS-var страниц */
+[data-theme="dark"] .main::-webkit-scrollbar-thumb,
+[data-theme="dark"] .nav::-webkit-scrollbar-thumb,
+[data-theme="dark"] .right::-webkit-scrollbar-thumb {
+  background: #1E5C30;
+}
+
+/* Инпуты и textarea */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  color-scheme: dark;
+}
+
+/* Модалки — оверлей */
+[data-theme="dark"] .modal-bg {
+  background: rgba(0,0,0,.65);
+}
+
+/* Lightbox */
+[data-theme="dark"] .lightbox {
+  background: rgba(0,0,0,.92);
+}
+
+/* Skeleton/pulse */
+[data-theme="dark"] .skel-card,
+[data-theme="dark"] .skel-thumb,
+[data-theme="dark"] .skel-line {
+  background: #1A2420;
+}
+
+/* Toast */
+[data-theme="dark"] .toast {
+  background: #0D1A10;
+  border: 1px solid var(--bdr);
+}
+[data-theme="dark"] .toast.ok {
+  background: #0D2E18;
+  border-color: var(--gb);
+}
+
+/* Репост-дропдаун */
+[data-theme="dark"] .repost-dd,
+[data-theme="dark"] .profile-dd,
+[data-theme="dark"] .cal-popup {
+  background: var(--w);
+  border-color: var(--bdr);
+  box-shadow: 0 12px 36px rgba(0,0,0,.5);
+}
+
+/* Обложки-плейсхолдеры — затемняем немного */
+[data-theme="dark"] .proj-cover-ph,
+[data-theme="dark"] .nf-cover-ph,
+[data-theme="dark"] .ex-cover-ph {
+  filter: brightness(.85);
+}
+
+/* Медиа-заглушки */
+[data-theme="dark"] .media-add {
+  background: #111A14;
+  border-color: #1F2E24;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   СЛОЙ 2 — Tailwind-страницы
+   (dashboard, index, settings, profile, forum, catalog…)
+   Класс body.dark-theme уже используется в проекте,
+   расширяем его для полного покрытия.
+   ───────────────────────────────────────────────────────────── */
+
+body.dark-theme {
+  background: #0F1712 !important;
+  color: #E8F0EB !important;
+}
+
+/* Белые и серые фоны → тёмные */
+body.dark-theme .bg-white,
+body.dark-theme .bg-white\/90,
+body.dark-theme .bg-gray-50,
+body.dark-theme .bg-gray-100,
+body.dark-theme .bg-\[\#eef2f3\],
+body.dark-theme .bg-\[\#f7f8f9\],
+body.dark-theme .bg-\[\#fbfcfc\],
+body.dark-theme .bg-\[\#fafbfb\],
+body.dark-theme .bg-\[linear-gradient\(180deg\,\#fbfcfc_0\%\,\#f7f9f9_100\%\)\],
+body.dark-theme .dashboard-shell,
+body.dark-theme .global-sidebar,
+body.dark-theme .global-right-sidebar,
+body.dark-theme .dashboard-main,
+body.dark-theme .dashboard-main-header,
+body.dark-theme article,
+body.dark-theme section,
+body.dark-theme aside,
+body.dark-theme header {
+  background: #161E1A !important;
+  color: #E8F0EB !important;
+}
+
+/* Чуть темнее — для вложенных блоков */
+body.dark-theme .bg-\[\#f0f4f2\],
+body.dark-theme .bg-\[\#edf2ef\],
+body.dark-theme .bg-\[\#ecf2ee\],
+body.dark-theme .bg-\[\#f5f8f6\],
+body.dark-theme #feedScrollContainer > * {
+  background: #111A14 !important;
+}
+
+/* Инпуты, textarea, select */
+body.dark-theme input,
+body.dark-theme textarea,
+body.dark-theme select {
+  background: #111A14 !important;
+  color: #E8F0EB !important;
+  border-color: #1F2E24 !important;
+  color-scheme: dark;
+}
+
+body.dark-theme input::placeholder,
+body.dark-theme textarea::placeholder {
+  color: #5A7A6A !important;
+}
+
+/* Границы */
+body.dark-theme .border,
+body.dark-theme [class*="border-\[#"],
+body.dark-theme [class*="border-gray"],
+body.dark-theme .divide-y > * {
+  border-color: #1F2E24 !important;
+}
+
+/* Текст — тёмные оттенки → светлые */
+body.dark-theme .text-black,
+body.dark-theme .text-\[\#000\],
+body.dark-theme .text-\[\#111111\],
+body.dark-theme .text-\[\#111827\],
+body.dark-theme .text-\[\#1f2937\],
+body.dark-theme .text-\[\#273244\],
+body.dark-theme .text-\[\#1A2A22\],
+body.dark-theme .text-\[\#3a5245\],
+body.dark-theme .text-\[\#324154\],
+body.dark-theme .text-\[\#334153\],
+body.dark-theme .text-\[\#3a4758\],
+body.dark-theme .text-\[\#445164\],
+body.dark-theme .text-\[\#4c5b6b\],
+body.dark-theme .text-\[\#51606f\],
+body.dark-theme .text-\[\#213246\] {
+  color: #E8F0EB !important;
+}
+
+/* Приглушённый текст */
+body.dark-theme .text-\[\#5d6978\],
+body.dark-theme .text-\[\#5f6b79\],
+body.dark-theme .text-\[\#7e8a97\],
+body.dark-theme .text-\[\#95a1ad\],
+body.dark-theme .text-\[\#a0acb8\],
+body.dark-theme .text-\[\#5A8A6A\],
+body.dark-theme .text-gray-500,
+body.dark-theme .text-gray-600,
+body.dark-theme .text-slate-500,
+body.dark-theme .text-slate-600 {
+  color: #7AAA8A !important;
+}
+
+/* Зелёные акценты — НЕ трогаем */
+body.dark-theme .text-green-500,
+body.dark-theme .text-green-600,
+body.dark-theme .text-green-700,
+body.dark-theme .text-\[\#16a34a\],
+body.dark-theme .text-\[\#15803d\],
+body.dark-theme .text-\[\#22c55e\],
+body.dark-theme .text-\[\#1E8A4C\],
+body.dark-theme .text-\[\#22A05A\] {
+  color: #2EBF66 !important;
+}
+
+/* Красные акценты */
+body.dark-theme .text-red-500,
+body.dark-theme .text-red-600,
+body.dark-theme .text-\[\#E04040\],
+body.dark-theme .text-\[\#b91c1c\] {
+  color: #F06060 !important;
+}
+
+/* Теги / бейджи светлого фона */
+body.dark-theme .bg-\[\#E8F5EE\],
+body.dark-theme .bg-\[\#F0FAF4\],
+body.dark-theme .bg-green-50,
+body.dark-theme .bg-green-100 {
+  background: #0D2016 !important;
+  color: #2EBF66 !important;
+}
+
+body.dark-theme .bg-\[\#FEE2E2\],
+body.dark-theme .bg-red-50,
+body.dark-theme .bg-red-100 {
+  background: #2A0D0D !important;
+  color: #F06060 !important;
+}
+
+body.dark-theme .bg-\[\#EDE8FA\],
+body.dark-theme .bg-purple-50,
+body.dark-theme .bg-purple-100 {
+  background: #1A1030 !important;
+  color: #A070E0 !important;
+}
+
+body.dark-theme .bg-\[\#E6F1FB\],
+body.dark-theme .bg-blue-50,
+body.dark-theme .bg-blue-100 {
+  background: #0D1A2A !important;
+  color: #5090D0 !important;
+}
+
+body.dark-theme .bg-\[\#FEF3C7\],
+body.dark-theme .bg-yellow-50,
+body.dark-theme .bg-amber-100 {
+  background: #2A1E0D !important;
+  color: #D09040 !important;
+}
+
+/* Ховер-состояния */
+body.dark-theme .hover\:bg-\[\#f0f4f2\]:hover,
+body.dark-theme .hover\:bg-gray-50:hover,
+body.dark-theme .hover\:bg-gray-100:hover {
+  background: #0D2016 !important;
+}
+
+/* Тени */
+body.dark-theme [class*="shadow"] {
+  --tw-shadow-color: rgba(0,0,0,.5);
+}
+
+/* Скроллбар */
+body.dark-theme ::-webkit-scrollbar-track {
+  background: #111A14;
+}
+body.dark-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #26A85A 0%, #1E8A4C 100%);
+  border-color: #111A14;
+}
+
+/* Выделение текста */
+body.dark-theme ::selection {
+  background: rgba(38,168,90,.35);
+  color: #E8F0EB;
+}
+
+/* Sidebar active item */
+body.dark-theme .global-sidebar__item--active,
+body.dark-theme .nav-item.active {
+  background: #0D2016 !important;
+  color: #2EBF66 !important;
+}
+
+/* Hover на sidebar */
+body.dark-theme .global-sidebar__item:hover,
+body.dark-theme .nav-item:hover {
+  background: #111A14 !important;
+  color: #2EBF66 !important;
+}
+
+/* Tailwind toggle-трек */
+body.dark-theme #themeToggle .theme-toggle-track {
+  background: #26A85A;
+}
+body.dark-theme #themeToggle .theme-toggle-thumb {
+  transform: translateX(18px);
+  background: #0F1712;
+}
+
+/* Sidebar кнопки-переключатели */
+body.dark-theme .sidebar-toggle {
+  background: #161E1A !important;
+  color: #E8F0EB !important;
+  border-color: #1F2E24 !important;
+}
