@@ -756,10 +756,11 @@ async function submitCommunity(){
       const data=await r.json();
       const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
       if(fromAPI.length){
-        const existingIDs=new Set(COMMUNITIES.map(c=>String(c.id)));
-        fromAPI.forEach(c=>{
-          if(!existingIDs.has(String(c.id)))COMMUNITIES.unshift(c);
-        });
+        const apiIDs=new Set(fromAPI.map(c=>String(c.id)));
+        for(let i=COMMUNITIES.length-1;i>=0;i--){
+          if(apiIDs.has(String(COMMUNITIES[i].id)))COMMUNITIES.splice(i,1);
+        }
+        fromAPI.reverse().forEach(c=>COMMUNITIES.unshift(c));
       }
     }
   }catch{}
