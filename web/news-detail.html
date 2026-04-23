@@ -17,11 +17,16 @@
 }
 html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
 
+/* ═══ SHELL ═══ */
 .shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+
+/* LOGO */
 .logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
 .logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
 .logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
 .logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+
+/* TOPBAR */
 .topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative}
 .search-dot{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
@@ -53,6 +58,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
 .pdd-item.logout{color:var(--red)}
 .pdd-item.logout:hover{background:#FFF5F5}
+
+/* NAV */
 .nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
 .nav::-webkit-scrollbar{display:none}
 .nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
@@ -62,16 +69,26 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
 .nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN */
 .main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ═══ ДЕТАЛЬНАЯ КАРТОЧКА НОВОСТИ ═══ */
+
+/* Хлебные крошки */
 .breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);flex-shrink:0}
 .bc-item{font-size:12px;color:var(--gmt);text-decoration:none;cursor:pointer;transition:color .15s;white-space:nowrap}
 .bc-item:hover{color:var(--g)}
 .bc-item.active{color:var(--t);font-weight:700;cursor:default}
 .bc-sep{color:var(--bdr);font-size:12px;flex-shrink:0}
+
+/* Основная карточка */
 .news-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);animation:fadeUp .3s ease both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Изображение */
 .news-img-wrap{position:relative;overflow:hidden;background:linear-gradient(135deg,#1E8A4C,#22A05A)}
 .news-img-wrap img{width:100%;max-height:400px;object-fit:cover;display:block;transition:transform .4s ease}
 .news-img-wrap:hover img{transform:scale(1.02)}
@@ -80,80 +97,784 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .news-img-placeholder::after{content:'';position:absolute;bottom:-60px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
 .news-img-icon{position:relative;z-index:1}
 .news-img-icon svg{width:64px;height:64px;stroke:rgba(255,255,255,.4);fill:none;stroke-width:1;stroke-linecap:round}
-.news-cat-badge{position:absolute;top:16px;left:16px;padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);font-size:11px;font-weight:800;color:var(--g);display:flex;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+
+/* Категорийный бейдж поверх изображения */
+.news-cat-badge{
+  position:absolute;top:16px;left:16px;
+  padding:5px 12px;border-radius:99px;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(6px);
+  font-size:11px;font-weight:800;color:var(--g);
+  display:flex;align-items:center;gap:5px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12)
+}
 .news-cat-badge svg{width:11px;height:11px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round}
+
+/* Тело */
 .news-body{padding:24px 28px}
+
+/* Мета строка */
 .news-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .news-author{display:flex;align-items:center;gap:8px;cursor:pointer}
 .news-author-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
 .news-author-name{font-size:13px;font-weight:700;color:var(--t);transition:color .15s}
+.news-author:hover .news-author-name{color:var(--g)}
 .news-author-role{font-size:10px;color:var(--gmt)}
 .news-meta-sep{width:4px;height:4px;border-radius:50%;background:var(--bdr);flex-shrink:0}
 .news-date{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:4px}
-.news-date svg,.news-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.news-date svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 .news-views{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:4px;margin-left:auto}
+.news-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+/* Заголовок */
 .news-title{font-size:22px;font-weight:900;color:var(--t);line-height:1.3;letter-spacing:-.02em;margin-bottom:10px}
+
+/* Лид */
 .news-lead{font-size:15px;font-weight:600;color:var(--tm);line-height:1.6;margin-bottom:18px;padding-left:14px;border-left:3px solid var(--g)}
+
+/* Текст */
 .news-text{font-size:14px;color:var(--tm);line-height:1.75;margin-bottom:20px}
-.news-text p{margin-bottom:14px}.news-text p:last-child{margin-bottom:0}
+.news-text p{margin-bottom:14px}
+.news-text p:last-child{margin-bottom:0}
+.news-text strong{color:var(--t);font-weight:700}
+.news-text a{color:var(--g);text-decoration:underline;text-underline-offset:3px}
+.news-text a:hover{color:var(--gm)}
+
+/* Врезка / цитата */
 .news-quote{background:var(--gp);border:1px solid var(--bdr);border-left:4px solid var(--g);border-radius:0 var(--rm) var(--rm) 0;padding:14px 18px;margin:20px 0;font-size:14px;font-style:italic;color:var(--tm);line-height:1.65}
 .news-quote cite{display:block;margin-top:8px;font-size:11px;font-weight:700;font-style:normal;color:var(--gmt)}
+
+/* Метки / теги */
 .news-tags{display:flex;flex-wrap:wrap;gap:6px;padding:16px 0;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);margin-bottom:16px}
-.news-tag{padding:5px 12px;border-radius:99px;background:var(--gp);border:1.5px solid var(--bdr);font-size:11px;font-weight:700;color:var(--gmt);text-decoration:none}
-.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}.right::-webkit-scrollbar{display:none}
+.news-tag{padding:5px 12px;border-radius:99px;background:var(--gp);border:1.5px solid var(--bdr);font-size:11px;font-weight:700;color:var(--gmt);cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.news-tag:hover{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.news-tag svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+
+/* ── ПАНЕЛЬ ДЕЙСТВИЙ ── */
+.news-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.act-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 16px;border-radius:var(--rm);
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);
+  transition:all .18s;white-space:nowrap;user-select:none
+}
+.act-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0;transition:transform .2s}
+.act-btn:hover{border-color:var(--gb);background:var(--gl);color:var(--g)}
+.act-btn .act-count{font-size:11px;font-weight:800;min-width:16px;text-align:left}
+
+/* Лайк */
+.act-btn.like.active{border-color:#FABCBC;background:#FFF5F5;color:var(--red)}
+.act-btn.like.active svg{stroke:var(--red)}
+.act-btn.like:hover{border-color:#FABCBC;background:#FFF5F5;color:var(--red)}
+.act-btn.like.active:hover{border-color:#F88;background:#FFE8E8}
+.act-btn.like.bump svg{animation:heartPop .3s ease}
+@keyframes heartPop{0%{transform:scale(1)}40%{transform:scale(1.4)}70%{transform:scale(.9)}100%{transform:scale(1)}}
+
+/* Избранное */
+.act-btn.save.active{border-color:var(--gb);background:var(--gl);color:var(--g)}
+.act-btn.save.active svg{fill:var(--g);stroke:var(--g)}
+
+/* Репост — отдельный стиль с дропдауном */
+.repost-wrap{position:relative}
+.act-btn.repost:hover{border-color:var(--gb);background:var(--gl);color:var(--g)}
+.repost-dd{
+  position:absolute;bottom:calc(100% + 8px);left:0;
+  width:220px;background:var(--w);border:1px solid var(--bdr);
+  border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);
+  opacity:0;pointer-events:none;transform:translateY(6px);
+  transition:opacity .18s,transform .18s;z-index:100;overflow:hidden
+}
+.repost-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.repost-dd-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bdr)}
+.repost-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .12s;text-decoration:none}
+.repost-item:hover{background:var(--gp)}
+.repost-item-av{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.repost-item-body{flex:1;min-width:0}
+.repost-item-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repost-item-sub{font-size:10px;color:var(--gmt)}
+.repost-div{height:1px;background:var(--bdr);margin:0}
+
+/* Кнопка «написать комментарий» — акцентная */
+.act-btn.comment-cta{background:var(--g);border-color:var(--g);color:#fff;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.act-btn.comment-cta:hover{background:var(--gm);border-color:var(--gm)}
+.act-btn.comment-cta svg{stroke:#fff}
+
+/* Счётчик реакций */
+.reactions-bar{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--bdr);margin-bottom:16px}
+.react-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gmt)}
+.react-item svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.react-item strong{color:var(--t);font-weight:800}
+
+/* ── КОММЕНТАРИИ ── */
+.comments-section{margin-top:4px}
+.comments-title{font-size:13px;font-weight:800;color:var(--t);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.comments-count{font-size:11px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:2px 8px}
+
+/* Поле ввода */
+.comment-input-wrap{display:flex;gap:10px;align-items:flex-start;margin-bottom:16px}
+.ci-av{width:34px;height:34px;border-radius:9px;background:var(--g);display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;margin-top:2px}
+.ci-box{flex:1;display:flex;flex-direction:column;gap:8px}
+.ci-textarea{width:100%;min-height:44px;max-height:160px;padding:10px 14px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s,min-height .2s}
+.ci-textarea:focus{border-color:var(--gm);background:var(--w);min-height:80px}
+.ci-textarea::placeholder{color:var(--gmt)}
+.ci-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.ci-btn-send{padding:7px 18px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s;box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.ci-btn-send:hover{background:var(--gm)}
+.ci-btn-cancel{padding:7px 14px;border-radius:var(--rm);background:var(--gp);border:1.5px solid var(--bdr);color:var(--gmt);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.ci-btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+
+/* Комментарий */
+.comment{display:flex;gap:10px;animation:fadeUp .25s ease both}
+.comment+.comment{margin-top:14px}
+.com-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.com-body{flex:1;min-width:0}
+.com-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.com-name{font-size:13px;font-weight:700;color:var(--t);cursor:pointer;transition:color .15s}
+.com-name:hover{color:var(--g)}
+.com-role{font-size:10px;color:var(--gmt)}
+.com-time{font-size:11px;color:var(--gmt);margin-left:auto}
+.com-text{font-size:13px;color:var(--tm);line-height:1.6}
+.com-text .mention{color:var(--g);font-weight:600;cursor:pointer}
+.com-actions{display:flex;align-items:center;gap:10px;margin-top:6px}
+.com-act{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--gmt);cursor:pointer;background:none;border:none;font-family:inherit;padding:0;transition:color .15s}
+.com-act:hover{color:var(--g)}
+.com-act svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.com-act.liked{color:var(--red)}
+.com-act.liked svg{stroke:var(--red)}
+/* Ответ */
+.com-reply{margin-top:10px;margin-left:0;padding-left:14px;border-left:2px solid var(--bdr)}
+
+/* RIGHT */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
 .block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
 .stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
 .stat-row:last-child{border-bottom:none;padding-bottom:0}
 .stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 .stat-val{font-size:13px;font-weight:800;color:var(--t)}
-@media(max-width:1000px){.shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+
+/* Похожие новости */
+.rel-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);cursor:pointer;transition:opacity .15s}
+.rel-item:last-child{border-bottom:none;padding-bottom:0}
+.rel-item:hover{opacity:.75}
+.rel-img{width:56px;height:44px;border-radius:var(--r);object-fit:cover;flex-shrink:0;background:var(--gl);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.rel-img-ph{width:56px;height:44px;border-radius:var(--r);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.rel-body{flex:1;min-width:0}
+.rel-title{font-size:12px;font-weight:700;color:var(--t);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:3px}
+.rel-meta{font-size:10px;color:var(--gmt)}
+
+/* Автор блок */
+.author-block{display:flex;align-items:center;gap:12px;padding:12px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);cursor:pointer;transition:border-color .15s}
+.author-block:hover{border-color:var(--gb)}
+.author-av-lg{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0}
+.author-name-lg{font-size:13px;font-weight:800;color:var(--t)}
+.author-role-lg{font-size:11px;color:var(--gmt);margin-top:2px}
+.btn-follow{margin-top:8px;width:100%;padding:7px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-follow:hover{background:var(--g);color:#fff}
+.btn-follow.following{background:var(--gp);border-color:var(--bdr);color:var(--gmt)}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+
+/* ═══ АДАПТИВНОСТЬ ═══ */
+@media(max-width:1400px){.shell{grid-template-columns:220px 1fr 280px}}
+@media(max-width:1200px){.shell{grid-template-columns:200px 1fr 260px}.news-body{padding:20px 22px}.news-title{font-size:20px}}
+@media(max-width:1000px){
+  .shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"}
+  .right{display:none}
+}
+@media(max-width:840px){
+  .shell{grid-template-columns:180px 1fr}
+  .news-body{padding:18px}
+  .news-title{font-size:18px}
+  .news-lead{font-size:14px}
+  .news-actions{gap:6px}
+  .act-btn{padding:8px 12px;font-size:11px}
+}
+@media(max-width:740px){
+  .shell{grid-template-columns:52px 1fr}
+  .nav-item span,.nav-group,.logo-text{display:none}
+  .nav-item{justify-content:center;padding:10px}
+  .news-body{padding:16px}
+  .news-title{font-size:17px}
+  .act-btn span.act-label{display:none}
+  .act-btn{padding:9px 11px}
+  .breadcrumb{padding:8px 12px;gap:4px}
+}
+@media(max-width:520px){
+  .shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"topbar""nav""main";padding:8px;gap:8px}
+  .logo-cell{display:none}
+  .nav{grid-area:nav;flex-direction:row;border-radius:var(--rl);padding:6px 8px;height:auto;overflow-x:auto;overflow-y:hidden;gap:2px}
+  .nav-group,.nav-bottom{display:none}
+  .nav-item{flex-direction:column;gap:2px;padding:6px 8px;min-width:46px;text-align:center}
+  .nav-item span{display:block;font-size:9px}
+  .nav-item svg{width:16px;height:16px}
+  .news-title{font-size:16px}
+  .news-lead{font-size:13px;padding-left:10px}
+  .news-text{font-size:13px}
+  .news-actions{justify-content:space-between}
+  .act-btn .act-count{display:none}
+}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
 <div class="shell">
+
+<!-- LOGO -->
 <a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="" onerror="this.style.display='none'"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
-<header class="topbar"><div class="search-wrap"><span class="search-dot"></span><input type="search" placeholder="Поиск по платформе…"></div></header>
-<nav class="nav"><div class="nav-group">Навигация</div><a class="nav-item" href="/"><span>Главная</span></a><a class="nav-item active" href="/dashboard.html"><span>Новости</span></a></nav>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap">
+    <span class="search-dot"></span>
+    <input type="search" placeholder="Поиск по платформе…">
+  </div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span class="tp-name" id="topbarName">Никита Клишин</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item active" href="/news.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
 <div class="main">
-<nav class="breadcrumb"><a class="bc-item" href="/">Главная</a><span class="bc-sep">›</span><a class="bc-item" href="/dashboard.html">Новости</a><span class="bc-sep">›</span><a class="bc-item" href="#" id="bcCat">Логистика и ВЭД</a><span class="bc-sep">›</span><span class="bc-item active" id="bcTitle">Новые правила таможенного оформления…</span></nav>
-<article class="news-card">
-<div class="news-img-wrap"><div class="news-img-placeholder"><div class="news-img-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div></div><div class="news-cat-badge" id="catBadge">Логистика и ВЭД</div></div>
-<div class="news-body">
-<div class="news-meta"><div class="news-author"><div class="news-author-av" id="authorAv" style="background:#1E8A4C">НБ</div><div><div class="news-author-name" id="authorName">NorthBridge Logistics</div><div class="news-author-role" id="authorRole">Официальный канал</div></div></div><span class="news-meta-sep"></span><span class="news-date" id="newsDate">23 апреля 2026</span><span class="news-date" id="readTime">5 мин чтения</span><span class="news-views" id="newsViews">2 840 просмотров</span></div>
-<h1 class="news-title" id="newsTitle">Новые правила таможенного оформления ЕАЭС вступают в силу с 1 мая 2026 года</h1>
-<p class="news-lead" id="newsLead">С 1 мая 2026 года вступают в силу изменения в таможенном регулировании ЕАЭС, затрагивающие порядок декларирования, ставки пошлин и требования к документации. Рассказываем о главном.</p>
-<div class="news-text"><p id="newsText">Детальная версия новости открывается в этом шаблоне. Текст автоматически подтягивается из выбранной карточки на странице новостей.</p></div>
-</div></article>
-</div>
-<aside class="right"><div class="card"><div class="block-title">Статистика</div><div class="stat-row"><span class="stat-lbl">Просмотров</span><span class="stat-val" id="statViews">2 840</span></div><div class="stat-row"><span class="stat-lbl">Лайков</span><span class="stat-val" id="statLikes">247</span></div><div class="stat-row"><span class="stat-lbl">Комментариев</span><span class="stat-val" id="statComments">38</span></div></div></aside>
-</div>
+
+  <!-- Хлебные крошки -->
+  <nav class="breadcrumb">
+    <a class="bc-item" href="/">Главная</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="/news.html">Новости</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="/news.html?cat=logistics">Логистика и ВЭД</a>
+    <span class="bc-sep">›</span>
+    <span class="bc-item active">Новые правила таможенного оформления…</span>
+  </nav>
+
+  <!-- Карточка новости -->
+  <article class="news-card">
+
+    <!-- Изображение -->
+    <div class="news-img-wrap">
+      <div class="news-img-placeholder">
+        <div class="news-img-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+      </div>
+      <div class="news-cat-badge">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Логистика и ВЭД
+      </div>
+    </div>
+
+    <div class="news-body">
+
+      <!-- Мета -->
+      <div class="news-meta">
+        <div class="news-author">
+          <div class="news-author-av" style="background:#1E8A4C">НБ</div>
+          <div>
+            <div class="news-author-name">NorthBridge Logistics</div>
+            <div class="news-author-role">Официальный канал</div>
+          </div>
+        </div>
+        <span class="news-meta-sep"></span>
+        <span class="news-date">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          23 апреля 2026
+        </span>
+        <span class="news-date">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          5 мин чтения
+        </span>
+        <span class="news-views">
+          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          2 840 просмотров
+        </span>
+      </div>
+
+      <!-- Заголовок -->
+      <h1 class="news-title">Новые правила таможенного оформления ЕАЭС вступают в силу с 1 мая 2026 года</h1>
+
+      <!-- Лид -->
+      <p class="news-lead">С 1 мая 2026 года вступают в силу изменения в таможенном регулировании ЕАЭС, затрагивающие порядок декларирования, ставки пошлин и требования к документации. Рассказываем о главном.</p>
+
+      <!-- Текст -->
+      <div class="news-text">
+        <p>Евразийская экономическая комиссия утвердила пакет поправок к Таможенному кодексу ЕАЭС, который кардинально меняет порядок работы с таможенными декларациями для компаний, занимающихся внешнеэкономической деятельностью в регионе.</p>
+
+        <p><strong>Что меняется с 1 мая.</strong> Прежде всего, вводится обязательная предварительная электронная подача деклараций за 24 часа до пересечения границы для товаров первой и второй категорий риска. Компании, не успевшие перейти на новый формат, будут обязаны проходить дополнительный досмотр — это существенно увеличит время прохождения таможни.</p>
+
+        <p>Ставки ввозных таможенных пошлин на ряд товаров также пересматриваются. Наибольшее изменение коснётся электроники и промышленного оборудования из стран вне ЕАЭС — ставка снизится с 12% до 8%, что должно стимулировать импорт технологических решений.</p>
+      </div>
+
+      <blockquote class="news-quote">
+        «Переход на цифровое декларирование — это неизбежный шаг. Те компании, которые начали готовиться заранее, выиграют в скорости и снизят административную нагрузку минимум на 30%.»
+        <cite>— Марина Захарова, таможенный брокер, ТаможПром</cite>
+      </blockquote>
+
+      <div class="news-text">
+        <p>Особое внимание следует обратить на новые требования к маркировке товаров. Теперь обязательной становится QR-маркировка для 14 дополнительных категорий, включая строительные материалы и запасные части для промышленного оборудования.</p>
+
+        <p><strong>Переходный период.</strong> ЕЭК предусмотрела переходный период до 1 сентября 2026 года, в течение которого штрафные санкции за несоблюдение требований применяться не будут — только предупреждения. Тем не менее рекомендуется начать подготовку уже сейчас.</p>
+
+        <p>По оценкам аналитиков LASTOP Digital, порядка 34% российских компаний-участников ВЭД ещё не приступили к адаптации своих процессов к новым требованиям. Платформа LASTOP запускает серию бесплатных вебинаров по теме — ссылки на регистрацию доступны в разделе Мероприятия.</p>
+      </div>
+
+      <!-- Теги / метки -->
+      <div class="news-tags">
+        <a class="news-tag" href="/news.html?tag=еаэс">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          ЕАЭС
+        </a>
+        <a class="news-tag" href="/news.html?tag=таможня">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Таможня
+        </a>
+        <a class="news-tag" href="/news.html?tag=вэд">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          ВЭД
+        </a>
+        <a class="news-tag" href="/news.html?tag=декларирование">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Декларирование
+        </a>
+        <a class="news-tag" href="/news.html?tag=логистика">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Логистика
+        </a>
+        <a class="news-tag" href="/news.html?tag=изменения-2026">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Изменения 2026
+        </a>
+      </div>
+
+      <!-- Кнопки действий -->
+      <div class="news-actions">
+
+        <!-- Лайк -->
+        <button class="act-btn like" id="btnLike" onclick="toggleLike()">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span class="act-label">Нравится</span>
+          <span class="act-count" id="btnLikeCount">247</span>
+        </button>
+
+        <!-- Комментарий -->
+        <button class="act-btn comment-cta" onclick="focusComment()">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="act-label">Комментировать</span>
+          <span class="act-count" id="btnComCount">38</span>
+        </button>
+
+        <!-- Сохранить -->
+        <button class="act-btn save" id="btnSave" onclick="toggleSave()">
+          <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <span class="act-label">Сохранить</span>
+          <span class="act-count" id="btnSaveCount">56</span>
+        </button>
+
+        <!-- Репост с дропдауном -->
+        <div class="repost-wrap">
+          <button class="act-btn repost" id="btnRepost" onclick="toggleRepost(event)">
+            <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span class="act-label">Репост</span>
+            <span class="act-count">14</span>
+          </button>
+          <div class="repost-dd" id="repostDD">
+            <div class="repost-dd-head">Поделиться в…</div>
+            <!-- Личная страница -->
+            <div class="repost-item" onclick="doRepost('page')">
+              <div class="repost-item-av" style="background:#1E8A4C" id="repostUserAv">НК</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name" id="repostUserName">Моя страница</div>
+                <div class="repost-item-sub">Личный профиль</div>
+              </div>
+            </div>
+            <div class="repost-div"></div>
+            <!-- Сообщества -->
+            <div class="repost-dd-head" style="padding-top:8px">Мои сообщества</div>
+            <div class="repost-item" onclick="doRepost('comm1')">
+              <div class="repost-item-av" style="background:#1E8A4C">🚛</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name">Логистика СНГ</div>
+                <div class="repost-item-sub">2 400 участников</div>
+              </div>
+            </div>
+            <div class="repost-item" onclick="doRepost('comm2')">
+              <div class="repost-item-av" style="background:#6040A0">💻</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name">LogTech Россия</div>
+                <div class="repost-item-sub">834 участника</div>
+              </div>
+            </div>
+            <div class="repost-item" onclick="doRepost('comm3')">
+              <div class="repost-item-av" style="background:#B45309">💼</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name">HR в логистике</div>
+                <div class="repost-item-sub">412 участников</div>
+              </div>
+            </div>
+            <div class="repost-div"></div>
+            <!-- Чат -->
+            <div class="repost-dd-head" style="padding-top:8px">Отправить в чат</div>
+            <div class="repost-item" onclick="doRepost('chat1')">
+              <div class="repost-item-av" style="background:#3A90C0">МЗ</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name">Марина Захарова</div>
+                <div class="repost-item-sub">Онлайн</div>
+              </div>
+            </div>
+            <div class="repost-item" onclick="doRepost('chat2')">
+              <div class="repost-item-av" style="background:#9060C0">АП</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name">Алексей Петров</div>
+                <div class="repost-item-sub">5 мин назад</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /news-actions -->
+
+      <!-- Секция комментариев -->
+      <div class="comments-section" style="margin-top:24px">
+        <div class="comments-title">
+          Комментарии
+          <span class="comments-count" id="comCountBadge">38</span>
+        </div>
+
+        <!-- Поле ввода -->
+        <div class="comment-input-wrap">
+          <div class="ci-av" id="ciAv">НК</div>
+          <div class="ci-box">
+            <textarea class="ci-textarea" id="commentInput" placeholder="Напишите комментарий…" rows="1"></textarea>
+            <div class="ci-actions" id="ciActions" style="display:none">
+              <button class="ci-btn-cancel" onclick="cancelComment()">Отмена</button>
+              <button class="ci-btn-send" onclick="sendComment()">Отправить</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Список комментариев -->
+        <div id="commentsList"></div>
+      </div>
+
+    </div><!-- /news-body -->
+  </article>
+
+</div><!-- /main -->
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Об авторе -->
+  <div class="card">
+    <div class="block-title">Автор публикации</div>
+    <div class="author-block" onclick="location.href='/companies.html'">
+      <div class="author-av-lg" style="background:#1E8A4C">N</div>
+      <div>
+        <div class="author-name-lg">NorthBridge Logistics</div>
+        <div class="author-role-lg">Логистика · Москва · 3 100 подписчиков</div>
+      </div>
+    </div>
+    <button class="btn-follow" id="btnFollow" onclick="toggleFollow()">+ Подписаться</button>
+  </div>
+
+  <!-- Статистика -->
+  <div class="card">
+    <div class="block-title">Статистика</div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val">2 840</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Лайков</span><span class="stat-val" id="statLikes">247</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Комментариев</span><span class="stat-val" id="statComments">38</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Репостов</span><span class="stat-val">14</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Сохранений</span><span class="stat-val" id="statSaves">56</span></div>
+  </div>
+
+  <!-- Похожие новости -->
+  <div class="card">
+    <div class="block-title">Похожие новости</div>
+    <div class="rel-item" onclick="location.href='/news-detail.html'">
+      <div class="rel-img-ph" style="background:linear-gradient(135deg,#185FA5,#3A90C0)"></div>
+      <div class="rel-body">
+        <div class="rel-title">Изменения в ставках НДС при экспорте в страны ЕАЭС</div>
+        <div class="rel-meta">21 апр · 1 840 просм.</div>
+      </div>
+    </div>
+    <div class="rel-item" onclick="location.href='/news-detail.html'">
+      <div class="rel-img-ph" style="background:linear-gradient(135deg,#6040A0,#9060C0)"></div>
+      <div class="rel-body">
+        <div class="rel-title">ФТС запускает новую электронную платформу для брокеров</div>
+        <div class="rel-meta">18 апр · 3 120 просм.</div>
+      </div>
+    </div>
+    <div class="rel-item" onclick="location.href='/news-detail.html'">
+      <div class="rel-img-ph" style="background:linear-gradient(135deg,#B45309,#E09030)"></div>
+      <div class="rel-body">
+        <div class="rel-title">Казахстан открыл новые КПП на границе с Россией</div>
+        <div class="rel-meta">15 апр · 2 560 просм.</div>
+      </div>
+    </div>
+    <div class="rel-item" onclick="location.href='/news-detail.html'">
+      <div class="rel-img-ph" style="background:linear-gradient(135deg,#3B6D11,#5AB080)"></div>
+      <div class="rel-body">
+        <div class="rel-title">Тарифы на грузовые железнодорожные перевозки вырастут с июня</div>
+        <div class="rel-meta">12 апр · 1 230 просм.</div>
+      </div>
+    </div>
+  </div>
+
+</aside>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
 <script>
-function esc(s){return String(s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
-function fmtDate(ts){if(!ts)return '23 апреля 2026';return new Date(ts).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}
-function letter(s){return ((s||'Н')[0]||'Н').toUpperCase()}
-(function hydrateNews(){
-  const raw=localStorage.getItem('selectedNews');
-  if(!raw)return;
+const API='/api', tk=()=>localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function ltr(s){return((s||'?')[0]).toUpperCase()}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
+function ago(ts){const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' дн. назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})}
+function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
+function logout(){localStorage.removeItem('token');location.href='/login.html'}
+
+/* DROPDOWN профиля */
+function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
+document.addEventListener('click',e=>{
+  const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');
+  if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}
+  /* репост дропдаун */
+  const rd=document.getElementById('repostDD'),rb=document.getElementById('btnRepost');
+  if(rd&&!rd.contains(e.target)&&rb&&!rb.contains(e.target))rd.classList.remove('open');
+})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');document.getElementById('repostDD').classList.remove('open')}})
+
+/* ── ЛАЙК ── */
+let liked=false;
+let likeCount=247;
+function toggleLike(){
+  liked=!liked;
+  likeCount+=liked?1:-1;
+  const btn=document.getElementById('btnLike');
+  btn.classList.toggle('active',liked);
+  btn.classList.add('bump');
+  setTimeout(()=>btn.classList.remove('bump'),300);
+  if(liked){const svg=btn.querySelector('svg');svg.style.fill='var(--red)';svg.style.stroke='var(--red)'}
+  else{const svg=btn.querySelector('svg');svg.style.fill='none';svg.style.stroke='currentColor'}
+  ['btnLikeCount','statLikes'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=likeCount});
+  toast(liked?'Вам понравилось ❤️':'Лайк убран');
+}
+
+/* ── СОХРАНИТЬ ── */
+let saved=false;
+let saveCount=56;
+function toggleSave(){
+  saved=!saved;
+  saveCount+=saved?1:-1;
+  const btn=document.getElementById('btnSave');
+  const icon=document.getElementById('saveIcon');
+  btn.classList.toggle('active',saved);
+  if(saved){icon.style.fill='var(--g)';icon.style.stroke='var(--g)'}
+  else{icon.style.fill='none';icon.style.stroke='currentColor'}
+  ['btnSaveCount','statSaves'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=saveCount});
+  toast(saved?'Добавлено в избранное ✓':'Убрано из избранного',saved);
+}
+
+/* ── РЕПОСТ ── */
+function toggleRepost(e){e.stopPropagation();document.getElementById('repostDD').classList.toggle('open')}
+function doRepost(target){
+  document.getElementById('repostDD').classList.remove('open');
+  const names={page:'вашей странице',comm1:'«Логистика СНГ»',comm2:'«LogTech Россия»',comm3:'«HR в логистике»',chat1:'Марине Захаровой',chat2:'Алексею Петрову'};
+  toast('Поделились на '+( names[target]||''), true);
+}
+
+/* ── ПОДПИСКА НА АВТОРА ── */
+let following=false;
+function toggleFollow(){
+  following=!following;
+  const btn=document.getElementById('btnFollow');
+  btn.classList.toggle('following',following);
+  btn.textContent=following?'✓ Подписаны':'+ Подписаться';
+  toast(following?'Вы подписались на NorthBridge Logistics ✓':'Вы отписались',following);
+}
+
+/* ── КОММЕНТАРИИ ── */
+const DEMO_COMMENTS=[
+  {id:1,name:'Марина Захарова',role:'Таможенный брокер',av:'МЗ',color:'#3A90C0',text:'Очень своевременная статья. Мы уже начали готовиться к переходу — основная сложность в синхронизации с нашей учётной системой. Кто уже интегрировал электронное декларирование в 1С?',likes:12,liked:false,ts:new Date(Date.now()-3600000).toISOString(),
+   replies:[{id:11,name:'Дмитрий Козлов',role:'Логист',av:'ДК',color:'#9060C0',text:'Мы интегрировали через API ФТС напрямую, без 1С. Заняло около 3 недель. Если нужно — могу поделиться документацией.',likes:4,liked:false,ts:new Date(Date.now()-2400000).toISOString()}]},
+  {id:2,name:'Алексей Петров',role:'Участник LASTOP',av:'АП',color:'#1A8A6A',text:'Спасибо за подробный разбор. А что с товарами, которые уже в пути на момент 1 мая? Они оформляются по старым правилам?',likes:8,liked:false,ts:new Date(Date.now()-7200000).toISOString(),replies:[]},
+  {id:3,name:'NorthBridge Logistics',role:'Официальный канал',av:'НБ',color:'#1E8A4C',text:'Отвечаем на вопрос: товары, уже пересёкшие границу или находящиеся на КПП до 1 мая, оформляются по действующим правилам. Переходные положения прописаны в разделе 7 приказа ЕЭК.',likes:21,liked:false,ts:new Date(Date.now()-9000000).toISOString(),replies:[]},
+];
+
+let comments=[...DEMO_COMMENTS];
+let commentCount=38;
+
+function renderComments(){
+  document.getElementById('commentsList').innerHTML=comments.map((c,i)=>`
+    <div class="comment" style="animation-delay:${i*.06}s">
+      <div class="com-av" style="background:${c.color}">${c.av}</div>
+      <div class="com-body">
+        <div class="com-head">
+          <span class="com-name">${esc(c.name)}</span>
+          <span class="com-role">${esc(c.role)}</span>
+          <span class="com-time">${ago(c.ts)}</span>
+        </div>
+        <div class="com-text">${esc(c.text)}</div>
+        <div class="com-actions">
+          <button class="com-act${c.liked?' liked':''}" onclick="likeComment(${c.id})">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${c.liked?'fill="var(--red)"':''}></path></svg>
+            ${c.likes}
+          </button>
+          <button class="com-act" onclick="replyTo('${esc(c.name)}')">
+            <svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+            Ответить
+          </button>
+        </div>
+        ${c.replies&&c.replies.length?`<div class="com-reply">`+c.replies.map(r=>`
+          <div class="comment" style="margin-top:10px">
+            <div class="com-av" style="background:${r.color};width:28px;height:28px;font-size:10px">${r.av}</div>
+            <div class="com-body">
+              <div class="com-head">
+                <span class="com-name">${esc(r.name)}</span>
+                <span class="com-role">${esc(r.role)}</span>
+                <span class="com-time">${ago(r.ts)}</span>
+              </div>
+              <div class="com-text">${esc(r.text)}</div>
+              <div class="com-actions">
+                <button class="com-act${r.liked?' liked':''}" onclick="likeReply(${c.id},${r.id})">
+                  <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${r.liked?'fill="var(--red)"':''}></path></svg>
+                  ${r.likes}
+                </button>
+              </div>
+            </div>
+          </div>`).join('')+`</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function likeComment(id){
+  const c=comments.find(x=>x.id===id);if(!c)return;
+  c.liked=!c.liked;c.likes+=c.liked?1:-1;
+  renderComments();
+}
+function likeReply(cid,rid){
+  const c=comments.find(x=>x.id===cid);if(!c)return;
+  const r=c.replies.find(x=>x.id===rid);if(!r)return;
+  r.liked=!r.liked;r.likes+=r.liked?1:-1;
+  renderComments();
+}
+
+let replyingTo='';
+function replyTo(name){
+  replyingTo=name;
+  const ta=document.getElementById('commentInput');
+  ta.value='@'+name+' ';
+  ta.focus();
+  document.getElementById('ciActions').style.display='flex';
+  ta.style.minHeight='80px';
+}
+
+function focusComment(){
+  const ta=document.getElementById('commentInput');
+  ta.focus();
+  ta.scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('ciActions').style.display='flex';
+  ta.style.minHeight='80px';
+}
+
+function cancelComment(){
+  const ta=document.getElementById('commentInput');
+  ta.value='';ta.style.minHeight='44px';
+  document.getElementById('ciActions').style.display='none';
+  replyingTo='';
+}
+
+function sendComment(){
+  const ta=document.getElementById('commentInput');
+  const text=ta.value.trim();
+  if(!text){ta.focus();return;}
+  const user=JSON.parse(localStorage.getItem('user')||'{}');
+  const name=user.full_name||user.name||'Никита Клишин';
+  const newC={id:Date.now(),name,role:'Участник LASTOP',av:ltr(name),color:avc(name),text,likes:0,liked:false,ts:new Date().toISOString(),replies:[]};
+  comments.unshift(newC);
+  commentCount++;
+  ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
+  cancelComment();
+  renderComments();
+  toast('Комментарий опубликован ✓',true);
+  fetch(API+'/news/current/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({content:text})}).catch(()=>{});
+}
+
+/* Автораскрытие поля при вводе */
+document.getElementById('commentInput').addEventListener('focus',()=>{
+  document.getElementById('ciActions').style.display='flex';
+  document.getElementById('commentInput').style.minHeight='80px';
+});
+document.getElementById('commentInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){sendComment();}
+  if(e.key==='Escape'){cancelComment();}
+});
+
+/* АВТОРИЗАЦИЯ */
+(async()=>{
+  if(!tk()){location.href='/login.html';return}
   try{
-    const n=JSON.parse(raw);
-    document.getElementById('catBadge').textContent=n.cat||'Новости';
-    document.getElementById('bcCat').textContent=n.cat||'Новости';
-    document.getElementById('bcTitle').textContent=(n.title||'Новость').slice(0,46)+'…';
-    document.getElementById('newsTitle').textContent=n.title||'Новость';
-    document.getElementById('newsLead').textContent=n.text||'';
-    document.getElementById('newsText').innerHTML=esc(n.text||'');
-    document.getElementById('authorName').textContent=n.author||'Автор';
-    document.getElementById('authorRole').textContent=n.role||'Участник LASTOP';
-    document.getElementById('authorAv').textContent=letter(n.author);
-    document.getElementById('newsDate').textContent=fmtDate(n.ts);
-    document.getElementById('newsViews').textContent=(n.views||0).toLocaleString('ru-RU')+' просмотров';
-    document.getElementById('statViews').textContent=(n.views||0).toLocaleString('ru-RU');
-    document.getElementById('statLikes').textContent=(n.likes||0).toLocaleString('ru-RU');
-    document.getElementById('statComments').textContent=(n.comments||0).toLocaleString('ru-RU');
-    document.title='LASTOP GROUP — '+(n.title||'Новость');
-  }catch(e){console.error(e)}
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const color=avc(name);const L=ltr(name);
+    ['topbarAv','pddAv','ciAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
+    ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
+    const role=user.role||user.position||'Участник LASTOP';
+    ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
+    const repostAv=document.getElementById('repostUserAv');if(repostAv){repostAv.textContent=L;repostAv.style.background=color}
+    const repostName=document.getElementById('repostUserName');if(repostName)repostName.textContent=name;
+  }catch{}
+  renderComments();
 })();
 </script>
 </body>

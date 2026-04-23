@@ -427,17 +427,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Горячие вакансии -->
   <div class="card">
     <div class="block-title">🔥 Горячие вакансии</div>
-    <div class="hot-item" onclick="showToast('Открываем вакансию…')">
+    <div class="hot-item" onclick="openJobDetail(1)">
       <div class="hot-ico" style="background:#1E8A4C">N</div>
       <div class="hot-body"><div class="hot-title">Логист международных перевозок</div><div class="hot-meta">NorthBridge · Москва</div></div>
       <span class="hot-sal">200к ₽</span>
     </div>
-    <div class="hot-item" onclick="showToast('Открываем вакансию…')">
+    <div class="hot-item" onclick="openJobDetail(1)">
       <div class="hot-ico" style="background:#3A90C0">L</div>
       <div class="hot-body"><div class="hot-title">Product Manager · TMS</div><div class="hot-meta">LASTOP Digital · Москва</div></div>
       <span class="hot-sal">280к ₽</span>
     </div>
-    <div class="hot-item" onclick="showToast('Открываем вакансию…')">
+    <div class="hot-item" onclick="openJobDetail(1)">
       <div class="hot-ico" style="background:#C07030">G</div>
       <div class="hot-body"><div class="hot-title">Нач. отдела таможни</div><div class="hot-meta">GlobalFreight · Москва</div></div>
       <span class="hot-sal">250к ₽</span>
@@ -447,11 +447,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Мои отклики -->
   <div class="card">
     <div class="block-title">Мои отклики</div>
-    <div class="resp-item" onclick="showToast('Открываем вакансию…')">
+    <div class="resp-item" onclick="openJobDetail(1)">
       <div class="resp-body"><div class="resp-title">Логист-экспедитор</div><div class="resp-meta">NorthBridge · 2 дня назад</div></div>
       <span class="resp-status rs-new">Новый</span>
     </div>
-    <div class="resp-item" onclick="showToast('Открываем вакансию…')">
+    <div class="resp-item" onclick="openJobDetail(1)">
       <div class="resp-body"><div class="resp-title">Специалист ВЭД</div><div class="resp-meta">Volga Industrial · 5 дней назад</div></div>
       <span class="resp-status rs-viewed">Просмотрен</span>
     </div>
@@ -633,7 +633,7 @@ function renderJob(j,i){
   const badgeLbl={hot:'🔥 Срочная',new:'Новая',active:'Активная',paused:'На паузе'}[j.status]||'';
   const responded=respondedSet.has(j.id);
   const saved=savedSet.has(j.id);
-  return`<div class="job-card" style="animation-delay:${i*.05}s">
+  return`<div class="job-card" style="animation-delay:${i*.05}s" onclick="openJobDetail(${j.id})">
     <div class="jc-head">
       <div class="jc-logo" style="background:${avc(j.company)}">${letter(j.company)}</div>
       <div class="jc-meta"><div class="jc-company">${esc(j.company)}</div><div class="jc-time">${ago(j.ts)}</div></div>
@@ -653,10 +653,10 @@ function renderJob(j,i){
       <span class="jc-stat"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${j.views}</span>
       <span class="jc-stat" style="margin-left:6px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${j.responses} откл.</span>
       <div class="jc-actions">
-        <button class="btn-save${saved?' saved':''}" id="save-${j.id}" onclick="toggleSave(${j.id},this)" title="${saved?'Убрать':'Сохранить'}">
+        <button class="btn-save${saved?' saved':''}" id="save-${j.id}" onclick="event.stopPropagation();toggleSave(${j.id},this)" title="${saved?'Убрать':'Сохранить'}">
           <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" ${saved?'fill="var(--red)"':''}></path></svg>
         </button>
-        <button class="btn-respond${responded?' done':''}" id="resp-${j.id}" onclick="toggleRespond(${j.id},this)">${responded?'Отклик отправлен ✓':'Откликнуться'}</button>
+        <button class="btn-respond${responded?' done':''}" id="resp-${j.id}" onclick="event.stopPropagation();toggleRespond(${j.id},this)">${responded?'Отклик отправлен ✓':'Откликнуться'}</button>
       </div>
     </div>
   </div>`;
@@ -801,6 +801,8 @@ function resetFilters(){
 }
 
 /* ── ДЕЙСТВИЯ ── */
+
+function openJobDetail(id){location.href=`/job-detail.html?id=${id}`;}
 function toggleRespond(id,btn){
   if(respondedSet.has(id)){respondedSet.delete(id);btn.classList.remove('done');btn.textContent='Откликнуться';}
   else{respondedSet.add(id);btn.classList.add('done');btn.textContent='Отклик отправлен ✓';showToast('Отклик отправлен ✓','success');}
