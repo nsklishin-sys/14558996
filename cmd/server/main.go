@@ -10,10 +10,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -579,53 +577,13 @@ func initDBFromEnv() (*sql.DB, error) {
 }
 
 func resolveDatabaseURL() (string, error) {
+	const railwayDatabaseURL = "postgresql://postgres:QHkIHPzHfSeSKkQnEDFkJmjQJSpUpXpb@shinkansen.proxy.rlwy.net:19703/railway"
+
 	if directURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); directURL != "" {
 		return directURL, nil
 	}
 
-	host := strings.TrimSpace(os.Getenv("PGHOST"))
-	portRaw := strings.TrimSpace(os.Getenv("PGPORT"))
-	user := strings.TrimSpace(os.Getenv("PGUSER"))
-	password := os.Getenv("PGPASSWORD")
-	dbName := strings.TrimSpace(os.Getenv("PGDATABASE"))
-	sslMode := strings.TrimSpace(os.Getenv("PGSSLMODE"))
-
-	if host == "" || user == "" || dbName == "" {
-		return "", errors.New("DATABASE_URL is required (or set PGHOST, PGUSER, PGDATABASE and optional PGPORT/PGPASSWORD/PGSSLMODE)")
-	}
-
-	port := 5432
-	if portRaw != "" {
-		parsedPort, err := strconv.Atoi(portRaw)
-		if err != nil || parsedPort <= 0 || parsedPort > 65535 {
-			return "", fmt.Errorf("invalid PGPORT %q", portRaw)
-		}
-		port = parsedPort
-	}
-
-	if sslMode == "" {
-		switch strings.ToLower(host) {
-		case "localhost", "127.0.0.1":
-			sslMode = "disable"
-		default:
-			sslMode = "require"
-		}
-	}
-
-	connURL := &url.URL{
-		Scheme: "postgresql",
-		Host:   fmt.Sprintf("%s:%d", host, port),
-		Path:   dbName,
-	}
-	if password == "" {
-		connURL.User = url.User(user)
-	} else {
-		connURL.User = url.UserPassword(user, password)
-	}
-	q := connURL.Query()
-	q.Set("sslmode", sslMode)
-	connURL.RawQuery = q.Encode()
-	return connURL.String(), nil
+	return railwayDatabaseURL, nil
 }
 
 func waitForDB(db *sql.DB, timeout time.Duration) error {
