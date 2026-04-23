@@ -14,12 +14,9 @@
     <script>
       (function redirectHomeByAuth() {
         function applyBaseThemeColor() {
-          const storedTheme = localStorage.getItem("theme");
           const isDarkTheme =
-            storedTheme === "dark" ||
-            (!storedTheme &&
-              window.matchMedia &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches);
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
 
           document.documentElement.style.backgroundColor = isDarkTheme ? "#000" : "#fff";
           document.body.style.backgroundColor = isDarkTheme ? "#000" : "#fff";
