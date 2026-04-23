@@ -76,6 +76,25 @@ type friendCandidateDTO struct {
 	Email    string `json:"email"`
 }
 
+type community struct {
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Category    string    `json:"category"`
+	Description string    `json:"description"`
+	Tags        []string  `json:"tags"`
+	Privacy     string    `json:"privacy_level"`
+	CreatorID   string    `json:"creator_id,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type createCommunityRequest struct {
+	Name         string   `json:"name"`
+	Category     string   `json:"category"`
+	Description  string   `json:"description"`
+	Tags         []string `json:"tags"`
+	PrivacyLevel string   `json:"privacy_level"`
+}
+
 type sessionStore struct {
 	mu         sync.RWMutex
 	tokenToUID map[string]int64
@@ -428,6 +447,45 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/communities", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			communities, err := listCommunities(db)
+			if err != nil {
+				log.Printf("list communities error: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"communities": communities})
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+
+			var req createCommunityRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+
+			created, err := createCommunity(db, userID, req)
+			if err != nil {
+				switch {
+				case errors.Is(err, errValidation):
+					writeError(w, http.StatusBadRequest, err.Error())
+				default:
+					log.Printf("create community error: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				}
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"community": created})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
 
 	addr := ":8080"
@@ -526,6 +584,21 @@ ON friend_requests(addressee_id, status);
 
 CREATE INDEX IF NOT EXISTS friend_requests_requester_status_idx
 ON friend_requests(requester_id, status);
+
+CREATE TABLE IF NOT EXISTS communities (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    privacy_level TEXT NOT NULL DEFAULT 'open',
+    creator_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (privacy_level IN ('open', 'closed'))
+);
+
+CREATE INDEX IF NOT EXISTS communities_created_at_idx
+ON communities(created_at DESC);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -972,6 +1045,106 @@ func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
 		return fmt.Errorf("%w: друг не найден", errNotFound)
 	}
 	return nil
+}
+
+func listCommunities(db *sql.DB) ([]community, error) {
+	rows, err := db.Query(`
+		SELECT c.id, c.name, c.category, c.description, c.tags, c.privacy_level, u.public_id, c.created_at
+		FROM communities c
+		JOIN users u ON u.id = c.creator_id
+		ORDER BY c.created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []community
+	for rows.Next() {
+		var item community
+		if scanErr := rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.Category,
+			&item.Description,
+			&item.Tags,
+			&item.Privacy,
+			&item.CreatorID,
+			&item.CreatedAt,
+		); scanErr != nil {
+			return nil, scanErr
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
+}
+
+func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (community, error) {
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return community{}, fmt.Errorf("%w: название сообщества обязательно", errValidation)
+	}
+	if len(name) > 120 {
+		return community{}, fmt.Errorf("%w: название слишком длинное", errValidation)
+	}
+	category := strings.TrimSpace(req.Category)
+	if category == "" {
+		category = "Другое"
+	}
+
+	privacy := normalizePrivacyLevel(req.PrivacyLevel)
+	if privacy == "" {
+		return community{}, fmt.Errorf("%w: privacy_level должен быть open или closed", errValidation)
+	}
+
+	description := strings.TrimSpace(req.Description)
+	if len(description) > 1200 {
+		return community{}, fmt.Errorf("%w: описание слишком длинное", errValidation)
+	}
+
+	tags := make([]string, 0, len(req.Tags))
+	seen := make(map[string]struct{}, len(req.Tags))
+	for _, t := range req.Tags {
+		tag := strings.TrimSpace(t)
+		if tag == "" {
+			continue
+		}
+		if len(tag) > 40 {
+			return community{}, fmt.Errorf("%w: теги должны быть не длиннее 40 символов", errValidation)
+		}
+		key := strings.ToLower(tag)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		tags = append(tags, tag)
+		if len(tags) == 10 {
+			break
+		}
+	}
+
+	var created community
+	err := db.QueryRow(`
+		INSERT INTO communities(name, category, description, tags, privacy_level, creator_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, name, category, description, tags, privacy_level, created_at
+	`, name, category, description, tags, privacy, creatorID).
+		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &created.Tags, &created.Privacy, &created.CreatedAt)
+	if err != nil {
+		return community{}, err
+	}
+	return created, nil
+}
+
+func normalizePrivacyLevel(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "open":
+		return "open"
+	case "closed":
+		return "closed"
+	default:
+		return ""
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
