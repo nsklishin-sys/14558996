@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Сообщества</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* SHELL */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+
+/* TOPBAR */
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative}
+.search-dot{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100%+8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5}
+
+/* NAV */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ── ТУЛБАР ── */
+.comm-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 14px;box-shadow:var(--sh);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.comm-title{font-size:16px;font-weight:900;color:var(--t);white-space:nowrap}
+.mode-switch{display:flex;background:var(--gp);border:1.5px solid var(--bdr);border-radius:99px;padding:3px;gap:2px;flex-shrink:0}
+.mode-btn{padding:5px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;color:var(--gmt);background:transparent;transition:all .15s;white-space:nowrap}
+.mode-btn.active{background:var(--g);color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.comm-tabs{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+.comm-tabs::-webkit-scrollbar{display:none}
+.ctab{padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.ctab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.ctab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.btn-create{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap;flex-shrink:0}
+.btn-create:hover{background:var(--gm)}
+.btn-create svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* ── ФИЛЬТРЫ ── */
+/* filter row removed */
+
+/* ── HERO-БАННЕР (featured community) ── */
+.comm-hero{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);flex-shrink:0;cursor:pointer;transition:box-shadow .18s,transform .12s}
+.comm-hero:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.ch-cover{height:120px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:14px 18px;
+  background:linear-gradient(135deg,#1E8A4C 0%,#146A38 60%,#0E5128 100%)}
+.ch-cover::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08)}
+.ch-cover::after{content:'';position:absolute;bottom:-50px;left:10%;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.05)}
+.ch-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-size:10px;font-weight:700;color:#fff;position:relative;z-index:1}
+.ch-body{padding:16px 18px}
+.ch-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:10px}
+.ch-av{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0;border:3px solid var(--w);margin-top:-34px;position:relative;z-index:1;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.ch-info{flex:1;min-width:0;padding-top:4px}
+.ch-name{font-size:17px;font-weight:900;color:var(--t);letter-spacing:-.01em;margin-bottom:3px}
+.ch-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ch-meta-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gmt)}
+.ch-meta-item svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.ch-desc{font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ch-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.ch-tag{padding:3px 9px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:10px;font-weight:600;color:var(--gmt)}
+.ch-foot{display:flex;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--bdr)}
+.ch-stats{display:flex;align-items:center;gap:14px}
+.ch-stat{display:flex;flex-direction:column;align-items:center}
+.ch-stat-n{font-size:16px;font-weight:900;color:var(--t);line-height:1}
+.ch-stat-l{font-size:9px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+.ch-stat-div{width:1px;height:28px;background:var(--bdr)}
+.btn-join{padding:9px 20px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 8px rgba(30,138,76,.22);display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.btn-join:hover{background:var(--gm)}
+.btn-join.joined{background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none}
+.btn-join.joined:hover{background:var(--gl)}
+.btn-join svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.btn-share{padding:9px 13px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn-share:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-share svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+/* ── КАРТОЧКА СООБЩЕСТВА (grid) ── */
+.comm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.comm-section-label{font-size:12px;font-weight:800;color:var(--tm);letter-spacing:.02em;padding:4px 0;display:flex;align-items:center;gap:10px;grid-column:1/-1}
+.comm-section-label::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.comm-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .18s,transform .14s,border-color .15s;animation:fadeUp .3s ease both;display:flex;flex-direction:column}
+.comm-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+/* Cover — % от ширины карточки, всегда пропорционально */
+.cc-cover{position:relative;padding-top:45%;flex-shrink:0;overflow:hidden}
+.cc-cover-bg{position:absolute;inset:0}
+.cc-priv{position:absolute;top:6px;right:6px;padding:2px 6px;border-radius:99px;background:rgba(0,0,0,.3);font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;gap:2px}
+.cc-priv svg{width:8px;height:8px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+/* Avatar выступает за cover */
+.cc-av{
+  position:absolute;bottom:0;left:50%;transform:translate(-50%,40%);
+  width:clamp(28px,18%,44px);height:clamp(28px,18%,44px);
+  border-radius:clamp(6px,30%,12px);display:grid;place-items:center;
+  font-size:clamp(11px,3cqw,16px);
+  border:2.5px solid var(--w);box-shadow:0 2px 8px rgba(0,0,0,.14);
+  flex-shrink:0;z-index:1
+}
+.cc-body{
+  padding:clamp(18px,6%,26px) clamp(8px,5%,14px) clamp(8px,4%,12px);
+  flex:1;display:flex;flex-direction:column;gap:4px;min-height:0
+}
+.cc-name{font-size:clamp(11px,1.1vw,13px);font-weight:800;color:var(--t);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc-cat{font-size:clamp(9px,0.85vw,10px);color:var(--gmt)}
+.cc-desc{font-size:clamp(10px,0.9vw,11px);color:var(--gmt);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1}
+.cc-tags-row{display:flex;flex-wrap:wrap;gap:3px}
+.cc-tag{padding:1px 6px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:clamp(8px,0.75vw,10px);font-weight:600;color:var(--gmt)}
+.cc-foot{display:flex;align-items:center;gap:4px;padding:clamp(6px,3%,10px) clamp(8px,5%,14px);border-top:1px solid var(--bdr);flex-shrink:0}
+.cc-stat{display:flex;align-items:center;gap:2px;font-size:clamp(9px,0.85vw,11px);color:var(--gmt)}
+.cc-stat svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.cc-join-btn{margin-left:auto;padding:4px clamp(6px,3%,12px);border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:clamp(9px,0.8vw,11px);font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.cc-join-btn:hover{background:var(--g);color:#fff}
+.cc-join-btn.joined{background:var(--gp);color:var(--gmt);border-color:var(--bdr)}
+/* cc-* styles defined above in comm-card section */
+
+/* ── КАРТОЧКА (список) ── */
+.comm-row{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 16px;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .15s,border-color .15s;display:flex;align-items:center;gap:12px;animation:fadeUp .25s ease both}
+.comm-row:hover{box-shadow:var(--shm);border-color:var(--gb)}
+.cr-av{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
+.cr-body{flex:1;min-width:0}
+.cr-name{font-size:13px;font-weight:800;color:var(--t);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cr-meta-item{font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:3px}
+.cr-meta-item svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.cr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cr-join{padding:6px 14px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.cr-join:hover{background:var(--g);color:#fff}
+.cr-join.joined{background:var(--gp);color:var(--gmt);border-color:var(--bdr)}
+
+/* ── МОДАЛКА ── */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.42);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal::-webkit-scrollbar{display:none}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--w);z-index:1}
+.modal-title{font-size:15px;font-weight:800;color:var(--t)}
+.modal-close{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.modal-close:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
+.mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
+.mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.mf-input:focus{border-color:var(--gm);background:var(--w)}
+.mf-input::placeholder{color:var(--gmt)}
+.mf-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s}
+.mf-textarea:focus{border-color:var(--gm);background:var(--w)}
+.mf-textarea::placeholder{color:var(--gmt)}
+.mf-select{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--tm);outline:none;cursor:pointer}
+.mf-select:focus{border-color:var(--gm)}
+.mf-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* Выбор приватности */
+.priv-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.priv-card{padding:12px 10px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;text-align:center;transition:all .15s}
+.priv-card:hover{border-color:var(--gb)}
+.priv-card.sel{border-color:var(--g);background:var(--gl)}
+.priv-card svg{width:20px;height:20px;stroke:var(--gmt);fill:none;stroke-width:1.6;stroke-linecap:round;margin:0 auto 6px;display:block}
+.priv-card.sel svg{stroke:var(--g)}
+.priv-card-t{font-size:12px;font-weight:700;color:var(--tm)}
+.priv-card.sel .priv-card-t{color:var(--g)}
+.priv-card-s{font-size:10px;color:var(--gmt);margin-top:2px}
+/* Выбор цвета */
+.color-pick{display:flex;flex-wrap:wrap;gap:8px}
+.color-dot{width:28px;height:28px;border-radius:8px;cursor:pointer;border:2.5px solid transparent;transition:all .15s}
+.color-dot:hover,.color-dot.sel{border-color:var(--t);transform:scale(1.1)}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-submit{padding:9px 22px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-submit:hover{background:var(--gm)}
+
+/* RIGHT */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.stat-val{font-size:13px;font-weight:800;color:var(--t)}
+/* Мои сообщества */
+.my-comm{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .12s}
+.my-comm:hover{background:var(--gp)}
+.mc-av{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.mc-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.mc-cnt{font-size:10px;color:var(--gmt);flex-shrink:0}
+/* Рекомендации */
+.rec-comm{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .12s}
+.rec-comm:hover{background:var(--gp)}
+.rc-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.rc-body{flex:1;min-width:0}
+.rc-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc-meta{font-size:10px;color:var(--gmt);margin-top:1px}
+.rc-btn{padding:4px 10px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0}
+.rc-btn:hover{background:var(--g);color:#fff}
+/* Популярные теги */
+.tag-cloud{display:flex;flex-wrap:wrap;gap:5px}
+.tag-chip{padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);transition:all .15s}
+.tag-chip:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.tag-chip.active{background:var(--g);color:#fff;border-color:var(--g)}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}.comm-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}.comm-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}.comm-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="" onerror="this.style.display='none'"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap">
+    <span class="search-dot"></span>
+    <input type="search" id="searchInput" placeholder="Поиск сообществ…" oninput="applyFilters()">
+  </div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span class="tp-name" id="topbarName">Никита Клишин</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/news.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item active" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Тулбар -->
+  <div class="comm-toolbar">
+    <span class="comm-title">Сообщества</span>
+    <div class="mode-switch">
+      <button class="mode-btn active" id="modeAll" onclick="setMode('all',this)">Все</button>
+      <button class="mode-btn" id="modeMy" onclick="setMode('my',this)">Мои</button>
+    </div>
+    <div class="mode-switch">
+      <button class="mode-btn active" id="modeUser" onclick="setType('user',this)">Пользовательские</button>
+      <button class="mode-btn" id="modeCorp" onclick="setType('corp',this)">Корпоративные</button>
+    </div>
+    <div class="comm-tabs" id="commTabs">
+      <button class="ctab active" onclick="setTab('',this)">Все</button>
+      <button class="ctab" onclick="setTab('Логистика',this)">Логистика</button>
+      <button class="ctab" onclick="setTab('ВЭД',this)">ВЭД</button>
+      <button class="ctab" onclick="setTab('IT',this)">IT</button>
+      <button class="ctab" onclick="setTab('Регионы',this)">Региональные</button>
+      <button class="ctab" onclick="setTab('Карьера',this)">Карьера</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn-create" onclick="openModal()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать сообщество
+      </button>
+    </div>
+  </div>
+
+  <!-- Лента -->
+  <div id="commFeed"></div>
+
+</div><!-- /main -->
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Статистика -->
+  <div class="card">
+    <div class="block-title">Статистика</div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Всего сообществ</span><span class="stat-val">247</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Открытых</span><span class="stat-val" style="color:var(--g)">189</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Закрытых</span><span class="stat-val">58</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Я в сообществах</span><span class="stat-val">3</span></div>
+  </div>
+
+  <!-- Мои сообщества -->
+  <div class="card">
+    <div class="block-title">Мои сообщества</div>
+    <div class="my-comm" onclick="setMode('my',document.getElementById('modeMy'))">
+      <div class="mc-av" style="background:#1E8A4C">🚛</div>
+      <span class="mc-name">Логистика СНГ</span>
+      <span class="mc-cnt">2.4к уч.</span>
+    </div>
+    <div class="my-comm" onclick="openCommunity(COMMUNITIES[2])">
+      <div class="mc-av" style="background:#6040A0">💻</div>
+      <span class="mc-name">LogTech Россия</span>
+      <span class="mc-cnt">834 уч.</span>
+    </div>
+    <div class="my-comm" onclick="openCommunity(COMMUNITIES[4])">
+      <div class="mc-av" style="background:#B45309">💼</div>
+      <span class="mc-name">HR в логистике</span>
+      <span class="mc-cnt">412 уч.</span>
+    </div>
+    <div style="padding:8px 6px 0;text-align:center">
+      <button onclick="setMode('my',document.getElementById('modeMy'))" style="font-size:11px;font-weight:700;color:var(--g);background:none;border:none;cursor:pointer;font-family:inherit">Все мои сообщества →</button>
+    </div>
+  </div>
+
+  <!-- Рекомендации -->
+  <div class="card">
+    <div class="block-title">Рекомендуем вам</div>
+    <div class="rec-comm">
+      <div class="rc-av" style="background:#185FA5">🛃</div>
+      <div class="rc-body"><div class="rc-name">ВЭД Профессионалы</div><div class="rc-meta">1 840 участников</div></div>
+      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
+    </div>
+    <div class="rec-comm">
+      <div class="rc-av" style="background:#B05090">🌍</div>
+      <div class="rc-body"><div class="rc-name">Логисты Москвы</div><div class="rc-meta">928 участников</div></div>
+      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
+    </div>
+    <div class="rec-comm">
+      <div class="rc-av" style="background:#208090">📦</div>
+      <div class="rc-body"><div class="rc-name">Складские технологии</div><div class="rc-meta">651 участник</div></div>
+      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
+    </div>
+    <div class="rec-comm">
+      <div class="rc-av" style="background:#633806">🚂</div>
+      <div class="rc-body"><div class="rc-name">Железнодорожные перевозки</div><div class="rc-meta">478 участников</div></div>
+      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
+    </div>
+  </div>
+
+
+</aside>
+
+<!-- МОДАЛКА СОЗДАНИЯ -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Создать сообщество</span>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div><label class="mf-label">Название сообщества *</label><input class="mf-input" id="mName" placeholder="Например: Логисты Екатеринбурга"></div>
+      <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Расскажите о чём ваше сообщество и кому оно будет полезно…"></textarea></div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Категория</label>
+          <select class="mf-select" id="mCat">
+            <option value="">Выбрать…</option>
+            <option>Логистика</option><option>ВЭД</option><option>IT</option>
+            <option>Регионы</option><option>Карьера</option><option>Другое</option>
+          </select>
+        </div>
+        <div><label class="mf-label">Регион / город</label><input class="mf-input" id="mRegion" placeholder="Москва"></div>
+      </div>
+      <div><label class="mf-label">Теги через запятую</label><input class="mf-input" id="mTags" placeholder="логистика, снг, маршруты…"></div>
+      <div><label class="mf-label">Цвет сообщества</label>
+        <div class="color-pick" id="colorPick">
+          <div class="color-dot sel" style="background:#1E8A4C" onclick="selectColor('#1E8A4C',this)"></div>
+          <div class="color-dot" style="background:#185FA5" onclick="selectColor('#185FA5',this)"></div>
+          <div class="color-dot" style="background:#6040A0" onclick="selectColor('#6040A0',this)"></div>
+          <div class="color-dot" style="background:#B45309" onclick="selectColor('#B45309',this)"></div>
+          <div class="color-dot" style="background:#B05090" onclick="selectColor('#B05090',this)"></div>
+          <div class="color-dot" style="background:#208090" onclick="selectColor('#208090',this)"></div>
+          <div class="color-dot" style="background:#633806" onclick="selectColor('#633806',this)"></div>
+          <div class="color-dot" style="background:#3B6D11" onclick="selectColor('#3B6D11',this)"></div>
+          <input type="color" id="mColor" value="#1E8A4C" style="width:28px;height:28px;border:none;border-radius:8px;cursor:pointer;padding:0" title="Свой цвет">
+        </div>
+      </div>
+      <div><label class="mf-label">Приватность</label>
+        <div class="priv-pick">
+          <div class="priv-card sel" id="pcOpen" onclick="selectPriv('open',this)">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <div class="priv-card-t">Открытое</div>
+            <div class="priv-card-s">Вступить может любой</div>
+          </div>
+          <div class="priv-card" id="pcClosed" onclick="selectPriv('closed',this)">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div class="priv-card-t">Закрытое</div>
+            <div class="priv-card-s">Только по заявке</div>
+          </div>
+        </div>
+      </div>
+      <div><label class="mf-label">Сайт сообщества (опционально)</label><input class="mf-input" id="mWebsite" placeholder="https://…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-submit" onclick="submitCommunity()">Создать сообщество</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api', tk=()=>localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function ltr(s){return((s||'?')[0]).toUpperCase()}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
+function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0)}
+function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})}
+function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
+
+/* DROPDOWN */
+function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
+document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html'}
+
+/* ── ДАННЫЕ ── */
+const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];
+
+const COMMUNITIES=[
+  {id:1,name:'Логистика СНГ',cat:'Логистика',desc:'Крупнейшее профессиональное сообщество логистов и экспедиторов СНГ. Маршруты, перевозчики, тарифы, таможня и нетворкинг.',tags:['снг','маршруты','экспорт'],members:2400,posts:84,activity:12000,privacy:'open',color:'#1E8A4C',icon:'🚛',isMy:true,corporate:false,createdAt:new Date(Date.now()-3.15e10).toISOString()},
+  {id:2,name:'ВЭД Профессионалы',cat:'ВЭД',desc:'Таможенное оформление, ТН ВЭД, декларирование и работа с регуляторами ЕАЭС. Обмен опытом и помощь коллег.',tags:['таможня','вэд','еаэс'],members:1840,posts:213,activity:8400,privacy:'open',color:'#185FA5',icon:'🛃',isMy:false,corporate:false,createdAt:new Date(Date.now()-2.52e10).toISOString()},
+  {id:3,name:'LogTech Россия',cat:'IT',desc:'TMS, WMS, EDI и цифровая трансформация логистических процессов. Разработчики и внедренцы логистических систем.',tags:['tms','wms','автоматизация'],members:834,posts:97,activity:4200,privacy:'open',color:'#6040A0',icon:'💻',isMy:true,corporate:false,createdAt:new Date(Date.now()-1.89e10).toISOString()},
+  {id:4,name:'Логисты Москвы',cat:'Регионы',desc:'Региональное сообщество профессионалов в сфере логистики в Москве и Московской области. Нетворкинг и оффлайн-встречи.',tags:['москва','нетворкинг'],members:928,posts:156,activity:6300,privacy:'open',color:'#B05090',icon:'🌍',isMy:false,corporate:false,createdAt:new Date(Date.now()-1.26e10).toISOString()},
+  {id:5,name:'HR в логистике',cat:'Карьера',desc:'Рынок труда, зарплатная аналитика и карьерные советы для профессионалов отрасли. Рекрутеры и соискатели.',tags:['карьера','зарплата','рекрутинг'],members:412,posts:68,activity:2100,privacy:'open',color:'#B45309',icon:'💼',isMy:true,corporate:false,createdAt:new Date(Date.now()-8.4e9).toISOString()},
+  {id:6,name:'Складские технологии',cat:'Логистика',desc:'WMS, автоматизация складов, роботизация и оптимизация операций. Практические кейсы и решения.',tags:['склад','wms','роботизация'],members:651,posts:44,activity:1800,privacy:'open',color:'#208090',icon:'📦',isMy:false,corporate:false,createdAt:new Date(Date.now()-7.56e9).toISOString()},
+  {id:7,name:'Импорт из Китая',cat:'ВЭД',desc:'Поставки из Китая: поиск поставщиков, контроль качества, логистика и таможня. Делимся кейсами.',tags:['китай','импорт','поставщики'],members:1120,posts:187,activity:7800,privacy:'open',color:'#E04040',icon:'🇨🇳',isMy:false,corporate:false,createdAt:new Date(Date.now()-1.26e9).toISOString()},
+  {id:8,name:'Фармлогистика ЕАЭС',cat:'ВЭД',desc:'Хранение и перевозка фармацевтических грузов. Холодовая цепь, GDP, сертификация в ЕАЭС.',tags:['фарма','еаэс','холодовая-цепь'],members:287,posts:52,activity:1400,privacy:'closed',color:'#3B6D11',icon:'💊',isMy:false,corporate:false,createdAt:new Date(Date.now()-5.04e9).toISOString()},
+  /* Корпоративные */
+  {id:9,name:'NorthBridge Logistics',cat:'Логистика',desc:'Официальное сообщество компании NorthBridge Logistics. Новости, вакансии, маршруты и партнёрские программы.',tags:['northbridge','перевозки','партнёры'],members:3200,posts:341,activity:18000,privacy:'open',color:'#1E8A4C',icon:'🏢',isMy:false,corporate:true,createdAt:new Date(Date.now()-2.52e10).toISOString()},
+  {id:10,name:'GlobalFreight Partners',cat:'ВЭД',desc:'Сообщество клиентов и партнёров GlobalFreight. Таможенные услуги, акции и обновления тарифов.',tags:['globalfreight','таможня','партнёры'],members:1870,posts:124,activity:6700,privacy:'open',color:'#3A90C0',icon:'🌐',isMy:false,corporate:true,createdAt:new Date(Date.now()-1.89e10).toISOString()},
+  {id:11,name:'LASTOP Digital',cat:'IT',desc:'Официальное сообщество платформы LASTOP. Обновления продукта, обучение, вебинары и техподдержка.',tags:['lastop','платформа','обновления'],members:5400,posts:487,activity:32000,privacy:'open',color:'#22A05A',icon:'⚡',isMy:true,corporate:true,createdAt:new Date(Date.now()-3.15e10).toISOString()},
+  {id:12,name:'Volga Industrial Group',cat:'Логистика',desc:'Корпоративное сообщество Volga Industrial Group. Промышленная логистика, закупки, партнёрство.',tags:['volga','промышленность','закупки'],members:920,posts:76,activity:3100,privacy:'closed',color:'#C07030',icon:'🏭',isMy:false,corporate:true,createdAt:new Date(Date.now()-1.26e10).toISOString()},
+];
+
+const joinedSet=new Set(COMMUNITIES.filter(c=>c.isMy).map(c=>c.id));
+let currentMode='all';
+let currentTab='';
+let currentType='all'; /* second toggle: all | user | corp */
+let currentView='grid';
+let activeTag='';
+let selectedPriv='open';
+let selectedColor='#1E8A4C';
+
+/* ── РЕНДЕР КАРТОЧКИ (grid) ── */
+function renderCard(c,i){
+  const isJoined=joinedSet.has(c.id);
+  const gi=c.id%GRADIENTS.length;
+  return`<div class="comm-card" style="animation-delay:${i*.05}s" onclick="openCommunity(COMMUNITIES.find(x=>x.id===${c.id}))">
+    <div class="cc-cover">
+      <div class="cc-cover-bg" style="background:${GRADIENTS[gi]}"></div>
+      ${c.privacy==='closed'?`<div class="cc-priv"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Закрытое</div>`:''}
+      <div class="cc-av" style="background:${c.color}">${c.icon}</div>
+    </div>
+    <div class="cc-body">
+      <div class="cc-name">${esc(c.name)}</div>
+      <div class="cc-cat">${esc(c.cat)}</div>
+      <div class="cc-desc">${esc(c.desc)}</div>
+      <div class="cc-tags-row">${c.tags.slice(0,2).map(t=>`<span class="cc-tag">${esc(t)}</span>`).join('')}</div>
+    </div>
+    <div class="cc-foot">
+      <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${num(c.members)}</span>
+      <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();toggleJoin(${c.id},this)" id="cjb-${c.id}">${isJoined?'✓':'+ Вступить'}</button>
+    </div>
+  </div>`;
+}
+
+/* ── РЕНДЕР СТРОКИ (list) ── */
+function renderRow(c,i){
+  const isJoined=joinedSet.has(c.id);
+  return`<div class="comm-row" style="animation-delay:${i*.04}s" onclick="openCommunity(COMMUNITIES.find(x=>x.id===${c.id}))">
+    <div class="cr-av" style="background:${c.color}">${c.icon}</div>
+    <div class="cr-body">
+      <div class="cr-name">${esc(c.name)}</div>
+      <div class="cr-meta">
+        <span class="cr-meta-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${num(c.members)} участников</span>
+        <span class="cr-meta-item"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${c.posts} постов</span>
+        <span class="cr-meta-item">${c.cat}</span>
+        ${c.privacy==='closed'?'<span class="cr-meta-item">🔒 Закрытое</span>':''}
+      </div>
+    </div>
+    <div class="cr-right">
+      <button class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();toggleJoin(${c.id},this)" id="crb-${c.id}">${isJoined?'✓ Участник':'Вступить'}</button>
+    </div>
+  </div>`;
+}
+
+function renderFeed(items){
+  const feed=document.getElementById('commFeed');
+  if(!items.length){
+    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Сообщества не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте другой фильтр или <button onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создайте своё</button></div></div>';
+    return;
+  }
+  let html='<div class="comm-grid">';
+  if(currentType==='all'){
+    const user=items.filter(c=>!c.corporate);
+    const corp=items.filter(c=>c.corporate);
+    if(user.length){
+      html+=`<div class="comm-section-label">👥 Пользовательские <span style="font-size:11px;font-weight:600;color:var(--gmt)">${user.length}</span></div>`;
+      html+=user.map((c,i)=>renderCard(c,i)).join('');
+    }
+    if(corp.length){
+      html+=`<div class="comm-section-label" style="margin-top:4px">🏢 Корпоративные <span style="font-size:11px;font-weight:600;color:var(--gmt)">${corp.length}</span></div>`;
+      html+=corp.map((c,i)=>renderCard(c,i)).join('');
+    }
+  } else {
+    html+=items.map((c,i)=>renderCard(c,i)).join('');
+  }
+  html+='</div>';
+  feed.innerHTML=html;
+}
+
+/* ── ФИЛЬТРЫ ── */
+function applyFilters(){
+  const q=(document.getElementById('searchInput').value||'').toLowerCase();
+  let items=[...COMMUNITIES];
+  if(currentMode==='my') items=items.filter(c=>joinedSet.has(c.id));
+  if(currentType==='user') items=items.filter(c=>!c.corporate);
+  else if(currentType==='corp') items=items.filter(c=>c.corporate);
+  if(currentTab) items=items.filter(c=>c.cat===currentTab);
+  if(activeTag) items=items.filter(c=>c.tags.some(t=>t.toLowerCase().includes(activeTag)));
+  if(q) items=items.filter(c=>c.name.toLowerCase().includes(q)||c.desc.toLowerCase().includes(q)||c.tags.some(t=>t.toLowerCase().includes(q)));
+  items.sort((a,b)=>b.members-a.members);
+  renderFeed(items);
+}
+
+function setMode(mode,btn){
+  currentMode=mode;
+  document.querySelectorAll('#modeAll,#modeMy').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function setType(type,btn){
+  currentType=type;
+  document.querySelectorAll('#modeUser,#modeCorp').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+function setTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+function filterByTag(chip,tag){
+  if(activeTag===tag){activeTag='';chip.classList.remove('active')}
+  else{activeTag=tag;document.querySelectorAll('.tag-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active')}
+  applyFilters();
+}
+
+/* ── ВСТУПЛЕНИЕ ── */
+function toggleJoin(id,btn){
+  const isJoined=joinedSet.has(id);
+  if(isJoined){joinedSet.delete(id);btn.classList.remove('joined');btn.textContent='Вступить';toast('Вы покинули сообщество')}
+  else{joinedSet.add(id);btn.classList.add('joined');btn.textContent='✓ Участник';toast('Вы вступили в сообщество ✓',true)}
+  /* sync all buttons for same id */
+  document.querySelectorAll(`[id="cjb-${id}"],[id="crb-${id}"]`).forEach(b=>{b.classList.toggle('joined',!isJoined);b.textContent=!isJoined?'✓ Участник':'Вступить'});
+  fetch(API+'/communities/'+id+'/'+(isJoined?'leave':'join'),{method:isJoined?'DELETE':'POST',headers:{Authorization:'Bearer '+tk()}}).catch(()=>{});
+}
+
+let heroJoined=true;
+function toggleHeroJoin(){
+  heroJoined=!heroJoined;
+  const btn=document.getElementById('heroJoin');
+  btn.textContent=heroJoined?'✓ Вы участник':'Вступить';
+  btn.classList.toggle('joined',heroJoined);
+  if(heroJoined)joinedSet.add(1);else joinedSet.delete(1);
+  toast(heroJoined?'Вы вступили в сообщество ✓':'Вы покинули сообщество',heroJoined);
+}
+function joinRec(btn){btn.textContent='✓ Вступил';btn.style.background='var(--g)';btn.style.color='#fff';btn.disabled=true;toast('Вы вступили в сообщество ✓',true)}
+function openCommunity(c){if(c)toast('Открываем сообщество: '+c.name)}
+
+/* ── МОДАЛКА СОЗДАНИЯ ── */
+function openModal(){document.getElementById('modalBg').classList.add('open')}
+function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+function selectPriv(type,card){
+  selectedPriv=type;
+  document.querySelectorAll('.priv-card').forEach(c=>c.classList.remove('sel'));
+  card.classList.add('sel');
+}
+function selectColor(color,dot){
+  selectedColor=color;
+  document.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('sel'));
+  dot.classList.add('sel');
+  document.getElementById('mColor').value=color;
+}
+function submitCommunity(){
+  const name=(document.getElementById('mName')?.value||'').trim();
+  if(!name){toast('Введите название сообщества');return}
+  const cat=document.getElementById('mCat')?.value||'Другое';
+  const desc=document.getElementById('mDesc')?.value||'';
+  const tags=(document.getElementById('mTags')?.value||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const color=document.getElementById('mColor')?.value||selectedColor;
+  const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
+  const newComm={
+    id:Date.now(),name,cat,desc,tags,color,
+    icon:icons[cat]||'💬',privacy:selectedPriv,
+    members:1,posts:0,activity:0,isMy:true,
+    createdAt:new Date().toISOString()
+  };
+  COMMUNITIES.unshift(newComm);
+  joinedSet.add(newComm.id);
+  closeModal();
+  applyFilters();
+  toast('Сообщество «'+name+'» создано ✓',true);
+  fetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,tags,privacy_level:selectedPriv})}).catch(()=>{});
+}
+
+/* ── АВТОРИЗАЦИЯ ── */
+(async()=>{
+  if(!tk()){location.href='/login.html';return}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
+    const color=C[name.charCodeAt(0)%C.length];const L=ltr(name);
+    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
+    ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
+    const role=user.role||user.position||'Участник LASTOP';
+    ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
+  }catch{}
+  applyFilters();
+})();
+</script>
+</body>
+</html>
