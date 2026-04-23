@@ -384,9 +384,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="bc-sep">›</span>
     <a class="bc-item" href="/events.html">Мероприятия</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/events.html?cat=logistics">Логистика и транспорт</a>
+    <a class="bc-item" id="bcCategory" href="/events.html?cat=logistics">Логистика и транспорт</a>
     <span class="bc-sep">›</span>
-    <span class="bc-item cur">LogisticsPro Digital Q2 2026</span>
+    <span class="bc-item cur" id="bcCurrent">LogisticsPro Digital Q2 2026</span>
   </nav>
 
   <!-- ── ОБЛОЖКА + ШАПКА ── -->
@@ -402,31 +402,31 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
       <div class="ev-cover-date">
         <div class="ev-big-date">
-          <div class="ev-big-date-num">28</div>
+          <div class="ev-big-date-num" id="evDay">28</div>
           <div class="ev-big-date-info">
-            <span class="ev-big-date-month">Апреля</span>
-            <span class="ev-big-date-year">2026</span>
+            <span class="ev-big-date-month" id="evMonth">Апреля</span>
+            <span class="ev-big-date-year" id="evYear">2026</span>
           </div>
         </div>
-        <div class="ev-big-time">10:00 – 18:00</div>
+        <div class="ev-big-time" id="evTimeRange">10:00 – 18:00</div>
       </div>
     </div>
     <div class="ev-header">
-      <h1 class="ev-title">LogisticsPro Digital Q2 2026 — тренды, технологии и будущее отрасли</h1>
+      <h1 class="ev-title" id="evTitle">LogisticsPro Digital Q2 2026 — тренды, технологии и будущее отрасли</h1>
       <div class="ev-meta-row">
         <span class="ev-meta-item">
           <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Москва, Пресненская наб., 10 · Онлайн-трансляция
+          <span id="evLocation">Москва, Пресненская наб., 10 · Онлайн-трансляция</span>
         </span>
         <span class="ev-meta-sep"></span>
         <span class="ev-meta-item">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          8 часов
+          <span id="evDuration">8 часов</span>
         </span>
         <span class="ev-meta-sep"></span>
         <span class="ev-meta-item">
           <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-          NorthBridge Logistics
+          <span id="evOrganizer">NorthBridge Logistics</span>
         </span>
         <span class="ev-meta-sep"></span>
         <span class="ev-meta-item">
@@ -856,7 +856,61 @@ function submitTicket(){
   toast(msg,true);
 }
 
+
+/* ИНТЕГРАЦИЯ С /events.html */
+function formatRuDateParts(d){
+  const dt=new Date(d);
+  const day=String(dt.getDate());
+  const month=dt.toLocaleString('ru-RU',{month:'long'});
+  const monthCap=month.charAt(0).toUpperCase()+month.slice(1);
+  return {day,month:monthCap,year:String(dt.getFullYear())};
+}
+function applyEventFromQuery(){
+  const q=new URLSearchParams(location.search);
+  const id=q.get('id');
+  const events={
+    '1':{
+      title:'Новое таможенное регулирование ЕАЭС в 2026',
+      category:'ВЭД и таможня',
+      categoryHref:'/events.html?type=webinar',
+      date:'2026-04-23T10:00:00',
+      time:'10:00 – 11:30',
+      location:'Онлайн-трансляция',
+      duration:'1,5 часа',
+      organizer:'LASTOP Academy'
+    },
+    '2':{
+      title:'Воркшоп: внедрение TMS за 90 дней',
+      category:'IT в логистике',
+      categoryHref:'/events.html?type=workshop',
+      date:'2026-04-23T14:00:00',
+      time:'14:00 – 17:00',
+      location:'Онлайн-трансляция',
+      duration:'3 часа',
+      organizer:'LogTech Alliance'
+    }
+  };
+  const ev=events[id];
+  if(!ev)return;
+  const date=formatRuDateParts(ev.date);
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val};
+  set('bcCurrent',ev.title);
+  set('evTitle',ev.title);
+  set('evDay',date.day);
+  set('evMonth',date.month);
+  set('evYear',date.year);
+  set('evTimeRange',ev.time);
+  set('evLocation',ev.location);
+  set('evDuration',ev.duration);
+  set('evOrganizer',ev.organizer);
+  const bcCat=document.getElementById('bcCategory');
+  if(bcCat){bcCat.textContent=ev.category;bcCat.setAttribute('href',ev.categoryHref);}
+  document.title='LASTOP GROUP — '+ev.title;
+}
+
 /* АВТОРИЗАЦИЯ */
+applyEventFromQuery();
+
 (async()=>{
   if(!tk()){location.href='/login.html';return}
   try{
