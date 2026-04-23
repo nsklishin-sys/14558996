@@ -91,7 +91,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .btn-news svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ─── КАЛЕНДАРЬ ─── */
-.cal-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);flex-shrink:0}
+.cal-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);flex-shrink:0;overflow:hidden}
 /* Popup событий дня */
 .cal-popup{
   overflow:hidden;
@@ -120,8 +120,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cal-popup-close:hover{border-color:var(--gb);color:var(--g)}
 .cal-popup-close svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .cal-popup-list{padding:6px}
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.cal-month-label{font-size:14px;font-weight:800;color:var(--t)}
+.cal-nav{display:grid;grid-template-columns:28px minmax(0,1fr) auto 28px;align-items:center;gap:6px;margin-bottom:12px}
+.cal-month-label{font-size:14px;font-weight:800;color:var(--t);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-nav-btn{width:28px;height:28px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
 .cal-nav-btn:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
 .cal-nav-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
