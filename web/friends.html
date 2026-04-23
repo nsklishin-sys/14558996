@@ -111,7 +111,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* ══ КАРТОЧКИ ДРУЗЕЙ ══ */
 .friends-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-.friend-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;transition:border-color .15s,box-shadow .15s;cursor:pointer}
+.friend-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;transition:border-color .15s,box-shadow .15s;cursor:pointer;height:100%;min-height:238px}
 .friend-card:hover{border-color:var(--gb);box-shadow:var(--shm)}
 .fc-av-wrap{position:relative}
 .fc-av{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:20px;font-weight:900;color:#fff}
@@ -121,7 +121,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .fc-company{font-size:11px;font-weight:700;color:var(--g);margin-top:2px}
 .fc-mutual{font-size:10px;color:var(--gmt);display:flex;align-items:center;gap:4px;justify-content:center}
 .fc-mutual svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
-.fc-actions{display:flex;gap:6px;width:100%;margin-top:2px}
+.fc-body{width:100%;display:flex;flex-direction:column;align-items:center}
+.fc-actions{display:flex;gap:6px;width:100%;margin-top:auto}
 .fc-btn{flex:1;padding:7px 8px;border-radius:var(--rm);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .fc-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .fc-btn-msg{background:var(--gl);border:1px solid var(--gb);color:var(--g)}
@@ -418,7 +419,7 @@ function buildCard(user, type){
       <div class="fc-av" style="background:${color}">${letter}</div>
       ${online?'<span class="fc-online"></span>':''}
     </div>
-    <div style="width:100%">
+    <div class="fc-body">
       <div class="fc-name">${esc(name)}</div>
       ${pos?`<div class="fc-role">${esc(pos)}</div>`:''}
       ${company?`<div class="fc-company">${esc(company)}</div>`:''}
