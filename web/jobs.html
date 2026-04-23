@@ -666,7 +666,7 @@ function renderJob(j,i){
 function renderCv(cv,i){
   const stCls={active:'s-seeking',open:'s-open',passive:'s-passive'}[cv.status]||'s-open';
   const stLbl={active:'Ищет работу',open:'Рассматривает',passive:'Открыт к офферам'}[cv.status]||'';
-  return`<div class="cv-card" style="animation-delay:${i*.05}s">
+  return`<div class="cv-card" style="animation-delay:${i*.05}s" onclick="openResumeDetail(${cv.id})">
     <div class="cc-head">
       <div class="cc-av" style="background:${avc(cv.name)}">${letter(cv.name)}</div>
       <div class="cc-meta">
@@ -685,17 +685,22 @@ function renderCv(cv,i){
     ${cv.about?`<div class="cc-about">${esc(cv.about)}</div>`:''}
     <div class="cc-skills">${cv.skills.map(s=>`<span class="cc-skill">${esc(s)}</span>`).join('')}</div>
     <div class="cc-foot">
-      <button class="btn-save" onclick="showToast('Сохранено в избранное')" title="Сохранить резюме">
+      <button class="btn-save" onclick="event.stopPropagation();showToast('Сохранено в избранное')" title="Сохранить резюме">
         <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       </button>
       <div style="margin-left:auto;display:flex;gap:6px">
-        <button class="btn-save" onclick="showToast('Открываем профиль…')" title="Профиль">
+        <button class="btn-save" onclick="event.stopPropagation();openResumeDetail(${cv.id})" title="Профиль">
           <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </button>
-        <button class="btn-invite" onclick="showToast('Приглашение отправлено ✓','success')">Пригласить</button>
+        <button class="btn-invite" onclick="event.stopPropagation();showToast('Приглашение отправлено ✓','success')">Пригласить</button>
       </div>
     </div>
   </div>`;
+}
+
+
+function openResumeDetail(id){
+  location.href=`/resume-detail.html?id=${id||''}`;
 }
 
 function renderFeed(items){
