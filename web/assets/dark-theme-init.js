@@ -114,50 +114,81 @@
     });
   }
 
-  function injectFloatingButton() {
-    if (document.body.dataset.darkNoFab !== undefined) return;
-    if (document.getElementById('darkFab')) return;
-
-    var fab = document.createElement('button');
-    fab.id = 'darkFab';
-    fab.setAttribute('data-dark-toggle', '');
-    fab.setAttribute('aria-label', 'Переключить тёмную тему');
-    fab.setAttribute('title', 'Тёмная / светлая тема');
-    fab.style.cssText = [
-      'position:fixed',
-      'bottom:24px',
-      'right:24px',
-      'z-index:9999',
-      'width:44px',
-      'height:44px',
-      'border-radius:50%',
-      'border:1.5px solid var(--bdr,#DDE8E2)',
-      'background:var(--w,#fff)',
-      'box-shadow:0 4px 16px rgba(0,0,0,.14)',
-      'cursor:pointer',
-      'display:flex',
-      'align-items:center',
-      'justify-content:center',
-      'transition:transform .2s,box-shadow .2s',
-      'outline:none'
-    ].join(';');
-
-    fab.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" '
+  function createThemeButton() {
+    var btn = document.createElement('button');
+    btn.id = 'darkFab';
+    btn.setAttribute('data-dark-toggle', '');
+    btn.setAttribute('aria-label', 'Переключить тёмную тему');
+    btn.setAttribute('title', 'Тёмная / светлая тема');
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" '
       + 'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
       + 'style="color:var(--gmt,#5A8A6A)">'
       + '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
       + '</svg>';
+    return btn;
+  }
+
+  function injectThemeButton() {
+    if (document.body.dataset.darkNoFab !== undefined) return;
+    if (document.getElementById('darkFab')) return;
+
+    var settingsLink = document.querySelector('.nav .nav-item[href="/settings.html"], .global-sidebar a[href="/settings.html"]');
+    var fab = createThemeButton();
+
+    if (settingsLink && settingsLink.parentNode) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;width:100%';
+
+      var parent = settingsLink.parentNode;
+      parent.insertBefore(row, settingsLink);
+      row.appendChild(settingsLink);
+      row.appendChild(fab);
+
+      settingsLink.style.flex = '1';
+      fab.style.cssText = [
+        'width:36px',
+        'height:36px',
+        'border-radius:10px',
+        'border:1.5px solid var(--bdr,#DDE8E2)',
+        'background:var(--w,#fff)',
+        'cursor:pointer',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'transition:transform .2s,box-shadow .2s',
+        'outline:none'
+      ].join(';');
+    } else {
+      fab.style.cssText = [
+        'position:fixed',
+        'bottom:24px',
+        'right:24px',
+        'z-index:9999',
+        'width:44px',
+        'height:44px',
+        'border-radius:50%',
+        'border:1.5px solid var(--bdr,#DDE8E2)',
+        'background:var(--w,#fff)',
+        'box-shadow:0 4px 16px rgba(0,0,0,.14)',
+        'cursor:pointer',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'transition:transform .2s,box-shadow .2s',
+        'outline:none'
+      ].join(';');
+      document.body.appendChild(fab);
+    }
 
     fab.addEventListener('mouseenter', function () {
-      this.style.transform = 'scale(1.1)';
+      this.style.transform = 'scale(1.06)';
       this.style.boxShadow = '0 6px 20px rgba(0,0,0,.2)';
     });
     fab.addEventListener('mouseleave', function () {
       this.style.transform = 'scale(1)';
-      this.style.boxShadow = '0 4px 16px rgba(0,0,0,.14)';
+      this.style.boxShadow = '';
     });
 
-    document.body.appendChild(fab);
     bindHandlers();
   }
 
@@ -168,7 +199,7 @@
     bindHandlers();
     watchSystemPreference();
     if (!document.getElementById('themeDarkToggle')) {
-      injectFloatingButton();
+      injectThemeButton();
     }
   });
 
