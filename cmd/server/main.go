@@ -26,12 +26,19 @@ type greetingResponse struct {
 }
 
 type user struct {
-	ID        int64  `json:"id"`
-	PublicID  string `json:"public_id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	FullName  string `json:"full_name"`
-	Email     string `json:"email"`
+	ID          int64  `json:"id"`
+	PublicID    string `json:"public_id"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	FullName    string `json:"full_name"`
+	Email       string `json:"email"`
+	Position    string `json:"position,omitempty"`
+	CompanyName string `json:"company_name,omitempty"`
+	Bio         string `json:"bio,omitempty"`
+	Phone       string `json:"phone,omitempty"`
+	Location    string `json:"location,omitempty"`
+	City        string `json:"city,omitempty"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
 type registerRequest struct {
@@ -46,6 +53,19 @@ type registerRequest struct {
 type loginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type profileUpdateRequest struct {
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	FullName    string `json:"full_name"`
+	Position    string `json:"position"`
+	CompanyName string `json:"company_name"`
+	Bio         string `json:"bio"`
+	Phone       string `json:"phone"`
+	Location    string `json:"location"`
+	City        string `json:"city"`
+	AvatarURL   string `json:"avatar_url"`
 }
 
 type authResponse struct {
@@ -229,20 +249,8 @@ func main() {
 			return
 		}
 
-		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
-			return
-		}
-		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-		if token == "" {
-			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
-			return
-		}
-
-		userID, ok := sessions.getUserID(token)
+		userID, ok := authenticatedUserID(w, r, sessions)
 		if !ok {
-			writeError(w, http.StatusUnauthorized, "Сессия не найдена")
 			return
 		}
 
@@ -258,6 +266,51 @@ func main() {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{"user": authUser})
+	})
+
+	mux.HandleFunc("/api/profile", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			u, err := getUserByID(db, userID)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Пользователь не найден")
+					return
+				}
+				log.Printf("get profile error: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"user": u})
+		case http.MethodPut:
+			var req profileUpdateRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			updatedUser, err := updateUserProfile(db, userID, req)
+			if err != nil {
+				if errors.Is(err, errValidation) {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Пользователь не найден")
+					return
+				}
+				log.Printf("update profile error: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"user": updatedUser})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
 	})
 
 	mux.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
@@ -557,7 +610,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS public_id TEXT;
+    ADD COLUMN IF NOT EXISTS public_id TEXT,
+    ADD COLUMN IF NOT EXISTS position TEXT,
+    ADD COLUMN IF NOT EXISTS company_name TEXT,
+    ADD COLUMN IF NOT EXISTS bio TEXT,
+    ADD COLUMN IF NOT EXISTS phone TEXT,
+    ADD COLUMN IF NOT EXISTS location TEXT,
+    ADD COLUMN IF NOT EXISTS city TEXT,
+    ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_uniq_idx ON users(public_id);
 
@@ -654,9 +714,9 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 		err = db.QueryRow(`
 			INSERT INTO users(public_id, first_name, last_name, full_name, email, password_hash)
 			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING id, public_id, first_name, last_name, full_name, email
+			RETURNING id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url
 		`, publicID, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
-			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email)
+			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email, &created.Position, &created.CompanyName, &created.Bio, &created.Phone, &created.Location, &created.City, &created.AvatarURL)
 		if err == nil {
 			return created, nil
 		}
@@ -689,10 +749,10 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	var u user
 	var passwordHash string
 	err := db.QueryRow(`
-		SELECT id, public_id, first_name, last_name, full_name, email, password_hash
+		SELECT id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url, password_hash
 		FROM users
 		WHERE email = $1
-	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &passwordHash)
+	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user{}, errInvalidCredentials
@@ -724,10 +784,10 @@ func getPublicUserProfile(db *sql.DB, publicID string) (publicUserProfile, error
 func getUserByID(db *sql.DB, userID int64) (user, error) {
 	var u user
 	err := db.QueryRow(`
-		SELECT id, public_id, first_name, last_name, full_name, email
+		SELECT id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url
 		FROM users
 		WHERE id = $1
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email)
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL)
 	if err != nil {
 		return user{}, err
 	}
@@ -1171,4 +1231,51 @@ func newPublicUserID() (string, error) {
 		return "", err
 	}
 	return "u" + hex.EncodeToString(buf), nil
+}
+
+func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user, error) {
+	firstName := strings.TrimSpace(req.FirstName)
+	lastName := strings.TrimSpace(req.LastName)
+	fullName := strings.TrimSpace(req.FullName)
+	if firstName == "" {
+		return user{}, fmt.Errorf("%w: имя обязательно", errValidation)
+	}
+	if lastName == "" {
+		return user{}, fmt.Errorf("%w: фамилия обязательна", errValidation)
+	}
+	if fullName == "" {
+		fullName = strings.TrimSpace(firstName + " " + lastName)
+	}
+
+	var updated user
+	err := db.QueryRow(`
+		UPDATE users
+		SET first_name = $2,
+		    last_name = $3,
+		    full_name = $4,
+		    position = NULLIF($5, ''),
+		    company_name = NULLIF($6, ''),
+		    bio = NULLIF($7, ''),
+		    phone = NULLIF($8, ''),
+		    location = NULLIF($9, ''),
+		    city = NULLIF($10, ''),
+		    avatar_url = NULLIF($11, '')
+		WHERE id = $1
+		RETURNING id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url
+	`, userID,
+		firstName,
+		lastName,
+		fullName,
+		strings.TrimSpace(req.Position),
+		strings.TrimSpace(req.CompanyName),
+		strings.TrimSpace(req.Bio),
+		strings.TrimSpace(req.Phone),
+		strings.TrimSpace(req.Location),
+		strings.TrimSpace(req.City),
+		strings.TrimSpace(req.AvatarURL),
+	).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL)
+	if err != nil {
+		return user{}, err
+	}
+	return updated, nil
 }

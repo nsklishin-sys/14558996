@@ -796,18 +796,48 @@ function avatarLetters(name){
   if(parts.length>=2)return (letter(parts[0])+letter(parts[1])).slice(0,2);
   return letter(parts[0]||name);
 }
-function applyCurrentUserProfile(){
-  const currentUser=JSON.parse(localStorage.getItem('user')||'{}');
-  if(!currentUser || (!currentUser.id && !currentUser.email && !currentUser.full_name && !currentUser.first_name)) return;
-  const firstName=(currentUser.first_name||'').trim();
-  const lastName=(currentUser.last_name||'').trim();
-  const fullName=(currentUser.full_name||`${firstName} ${lastName}`.trim()||currentUser.name||'Пользователь').trim();
-  const role=currentUser.position||'Участник LASTOP';
-  const company=currentUser.company_name||'—';
-  const location=currentUser.location||currentUser.city||'Не указано';
-  const phone=currentUser.phone||'Не указан';
-  const email=currentUser.email||'Не указан';
-  const bio=currentUser.bio||'Информация о пользователе пока не заполнена.';
+const API='/api';
+const tk=()=>localStorage.getItem('token');
+
+function profileStorageKey(userLike){
+  const publicID=userLike?.public_id||'';
+  if(publicID)return `user_profile:${publicID}`;
+  const id=userLike?.id;
+  if(id!=null)return `user_profile:u${id}`;
+  return '';
+}
+
+async function loadCurrentUser(){
+  if(!tk())return JSON.parse(localStorage.getItem('user')||'{}');
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const {user={}}=await r.json();
+    localStorage.setItem('user',JSON.stringify(user));
+    return user;
+  }catch{
+    return JSON.parse(localStorage.getItem('user')||'{}');
+  }
+}
+
+async function applyCurrentUserProfile(){
+  const currentUser=await loadCurrentUser();
+  if(!currentUser || (!currentUser.id && !currentUser.public_id && !currentUser.email && !currentUser.full_name && !currentUser.first_name)) return;
+
+  const legacyKey=profileStorageKey(currentUser);
+  const legacyProfile=legacyKey?JSON.parse(localStorage.getItem(legacyKey)||'{}'):{};
+  const mergedUser={...legacyProfile,...currentUser};
+  localStorage.setItem('user',JSON.stringify(mergedUser));
+
+  const firstName=(mergedUser.first_name||'').trim();
+  const lastName=(mergedUser.last_name||'').trim();
+  const fullName=(mergedUser.full_name||`${firstName} ${lastName}`.trim()||mergedUser.name||'Пользователь').trim();
+  const role=mergedUser.position||'Участник LASTOP';
+  const company=mergedUser.company_name||'—';
+  const location=mergedUser.location||mergedUser.city||'Не указано';
+  const phone=mergedUser.phone||'Не указан';
+  const email=mergedUser.email||'Не указан';
+  const bio=mergedUser.bio||'Информация о пользователе пока не заполнена.';
   const website=email||'Добавьте почту в настройках';
   const initials=avatarLetters(fullName);
 
@@ -816,8 +846,8 @@ function applyCurrentUserProfile(){
   document.getElementById('topbarName').textContent=fullName;
   document.getElementById('pddName').textContent=fullName;
   const profileAvatar=document.querySelector('.prof-av');
-  if(currentUser.avatar_url){
-    profileAvatar.innerHTML=`<img src="${currentUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
+  if(mergedUser.avatar_url){
+    profileAvatar.innerHTML=`<img src="${mergedUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
   }else{
     document.getElementById('profileAvatarText').textContent=initials;
   }
@@ -839,7 +869,7 @@ function applyCurrentUserProfile(){
   websiteNode.textContent=website;
   websiteNode.href=email?`mailto:${email}`:'#';
 }
-applyCurrentUserProfile();
+void applyCurrentUserProfile();
 
 function toggleProfileDD(e){
   e.stopPropagation();
