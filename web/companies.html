@@ -593,7 +593,7 @@ function toggleSub(id,btn){
   else{subbedSet.add(id);btn.classList.add('subbed');btn.textContent='✓';toast('Подписались ✓',true)}
   document.querySelectorAll(`#csub-${id}`).forEach(b=>{b.classList.toggle('subbed',!was);b.textContent=!was?'✓':'+ Подписаться'});
 }
-function openCompany(id){const c=COMPANIES.find(x=>x.id===id);if(c)toast('Открываем: '+c.name)}
+function openCompany(id){location.href='/company-detail.html?id='+encodeURIComponent(id)}
 function joinRec(btn){btn.textContent='✓ Подписан';btn.style.background='var(--g)';btn.style.color='#fff';btn.disabled=true;toast('Подписались ✓',true)}
 
 /* ── МОДАЛКА ── */
