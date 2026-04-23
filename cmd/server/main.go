@@ -724,7 +724,9 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 		err = db.QueryRow(`
 			INSERT INTO users(public_id, first_name, last_name, full_name, email, password_hash)
 			VALUES ($1, $2, $3, $4, $5, $6)
-			RETURNING id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url
+			RETURNING id, public_id, first_name, last_name, full_name, email,
+				COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
+				COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, '')
 		`, publicID, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
 			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email, &created.Position, &created.CompanyName, &created.Bio, &created.Phone, &created.Location, &created.City, &created.AvatarURL)
 		if err == nil {
@@ -759,7 +761,10 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	var u user
 	var passwordHash string
 	err := db.QueryRow(`
-		SELECT id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url, password_hash
+		SELECT id, public_id, first_name, last_name, full_name, email,
+			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''),
+			password_hash
 		FROM users
 		WHERE email = $1
 	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &passwordHash)
@@ -794,7 +799,9 @@ func getPublicUserProfile(db *sql.DB, publicID string) (publicUserProfile, error
 func getUserByID(db *sql.DB, userID int64) (user, error) {
 	var u user
 	err := db.QueryRow(`
-		SELECT id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url
+		SELECT id, public_id, first_name, last_name, full_name, email,
+			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, '')
 		FROM users
 		WHERE id = $1
 	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL)
@@ -1271,7 +1278,9 @@ func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user
 		    city = NULLIF($10, ''),
 		    avatar_url = NULLIF($11, '')
 		WHERE id = $1
-		RETURNING id, public_id, first_name, last_name, full_name, email, position, company_name, bio, phone, location, city, avatar_url
+		RETURNING id, public_id, first_name, last_name, full_name, email,
+			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, '')
 	`, userID,
 		firstName,
 		lastName,
