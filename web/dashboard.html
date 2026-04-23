@@ -24,7 +24,12 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
 
 /* ═══ SHELL ═══ */
-.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;min-height:100dvh;min-height:-webkit-fill-available;gap:10px;padding:10px}
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;height:100dvh;gap:10px;padding:10px}
+@supports (-webkit-touch-callout: none) and (not (height: 100dvh)){
+  html{height:-webkit-fill-available}
+  body{min-height:-webkit-fill-available}
+  .shell{height:-webkit-fill-available}
+}
 
 /* ═══ LOGO ═══ */
 .logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
