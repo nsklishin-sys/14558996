@@ -523,6 +523,7 @@ let currentView='grid';
 let activeTag='';
 let selectedPriv='open';
 let selectedColor='#1E8A4C';
+let isCreatingCommunity=false;
 
 /* ── РЕНДЕР КАРТОЧКИ (grid) ── */
 function renderCard(c,i){
@@ -667,7 +668,28 @@ function selectColor(color,dot){
   dot.classList.add('sel');
   document.getElementById('mColor').value=color;
 }
-function submitCommunity(){
+function mapAPICommunityToUI(c){
+  const cat=(c?.category||'Другое').trim()||'Другое';
+  const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
+  return {
+    id:Number(c?.id||Date.now()),
+    name:c?.name||'Без названия',
+    cat,
+    desc:c?.description||'',
+    tags:Array.isArray(c?.tags)?c.tags:[],
+    color:avc(c?.name||cat),
+    icon:icons[cat]||'💬',
+    privacy:c?.privacy_level==='closed'?'closed':'open',
+    members:1,
+    posts:0,
+    activity:0,
+    isMy:false,
+    corporate:false,
+    createdAt:c?.created_at||new Date().toISOString()
+  };
+}
+async function submitCommunity(){
+  if(isCreatingCommunity)return;
   const name=(document.getElementById('mName')?.value||'').trim();
   if(!name){toast('Введите название сообщества');return}
   const cat=document.getElementById('mCat')?.value||'Другое';
@@ -675,18 +697,42 @@ function submitCommunity(){
   const tags=(document.getElementById('mTags')?.value||'').split(',').map(t=>t.trim()).filter(Boolean);
   const color=document.getElementById('mColor')?.value||selectedColor;
   const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
-  const newComm={
+  isCreatingCommunity=true;
+  const submitBtn=document.querySelector('.btn-submit');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Создаём…'}
+  try{
+    const r=await fetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,tags,privacy_level:selectedPriv})});
+    if(!r.ok){
+      let msg='Не удалось создать сообщество';
+      try{const data=await r.json();if(data?.error)msg=data.error}catch{}
+      toast(msg);
+      return;
+    }
+    const data=await r.json();
+    const created=mapAPICommunityToUI(data?.community);
+    created.isMy=true;
+    created.color=color||created.color;
+    COMMUNITIES.unshift(created);
+    joinedSet.add(created.id);
+    closeModal();
+    applyFilters();
+    toast('Сообщество «'+name+'» создано ✓',true);
+  }catch{
+    const newComm={
     id:Date.now(),name,cat,desc,tags,color,
     icon:icons[cat]||'💬',privacy:selectedPriv,
     members:1,posts:0,activity:0,isMy:true,
     createdAt:new Date().toISOString()
   };
-  COMMUNITIES.unshift(newComm);
-  joinedSet.add(newComm.id);
-  closeModal();
-  applyFilters();
-  toast('Сообщество «'+name+'» создано ✓',true);
-  fetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,tags,privacy_level:selectedPriv})}).catch(()=>{});
+    COMMUNITIES.unshift(newComm);
+    joinedSet.add(newComm.id);
+    closeModal();
+    applyFilters();
+    toast('Сообщество «'+name+'» создано локально (офлайн)',true);
+  }finally{
+    isCreatingCommunity=false;
+    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='Создать сообщество'}
+  }
 }
 
 /* ── АВТОРИЗАЦИЯ ── */
@@ -703,6 +749,19 @@ function submitCommunity(){
     ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
     const role=user.role||user.position||'Участник LASTOP';
     ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
+  }catch{}
+  try{
+    const r=await fetch(API+'/communities',{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const data=await r.json();
+      const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
+      if(fromAPI.length){
+        const existingIDs=new Set(COMMUNITIES.map(c=>String(c.id)));
+        fromAPI.forEach(c=>{
+          if(!existingIDs.has(String(c.id)))COMMUNITIES.unshift(c);
+        });
+      }
+    }
   }catch{}
   applyFilters();
 })();
