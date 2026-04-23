@@ -810,6 +810,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function tk(){return localStorage.getItem('token')||'';}
+function avc(name){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];return C[(name||'A').charCodeAt(0)%C.length];}
+function applyCurrentUser(user){
+  const name=user.full_name||user.name||'Пользователь';
+  const role=user.role||user.position||'Участник LASTOP';
+  const L=letter(name);
+  const color=avc(name);
+  ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color;}});
+  ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name;});
+  ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role;});
+}
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
@@ -839,7 +850,24 @@ function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollH
 function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
 function sendMessage(){const inp=document.getElementById('msgInput');const txt=inp.value.trim();if(!txt)return;const body=document.getElementById('chatBody');const typing=body.querySelector('.typing-bubble');const html=`<div class="msg me"><div class="msg-group"><div class="msg-bubble">${esc(txt)}</div><div class="msg-meta"><span>${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div></div>`;if(typing)typing.insertAdjacentHTML('beforebegin',html);else body.insertAdjacentHTML('beforeend',html);inp.value='';autoGrow(inp);body.scrollTop=body.scrollHeight;closeReply();}
 function closeReply(){document.getElementById('replyBar').classList.remove('active');}
-window.addEventListener('DOMContentLoaded',()=>{renderDialogs();const body=document.getElementById('chatBody');body.scrollTop=body.scrollHeight;});
+window.addEventListener('DOMContentLoaded',async()=>{
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const cached=JSON.parse(localStorage.getItem('user')||'{}');
+    if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}
+  }catch{}
+  try{
+    const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const{user={}}=await r.json();
+      localStorage.setItem('user',JSON.stringify(user));
+      applyCurrentUser(user);
+    }
+  }catch{}
+  renderDialogs();
+  const body=document.getElementById('chatBody');
+  body.scrollTop=body.scrollHeight;
+});
 </script>
 <script src="/site-search.js" defer></script>
 </body>

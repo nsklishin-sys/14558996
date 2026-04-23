@@ -558,7 +558,33 @@ function openEvent(id){const ev=EVENTS.find(e=>e.id===id);if(!ev)return;location
 function openModal(){document.getElementById('mDate').value=NOW.toISOString().slice(0,10);document.getElementById('modalBg').classList.add('open')}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
 function submitEvent(){const title=(document.getElementById('mTitle').value||'').trim();if(!title){toast('Введите название');return}EVENTS.unshift({id:Date.now(),title,type:document.getElementById('mType').value,format:document.getElementById('mFormat').value,category:'',city:document.getElementById('mCity').value,date:new Date(),timeStart:'10:00',timeEnd:'11:00',fee:0,seats:0,registered:0,views:0,desc:document.getElementById('mDesc').value,speakers:[],tags:[],isRegistered:false,isSaved:false});closeModal();applyFilters();toast('Мероприятие создано ✓',true)}
-(async()=>{if(!tk()){location.href='/login.html';return}try{const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});if(r.ok){const{user={}}=await r.json();const name=user.full_name||user.name||'Пользователь';['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name})}}catch{} applyFilters();renderSidebarCalendar();})();
+function applyCurrentUser(user){
+  const name=user.full_name||user.name||'Пользователь';
+  const role=user.role||user.position||'Участник LASTOP';
+  const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
+  const color=C[name.charCodeAt(0)%C.length];
+  const L=ltr(name);
+  ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
+  ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
+  ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
+}
+(async()=>{
+  if(!tk()){location.href='/login.html';return}
+  try{
+    const cached=JSON.parse(localStorage.getItem('user')||'{}');
+    if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}
+  }catch{}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const{user={}}=await r.json();
+      localStorage.setItem('user',JSON.stringify(user));
+      applyCurrentUser(user);
+    }
+  }catch{}
+  applyFilters();
+  renderSidebarCalendar();
+})();
 </script>
 </body>
 </html>
