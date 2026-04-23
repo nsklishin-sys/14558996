@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Товар</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* ══ SHELL ══ */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative}
+.search-dot{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t)}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5}
+
+/* NAV */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ХЛЕБНЫЕ КРОШКИ */
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);flex-shrink:0;flex-wrap:wrap}
+.bc-item{font-size:12px;color:var(--gmt);text-decoration:none;cursor:pointer;transition:color .15s;white-space:nowrap}
+.bc-item:hover{color:var(--g)}
+.bc-item.cur{color:var(--t);font-weight:700;cursor:default}
+.bc-sep{color:var(--bdr);font-size:12px}
+
+/* ══ ВЕРХНЯЯ КАРТОЧКА: ФОТО + ОСНОВНОЕ ══ */
+.product-hero{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:22px;box-shadow:var(--sh);animation:fadeUp .3s ease both;display:grid;grid-template-columns:340px 1fr;gap:22px}
+/* Галерея */
+.gallery{display:flex;flex-direction:column;gap:10px}
+.gallery-main{border-radius:var(--rl);overflow:hidden;background:var(--gp);border:1.5px solid var(--bdr);aspect-ratio:4/3;position:relative;cursor:zoom-in}
+.gallery-main img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .3s}
+.gallery-main:hover img{transform:scale(1.04)}
+.gallery-main-ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--gmt)}
+.gallery-main-ph svg{width:48px;height:48px;stroke:var(--gb);fill:none;stroke-width:1.2;stroke-linecap:round}
+.gallery-main-ph span{font-size:12px;font-weight:600}
+.gallery-thumbs{display:flex;gap:8px}
+.gallery-thumb{width:64px;height:64px;border-radius:var(--rm);overflow:hidden;background:var(--gp);border:2px solid var(--bdr);cursor:pointer;flex-shrink:0;transition:border-color .15s}
+.gallery-thumb:hover,.gallery-thumb.active{border-color:var(--g)}
+.gallery-thumb img{width:100%;height:100%;object-fit:cover}
+.gallery-badge{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:99px;font-size:10px;font-weight:800;background:var(--g);color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.3)}
+.gallery-badge.out{background:var(--red)}
+
+/* Основная информация */
+.product-info{display:flex;flex-direction:column;gap:12px;min-width:0}
+.prod-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.prod-badge{padding:3px 10px;border-radius:99px;font-size:10px;font-weight:800}
+.pb-type{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.pb-cat{background:var(--gp);color:var(--gmt);border:1px solid var(--bdr)}
+.pb-new{background:#EDE8FA;color:#6040A0;border:1px solid #C8B8EF}
+/* Название */
+.prod-name{font-size:20px;font-weight:900;color:var(--t);line-height:1.25;letter-spacing:-.02em}
+/* Рейтинг */
+.prod-rating-row{display:flex;align-items:center;gap:10px}
+.stars{display:flex;gap:2px}
+.star{width:16px;height:16px;fill:none;stroke:#E8A020;stroke-width:1.5}
+.star.full{fill:#E8A020;stroke:#E8A020}
+.star.half{fill:url(#halfGrad);stroke:#E8A020}
+.rating-score{font-size:15px;font-weight:900;color:var(--t)}
+.rating-count{font-size:12px;color:var(--gmt);cursor:pointer}
+.rating-count:hover{color:var(--g);text-decoration:underline;text-underline-offset:2px}
+/* Цена */
+.prod-price-row{display:flex;align-items:baseline;gap:10px}
+.prod-price{font-size:26px;font-weight:900;color:var(--g);line-height:1}
+.prod-price-old{font-size:14px;color:var(--gmt);text-decoration:line-through}
+.prod-price-note{font-size:11px;color:var(--gmt);align-self:center}
+/* Наличие */
+.prod-stock{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;border:1.5px solid}
+.prod-stock.in{background:#E8FFF0;color:#16A34A;border-color:#86EFAC}
+.prod-stock.in::before{content:'';width:7px;height:7px;border-radius:50%;background:#16A34A;flex-shrink:0}
+.prod-stock.out{background:#FEE2E2;color:var(--red);border-color:#FCA5A5}
+.prod-stock.out::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
+.prod-stock.order{background:#FEF3C7;color:#B45309;border-color:#FCD34D}
+.prod-stock.order::before{content:'';width:7px;height:7px;border-radius:50%;background:#B45309;flex-shrink:0}
+/* Мета-пилюли */
+.prod-pills{display:flex;flex-wrap:wrap;gap:7px}
+.prod-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:99px;font-size:11px;font-weight:600;color:var(--tm)}
+.prod-pill svg{width:12px;height:12px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round}
+/* CTA */
+.prod-cta{display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--bdr)}
+.btn-kp{padding:12px 28px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 10px rgba(30,138,76,.25);display:inline-flex;align-items:center;gap:8px}
+.btn-kp:hover{background:var(--gm);transform:translateY(-1px)}
+.btn-kp svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.btn-kp.sent{background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none;transform:none}
+.btn-share-p{padding:12px 14px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--gmt);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-share-p:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-share-p svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.btn-save-p{padding:12px 14px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--gmt);font-family:inherit;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.btn-save-p:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-save-p.saved{border-color:var(--gb);background:var(--gl);color:var(--g)}
+.btn-save-p svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+/* ══ ОБЩИЕ СЕКЦИИ ══ */
+.section-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:20px 22px;box-shadow:var(--sh);animation:fadeUp .25s ease both}
+.sec-title{font-size:13px;font-weight:800;color:var(--t);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec-title svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.sec-divider{height:1px;background:var(--bdr);margin:16px 0}
+
+/* Описание */
+.prod-desc{font-size:14px;color:var(--tm);line-height:1.75}
+.prod-desc p{margin-bottom:12px}
+.prod-desc p:last-child{margin-bottom:0}
+/* Характеристики */
+.spec-table{display:flex;flex-direction:column}
+.spec-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bdr);font-size:13px}
+.spec-row:last-child{border-bottom:none;padding-bottom:0}
+.spec-lbl{color:var(--gmt);display:flex;align-items:center;gap:8px}
+.spec-lbl svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.spec-val{font-weight:700;color:var(--t);text-align:right;max-width:200px}
+
+/* Теги */
+.tags-wrap{display:flex;flex-wrap:wrap;gap:7px}
+.tag-item{padding:5px 13px;border-radius:99px;background:var(--gp);border:1.5px solid var(--bdr);font-size:11px;font-weight:700;color:var(--gmt);cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:4px}
+.tag-item:hover{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.tag-item::before{content:'#';opacity:.5}
+
+/* Продавец */
+.seller-block{display:flex;align-items:center;gap:14px;padding:14px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);cursor:pointer;transition:border-color .15s;margin-bottom:12px}
+.seller-block:hover{border-color:var(--gb)}
+.seller-av{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.seller-info{flex:1;min-width:0}
+.seller-name{font-size:14px;font-weight:800;color:var(--t);margin-bottom:3px}
+.seller-meta{font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.seller-meta-item{display:flex;align-items:center;gap:3px}
+.seller-meta-item svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.seller-verified{padding:2px 8px;border-radius:99px;background:var(--gl);color:var(--g);font-size:9px;font-weight:800;border:1px solid var(--gb)}
+.seller-arr{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.seller-stats{display:flex;gap:14px;font-size:12px;color:var(--gmt)}
+.seller-stat{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 12px;background:var(--w);border-radius:var(--rm);border:1px solid var(--bdr)}
+.seller-stat strong{font-size:15px;font-weight:900;color:var(--t)}
+
+/* ══ ОТЗЫВЫ ══ */
+.reviews-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.reviews-score-big{text-align:center}
+.rsb-num{font-size:44px;font-weight:900;color:var(--t);line-height:1}
+.rsb-stars{display:flex;gap:3px;justify-content:center;margin:4px 0}
+.rsb-cnt{font-size:11px;color:var(--gmt)}
+.reviews-bars{flex:1;display:flex;flex-direction:column;gap:5px;min-width:150px}
+.rbar-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--gmt)}
+.rbar-label{width:14px;text-align:right;font-weight:600}
+.rbar-track{flex:1;height:6px;background:var(--gp);border-radius:99px;overflow:hidden}
+.rbar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#E8A020,#F5C050)}
+.rbar-count{width:24px;color:var(--tm);font-weight:700}
+/* Форма отзыва */
+.review-form{padding:14px;background:var(--gp);border:1.5px dashed var(--gb);border-radius:var(--rm);display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.review-form-title{font-size:12px;font-weight:700;color:var(--t)}
+.stars-select{display:flex;gap:4px;cursor:pointer}
+.star-sel{width:22px;height:22px;fill:var(--bdr);stroke:var(--bdr);stroke-width:1;cursor:pointer;transition:all .15s}
+.star-sel:hover,.star-sel.active{fill:#E8A020;stroke:#E8A020}
+.review-ta{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s}
+.review-ta:focus{border-color:var(--gm)}
+.review-ta::placeholder{color:var(--gmt)}
+.btn-review{padding:9px 20px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;align-self:flex-end;transition:background .15s}
+.btn-review:hover{background:var(--gm)}
+/* Карточки отзывов */
+.review-item{padding:14px 0;border-bottom:1px solid var(--bdr)}
+.review-item:last-child{border-bottom:none;padding-bottom:0}
+.review-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.review-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.review-author{font-size:13px;font-weight:700;color:var(--t)}
+.review-date{font-size:11px;color:var(--gmt);margin-top:1px}
+.review-stars{display:flex;gap:2px;margin-left:auto}
+.rv-star{width:13px;height:13px}
+.review-text{font-size:13px;color:var(--tm);line-height:1.6}
+.review-badge{padding:2px 8px;border-radius:99px;font-size:9px;font-weight:800;background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.load-more{width:100%;padding:10px;border-radius:var(--rm);background:var(--gp);border:1.5px dashed var(--bdr);font-family:inherit;font-size:12px;font-weight:700;color:var(--gmt);cursor:pointer;transition:all .15s}
+.load-more:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+
+/* Модалка КП */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.42);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal::-webkit-scrollbar{display:none}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--w);z-index:1}
+.modal-title{font-size:15px;font-weight:800;color:var(--t)}
+.modal-close{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.modal-close:hover{border-color:var(--gb);color:var(--g)}
+.modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
+.mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
+.mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.mf-input:focus{border-color:var(--gm);background:var(--w)}
+.mf-input::placeholder{color:var(--gmt)}
+.mf-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s}
+.mf-textarea:focus{border-color:var(--gm);background:var(--w)}
+.mf-textarea::placeholder{color:var(--gmt)}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.btn-submit{padding:9px 22px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-submit:hover{background:var(--gm)}
+
+/* RIGHT */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.stat-val{font-size:13px;font-weight:800;color:var(--t)}
+.sim-item{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:var(--rm);cursor:pointer;transition:background .12s;border-bottom:1px solid var(--bdr)}
+.sim-item:last-child{border-bottom:none}
+.sim-item:hover{background:var(--gp)}
+.sim-img{width:44px;height:44px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);display:grid;place-items:center;flex-shrink:0;font-size:18px}
+.sim-body{flex:1;min-width:0}
+.sim-name{font-size:12px;font-weight:700;color:var(--t);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35}
+.sim-price{font-size:12px;font-weight:800;color:var(--g);margin-top:2px}
+.sim-company{font-size:10px;color:var(--gmt);margin-top:1px}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+
+/* АДАПТИВНОСТЬ */
+@media(max-width:1400px){.shell{grid-template-columns:220px 1fr 280px}}
+@media(max-width:1200px){.shell{grid-template-columns:200px 1fr 260px};.product-hero{grid-template-columns:280px 1fr}}
+@media(max-width:1000px){.shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"};.right{display:none};.product-hero{grid-template-columns:1fr}}
+@media(max-width:840px){.shell{grid-template-columns:180px 1fr};.product-hero{grid-template-columns:1fr};.gallery-main{aspect-ratio:16/10}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr};.nav-item span,.nav-group,.logo-text{display:none};.nav-item{justify-content:center;padding:10px}}
+@media(max-width:520px){.shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"topbar""nav""main";padding:8px;gap:8px};.logo-cell{display:none};.nav{grid-area:nav;flex-direction:row;border-radius:var(--rl);padding:6px 8px;height:auto;overflow-x:auto;overflow-y:hidden;gap:2px};.nav-group,.nav-bottom{display:none};.nav-item{flex-direction:column;gap:2px;padding:6px 8px;min-width:46px;text-align:center};.nav-item span{display:block;font-size:9px};.nav-item svg{width:16px;height:16px};.prod-cta{flex-wrap:wrap};.btn-kp{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="halfGrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="50%" stop-color="#E8A020"/>
+      <stop offset="50%" stop-color="transparent"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap">
+    <span class="search-dot"></span>
+    <input type="search" placeholder="Поиск товаров и услуг…">
+  </div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span class="tp-name" id="topbarName">Никита Клишин</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/news.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
+  <a class="nav-item active" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ХЛЕБНЫЕ КРОШКИ -->
+  <nav class="breadcrumb">
+    <a class="bc-item" href="/">Главная</a><span class="bc-sep">›</span>
+    <a class="bc-item" href="/catalog.html">Товары и услуги</a><span class="bc-sep">›</span>
+    <a class="bc-item" href="/catalog.html?cat=Оборудование">Оборудование</a><span class="bc-sep">›</span>
+    <span class="bc-item cur">TMS LASTOP Pro — лицензия</span>
+  </nav>
+
+  <!-- ══ ФОТО + ОСНОВНОЕ ══ -->
+  <div class="product-hero">
+    <!-- Галерея -->
+    <div class="gallery">
+      <div class="gallery-main" id="galleryMain" onclick="openLightbox()">
+        <div class="gallery-main-ph" id="galleryPh">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>Нажмите для увеличения</span>
+        </div>
+        <!-- Если есть реальное фото: <img id="galleryImg" src="..." alt=""> -->
+        <span class="gallery-badge">Товар</span>
+      </div>
+      <div class="gallery-thumbs">
+        <div class="gallery-thumb active" onclick="setThumb(0,this)" style="background:var(--gp);display:grid;place-items:center;font-size:18px">📦</div>
+        <div class="gallery-thumb" onclick="setThumb(1,this)" style="background:var(--gp);display:grid;place-items:center;font-size:18px">💻</div>
+        <div class="gallery-thumb" onclick="setThumb(2,this)" style="background:var(--gp);display:grid;place-items:center;font-size:18px">📊</div>
+        <div class="gallery-thumb" onclick="setThumb(3,this)" style="background:var(--gp);display:grid;place-items:center;font-size:18px">🔧</div>
+      </div>
+    </div>
+
+    <!-- Основная информация -->
+    <div class="product-info">
+      <!-- Бейджи -->
+      <div class="prod-badges">
+        <span class="prod-badge pb-type">Товар</span>
+        <span class="prod-badge pb-cat">Программное обеспечение</span>
+        <span class="prod-badge pb-new">Новинка</span>
+      </div>
+      <!-- Название -->
+      <h1 class="prod-name">TMS LASTOP Pro — корпоративная лицензия</h1>
+      <!-- Рейтинг -->
+      <div class="prod-rating-row">
+        <div class="stars" id="starsDisplay"></div>
+        <span class="rating-score">4.8</span>
+        <span class="rating-count" onclick="document.getElementById('reviewsSection').scrollIntoView({behavior:'smooth'})">34 отзыва</span>
+      </div>
+      <!-- Цена -->
+      <div class="prod-price-row">
+        <span class="prod-price">45 000 ₽</span>
+        <span class="prod-price-old">55 000 ₽</span>
+        <span class="prod-price-note">/ месяц · при оплате на год</span>
+      </div>
+      <!-- Наличие -->
+      <span class="prod-stock in" id="stockBadge">В наличии · сразу после оплаты</span>
+      <!-- Мета-пилюли -->
+      <div class="prod-pills">
+        <div class="prod-pill"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Desktop + Web</div>
+        <div class="prod-pill"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>До 50 пользователей</div>
+        <div class="prod-pill"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Гарантия 1 год</div>
+        <div class="prod-pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Поддержка 24/7</div>
+      </div>
+      <!-- CTA -->
+      <div class="prod-cta">
+        <button class="btn-kp" id="btnKP" onclick="openKPModal()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Запросить КП
+        </button>
+        <button class="btn-share-p" onclick="toast('Ссылка скопирована ✓',true)">
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Поделиться
+        </button>
+        <button class="btn-save-p" id="btnSave" onclick="toggleSave()">
+          <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ОПИСАНИЕ ══ -->
+  <div class="section-card" style="animation-delay:.05s">
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Описание
+    </div>
+    <div class="prod-desc">
+      <p>TMS LASTOP Pro — полнофункциональная система управления транспортными заказами для средних и крупных логистических компаний. Разработана специально для рынка СНГ с учётом требований российского таможенного законодательства и ЕАЭС.</p>
+      <p>Платформа объединяет управление заявками, маршрутизацию, трекинг в реальном времени, ЭДО и интеграцию с 1С в едином интерфейсе. Доступна как SaaS через браузер и в виде desktop-клиента для Windows.</p>
+      <p><strong>Ключевые возможности:</strong> автоматический подбор перевозчиков, интеграция с маркетплейсами (Ozon, Wildberries), мобильное приложение для водителей, API для подключения к корпоративным ERP-системам.</p>
+    </div>
+
+    <div class="sec-divider"></div>
+
+    <!-- Характеристики -->
+    <div class="sec-title" style="margin-bottom:12px">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Характеристики
+    </div>
+    <div class="spec-table">
+      <div class="spec-row"><span class="spec-lbl"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>Платформа</span><span class="spec-val">Web, Windows, iOS, Android</span></div>
+      <div class="spec-row"><span class="spec-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Пользователи</span><span class="spec-val">до 50 рабочих мест</span></div>
+      <div class="spec-row"><span class="spec-lbl"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Хранилище</span><span class="spec-val">100 ГБ в облаке</span></div>
+      <div class="spec-row"><span class="spec-lbl"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>API</span><span class="spec-val">REST, webhook, 1С</span></div>
+      <div class="spec-row"><span class="spec-lbl"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Сертификация</span><span class="spec-val">ФСТЭК, ФЗ-152</span></div>
+      <div class="spec-row"><span class="spec-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Поддержка</span><span class="spec-val">24/7, SLA 4 часа</span></div>
+    </div>
+  </div>
+
+  <!-- ══ ПРОДАВЕЦ ══ -->
+  <div class="section-card" style="animation-delay:.08s">
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      Продавец
+    </div>
+    <div class="seller-block" onclick="location.href='/company-detail.html'">
+      <div class="seller-av" style="background:#6040A0">L</div>
+      <div class="seller-info">
+        <div class="seller-name">
+          LASTOP Digital
+          <span class="seller-verified">✓ Верифицирован</span>
+        </div>
+        <div class="seller-meta">
+          <span class="seller-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва</span>
+          <span class="seller-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>На платформе с 2021</span>
+          <span class="seller-meta-item"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>IT в логистике</span>
+        </div>
+      </div>
+      <svg class="seller-arr" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <div class="seller-stats">
+      <div class="seller-stat"><strong>48</strong><span>Товаров</span></div>
+      <div class="seller-stat"><strong>4.9</strong><span>Рейтинг</span></div>
+      <div class="seller-stat"><strong>312</strong><span>Отзывов</span></div>
+      <div class="seller-stat"><strong>5 лет</strong><span>На рынке</span></div>
+    </div>
+  </div>
+
+  <!-- ══ МЕТКИ ══ -->
+  <div class="section-card" style="animation-delay:.1s">
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      Метки
+    </div>
+    <div class="tags-wrap">
+      <span class="tag-item">TMS</span>
+      <span class="tag-item">логистика</span>
+      <span class="tag-item">транспорт</span>
+      <span class="tag-item">SaaS</span>
+      <span class="tag-item">1С</span>
+      <span class="tag-item">API</span>
+      <span class="tag-item">снг</span>
+      <span class="tag-item">маршрутизация</span>
+      <span class="tag-item">ЭДО</span>
+      <span class="tag-item">трекинг</span>
+    </div>
+  </div>
+
+  <!-- ══ ОТЗЫВЫ ══ -->
+  <div class="section-card" id="reviewsSection" style="animation-delay:.12s">
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Отзывы · 34
+    </div>
+
+    <!-- Сводка рейтинга -->
+    <div class="reviews-header">
+      <div class="reviews-score-big">
+        <div class="rsb-num">4.8</div>
+        <div class="rsb-stars" id="bigStars"></div>
+        <div class="rsb-cnt">34 отзыва</div>
+      </div>
+      <div class="reviews-bars">
+        <div class="rbar-row"><span class="rbar-label">5</span><div class="rbar-track"><div class="rbar-fill" style="width:78%"></div></div><span class="rbar-count">26</span></div>
+        <div class="rbar-row"><span class="rbar-label">4</span><div class="rbar-track"><div class="rbar-fill" style="width:15%;background:linear-gradient(90deg,#B0C040,#D0E060)"></div></div><span class="rbar-count">5</span></div>
+        <div class="rbar-row"><span class="rbar-label">3</span><div class="rbar-track"><div class="rbar-fill" style="width:6%;background:linear-gradient(90deg,#A0B040,#C0C060)"></div></div><span class="rbar-count">2</span></div>
+        <div class="rbar-row"><span class="rbar-label">2</span><div class="rbar-track"><div class="rbar-fill" style="width:3%;background:linear-gradient(90deg,#C08040,#D09060)"></div></div><span class="rbar-count">1</span></div>
+        <div class="rbar-row"><span class="rbar-label">1</span><div class="rbar-track"><div class="rbar-fill" style="width:0%"></div></div><span class="rbar-count">0</span></div>
+      </div>
+    </div>
+
+    <div class="sec-divider"></div>
+
+    <!-- Форма отзыва -->
+    <div class="review-form">
+      <div class="review-form-title">Оставить отзыв</div>
+      <div class="stars-select" id="starsSelect" onclick="selectStar(event)">
+        <svg class="star-sel" viewBox="0 0 24 24" data-v="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <svg class="star-sel" viewBox="0 0 24 24" data-v="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <svg class="star-sel" viewBox="0 0 24 24" data-v="3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <svg class="star-sel" viewBox="0 0 24 24" data-v="4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <svg class="star-sel" viewBox="0 0 24 24" data-v="5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <textarea class="review-ta" id="reviewText" rows="3" placeholder="Расскажите о вашем опыте использования…"></textarea>
+      <button class="btn-review" onclick="submitReview()">Опубликовать отзыв</button>
+    </div>
+
+    <!-- Список отзывов -->
+    <div id="reviewsList">
+      <div class="review-item">
+        <div class="review-head">
+          <div class="review-av" style="background:#1E8A4C">АИ</div>
+          <div><div class="review-author">Алексей Иванов <span class="review-badge">Подтверждённый покупатель</span></div><div class="review-date">12 апреля 2026</div></div>
+          <div class="review-stars" id="rs1"></div>
+        </div>
+        <div class="review-text">Внедрили TMS LASTOP Pro три месяца назад. Время обработки заявок сократилось на 40%, интеграция с 1С заняла два дня — всё задокументировано. Служба поддержки отвечает в течение часа. Отдельно отмечу удобный интерфейс для водителей в мобильном приложении.</div>
+      </div>
+      <div class="review-item">
+        <div class="review-head">
+          <div class="review-av" style="background:#3A90C0">МЗ</div>
+          <div><div class="review-author">Марина Захарова</div><div class="review-date">5 марта 2026</div></div>
+          <div class="review-stars" id="rs2"></div>
+        </div>
+        <div class="review-text">Использую уже полгода. Нравится автоматический подбор перевозчиков — экономит несколько часов в день. Небольшой минус: обновления иногда выходят без предупреждения в рабочее время, но в целом продукт отличный.</div>
+      </div>
+      <div class="review-item">
+        <div class="review-head">
+          <div class="review-av" style="background:#B45309">ОП</div>
+          <div><div class="review-author">Ольга Павлова</div><div class="review-date">18 февраля 2026</div></div>
+          <div class="review-stars" id="rs3"></div>
+        </div>
+        <div class="review-text">Переехали с Excel-таблиц. Переход занял неделю, команда освоила быстро. Очень помогает дашборд с KPI в реальном времени. Хочется больше вариантов экспорта отчётов.</div>
+      </div>
+    </div>
+    <button class="load-more" style="margin-top:12px">Показать ещё 31 отзыв</button>
+  </div>
+
+</div><!-- /main -->
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Сводка -->
+  <div class="card">
+    <div class="block-title">Информация</div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Цена</span><span class="stat-val" style="color:var(--g);font-size:11px">45 000 ₽/мес</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Наличие</span><span class="stat-val" style="color:#16A34A;font-size:11px">В наличии</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Рейтинг</span><span class="stat-val">4.8 / 5</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Отзывов</span><span class="stat-val">34</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Продавец</span><span class="stat-val" style="font-size:11px;color:var(--g);cursor:pointer">LASTOP Digital</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val">1 240</span></div>
+    <button class="btn-kp" style="width:100%;margin-top:10px;justify-content:center;font-size:13px" onclick="openKPModal()">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Запросить КП
+    </button>
+  </div>
+
+  <!-- Похожие -->
+  <div class="card">
+    <div class="block-title">Похожие товары</div>
+    <div class="sim-item" onclick="toast('Открываем товар…')">
+      <div class="sim-img">💻</div>
+      <div class="sim-body">
+        <div class="sim-name">WMS CloudLogic — лицензия</div>
+        <div class="sim-price">от 28 000 ₽/мес</div>
+        <div class="sim-company">CloudLogic · ⭐ 4.6</div>
+      </div>
+    </div>
+    <div class="sim-item" onclick="toast('Открываем товар…')">
+      <div class="sim-img">📱</div>
+      <div class="sim-body">
+        <div class="sim-name">Сканер Zebra TC22</div>
+        <div class="sim-price">от 74 000 ₽</div>
+        <div class="sim-company">WarehouseTech · ⭐ 4.7</div>
+      </div>
+    </div>
+    <div class="sim-item" onclick="toast('Открываем товар…')">
+      <div class="sim-img">🔄</div>
+      <div class="sim-body">
+        <div class="sim-name">ERP-интеграция LogiConnect</div>
+        <div class="sim-price">от 15 000 ₽/мес</div>
+        <div class="sim-company">LogiTech · ⭐ 4.5</div>
+      </div>
+    </div>
+  </div>
+
+</aside>
+
+<!-- МОДАЛКА КП -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Запрос коммерческого предложения</span>
+      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:12px 14px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">📦</span>
+        <div><div style="font-size:13px;font-weight:700;color:var(--t)">TMS LASTOP Pro — корпоративная лицензия</div><div style="font-size:11px;color:var(--gmt)">LASTOP Digital · от 45 000 ₽/мес</div></div>
+      </div>
+      <div>
+        <label class="mf-label">Ваша компания *</label>
+        <input class="mf-input" id="mCompany" placeholder="Название компании">
+      </div>
+      <div>
+        <label class="mf-label">Контактное лицо *</label>
+        <input class="mf-input" id="mContact" placeholder="Имя и должность">
+      </div>
+      <div>
+        <label class="mf-label">Email для отправки КП *</label>
+        <input class="mf-input" id="mEmail" type="email" placeholder="you@company.ru">
+      </div>
+      <div>
+        <label class="mf-label">Количество пользователей</label>
+        <input class="mf-input" id="mUsers" placeholder="Например: 20 рабочих мест">
+      </div>
+      <div>
+        <label class="mf-label">Комментарий / дополнительные требования</label>
+        <textarea class="mf-textarea" id="mComment" rows="3" placeholder="Опишите ваши задачи или особые требования…"></textarea>
+      </div>
+      <div style="padding:10px 12px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);font-size:11px;color:var(--gmt);line-height:1.55">
+        КП будет подготовлено в течение 1 рабочего дня и отправлено на указанный email. Менеджер LASTOP Digital свяжется с вами для уточнения деталей.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-submit" onclick="submitKP()">Отправить запрос</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api',tk=()=>localStorage.getItem('token');
+function ltr(s){return((s||'?')[0]).toUpperCase()}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
+function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
+function logout(){localStorage.removeItem('token');location.href='/login.html'}
+
+/* DROPDOWN */
+function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
+document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
+
+/* ЗВЁЗДЫ */
+function buildStars(score, container, size=16){
+  if(!container)return;
+  let html='';
+  for(let i=1;i<=5;i++){
+    const cls=i<=Math.floor(score)?'full':i===Math.ceil(score)&&score%1>=0.5?'half':'';
+    html+=`<svg class="star ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24"><defs><linearGradient id="hg${i}"><stop offset="50%" stop-color="#E8A020"/><stop offset="50%" stop-color="transparent"/></linearGradient></defs><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="${cls==='full'?'#E8A020':cls==='half'?'url(#hg'+i+')':'none'}" stroke="#E8A020" stroke-width="1.5"/></svg>`;
+  }
+  container.innerHTML=html;
+}
+buildStars(4.8,document.getElementById('starsDisplay'),16);
+buildStars(4.8,document.getElementById('bigStars'),18);
+buildStars(5,document.getElementById('rs1'),13);
+buildStars(4,document.getElementById('rs2'),13);
+buildStars(4,document.getElementById('rs3'),13);
+
+/* ЗВЁЗДЫ ОТЗЫВА */
+let selStar=0;
+function selectStar(e){
+  const s=e.target.closest('[data-v]');if(!s)return;
+  selStar=+s.getAttribute('data-v');
+  document.querySelectorAll('.star-sel').forEach(el=>el.classList.toggle('active',+el.getAttribute('data-v')<=selStar));
+}
+
+/* СОХРАНИТЬ */
+let saved=false;
+function toggleSave(){
+  saved=!saved;
+  const btn=document.getElementById('btnSave'),icon=document.getElementById('saveIcon');
+  if(saved){btn.classList.add('saved');icon.style.fill='var(--g)';icon.style.stroke='var(--g)';toast('Товар сохранён ✓',true)}
+  else{btn.classList.remove('saved');icon.style.fill='none';icon.style.stroke='currentColor';toast('Убрано из сохранённых')}
+}
+
+/* ГАЛЕРЕЯ */
+function setThumb(idx,el){
+  document.querySelectorAll('.gallery-thumb').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function openLightbox(){toast('Открываем полноэкранный просмотр…')}
+
+/* МОДАЛКА КП */
+function openKPModal(){
+  document.getElementById('modalBg').classList.add('open');
+  setTimeout(()=>document.getElementById('mCompany').focus(),150);
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+function submitKP(){
+  const co=document.getElementById('mCompany')?.value?.trim();
+  const em=document.getElementById('mEmail')?.value?.trim();
+  if(!co||!em){toast('Заполните обязательные поля');return}
+  closeModal();
+  const btn=document.getElementById('btnKP');
+  btn.classList.add('sent');
+  btn.innerHTML='<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> КП запрошено';
+  toast('Запрос КП отправлен! Ответ придёт на email в течение 1 дня ✓',true);
+}
+
+/* ОТЗЫВ */
+function submitReview(){
+  const txt=document.getElementById('reviewText')?.value?.trim();
+  if(!selStar){toast('Поставьте оценку');return}
+  if(!txt){toast('Напишите текст отзыва');return}
+  const list=document.getElementById('reviewsList');
+  const item=document.createElement('div');item.className='review-item';
+  item.innerHTML=`<div class="review-head"><div class="review-av" style="background:var(--g)">Вы</div><div><div class="review-author">Вы <span class="review-badge">Только что</span></div><div class="review-date">Только что</div></div><div class="review-stars" id="myRevStars"></div></div><div class="review-text">${txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+  list.insertBefore(item,list.firstChild);
+  buildStars(selStar,document.getElementById('myRevStars'),13);
+  document.getElementById('reviewText').value='';
+  selStar=0;document.querySelectorAll('.star-sel').forEach(s=>s.classList.remove('active'));
+  toast('Отзыв опубликован ✓',true);
+}
+
+/* АВТОРИЗАЦИЯ */
+(async()=>{
+  if(!tk()){location.href='/login.html';return}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const color=avc(name);const L=ltr(name);
+    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
+    ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
+    const role=user.role||user.position||'Участник LASTOP';
+    ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
+  }catch{}
+})();
+</script>
+</body>
+</html>
