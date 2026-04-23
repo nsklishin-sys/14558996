@@ -9,17 +9,15 @@ export DATABASE_URL='postgresql://user:password@host:5432/dbname?sslmode=require
 go run ./cmd/server
 ```
 
-Также можно подключиться без `DATABASE_URL`, через переменные:
+Также можно запускать сервер вообще без `DATABASE_URL`:
 
 ```bash
-export PGHOST=localhost
-export PGPORT=5432
-export PGUSER=postgres
-export PGPASSWORD=postgres
-export PGDATABASE=greeting_site
-export PGSSLMODE=disable
 go run ./cmd/server
 ```
+
+В текущей конфигурации при отсутствии `DATABASE_URL` сервер использует Railway PostgreSQL по умолчанию:
+
+`postgresql://postgres:QHkIHPzHfSeSKkQnEDFkJmjQJSpUpXpb@shinkansen.proxy.rlwy.net:19703/railway`
 
 После старта откройте: http://localhost:8080
 
@@ -33,4 +31,4 @@ go run ./cmd/server
 - `web/login.html` — UI авторизации
 - `web/index.html` — стартовая страница
 
-При старте сервер ожидает `DATABASE_URL`, подключается к PostgreSQL и автоматически создает таблицу `users` через `CREATE TABLE IF NOT EXISTS`.
+При старте сервер подключается только к PostgreSQL (SQLite полностью не используется) и автоматически создает таблицу `users` через `CREATE TABLE IF NOT EXISTS`.
