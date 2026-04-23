@@ -572,7 +572,7 @@ function renderCard(item,i){
     <button class="btn-fav${isSaved?' saved':''}" onclick="toggleFav(${item.id},this)">
       <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isSaved?'fill="var(--red)"':''}></path></svg>
     </button>
-    <button class="btn-detail" onclick="showToast('Открываем детали…')">Подробнее</button>
+    <button class="btn-detail" onclick="openItemDetail(event,${item.id})">Подробнее</button>
     <button class="btn-kp" onclick="showToast('Запрос на КП отправлен ✓','success')">Запросить КП</button>`;
 
   /* ── ТОВАР: горизонтальная карточка, картинка справа ── */
@@ -722,6 +722,14 @@ function resetFilters(){
   document.getElementById('filterReset').classList.remove('visible');
   applyFilters();
 }
+
+function openItemDetail(e,id){
+  if(e){e.stopPropagation();}
+  const item=ITEMS.find(x=>x.id===id);
+  if(item?.type==='service'){location.href='/service-detail.html';return;}
+  showToast('Деталка товара скоро появится');
+}
+
 function toggleFav(id,btn){
   if(favSet.has(id)){favSet.delete(id);btn.classList.remove('saved');btn.querySelector('svg path')?.removeAttribute('fill');showToast('Удалено из избранного');}
   else{favSet.add(id);btn.classList.add('saved');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');showToast('Добавлено в избранное ✓','success');}
