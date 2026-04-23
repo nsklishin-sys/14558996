@@ -15,7 +15,9 @@
   --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
-html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+html,body{height:100%;min-height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+html{height:-webkit-fill-available}
+body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 /* Hide scrollbars visually, keep scrolling functional */
 *{scrollbar-width:none;-ms-overflow-style:none}
 *::-webkit-scrollbar{width:0;height:0;display:none}
@@ -26,7 +28,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   grid-template-columns:240px 1fr 300px;
   grid-template-rows:56px 1fr;
   grid-template-areas:"logo topbar topbar""nav main right";
-  height:100vh;gap:10px;padding:10px
+  height:100vh;min-height:100dvh;min-height:-webkit-fill-available;gap:10px;padding:10px
 }
 
 /* ═══ LOGO ═══ */
