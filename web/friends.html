@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Друзья</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+/* ══ SHELL ══ */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em;display:block}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase;display:block}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative}
+.search-dot{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t)}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item.pdd-active{background:var(--gl);color:var(--g);font-weight:700}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5}
+
+/* NAV */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN */
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ХЛЕБНЫЕ КРОШКИ */
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);flex-shrink:0;flex-wrap:wrap}
+.bc-item{font-size:12px;color:var(--gmt);text-decoration:none;cursor:pointer;transition:color .15s;white-space:nowrap}
+.bc-item:hover{color:var(--g)}
+.bc-item.cur{color:var(--t);font-weight:700;cursor:default}
+.bc-sep{color:var(--bdr);font-size:12px}
+
+/* ══ ПОИСК ДРУЗЕЙ ══ */
+.add-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px 22px;box-shadow:var(--sh);animation:fadeUp .3s ease both;flex-shrink:0}
+.add-card-title{font-size:13px;font-weight:800;color:var(--t);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.add-card-title svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round}
+.add-row{display:flex;gap:8px}
+.add-input{flex:1;height:38px;padding:0 14px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.add-input:focus{border-color:var(--gm);background:var(--w)}
+.add-input::placeholder{color:var(--gmt)}
+.btn-add{padding:0 20px;height:38px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-add:hover{background:var(--gm)}
+.btn-add svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.add-msg{margin-top:8px;font-size:12px;font-weight:600;display:none}
+.add-msg.ok{color:var(--g);display:block}
+.add-msg.err{color:var(--red);display:block}
+
+/* ══ ТАБЫ ══ */
+.tabs-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:4px;box-shadow:var(--sh);display:flex;gap:2px;flex-shrink:0;overflow-x:auto}
+.tabs-bar::-webkit-scrollbar{display:none}
+.tab-btn{padding:8px 18px;border-radius:var(--rm);border:none;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--gmt);cursor:pointer;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+.tab-btn:hover{color:var(--g);background:var(--gp)}
+.tab-btn.active{background:var(--gl);color:var(--g)}
+.tab-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.tab-count{font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px;background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.tab-btn.active .tab-count{background:var(--g);color:#fff;border-color:var(--g)}
+.tab-count-red{background:#FEE2E2;color:var(--red);border:1px solid #FCA5A5}
+.tab-btn.active .tab-count-red{background:var(--red);color:#fff;border-color:var(--red)}
+
+/* ══ ПАНЕЛИ ══ */
+.tab-panel{display:none;flex-direction:column;gap:10px;animation:fadeUp .2s ease both}
+.tab-panel.active{display:flex}
+
+/* ══ КАРТОЧКИ ДРУЗЕЙ ══ */
+.friends-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.friend-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;transition:border-color .15s,box-shadow .15s;cursor:pointer}
+.friend-card:hover{border-color:var(--gb);box-shadow:var(--shm)}
+.fc-av-wrap{position:relative}
+.fc-av{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:20px;font-weight:900;color:#fff}
+.fc-online{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#22CC66;border:2.5px solid var(--w)}
+.fc-name{font-size:13px;font-weight:800;color:var(--t);line-height:1.3}
+.fc-role{font-size:11px;color:var(--gmt);margin-top:1px}
+.fc-company{font-size:11px;font-weight:700;color:var(--g);margin-top:2px}
+.fc-mutual{font-size:10px;color:var(--gmt);display:flex;align-items:center;gap:4px;justify-content:center}
+.fc-mutual svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.fc-actions{display:flex;gap:6px;width:100%;margin-top:2px}
+.fc-btn{flex:1;padding:7px 8px;border-radius:var(--rm);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.fc-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.fc-btn-msg{background:var(--gl);border:1px solid var(--gb);color:var(--g)}
+.fc-btn-msg:hover{background:var(--g);color:#fff}
+.fc-btn-remove{background:var(--gp);border:1px solid var(--bdr);color:var(--gmt)}
+.fc-btn-remove:hover{background:#FEE2E2;border-color:#FCA5A5;color:var(--red)}
+.fc-btn-accept{background:var(--g);border:none;color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.fc-btn-accept:hover{background:var(--gm)}
+.fc-btn-reject{background:var(--gp);border:1px solid var(--bdr);color:var(--gmt)}
+.fc-btn-reject:hover{background:#FEE2E2;border-color:#FCA5A5;color:var(--red)}
+.fc-btn-cancel{background:var(--gp);border:1px solid var(--bdr);color:var(--gmt)}
+.fc-btn-cancel:hover{background:#FEE2E2;border-color:#FCA5A5;color:var(--red)}
+.fc-btn-add{background:var(--g);border:none;color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.fc-btn-add:hover{background:var(--gm)}
+
+/* Входящая заявка — highlight */
+.friend-card.incoming{border-color:var(--gb);background:var(--gp)}
+
+/* Пустое состояние */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);text-align:center;gap:10px}
+.empty-state svg{width:40px;height:40px;stroke:var(--gb);fill:none;stroke-width:1.2;stroke-linecap:round}
+.empty-state-title{font-size:14px;font-weight:700;color:var(--t)}
+.empty-state-sub{font-size:12px;color:var(--gmt)}
+
+/* Скелетон */
+.skel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.skel-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.sl{background:linear-gradient(90deg,var(--gp) 25%,var(--gl) 50%,var(--gp) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* RIGHT */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{display:none}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.stat-val{font-size:13px;font-weight:800;color:var(--t)}
+/* Рекомендации */
+.rec-item{display:flex;align-items:center;gap:10px;padding:9px 6px;border-radius:var(--rm);border-bottom:1px solid var(--bdr);transition:background .12s}
+.rec-item:last-child{border-bottom:none;padding-bottom:0}
+.rec-item:hover{background:var(--gp);cursor:pointer}
+.rec-av{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.rec-body{flex:1;min-width:0}
+.rec-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-meta{font-size:10px;color:var(--gmt);margin-top:1px}
+.rec-add{padding:4px 10px;border-radius:var(--r);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0}
+.rec-add:hover{background:var(--g);color:#fff}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+.toast.err{background:var(--red)}
+
+/* АДАПТИВНОСТЬ */
+@media(max-width:1400px){.shell{grid-template-columns:220px 1fr 280px}}
+@media(max-width:1200px){.shell{grid-template-columns:200px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:840px){.shell{grid-template-columns:180px 1fr}.friends-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}}
+@media(max-width:520px){.shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"topbar""nav""main";padding:8px;gap:8px}.logo-cell{display:none}.nav{grid-area:nav;flex-direction:row;border-radius:var(--rl);padding:6px 8px;height:auto;overflow-x:auto;overflow-y:hidden;gap:2px}.nav-group,.nav-bottom{display:none}.nav-item{flex-direction:column;gap:2px;padding:6px 8px;min-width:46px;text-align:center}.nav-item span{display:block;font-size:9px}.nav-item svg{width:16px;height:16px}.friends-grid{grid-template-columns:1fr 1fr}.add-row{flex-wrap:wrap}.btn-add{width:100%;justify-content:center}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><div class="logo-text"><span class="lt1">LASTOP</span><span class="lt2">GROUP</span></div></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap">
+    <span class="search-dot"></span>
+    <input type="search" placeholder="Поиск по платформе…">
+  </div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25">
+        <span class="tp-name" id="topbarName">Никита Клишин</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div><div class="pdd-name" id="pddName">Никита Клишин</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item pdd-active">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="pdd-item-label">Друзья</span>
+          <span class="pdd-count" id="ddFriendsCount">24</span>
+        </a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/news.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Хлебные крошки -->
+  <nav class="breadcrumb">
+    <a class="bc-item" href="/">Главная</a><span class="bc-sep">›</span>
+    <span class="bc-item cur">Друзья</span>
+  </nav>
+
+  <!-- Добавить друга -->
+  <div class="add-card">
+    <div class="add-card-title">
+      <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Добавить друга
+    </div>
+    <div class="add-row">
+      <input class="add-input" id="addInput" placeholder="Имя пользователя или email…" onkeydown="if(event.key==='Enter')sendRequest()">
+      <button class="btn-add" onclick="sendRequest()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Отправить заявку
+      </button>
+    </div>
+    <div class="add-msg" id="addMsg"></div>
+  </div>
+
+  <!-- Табы -->
+  <div class="tabs-bar">
+    <button class="tab-btn active" id="tabFriends" onclick="switchTab('friends',this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Друзья <span class="tab-count" id="cntFriends">—</span>
+    </button>
+    <button class="tab-btn" id="tabIncoming" onclick="switchTab('incoming',this)">
+      <svg viewBox="0 0 24 24"><polyline points="19 14 12 21 5 14"/><path d="M12 3v18"/></svg>
+      Входящие <span class="tab-count tab-count-red" id="cntIncoming">—</span>
+    </button>
+    <button class="tab-btn" id="tabOutgoing" onclick="switchTab('outgoing',this)">
+      <svg viewBox="0 0 24 24"><polyline points="5 10 12 3 19 10"/><path d="M12 3v18"/></svg>
+      Исходящие <span class="tab-count" id="cntOutgoing">—</span>
+    </button>
+    <button class="tab-btn" id="tabSearch" onclick="switchTab('search',this)">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Найти людей <span class="tab-count" id="cntSearch">—</span>
+    </button>
+  </div>
+
+  <!-- Таб: Друзья -->
+  <div class="tab-panel active" id="panel-friends">
+    <div class="friends-grid" id="listFriends">
+      <!-- Скелетон -->
+      <div class="skel-card"><div class="sl" style="width:60px;height:60px;border-radius:16px"></div><div class="sl" style="width:80%;height:13px;margin-top:4px"></div><div class="sl" style="width:55%;height:11px"></div><div class="sl" style="width:90%;height:30px;border-radius:8px"></div></div>
+      <div class="skel-card"><div class="sl" style="width:60px;height:60px;border-radius:16px"></div><div class="sl" style="width:80%;height:13px;margin-top:4px"></div><div class="sl" style="width:55%;height:11px"></div><div class="sl" style="width:90%;height:30px;border-radius:8px"></div></div>
+      <div class="skel-card"><div class="sl" style="width:60px;height:60px;border-radius:16px"></div><div class="sl" style="width:80%;height:13px;margin-top:4px"></div><div class="sl" style="width:55%;height:11px"></div><div class="sl" style="width:90%;height:30px;border-radius:8px"></div></div>
+    </div>
+  </div>
+
+  <!-- Таб: Входящие заявки -->
+  <div class="tab-panel" id="panel-incoming">
+    <div class="friends-grid" id="listIncoming"></div>
+  </div>
+
+  <!-- Таб: Исходящие заявки -->
+  <div class="tab-panel" id="panel-outgoing">
+    <div class="friends-grid" id="listOutgoing"></div>
+  </div>
+
+  <!-- Таб: Найти людей -->
+  <div class="tab-panel" id="panel-search">
+    <div style="display:flex;gap:8px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 18px;box-shadow:var(--sh);flex-shrink:0">
+      <div style="position:relative;flex:1">
+        <svg viewBox="0 0 24 24" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="add-input" id="searchInput" style="padding-left:38px" placeholder="Поиск по имени или должности…" oninput="filterCandidates(this.value)">
+      </div>
+    </div>
+    <div class="friends-grid" id="listSearch"></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Статистика -->
+  <div class="card">
+    <div class="block-title">Моя сеть</div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Друзья</span><span class="stat-val" style="color:var(--g)" id="sideStatFriends">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><polyline points="19 14 12 21 5 14"/><path d="M12 3v18"/></svg>Входящие</span><span class="stat-val" id="sideStatIncoming">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><polyline points="5 10 12 3 19 10"/><path d="M12 3v18"/></svg>Исходящие</span><span class="stat-val" id="sideStatOutgoing">—</span></div>
+  </div>
+
+  <!-- Рекомендации -->
+  <div class="card">
+    <div class="block-title">Возможно вы знакомы</div>
+    <div id="recList">
+      <div style="font-size:12px;color:var(--gmt)">Загрузка…</div>
+    </div>
+  </div>
+
+</aside>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api', tk=()=>localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function ltr(s){return((s||'?')[0]).toUpperCase()}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#E04040','#1A8A6A','#B05090','#208090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
+function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин';if(m<1440)return Math.floor(m/60)+' ч';return Math.floor(m/1440)+' д';}
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2800)}
+function logout(){localStorage.removeItem('token');location.href='/login.html'}
+
+/* DROPDOWN */
+function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
+document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
+
+/* ТАБЫ */
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id)?.classList.add('active');
+  btn?.classList.add('active');
+}
+
+/* ══ ДАННЫЕ ══ */
+let friends=[], incoming=[], outgoing=[], candidates=[];
+
+function buildCard(user, type){
+  const name=user.friend_name||user.full_name||'Пользователь';
+  const id=user.friend_id||user.user_id||user.id||'';
+  const color=avc(name);
+  const letter=ltr(name);
+  const pos=user.position||user.role||'';
+  const company=user.company_name||'';
+  const online=user.is_online||false;
+  const mutual=user.mutual_friends||0;
+
+  let actions='';
+  if(type==='friend'){
+    actions=`
+      <button class="fc-btn fc-btn-msg" onclick="goChat('${esc(id)}','${esc(name)}')">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать
+      </button>
+      <button class="fc-btn fc-btn-remove" onclick="removeFriend('${esc(id)}','${esc(name)}',this)">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Удалить
+      </button>`;
+  } else if(type==='incoming'){
+    actions=`
+      <button class="fc-btn fc-btn-accept" onclick="acceptFriend('${esc(id)}','${esc(name)}',this)">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Принять
+      </button>
+      <button class="fc-btn fc-btn-reject" onclick="rejectFriend('${esc(id)}','${esc(name)}',this)">Отклонить</button>`;
+  } else if(type==='outgoing'){
+    actions=`
+      <button class="fc-btn fc-btn-cancel" style="width:100%" onclick="cancelRequest('${esc(id)}','${esc(name)}',this)">
+        Отменить заявку
+      </button>`;
+  } else if(type==='candidate'){
+    actions=`
+      <button class="fc-btn fc-btn-add" style="width:100%" onclick="addFriend('${esc(id)}','${esc(name)}',this)">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить в друзья
+      </button>`;
+  }
+
+  return `<div class="friend-card${type==='incoming'?' incoming':''}" data-id="${esc(id)}">
+    <div class="fc-av-wrap">
+      <div class="fc-av" style="background:${color}">${letter}</div>
+      ${online?'<span class="fc-online"></span>':''}
+    </div>
+    <div style="width:100%">
+      <div class="fc-name">${esc(name)}</div>
+      ${pos?`<div class="fc-role">${esc(pos)}</div>`:''}
+      ${company?`<div class="fc-company">${esc(company)}</div>`:''}
+      ${mutual?`<div class="fc-mutual"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>${mutual} общих</div>`:''}
+      ${type==='incoming'?`<div style="font-size:10px;color:var(--gmt);margin-top:4px">Заявка получена</div>`:''}
+      ${type==='outgoing'?`<div style="font-size:10px;color:var(--gmt);margin-top:4px">Заявка отправлена</div>`:''}
+    </div>
+    <div class="fc-actions">${actions}</div>
+  </div>`;
+}
+
+function renderEmpty(text,sub=''){
+  return`<div class="empty-state" style="grid-column:1/-1">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <div class="empty-state-title">${text}</div>
+    ${sub?`<div class="empty-state-sub">${sub}</div>`:''}
+  </div>`;
+}
+
+function renderAll(){
+  // Счётчики
+  document.getElementById('cntFriends').textContent=friends.length||'0';
+  document.getElementById('cntIncoming').textContent=incoming.length||'0';
+  document.getElementById('cntOutgoing').textContent=outgoing.length||'0';
+  document.getElementById('cntSearch').textContent=candidates.length||'0';
+  document.getElementById('sideStatFriends').textContent=friends.length||'0';
+  document.getElementById('sideStatIncoming').textContent=incoming.length||'0';
+  document.getElementById('sideStatOutgoing').textContent=outgoing.length||'0';
+  document.getElementById('ddFriendsCount').textContent=friends.length||'0';
+
+  // Подсветка входящих если есть
+  if(incoming.length>0){
+    document.getElementById('tabIncoming').style.color='var(--red)';
+  }
+
+  // Друзья
+  const lf=document.getElementById('listFriends');
+  lf.innerHTML=friends.length
+    ?friends.map(f=>buildCard(f,'friend')).join('')
+    :renderEmpty('Пока нет друзей','Добавьте коллег через форму выше или вкладку «Найти людей»');
+
+  // Входящие
+  const li=document.getElementById('listIncoming');
+  li.innerHTML=incoming.length
+    ?incoming.map(f=>buildCard(f,'incoming')).join('')
+    :renderEmpty('Нет входящих заявок');
+
+  // Исходящие
+  const lo=document.getElementById('listOutgoing');
+  lo.innerHTML=outgoing.length
+    ?outgoing.map(f=>buildCard(f,'outgoing')).join('')
+    :renderEmpty('Нет исходящих заявок');
+
+  // Кандидаты
+  renderCandidates(candidates);
+
+  // Рекомендации в сайдбаре
+  renderRecommendations();
+}
+
+function renderCandidates(list){
+  const ls=document.getElementById('listSearch');
+  ls.innerHTML=list.length
+    ?list.map(f=>buildCard(f,'candidate')).join('')
+    :renderEmpty('Пользователи не найдены','Попробуйте изменить запрос');
+}
+
+function filterCandidates(q){
+  if(!q.trim()){renderCandidates(candidates);return;}
+  const lq=q.toLowerCase();
+  renderCandidates(candidates.filter(c=>{
+    const name=(c.full_name||c.friend_name||'').toLowerCase();
+    const pos=(c.position||'').toLowerCase();
+    return name.includes(lq)||pos.includes(lq);
+  }));
+}
+
+function renderRecommendations(){
+  const rec=document.getElementById('recList');
+  const pool=candidates.slice(0,5);
+  if(!pool.length){rec.innerHTML='<div style="font-size:12px;color:var(--gmt)">Нет рекомендаций</div>';return;}
+  rec.innerHTML=pool.map(u=>{
+    const name=u.full_name||u.friend_name||'Пользователь';
+    const id=u.id||u.friend_id||'';
+    const color=avc(name);
+    return`<div class="rec-item">
+      <div class="rec-av" style="background:${color}">${ltr(name)}</div>
+      <div class="rec-body">
+        <div class="rec-name">${esc(name)}</div>
+        <div class="rec-meta">${esc(u.position||u.company_name||'Участник LASTOP')}</div>
+      </div>
+      <button class="rec-add" onclick="addFriend('${esc(id)}','${esc(name)}',this)">+ Добавить</button>
+    </div>`;
+  }).join('');
+}
+
+/* ══ API ДЕЙСТВИЯ ══ */
+async function apiFetch(url, method='GET', body=null){
+  const opts={method,headers:{Authorization:'Bearer '+tk()}};
+  if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  const r=await fetch(API+url,opts);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.message||j.error||'Ошибка');
+  return j;
+}
+
+async function loadData(){
+  try{
+    const [fr,inc,out,cand]=await Promise.all([
+      apiFetch('/friends'),
+      apiFetch('/friends/requests/incoming'),
+      apiFetch('/friends/requests/outgoing'),
+      apiFetch('/friends/candidates')
+    ]);
+    friends=fr.data?.friends||fr.friends||[];
+    incoming=inc.data?.requests||inc.requests||[];
+    outgoing=out.data?.requests||out.requests||[];
+    candidates=cand.data?.users||cand.users||[];
+  }catch{
+    // Демо-данные если API недоступен
+    friends=DEMO_FRIENDS;
+    incoming=DEMO_INCOMING;
+    outgoing=DEMO_OUTGOING;
+    candidates=DEMO_CANDIDATES;
+  }
+  renderAll();
+}
+
+async function sendRequest(){
+  const val=document.getElementById('addInput').value.trim();
+  const msg=document.getElementById('addMsg');
+  if(!val){msg.className='add-msg err';msg.textContent='Введите имя или email';return;}
+  try{
+    await apiFetch('/friends/request-by-name','POST',{name:val});
+    msg.className='add-msg ok';msg.textContent='✓ Заявка отправлена пользователю «'+val+'»';
+    document.getElementById('addInput').value='';
+    setTimeout(()=>msg.className='add-msg',3000);
+    loadData();
+  }catch(e){
+    msg.className='add-msg err';msg.textContent=e.message||'Пользователь не найден';
+  }
+}
+
+async function acceptFriend(id,name,btn){
+  try{
+    await apiFetch('/friends/accept/'+id,'POST');
+    toast('Теперь вы друзья с '+name+' ✓','ok');
+    btn.closest('.friend-card').remove();
+    incoming=incoming.filter(f=>(f.user_id||f.friend_id)!==id);
+    friends.push({friend_id:id,friend_name:name});
+    renderAll();
+  }catch(e){toast(e.message,'err')}
+}
+
+async function rejectFriend(id,name,btn){
+  try{
+    await apiFetch('/friends/reject/'+id,'POST');
+    toast('Заявка от '+name+' отклонена');
+    btn.closest('.friend-card').remove();
+    incoming=incoming.filter(f=>(f.user_id||f.friend_id)!==id);
+    document.getElementById('cntIncoming').textContent=incoming.length;
+    document.getElementById('sideStatIncoming').textContent=incoming.length;
+  }catch(e){toast(e.message,'err')}
+}
+
+async function cancelRequest(id,name,btn){
+  try{
+    await apiFetch('/friends/cancel/'+id,'POST');
+    toast('Заявка '+name+' отменена');
+    btn.closest('.friend-card').remove();
+    outgoing=outgoing.filter(f=>(f.friend_id||f.user_id)!==id);
+    document.getElementById('cntOutgoing').textContent=outgoing.length;
+    document.getElementById('sideStatOutgoing').textContent=outgoing.length;
+  }catch(e){toast(e.message,'err')}
+}
+
+async function removeFriend(id,name,btn){
+  if(!confirm('Удалить '+name+' из друзей?'))return;
+  try{
+    await apiFetch('/friends/'+id,'DELETE');
+    toast(name+' удалён из друзей');
+    btn.closest('.friend-card').remove();
+    friends=friends.filter(f=>(f.friend_id||f.user_id)!==id);
+    document.getElementById('cntFriends').textContent=friends.length;
+    document.getElementById('sideStatFriends').textContent=friends.length;
+    document.getElementById('ddFriendsCount').textContent=friends.length;
+  }catch(e){toast(e.message,'err')}
+}
+
+async function addFriend(id,name,btn){
+  try{
+    await apiFetch('/friends/request/'+id,'POST');
+    toast('Заявка отправлена пользователю '+name+' ✓','ok');
+    btn.closest('.friend-card')?.remove();
+    // убираем из кандидатов и рекомендаций
+    candidates=candidates.filter(c=>(c.id||c.friend_id)!==id);
+    document.getElementById('cntSearch').textContent=candidates.length;
+    renderRecommendations();
+    outgoing.push({friend_id:id,friend_name:name});
+    document.getElementById('cntOutgoing').textContent=outgoing.length;
+    document.getElementById('sideStatOutgoing').textContent=outgoing.length;
+  }catch(e){toast(e.message,'err')}
+}
+
+function goChat(id,name){
+  toast('Открываем чат с '+name+'…','ok');
+  setTimeout(()=>{location.href='/chat.html?user='+encodeURIComponent(id)},600);
+}
+
+/* ══ ДЕМО ДАННЫЕ (fallback) ══ */
+const DEMO_FRIENDS=[
+  {friend_id:'1',friend_name:'Марина Захарова',position:'Специалист ВЭД',company_name:'ТаможПром',is_online:true,mutual_friends:3},
+  {friend_id:'2',friend_name:'Дмитрий Козлов',position:'Product Manager TMS',company_name:'LASTOP Digital',is_online:false,mutual_friends:5},
+  {friend_id:'3',friend_name:'NorthBridge Logistics',position:'Компания',company_name:'Логистика',is_online:true},
+  {friend_id:'4',friend_name:'Алексей Петров',position:'Таможенный брокер',company_name:'FastCargo',is_online:false,mutual_friends:2},
+  {friend_id:'5',friend_name:'Ольга Павлова',position:'COO',company_name:'NorthBridge',is_online:true,mutual_friends:7},
+  {friend_id:'6',friend_name:'Сергей Крылов',position:'IT-директор',company_name:'NorthBridge',is_online:false},
+];
+const DEMO_INCOMING=[
+  {user_id:'7',friend_name:'Игорь Лебедев',position:'Логист',company_name:'Volga Industrial',mutual_friends:1},
+  {user_id:'8',friend_name:'Елена Морозова',position:'HR-менеджер',company_name:'GlobalFreight',mutual_friends:4},
+];
+const DEMO_OUTGOING=[
+  {friend_id:'9',friend_name:'Иван Новиков',position:'Директор по логистике',company_name:'RetailGroup'},
+];
+const DEMO_CANDIDATES=[
+  {id:'10',full_name:'Артём Смирнов',position:'Таможенный декларант',company_name:'АльфаТаможня',mutual_friends:3},
+  {id:'11',full_name:'Наталья Фёдорова',position:'Специалист по ВЭД',company_name:'ImportExpert',mutual_friends:2},
+  {id:'12',full_name:'Павел Кузнецов',position:'Логист-экспедитор',company_name:'СБЛогистик',mutual_friends:5},
+  {id:'13',full_name:'Виктория Морозова',position:'Менеджер по закупкам',company_name:'ПромИмпорт'},
+  {id:'14',full_name:'Андрей Васильев',position:'Product Manager',company_name:'LogTech',mutual_friends:1},
+  {id:'15',full_name:'Анна Соколова',position:'Руководитель склада',company_name:'МегаСтор'},
+];
+
+/* ══ АВТОРИЗАЦИЯ ══ */
+(async()=>{
+  if(!tk()){location.href='/login.html';return}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    const color=avc(name);const L=ltr(name);
+    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
+    ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
+    const role=user.role||user.position||'Участник LASTOP';
+    ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
+  }catch{}
+  await loadData();
+})();
+</script>
+</body>
+</html>
