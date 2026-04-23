@@ -86,6 +86,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .btn-create{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap;flex-shrink:0}
 .btn-create:hover{background:var(--gm)}
 .btn-create svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+.btn-news{padding:8px 14px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap;flex-shrink:0}
+.btn-news:hover{border-color:var(--gb);background:var(--gl);color:var(--g)}
+.btn-news svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ─── КАЛЕНДАРЬ ─── */
 .cal-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);flex-shrink:0}
@@ -131,7 +134,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   aspect-ratio:1;display:flex;align-items:center;justify-content:center;
   font-size:11px;font-weight:600;color:var(--tm);
   border-radius:var(--r);cursor:pointer;transition:background .15s,color .15s;
-  position:relative;user-select:none
+  position:relative;user-select:none;border:none;background:transparent;padding:0;font-family:inherit
 }
 .cal-day:hover{background:var(--gp);color:var(--g)}
 .cal-day.other{color:var(--bdr);pointer-events:none}
@@ -344,6 +347,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="nav-group">Профиль</div>
   <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
   <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
 </nav>
 <div class="main">
   <div class="ev-toolbar">
@@ -360,6 +366,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="etab" onclick="setType('networking',this)">Нетворкинг</button>
       <button class="etab" onclick="setType('roundtable',this)">Круглые столы</button>
     </div>
+    <a class="btn-news" href="/news.html">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>К новостям</span>
+    </a>
     <button class="btn-create" onclick="openModal()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <span>Создать событие</span>
@@ -490,8 +500,55 @@ function renderCard(ev,i){
 function renderList(items){const c=document.getElementById('evContent'); c.innerHTML=items.map((ev,i)=>renderCard(ev,i)).join('');}
 function renderSidebar(){const now=new Date(); const upcoming=[...EVENTS].filter(e=>(e.date instanceof Date?e.date:new Date(e.date))>=now); const soon=document.getElementById('soonList'); if(soon){soon.innerHTML=upcoming.map(ev=>`<div class="soon-item">${esc(ev.title)}</div>`).join('')||'<div style="font-size:12px;color:var(--gmt)">Нет событий</div>';}
 const myRegs=[...EVENTS].filter(e=>registeredSet.has(e.id)); document.getElementById('myRegList').innerHTML=myRegs.map(ev=>`<div class="my-reg-item">${esc(ev.title)}</div>`).join('')||'<div style="font-size:12px;color:var(--gmt)">Вы пока не записаны ни на одно событие</div>'; const stat=document.getElementById('statMyReg'); if(stat) stat.textContent=String(myRegs.length)}
-function renderSidebarCalendar(){document.getElementById('calMonthLabel').textContent='Календарь'; document.getElementById('calDows').innerHTML=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>'<div class="cal-dow">'+d+'</div>').join(''); document.getElementById('calGrid').innerHTML='<div class="cal-day today">'+NOW.getDate()+'</div>'}
-function calPrev(){} function calNext(){} function calGoToday(){} function closePopup(){}
+function calendarEventsForMonth(year,month){
+  return EVENTS.filter(e=>{
+    const d=e.date instanceof Date?e.date:new Date(e.date);
+    return d.getFullYear()===year&&d.getMonth()===month;
+  });
+}
+function dayEvents(year,month,day){
+  return calendarEventsForMonth(year,month).filter(e=>{
+    const d=e.date instanceof Date?e.date:new Date(e.date);
+    return d.getDate()===day;
+  }).sort((a,b)=>String(a.timeStart||'').localeCompare(String(b.timeStart||'')));
+}
+function openDayPopup(year,month,day){
+  selectedDay=day;
+  const popup=document.getElementById('calPopup');
+  const dateLbl=new Date(year,month,day).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('calPopupDate').textContent=dateLbl;
+  const list=dayEvents(year,month,day);
+  document.getElementById('calPopupList').innerHTML=list.map(ev=>`<div class="cal-ev-row" onclick="openEvent(${ev.id})"><div class="cal-ev-dot" style="background:${TYPE_COLOR[ev.type]||'var(--g)'}"></div><span class="cal-ev-time">${ev.timeStart||''}</span><span class="cal-ev-title">${esc(ev.title)}</span></div>`).join('')||'<div style="padding:10px 8px;font-size:11px;color:var(--gmt)">На этот день событий нет.</div>';
+  popup.classList.add('open');
+}
+function closePopup(refresh=true){const p=document.getElementById('calPopup');if(p)p.classList.remove('open');selectedDay=null;if(refresh)renderSidebarCalendar();}
+function renderSidebarCalendar(){
+  const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const DOWS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const now=new Date();
+  const isCurrentMonth=calYear===now.getFullYear()&&calMonth===now.getMonth();
+  document.getElementById('calMonthLabel').textContent=MONTHS[calMonth]+' '+calYear;
+  document.getElementById('calDows').innerHTML=DOWS.map(d=>'<div class="cal-dow">'+d+'</div>').join('');
+  const firstDow=(new Date(calYear,calMonth,1).getDay()+6)%7;
+  const totalDays=new Date(calYear,calMonth+1,0).getDate();
+  const prevLast=new Date(calYear,calMonth,0).getDate();
+  const eventDays=new Set(calendarEventsForMonth(calYear,calMonth).map(e=>(e.date instanceof Date?e.date:new Date(e.date)).getDate()));
+  let html='';
+  for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-day other">${prevLast-i}</div>`;
+  for(let d=1;d<=totalDays;d++){
+    const cls=['cal-day'];
+    if(isCurrentMonth&&d===now.getDate())cls.push('today');
+    if(eventDays.has(d))cls.push('has-event');
+    if(selectedDay===d)cls.push('selected');
+    html+=`<button type="button" class="${cls.join(' ')}" onclick="openDayPopup(${calYear},${calMonth},${d})">${d}</button>`;
+  }
+  const cells=Math.ceil((firstDow+totalDays)/7)*7;
+  for(let i=1;i<=cells-firstDow-totalDays;i++)html+=`<div class="cal-day other">${i}</div>`;
+  document.getElementById('calGrid').innerHTML=html;
+}
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}closePopup(false);renderSidebarCalendar();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}closePopup(false);renderSidebarCalendar();}
+function calGoToday(){calYear=NOW.getFullYear();calMonth=NOW.getMonth();selectedDay=NOW.getDate();renderSidebarCalendar();openDayPopup(calYear,calMonth,selectedDay);}
 function setMode(mode,btn){currentMode=mode;document.querySelectorAll('#modeAll,#modeMy').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyFilters()}
 function setType(type,btn){currentType=type;document.querySelectorAll('.etab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');applyFilters()}
 function applyFilters(){const q=(document.getElementById('searchInput').value||'').toLowerCase();let items=[...EVENTS];if(currentMode==='my')items=items.filter(e=>registeredSet.has(e.id));if(currentType)items=items.filter(e=>e.type===currentType);if(q)items=items.filter(e=>e.title.toLowerCase().includes(q));renderList(items);renderSidebar()}
