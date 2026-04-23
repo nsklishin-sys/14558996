@@ -61,6 +61,21 @@ type publicUserProfile struct {
 	Email     string `json:"email"`
 }
 
+type friendDTO struct {
+	FriendID    string `json:"friend_id"`
+	FriendName  string `json:"friend_name"`
+	Email       string `json:"email"`
+	Position    string `json:"position,omitempty"`
+	CompanyName string `json:"company_name,omitempty"`
+	IsOnline    bool   `json:"is_online"`
+}
+
+type friendCandidateDTO struct {
+	ID       string `json:"id"`
+	FullName string `json:"full_name"`
+	Email    string `json:"email"`
+}
+
 type sessionStore struct {
 	mu         sync.RWMutex
 	tokenToUID map[string]int64
@@ -252,6 +267,167 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"user": profile})
 	})
 
+	mux.HandleFunc("/api/friends", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+
+		friends, err := listFriends(db, userID)
+		if err != nil {
+			log.Printf("list friends error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{"friends": friends})
+	})
+
+	mux.HandleFunc("/api/friends/requests/incoming", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		requests, err := listIncomingFriendRequests(db, userID)
+		if err != nil {
+			log.Printf("list incoming friend requests error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"requests": requests})
+	})
+
+	mux.HandleFunc("/api/friends/requests/outgoing", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		requests, err := listOutgoingFriendRequests(db, userID)
+		if err != nil {
+			log.Printf("list outgoing friend requests error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"requests": requests})
+	})
+
+	mux.HandleFunc("/api/friends/candidates", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		candidates, err := listFriendCandidates(db, userID, query)
+		if err != nil {
+			log.Printf("list friend candidates error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"users": candidates})
+	})
+
+	mux.HandleFunc("/api/friends/request-by-name", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		targetPublicID, err := findUserPublicIDByNameOrEmail(db, userID, req.Name)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			if errors.Is(err, errValidation) {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			log.Printf("find user by name/email error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		if err := createFriendRequest(db, userID, targetPublicID); err != nil {
+			handleFriendActionError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/friends/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		path := strings.TrimPrefix(r.URL.Path, "/api/friends/")
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" {
+			writeError(w, http.StatusBadRequest, "Некорректный путь")
+			return
+		}
+
+		switch {
+		case r.Method == http.MethodPost && len(parts) == 2 && parts[0] == "request":
+			if err := createFriendRequest(db, userID, parts[1]); err != nil {
+				handleFriendActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+		case r.Method == http.MethodPost && len(parts) == 2 && parts[0] == "accept":
+			if err := acceptFriendRequest(db, userID, parts[1]); err != nil {
+				handleFriendActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		case r.Method == http.MethodPost && len(parts) == 2 && parts[0] == "reject":
+			if err := rejectFriendRequest(db, userID, parts[1]); err != nil {
+				handleFriendActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		case r.Method == http.MethodPost && len(parts) == 2 && parts[0] == "cancel":
+			if err := cancelFriendRequest(db, userID, parts[1]); err != nil {
+				handleFriendActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		case r.Method == http.MethodDelete && len(parts) == 1:
+			if err := removeFriend(db, userID, parts[0]); err != nil {
+				handleFriendActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
 
 	addr := ":8080"
@@ -330,6 +506,26 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_uniq_idx ON users(public_id);
 UPDATE users
 SET public_id = CONCAT('u', id)
 WHERE public_id IS NULL OR public_id = '';
+
+CREATE TABLE IF NOT EXISTS friend_requests (
+    id BIGSERIAL PRIMARY KEY,
+    requester_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    addressee_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (requester_id <> addressee_id),
+    CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS friend_requests_pair_uniq_idx
+ON friend_requests(requester_id, addressee_id);
+
+CREATE INDEX IF NOT EXISTS friend_requests_addressee_status_idx
+ON friend_requests(addressee_id, status);
+
+CREATE INDEX IF NOT EXISTS friend_requests_requester_status_idx
+ON friend_requests(requester_id, status);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -343,6 +539,8 @@ var (
 	errValidation         = errors.New("validation error")
 	errEmailTaken         = errors.New("email taken")
 	errInvalidCredentials = errors.New("invalid credentials")
+	errConflict           = errors.New("conflict")
+	errNotFound           = errors.New("not found")
 )
 
 func createUser(db *sql.DB, req registerRequest) (user, error) {
@@ -462,6 +660,318 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 	}
 
 	return u, nil
+}
+
+func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessionStore) (int64, bool) {
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+		return 0, false
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	if token == "" {
+		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+		return 0, false
+	}
+	userID, ok := sessions.getUserID(token)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Сессия не найдена")
+		return 0, false
+	}
+	return userID, true
+}
+
+func handleFriendActionError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errValidation):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, errConflict):
+		writeError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, err.Error())
+	default:
+		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+	}
+}
+
+func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
+	rows, err := db.Query(`
+		SELECT u.public_id, u.full_name, u.email
+		FROM friend_requests fr
+		JOIN users u ON u.id = CASE
+			WHEN fr.requester_id = $1 THEN fr.addressee_id
+			ELSE fr.requester_id
+		END
+		WHERE fr.status = 'accepted'
+		  AND ($1 IN (fr.requester_id, fr.addressee_id))
+		ORDER BY u.full_name
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []friendDTO
+	for rows.Next() {
+		var dto friendDTO
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email); scanErr != nil {
+			return nil, scanErr
+		}
+		result = append(result, dto)
+	}
+	return result, rows.Err()
+}
+
+func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
+	rows, err := db.Query(`
+		SELECT u.public_id, u.full_name, u.email
+		FROM friend_requests fr
+		JOIN users u ON u.id = fr.requester_id
+		WHERE fr.addressee_id = $1
+		  AND fr.status = 'pending'
+		ORDER BY fr.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []friendDTO
+	for rows.Next() {
+		var dto friendDTO
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email); scanErr != nil {
+			return nil, scanErr
+		}
+		result = append(result, dto)
+	}
+	return result, rows.Err()
+}
+
+func listOutgoingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
+	rows, err := db.Query(`
+		SELECT u.public_id, u.full_name, u.email
+		FROM friend_requests fr
+		JOIN users u ON u.id = fr.addressee_id
+		WHERE fr.requester_id = $1
+		  AND fr.status = 'pending'
+		ORDER BY fr.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []friendDTO
+	for rows.Next() {
+		var dto friendDTO
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email); scanErr != nil {
+			return nil, scanErr
+		}
+		result = append(result, dto)
+	}
+	return result, rows.Err()
+}
+
+func listFriendCandidates(db *sql.DB, userID int64, query string) ([]friendCandidateDTO, error) {
+	search := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
+	rows, err := db.Query(`
+		SELECT u.public_id, u.full_name, u.email
+		FROM users u
+		WHERE u.id <> $1
+		  AND (
+		      $2 = '%%'
+		      OR LOWER(u.full_name) LIKE $2
+		      OR LOWER(u.email) LIKE $2
+		  )
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM friend_requests fr
+		      WHERE (
+		           (fr.requester_id = $1 AND fr.addressee_id = u.id)
+		        OR (fr.requester_id = u.id AND fr.addressee_id = $1)
+		      )
+		      AND fr.status IN ('pending', 'accepted')
+		  )
+		ORDER BY u.full_name
+		LIMIT 50
+	`, userID, search)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []friendCandidateDTO
+	for rows.Next() {
+		var dto friendCandidateDTO
+		if scanErr := rows.Scan(&dto.ID, &dto.FullName, &dto.Email); scanErr != nil {
+			return nil, scanErr
+		}
+		result = append(result, dto)
+	}
+	return result, rows.Err()
+}
+
+func findUserPublicIDByNameOrEmail(db *sql.DB, userID int64, value string) (string, error) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return "", fmt.Errorf("%w: укажите имя или email", errValidation)
+	}
+	vLower := strings.ToLower(v)
+	var publicID string
+	err := db.QueryRow(`
+		SELECT public_id
+		FROM users
+		WHERE id <> $1
+		  AND (LOWER(email) = $2 OR LOWER(full_name) = $2)
+		ORDER BY CASE WHEN LOWER(email) = $2 THEN 0 ELSE 1 END, id
+		LIMIT 1
+	`, userID, vLower).Scan(&publicID)
+	return publicID, err
+}
+
+func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) error {
+	targetPublicID = strings.TrimSpace(targetPublicID)
+	if targetPublicID == "" {
+		return fmt.Errorf("%w: id пользователя обязателен", errValidation)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var addresseeID int64
+	if err := tx.QueryRow(`SELECT id FROM users WHERE public_id = $1`, targetPublicID).Scan(&addresseeID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: пользователь не найден", errNotFound)
+		}
+		return err
+	}
+	if addresseeID == requesterID {
+		return fmt.Errorf("%w: нельзя добавить себя в друзья", errValidation)
+	}
+
+	var existingStatus string
+	var existingRequesterID, existingAddresseeID int64
+	err = tx.QueryRow(`
+		SELECT requester_id, addressee_id, status
+		FROM friend_requests
+		WHERE (requester_id = $1 AND addressee_id = $2)
+		   OR (requester_id = $2 AND addressee_id = $1)
+		LIMIT 1
+	`, requesterID, addresseeID).Scan(&existingRequesterID, &existingAddresseeID, &existingStatus)
+	if err == nil {
+		switch existingStatus {
+		case "accepted":
+			return fmt.Errorf("%w: вы уже друзья", errConflict)
+		case "pending":
+			if existingRequesterID == requesterID {
+				return fmt.Errorf("%w: заявка уже отправлена", errConflict)
+			}
+			if _, err = tx.Exec(`
+				UPDATE friend_requests
+				SET status = 'accepted', updated_at = NOW()
+				WHERE requester_id = $1 AND addressee_id = $2
+			`, existingRequesterID, existingAddresseeID); err != nil {
+				return err
+			}
+			return tx.Commit()
+		case "rejected", "canceled":
+			if _, err = tx.Exec(`
+				UPDATE friend_requests
+				SET requester_id = $1, addressee_id = $2, status = 'pending', updated_at = NOW()
+				WHERE requester_id = $3 AND addressee_id = $4
+			`, requesterID, addresseeID, existingRequesterID, existingAddresseeID); err != nil {
+				return err
+			}
+			return tx.Commit()
+		}
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	if _, err = tx.Exec(`
+		INSERT INTO friend_requests(requester_id, addressee_id, status)
+		VALUES ($1, $2, 'pending')
+	`, requesterID, addresseeID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func acceptFriendRequest(db *sql.DB, userID int64, requesterPublicID string) error {
+	res, err := db.Exec(`
+		UPDATE friend_requests fr
+		SET status = 'accepted', updated_at = NOW()
+		FROM users u
+		WHERE fr.requester_id = u.id
+		  AND fr.addressee_id = $1
+		  AND fr.status = 'pending'
+		  AND u.public_id = $2
+	`, userID, strings.TrimSpace(requesterPublicID))
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("%w: заявка не найдена", errNotFound)
+	}
+	return nil
+}
+
+func rejectFriendRequest(db *sql.DB, userID int64, requesterPublicID string) error {
+	res, err := db.Exec(`
+		UPDATE friend_requests fr
+		SET status = 'rejected', updated_at = NOW()
+		FROM users u
+		WHERE fr.requester_id = u.id
+		  AND fr.addressee_id = $1
+		  AND fr.status = 'pending'
+		  AND u.public_id = $2
+	`, userID, strings.TrimSpace(requesterPublicID))
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("%w: заявка не найдена", errNotFound)
+	}
+	return nil
+}
+
+func cancelFriendRequest(db *sql.DB, userID int64, addresseePublicID string) error {
+	res, err := db.Exec(`
+		UPDATE friend_requests fr
+		SET status = 'canceled', updated_at = NOW()
+		FROM users u
+		WHERE fr.addressee_id = u.id
+		  AND fr.requester_id = $1
+		  AND fr.status = 'pending'
+		  AND u.public_id = $2
+	`, userID, strings.TrimSpace(addresseePublicID))
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("%w: заявка не найдена", errNotFound)
+	}
+	return nil
+}
+
+func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
+	res, err := db.Exec(`
+		UPDATE friend_requests fr
+		SET status = 'canceled', updated_at = NOW()
+		FROM users u
+		WHERE u.public_id = $2
+		  AND fr.status = 'accepted'
+		  AND (
+		     (fr.requester_id = $1 AND fr.addressee_id = u.id)
+		     OR
+		     (fr.requester_id = u.id AND fr.addressee_id = $1)
+		  )
+	`, userID, strings.TrimSpace(friendPublicID))
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("%w: друг не найден", errNotFound)
+	}
+	return nil
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
