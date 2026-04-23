@@ -364,30 +364,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Статистика -->
   <div class="card">
     <div class="block-title">Статистика</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Всего сообществ</span><span class="stat-val">247</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Открытых</span><span class="stat-val" style="color:var(--g)">189</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Закрытых</span><span class="stat-val">58</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Я в сообществах</span><span class="stat-val">3</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Всего сообществ</span><span class="stat-val" id="statTotal">0</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Открытых</span><span class="stat-val" style="color:var(--g)" id="statOpen">0</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Закрытых</span><span class="stat-val" id="statClosed">0</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Я в сообществах</span><span class="stat-val" id="statMy">0</span></div>
   </div>
 
   <!-- Мои сообщества -->
   <div class="card">
     <div class="block-title">Мои сообщества</div>
-    <div class="my-comm" onclick="setMode('my',document.getElementById('modeMy'))">
-      <div class="mc-av" style="background:#1E8A4C">🚛</div>
-      <span class="mc-name">Логистика СНГ</span>
-      <span class="mc-cnt">2.4к уч.</span>
-    </div>
-    <div class="my-comm" onclick="openCommunity(COMMUNITIES[2])">
-      <div class="mc-av" style="background:#6040A0">💻</div>
-      <span class="mc-name">LogTech Россия</span>
-      <span class="mc-cnt">834 уч.</span>
-    </div>
-    <div class="my-comm" onclick="openCommunity(COMMUNITIES[4])">
-      <div class="mc-av" style="background:#B45309">💼</div>
-      <span class="mc-name">HR в логистике</span>
-      <span class="mc-cnt">412 уч.</span>
-    </div>
+    <div id="myCommunities"></div>
     <div style="padding:8px 6px 0;text-align:center">
       <button onclick="setMode('my',document.getElementById('modeMy'))" style="font-size:11px;font-weight:700;color:var(--g);background:none;border:none;cursor:pointer;font-family:inherit">Все мои сообщества →</button>
     </div>
@@ -396,26 +382,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Рекомендации -->
   <div class="card">
     <div class="block-title">Рекомендуем вам</div>
-    <div class="rec-comm">
-      <div class="rc-av" style="background:#185FA5">🛃</div>
-      <div class="rc-body"><div class="rc-name">ВЭД Профессионалы</div><div class="rc-meta">1 840 участников</div></div>
-      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
-    </div>
-    <div class="rec-comm">
-      <div class="rc-av" style="background:#B05090">🌍</div>
-      <div class="rc-body"><div class="rc-name">Логисты Москвы</div><div class="rc-meta">928 участников</div></div>
-      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
-    </div>
-    <div class="rec-comm">
-      <div class="rc-av" style="background:#208090">📦</div>
-      <div class="rc-body"><div class="rc-name">Складские технологии</div><div class="rc-meta">651 участник</div></div>
-      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
-    </div>
-    <div class="rec-comm">
-      <div class="rc-av" style="background:#633806">🚂</div>
-      <div class="rc-body"><div class="rc-name">Железнодорожные перевозки</div><div class="rc-meta">478 участников</div></div>
-      <button class="rc-btn" onclick="joinRec(this)">Вступить</button>
-    </div>
+    <div id="recommendedCommunities"></div>
   </div>
 
 
@@ -506,23 +473,8 @@ function logout(){localStorage.removeItem('token');localStorage.removeItem('user
 /* ── ДАННЫЕ ── */
 const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];
 
-const COMMUNITIES=[
-  {id:1,name:'Логистика СНГ',cat:'Логистика',desc:'Крупнейшее профессиональное сообщество логистов и экспедиторов СНГ. Маршруты, перевозчики, тарифы, таможня и нетворкинг.',tags:['снг','маршруты','экспорт'],members:2400,posts:84,activity:12000,privacy:'open',color:'#1E8A4C',icon:'🚛',isMy:true,corporate:false,createdAt:new Date(Date.now()-3.15e10).toISOString()},
-  {id:2,name:'ВЭД Профессионалы',cat:'ВЭД',desc:'Таможенное оформление, ТН ВЭД, декларирование и работа с регуляторами ЕАЭС. Обмен опытом и помощь коллег.',tags:['таможня','вэд','еаэс'],members:1840,posts:213,activity:8400,privacy:'open',color:'#185FA5',icon:'🛃',isMy:false,corporate:false,createdAt:new Date(Date.now()-2.52e10).toISOString()},
-  {id:3,name:'LogTech Россия',cat:'IT',desc:'TMS, WMS, EDI и цифровая трансформация логистических процессов. Разработчики и внедренцы логистических систем.',tags:['tms','wms','автоматизация'],members:834,posts:97,activity:4200,privacy:'open',color:'#6040A0',icon:'💻',isMy:true,corporate:false,createdAt:new Date(Date.now()-1.89e10).toISOString()},
-  {id:4,name:'Логисты Москвы',cat:'Регионы',desc:'Региональное сообщество профессионалов в сфере логистики в Москве и Московской области. Нетворкинг и оффлайн-встречи.',tags:['москва','нетворкинг'],members:928,posts:156,activity:6300,privacy:'open',color:'#B05090',icon:'🌍',isMy:false,corporate:false,createdAt:new Date(Date.now()-1.26e10).toISOString()},
-  {id:5,name:'HR в логистике',cat:'Карьера',desc:'Рынок труда, зарплатная аналитика и карьерные советы для профессионалов отрасли. Рекрутеры и соискатели.',tags:['карьера','зарплата','рекрутинг'],members:412,posts:68,activity:2100,privacy:'open',color:'#B45309',icon:'💼',isMy:true,corporate:false,createdAt:new Date(Date.now()-8.4e9).toISOString()},
-  {id:6,name:'Складские технологии',cat:'Логистика',desc:'WMS, автоматизация складов, роботизация и оптимизация операций. Практические кейсы и решения.',tags:['склад','wms','роботизация'],members:651,posts:44,activity:1800,privacy:'open',color:'#208090',icon:'📦',isMy:false,corporate:false,createdAt:new Date(Date.now()-7.56e9).toISOString()},
-  {id:7,name:'Импорт из Китая',cat:'ВЭД',desc:'Поставки из Китая: поиск поставщиков, контроль качества, логистика и таможня. Делимся кейсами.',tags:['китай','импорт','поставщики'],members:1120,posts:187,activity:7800,privacy:'open',color:'#E04040',icon:'🇨🇳',isMy:false,corporate:false,createdAt:new Date(Date.now()-1.26e9).toISOString()},
-  {id:8,name:'Фармлогистика ЕАЭС',cat:'ВЭД',desc:'Хранение и перевозка фармацевтических грузов. Холодовая цепь, GDP, сертификация в ЕАЭС.',tags:['фарма','еаэс','холодовая-цепь'],members:287,posts:52,activity:1400,privacy:'closed',color:'#3B6D11',icon:'💊',isMy:false,corporate:false,createdAt:new Date(Date.now()-5.04e9).toISOString()},
-  /* Корпоративные */
-  {id:9,name:'NorthBridge Logistics',cat:'Логистика',desc:'Официальное сообщество компании NorthBridge Logistics. Новости, вакансии, маршруты и партнёрские программы.',tags:['northbridge','перевозки','партнёры'],members:3200,posts:341,activity:18000,privacy:'open',color:'#1E8A4C',icon:'🏢',isMy:false,corporate:true,createdAt:new Date(Date.now()-2.52e10).toISOString()},
-  {id:10,name:'GlobalFreight Partners',cat:'ВЭД',desc:'Сообщество клиентов и партнёров GlobalFreight. Таможенные услуги, акции и обновления тарифов.',tags:['globalfreight','таможня','партнёры'],members:1870,posts:124,activity:6700,privacy:'open',color:'#3A90C0',icon:'🌐',isMy:false,corporate:true,createdAt:new Date(Date.now()-1.89e10).toISOString()},
-  {id:11,name:'LASTOP Digital',cat:'IT',desc:'Официальное сообщество платформы LASTOP. Обновления продукта, обучение, вебинары и техподдержка.',tags:['lastop','платформа','обновления'],members:5400,posts:487,activity:32000,privacy:'open',color:'#22A05A',icon:'⚡',isMy:true,corporate:true,createdAt:new Date(Date.now()-3.15e10).toISOString()},
-  {id:12,name:'Volga Industrial Group',cat:'Логистика',desc:'Корпоративное сообщество Volga Industrial Group. Промышленная логистика, закупки, партнёрство.',tags:['volga','промышленность','закупки'],members:920,posts:76,activity:3100,privacy:'closed',color:'#C07030',icon:'🏭',isMy:false,corporate:true,createdAt:new Date(Date.now()-1.26e10).toISOString()},
-];
-
-const joinedSet=new Set(COMMUNITIES.filter(c=>c.isMy).map(c=>c.id));
+const COMMUNITIES=[];
+const joinedSet=new Set();
 let currentMode='all';
 let currentTab='';
 let currentType='all'; /* second toggle: all | user | corp */
@@ -646,6 +598,7 @@ function toggleJoin(id,btn){
   else{joinedSet.add(id);btn.classList.add('joined');btn.textContent='✓ Участник';toast('Вы вступили в сообщество ✓',true)}
   /* sync all buttons for same id */
   document.querySelectorAll(`[id="cjb-${id}"],[id="crb-${id}"]`).forEach(b=>{b.classList.toggle('joined',!isJoined);b.textContent=!isJoined?'✓ Участник':'Вступить'});
+  syncSidebar();
   fetch(API+'/communities/'+id+'/'+(isJoined?'leave':'join'),{method:isJoined?'DELETE':'POST',headers:{Authorization:'Bearer '+tk()}}).catch(()=>{});
 }
 
@@ -655,10 +608,20 @@ function toggleHeroJoin(){
   const btn=document.getElementById('heroJoin');
   btn.textContent=heroJoined?'✓ Вы участник':'Вступить';
   btn.classList.toggle('joined',heroJoined);
-  if(heroJoined)joinedSet.add(1);else joinedSet.delete(1);
+  const featured=COMMUNITIES[0];
+  if(featured){
+    if(heroJoined)joinedSet.add(featured.id);else joinedSet.delete(featured.id);
+  }
+  syncSidebar();
   toast(heroJoined?'Вы вступили в сообщество ✓':'Вы покинули сообщество',heroJoined);
 }
-function joinRec(btn){btn.textContent='✓ Вступил';btn.style.background='var(--g)';btn.style.color='#fff';btn.disabled=true;toast('Вы вступили в сообщество ✓',true)}
+function joinRec(id){
+  if(joinedSet.has(id))return;
+  joinedSet.add(id);
+  syncSidebar();
+  applyFilters();
+  toast('Вы вступили в сообщество ✓',true);
+}
 function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.id)}
 
 /* ── МОДАЛКА СОЗДАНИЯ ── */
@@ -687,13 +650,37 @@ function mapAPICommunityToUI(c){
     color:avc(c?.name||cat),
     icon:icons[cat]||'💬',
     privacy:c?.privacy_level==='closed'?'closed':'open',
-    members:1,
+    members:Number(c?.members_count||0),
     posts:0,
     activity:0,
     isMy:false,
-    corporate:false,
+    corporate:Boolean(c?.is_corporate),
     createdAt:c?.created_at||new Date().toISOString()
   };
+}
+function syncSidebar(){
+  const total=COMMUNITIES.length;
+  const openCount=COMMUNITIES.filter(c=>c.privacy==='open').length;
+  const myItems=COMMUNITIES.filter(c=>joinedSet.has(c.id));
+  const recItems=COMMUNITIES.filter(c=>!joinedSet.has(c.id)).slice(0,4);
+  document.getElementById('statTotal').textContent=String(total);
+  document.getElementById('statOpen').textContent=String(openCount);
+  document.getElementById('statClosed').textContent=String(Math.max(0,total-openCount));
+  document.getElementById('statMy').textContent=String(myItems.length);
+
+  const myWrap=document.getElementById('myCommunities');
+  myWrap.innerHTML=myItems.length?myItems.slice(0,3).map(c=>`<div class="my-comm" onclick="openCommunity(COMMUNITIES.find(x=>x.id===${c.id}))">
+      <div class="mc-av" style="background:${c.color}">${c.icon}</div>
+      <span class="mc-name">${esc(c.name)}</span>
+      <span class="mc-cnt">${num(c.members)} уч.</span>
+    </div>`).join(''):'<div style="font-size:12px;color:var(--gmt);padding:6px 4px">Вы пока не состоите ни в одном сообществе.</div>';
+
+  const recWrap=document.getElementById('recommendedCommunities');
+  recWrap.innerHTML=recItems.length?recItems.map(c=>`<div class="rec-comm">
+      <div class="rc-av" style="background:${c.color}">${c.icon}</div>
+      <div class="rc-body"><div class="rc-name">${esc(c.name)}</div><div class="rc-meta">${num(c.members)} участников</div></div>
+      <button class="rc-btn" onclick="joinRec(${c.id})">Вступить</button>
+    </div>`).join(''):'<div style="font-size:12px;color:var(--gmt);padding:6px 4px">Нет рекомендаций.</div>';
 }
 async function submitCommunity(){
   if(isCreatingCommunity)return;
@@ -726,20 +713,11 @@ async function submitCommunity(){
     COMMUNITIES.unshift(created);
     joinedSet.add(created.id);
     closeModal();
+    syncSidebar();
     applyFilters();
     toast('Сообщество «'+name+'» создано ✓',true);
   }catch{
-    const newComm={
-    id:Date.now(),name,cat,desc,tags,color,
-    icon:icons[cat]||'💬',privacy:selectedPriv,
-    members:1,posts:0,activity:0,isMy:true,
-    createdAt:new Date().toISOString()
-  };
-    COMMUNITIES.unshift(newComm);
-    joinedSet.add(newComm.id);
-    closeModal();
-    applyFilters();
-    toast('Сообщество «'+name+'» создано локально (офлайн)',true);
+    toast('Не удалось создать сообщество. Проверьте подключение к серверу.');
   }finally{
     isCreatingCommunity=false;
     if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='Создать сообщество'}
@@ -767,14 +745,10 @@ async function submitCommunity(){
     if(r.ok){
       const data=await r.json();
       const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
-      if(fromAPI.length){
-        const existingIDs=new Set(COMMUNITIES.map(c=>String(c.id)));
-        fromAPI.forEach(c=>{
-          if(!existingIDs.has(String(c.id)))COMMUNITIES.unshift(c);
-        });
-      }
+      COMMUNITIES.splice(0,COMMUNITIES.length,...fromAPI);
     }
   }catch{}
+  syncSidebar();
   applyFilters();
 })();
 </script>
