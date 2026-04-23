@@ -790,12 +790,53 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
+const STUB_PROFILES={
+  u_demo_company:{
+    type:'company',
+    full_name:'NorthBridge Logistics',
+    first_name:'NorthBridge',
+    last_name:'Logistics',
+    position:'Корпоративный аккаунт',
+    company_name:'NorthBridge Logistics',
+    location:'Москва, Россия',
+    phone:'+7 495 123-45-67',
+    email:'contact@northbridge.ru',
+    website:'https://northbridge.ru',
+    bio:'Корпоративный аккаунт NorthBridge Logistics. Развиваем мультимодальные перевозки, ВЭД и цифровые инструменты управления логистикой в рамках экосистемы LASTOP.',
+    stats:{publications:64,projects:19,friends:312,follows:120,events:27},
+    publications:[
+      {tag:'Проект',tagClass:'t-proj',meta:'Компания · 1 ч назад',text:'Открыли новый коридор поставок ЕАЭС–Турция для индустриального оборудования.',likes:41,comments:9,time:'1 ч назад'},
+      {tag:'Новости',tagClass:'t-news',meta:'Компания · Вчера',text:'Запустили обновление личного кабинета для клиентов с трекингом SLA по отправкам.',likes:73,comments:16,time:'Вчера'},
+      {tag:'Кейс',tagClass:'t-news',meta:'Компания · 4 дня назад',text:'Снизили время таможенного оформления на 37% после перехода на электронный пакет документов.',likes:109,comments:28,time:'4 дня назад'}
+    ],
+    projects:[
+      {status:'active',statusText:'Активный',title:'ЕАЭС ↔ Турция · Industrial Flow',desc:'Сквозная цепочка поставок оборудования для производственных клиентов.',team:['Н','М','А'],meta:'11 участников'},
+      {status:'active',statusText:'Активный',title:'NorthBridge Control Tower',desc:'Центр мониторинга маршрутов с прогнозированием рисков задержки.',team:['К','Д'],meta:'7 участников'},
+      {status:'planned',statusText:'Планируется',title:'Холодовая цепь Pharma',desc:'Пилотный проект по экспортной логистике фармпродукции в ЕАЭС.',team:['Е','В'],meta:'Старт 20 мая'},
+      {status:'done',statusText:'Завершён',title:'Авто-декларирование 2.0',desc:'Автоматизация таможенной подготовки через интеграцию с TMS.',team:['С','П','Л'],meta:'Завершён Q1 2026'}
+    ],
+    experience:[
+      {logo:'N',logoColor:'#1A8A6A',role:'Логистический оператор',current:true,company:'NorthBridge Logistics',period:'Основана в 2014 · 12 лет на рынке'},
+      {logo:'L',logoColor:'#3A90C0',role:'Партнёр LASTOP',company:'LASTOP Ecosystem',period:'С 2024 — настоящее время'},
+      {logo:'E',logoColor:'#C07030',role:'Международные перевозки',company:'ЕАЭС / ЕС / Турция',period:'Более 30 маршрутов'}
+    ],
+    friends:[
+      {uid:'u_demo_maria',name:'Мария Захарова',role:'Операционный директор'},
+      {uid:'u_demo_alex',name:'Алексей Петров',role:'Руководитель ВЭД'},
+      {uid:'u_demo_sergey',name:'Сергей Иванов',role:'SGL Logistics'},
+      {uid:'u_demo_dmitry',name:'Дмитрий Орлов',role:'Экспедитор'},
+      {uid:'u_demo_anna',name:'Анна Лебедева',role:'Product · LASTOP'},
+      {uid:'u_demo_elena',name:'Елена Морозова',role:'Таможенный брокер'}
+    ]
+  }
+};
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function letter(s){return String(s||'?').trim().slice(0,1).toUpperCase()||'?';}
 function avatarLetters(name){const parts=String(name||'').trim().split(/\s+/).filter(Boolean);if(parts.length>=2)return (letter(parts[0])+letter(parts[1])).slice(0,2);return letter(parts[0]||name);}
 function userColor(seed){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[String(seed||'A').charCodeAt(0)%C.length]||C[0];}
 function getViewedUid(){return new URLSearchParams(location.search).get('uid')||'';}
 function getCurrentUser(){try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return {}}}
+function getStoredProfiles(){try{return JSON.parse(localStorage.getItem('user_profiles')||'{}')}catch{return {}}}
 
 function applyTopbarUser(){
   const u=getCurrentUser();
@@ -810,21 +851,56 @@ function applyTopbarUser(){
 
 function applyViewedUserProfile(u){
   const fullName=(u.full_name||`${u.first_name||''} ${u.last_name||''}`.trim()||'Пользователь').trim();
+  const role=u.position||u.role||'Участник LASTOP';
+  const company=u.company_name||'';
+  const location=u.location||u.city||'Не указано';
+  const phone=u.phone||'Не указан';
+  const email=u.email||'Не указан';
+  const bio=u.bio||'Профиль пользователя LASTOP.';
+  const website=u.website||((u.email||'').includes('@')?`https://${u.email.split('@')[1]}`:'');
+  const websiteLabel=u.website_label||website.replace(/^https?:\/\//,'')||'—';
   const initials=avatarLetters(fullName);
+  const color=userColor(fullName);
+  document.querySelectorAll('.pc-av').forEach((av)=>{av.textContent=initials;av.style.background=color;});
   document.getElementById('profileAvatarText').textContent=initials;
   document.getElementById('profileFullName').textContent=fullName;
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
-  document.getElementById('profileRole').textContent='Участник LASTOP';
-  document.getElementById('profileBio').textContent='Профиль пользователя LASTOP.';
-  document.getElementById('profileLocation').textContent='Не указано';
-  document.getElementById('contactLocation').textContent='Не указано';
-  document.getElementById('contactEmail').textContent=u.email||'Не указан';
-  document.getElementById('contactPhone').textContent='Не указан';
-  document.getElementById('contactCompany').textContent='Не указана';
+  document.getElementById('profileRole').textContent=company?`${role} · ${company}`:role;
+  document.getElementById('profileBio').textContent=bio;
+  document.getElementById('profileLocation').textContent=location;
+  document.getElementById('contactLocation').textContent=location;
+  document.getElementById('contactEmail').textContent=email;
+  document.getElementById('contactPhone').textContent=phone;
+  document.getElementById('contactCompany').textContent=company||'Не указана';
   const websiteNode=document.getElementById('profileWebsite');
-  const domain=(u.email||'').includes('@')?(u.email.split('@')[1]):'';
-  websiteNode.textContent=domain||'—';
-  websiteNode.href=domain?`https://${domain}`:'#';
+  websiteNode.textContent=websiteLabel;
+  websiteNode.href=website||'#';
+
+  if(u.stats){
+    const stats=[u.stats.publications,u.stats.projects,u.stats.friends,u.stats.follows,u.stats.events];
+    document.querySelectorAll('.prof-stats .ps-item .ps-n').forEach((el,i)=>{if(stats[i]!=null)el.textContent=String(stats[i]);});
+    const tabCounts=document.querySelectorAll('.ptab .ptab-count');
+    if(tabCounts[0]&&u.stats.publications!=null)tabCounts[0].textContent=String(u.stats.publications);
+    if(tabCounts[1]&&u.stats.projects!=null)tabCounts[1].textContent=String(u.stats.projects);
+    if(tabCounts[2]&&u.stats.friends!=null)tabCounts[2].textContent=String(u.stats.friends);
+  }
+
+  if(Array.isArray(u.publications)){
+    document.querySelectorAll('#tab-publications .post-card').forEach((card,i)=>{
+      const p=u.publications[i]; if(!p)return;
+      const meta=card.querySelector('.pc-meta'); if(meta)meta.textContent=p.meta||meta.textContent;
+      const text=card.querySelector('.pc-text'); if(text)text.textContent=p.text||text.textContent;
+      const tag=card.querySelector('.pc-tag'); if(tag){tag.textContent=p.tag||tag.textContent;tag.className=`pc-tag ${p.tagClass||'t-news'}`;}
+      const acts=card.querySelectorAll('.pc-foot .pc-act'); if(acts[0]&&p.likes!=null)acts[0].lastChild.textContent=p.likes; if(acts[1]&&p.comments!=null)acts[1].lastChild.textContent=p.comments;
+      const time=card.querySelector('.pc-time'); if(time)time.textContent=p.time||time.textContent;
+    });
+  }
+}
+
+function enrichViewedUser(baseUser,uid){
+  const fromStorage=getStoredProfiles()[uid]||{};
+  const fromStub=STUB_PROFILES[uid]||{};
+  return {...baseUser,...fromStorage,...fromStub};
 }
 
 async function loadViewedUser(){
@@ -833,10 +909,17 @@ async function loadViewedUser(){
   try{
     const r=await fetch(API+'/users/'+encodeURIComponent(uid));
     const d=await r.json().catch(()=>({}));
-    if(!r.ok||!d.user){throw new Error(d.error||'Пользователь не найден');}
-    applyViewedUserProfile(d.user);
+    const fallback=enrichViewedUser({},uid);
+    if(!r.ok||!d.user){
+      if(Object.keys(fallback).length===0){throw new Error(d.error||'Пользователь не найден');}
+      applyViewedUserProfile(fallback);
+      return;
+    }
+    applyViewedUserProfile(enrichViewedUser(d.user,uid));
   }catch(e){
     console.error(e);
+    const fallback=enrichViewedUser({},uid);
+    if(Object.keys(fallback).length){applyViewedUserProfile(fallback);showToast('Профиль загружен из фронтенд-заглушки');return;}
     showToast('Не удалось загрузить профиль пользователя');
   }
 }
