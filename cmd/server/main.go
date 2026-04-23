@@ -577,13 +577,11 @@ func initDBFromEnv() (*sql.DB, error) {
 }
 
 func resolveDatabaseURL() (string, error) {
-	const railwayDatabaseURL = "postgresql://postgres:QHkIHPzHfSeSKkQnEDFkJmjQJSpUpXpb@shinkansen.proxy.rlwy.net:19703/railway"
-
 	if directURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); directURL != "" {
 		return directURL, nil
 	}
 
-	return railwayDatabaseURL, nil
+	return "", errors.New("DATABASE_URL is not set")
 }
 
 func waitForDB(db *sql.DB, timeout time.Duration) error {
