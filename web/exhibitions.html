@@ -839,7 +839,9 @@ function toggleFav(id,btn){
 
 function openExhibition(id){
   const ex=EXPOS.find(e=>e.id===id);
-  if(ex)showToast('Открываем: '+ex.title);
+  if(!ex)return;
+  const params=new URLSearchParams({id:String(id),title:ex.title});
+  location.href='/exhibition-detail.html?'+params.toString();
 }
 
 /* ── МОДАЛКА СТЕНДА ── */
