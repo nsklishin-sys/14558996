@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LASTOP GROUP — Чат</title>
@@ -16,9 +15,6 @@
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
 html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
-/* Hide scrollbars visually, keep scrolling functional */
-*{scrollbar-width:none;-ms-overflow-style:none}
-*::-webkit-scrollbar{width:0;height:0;display:none}
 
 /* ═══ SHELL ═══ */
 .shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar""nav main";height:100vh;gap:10px;padding:10px}
@@ -33,12 +29,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* ═══ TOPBAR ═══ */
 .topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative;display:flex;align-items:center}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
-.search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-dot{position:absolute;left:13px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
 .search-wrap input:focus{border-color:var(--gm)}
 .search-wrap input::placeholder{color:var(--gmt)}
-.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 42px 6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
 .topbar-profile:hover{border-color:var(--gb);background:var(--gl)}
 .topbar-profile.open{border-color:var(--gb);background:var(--gl)}
 .topbar-profile.open .tp-arrow{transform:rotate(180deg)}
@@ -48,7 +43,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .tp-role{font-size:10px;color:var(--gmt)}
 .tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
 /* ─── DROPDOWN ─── */
-.profile-dd-wrap{position:relative;flex:1;display:flex;justify-content:flex-end}
+.profile-dd-wrap{position:relative;flex-shrink:0}
 .profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
 .profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
@@ -80,12 +75,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
 
 /* ═══ MAIN — чат ═══ */
-.main{grid-area:main;overflow:hidden;display:grid;grid-template-columns:280px 1fr;gap:10px}
+.main{grid-area:main;overflow:hidden;display:flex;flex-direction:column}
+
+/* Единый блок чата */
+.chat-panel{
+  display:grid;grid-template-columns:280px 1fr;
+  height:100%;
+  border:1px solid var(--bdr);border-radius:var(--rxl);
+  box-shadow:var(--sh);overflow:hidden;background:var(--w)
+}
 
 /* Колонка — список диалогов */
 .dialogs{
-  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
-  box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden
+  background:var(--w);border-right:1px solid var(--bdr);
+  border-radius:var(--rxl) 0 0 var(--rxl);
+  display:flex;flex-direction:column;overflow:hidden
 }
 .dialogs-head{padding:14px 14px 10px;border-bottom:1px solid var(--bdr);flex-shrink:0}
 .dh-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -171,8 +175,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* ═══ ЧАТ — центральная зона ═══ */
 .chat{
-  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
-  box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden
+  background:var(--w);border-radius:0 var(--rxl) var(--rxl) 0;
+  display:flex;flex-direction:column;overflow:hidden
 }
 
 /* Шапка чата */
@@ -633,16 +637,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@media(max-width:1200px){.shell{grid-template-columns:220px 1fr}.main{grid-template-columns:260px 1fr}}
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr}.chat-panel{grid-template-columns:260px 1fr}}
 @media(max-width:1000px){.shell{grid-template-columns:220px 1fr}}
-@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}.main{grid-template-columns:1fr}.dialogs{display:none}}
-@media (min-width: 1921px) and (min-height: 1081px){
-  html{zoom:1.18}
-  .shell{grid-template-columns:250px 1fr;gap:12px;padding:12px;height:calc(100vh / 1.18)}
-  .nav{padding:14px 12px 12px}
-}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}.chat-panel{grid-template-columns:1fr}.dialogs{display:none}}
 </style>
-<link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
 <div class="shell">
@@ -656,14 +654,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <!-- ── TOPBAR ── -->
 <header class="topbar">
   <div class="search-wrap">
-    <span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
+    <span class="search-dot"></span>
     <input type="search" id="searchInput" placeholder="Поиск пользователей, компаний, форума…" autocomplete="off">
   </div>
   <div class="profile-dd-wrap">
     <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
       <div class="tp-av" id="topbarAv">НК</div>
       <div class="tp-info">
-        <span class="tp-name" id="topbarName">Загрузка...</span>
+        <span class="tp-name" id="topbarName">Никита Клишин</span>
         <span class="tp-role" id="topbarRole">Участник LASTOP</span>
       </div>
       <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
@@ -672,7 +670,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="pdd-head">
         <div class="pdd-av" id="pddAv">НК</div>
         <div class="pdd-info">
-          <div class="pdd-name" id="pddName">Загрузка...</div>
+          <div class="pdd-name" id="pddName">Никита Клишин</div>
           <div class="pdd-role" id="pddRole">Участник LASTOP</div>
         </div>
       </div>
@@ -697,7 +695,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
   <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
   <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
-  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg><span>Резюме</span></a>
   <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
   <div class="nav-group">Общение</div>
   <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
@@ -716,6 +714,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <!-- ════════════════════ MAIN — чат ════════════════════ -->
 <div class="main">
+
+  <div class="chat-panel">
+
+  <!-- ── Список диалогов ── -->
   <aside class="dialogs">
     <div class="dialogs-head">
       <div class="dh-row">
@@ -740,7 +742,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="d-list" id="dialogList"></div>
   </aside>
 
+  <!-- ── Окно чата ── -->
   <section class="chat">
+
+    <!-- Шапка -->
     <div class="chat-head">
       <div class="ch-av-wrap">
         <div class="ch-av" id="chatAv" style="background:#5AB080">М</div>
@@ -768,63 +773,369 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
 
+    <!-- Лента сообщений -->
     <div class="chat-body" id="chatBody">
+
       <div class="date-sep">Вчера</div>
-      <div class="msg them"><div class="msg-av" style="background:#5AB080">М</div><div class="msg-group"><div class="msg-bubble">Привет! Видела твоё сообщение про маршрут СНГ–ЕС. У нас как раз есть партия оборудования, нужно перевезти на следующей неделе 🚚</div><div class="msg-meta"><span>14:12</span></div></div></div>
-      <div class="msg me"><div class="msg-group"><div class="msg-bubble">Привет! Отлично, можем взять. Расскажи подробнее — какой объём, откуда и куда, есть ли ограничения по таможне?</div><div class="msg-meta"><span>14:18</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 13 13 20 10 17"/></svg></span></div></div></div>
-      <div class="msg them"><div class="msg-av" style="background:#5AB080">М</div><div class="msg-group"><div class="msg-bubble"><div>15 тонн, станки и запчасти. Маршрут: Санкт-Петербург → Берлин. Документы все готовы.</div><div class="msg-platform-card" onclick="showToast('Открываем проект…')"><div class="mpc-icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div class="mpc-body"><div class="mpc-label">Проект · LASTOP</div><div class="mpc-title">Маршрут СНГ–ЕС · Q2 2026</div><div class="mpc-sub">NorthBridge Logistics · Активный</div></div></div></div><div class="msg-meta"><span>14:22</span></div><div class="msg-reactions"><div class="reaction mine">👍 2</div><div class="reaction">🔥 1</div></div></div></div>
-      <div class="msg me"><div class="msg-group"><div class="msg-bubble">Принято. Скину сейчас расчёт и сроки.</div><div class="msg-meta"><span>14:25</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 13 13 20 10 17"/></svg></span></div></div></div>
-      <div class="msg me"><div class="msg-group"><div class="msg-bubble">Вот коммерческое предложение с маршрутом и таймлайном.<div class="msg-files"><div class="msg-file" onclick="showToast('Скачивание файла…')"><div class="mf-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="mf-body"><div class="mf-name">КП_маршрут_СПб-Берлин.pdf</div><div class="mf-size">1.8 МБ · PDF</div></div></div><div class="msg-file" onclick="showToast('Скачивание файла…')"><div class="mf-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div><div class="mf-body"><div class="mf-name">Расчёт_стоимости.xlsx</div><div class="mf-size">84 КБ · Excel</div></div></div></div></div><div class="msg-meta"><span>14:28</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 13 13 20 10 17"/></svg></span></div></div></div>
+
+      <div class="msg them">
+        <div class="msg-av" style="background:#5AB080">М</div>
+        <div class="msg-group">
+          <div class="msg-bubble">Привет! Видела твоё сообщение про маршрут СНГ–ЕС. У нас как раз есть партия оборудования, нужно перевезти на следующей неделе 🚚</div>
+          <div class="msg-meta"><span>14:12</span></div>
+        </div>
+      </div>
+
+      <div class="msg me">
+        <div class="msg-group">
+          <div class="msg-bubble">Привет! Отлично, можем взять. Расскажи подробнее — какой объём, откуда и куда, есть ли ограничения по таможне?</div>
+          <div class="msg-meta">
+            <span>14:18</span>
+            <span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 13 13 20 10 17"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg them">
+        <div class="msg-av" style="background:#5AB080">М</div>
+        <div class="msg-group">
+          <div class="msg-bubble">
+            <div>15 тонн, станки и запчасти. Маршрут: Санкт-Петербург → Берлин. Документы все готовы.</div>
+            <div class="msg-platform-card" onclick="showToast('Открываем проект…')">
+              <div class="mpc-icon">
+                <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="mpc-body">
+                <div class="mpc-label">Проект · LASTOP</div>
+                <div class="mpc-title">Маршрут СНГ–ЕС · Q2 2026</div>
+                <div class="mpc-sub">NorthBridge Logistics · Активный</div>
+              </div>
+            </div>
+          </div>
+          <div class="msg-meta"><span>14:22</span></div>
+          <div class="msg-reactions">
+            <div class="reaction mine">👍 2</div>
+            <div class="reaction">🔥 1</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg me">
+        <div class="msg-group">
+          <div class="msg-bubble">Принято. Скину сейчас расчёт и сроки.</div>
+          <div class="msg-meta">
+            <span>14:25</span>
+            <span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 13 13 20 10 17"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg me">
+        <div class="msg-group">
+          <div class="msg-bubble">
+            Вот коммерческое предложение с маршрутом и таймлайном.
+            <div class="msg-files">
+              <div class="msg-file" onclick="showToast('Скачивание файла…')">
+                <div class="mf-icon">
+                  <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div class="mf-body">
+                  <div class="mf-name">КП_маршрут_СПб-Берлин.pdf</div>
+                  <div class="mf-size">1.8 МБ · PDF</div>
+                </div>
+              </div>
+              <div class="msg-file" onclick="showToast('Скачивание файла…')">
+                <div class="mf-icon">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <div class="mf-body">
+                  <div class="mf-name">Расчёт_стоимости.xlsx</div>
+                  <div class="mf-size">84 КБ · Excel</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="msg-meta">
+            <span>14:28</span>
+            <span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="20 13 13 20 10 17"/></svg></span>
+          </div>
+        </div>
+      </div>
+
       <div class="date-sep">Сегодня</div>
-      <div class="msg them"><div class="msg-av" style="background:#5AB080">М</div><div class="msg-group"><div class="msg-bubble"><div class="msg-quote"><div class="mq-author">Загрузка...</div>Вот коммерческое предложение с маршрутом и таймлайном.</div>Отлично, всё согласовано. Подписываем договор сегодня после 16:00 ✍️</div><div class="msg-meta"><span>09:45</span></div></div></div>
-      <div class="msg me"><div class="msg-group"><div class="msg-bubble">Договорились. До связи!</div><div class="msg-meta"><span>09:47</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div></div>
-      <div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+
+      <div class="msg them">
+        <div class="msg-av" style="background:#5AB080">М</div>
+        <div class="msg-group">
+          <div class="msg-bubble">
+            <div class="msg-quote">
+              <div class="mq-author">Никита Клишин</div>
+              Вот коммерческое предложение с маршрутом и таймлайном.
+            </div>
+            Отлично, всё согласовано. Подписываем договор сегодня после 16:00 ✍️
+          </div>
+          <div class="msg-meta"><span>09:45</span></div>
+        </div>
+      </div>
+
+      <div class="msg me">
+        <div class="msg-group">
+          <div class="msg-bubble">Договорились. До связи!</div>
+          <div class="msg-meta">
+            <span>09:47</span>
+            <span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Индикатор печати -->
+      <div class="typing-bubble">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+
     </div>
 
+    <!-- Блок ответа -->
     <div class="reply-bar" id="replyBar">
       <div class="reply-line"></div>
-      <div class="reply-body"><div class="reply-to">Ответ Марии Захаровой</div><div class="reply-text" id="replyText"></div></div>
-      <button class="reply-close" onclick="closeReply()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div class="reply-body">
+        <div class="reply-to">Ответ Марии Захаровой</div>
+        <div class="reply-text" id="replyText"></div>
+      </div>
+      <button class="reply-close" onclick="closeReply()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
+    <!-- Инпут -->
     <div class="chat-input-wrap">
-      <button class="ci-attach" onclick="showToast('Прикрепить файл')" title="Прикрепить"><svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+      <button class="ci-attach" onclick="showToast('Прикрепить файл')" title="Прикрепить">
+        <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>
       <div class="ci-input-box">
         <textarea class="ci-textarea" id="msgInput" placeholder="Написать сообщение…" rows="1" oninput="autoGrow(this)" onkeydown="handleEnter(event)"></textarea>
         <div class="ci-inline-btns">
-          <button class="ci-inline" onclick="showToast('Эмодзи')" title="Эмодзи"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
-          <button class="ci-inline" onclick="showToast('Голосовое')" title="Голосовое"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+          <button class="ci-inline" onclick="showToast('Эмодзи')" title="Эмодзи">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          </button>
+          <button class="ci-inline" onclick="showToast('Голосовое')" title="Голосовое">
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
         </div>
       </div>
-      <button class="ci-send" onclick="sendMessage()" title="Отправить"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      <button class="ci-send" onclick="sendMessage()" title="Отправить">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
     </div>
-  </section>
-</div>
-</div>
 
+  </section>
+
+  </div><!-- /chat-panel -->
+
+</div><!-- /main -->
+
+</div><!-- /shell -->
+
+<!-- ═══ ВЫПАДАЮЩАЯ ПАНЕЛЬ СВЕДЕНИЙ ═══ -->
 <div class="info-overlay" id="infoOverlay" onclick="closeInfoPanel()"></div>
-<aside class="info-panel" id="infoPanel"><div class="info-head"><button class="info-close" onclick="closeInfoPanel()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><div class="info-head-t">Сведения о диалоге</div></div><div class="info-body"><div class="ip-profile"><div class="ip-av" id="ipAv" style="background:#5AB080">М<div class="ip-online"></div></div><div class="ip-name" id="ipName">Мария Захарова</div><div class="ip-role" id="ipRole">Логист · NorthBridge Logistics</div><div class="ip-actions"><button class="ip-btn primary" onclick="location.href='/profile.html'"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Открыть профиль</button><button class="ip-btn" onclick="showToast('Добавлен(а) в друзья')"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>В друзья</button></div></div></div></aside>
+<aside class="info-panel" id="infoPanel">
+  <div class="info-head">
+    <button class="info-close" onclick="closeInfoPanel()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="info-head-t">Сведения о диалоге</div>
+  </div>
+
+  <div class="info-body">
+
+    <!-- Профиль -->
+    <div class="ip-profile">
+      <div class="ip-av" id="ipAv" style="background:#5AB080">М<div class="ip-online"></div></div>
+      <div class="ip-name" id="ipName">Мария Захарова</div>
+      <div class="ip-role" id="ipRole">Логист · NorthBridge Logistics</div>
+      <div class="ip-actions">
+        <button class="ip-btn primary" onclick="location.href='/profile.html'">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Открыть профиль
+        </button>
+        <button class="ip-btn" onclick="showToast('Добавлен(а) в друзья')">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          В друзья
+        </button>
+      </div>
+    </div>
+
+    <!-- Информация -->
+    <div class="ip-section">
+      <div class="ip-section-title">О пользователе</div>
+      <div class="ip-field">
+        <div class="ip-field-ico"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <div class="ip-field-body"><div class="ip-field-lbl">Компания</div><div class="ip-field-val">NorthBridge Logistics</div></div>
+      </div>
+      <div class="ip-field">
+        <div class="ip-field-ico"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div class="ip-field-body"><div class="ip-field-lbl">Город</div><div class="ip-field-val">Москва</div></div>
+      </div>
+      <div class="ip-field">
+        <div class="ip-field-ico"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg></div>
+        <div class="ip-field-body"><div class="ip-field-lbl">Email</div><div class="ip-field-val">m.zaharova@northbridge.ru</div></div>
+      </div>
+      <div class="ip-field">
+        <div class="ip-field-ico"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+        <div class="ip-field-body"><div class="ip-field-lbl">Телефон</div><div class="ip-field-val">+7 999 123-45-67</div></div>
+      </div>
+    </div>
+
+    <!-- Табы -->
+    <div class="ip-tabs">
+      <button class="ip-tab active" onclick="switchInfoTab('images', this)">
+        <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><circle cx="5" cy="5" r="1"/><polyline points="12.5 9 9.5 6 1.5 12.5"/></svg>
+        Изображения <span class="ip-tab-n">18</span>
+      </button>
+      <button class="ip-tab" onclick="switchInfoTab('files', this)">
+        <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><path d="M8 1H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5"/><polyline points="8 1 8 5 12 5"/></svg>
+        Файлы <span class="ip-tab-n">12</span>
+      </button>
+      <button class="ip-tab" onclick="switchInfoTab('links', this)">
+        <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><path d="M6 8a3 3 0 0 0 4 0l2-2a3 3 0 0 0-4-4L7 3"/><path d="M8 6a3 3 0 0 0-4 0L2 8a3 3 0 0 0 4 4l1-1"/></svg>
+        Ссылки <span class="ip-tab-n">7</span>
+      </button>
+      <button class="ip-tab" onclick="switchInfoTab('audio', this)">
+        <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><path d="M7 1a2 2 0 0 0-2 2v4a2 2 0 0 0 4 0V3a2 2 0 0 0-2-2z"/><path d="M11 6v1a4 4 0 0 1-8 0V6"/><line x1="7" y1="11" x2="7" y2="13"/></svg>
+        Аудио <span class="ip-tab-n">4</span>
+      </button>
+    </div>
+
+    <!-- Контент: Изображения -->
+    <div class="ip-tab-content active" id="ipt-images">
+      <div class="ip-images-grid">
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#5AB080,#22A05A)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Схема маршрута</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#3A90C0,#185FA5)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Склад СПб</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#C07030,#9060C0)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Контейнеры</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#1A8A6A,#3B6D11)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Станки</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#B05090,#C07030)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Таможня</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#208090,#5AB080)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Погрузка</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#633806,#C07030)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Документы</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#185FA5,#3A90C0)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Карта EC</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#9060C0,#B05090)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Берлин-хаб</span></div>
+        <div class="ip-img-cell" style="background:linear-gradient(135deg,#22A05A,#1E8A4C)" onclick="showToast('Открываем изображение…')"><span class="ip-img-overlay">Фото груза</span></div>
+      </div>
+      <button class="ip-show-all" onclick="showToast('Все изображения')">Показать все (18)</button>
+    </div>
+
+    <!-- Контент: Файлы -->
+    <div class="ip-tab-content" id="ipt-files">
+      <div class="ip-file-item">
+        <div class="ip-file-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="ip-file-b"><div class="ip-file-n">КП_маршрут_СПб-Берлин.pdf</div><div class="ip-file-m">1.8 МБ · Сегодня</div></div>
+        <button class="ip-file-dl" onclick="showToast('Скачивание…')"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      </div>
+      <div class="ip-file-item">
+        <div class="ip-file-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
+        <div class="ip-file-b"><div class="ip-file-n">Расчёт_стоимости.xlsx</div><div class="ip-file-m">84 КБ · Сегодня</div></div>
+        <button class="ip-file-dl" onclick="showToast('Скачивание…')"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      </div>
+      <div class="ip-file-item">
+        <div class="ip-file-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="ip-file-b"><div class="ip-file-n">Договор_перевозки_2026.pdf</div><div class="ip-file-m">2.3 МБ · Вчера</div></div>
+        <button class="ip-file-dl" onclick="showToast('Скачивание…')"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      </div>
+      <div class="ip-file-item">
+        <div class="ip-file-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+        <div class="ip-file-b"><div class="ip-file-n">Схема_маршрута.png</div><div class="ip-file-m">420 КБ · Вчера</div></div>
+        <button class="ip-file-dl" onclick="showToast('Скачивание…')"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      </div>
+      <div class="ip-file-item">
+        <div class="ip-file-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="ip-file-b"><div class="ip-file-n">Таможенная_декларация.pdf</div><div class="ip-file-m">1.1 МБ · Пн</div></div>
+        <button class="ip-file-dl" onclick="showToast('Скачивание…')"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Контент: Ссылки -->
+    <div class="ip-tab-content" id="ipt-links">
+      <div class="ip-link-item" onclick="location.href='/projects.html'">
+        <div class="ip-link-t">Маршрут СНГ–ЕС · Q2 2026</div>
+        <div class="ip-link-u">lastop.ru/projects/47</div>
+        <div class="ip-link-d">Проект на платформе · Сегодня</div>
+      </div>
+      <div class="ip-link-item" onclick="location.href='/events.html'">
+        <div class="ip-link-t">Форум «Логистика 2026»</div>
+        <div class="ip-link-u">lastop.ru/events/12</div>
+        <div class="ip-link-d">Мероприятие · Вчера</div>
+      </div>
+      <div class="ip-link-item" onclick="showToast('Открываем ссылку…')">
+        <div class="ip-link-t">Гайд по таможенному оформлению ЕАЭС</div>
+        <div class="ip-link-u">customs.gov.ru/guide-2026</div>
+        <div class="ip-link-d">Внешняя ссылка · Пн</div>
+      </div>
+      <div class="ip-link-item" onclick="location.href='/jobs.html'">
+        <div class="ip-link-t">Вакансия: Product Manager · TMS</div>
+        <div class="ip-link-u">lastop.ru/jobs/3</div>
+        <div class="ip-link-d">Вакансия на платформе · Вс</div>
+      </div>
+    </div>
+
+    <!-- Контент: Аудио -->
+    <div class="ip-tab-content" id="ipt-audio">
+      <div class="ip-audio-item">
+        <button class="ip-audio-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+        <div class="ip-audio-b">
+          <div class="ip-audio-wave">
+            <span style="height:40%"></span><span style="height:70%"></span><span style="height:50%"></span><span style="height:85%"></span><span style="height:60%"></span><span style="height:75%"></span><span style="height:45%"></span><span style="height:80%"></span><span style="height:55%"></span><span style="height:65%"></span><span style="height:90%"></span><span style="height:50%"></span><span style="height:70%"></span><span style="height:40%"></span><span style="height:60%"></span>
+          </div>
+          <div class="ip-audio-meta"><span class="ip-audio-d">0:47</span><span class="ip-audio-t">Сегодня · 10:14</span></div>
+        </div>
+      </div>
+      <div class="ip-audio-item">
+        <button class="ip-audio-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+        <div class="ip-audio-b">
+          <div class="ip-audio-wave">
+            <span style="height:60%"></span><span style="height:40%"></span><span style="height:75%"></span><span style="height:55%"></span><span style="height:85%"></span><span style="height:50%"></span><span style="height:65%"></span><span style="height:80%"></span><span style="height:45%"></span><span style="height:70%"></span><span style="height:50%"></span><span style="height:60%"></span>
+          </div>
+          <div class="ip-audio-meta"><span class="ip-audio-d">0:23</span><span class="ip-audio-t">Вчера · 16:42</span></div>
+        </div>
+      </div>
+      <div class="ip-audio-item">
+        <button class="ip-audio-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+        <div class="ip-audio-b">
+          <div class="ip-audio-wave">
+            <span style="height:50%"></span><span style="height:65%"></span><span style="height:45%"></span><span style="height:80%"></span><span style="height:55%"></span><span style="height:70%"></span><span style="height:40%"></span><span style="height:60%"></span><span style="height:75%"></span><span style="height:50%"></span><span style="height:85%"></span><span style="height:55%"></span><span style="height:70%"></span><span style="height:45%"></span><span style="height:65%"></span><span style="height:50%"></span><span style="height:60%"></span><span style="height:40%"></span>
+          </div>
+          <div class="ip-audio-meta"><span class="ip-audio-d">1:12</span><span class="ip-audio-t">Пн · 11:30</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
 <div class="toast" id="toast"></div>
 
 <script>
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-function tk(){return localStorage.getItem('token')||'';}
-function avc(name){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];return C[(name||'A').charCodeAt(0)%C.length];}
-function applyCurrentUser(user){
-  const name=user.full_name||user.name||'Пользователь';
-  const role=user.role||user.position||'Участник LASTOP';
-  const L=letter(name);
-  const color=avc(name);
-  ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color;}});
-  ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name;});
-  ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role;});
+
+/* ── ДРОПДАУН ПРОФИЛЯ ── */
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('topbarProfile').classList.toggle('open');
+  document.getElementById('profileDD').classList.toggle('open');
 }
-function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
-document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('profileDD');
+  const btn=document.getElementById('topbarProfile');
+  if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
+});
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+
+/* Демо-диалоги */
 const DIALOGS=[
   {id:1,name:'Мария Захарова',role:'NorthBridge Logistics',color:'#5AB080',preview:'Отлично, всё согласовано. Подписываем договор…',time:'09:45',unread:0,online:true,pinned:true,tag:null,fromMe:false,active:true,cat:'contacts'},
   {id:2,name:'Алексей Петров',role:'Специалист ВЭД',color:'#3A90C0',preview:'Вы: Когда удобно созвониться?',time:'10:47',unread:0,online:true,pinned:false,tag:null,fromMe:true,cat:'contacts'},
@@ -839,36 +1150,118 @@ const DIALOGS=[
   {id:11,name:'Дмитрий Орлов',role:'Экспедитор',color:'#3B6D11',preview:'Вы: Вышлю маршрут завтра утром',time:'Ср',unread:0,online:false,pinned:false,tag:null,fromMe:true,cat:'contacts'},
   {id:12,name:'TMS.Pro Support',role:'Техподдержка',color:'#D35A5A',preview:'Ваш запрос #4581 закрыт',time:'Ср',unread:0,online:false,pinned:false,tag:'company',fromMe:false,cat:'companies'},
 ];
-let activeFilter='all';let searchQuery='';
-function filterTab(cat, btn){activeFilter=cat;document.querySelectorAll('.d-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderDialogs();}
-function filterDialogs(q){searchQuery=q.toLowerCase();renderDialogs();}
-function renderDialogs(){let items=DIALOGS.slice();if(activeFilter==='unread')items=items.filter(d=>d.unread>0);else if(activeFilter==='companies')items=items.filter(d=>d.cat==='companies');else if(activeFilter==='groups')items=items.filter(d=>d.cat==='groups');if(searchQuery)items=items.filter(d=>d.name.toLowerCase().includes(searchQuery)||d.preview.toLowerCase().includes(searchQuery));const list=document.getElementById('dialogList');if(!items.length){list.innerHTML='<div style="padding:24px 14px;text-align:center;color:var(--gmt);font-size:12px">Ничего не найдено</div>';return;}list.innerHTML=items.map(d=>{const tagHtml=d.tag==='company'?'<span class="d-tag company">Компания</span>':d.tag==='group'?'<span class="d-tag group">Группа</span>':'';const prefix=d.fromMe?'<span class="me-prefix">Вы: </span>':'';const preview=d.fromMe?d.preview.replace(/^Вы:\s*/,''):d.preview;return `<div class="d-item ${d.active?'active':''} ${d.pinned?'pinned':''}" onclick="selectDialog(${d.id},this)"><div class="d-av-wrap"><div class="d-av" style="background:${d.color}">${letter(d.name)}</div>${d.online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(d.name)}${tagHtml}</div><div class="d-time">${esc(d.time)}</div></div><div class="d-bot"><div class="d-preview">${prefix}${esc(preview)}</div>${d.unread?`<span class="d-badge">${d.unread}</span>`:''}</div></div></div>`;}).join('');}
-function selectDialog(id, el){document.querySelectorAll('.d-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');const d=DIALOGS.find(x=>x.id===id);if(!d)return;document.getElementById('chatAv').textContent=letter(d.name);document.getElementById('chatAv').style.background=d.color;document.getElementById('chatName').textContent=d.name;document.getElementById('chatStatus').innerHTML=d.online?'<span style="color:var(--g);font-weight:600">в сети</span>':'<span>был(а) недавно</span>';document.getElementById('ipAv').innerHTML=letter(d.name)+'<div class="ip-online"></div>';document.getElementById('ipAv').style.background=d.color;document.getElementById('ipName').textContent=d.name;document.getElementById('ipRole').textContent=d.role;}
-function openInfoPanel(){document.getElementById('infoPanel').classList.add('open');document.getElementById('infoOverlay').classList.add('open');}
-function closeInfoPanel(){document.getElementById('infoPanel').classList.remove('open');document.getElementById('infoOverlay').classList.remove('open');}
-function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
-function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
-function sendMessage(){const inp=document.getElementById('msgInput');const txt=inp.value.trim();if(!txt)return;const body=document.getElementById('chatBody');const typing=body.querySelector('.typing-bubble');const html=`<div class="msg me"><div class="msg-group"><div class="msg-bubble">${esc(txt)}</div><div class="msg-meta"><span>${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div></div>`;if(typing)typing.insertAdjacentHTML('beforebegin',html);else body.insertAdjacentHTML('beforeend',html);inp.value='';autoGrow(inp);body.scrollTop=body.scrollHeight;closeReply();}
-function closeReply(){document.getElementById('replyBar').classList.remove('active');}
-window.addEventListener('DOMContentLoaded',async()=>{
-  if(!tk()){location.href='/login.html';return;}
-  try{
-    const cached=JSON.parse(localStorage.getItem('user')||'{}');
-    if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}
-  }catch{}
-  try{
-    const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+tk()}});
-    if(r.ok){
-      const{user={}}=await r.json();
-      localStorage.setItem('user',JSON.stringify(user));
-      applyCurrentUser(user);
-    }
-  }catch{}
+
+let activeFilter='all';
+let searchQuery='';
+
+function filterTab(cat, btn){
+  activeFilter=cat;
+  document.querySelectorAll('.d-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDialogs();
+}
+function filterDialogs(q){
+  searchQuery=q.toLowerCase();
+  renderDialogs();
+}
+function renderDialogs(){
+  let items=DIALOGS.slice();
+  if(activeFilter==='unread')items=items.filter(d=>d.unread>0);
+  else if(activeFilter==='companies')items=items.filter(d=>d.cat==='companies');
+  else if(activeFilter==='groups')items=items.filter(d=>d.cat==='groups');
+  if(searchQuery)items=items.filter(d=>d.name.toLowerCase().includes(searchQuery)||d.preview.toLowerCase().includes(searchQuery));
+
+  const list=document.getElementById('dialogList');
+  if(!items.length){
+    list.innerHTML='<div style="padding:24px 14px;text-align:center;color:var(--gmt);font-size:12px">Ничего не найдено</div>';
+    return;
+  }
+  list.innerHTML=items.map(d=>{
+    const tagHtml=d.tag==='company'?'<span class="d-tag company">Компания</span>':d.tag==='group'?'<span class="d-tag group">Группа</span>':'';
+    const prefix=d.fromMe?'<span class="me-prefix">Вы: </span>':'';
+    const preview=d.fromMe?d.preview.replace(/^Вы:\s*/,''):d.preview;
+    return `<div class="d-item ${d.active?'active':''} ${d.pinned?'pinned':''}" onclick="selectDialog(${d.id},this)">
+      <div class="d-av-wrap">
+        <div class="d-av" style="background:${d.color}">${letter(d.name)}</div>
+        ${d.online?'<div class="d-online"></div>':''}
+      </div>
+      <div class="d-body">
+        <div class="d-top">
+          <div class="d-name">${esc(d.name)}${tagHtml}</div>
+          <div class="d-time">${esc(d.time)}</div>
+        </div>
+        <div class="d-bot">
+          <div class="d-preview">${prefix}${esc(preview)}</div>
+          ${d.unread?`<span class="d-badge">${d.unread}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectDialog(id, el){
+  document.querySelectorAll('.d-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  const d=DIALOGS.find(x=>x.id===id);
+  if(!d)return;
+  document.getElementById('chatAv').textContent=letter(d.name);
+  document.getElementById('chatAv').style.background=d.color;
+  document.getElementById('chatName').textContent=d.name;
+  document.getElementById('chatStatus').innerHTML=d.online?'<span style="color:var(--g);font-weight:600">в сети</span>':'<span>был(а) недавно</span>';
+  /* Синхронизируем info-panel */
+  document.getElementById('ipAv').innerHTML=letter(d.name)+'<div class="ip-online"></div>';
+  document.getElementById('ipAv').style.background=d.color;
+  document.getElementById('ipName').textContent=d.name;
+  document.getElementById('ipRole').textContent=d.role;
+}
+
+/* ═══ Панель сведений ═══ */
+function openInfoPanel(){
+  document.getElementById('infoPanel').classList.add('open');
+  document.getElementById('infoOverlay').classList.add('open');
+}
+function closeInfoPanel(){
+  document.getElementById('infoPanel').classList.remove('open');
+  document.getElementById('infoOverlay').classList.remove('open');
+}
+function switchInfoTab(tab, btn){
+  document.querySelectorAll('.ip-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.ip-tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ipt-'+tab).classList.add('active');
+}
+
+/* Инпут */
+function autoGrow(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,100)+'px';
+}
+function handleEnter(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+}
+function sendMessage(){
+  const inp=document.getElementById('msgInput');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  const body=document.getElementById('chatBody');
+  const typing=body.querySelector('.typing-bubble');
+  const html=`<div class="msg me"><div class="msg-group"><div class="msg-bubble">${esc(txt)}</div><div class="msg-meta"><span>${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div></div>`;
+  if(typing)typing.insertAdjacentHTML('beforebegin',html);
+  else body.insertAdjacentHTML('beforeend',html);
+  inp.value='';autoGrow(inp);
+  body.scrollTop=body.scrollHeight;
+  closeReply();
+}
+function closeReply(){
+  document.getElementById('replyBar').classList.remove('active');
+}
+
+/* Init */
+window.addEventListener('DOMContentLoaded',()=>{
   renderDialogs();
   const body=document.getElementById('chatBody');
   body.scrollTop=body.scrollHeight;
 });
 </script>
-<script src="/site-search.js" defer></script>
 </body>
 </html>
