@@ -466,6 +466,18 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0)}
+function membersLabel(n,{compact=false}={}){
+  const count=Math.max(0,Number(n)||0);
+  const formatted=compact?num(count):count.toLocaleString('ru-RU');
+  const mod100=count%100;
+  const mod10=count%10;
+  let noun='участников';
+  if(mod100<11||mod100>14){
+    if(mod10===1)noun='участник';
+    else if(mod10>=2&&mod10<=4)noun='участника';
+  }
+  return `${formatted} ${noun}`;
+}
 function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})}
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
 
@@ -506,7 +518,7 @@ function renderCard(c,i){
       <div class="cc-tags-row">${c.tags.slice(0,2).map(t=>`<span class="cc-tag">${esc(t)}</span>`).join('')}</div>
     </div>
     <div class="cc-foot">
-      <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${num(c.members)}</span>
+      <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${membersLabel(c.members)}</span>
       <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${isJoined?'Участник':'Вступить'}</button>
     </div>
   </div>`;
@@ -624,6 +636,7 @@ function joinCommunity(id){
       if(community){
         community.isMy=true;
         community.members=(Number(community.members)||0)+1;
+        syncCommunityStateCache(community);
       }
       updateJoinButtons(id);
       syncSidebar();
@@ -665,11 +678,29 @@ function selectColor(color,dot){
   dot.classList.add('sel');
   document.getElementById('mColor').value=color;
 }
+function readCachedCommunityState(id){
+  if(!id)return null;
+  try{
+    const raw=sessionStorage.getItem('lastop_community_cache_'+String(id));
+    if(!raw)return null;
+    const cached=JSON.parse(raw);
+    if(Number(cached?.id)!==Number(id))return null;
+    return cached;
+  }catch{
+    return null;
+  }
+}
 function mapAPICommunityToUI(c){
   const cat=(c?.category||'Другое').trim()||'Другое';
   const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
+  const id=Number(c?.id||Date.now());
+  const cached=readCachedCommunityState(id);
+  const apiMembers=Number.isFinite(Number(c?.members_count))?Math.max(0,Number(c.members_count)):0;
+  const cachedMembers=Number.isFinite(Number(cached?.members_count))?Math.max(0,Number(cached.members_count)):null;
+  const membersCount=cachedMembers===null?apiMembers:cachedMembers;
+  const isMember=typeof cached?.is_member==='boolean'?cached.is_member:Boolean(c?.is_member);
   return {
-    id:Number(c?.id||Date.now()),
+    id,
     name:c?.name||'Без названия',
     cat,
     desc:c?.description||'',
@@ -677,10 +708,10 @@ function mapAPICommunityToUI(c){
     color:avc(c?.name||cat),
     icon:icons[cat]||'💬',
     privacy:c?.privacy_level==='closed'?'closed':'open',
-    members:Number(c?.members_count||0),
+    members:membersCount,
     posts:0,
     activity:0,
-    isMy:Boolean(c?.is_member),
+    isMy:isMember,
     corporate:Boolean(c?.is_corporate),
     createdAt:c?.created_at||new Date().toISOString()
   };
@@ -699,6 +730,21 @@ function cacheCommunityDraft(c){
       created_at:c.created_at||new Date().toISOString()
     };
     sessionStorage.setItem('lastop_community_cache_'+String(payload.id),JSON.stringify(payload));
+  }catch{}
+}
+function syncCommunityStateCache(c){
+  if(!c?.id)return;
+  try{
+    const key='lastop_community_cache_'+String(c.id);
+    const raw=sessionStorage.getItem(key);
+    const prev=raw?JSON.parse(raw):{};
+    const payload={
+      ...prev,
+      id:Number(c.id),
+      members_count:Number.isFinite(Number(c.members))?Math.max(0,Number(c.members)):0,
+      is_member:Boolean(c.isMy)
+    };
+    sessionStorage.setItem(key,JSON.stringify(payload));
   }catch{}
 }
 function syncSidebar(){
@@ -754,6 +800,7 @@ async function submitCommunity(){
     const created=mapAPICommunityToUI(data?.community);
     created.isMy=true;
     created.color=color||created.color;
+    syncCommunityStateCache(created);
     COMMUNITIES.unshift(created);
     joinedSet.add(created.id);
     closeModal();
