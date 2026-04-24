@@ -1,0 +1,405 @@
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  LASTOP GROUP — Hover Lift Effect (unified)
+ *  Файл: web/assets/hover-lift.css
+ *
+ *  Единая hover-анимация для кликабельных блоков всего сайта:
+ *  - лёгкий подъём (translateY)
+ *  - мягкая тёмная тень
+ *  - плавный переход
+ *
+ *  Подключается ОДНОЙ строкой <link> в <head> каждой страницы.
+ *  Активируется классом .hl-on на <html> (см. inline-скрипт
+ *  рядом с <link>). Все hover-правила завязаны на html.hl-on,
+ *  что даёт им повышенную специфичность и гарантированно
+ *  перекрывает разрозненные hover из inline <style>.
+ *
+ *  Совместимо со светлой и тёмной темой.
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/* ─────────────────────────────────────────────────────────────
+   Переменные эффекта (можно переопределять на странице)
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --hl-lift:          -2px;
+  --hl-lift-strong:   -3px;
+  --hl-duration:      180ms;
+  --hl-easing:        cubic-bezier(0.25, 0.8, 0.25, 1);
+  --hl-shadow:        0 6px 18px rgba(20, 40, 30, 0.12), 0 2px 6px rgba(20, 40, 30, 0.08);
+  --hl-shadow-strong: 0 10px 28px rgba(20, 40, 30, 0.16), 0 3px 8px rgba(20, 40, 30, 0.10);
+  --hl-shadow-subtle: 0 3px 10px rgba(20, 40, 30, 0.08), 0 1px 3px rgba(20, 40, 30, 0.06);
+}
+
+/* Тёмная тема — тени заметнее и холоднее */
+html[data-theme="dark"],
+html.dark-theme,
+html.dark {
+  --hl-shadow:        0 6px 18px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.32);
+  --hl-shadow-strong: 0 12px 30px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.38);
+  --hl-shadow-subtle: 0 3px 10px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   БАЗОВЫЙ TRANSITION
+   Ставим один раз для всех элементов, которые будем анимировать.
+   Селектор html.hl-on X даёт специфичность (0,1,1), чего хватает,
+   чтобы переопределить обычное .X { transition: ... } (0,1,0).
+   ───────────────────────────────────────────────────────────── */
+html.hl-on .post-card,
+html.hl-on .comm-card,
+html.hl-on .job-card,
+html.hl-on .news-card,
+html.hl-on .event-card,
+html.hl-on .ev-card,
+html.hl-on .ex-card,
+html.hl-on .friend-card,
+html.hl-on .item-card,
+html.hl-on .topic-card,
+html.hl-on .project-card,
+html.hl-on .proj-card,
+html.hl-on .product-card,
+html.hl-on .service-card,
+html.hl-on .exp-card,
+html.hl-on .feat-card,
+html.hl-on .emp-card,
+html.hl-on .member-card,
+html.hl-on .res-card,
+html.hl-on .cv-card,
+html.hl-on .add-card,
+html.hl-on .hero-card,
+html.hl-on .comm-row,
+html.hl-on .job-row {
+  transition:
+    transform var(--hl-duration) var(--hl-easing),
+    box-shadow var(--hl-duration) var(--hl-easing),
+    border-color var(--hl-duration) var(--hl-easing);
+  will-change: transform;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   КАРТОЧКИ — hover
+   Специфичность html.hl-on X:hover = (0,2,2) vs обычного
+   .X:hover = (0,2,0) — наше правило всегда побеждает.
+   ───────────────────────────────────────────────────────────── */
+html.hl-on .post-card:hover,
+html.hl-on .comm-card:hover,
+html.hl-on .job-card:hover,
+html.hl-on .news-card:hover,
+html.hl-on .event-card:hover,
+html.hl-on .ev-card:hover,
+html.hl-on .ex-card:hover,
+html.hl-on .friend-card:hover,
+html.hl-on .item-card:hover,
+html.hl-on .topic-card:hover,
+html.hl-on .project-card:hover,
+html.hl-on .proj-card:hover,
+html.hl-on .product-card:hover,
+html.hl-on .service-card:hover,
+html.hl-on .exp-card:hover,
+html.hl-on .feat-card:hover,
+html.hl-on .emp-card:hover,
+html.hl-on .member-card:hover,
+html.hl-on .res-card:hover,
+html.hl-on .cv-card:hover,
+html.hl-on .add-card:hover,
+html.hl-on .hero-card:hover,
+html.hl-on .comm-row:hover,
+html.hl-on .job-row:hover {
+  transform: translateY(var(--hl-lift));
+  box-shadow: var(--hl-shadow);
+  border-color: var(--hl-border-hover, currentColor);
+}
+
+/* Если в стилях страницы есть своя переменная --gb (hover-рамка),
+   используем её. Иначе оставляем border без изменения — чтобы не
+   ломать карточки с градиентными границами. */
+html.hl-on .post-card:hover,
+html.hl-on .comm-card:hover,
+html.hl-on .job-card:hover,
+html.hl-on .news-card:hover,
+html.hl-on .event-card:hover,
+html.hl-on .ev-card:hover,
+html.hl-on .ex-card:hover,
+html.hl-on .friend-card:hover,
+html.hl-on .item-card:hover,
+html.hl-on .topic-card:hover,
+html.hl-on .project-card:hover,
+html.hl-on .proj-card:hover,
+html.hl-on .hero-card:hover,
+html.hl-on .comm-row:hover,
+html.hl-on .job-row:hover {
+  border-color: var(--gb, var(--bdr));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   СТРОКОВЫЕ ЭЛЕМЕНТЫ СПИСКОВ — мельче, тень тоньше
+   ───────────────────────────────────────────────────────────── */
+html.hl-on .chat-item,
+html.hl-on .forum-item,
+html.hl-on .ev-item,
+html.hl-on .hot-item,
+html.hl-on .my-comm,
+html.hl-on .rec-comm,
+html.hl-on .d-item,
+html.hl-on .pdd-item,
+html.hl-on .city-item,
+html.hl-on .cat-item,
+html.hl-on .contact-item,
+html.hl-on .ind-item,
+html.hl-on .edu-item,
+html.hl-on .exp-item,
+html.hl-on .job-list-item,
+html.hl-on .item-row,
+html.hl-on .include-item,
+html.hl-on .media-item,
+html.hl-on .member-row,
+html.hl-on .top-item {
+  transition:
+    transform var(--hl-duration) var(--hl-easing),
+    box-shadow var(--hl-duration) var(--hl-easing),
+    background-color var(--hl-duration) var(--hl-easing);
+  will-change: transform;
+}
+
+html.hl-on .chat-item:hover,
+html.hl-on .forum-item:hover,
+html.hl-on .ev-item:hover,
+html.hl-on .hot-item:hover,
+html.hl-on .my-comm:hover,
+html.hl-on .rec-comm:hover,
+html.hl-on .d-item:hover,
+html.hl-on .pdd-item:hover,
+html.hl-on .city-item:hover,
+html.hl-on .cat-item:hover,
+html.hl-on .contact-item:hover,
+html.hl-on .ind-item:hover,
+html.hl-on .edu-item:hover,
+html.hl-on .exp-item:hover,
+html.hl-on .job-list-item:hover,
+html.hl-on .item-row:hover,
+html.hl-on .include-item:hover,
+html.hl-on .media-item:hover,
+html.hl-on .member-row:hover,
+html.hl-on .top-item:hover {
+  transform: translateY(var(--hl-lift));
+  box-shadow: var(--hl-shadow-subtle);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   НАВИГАЦИЯ И ТАБЫ — только подъём, без тени на кнопке
+   (чтобы не ломать плоский дизайн). Активный таб не анимируется.
+   ───────────────────────────────────────────────────────────── */
+html.hl-on .nav-item,
+html.hl-on .ftab,
+html.hl-on .ptab,
+html.hl-on .tab-btn,
+html.hl-on .bc-item,
+html.hl-on .ctab {
+  transition:
+    transform var(--hl-duration) var(--hl-easing),
+    background-color var(--hl-duration) var(--hl-easing),
+    color var(--hl-duration) var(--hl-easing);
+}
+
+html.hl-on .nav-item:hover:not(.active),
+html.hl-on .ftab:hover:not(.active),
+html.hl-on .ptab:hover:not(.active),
+html.hl-on .tab-btn:hover:not(.active),
+html.hl-on .bc-item:hover:not(.cur),
+html.hl-on .ctab:hover:not(.active) {
+  transform: translateY(var(--hl-lift));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   АКТИВНОЕ СОСТОЯНИЕ (нажатие) — возврат вниз, мягкая тень
+   ───────────────────────────────────────────────────────────── */
+html.hl-on .post-card:active,
+html.hl-on .comm-card:active,
+html.hl-on .job-card:active,
+html.hl-on .news-card:active,
+html.hl-on .event-card:active,
+html.hl-on .ev-card:active,
+html.hl-on .ex-card:active,
+html.hl-on .friend-card:active,
+html.hl-on .item-card:active,
+html.hl-on .topic-card:active,
+html.hl-on .project-card:active,
+html.hl-on .proj-card:active,
+html.hl-on .product-card:active,
+html.hl-on .service-card:active,
+html.hl-on .hero-card:active,
+html.hl-on .comm-row:active,
+html.hl-on .job-row:active {
+  transform: translateY(0);
+  box-shadow: var(--hl-shadow-subtle);
+  transition-duration: 80ms;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ДОСТУПНОСТЬ: prefers-reduced-motion — полностью отключаем
+   ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html.hl-on .post-card,
+  html.hl-on .comm-card,
+  html.hl-on .job-card,
+  html.hl-on .news-card,
+  html.hl-on .event-card,
+  html.hl-on .ev-card,
+  html.hl-on .ex-card,
+  html.hl-on .friend-card,
+  html.hl-on .item-card,
+  html.hl-on .topic-card,
+  html.hl-on .project-card,
+  html.hl-on .proj-card,
+  html.hl-on .product-card,
+  html.hl-on .service-card,
+  html.hl-on .exp-card,
+  html.hl-on .feat-card,
+  html.hl-on .emp-card,
+  html.hl-on .member-card,
+  html.hl-on .res-card,
+  html.hl-on .cv-card,
+  html.hl-on .add-card,
+  html.hl-on .hero-card,
+  html.hl-on .comm-row,
+  html.hl-on .job-row,
+  html.hl-on .chat-item,
+  html.hl-on .forum-item,
+  html.hl-on .ev-item,
+  html.hl-on .hot-item,
+  html.hl-on .my-comm,
+  html.hl-on .rec-comm,
+  html.hl-on .d-item,
+  html.hl-on .pdd-item,
+  html.hl-on .city-item,
+  html.hl-on .cat-item,
+  html.hl-on .contact-item,
+  html.hl-on .ind-item,
+  html.hl-on .edu-item,
+  html.hl-on .exp-item,
+  html.hl-on .job-list-item,
+  html.hl-on .item-row,
+  html.hl-on .include-item,
+  html.hl-on .media-item,
+  html.hl-on .member-row,
+  html.hl-on .top-item,
+  html.hl-on .nav-item,
+  html.hl-on .ftab,
+  html.hl-on .ptab,
+  html.hl-on .tab-btn,
+  html.hl-on .bc-item,
+  html.hl-on .ctab {
+    transition: none !important;
+  }
+
+  html.hl-on .post-card:hover,
+  html.hl-on .comm-card:hover,
+  html.hl-on .job-card:hover,
+  html.hl-on .news-card:hover,
+  html.hl-on .event-card:hover,
+  html.hl-on .ev-card:hover,
+  html.hl-on .ex-card:hover,
+  html.hl-on .friend-card:hover,
+  html.hl-on .item-card:hover,
+  html.hl-on .topic-card:hover,
+  html.hl-on .project-card:hover,
+  html.hl-on .proj-card:hover,
+  html.hl-on .product-card:hover,
+  html.hl-on .service-card:hover,
+  html.hl-on .exp-card:hover,
+  html.hl-on .feat-card:hover,
+  html.hl-on .emp-card:hover,
+  html.hl-on .member-card:hover,
+  html.hl-on .res-card:hover,
+  html.hl-on .cv-card:hover,
+  html.hl-on .add-card:hover,
+  html.hl-on .hero-card:hover,
+  html.hl-on .comm-row:hover,
+  html.hl-on .job-row:hover,
+  html.hl-on .chat-item:hover,
+  html.hl-on .forum-item:hover,
+  html.hl-on .ev-item:hover,
+  html.hl-on .hot-item:hover,
+  html.hl-on .my-comm:hover,
+  html.hl-on .rec-comm:hover,
+  html.hl-on .d-item:hover,
+  html.hl-on .pdd-item:hover,
+  html.hl-on .city-item:hover,
+  html.hl-on .cat-item:hover,
+  html.hl-on .contact-item:hover,
+  html.hl-on .ind-item:hover,
+  html.hl-on .edu-item:hover,
+  html.hl-on .exp-item:hover,
+  html.hl-on .job-list-item:hover,
+  html.hl-on .item-row:hover,
+  html.hl-on .include-item:hover,
+  html.hl-on .media-item:hover,
+  html.hl-on .member-row:hover,
+  html.hl-on .top-item:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  html.hl-on .nav-item:hover,
+  html.hl-on .ftab:hover,
+  html.hl-on .ptab:hover,
+  html.hl-on .tab-btn:hover,
+  html.hl-on .bc-item:hover,
+  html.hl-on .ctab:hover {
+    transform: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ТАЧ-УСТРОЙСТВА: hover залипает после тапа — отключаем
+   ───────────────────────────────────────────────────────────── */
+@media (hover: none) {
+  html.hl-on .post-card:hover,
+  html.hl-on .comm-card:hover,
+  html.hl-on .job-card:hover,
+  html.hl-on .news-card:hover,
+  html.hl-on .event-card:hover,
+  html.hl-on .ev-card:hover,
+  html.hl-on .ex-card:hover,
+  html.hl-on .friend-card:hover,
+  html.hl-on .item-card:hover,
+  html.hl-on .topic-card:hover,
+  html.hl-on .project-card:hover,
+  html.hl-on .proj-card:hover,
+  html.hl-on .product-card:hover,
+  html.hl-on .service-card:hover,
+  html.hl-on .exp-card:hover,
+  html.hl-on .feat-card:hover,
+  html.hl-on .emp-card:hover,
+  html.hl-on .member-card:hover,
+  html.hl-on .res-card:hover,
+  html.hl-on .cv-card:hover,
+  html.hl-on .add-card:hover,
+  html.hl-on .hero-card:hover,
+  html.hl-on .comm-row:hover,
+  html.hl-on .job-row:hover,
+  html.hl-on .chat-item:hover,
+  html.hl-on .forum-item:hover,
+  html.hl-on .ev-item:hover,
+  html.hl-on .hot-item:hover,
+  html.hl-on .my-comm:hover,
+  html.hl-on .rec-comm:hover,
+  html.hl-on .d-item:hover,
+  html.hl-on .pdd-item:hover,
+  html.hl-on .city-item:hover,
+  html.hl-on .cat-item:hover,
+  html.hl-on .contact-item:hover,
+  html.hl-on .ind-item:hover,
+  html.hl-on .edu-item:hover,
+  html.hl-on .exp-item:hover,
+  html.hl-on .job-list-item:hover,
+  html.hl-on .item-row:hover,
+  html.hl-on .include-item:hover,
+  html.hl-on .media-item:hover,
+  html.hl-on .member-row:hover,
+  html.hl-on .top-item:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
