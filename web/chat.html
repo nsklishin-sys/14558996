@@ -1190,7 +1190,13 @@ function startPolling(){clearInterval(state.pollTimer);state.pollTimer=setInterv
 function openNewDialogModal(){newDialogOverlay.classList.add('open');newDialogModal.classList.add('open');ndSearchFriends('')}
 function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogModal.classList.remove('open')}
 function ndSwitchTab(tab,btn){document.querySelectorAll('.nd-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.nd-pane').forEach(x=>x.classList.remove('active'));document.getElementById('nd-'+tab).classList.add('active')}
-async function ndSearchFriends(q){const d=await api('/friends/candidates?q='+encodeURIComponent(q||''));ndFriendList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndPickDirect('${u.id}')"><span>${esc(u.full_name)}</span><small>${esc(u.email)}</small></div>`).join('')}
+async function ndSearchFriends(q){
+  const query=(q||'').trim();
+  const d=query.startsWith('@')
+    ?await api('/users/search?prefix_handle='+encodeURIComponent(query.slice(1)))
+    :await api('/friends/candidates?q='+encodeURIComponent(query));
+  ndFriendList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndPickDirect('${u.id}')"><span>${esc(u.full_name)}</span><small>${esc((u.email||'') || ('@'+(u.handle||'')))}</small></div>`).join('')
+}
 async function ndPickDirect(id){const c=await openOrCreateDirectByPublicID(id);closeNewDialog();selectConversation(c.public_id)}
 async function ndSearchForGroup(q){const d=await api('/friends/candidates?q='+encodeURIComponent(q||''));ndGroupList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndToggleGroupMember('${u.id}','${esc(u.full_name)}')"><span>${esc(u.full_name)}</span><small>${state.groupSelected.includes(u.id)?'✓':''}</small></div>`).join('')}
 function ndToggleGroupMember(id,name){if(state.groupSelected.includes(id))state.groupSelected=state.groupSelected.filter(x=>x!==id);else state.groupSelected.push(id);ndGroupSelected.innerHTML=state.groupSelected.map(x=>`<span class='nd-chip'>${x}</span>`).join('');ndSearchForGroup(ndGroupSearch.value)}

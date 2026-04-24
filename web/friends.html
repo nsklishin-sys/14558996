@@ -563,7 +563,8 @@ async function sendRequest(){
   const msg=document.getElementById('addMsg');
   if(!val){msg.className='add-msg err';msg.textContent='Введите имя или email';return;}
   try{
-    await apiFetch('/friends/request-by-name','POST',{name:val});
+    if(val.startsWith('@')) await apiFetch('/friends/request-by-handle','POST',{handle:val.slice(1)});
+    else await apiFetch('/friends/request-by-name','POST',{name:val});
     msg.className='add-msg ok';msg.textContent='✓ Заявка отправлена пользователю «'+val+'»';
     document.getElementById('addInput').value='';
     setTimeout(()=>msg.className='add-msg',3000);

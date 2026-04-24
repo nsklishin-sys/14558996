@@ -617,6 +617,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 const API='/api';
 const tk=()=>localStorage.getItem('token');
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
 function escAttr(s){return String(s||'').replace(/'/g,"&#39;").replace(/"/g,'&quot;');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
@@ -709,7 +710,7 @@ function renderCard(n,idx){
       <div class="nc-img-wrap">${imgHtml}</div>
       <div class="nc-content">
         <div class="nc-title-clamp">${esc(n.title)}</div>
-        <div class="nc-text-clamp">${esc(n.text)}</div>
+        <div class="nc-text-clamp">${fmtMentions(n.text)}</div>
       </div>
     </div>
     <div class="nc-foot" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:8px">

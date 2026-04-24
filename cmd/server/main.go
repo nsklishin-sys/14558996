@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"log"
 	"net"
@@ -49,6 +50,7 @@ type user struct {
 	Location    string `json:"location,omitempty"`
 	City        string `json:"city,omitempty"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
+	Handle      string `json:"handle,omitempty"`
 }
 
 type registerRequest struct {
@@ -89,6 +91,84 @@ type publicUserProfile struct {
 	LastName  string `json:"last_name"`
 	FullName  string `json:"full_name"`
 	Email     string `json:"email"`
+	Handle    string `json:"handle,omitempty"`
+}
+
+type userSettings struct {
+	NotifEmail            bool   `json:"notif_email"`
+	NotifPush             bool   `json:"notif_push"`
+	NotifFriendRequests   bool   `json:"notif_friend_requests"`
+	NotifChatMessages     bool   `json:"notif_chat_messages"`
+	NotifMentions         bool   `json:"notif_mentions"`
+	NotifReactions        bool   `json:"notif_reactions"`
+	NotifNewJobs          bool   `json:"notif_new_jobs"`
+	NotifEvents           bool   `json:"notif_events"`
+	NotifNewsDigest       bool   `json:"notif_news_digest"`
+	NotifPlatformUpdates  bool   `json:"notif_platform_updates"`
+	PrivacyProfilePrivate bool   `json:"privacy_profile_private"`
+	PrivacyShowEmail      bool   `json:"privacy_show_email"`
+	PrivacyShowPhone      bool   `json:"privacy_show_phone"`
+	PrivacyDiscoverable   bool   `json:"privacy_discoverable"`
+	PrivacyShowOnline     bool   `json:"privacy_show_online"`
+	PrivacyShowLastSeen   bool   `json:"privacy_show_last_seen"`
+	PrivacyWhoCanMessage  string `json:"privacy_who_can_message"`
+	Theme                 string `json:"theme"`
+	LayoutMode            string `json:"layout_mode"`
+	CompactFeed           bool   `json:"compact_feed"`
+	Locale                string `json:"locale"`
+	Timezone              string `json:"timezone"`
+	DateFormat            string `json:"date_format"`
+}
+
+type updateHandleRequest struct {
+	Handle string `json:"handle"`
+}
+
+type changeEmailRequest struct {
+	Email           string `json:"email"`
+	CurrentPassword string `json:"current_password"`
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+type deleteAccountRequest struct {
+	CurrentPassword string `json:"current_password"`
+	Confirmation    string `json:"confirmation"`
+}
+
+type updateNotificationsRequest struct {
+	NotifEmail           *bool `json:"notif_email,omitempty"`
+	NotifPush            *bool `json:"notif_push,omitempty"`
+	NotifFriendRequests  *bool `json:"notif_friend_requests,omitempty"`
+	NotifChatMessages    *bool `json:"notif_chat_messages,omitempty"`
+	NotifMentions        *bool `json:"notif_mentions,omitempty"`
+	NotifReactions       *bool `json:"notif_reactions,omitempty"`
+	NotifNewJobs         *bool `json:"notif_new_jobs,omitempty"`
+	NotifEvents          *bool `json:"notif_events,omitempty"`
+	NotifNewsDigest      *bool `json:"notif_news_digest,omitempty"`
+	NotifPlatformUpdates *bool `json:"notif_platform_updates,omitempty"`
+}
+
+type updatePrivacyRequest struct {
+	PrivacyProfilePrivate *bool   `json:"privacy_profile_private,omitempty"`
+	PrivacyShowEmail      *bool   `json:"privacy_show_email,omitempty"`
+	PrivacyShowPhone      *bool   `json:"privacy_show_phone,omitempty"`
+	PrivacyDiscoverable   *bool   `json:"privacy_discoverable,omitempty"`
+	PrivacyShowOnline     *bool   `json:"privacy_show_online,omitempty"`
+	PrivacyShowLastSeen   *bool   `json:"privacy_show_last_seen,omitempty"`
+	PrivacyWhoCanMessage  *string `json:"privacy_who_can_message,omitempty"`
+}
+
+type updateAppearanceRequest struct {
+	Theme       *string `json:"theme,omitempty"`
+	LayoutMode  *string `json:"layout_mode,omitempty"`
+	CompactFeed *bool   `json:"compact_feed,omitempty"`
+	Locale      *string `json:"locale,omitempty"`
+	Timezone    *string `json:"timezone,omitempty"`
+	DateFormat  *string `json:"date_format,omitempty"`
 }
 
 type friendDTO struct {
@@ -546,6 +626,26 @@ func (s *sessionStore) getUserID(token string) (int64, bool) {
 	return userID, ok
 }
 
+func (s *sessionStore) invalidateUser(userID int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for token, uid := range s.tokenToUID {
+		if uid == userID {
+			delete(s.tokenToUID, token)
+		}
+	}
+}
+
+func (s *sessionStore) invalidateUserExcept(userID int64, exceptToken string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for token, uid := range s.tokenToUID {
+		if uid == userID && token != exceptToken {
+			delete(s.tokenToUID, token)
+		}
+	}
+}
+
 func main() {
 	db, err := initDBFromEnv()
 	if err != nil {
@@ -561,6 +661,10 @@ func main() {
 	communityCreateRateLimiter := newIPRateLimiter(5, time.Hour)
 	communityPostRateLimiter := newIPRateLimiter(20, time.Hour)
 	communityJoinRequestRateLimiter := newIPRateLimiter(10, time.Hour)
+	handleCheckLimiter := newIPRateLimiter(30, time.Minute)
+	handleUpdateLimiter := newIPRateLimiter(5, 24*time.Hour)
+	accountChangeLimiter := newIPRateLimiter(5, time.Hour)
+	accountDeleteLimiter := newIPRateLimiter(3, 24*time.Hour)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -732,6 +836,204 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/handle/check", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if !handleCheckLimiter.Allow(fmt.Sprintf("handle-check:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много запросов")
+			return
+		}
+		available, reason := checkHandleAvailability(db, r.URL.Query().Get("handle"))
+		writeJSON(w, http.StatusOK, map[string]any{"available": available, "reason": reason})
+	})
+
+	mux.HandleFunc("/api/profile/handle", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if !handleUpdateLimiter.Allow(fmt.Sprintf("handle-put:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+			return
+		}
+		var req updateHandleRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		u, err := setUserHandle(db, userID, req.Handle)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"user": u})
+	})
+
+	mux.HandleFunc("/api/settings", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		s, err := loadUserSettings(db, userID)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"settings": s})
+	})
+
+	mux.HandleFunc("/api/settings/notifications", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req updateNotificationsRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := updateNotificationSettings(db, userID, req); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/settings/privacy", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req updatePrivacyRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := updatePrivacySettings(db, userID, req); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/settings/appearance", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req updateAppearanceRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := updateAppearanceSettings(db, userID, req); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/account/email", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if !accountChangeLimiter.Allow(fmt.Sprintf("account-email:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+			return
+		}
+		var req changeEmailRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := changeUserEmail(db, userID, req.Email, req.CurrentPassword); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/account/password", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if !accountChangeLimiter.Allow(fmt.Sprintf("account-password:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+			return
+		}
+		var req changePasswordRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := changeUserPassword(db, sessions, userID, req.CurrentPassword, req.NewPassword, tokenFromRequest(r)); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/account", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if !accountDeleteLimiter.Allow(fmt.Sprintf("account-delete:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+			return
+		}
+		var req deleteAccountRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := deleteUserAccount(db, sessions, userID, req.CurrentPassword, req.Confirmation); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
 	mux.HandleFunc("/api/friends", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -836,6 +1138,38 @@ func main() {
 			}
 			log.Printf("find user by name/email error: %v", err)
 			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		if err := createFriendRequest(db, userID, targetPublicID); err != nil {
+			handleFriendActionError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/friends/request-by-handle", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			Handle string `json:"handle"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		var targetPublicID string
+		if err := db.QueryRow(`SELECT public_id FROM users WHERE LOWER(handle)=LOWER($1) AND is_deleted = FALSE`, strings.TrimPrefix(strings.TrimSpace(req.Handle), "@")).Scan(&targetPublicID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			handleAccountError(w, err)
 			return
 		}
 		if err := createFriendRequest(db, userID, targetPublicID); err != nil {
@@ -1606,6 +1940,148 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
 	})
 
+	mux.HandleFunc("/api/users/search", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+			return
+		}
+		prefix := strings.TrimSpace(r.URL.Query().Get("prefix_handle"))
+		if prefix != "" {
+			items, err := searchUsersByHandle(db, prefix, parseLimit(r.URL.Query().Get("limit"), 8, 20))
+			if err != nil {
+				handleAccountError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"users": items})
+			return
+		}
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		items, err := db.Query(`
+			SELECT public_id, full_name, COALESCE(handle,'')
+			FROM users
+			WHERE is_deleted = FALSE AND (LOWER(full_name) LIKE LOWER('%' || $1 || '%') OR LOWER(COALESCE(handle,'')) LIKE LOWER('%' || $1 || '%'))
+			ORDER BY full_name
+			LIMIT 20
+		`, q)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		defer items.Close()
+		var out []friendCandidateDTO
+		for items.Next() {
+			var row friendCandidateDTO
+			if err := items.Scan(&row.ID, &row.FullName, &row.Email); err != nil {
+				handleAccountError(w, err)
+				return
+			}
+			out = append(out, row)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"users": out})
+	})
+
+	mux.HandleFunc("/api/users/by-handle/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+			return
+		}
+		handle := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/users/by-handle/"))
+		u, err := getUserByHandle(db, handle)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"user": u})
+	})
+
+	mux.HandleFunc("/api/mentions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		unread := r.URL.Query().Get("unread") == "true"
+		limit := parseLimit(r.URL.Query().Get("limit"), 20, 100)
+		query := `SELECT id, source_type, source_id, preview, is_read, created_at FROM user_mentions WHERE mentioned_user_id=$1`
+		if unread {
+			query += ` AND is_read=FALSE`
+		}
+		query += ` ORDER BY created_at DESC LIMIT $2`
+		rows, err := db.Query(query, userID, limit)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		defer rows.Close()
+		type mention struct {
+			ID         int64     `json:"id"`
+			SourceType string    `json:"source_type"`
+			SourceID   int64     `json:"source_id"`
+			Preview    string    `json:"preview"`
+			IsRead     bool      `json:"is_read"`
+			CreatedAt  time.Time `json:"created_at"`
+		}
+		var items []mention
+		for rows.Next() {
+			var m mention
+			if err := rows.Scan(&m.ID, &m.SourceType, &m.SourceID, &m.Preview, &m.IsRead, &m.CreatedAt); err != nil {
+				handleAccountError(w, err)
+				return
+			}
+			items = append(items, m)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"mentions": items})
+	})
+
+	mux.HandleFunc("/api/mentions/read-all", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		_, err := db.Exec(`UPDATE user_mentions SET is_read=TRUE WHERE mentioned_user_id=$1 AND is_read=FALSE`, userID)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	mux.HandleFunc("/api/mentions/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || !strings.HasSuffix(r.URL.Path, "/read") {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		idPart := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/mentions/"), "/read")
+		mentionID, err := strconv.ParseInt(strings.Trim(idPart, "/"), 10, 64)
+		if err != nil || mentionID <= 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		_, err = db.Exec(`UPDATE user_mentions SET is_read=TRUE WHERE id=$1 AND mentioned_user_id=$2`, mentionID, userID)
+		if err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
 	mux.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/communities") {
 			if r.Method != http.MethodGet {
@@ -1778,6 +2254,25 @@ ALTER TABLE users
     ADD COLUMN IF NOT EXISTS location TEXT,
     ADD COLUMN IF NOT EXISTS city TEXT,
     ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS handle TEXT,
+    ADD COLUMN IF NOT EXISTS handle_changed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS last_password_change_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'ru',
+    ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Europe/Moscow',
+    ADD COLUMN IF NOT EXISTS date_format TEXT NOT NULL DEFAULT 'DD.MM.YYYY',
+    ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'light',
+    ADD COLUMN IF NOT EXISTS layout_mode TEXT NOT NULL DEFAULT 'normal',
+    ADD COLUMN IF NOT EXISTS compact_feed BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
+    ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
+
+CREATE INDEX IF NOT EXISTS users_handle_prefix_idx
+    ON users (LOWER(handle) text_pattern_ops) WHERE handle IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_uniq_idx ON users(public_id);
 
@@ -1952,6 +2447,47 @@ CREATE TABLE IF NOT EXISTS post_comments (
 CREATE INDEX IF NOT EXISTS post_comments_post_idx
     ON post_comments(post_id, created_at DESC) WHERE is_deleted = FALSE;
 
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    notif_email BOOLEAN NOT NULL DEFAULT TRUE,
+    notif_push BOOLEAN NOT NULL DEFAULT FALSE,
+    notif_friend_requests BOOLEAN NOT NULL DEFAULT TRUE,
+    notif_chat_messages BOOLEAN NOT NULL DEFAULT TRUE,
+    notif_mentions BOOLEAN NOT NULL DEFAULT TRUE,
+    notif_reactions BOOLEAN NOT NULL DEFAULT FALSE,
+    notif_new_jobs BOOLEAN NOT NULL DEFAULT TRUE,
+    notif_events BOOLEAN NOT NULL DEFAULT TRUE,
+    notif_news_digest BOOLEAN NOT NULL DEFAULT FALSE,
+    notif_platform_updates BOOLEAN NOT NULL DEFAULT TRUE,
+    privacy_profile_private BOOLEAN NOT NULL DEFAULT FALSE,
+    privacy_show_email BOOLEAN NOT NULL DEFAULT FALSE,
+    privacy_show_phone BOOLEAN NOT NULL DEFAULT FALSE,
+    privacy_discoverable BOOLEAN NOT NULL DEFAULT TRUE,
+    privacy_show_online BOOLEAN NOT NULL DEFAULT TRUE,
+    privacy_show_last_seen BOOLEAN NOT NULL DEFAULT FALSE,
+    privacy_who_can_message TEXT NOT NULL DEFAULT 'all',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (privacy_who_can_message IN ('all', 'contacts', 'nobody'))
+);
+
+CREATE TABLE IF NOT EXISTS user_mentions (
+    id BIGSERIAL PRIMARY KEY,
+    mentioned_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    actor_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_type TEXT NOT NULL,
+    source_id BIGINT NOT NULL,
+    preview TEXT NOT NULL DEFAULT '',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (source_type IN ('post', 'comment', 'forum_message'))
+);
+
+CREATE INDEX IF NOT EXISTS user_mentions_user_unread_idx
+    ON user_mentions (mentioned_user_id, is_read, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS user_mentions_source_uniq_idx
+    ON user_mentions (source_type, source_id, mentioned_user_id);
+
 -- Диалоги: прямые (direct, 1-на-1) и групповые (group)
 CREATE TABLE IF NOT EXISTS chat_conversations (
     id BIGSERIAL PRIMARY KEY,
@@ -2106,8 +2642,20 @@ var (
 	errConflict           = errors.New("conflict")
 	errNotFound           = errors.New("not found")
 	errForbidden          = errors.New("forbidden")
+	errHandleTaken        = errors.New("handle taken")
 	errAlreadyMember      = errors.New("already member")
 	errRequestPending     = errors.New("request pending")
+
+	handleRe        = regexp.MustCompile(`^[a-z0-9][a-z0-9_]{2,23}$`)
+	mentionRe       = regexp.MustCompile(`(?i)@([a-z0-9_]{3,24})`)
+	reservedHandles = map[string]struct{}{
+		"admin": {}, "root": {}, "support": {}, "system": {}, "anonymous": {},
+		"lastop": {}, "help": {}, "api": {}, "bot": {}, "null": {}, "undefined": {},
+		"deleted": {}, "me": {}, "settings": {}, "profile": {}, "chat": {},
+		"news": {}, "forum": {}, "jobs": {}, "events": {}, "communities": {},
+		"companies": {}, "login": {}, "register": {}, "logout": {},
+		"new": {}, "edit": {}, "delete": {},
+	}
 )
 
 func createUser(db *sql.DB, req registerRequest) (user, error) {
@@ -2150,9 +2698,9 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, public_id, first_name, last_name, full_name, email,
 				COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-				COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, '')
+				COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')
 		`, publicID, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
-			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email, &created.Position, &created.CompanyName, &created.Bio, &created.Phone, &created.Location, &created.City, &created.AvatarURL)
+			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email, &created.Position, &created.CompanyName, &created.Bio, &created.Phone, &created.Location, &created.City, &created.AvatarURL, &created.Handle)
 		if err == nil {
 			return created, nil
 		}
@@ -2187,11 +2735,11 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''),
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''),
 			password_hash
 		FROM users
-		WHERE email = $1
-	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &passwordHash)
+		WHERE email = $1 AND is_deleted = FALSE
+	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user{}, errInvalidCredentials
@@ -2209,10 +2757,10 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 func getPublicUserProfile(db *sql.DB, publicID string) (publicUserProfile, error) {
 	var profile publicUserProfile
 	err := db.QueryRow(`
-		SELECT public_id, first_name, last_name, full_name, email
+		SELECT public_id, first_name, last_name, full_name, email, COALESCE(handle, '')
 		FROM users
-		WHERE public_id = $1
-	`, publicID).Scan(&profile.PublicID, &profile.FirstName, &profile.LastName, &profile.FullName, &profile.Email)
+		WHERE public_id = $1 AND is_deleted = FALSE
+	`, publicID).Scan(&profile.PublicID, &profile.FirstName, &profile.LastName, &profile.FullName, &profile.Email, &profile.Handle)
 	if err != nil {
 		return publicUserProfile{}, err
 	}
@@ -2225,10 +2773,10 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, '')
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')
 		FROM users
-		WHERE id = $1
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL)
+		WHERE id = $1 AND is_deleted = FALSE
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle)
 	if err != nil {
 		return user{}, err
 	}
@@ -2269,6 +2817,45 @@ func optionalAuthenticatedUserID(r *http.Request, sessions *sessionStore) (int64
 		return 0, false
 	}
 	return userID, true
+}
+
+func tokenFromRequest(r *http.Request) string {
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+}
+
+func handleAccountError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errValidation):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, errForbidden):
+		writeError(w, http.StatusForbidden, err.Error())
+	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, errConflict), errors.Is(err, errHandleTaken):
+		writeError(w, http.StatusConflict, err.Error())
+	default:
+		log.Printf("account error: %v", err)
+		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+	}
+}
+
+func validateHandle(h string) (string, error) {
+	h = strings.TrimSpace(strings.TrimPrefix(h, "@"))
+	lower := strings.ToLower(h)
+	if !handleRe.MatchString(lower) {
+		return "", fmt.Errorf("%w: handle должен быть 3–24 символа, латиница, цифры или _, начинаться с буквы или цифры", errValidation)
+	}
+	if strings.Contains(lower, "__") {
+		return "", fmt.Errorf("%w: двойные подчёркивания запрещены", errValidation)
+	}
+	if _, reserved := reservedHandles[lower]; reserved {
+		return "", fmt.Errorf("%w: этот handle зарезервирован", errValidation)
+	}
+	return h, nil
 }
 
 func handleFriendActionError(w http.ResponseWriter, err error) {
@@ -3569,6 +4156,7 @@ func createCommunityPost(db *sql.DB, communityID, authorID int64, req createPost
 	_ = json.Unmarshal(tagsJSON, &created.Tags)
 	created.Text = created.Content
 	created.CommunityID = communityID
+	_ = saveMentions(db, "post", created.ID, authorID, content, content)
 	return hydratePostAuthor(db, created)
 }
 
@@ -3725,6 +4313,7 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 					  privacy_level, likes_count, comments_count, views_count, created_at, author_id
 		`, publicID, authorID, postType, title, content, coverURL, pgTags, privacy))
 		if err == nil {
+			_ = saveMentions(db, "post", created.ID, authorID, content, content)
 			return hydratePostAuthor(db, created)
 		}
 		var pgErr *pgconn.PgError
@@ -4039,6 +4628,7 @@ func createComment(db *sql.DB, postPublicID string, authorID int64, req createCo
 	if err := tx.Commit(); err != nil {
 		return postComment{}, err
 	}
+	_ = saveMentions(db, "comment", created.ID, authorID, content, content)
 	return created, nil
 }
 
@@ -4787,7 +5377,7 @@ func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user
 		WHERE id = $1
 		RETURNING id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, '')
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')
 	`, userID,
 		firstName,
 		lastName,
@@ -4799,9 +5389,300 @@ func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user
 		strings.TrimSpace(req.Location),
 		strings.TrimSpace(req.City),
 		strings.TrimSpace(req.AvatarURL),
-	).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL)
+	).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL, &updated.Handle)
 	if err != nil {
 		return user{}, err
 	}
 	return updated, nil
+}
+
+func setUserHandle(db *sql.DB, userID int64, newHandle string) (user, error) {
+	h, err := validateHandle(newHandle)
+	if err != nil {
+		return user{}, err
+	}
+	var current string
+	var changedAt sql.NullTime
+	if err := db.QueryRow(`SELECT COALESCE(handle, ''), handle_changed_at FROM users WHERE id = $1`, userID).Scan(&current, &changedAt); err != nil {
+		return user{}, err
+	}
+	if strings.EqualFold(current, h) {
+		return user{}, fmt.Errorf("%w: это уже ваш handle", errConflict)
+	}
+	if changedAt.Valid && time.Since(changedAt.Time) < 30*24*time.Hour {
+		return user{}, fmt.Errorf("%w: можно менять не чаще раза в 30 дней", errValidation)
+	}
+	_, err = db.Exec(`UPDATE users SET handle = $2, handle_changed_at = NOW() WHERE id = $1`, userID, h)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "users_handle_lower_uniq_idx" {
+			return user{}, errHandleTaken
+		}
+		return user{}, err
+	}
+	return getUserByID(db, userID)
+}
+
+func checkHandleAvailability(db *sql.DB, handle string) (bool, string) {
+	h, err := validateHandle(handle)
+	if err != nil {
+		return false, err.Error()
+	}
+	var exists int
+	if err := db.QueryRow(`SELECT 1 FROM users WHERE LOWER(handle) = LOWER($1) AND is_deleted = FALSE LIMIT 1`, h).Scan(&exists); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, ""
+		}
+		return false, "ошибка проверки"
+	}
+	return false, "занят"
+}
+
+func searchUsersByHandle(db *sql.DB, prefix string, limit int) ([]friendCandidateDTO, error) {
+	if limit <= 0 {
+		limit = 8
+	}
+	if limit > 20 {
+		limit = 20
+	}
+	prefix = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.TrimSpace(strings.TrimPrefix(prefix, "@")))
+	rows, err := db.Query(`
+		SELECT public_id, COALESCE(full_name,''), COALESCE(handle,'')
+		FROM users
+		WHERE handle IS NOT NULL AND is_deleted = FALSE AND LOWER(handle) LIKE LOWER($1) || '%' ESCAPE '\'
+		ORDER BY LOWER(handle)
+		LIMIT $2
+	`, prefix, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []friendCandidateDTO
+	for rows.Next() {
+		var u friendCandidateDTO
+		if err := rows.Scan(&u.ID, &u.FullName, &u.Email); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func getUserByHandle(db *sql.DB, handle string) (publicUserProfile, error) {
+	var p publicUserProfile
+	err := db.QueryRow(`
+		SELECT public_id, first_name, last_name, full_name, email, COALESCE(handle, '')
+		FROM users
+		WHERE LOWER(handle)=LOWER($1) AND is_deleted = FALSE
+	`, strings.TrimSpace(strings.TrimPrefix(handle, "@"))).Scan(&p.PublicID, &p.FirstName, &p.LastName, &p.FullName, &p.Email, &p.Handle)
+	return p, err
+}
+
+func loadUserSettings(db *sql.DB, userID int64) (userSettings, error) {
+	_, _ = db.Exec(`INSERT INTO user_settings(user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
+	var s userSettings
+	err := db.QueryRow(`
+		SELECT notif_email, notif_push, notif_friend_requests, notif_chat_messages, notif_mentions,
+		       notif_reactions, notif_new_jobs, notif_events, notif_news_digest, notif_platform_updates,
+		       privacy_profile_private, privacy_show_email, privacy_show_phone, privacy_discoverable, privacy_show_online, privacy_show_last_seen, privacy_who_can_message,
+		       COALESCE(u.theme,'light'), COALESCE(u.layout_mode,'normal'), COALESCE(u.compact_feed,FALSE), COALESCE(u.locale,'ru'), COALESCE(u.timezone,'Europe/Moscow'), COALESCE(u.date_format,'DD.MM.YYYY')
+		FROM user_settings us
+		JOIN users u ON u.id = us.user_id
+		WHERE us.user_id = $1
+	`, userID).Scan(
+		&s.NotifEmail, &s.NotifPush, &s.NotifFriendRequests, &s.NotifChatMessages, &s.NotifMentions, &s.NotifReactions, &s.NotifNewJobs, &s.NotifEvents, &s.NotifNewsDigest, &s.NotifPlatformUpdates,
+		&s.PrivacyProfilePrivate, &s.PrivacyShowEmail, &s.PrivacyShowPhone, &s.PrivacyDiscoverable, &s.PrivacyShowOnline, &s.PrivacyShowLastSeen, &s.PrivacyWhoCanMessage,
+		&s.Theme, &s.LayoutMode, &s.CompactFeed, &s.Locale, &s.Timezone, &s.DateFormat,
+	)
+	return s, err
+}
+
+func updateNotificationSettings(db *sql.DB, userID int64, req updateNotificationsRequest) error {
+	_, err := db.Exec(`INSERT INTO user_settings(user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`UPDATE user_settings SET
+		notif_email=COALESCE($2,notif_email), notif_push=COALESCE($3,notif_push), notif_friend_requests=COALESCE($4,notif_friend_requests),
+		notif_chat_messages=COALESCE($5,notif_chat_messages), notif_mentions=COALESCE($6,notif_mentions), notif_reactions=COALESCE($7,notif_reactions),
+		notif_new_jobs=COALESCE($8,notif_new_jobs), notif_events=COALESCE($9,notif_events), notif_news_digest=COALESCE($10,notif_news_digest),
+		notif_platform_updates=COALESCE($11,notif_platform_updates), updated_at=NOW()
+		WHERE user_id=$1`,
+		userID, req.NotifEmail, req.NotifPush, req.NotifFriendRequests, req.NotifChatMessages, req.NotifMentions, req.NotifReactions, req.NotifNewJobs, req.NotifEvents, req.NotifNewsDigest, req.NotifPlatformUpdates)
+	return err
+}
+
+func updatePrivacySettings(db *sql.DB, userID int64, req updatePrivacyRequest) error {
+	if req.PrivacyWhoCanMessage != nil {
+		v := strings.TrimSpace(*req.PrivacyWhoCanMessage)
+		if v != "all" && v != "contacts" && v != "nobody" {
+			return fmt.Errorf("%w: privacy_who_can_message должен быть all/contacts/nobody", errValidation)
+		}
+		req.PrivacyWhoCanMessage = &v
+	}
+	_, _ = db.Exec(`INSERT INTO user_settings(user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
+	_, err := db.Exec(`UPDATE user_settings SET
+		privacy_profile_private=COALESCE($2,privacy_profile_private), privacy_show_email=COALESCE($3,privacy_show_email), privacy_show_phone=COALESCE($4,privacy_show_phone),
+		privacy_discoverable=COALESCE($5,privacy_discoverable), privacy_show_online=COALESCE($6,privacy_show_online), privacy_show_last_seen=COALESCE($7,privacy_show_last_seen),
+		privacy_who_can_message=COALESCE($8,privacy_who_can_message), updated_at=NOW()
+		WHERE user_id=$1`, userID, req.PrivacyProfilePrivate, req.PrivacyShowEmail, req.PrivacyShowPhone, req.PrivacyDiscoverable, req.PrivacyShowOnline, req.PrivacyShowLastSeen, req.PrivacyWhoCanMessage)
+	return err
+}
+
+func updateAppearanceSettings(db *sql.DB, userID int64, req updateAppearanceRequest) error {
+	if req.Theme != nil {
+		v := strings.TrimSpace(*req.Theme)
+		if v != "light" && v != "dark" && v != "auto" {
+			return fmt.Errorf("%w: theme должен быть light/dark/auto", errValidation)
+		}
+		req.Theme = &v
+	}
+	if req.LayoutMode != nil {
+		v := strings.TrimSpace(*req.LayoutMode)
+		if v != "normal" && v != "wide" {
+			return fmt.Errorf("%w: layout_mode должен быть normal/wide", errValidation)
+		}
+		req.LayoutMode = &v
+	}
+	if req.Locale != nil {
+		v := strings.TrimSpace(*req.Locale)
+		if v != "ru" && v != "en" {
+			return fmt.Errorf("%w: locale должен быть ru/en", errValidation)
+		}
+		req.Locale = &v
+	}
+	if req.DateFormat != nil {
+		v := strings.TrimSpace(*req.DateFormat)
+		if v != "DD.MM.YYYY" && v != "YYYY-MM-DD" && v != "MM/DD/YYYY" {
+			return fmt.Errorf("%w: date_format некорректен", errValidation)
+		}
+		req.DateFormat = &v
+	}
+	if req.Timezone != nil {
+		v := strings.TrimSpace(*req.Timezone)
+		if len(v) > 64 || v == "" {
+			return fmt.Errorf("%w: timezone некорректен", errValidation)
+		}
+		req.Timezone = &v
+	}
+	_, err := db.Exec(`UPDATE users SET
+		theme=COALESCE($2,theme), layout_mode=COALESCE($3,layout_mode), compact_feed=COALESCE($4,compact_feed),
+		locale=COALESCE($5,locale), timezone=COALESCE($6,timezone), date_format=COALESCE($7,date_format)
+		WHERE id=$1`, userID, req.Theme, req.LayoutMode, req.CompactFeed, req.Locale, req.Timezone, req.DateFormat)
+	return err
+}
+
+func changeUserEmail(db *sql.DB, userID int64, newEmail, currentPassword string) error {
+	email := strings.ToLower(strings.TrimSpace(newEmail))
+	if !isValidEmail(email) {
+		return fmt.Errorf("%w: email некорректен", errValidation)
+	}
+	var hash string
+	if err := db.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&hash); err != nil {
+		return err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
+		return fmt.Errorf("%w: неверный пароль", errValidation)
+	}
+	_, err := db.Exec(`UPDATE users SET email = $2 WHERE id = $1`, userID, email)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return errConflict
+		}
+	}
+	return err
+}
+
+func changeUserPassword(db *sql.DB, sessions *sessionStore, userID int64, currentPassword, newPassword, exceptToken string) error {
+	if len(newPassword) < 8 {
+		return fmt.Errorf("%w: новый пароль должен быть не короче 8 символов", errValidation)
+	}
+	var hash string
+	if err := db.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&hash); err != nil {
+		return err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
+		return fmt.Errorf("%w: неверный пароль", errValidation)
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(newPassword)) == nil {
+		return fmt.Errorf("%w: новый пароль должен отличаться от текущего", errValidation)
+	}
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	if _, err := db.Exec(`UPDATE users SET password_hash = $2, last_password_change_at = NOW() WHERE id = $1`, userID, string(newHash)); err != nil {
+		return err
+	}
+	sessions.invalidateUserExcept(userID, exceptToken)
+	return nil
+}
+
+func deleteUserAccount(db *sql.DB, sessions *sessionStore, userID int64, currentPassword, confirmation string) error {
+	if confirmation != "УДАЛИТЬ" {
+		return fmt.Errorf("%w: подтверждение должно быть словом УДАЛИТЬ", errValidation)
+	}
+	var hash string
+	if err := db.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&hash); err != nil {
+		return err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
+		return fmt.Errorf("%w: неверный пароль", errValidation)
+	}
+	_, err := db.Exec(`
+		UPDATE users
+		SET is_deleted = TRUE, deleted_at = NOW(), handle = NULL,
+		    email = CONCAT('deleted-', id, '@deleted.local'),
+		    full_name = 'Удалённый пользователь', first_name = 'Удалённый', last_name = '',
+		    position = NULL, company_name = NULL, bio = NULL, phone = NULL, location = NULL, city = NULL, avatar_url = NULL
+		WHERE id = $1
+	`, userID)
+	if err != nil {
+		return err
+	}
+	sessions.invalidateUser(userID)
+	return nil
+}
+
+func parseMentionsFromText(text string) []string {
+	m := mentionRe.FindAllStringSubmatch(text, -1)
+	uniq := map[string]struct{}{}
+	out := make([]string, 0, len(m))
+	for _, hit := range m {
+		if len(hit) < 2 {
+			continue
+		}
+		h := strings.ToLower(hit[1])
+		if _, ok := uniq[h]; ok {
+			continue
+		}
+		uniq[h] = struct{}{}
+		out = append(out, h)
+	}
+	return out
+}
+
+func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, text, preview string) error {
+	handles := parseMentionsFromText(text)
+	if len(handles) == 0 {
+		return nil
+	}
+	rows, err := db.Query(`SELECT id FROM users WHERE LOWER(handle) = ANY($1) AND is_deleted = FALSE`, pgtype.FlatArray[string](handles))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var uid int64
+		if err := rows.Scan(&uid); err != nil {
+			return err
+		}
+		if uid == actorUserID {
+			continue
+		}
+		_, _ = db.Exec(`INSERT INTO user_mentions(mentioned_user_id, actor_user_id, source_type, source_id, preview) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+			uid, actorUserID, sourceType, sourceID, preview)
+	}
+	return rows.Err()
 }

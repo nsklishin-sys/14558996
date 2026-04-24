@@ -525,6 +525,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
             </span>
           </div>
           <div class="prof-role" id="profileRole">Продуктовый логист · NorthBridge Logistics</div>
+          <div id="profileHandle" style="font-size:12px;color:var(--tm);cursor:pointer"></div>
           <div class="prof-meta-row">
             <span class="prof-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="profileLocation">Москва</span></span>
             <span class="prof-meta-item"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><a href="#" id="profileWebsite">northbridge.ru</a></span>
@@ -809,6 +810,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
 function userColor(seed){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[String(seed||'A').charCodeAt(0)%C.length]||C[0];}
 function getViewedUid(){const q=new URLSearchParams(location.search);return q.get('id')||q.get('uid')||'';}
+function getViewedHandle(){const q=new URLSearchParams(location.search);return q.get('handle')||'';}
 function getCurrentUser(){try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return {}}}
 function getStoredProfiles(){try{return JSON.parse(localStorage.getItem('user_profiles')||'{}')}catch{return {}}}
 
@@ -838,6 +840,8 @@ function applyViewedUserProfile(u){
   document.querySelectorAll('.pc-av').forEach((av)=>{av.textContent=initials;av.style.background=color;});
   document.getElementById('profileAvatarText').textContent=initials;
   document.getElementById('profileFullName').textContent=fullName;
+  const h=(u.handle||'').trim(),hh=document.getElementById('profileHandle');
+  if(h){hh.textContent='@'+h;hh.onclick=()=>navigator.clipboard?.writeText('@'+h).then(()=>showToast('Скопировано'));}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
   document.getElementById('profileRole').textContent=company?`${role} · ${company}`:role;
   document.getElementById('profileBio').textContent=bio;
@@ -878,7 +882,14 @@ function enrichViewedUser(baseUser,uid){
 }
 
 async function loadViewedUser(){
-  const uid=getViewedUid();
+  let uid=getViewedUid();
+  if(!uid&&getViewedHandle()){
+    try{
+      const r=await fetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+      const d=await r.json().catch(()=>({}));
+      uid=d?.user?.public_id||'';
+    }catch{}
+  }
   if(!uid){showToast('Не указан uid профиля');return;}
   try{
     const r=await fetch(API+'/users/'+encodeURIComponent(uid));
