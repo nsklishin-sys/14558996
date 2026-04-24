@@ -502,7 +502,7 @@ function renderCard(c,i){
     </div>
     <div class="cc-foot">
       <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${num(c.members)}</span>
-      <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();toggleJoin(${c.id},this)" id="cjb-${c.id}">${isJoined?'✓':'+ Вступить'}</button>
+      <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${isJoined?'Участник':'Вступить'}</button>
     </div>
   </div>`;
 }
@@ -522,7 +522,7 @@ function renderRow(c,i){
       </div>
     </div>
     <div class="cr-right">
-      <button class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();toggleJoin(${c.id},this)" id="crb-${c.id}">${isJoined?'✓ Участник':'Вступить'}</button>
+      <button class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="crb-${c.id}">${isJoined?'Участник':'Вступить'}</button>
     </div>
   </div>`;
 }
@@ -592,28 +592,33 @@ function filterByTag(chip,tag){
 }
 
 /* ── ВСТУПЛЕНИЕ ── */
-function toggleJoin(id,btn){
+function updateJoinButtons(id){
   const isJoined=joinedSet.has(id);
-  if(isJoined){joinedSet.delete(id);btn.classList.remove('joined');btn.textContent='Вступить';toast('Вы покинули сообщество')}
-  else{joinedSet.add(id);btn.classList.add('joined');btn.textContent='✓ Участник';toast('Вы вступили в сообщество ✓',true)}
-  /* sync all buttons for same id */
-  document.querySelectorAll(`[id="cjb-${id}"],[id="crb-${id}"]`).forEach(b=>{b.classList.toggle('joined',!isJoined);b.textContent=!isJoined?'✓ Участник':'Вступить'});
+  document.querySelectorAll(`[id="cjb-${id}"],[id="crb-${id}"]`).forEach(b=>{
+    b.classList.toggle('joined',isJoined);
+    b.textContent=isJoined?'Участник':'Вступить';
+  });
+}
+function joinCommunity(id){
+  if(joinedSet.has(id)){
+    updateJoinButtons(id);
+    return;
+  }
+  joinedSet.add(id);
+  updateJoinButtons(id);
   syncSidebar();
-  fetch(API+'/communities/'+id+'/'+(isJoined?'leave':'join'),{method:isJoined?'DELETE':'POST',headers:{Authorization:'Bearer '+tk()}}).catch(()=>{});
+  applyFilters();
+  toast('Вы вступили в сообщество ✓',true);
+  fetch(API+'/communities/'+id+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}}).catch(()=>{});
 }
 
-let heroJoined=true;
 function toggleHeroJoin(){
-  heroJoined=!heroJoined;
   const btn=document.getElementById('heroJoin');
-  btn.textContent=heroJoined?'✓ Вы участник':'Вступить';
-  btn.classList.toggle('joined',heroJoined);
   const featured=COMMUNITIES[0];
-  if(featured){
-    if(heroJoined)joinedSet.add(featured.id);else joinedSet.delete(featured.id);
-  }
-  syncSidebar();
-  toast(heroJoined?'Вы вступили в сообщество ✓':'Вы покинули сообщество',heroJoined);
+  if(!featured)return;
+  joinCommunity(featured.id);
+  btn.textContent='Участник';
+  btn.classList.add('joined');
 }
 function joinRec(id){
   if(joinedSet.has(id))return;
