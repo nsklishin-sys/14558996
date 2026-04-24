@@ -356,22 +356,26 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 
   <div class="tabs-bar">
-    <button class="tab-btn active" onclick="switchTab('news',this)">Новости<span class="tab-count">184</span></button>
-    <button class="tab-btn" onclick="switchTab('projects',this)">Проекты<span class="tab-count">32</span></button>
-    <button class="tab-btn" onclick="switchTab('events',this)">Мероприятия<span class="tab-count">14</span></button>
-    <button class="tab-btn" onclick="switchTab('resumes',this)">Резюме<span class="tab-count">47</span></button>
+    <button class="tab-btn active" onclick="switchTab('news',this)">Новости</button>
+    <button class="tab-btn" onclick="switchTab('projects',this)">Проекты</button>
+    <button class="tab-btn" onclick="switchTab('events',this)">Мероприятия</button>
+    <button class="tab-btn" onclick="switchTab('resumes',this)">Резюме</button>
+    <button class="tab-btn" onclick="switchTab('members',this)">Участники</button>
+    <button class="tab-btn" id="requestsTabBtn" style="display:none" onclick="switchTab('requests',this)">Заявки</button>
     <button class="tab-btn" onclick="switchTab('contacts',this)">Контакты</button>
   </div>
 
   <div class="tab-panel active" id="tab-news">
-    <div class="compose-box" onclick="toast('Окно создания публикации…')"><div class="compose-plus"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span>Написать публикацию в сообщество…</span></div>
-    <div class="post-card"><div class="post-head"><div class="post-av" style="background:#1E8A4C">N</div><div><div class="post-author">NorthBridge Logistics</div><div class="post-time">2 часа назад</div></div><span class="post-category">Новость</span></div><div class="post-title">Новые таможенные правила ЕАЭС с 1 мая 2026: что изменится для перевозчиков</div><div class="post-body">С 1 мая вступают в силу обновлённые требования к электронному декларированию в ЕАЭС.</div><div class="post-footer"><button class="post-act" onclick="likePost(this)"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>47</span></button></div></div>
+    <div class="compose-box" id="composeBox" onclick="openCompose()"><div class="compose-plus"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span>Написать публикацию в сообщество…</span></div>
+    <div id="newsFeed"></div>
   </div>
 
-  <div class="tab-panel" id="tab-projects"><div class="section-card"><div class="sec-title">Проекты сообщества · 32</div><div class="project-card" onclick="toast('Открываем проект…')"><div class="proj-icon" style="background:linear-gradient(135deg,#1E8A4C,#22A05A)">🚛</div><div class="proj-body"><div class="proj-title">Мультимодальный маршрут Москва — Алматы через Оренбург</div></div></div></div></div>
-  <div class="tab-panel" id="tab-events"><div class="section-card"><div class="sec-title">Мероприятия сообщества · 14</div></div></div>
-  <div class="tab-panel" id="tab-resumes"><div class="section-card"><div class="sec-title">Резюме участников · 47</div></div></div>
-  <div class="tab-panel" id="tab-contacts"><div class="section-card"><div class="sec-title">Контакты для связи</div></div></div>
+  <div class="tab-panel" id="tab-projects"><div class="section-card"><div class="sec-title">Проекты сообщества</div><div>Скоро</div></div></div>
+  <div class="tab-panel" id="tab-events"><div class="section-card"><div class="sec-title">Мероприятия сообщества</div><div>Скоро</div></div></div>
+  <div class="tab-panel" id="tab-resumes"><div class="section-card"><div class="sec-title">Резюме сообщества</div><div>Скоро</div></div></div>
+  <div class="tab-panel" id="tab-members"><div class="section-card"><div class="sec-title">Участники</div><div id="membersList"></div></div></div>
+  <div class="tab-panel" id="tab-requests"><div class="section-card"><div class="sec-title">Заявки</div><div id="requestsList"></div></div></div>
+  <div class="tab-panel" id="tab-contacts"><div class="section-card"><div class="sec-title">Контакты для связи</div><div id="contactsList"></div></div></div>
 </div>
 
 <aside class="right"><div class="card"><div class="block-title">О сообществе</div><div class="stat-row"><span class="stat-lbl">Публикаций</span><span class="stat-val">184</span></div><div class="stat-row"><span class="stat-lbl">Дата создания</span><span class="stat-val" id="communityCreatedAt">—</span></div><div class="stat-row"><span class="stat-lbl">Тип</span><span class="stat-val" id="communityType">Открытое</span></div></div></aside>
@@ -387,10 +391,85 @@ function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function switchTab(id, btn){document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');
+  if(id==='members')loadMembers();
+  if(id==='requests')loadRequests();
+}
+function renderContacts(c){
+  const wrap=document.getElementById('contactsList');if(!wrap)return;
+  const rows=[];
+  const website=(c.website||'').trim();
+  const email=(c.email||'').trim();
+  const phone=(c.phone||'').trim();
+  const region=(c.region||'').trim();
+  if(website && /^https?:\/\//i.test(website) && !/^javascript:/i.test(website))rows.push(`<div><b>Сайт:</b> <a href="${esc(website)}" target="_blank" rel="noopener noreferrer">${esc(website)}</a></div>`);
+  if(email)rows.push(`<div><b>Email:</b> <a href="mailto:${esc(email)}">${esc(email)}</a></div>`);
+  if(phone)rows.push(`<div><b>Телефон:</b> <a href="tel:${esc(phone)}">${esc(phone)}</a></div>`);
+  if(region)rows.push(`<div><b>Регион:</b> ${esc(region)}</div>`);
+  wrap.innerHTML=rows.length?rows.join(''):'<div>Контакты не заполнены.</div>';
+}
+function renderPostCard(p){
+  const canDelete=(p.author_public_id===JSON.parse(localStorage.getItem('user')||'{}').public_id)||['owner','admin','moderator'].includes(myRole);
+  return `<div class="post-card" id="post-${esc(p.public_id)}"><div class="post-head"><div class="post-av" style="background:${avc(p.author||'U')}">${ltr(p.author||'U')}</div><div><div class="post-author">${esc(p.author||'')}</div><div class="post-time">${new Date(p.created_at).toLocaleString('ru-RU')}</div></div></div><div class="post-title">${esc(p.title||'')}</div><div class="post-body">${esc(p.content||'')}</div>${canDelete?`<div class="post-footer"><button class="post-act" onclick="deleteCommunityPost('${esc(p.public_id)}')">🗑 Удалить</button></div>`:''}</div>`;
+}
+async function loadPosts(){
+  if(!currentCommunityID)return;
+  const wrap=document.getElementById('newsFeed');if(!wrap)return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/posts?limit=20',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){wrap.innerHTML='<div class="section-card">Нет доступа к постам.</div>';return;}
+    const d=await r.json();
+    const posts=d?.posts||[];
+    wrap.innerHTML=posts.map(renderPostCard).join('')||'<div class="section-card">Постов пока нет.</div>';
+  }catch{wrap.innerHTML='<div class="section-card">Ошибка загрузки постов.</div>'}
+}
+async function openCompose(){
+  const title=(prompt('Заголовок поста:','')||'').trim();if(!title)return;
+  const content=(prompt('Текст поста:','')||'').trim();if(!content)return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/posts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title,content,tags:[]})});
+    if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.error||'Не удалось создать пост')}
+    toast('Пост опубликован',true);loadPosts();
+  }catch(e){toast(e.message||'Ошибка создания поста')}
+}
+async function deleteCommunityPost(publicID){
+  if(!confirm('Удалить пост?'))return;
+  const r=await fetch(API+'/communities/'+currentCommunityID+'/posts/'+publicID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+  if(!r.ok){toast('Не удалось удалить пост');return;}
+  const el=document.getElementById('post-'+publicID);if(el)el.remove();
+}
+async function loadMembers(){
+  const wrap=document.getElementById('membersList');if(!wrap)return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/members?limit=100',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){wrap.innerHTML='Нет доступа';return;}
+    const d=await r.json();const members=d?.members||[];
+    wrap.innerHTML=members.map(m=>`<div style="padding:6px 0;border-bottom:1px solid var(--bdr)">${esc(m.full_name)} — <b>${esc(m.role)}</b></div>`).join('')||'Список пуст';
+  }catch{wrap.innerHTML='Ошибка загрузки';}
+}
+async function loadRequests(){
+  const wrap=document.getElementById('requestsList');if(!wrap)return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/join-requests',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){wrap.innerHTML='Нет доступа';return;}
+    const d=await r.json();const items=d?.requests||[];
+    document.getElementById('requestsTabBtn').textContent='Заявки ('+items.length+')';
+    wrap.innerHTML=items.map(x=>`<div style="padding:8px 0;border-bottom:1px solid var(--bdr)"><div><b>${esc(x.full_name)}</b></div><div>${esc(x.message||'')}</div><div style="margin-top:6px"><button onclick="decideReq(${x.id},'approve')">Одобрить</button> <button onclick="decideReq(${x.id},'reject')">Отклонить</button></div></div>`).join('')||'Нет pending-заявок';
+  }catch{wrap.innerHTML='Ошибка загрузки';}
+}
+async function decideReq(id,action){
+  const r=await fetch(API+'/communities/'+currentCommunityID+'/join-requests/'+id+'/'+action,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+  if(!r.ok){toast('Не удалось обработать заявку');return;}
+  loadRequests();loadMembers();
+}
 let joined=false;
 let communityTitle='Сообщество';
 let currentCommunityID=null;
+let myRole='';
+let currentCommunity=null;
 function syncCommunityCache(memberState,membersCount){
   if(!currentCommunityID)return;
   try{
@@ -408,10 +487,11 @@ function setJoinButtonState(isJoined){
   if(!btn)return;
   if(isJoined){
     btn.classList.add('joined');
-    btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Вы участник';
+    btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Участник';
   }else{
     btn.classList.remove('joined');
-    btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';
+    const closed=currentCommunity?.privacy_level==='closed';
+    btn.innerHTML=closed?'Подать заявку':'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';
   }
 }
 function readMembersCount(){
@@ -424,6 +504,15 @@ function updateMembersCount(nextValue){
   if(cnt)cnt.textContent=Math.max(0,nextValue).toLocaleString('ru-RU');
 }
 async function toggleJoin(){
+  if(!joined && currentCommunity?.privacy_level==='closed'){
+    const message=window.prompt('Сообщество закрытое. Введите сообщение для заявки (опционально):','')||'';
+    try{
+      const r=await fetch(API+'/communities/'+currentCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({message})});
+      if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.error||'Не удалось отправить заявку')}
+      toast('Заявка отправлена',true);
+    }catch(e){toast(e.message||'Не удалось отправить заявку')}
+    return;
+  }
   const nextJoined=!joined;
   if(nextJoined){
     try{
@@ -441,6 +530,10 @@ async function toggleJoin(){
       joined=false;
       toast('Не удалось вступить в сообщество');
     }
+    return;
+  }
+  if(myRole==='owner'){
+    toast('Владелец не может выйти из сообщества');
     return;
   }
 
@@ -478,6 +571,8 @@ function buildCommunityPersona(c){
 }
 function renderCommunityProfile(c){
   if(!c)return;
+  currentCommunity=c;
+  myRole=c.my_role||'';
   const persona=buildCommunityPersona(c);
   const name=c.name||'Сообщество';
   communityTitle=name;
@@ -486,12 +581,20 @@ function renderCommunityProfile(c){
   const desc=(c.description||'').trim()||'У этого сообщества пока нет описания.';
   const tags=Array.isArray(c.tags)?c.tags.filter(Boolean):[];
   document.title=`LASTOP GROUP — ${name}`;
-  const nameNode=document.getElementById('communityName');if(nameNode)nameNode.textContent=name;
+  const roleIcon=myRole==='owner'?' 👑':myRole==='admin'?' ⭐':myRole==='moderator'?' 🛡':'';
+  const nameNode=document.getElementById('communityName');if(nameNode)nameNode.textContent=name+roleIcon;
   const bcNode=document.getElementById('breadcrumbCommunityName');if(bcNode)bcNode.textContent=name;
   const catNode=document.getElementById('communityCategory');if(catNode)catNode.textContent=category;
   const privacyNode=document.getElementById('communityPrivacy');if(privacyNode)privacyNode.textContent=privacy;
   const descNode=document.getElementById('communityDescription');if(descNode)descNode.textContent=desc;
-  const avatar=document.getElementById('communityAvatar');if(avatar){avatar.textContent=persona.icon;avatar.style.background=persona.avatar}
+  const avatar=document.getElementById('communityAvatar');if(avatar){
+    avatar.style.background=(c.color||persona.avatar);
+    if((c.avatar_url||'').startsWith('http://')||(c.avatar_url||'').startsWith('https://')){
+      avatar.innerHTML=`<img src="${esc(c.avatar_url)}" alt="" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
+    }else{
+      avatar.textContent=persona.icon;
+    }
+  }
   const banner=document.getElementById('heroBannerBg');if(banner)banner.style.background=persona.gradient;
   const tagsWrap=document.getElementById('communityTags');
   if(tagsWrap){tagsWrap.innerHTML=tags.length?tags.map(t=>`<span class="hero-tag">${esc(t)}</span>`).join(''):'<span class="hero-tag">без тегов</span>'}
@@ -502,9 +605,12 @@ function renderCommunityProfile(c){
   }
   joined=Boolean(c.is_member);
   setJoinButtonState(joined);
+  const compose=document.getElementById('composeBox');if(compose)compose.style.display=joined?'flex':'none';
+  const requestsTab=document.getElementById('requestsTabBtn');if(requestsTab)requestsTab.style.display=(myRole==='owner'||myRole==='admin'||myRole==='moderator')?'inline-flex':'none';
   const createdAt=document.getElementById('communityCreatedAt');
   if(createdAt){createdAt.textContent=c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}):'—'}
   const typeNode=document.getElementById('communityType');if(typeNode)typeNode.textContent=c.privacy_level==='closed'?'Закрытое':'Открытое';
+  renderContacts(c);
 }
 function readCachedCommunity(id){
   if(!id)return null;
@@ -532,6 +638,7 @@ async function loadCommunityProfile(){
     if(fromAPI){
       renderCommunityProfile(fromAPI);
       try{sessionStorage.setItem('lastop_community_cache_'+String(id),JSON.stringify(fromAPI));}catch{}
+      loadPosts();
     }
   }catch{}
 }

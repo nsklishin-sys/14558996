@@ -344,6 +344,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="comm-tabs" id="commTabs">
       <button class="ctab active" onclick="setTab('',this)">Все</button>
+      <button class="ctab" id="myRegionBtn" onclick="filterMyRegion(this)">Мой регион</button>
       <button class="ctab" onclick="setTab('Логистика',this)">Логистика</button>
       <button class="ctab" onclick="setTab('ВЭД',this)">ВЭД</button>
       <button class="ctab" onclick="setTab('IT',this)">IT</button>
@@ -442,10 +443,31 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </div>
       </div>
       <div><label class="mf-label">Сайт сообщества (опционально)</label><input class="mf-input" id="mWebsite" placeholder="https://…"></div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Email сообщества</label><input class="mf-input" id="mEmail" placeholder="team@example.com"></div>
+        <div><label class="mf-label">Телефон</label><input class="mf-input" id="mPhone" placeholder="+7 ..."></div>
+      </div>
+      <div><label class="mf-label">Аватар сообщества (URL)</label><input class="mf-input" id="mAvatarURL" placeholder="https://.../avatar.png"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-submit" onclick="submitCommunity()">Создать сообщество</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="joinReqBg" onclick="if(event.target===this)closeJoinRequestModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Заявка на вступление</span>
+      <button class="modal-close" onclick="closeJoinRequestModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div><label class="mf-label">Сообщение (опционально)</label><textarea class="mf-textarea" id="joinReqMsg" style="height:100px" placeholder="Коротко расскажите зачем хотите вступить"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeJoinRequestModal()">Отмена</button>
+      <button class="btn-submit" onclick="submitJoinRequest()">Отправить</button>
     </div>
   </div>
 </div>
@@ -500,10 +522,14 @@ let activeTag='';
 let selectedPriv='open';
 let selectedColor='#1E8A4C';
 let isCreatingCommunity=false;
+let myRegion='';
+let joinReqCommunityID=0;
 
 /* ── РЕНДЕР КАРТОЧКИ (grid) ── */
 function renderCard(c,i){
   const isJoined=joinedSet.has(c.id);
+  const joinText=isJoined?'Участник':(c.privacy==='closed'?'Подать заявку':'Вступить');
+  const roleBadge=c.myRole?`<span class="cc-tag">${c.myRole==='owner'?'👑 Владелец':c.myRole==='admin'?'⭐ Админ':c.myRole==='moderator'?'🛡 Модератор':'Участник'}</span>`:'';
   const gi=c.id%GRADIENTS.length;
   return`<div class="comm-card" style="animation-delay:${i*.05}s" onclick="openCommunity(COMMUNITIES.find(x=>x.id===${c.id}))">
     <div class="cc-cover">
@@ -515,11 +541,11 @@ function renderCard(c,i){
       <div class="cc-name">${esc(c.name)}</div>
       <div class="cc-cat">${esc(c.cat)}</div>
       <div class="cc-desc">${esc(c.desc)}</div>
-      <div class="cc-tags-row">${c.tags.slice(0,2).map(t=>`<span class="cc-tag">${esc(t)}</span>`).join('')}</div>
+      <div class="cc-tags-row">${roleBadge}${c.tags.slice(0,2).map(t=>`<span class="cc-tag">${esc(t)}</span>`).join('')}</div>
     </div>
     <div class="cc-foot">
       <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${membersLabel(c.members)}</span>
-      <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${isJoined?'Участник':'Вступить'}</button>
+      <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${joinText}</button>
     </div>
   </div>`;
 }
@@ -527,6 +553,7 @@ function renderCard(c,i){
 /* ── РЕНДЕР СТРОКИ (list) ── */
 function renderRow(c,i){
   const isJoined=joinedSet.has(c.id);
+  const joinText=isJoined?'Участник':(c.privacy==='closed'?'Подать заявку':'Вступить');
   return`<div class="comm-row" style="animation-delay:${i*.04}s" onclick="openCommunity(COMMUNITIES.find(x=>x.id===${c.id}))">
     <div class="cr-av" style="background:${c.color}">${c.icon}</div>
     <div class="cr-body">
@@ -539,7 +566,7 @@ function renderRow(c,i){
       </div>
     </div>
     <div class="cr-right">
-      <button class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="crb-${c.id}">${isJoined?'Участник':'Вступить'}</button>
+      <button class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="crb-${c.id}">${joinText}</button>
     </div>
   </div>`;
 }
@@ -611,13 +638,23 @@ function filterByTag(chip,tag){
 /* ── ВСТУПЛЕНИЕ ── */
 function updateJoinButtons(id){
   const isJoined=joinedSet.has(id);
+  const c=COMMUNITIES.find(x=>x.id===id);
+  const joinText=isJoined?'Участник':((c&&c.privacy==='closed')?'Подать заявку':'Вступить');
   document.querySelectorAll(`[id="cjb-${id}"],[id="crb-${id}"]`).forEach(b=>{
     b.classList.toggle('joined',isJoined);
-    b.textContent=isJoined?'Участник':'Вступить';
+    b.textContent=joinText;
   });
 }
 function joinCommunity(id){
+  const c=COMMUNITIES.find(x=>x.id===id);
+  if(!c)return Promise.resolve();
   if(joinedSet.has(id))return Promise.resolve();
+  if(c.privacy==='closed'){
+    joinReqCommunityID=id;
+    document.getElementById('joinReqMsg').value='';
+    document.getElementById('joinReqBg').classList.add('open');
+    return Promise.resolve();
+  }
   return (async()=>{
     try{
       const r=await fetch(API+'/communities/'+id+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
@@ -667,6 +704,7 @@ function openCommunity(c){if(!c)return;location.href='/community-detail.html?id=
 /* ── МОДАЛКА СОЗДАНИЯ ── */
 function openModal(){document.getElementById('modalBg').classList.add('open')}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+function closeJoinRequestModal(){document.getElementById('joinReqBg').classList.remove('open')}
 function selectPriv(type,card){
   selectedPriv=type;
   document.querySelectorAll('.priv-card').forEach(c=>c.classList.remove('sel'));
@@ -705,13 +743,15 @@ function mapAPICommunityToUI(c){
     cat,
     desc:c?.description||'',
     tags:Array.isArray(c?.tags)?c.tags:[],
-    color:avc(c?.name||cat),
+    color:c?.color||avc(c?.name||cat),
     icon:icons[cat]||'💬',
     privacy:c?.privacy_level==='closed'?'closed':'open',
     members:membersCount,
     posts:0,
     activity:0,
     isMy:isMember,
+    myRole:c?.my_role||'',
+    region:c?.region||'',
     corporate:Boolean(c?.is_corporate),
     createdAt:c?.created_at||new Date().toISOString()
   };
@@ -774,9 +814,14 @@ function syncSidebar(){
 async function submitCommunity(){
   if(isCreatingCommunity)return;
   const name=(document.getElementById('mName')?.value||'').trim();
-  if(!name){toast('Введите название сообщества');return}
+  if(name.length<3){toast('Название должно быть не короче 3 символов');return}
   const cat=document.getElementById('mCat')?.value||'Другое';
   const desc=document.getElementById('mDesc')?.value||'';
+  const region=(document.getElementById('mRegion')?.value||'').trim();
+  const website=(document.getElementById('mWebsite')?.value||'').trim();
+  const email=(document.getElementById('mEmail')?.value||'').trim();
+  const phone=(document.getElementById('mPhone')?.value||'').trim();
+  const avatar_url=(document.getElementById('mAvatarURL')?.value||'').trim();
   const tags=(document.getElementById('mTags')?.value||'').split(',').map(t=>t.trim()).filter(Boolean);
   const color=document.getElementById('mColor')?.value||selectedColor;
   const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
@@ -784,7 +829,7 @@ async function submitCommunity(){
   const submitBtn=document.querySelector('.btn-submit');
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Создаём…'}
   try{
-    const r=await fetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,tags,privacy_level:selectedPriv})});
+    const r=await fetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,region,website,email,phone,avatar_url,color,tags,privacy_level:selectedPriv})});
     if(isUnauthorizedResponse(r)){
       forceRelogin('Сессия истекла. Войдите снова');
       return;
@@ -804,15 +849,49 @@ async function submitCommunity(){
     COMMUNITIES.unshift(created);
     joinedSet.add(created.id);
     closeModal();
-    syncSidebar();
-    applyFilters();
     toast('Сообщество «'+name+'» создано ✓',true);
+    location.href='/community-detail.html?id='+encodeURIComponent(created.id);
   }catch{
     toast('Не удалось создать сообщество. Проверьте подключение к серверу.');
   }finally{
     isCreatingCommunity=false;
     if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='Создать сообщество'}
   }
+}
+async function submitJoinRequest(){
+  if(!joinReqCommunityID)return;
+  const message=(document.getElementById('joinReqMsg')?.value||'').trim();
+  try{
+    const r=await fetch(API+'/communities/'+joinReqCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({message})});
+    if(!r.ok){
+      const d=await r.json().catch(()=>null);
+      toast(d?.error||'Не удалось отправить заявку');
+      return;
+    }
+    closeJoinRequestModal();
+    toast('Заявка отправлена',true);
+  }catch{
+    toast('Ошибка отправки заявки');
+  }
+}
+function filterMyRegion(btn){
+  if(!myRegion){toast('В профиле не указан город');return}
+  currentTab='';
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('searchInput').value='';
+  fetchCommunitiesByRegion(myRegion);
+}
+async function fetchCommunitiesByRegion(region){
+  try{
+    const r=await fetch(API+'/communities?region='+encodeURIComponent(region),{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const data=await r.json();
+    const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
+    COMMUNITIES.splice(0,COMMUNITIES.length,...fromAPI);
+    joinedSet.clear();fromAPI.forEach(c=>{if(c.isMy)joinedSet.add(c.id)});
+    syncSidebar();applyFilters();
+  }catch{}
 }
 
 /* ── АВТОРИЗАЦИЯ ── */
@@ -829,6 +908,7 @@ async function submitCommunity(){
     ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
     ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
     const role=user.role||user.position||'Участник LASTOP';
+    myRegion=(user.city||'').trim();
     ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
   }catch{}
   try{
