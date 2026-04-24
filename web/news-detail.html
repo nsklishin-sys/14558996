@@ -873,8 +873,13 @@ async function loadPostAndComments(){
   if(p.public_id){
     const title=document.querySelector('.news-title'); if(title)title.textContent=p.title||'Публикация';
     const text=document.querySelector('.news-text'); if(text)text.textContent=p.text||p.content||'';
-    const author=document.querySelector('.author-name'); if(author)author.textContent=p.author||'Участник';
-    const meta=document.querySelector('.news-date'); if(meta)meta.textContent=ago(p.created_at);
+    const author=document.querySelector('.news-author-name'); if(author)author.textContent=p.author||'Участник';
+    const authorRole=document.querySelector('.news-author-role'); if(authorRole)authorRole.textContent=p.author_role||'Участник LASTOP';
+    const authorAvatar=document.querySelector('.news-author-av'); if(authorAvatar)authorAvatar.textContent=ltr(p.author||'У');
+    const metaItems=document.querySelectorAll('.news-date');
+    if(metaItems&&metaItems[0])metaItems[0].innerHTML=`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>${esc(ago(p.created_at))}`;
+    const viewsNode=document.querySelector('.news-views');
+    if(viewsNode)viewsNode.innerHTML=`<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${Number(p.views_count||0).toLocaleString('ru-RU')}`;
     liked=!!p.is_liked; likeCount=p.likes_count||0; commentCount=p.comments_count||0;
     ['btnLikeCount','statLikes'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=likeCount});
     ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
