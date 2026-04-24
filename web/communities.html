@@ -600,32 +600,49 @@ function updateJoinButtons(id){
   });
 }
 function joinCommunity(id){
-  if(joinedSet.has(id)){
-    updateJoinButtons(id);
-    return;
-  }
-  joinedSet.add(id);
-  updateJoinButtons(id);
-  syncSidebar();
-  applyFilters();
-  toast('Вы вступили в сообщество ✓',true);
-  fetch(API+'/communities/'+id+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}}).catch(()=>{});
+  if(joinedSet.has(id))return Promise.resolve();
+  return (async()=>{
+    try{
+      const r=await fetch(API+'/communities/'+id+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+      if(isUnauthorizedResponse(r)){
+        forceRelogin('Сессия истекла. Войдите снова');
+        return;
+      }
+      if(!r.ok){
+        let msg='Не удалось вступить в сообщество';
+        try{const data=await r.json();if(data?.error)msg=data.error}catch{}
+        toast(msg);
+        return;
+      }
+      joinedSet.add(id);
+      const community=COMMUNITIES.find(c=>c.id===id);
+      if(community){
+        community.isMy=true;
+        community.members=(Number(community.members)||0)+1;
+      }
+      updateJoinButtons(id);
+      syncSidebar();
+      applyFilters();
+      toast('Вы вступили в сообщество ✓',true);
+    }catch{
+      toast('Не удалось вступить в сообщество. Проверьте подключение к серверу.');
+    }
+  })();
 }
 
 function toggleHeroJoin(){
   const btn=document.getElementById('heroJoin');
   const featured=COMMUNITIES[0];
   if(!featured)return;
-  joinCommunity(featured.id);
-  btn.textContent='Участник';
-  btn.classList.add('joined');
+  joinCommunity(featured.id).then(()=>{
+    if(joinedSet.has(featured.id)){
+      btn.textContent='Участник';
+      btn.classList.add('joined');
+    }
+  });
 }
 function joinRec(id){
-  if(joinedSet.has(id))return;
-  joinedSet.add(id);
-  syncSidebar();
-  applyFilters();
-  toast('Вы вступили в сообщество ✓',true);
+  joinCommunity(id);
 }
 function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.id)}
 
@@ -658,7 +675,7 @@ function mapAPICommunityToUI(c){
     members:Number(c?.members_count||0),
     posts:0,
     activity:0,
-    isMy:false,
+    isMy:Boolean(c?.is_member),
     corporate:Boolean(c?.is_corporate),
     createdAt:c?.created_at||new Date().toISOString()
   };
@@ -751,6 +768,8 @@ async function submitCommunity(){
       const data=await r.json();
       const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
       COMMUNITIES.splice(0,COMMUNITIES.length,...fromAPI);
+      joinedSet.clear();
+      fromAPI.forEach(c=>{if(c.isMy)joinedSet.add(c.id)});
     }
   }catch{}
   syncSidebar();
