@@ -1122,7 +1122,89 @@ CREATE INDEX IF NOT EXISTS post_comments_post_idx
 		return fmt.Errorf("create schema: %w", err)
 	}
 
+	if err := migratePublicationSeedData(db); err != nil {
+		return fmt.Errorf("migrate publication seed data: %w", err)
+	}
+
 	return nil
+}
+
+type seedPost struct {
+	PublicID   string
+	Title      string
+	Content    string
+	Tags       []string
+	CoverURL   string
+	CreatedAt  time.Time
+	ViewsCount int
+	LikesCount int
+}
+
+func migratePublicationSeedData(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	const seedUserEmail = "seed.lastop@local"
+	var seedAuthorID int64
+	if err := tx.QueryRow(`
+		INSERT INTO users (public_id, first_name, last_name, full_name, email, password_hash, position, company_name, bio, avatar_url)
+		VALUES ('usr_seed_lastop', 'LASTOP', 'Digital', 'LASTOP Digital', $1, '$2a$10$H8hT4aSt3D8QdDkbx73Z9OBPFnfRTE8Yv5IadB1iKsFcfoTmya8Ie', 'Редакция LASTOP', 'LASTOP', 'Системный аккаунт для миграции публикаций', '')
+		ON CONFLICT (email) DO UPDATE
+		SET full_name = EXCLUDED.full_name,
+		    position = EXCLUDED.position,
+		    company_name = EXCLUDED.company_name
+		RETURNING id
+	`, seedUserEmail).Scan(&seedAuthorID); err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
+	seeds := []seedPost{
+		{
+			PublicID:   "pst_seed_customs_2026",
+			Title:      "ФТС обновила требования к таможенному декларированию импорта",
+			Content:    "С 1 мая 2026 года вступают в силу изменения в порядке декларирования отдельных категорий товаров. Бизнесу рекомендуется заранее проверить шаблоны документов и обновить внутренние регламенты.",
+			Tags:       []string{"таможня", "вэд", "регуляторика"},
+			CreatedAt:  now.Add(-18 * time.Hour),
+			ViewsCount: 1820,
+			LikesCount: 47,
+		},
+		{
+			PublicID:   "pst_seed_routes_2026",
+			Title:      "Рынок фиксирует рост контейнерных перевозок на 18% в Q2 2026",
+			Content:    "Участники отрасли связывают рост с развитием альтернативных международных маршрутов и повышением прозрачности цифрового трекинга грузов.",
+			Tags:       []string{"логистика", "контейнеры", "аналитика"},
+			CreatedAt:  now.Add(-48 * time.Hour),
+			ViewsCount: 2400,
+			LikesCount: 52,
+		},
+		{
+			PublicID:   "pst_seed_tms_ai",
+			Title:      "LASTOP Digital запустил модуль аналитики TMS с ИИ‑прогнозированием",
+			Content:    "Новый модуль помогает предсказывать отклонения SLA и автоматически сигнализирует о рисках на отдельных участках цепочки поставок.",
+			Tags:       []string{"технологии", "tms", "ai"},
+			CreatedAt:  now.Add(-72 * time.Hour),
+			ViewsCount: 940,
+			LikesCount: 34,
+		},
+	}
+
+	for _, item := range seeds {
+		var pgTags pgtype.FlatArray[string] = item.Tags
+
+		if _, err := tx.Exec(`
+			INSERT INTO posts (public_id, author_id, type, title, content, tags, cover_url, privacy_level, views_count, likes_count, created_at, updated_at)
+			VALUES ($1, $2, 'news', $3, $4, $5, NULLIF($6, ''), 'public', $7, $8, $9, NOW())
+			ON CONFLICT (public_id) DO NOTHING
+		`, item.PublicID, seedAuthorID, item.Title, item.Content, pgTags, item.CoverURL, item.ViewsCount, item.LikesCount, item.CreatedAt); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 var (

@@ -613,6 +613,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 const API='/api';
 const tk=()=>localStorage.getItem('token');
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return String(s||'').replace(/'/g,"&#39;").replace(/"/g,'&quot;');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
@@ -652,8 +653,8 @@ const DEMO_NEWS=[
   {id:8,cat:'Технологии',author:'LASTOP Digital',role:'Платформа',text:'Мы выпустили аналитический отчёт по рынку труда в логистике Q2 2026: самые востребованные специальности, зарплатные ожидания и прогноз на Q3. Доступно для всех участников платформы.',title:'LASTOP выпустил рейтинг вакансий и зарплат в логистике за Q2 2026',views:1560,likes:63,comments:22,shares:18,ts:new Date(Date.now()-518400000).toISOString(),src:'LASTOP'},
 ];
 
-let allNews=[...DEMO_NEWS];
-let visibleNews=[...DEMO_NEWS];
+let allNews=[];
+let visibleNews=[];
 let currentTab='all';
 let currentSort='new';
 let likedSet=new Set();
@@ -682,15 +683,16 @@ const CAT_ICONS={
 };
 
 function renderCard(n,idx){
+  const postKey=n.public_id||String(n.id||'');
   const badgeCls=BADGE[n.cat]||'badge-news';
-  const isLiked=likedSet.has(n.id);
+  const isLiked=likedSet.has(postKey);
   const gradient=CAT_GRADIENTS[n.cat]||'linear-gradient(135deg,var(--g),var(--gm))';
   const icon=CAT_ICONS[n.cat]||CAT_ICONS['Публикации'];
   const imgHtml=n.img
     ?`<img class="nc-img" src="${esc(n.img)}" alt="" loading="lazy">`
     :`<div class="nc-img-placeholder" style="background:${gradient}"><svg viewBox="0 0 24 24" style="width:28px;height:28px;stroke:rgba(255,255,255,.7);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">${icon}</svg></div>`;
 
-  return`<div class="news-card" style="animation-delay:${idx*.06}s" id="nc-${n.id}" onclick="openNewsDetail(${n.id},event)">
+  return`<div class="news-card" style="animation-delay:${idx*.06}s" id="nc-${escAttr(postKey)}" onclick="openNewsDetail('${escAttr(n.public_id||'')}',event)">
     <div class="nc-head">
       <div class="nc-av" style="background:${avc(n.author)}">${letter(n.author)}</div>
       <div class="nc-meta">
@@ -707,15 +709,15 @@ function renderCard(n,idx){
       </div>
     </div>
     <div class="nc-foot" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:8px">
-      <button class="nc-action ${isLiked?'liked':''}" onclick="toggleLike(${n.id},this)">
+      <button class="nc-action ${isLiked?'liked':''}" onclick="toggleLike('${escAttr(postKey)}',this)">
         <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isLiked?'fill="var(--red)"':''}></path></svg>
-        <span id="lc-${n.id}">${n.likes+(isLiked?1:0)}</span>
+        <span id="lc-${escAttr(postKey)}">${n.likes+(isLiked?1:0)}</span>
       </button>
       <button class="nc-action" onclick="showToast('Открываем комментарии…')">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         ${n.comments}
       </button>
-      <button class="nc-action" onclick="sharePost(${n.id})">
+      <button class="nc-action" onclick="sharePost('${escAttr(postKey)}')">
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         ${n.shares}
       </button>
@@ -729,13 +731,13 @@ function renderCard(n,idx){
 }
 
 
-function openNewsDetail(id,event){
+function openNewsDetail(publicID,event){
   if(event&&event.target&&event.target.closest('button')) return;
-  const n=allNews.find(x=>x.id===id);
-  if(n){
-    localStorage.setItem('selectedNews',JSON.stringify(n));
+  if(!publicID){
+    showToast('Публикация пока недоступна');
+    return;
   }
-  location.href='/news-detail.html';
+  location.href='/news-detail.html?id='+encodeURIComponent(publicID);
 }
 
 function openHeroNews(){
@@ -808,13 +810,31 @@ function toggleCat(chip){
 }
 
 /* ── ЛАЙКИ / РЕПОСТЫ ── */
-function toggleLike(id,btn){
-  const n=allNews.find(x=>x.id===id);if(!n)return;
-  if(likedSet.has(id)){likedSet.delete(id);btn.classList.remove('liked');btn.querySelector('svg path')?.removeAttribute('fill');}
-  else{likedSet.add(id);btn.classList.add('liked');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');}
-  document.getElementById('lc-'+id).textContent=n.likes+(likedSet.has(id)?1:0);
+async function toggleLike(postKey,btn){
+  const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);if(!n)return;
+  if(!n.public_id){showToast('Лайк доступен только для публикаций из базы');return;}
+  try{
+    const r=await fetch(`${API}/posts/${encodeURIComponent(n.public_id)}/like`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){showToast(d.error||'Не удалось поставить лайк');return;}
+    if(d.is_liked){likedSet.add(postKey);btn.classList.add('liked');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');}
+    else{likedSet.delete(postKey);btn.classList.remove('liked');btn.querySelector('svg path')?.removeAttribute('fill');}
+    n.likes=Number(d.likes_count||0);
+    const counter=document.getElementById('lc-'+postKey);
+    if(counter)counter.textContent=String(n.likes);
+  }catch{
+    showToast('Не удалось поставить лайк');
+  }
 }
-function sharePost(id){showToast('Ссылка скопирована');}
+function sharePost(postKey){
+  const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
+  const link=n?.public_id?`${location.origin}/news-detail.html?id=${encodeURIComponent(n.public_id)}`:location.href;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(()=>showToast('Ссылка скопирована')).catch(()=>showToast('Не удалось скопировать ссылку'));
+    return;
+  }
+  showToast('Скопируйте ссылку вручную');
+}
 
 /* ── COMPOSE ── */
 function openCompose(){document.getElementById('composeBox').style.display='block';document.getElementById('composeTitleInput').focus();}
@@ -899,8 +919,12 @@ function toggleFollow(btn){
         comments:n.comments_count||0,shares:0,
         ts:n.created_at||new Date().toISOString(),src:'LASTOP',type:n.type||'news'
       }));
+    }else{
+      allNews=[...DEMO_NEWS];
     }
-  }catch{}
+  }catch{
+    allNews=[...DEMO_NEWS];
+  }
 
   applyFilters();
   renderTopList();
