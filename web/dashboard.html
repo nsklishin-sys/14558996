@@ -819,23 +819,32 @@ function sharePost(id){showToast('Ссылка скопирована');}
 /* ── COMPOSE ── */
 function openCompose(){document.getElementById('composeBox').style.display='block';document.getElementById('composeTitleInput').focus();}
 function closeCompose(){document.getElementById('composeBox').style.display='none';document.getElementById('composeTitleInput').value='';document.getElementById('composeTextInput').value='';}
-function submitPost(){
+async function submitPost(){
   const title=document.getElementById('composeTitleInput').value.trim();
   const text=document.getElementById('composeTextInput').value.trim();
-  if(!text){showToast('Добавьте текст публикации');return;}
-  const newPost={
-    id:Date.now(),cat:'Публикации',
-    author:document.getElementById('topbarName').textContent||'Загрузка...',
-    role:'Участник LASTOP',
-    title:title||'Публикация',text,
-    views:0,likes:0,comments:0,shares:0,
-    ts:new Date().toISOString(),src:'LASTOP'
-  };
-  allNews.unshift(newPost);
-  closeCompose();
-  applyFilters();
-  showToast('Публикация опубликована ✓');
-  fetch(API+'/posts?author_type=user',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title:newPost.title,content:text,privacy_level:'public'})}).catch(()=>{});
+  if(title.length<3){showToast('Заголовок должен быть не короче 3 символов');return;}
+  if(text.length<10){showToast('Текст должен быть не короче 10 символов');return;}
+  const btn=document.querySelector('.c-submit');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch(API+'/posts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public'})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.post){showToast(d.error||'Не удалось опубликовать');return;}
+    const p=d.post;
+    allNews.unshift({
+      id:p.id,public_id:p.public_id,cat:'Публикации',
+      author:p.author||document.getElementById('topbarName').textContent||'Пользователь',
+      role:p.author_role||'Участник LASTOP',
+      title:p.title||'',text:p.text||p.content||'',
+      views:p.views_count||0,likes:p.likes_count||0,comments:p.comments_count||0,shares:0,
+      ts:p.created_at||new Date().toISOString(),src:'LASTOP',type:p.type||'news'
+    });
+    closeCompose();
+    applyFilters();
+    showToast('Публикация опубликована ✓');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
 }
 
 /* ── ТОП НЕДЕЛИ ── */
@@ -878,17 +887,17 @@ function toggleFollow(btn){
 
   /* Загрузка с API */
   try{
-    const r=await fetch(API+'/news/dashboard?limit=30',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await fetch(API+'/feed?limit=30&type=news',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
-    if(d.news&&d.news.length){
-      allNews=d.news.map(n=>({
-        id:n.id||Math.random(),cat:n.cat||'Публикации',
-        author:n.src||'LASTOP',role:'',
-        title:n.title||'',text:n.text||'',
-        views:n.views||0,likes:n.likes_count||0,
-        comments:n.comments_count||0,shares:n.shares_count||0,
-        ts:n.created_at||new Date().toISOString(),src:n.src||'LASTOP'
+    if(d.posts&&d.posts.length){
+      allNews=d.posts.map(n=>({
+        id:n.id||Math.random(),public_id:n.public_id,cat:'Публикации',
+        author:n.author||'LASTOP',role:n.author_role||'',
+        title:n.title||'',text:n.text||n.content||'',
+        views:n.views_count||0,likes:n.likes_count||0,
+        comments:n.comments_count||0,shares:0,
+        ts:n.created_at||new Date().toISOString(),src:'LASTOP',type:n.type||'news'
       }));
     }
   }catch{}
