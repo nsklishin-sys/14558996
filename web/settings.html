@@ -878,6 +878,23 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function detectDefaultLocale(){
+  const locale=(navigator.languages && navigator.languages[0])||navigator.language||'ru-RU';
+  return locale.toLowerCase().startsWith('ru')?'ru':'en';
+}
+function detectDefaultTimezone(){
+  return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+}
+function detectDefaultDateFormat(){
+  const locale=detectDefaultLocale();
+  return locale==='en'?'MM/DD/YYYY':'DD.MM.YYYY';
+}
+function setSelectValue(selectID,value,fallback){
+  const select=document.getElementById(selectID);
+  if(!select)return;
+  const hasOption=[...select.options].some((option)=>option.value===value);
+  select.value=hasOption?value:fallback;
+}
 function getPublicID(userLike){
   if(!userLike)return '';
   if(userLike.public_id)return userLike.public_id;
@@ -891,11 +908,11 @@ function profileStorageKey(userLike){
   return '';
 }
 function profileHref(userLike){
-  const uid=getPublicID(userLike)||getPublicID(currentUser)||'u_demo_nikita';
+  const uid=getPublicID(userLike)||getPublicID(currentUser);
   const currentUID=getPublicID(currentUser);
   const isSelf=!!currentUID && uid===currentUID;
-  const base=isSelf?'/profile.html':'/profile_user.html';
-  return `${base}?uid=${encodeURIComponent(uid)}`;
+  if(isSelf || !uid)return '/profile.html';
+  return `/profile_user.html?uid=${encodeURIComponent(uid)}`;
 }
 
 /* ── AUTH ── */
@@ -1188,9 +1205,9 @@ function applySettingsToUI(s){
     if(k==='layout_mode_wide')inp.checked=s.layout_mode==='wide'; else if(k in s)inp.checked=!!s[k];
   });
   state.privacy_who_can_message=s.privacy_who_can_message||'all';setMsgPerm(null,state.privacy_who_can_message);
-  document.getElementById('localeSelect').value=s.locale||'ru';
-  document.getElementById('timezoneSelect').value=s.timezone||'Europe/Moscow';
-  document.getElementById('dateFormatSelect').value=s.date_format||'DD.MM.YYYY';
+  setSelectValue('localeSelect',s.locale||detectDefaultLocale(),'ru');
+  setSelectValue('timezoneSelect',s.timezone||detectDefaultTimezone(),'Europe/Moscow');
+  setSelectValue('dateFormatSelect',s.date_format||detectDefaultDateFormat(),'DD.MM.YYYY');
   if(s.theme){markThemeCard(s.theme);if(window.LastopTheme?.set)window.LastopTheme.set(s.theme);}
 }
 async function changePassword(){
