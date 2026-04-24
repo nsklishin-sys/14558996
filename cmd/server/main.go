@@ -103,6 +103,7 @@ type community struct {
 	Description string    `json:"description"`
 	Tags        []string  `json:"tags"`
 	Privacy     string    `json:"privacy_level"`
+	Members     int       `json:"members_count"`
 	CreatorID   string    `json:"creator_id,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -540,14 +541,51 @@ func main() {
 	})
 
 	mux.HandleFunc("/api/communities/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		idPart := strings.TrimPrefix(r.URL.Path, "/api/communities/")
+		if idPart == "" {
+			writeError(w, http.StatusNotFound, "Не найдено")
 			return
 		}
 
-		idPart := strings.TrimPrefix(r.URL.Path, "/api/communities/")
-		if idPart == "" || strings.Contains(idPart, "/") {
-			writeError(w, http.StatusNotFound, "Не найдено")
+		if strings.HasSuffix(idPart, "/join") {
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+
+			idPart = strings.TrimSuffix(idPart, "/join")
+			if idPart == "" || strings.Contains(idPart, "/") {
+				writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
+				return
+			}
+
+			var communityID int64
+			if _, err := fmt.Sscanf(idPart, "%d", &communityID); err != nil || communityID <= 0 {
+				writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
+				return
+			}
+
+			if err := joinCommunity(db, communityID, userID); err != nil {
+				switch {
+				case errors.Is(err, errNotFound):
+					writeError(w, http.StatusNotFound, "Сообщество не найдено")
+				default:
+					log.Printf("join community error: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				}
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+
+		if r.Method != http.MethodGet || strings.Contains(idPart, "/") {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
 
@@ -701,6 +739,16 @@ CREATE TABLE IF NOT EXISTS communities (
 
 CREATE INDEX IF NOT EXISTS communities_created_at_idx
 ON communities(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS community_members (
+    community_id BIGINT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (community_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS community_members_user_idx
+ON community_members(user_id);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -1158,9 +1206,22 @@ func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
 
 func listCommunities(db *sql.DB) ([]community, error) {
 	rows, err := db.Query(`
-		SELECT c.id, c.name, c.category, c.description, COALESCE(array_to_json(c.tags), '[]'::json), c.privacy_level, u.public_id, c.created_at
+		SELECT c.id,
+		       c.name,
+		       c.category,
+		       c.description,
+		       COALESCE(array_to_json(c.tags), '[]'::json),
+		       c.privacy_level,
+		       u.public_id,
+		       COALESCE(m.members_count, 0),
+		       c.created_at
 		FROM communities c
 		JOIN users u ON u.id = c.creator_id
+		LEFT JOIN (
+			SELECT community_id, COUNT(*)::int AS members_count
+			FROM community_members
+			GROUP BY community_id
+		) m ON m.community_id = c.id
 		ORDER BY c.created_at DESC
 	`)
 	if err != nil {
@@ -1180,6 +1241,7 @@ func listCommunities(db *sql.DB) ([]community, error) {
 			&rawTags,
 			&item.Privacy,
 			&item.CreatorID,
+			&item.Members,
 			&item.CreatedAt,
 		); scanErr != nil {
 			return nil, scanErr
@@ -1203,6 +1265,7 @@ func getCommunityByID(db *sql.DB, communityID int64) (community, error) {
 		       COALESCE(c.tags, '[]'::jsonb),
 		       c.privacy_level,
 		       u.public_id,
+		       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = c.id) AS members_count,
 		       c.created_at
 		FROM communities c
 		LEFT JOIN users u ON u.id = c.creator_id
@@ -1215,6 +1278,7 @@ func getCommunityByID(db *sql.DB, communityID int64) (community, error) {
 		&tagsJSON,
 		&item.Privacy,
 		&item.CreatorID,
+		&item.Members,
 		&item.CreatedAt,
 	)
 	if err != nil {
@@ -1270,9 +1334,15 @@ func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (c
 		}
 	}
 
+	tx, err := db.Begin()
+	if err != nil {
+		return community{}, err
+	}
+	defer tx.Rollback()
+
 	var created community
 	var rawTags []byte
-	err := db.QueryRow(`
+	err = tx.QueryRow(`
 		INSERT INTO communities(name, category, description, tags, privacy_level, creator_id)
 		VALUES ($1, $2, $3, $4::text[], $5, $6)
 		RETURNING id, name, category, description, COALESCE(array_to_json(tags), '[]'::json), privacy_level, created_at
@@ -1284,7 +1354,40 @@ func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (c
 	if err := json.Unmarshal(rawTags, &created.Tags); err != nil {
 		return community{}, fmt.Errorf("decode created community tags: %w", err)
 	}
+	if _, err := tx.Exec(`
+		INSERT INTO community_members(community_id, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (community_id, user_id) DO NOTHING
+	`, created.ID, creatorID); err != nil {
+		return community{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return community{}, err
+	}
+	created.Members = 1
 	return created, nil
+}
+
+func joinCommunity(db *sql.DB, communityID, userID int64) error {
+	res, err := db.Exec(`
+		INSERT INTO community_members(community_id, user_id)
+		SELECT $1, $2
+		WHERE EXISTS (SELECT 1 FROM communities WHERE id = $1)
+		ON CONFLICT (community_id, user_id) DO NOTHING
+	`, communityID, userID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		var exists bool
+		if scanErr := db.QueryRow(`SELECT EXISTS (SELECT 1 FROM communities WHERE id = $1)`, communityID).Scan(&exists); scanErr != nil {
+			return scanErr
+		}
+		if !exists {
+			return fmt.Errorf("%w: сообщество не найдено", errNotFound)
+		}
+	}
+	return nil
 }
 
 func toPGTextArray(values []string) string {
