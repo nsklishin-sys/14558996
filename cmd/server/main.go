@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -8,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -368,6 +369,123 @@ type statusRecorder struct {
 	http.ResponseWriter
 	status int
 }
+
+// htmlInject инжектируется во все HTML-ответы перед </head>.
+// Содержит:
+//  1. CSS для плавного фейда между страницами + View Transitions API.
+//  2. JS для перехвата href="/" (замена на /home-auth.html для залогиненного,
+//     на /home-guest.html для гостя) — это убирает белую страницу index.html
+//     на клике "Главная".
+//  3. Редирект залогиненного юзера с /home-guest.html и /index.html
+//     сразу на /home-auth.html, без рендера гостевой.
+const htmlInject = `<style>
+@view-transition { navigation: auto; }
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+html.pt-leaving body {
+  opacity: 0;
+  transition: opacity 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes pt-fade-in { from{opacity:0} to{opacity:1} }
+html.pt-ready body {
+  animation: pt-fade-in 160ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation-duration: 0.01ms !important; }
+  html.pt-leaving body, html.pt-ready body {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+  }
+}
+</style>
+<script>
+(function(){
+  'use strict';
+  var html = document.documentElement;
+
+  function hasToken(){
+    try { var t = localStorage.getItem('token'); return !!(t && t.trim()); }
+    catch(_) { return false; }
+  }
+  function prm(){
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  function hasVT(){
+    return typeof document.startViewTransition === 'function' ||
+      (window.CSS && CSS.supports && CSS.supports('view-transition-name: a'));
+  }
+
+  // Мгновенный редирект залогиненного юзера с гостевых страниц
+  var path = location.pathname;
+  if ((path === '/home-guest.html' || path === '/index.html' || path === '/') && hasToken()) {
+    location.replace('/home-auth.html');
+    return;
+  }
+
+  if (!prm()) html.classList.add('pt-ready');
+
+  function isInternalNav(a){
+    if (!a || a.tagName !== 'A') return false;
+    if (a.target && a.target !== '' && a.target !== '_self') return false;
+    if (a.hasAttribute('download')) return false;
+    var raw = a.getAttribute('href');
+    if (!raw) return false;
+    if (raw.charAt(0) === '#') return false;
+    if (/^(mailto:|tel:|javascript:)/i.test(raw)) return false;
+    try {
+      var u = new URL(a.href, location.href);
+      if (u.origin !== location.origin) return false;
+      if (u.pathname === location.pathname && u.search === location.search && u.hash) return false;
+      return true;
+    } catch(_) { return false; }
+  }
+
+  // "/" → /home-auth.html для залогиненного, /home-guest.html для гостя
+  // /index.html и /home-guest.html для залогиненного → /home-auth.html
+  function resolveHome(u){
+    var p = u.pathname;
+    var isHome = p === '/' || p === '/index.html' || p === '/home-guest.html';
+    if (!isHome) return null;
+    var target = hasToken() ? '/home-auth.html' : '/home-guest.html';
+    if (p === target) return null;
+    return target + u.search + u.hash;
+  }
+
+  var useFade = !prm() && !hasVT();
+  var FADE = 140;
+
+  document.addEventListener('click', function(e){
+    if (e.defaultPrevented) return;
+    if (e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!isInternalNav(a)) return;
+
+    var u;
+    try { u = new URL(a.href, location.href); } catch(_) { return; }
+
+    var home = resolveHome(u);
+    var finalHref = home != null ? new URL(home, location.href).href : a.href;
+
+    if (!useFade) {
+      if (home != null) { e.preventDefault(); location.href = finalHref; }
+      return;
+    }
+
+    e.preventDefault();
+    html.classList.add('pt-leaving');
+    var fb = setTimeout(function(){ html.classList.remove('pt-leaving'); }, 500);
+    setTimeout(function(){ clearTimeout(fb); location.href = finalHref; }, FADE);
+  }, true);
+
+  window.addEventListener('pageshow', function(){ html.classList.remove('pt-leaving'); });
+})();
+</script>`
 
 func (r *statusRecorder) WriteHeader(status int) {
 	r.status = status
@@ -1563,7 +1681,7 @@ func main() {
 		mux.ServeHTTP(w, r)
 	})
 
-	mux.Handle("/", staticSecurity(http.FileServer(http.Dir("./web"))))
+	mux.Handle("/", staticSecurity(injectHTML(http.FileServer(http.Dir("./web")))))
 
 	addr := ":8080"
 	handler := accessLog(securityHeaders(mux))
@@ -4106,6 +4224,10 @@ func findOrCreateDirectConversation(db *sql.DB, userID int64, targetPublicID str
 	if err := tx.Commit(); err != nil {
 		return chatConversation{}, err
 	}
+	conv, err := getConversationByPublicID(db, userID, "")
+	if err == nil {
+		_ = conv
+	}
 	return getConversationByID(db, userID, convID)
 }
 
@@ -4195,7 +4317,7 @@ func listConversations(db *sql.DB, userID int64, filter, q string, limit int) ([
 		if filter == "groups" && !(c.Type == "group" || c.Type == "community") {
 			continue
 		}
-		if filter == "companies" && strings.TrimSpace(c.DisplayRole) == "" {
+		if filter == "companies" && !strings.Contains(strings.ToLower(c.DisplayRole), "·") && strings.TrimSpace(c.DisplayRole) == "" {
 			continue
 		}
 		if q != "" && !strings.Contains(strings.ToLower(c.DisplayName+" "+c.LastMessageText), q) {
@@ -4495,6 +4617,102 @@ func staticSecurity(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+// injectHTML возвращает http.Handler, который оборачивает next и для
+// HTML-ответов вставляет htmlInject перед </head>. Для всех остальных
+// ответов (CSS, JS, PNG, JSON API) ничего не меняет — пропускает as-is.
+//
+// TODO: если в цепочке появится gzip-сжатие, injectHTML должен стоять до gzip,
+// чтобы вставка выполнялась по несжатому телу ответа.
+func injectHTML(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		rec := &htmlInjectWriter{
+			ResponseWriter: w,
+			buf:            &bytes.Buffer{},
+		}
+		next.ServeHTTP(rec, r)
+		rec.flush()
+	})
+}
+
+// htmlInjectWriter буферизует ответ, чтобы мы могли решить, HTML это или нет,
+// и при необходимости вставить htmlInject перед </head>.
+type htmlInjectWriter struct {
+	http.ResponseWriter
+	buf         *bytes.Buffer
+	status      int
+	wroteHeader bool
+	isHTML      bool
+	passThrough bool
+}
+
+func (w *htmlInjectWriter) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.status = status
+	w.wroteHeader = true
+
+	ct := w.ResponseWriter.Header().Get("Content-Type")
+	w.isHTML = strings.HasPrefix(strings.ToLower(ct), "text/html")
+
+	if !w.isHTML || status >= 300 {
+		w.passThrough = true
+		w.ResponseWriter.WriteHeader(status)
+	}
+}
+
+func (w *htmlInjectWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	if w.passThrough {
+		return w.ResponseWriter.Write(b)
+	}
+	return w.buf.Write(b)
+}
+
+func (w *htmlInjectWriter) flush() {
+	if w.passThrough {
+		return
+	}
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	body := w.buf.Bytes()
+	needle := []byte("</head>")
+	idx := bytes.Index(body, needle)
+	if idx < 0 {
+		needleUpper := []byte("</HEAD>")
+		idx = bytes.Index(body, needleUpper)
+		if idx >= 0 {
+			needle = needleUpper
+		}
+	}
+
+	if idx < 0 {
+		w.ResponseWriter.Header().Del("Content-Length")
+		w.ResponseWriter.WriteHeader(w.status)
+		_, _ = w.ResponseWriter.Write(body)
+		return
+	}
+
+	var out bytes.Buffer
+	out.Grow(len(body) + len(htmlInject))
+	out.Write(body[:idx])
+	out.WriteString(htmlInject)
+	out.Write(body[idx:])
+
+	w.ResponseWriter.Header().Del("Content-Length")
+	w.ResponseWriter.WriteHeader(w.status)
+	_, _ = io.Copy(w.ResponseWriter, &out)
 }
 
 func accessLog(next http.Handler) http.Handler {
