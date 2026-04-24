@@ -103,6 +103,7 @@ type community struct {
 	Description string    `json:"description"`
 	Tags        []string  `json:"tags"`
 	Privacy     string    `json:"privacy_level"`
+	IsMember    bool      `json:"is_member"`
 	Members     int       `json:"members_count"`
 	CreatorID   string    `json:"creator_id,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -504,7 +505,8 @@ func main() {
 	mux.HandleFunc("/api/communities", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			communities, err := listCommunities(db)
+			authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+			communities, err := listCommunities(db, authUserID, hasAuth)
 			if err != nil {
 				log.Printf("list communities error: %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
@@ -911,6 +913,22 @@ func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessi
 	return userID, true
 }
 
+func optionalAuthenticatedUserID(r *http.Request, sessions *sessionStore) (int64, bool) {
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return 0, false
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	if token == "" {
+		return 0, false
+	}
+	userID, ok := sessions.getUserID(token)
+	if !ok {
+		return 0, false
+	}
+	return userID, true
+}
+
 func handleFriendActionError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, errValidation):
@@ -1204,7 +1222,12 @@ func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
 	return nil
 }
 
-func listCommunities(db *sql.DB) ([]community, error) {
+func listCommunities(db *sql.DB, authUserID int64, hasAuth bool) ([]community, error) {
+	var currentUserID sql.NullInt64
+	if hasAuth {
+		currentUserID = sql.NullInt64{Int64: authUserID, Valid: true}
+	}
+
 	rows, err := db.Query(`
 		SELECT c.id,
 		       c.name,
@@ -1213,6 +1236,15 @@ func listCommunities(db *sql.DB) ([]community, error) {
 		       COALESCE(array_to_json(c.tags), '[]'::json),
 		       c.privacy_level,
 		       u.public_id,
+		       (
+		           $1::bigint IS NOT NULL
+		           AND EXISTS (
+		               SELECT 1
+		               FROM community_members cm_user
+		               WHERE cm_user.community_id = c.id
+		                 AND cm_user.user_id = $1::bigint
+		           )
+		       ) AS is_member,
 		       COALESCE(m.members_count, 0),
 		       c.created_at
 		FROM communities c
@@ -1223,7 +1255,7 @@ func listCommunities(db *sql.DB) ([]community, error) {
 			GROUP BY community_id
 		) m ON m.community_id = c.id
 		ORDER BY c.created_at DESC
-	`)
+	`, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -1241,6 +1273,7 @@ func listCommunities(db *sql.DB) ([]community, error) {
 			&rawTags,
 			&item.Privacy,
 			&item.CreatorID,
+			&item.IsMember,
 			&item.Members,
 			&item.CreatedAt,
 		); scanErr != nil {
