@@ -2576,12 +2576,21 @@ func migratePublicationSeedData(db *sql.DB) error {
 	defer tx.Rollback()
 
 	const seedUserEmail = "seed.lastop@local"
+
+	if _, err := tx.Exec(`
+		UPDATE users SET public_id = NULL
+		WHERE email = $1 AND public_id = 'usr_seed_lastop'
+	`, seedUserEmail); err != nil {
+		return err
+	}
+
 	var seedAuthorID int64
 	if err := tx.QueryRow(`
 		INSERT INTO users (public_id, first_name, last_name, full_name, email, password_hash, position, company_name, bio, avatar_url)
-		VALUES ('usr_seed_lastop', 'LASTOP', 'Digital', 'LASTOP Digital', $1, '$2a$10$H8hT4aSt3D8QdDkbx73Z9OBPFnfRTE8Yv5IadB1iKsFcfoTmya8Ie', 'Редакция LASTOP', 'LASTOP', 'Системный аккаунт для миграции публикаций', '')
+		VALUES ('u5eed1a5f0b', 'LASTOP', 'Digital', 'LASTOP Digital', $1, '$2a$10$H8hT4aSt3D8QdDkbx73Z9OBPFnfRTE8Yv5IadB1iKsFcfoTmya8Ie', 'Редакция LASTOP', 'LASTOP', 'Системный аккаунт для миграции публикаций', '')
 		ON CONFLICT (email) DO UPDATE
-		SET full_name = EXCLUDED.full_name,
+		SET public_id = EXCLUDED.public_id,
+		    full_name = EXCLUDED.full_name,
 		    position = EXCLUDED.position,
 		    company_name = EXCLUDED.company_name
 		RETURNING id
