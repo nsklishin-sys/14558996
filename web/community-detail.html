@@ -324,18 +324,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a><span class="bc-sep">›</span>
     <a class="bc-item" href="/communities.html">Сообщества</a><span class="bc-sep">›</span>
-    <span class="bc-item cur" id="breadcrumbCommunityName">Логистика СНГ</span>
+    <span class="bc-item cur" id="breadcrumbCommunityName">Сообщество</span>
   </nav>
 
   <div class="hero-card">
-    <div class="hero-banner"><div class="hero-banner-bg" id="heroBannerBg" style="background:linear-gradient(135deg,#1E8A4C 0%,#185FA5 60%,#1A2A22 100%)"></div></div>
+    <div class="hero-banner"><div class="hero-banner-bg" id="heroBannerBg" style="background:linear-gradient(135deg,#3A90C0 0%,#1E8A4C 60%,#1A2A22 100%)"></div></div>
     <div class="hero-body">
       <div class="hero-top">
         <div style="display:flex;align-items:flex-end;gap:14px">
-          <div class="community-av" id="communityAvatar" style="background:linear-gradient(135deg,#1E8A4C,#185FA5)">🚛</div>
+          <div class="community-av" id="communityAvatar" style="background:linear-gradient(135deg,#3A90C0,#1E8A4C)">💬</div>
           <div>
-            <div class="hero-name" id="communityName">Логистика СНГ</div>
-            <div class="hero-cat" id="communityMeta"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span id="communityCategory">Логистика и транспорт</span> · <span id="communityPrivacy">Открытое сообщество</span></div>
+            <div class="hero-name" id="communityName">Сообщество</div>
+            <div class="hero-cat" id="communityMeta"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span id="communityCategory">Категория</span> · <span id="communityPrivacy">Тип сообщества</span></div>
           </div>
         </div>
         <div class="hero-actions">
@@ -344,9 +344,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <button class="btn-share-co" onclick="toast('Ссылка скопирована ✓',true)"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
         </div>
       </div>
-      <div class="hero-desc" id="communityDescription">Профессиональное сообщество специалистов по логистике в России и странах СНГ. Обсуждаем маршруты, таможенное оформление, TMS-решения и актуальные изменения в законодательстве ЕАЭС. Здесь делятся опытом логисты, ВЭД-специалисты, перевозчики и IT-разработчики отраслевых систем.</div>
-      <div class="hero-stats"><div class="hero-stat"><div class="hs-val" id="statMembers">2 400</div><div class="hs-lbl">Участников</div></div></div>
-      <div class="hero-tags" id="communityTags"><span class="hero-tag">логистика</span><span class="hero-tag">снг</span><span class="hero-tag">таможня</span></div>
+      <div class="hero-desc" id="communityDescription">Описание сообщества загружается…</div>
+      <div class="hero-stats"><div class="hero-stat"><div class="hs-val" id="statMembers">0</div><div class="hs-lbl">Участников</div></div></div>
+      <div class="hero-tags" id="communityTags"><span class="hero-tag">без тегов</span></div>
     </div>
   </div>
 
@@ -384,7 +384,35 @@ document.addEventListener('click',e=>{const d=document.getElementById('profileDD
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
 function switchTab(id, btn){document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
 let joined=false;
-function toggleJoin(){joined=!joined;const btn=document.getElementById('btnJoin');const cnt=document.getElementById('statMembers');if(joined){btn.classList.add('joined');btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Вы участник';if(cnt){const base=parseInt(cnt.textContent.replace(/\s/g,''),10)||2400;cnt.textContent=(base+1).toLocaleString('ru-RU');}toast('Вы вступили в сообщество «Логистика СНГ» ✓',true);} else {btn.classList.remove('joined');btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';toast('Вы покинули сообщество');}}
+let communityTitle='Сообщество';
+let currentCommunityID=null;
+async function toggleJoin(){
+  joined=!joined;
+  const btn=document.getElementById('btnJoin');
+  const cnt=document.getElementById('statMembers');
+  if(joined){
+    try{
+      if(currentCommunityID){
+        const r=await fetch(API+'/communities/'+currentCommunityID+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+        if(!r.ok)throw 0;
+      }
+      btn.classList.add('joined');
+      btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Вы участник';
+      if(cnt){
+        const base=parseInt(cnt.textContent.replace(/\s/g,''),10)||0;
+        cnt.textContent=(base+1).toLocaleString('ru-RU');
+      }
+      toast(`Вы вступили в сообщество «${communityTitle}» ✓`,true);
+    }catch{
+      joined=false;
+      toast('Не удалось вступить в сообщество');
+    }
+  } else {
+    btn.classList.remove('joined');
+    btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';
+    toast(`Вы покинули сообщество «${communityTitle}»`);
+  }
+}
 function likePost(btn){const liked=btn.classList.contains('liked');const span=btn.querySelector('span');const n=parseInt(span?.textContent||'0',10);if(liked){btn.classList.remove('liked');if(span)span.textContent=n-1;}else{btn.classList.add('liked');if(span)span.textContent=n+1;btn.style.animation='heartPop .3s ease';setTimeout(()=>btn.style.animation='',300);}}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function queryCommunityID(){const id=new URLSearchParams(location.search).get('id');const n=Number(id);return Number.isFinite(n)&&n>0?n:null}
@@ -401,6 +429,7 @@ function renderCommunityProfile(c){
   if(!c)return;
   const persona=buildCommunityPersona(c);
   const name=c.name||'Сообщество';
+  communityTitle=name;
   const category=c.category||'Сообщество';
   const privacy=c.privacy_level==='closed'?'Закрытое сообщество':'Открытое сообщество';
   const desc=(c.description||'').trim()||'У этого сообщества пока нет описания.';
@@ -415,6 +444,11 @@ function renderCommunityProfile(c){
   const banner=document.getElementById('heroBannerBg');if(banner)banner.style.background=persona.gradient;
   const tagsWrap=document.getElementById('communityTags');
   if(tagsWrap){tagsWrap.innerHTML=tags.length?tags.map(t=>`<span class="hero-tag">${esc(t)}</span>`).join(''):'<span class="hero-tag">без тегов</span>'}
+  const membersNode=document.getElementById('statMembers');
+  if(membersNode){
+    const membersCount=Number.isFinite(Number(c.members_count))?Math.max(0,Number(c.members_count)):0;
+    membersNode.textContent=membersCount.toLocaleString('ru-RU');
+  }
   const createdAt=document.getElementById('communityCreatedAt');
   if(createdAt){createdAt.textContent=c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}):'—'}
   const typeNode=document.getElementById('communityType');if(typeNode)typeNode.textContent=c.privacy_level==='closed'?'Закрытое':'Открытое';
@@ -422,6 +456,7 @@ function renderCommunityProfile(c){
 async function loadCommunityProfile(){
   const id=queryCommunityID();
   if(!id)return;
+  currentCommunityID=id;
   try{
     const r=await fetch(API+'/communities/'+id,{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)return;
