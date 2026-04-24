@@ -539,6 +539,38 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/communities/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		idPart := strings.TrimPrefix(r.URL.Path, "/api/communities/")
+		if idPart == "" || strings.Contains(idPart, "/") {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+
+		var communityID int64
+		if _, err := fmt.Sscanf(idPart, "%d", &communityID); err != nil || communityID <= 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
+			return
+		}
+
+		item, err := getCommunityByID(db, communityID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Сообщество не найдено")
+				return
+			}
+			log.Printf("get community by id error: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{"community": item})
+	})
+
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
 
 	addr := ":8080"
@@ -1158,6 +1190,40 @@ func listCommunities(db *sql.DB) ([]community, error) {
 		result = append(result, item)
 	}
 	return result, rows.Err()
+}
+
+func getCommunityByID(db *sql.DB, communityID int64) (community, error) {
+	var item community
+	var tagsJSON []byte
+	err := db.QueryRow(`
+		SELECT c.id,
+		       c.name,
+		       c.category,
+		       COALESCE(c.description, ''),
+		       COALESCE(c.tags, '[]'::jsonb),
+		       c.privacy_level,
+		       u.public_id,
+		       c.created_at
+		FROM communities c
+		LEFT JOIN users u ON u.id = c.creator_id
+		WHERE c.id = $1
+	`, communityID).Scan(
+		&item.ID,
+		&item.Name,
+		&item.Category,
+		&item.Description,
+		&tagsJSON,
+		&item.Privacy,
+		&item.CreatorID,
+		&item.CreatedAt,
+	)
+	if err != nil {
+		return community{}, err
+	}
+	if err := json.Unmarshal(tagsJSON, &item.Tags); err != nil {
+		return community{}, fmt.Errorf("decode community tags: %w", err)
+	}
+	return item, nil
 }
 
 func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (community, error) {
