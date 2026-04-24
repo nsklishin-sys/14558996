@@ -1,0 +1,152 @@
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  LASTOP GROUP — Shell Layout (unified)
+ *  Файл: web/assets/shell-layout.css
+ *
+ *  Единый каркас: левый сайдбар (nav) 240px, топбар 56px,
+ *  правый сайдбар (right) 300px. Эталон — home-auth.html.
+ *
+ *  Применяется через класс .lt-shell на <html>. Повышенная
+ *  специфичность (html.lt-shell .shell) гарантированно
+ *  перекрывает любые .shell{} из inline <style> без !important.
+ *
+ *  Для двухколоночного каркаса (без правой панели, как chat.html)
+ *  используется класс .lt-shell-2col.
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/* ─────────────────────────────────────────────────────────────
+   ТРЁХКОЛОНОЧНЫЙ КАРКАС (по умолчанию, как на home-auth)
+   ───────────────────────────────────────────────────────────── */
+html.lt-shell .shell{
+  display:grid;
+  grid-template-columns:240px 1fr 300px;
+  grid-template-rows:56px 1fr;
+  grid-template-areas:
+    "logo topbar topbar"
+    "nav  main   right";
+  height:100vh;
+  height:100dvh;
+  gap:10px;
+  padding:10px;
+}
+
+/* iOS legacy: 100dvh не поддерживается, используем fill-available */
+@supports (-webkit-touch-callout: none) and (not (height: 100dvh)){
+  html.lt-shell{height:-webkit-fill-available}
+  html.lt-shell body{min-height:-webkit-fill-available}
+  html.lt-shell .shell{height:-webkit-fill-available}
+}
+
+/* Большие экраны 1201–1400 — без промежуточного сжатия.
+   Исключаем ошибочные «1400px» брейкпоинты из некоторых страниц. */
+
+/* Средние экраны: компактнее */
+@media (max-width:1200px){
+  html.lt-shell .shell{
+    grid-template-columns:220px 1fr 260px;
+  }
+}
+
+/* Узкие: прячем правую панель */
+@media (max-width:1000px){
+  html.lt-shell .shell{
+    grid-template-columns:220px 1fr;
+    grid-template-areas:
+      "logo topbar"
+      "nav  main";
+  }
+  html.lt-shell .right{display:none}
+  html.lt-shell .search-wrap{max-width:100%}
+}
+
+/* Мобильный альбомный: иконочный nav */
+@media (max-width:740px){
+  html.lt-shell .shell{
+    grid-template-columns:52px 1fr;
+  }
+  html.lt-shell .nav-item span,
+  html.lt-shell .nav-group,
+  html.lt-shell .logo-text{display:none}
+  html.lt-shell .nav-item{justify-content:center;padding:10px}
+}
+
+/* 4K / large desktop — zoom для читаемости */
+@media (min-width:1921px) and (min-height:1081px){
+  html.lt-shell{zoom:1.18}
+  html.lt-shell .shell{
+    grid-template-columns:250px 1fr 340px;
+    gap:12px;
+    padding:12px;
+    height:calc(100vh / 1.18);
+  }
+  html.lt-shell .nav{padding:14px 12px 12px}
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ДВУХКОЛОНОЧНЫЙ КАРКАС (chat.html)
+   Никакой правой панели. nav + main.
+   ───────────────────────────────────────────────────────────── */
+html.lt-shell-2col .shell{
+  display:grid;
+  grid-template-columns:240px 1fr;
+  grid-template-rows:56px 1fr;
+  grid-template-areas:
+    "logo topbar"
+    "nav  main";
+  height:100vh;
+  height:100dvh;
+  gap:10px;
+  padding:10px;
+}
+
+@supports (-webkit-touch-callout: none) and (not (height: 100dvh)){
+  html.lt-shell-2col{height:-webkit-fill-available}
+  html.lt-shell-2col body{min-height:-webkit-fill-available}
+  html.lt-shell-2col .shell{height:-webkit-fill-available}
+}
+
+@media (max-width:1200px){
+  html.lt-shell-2col .shell{grid-template-columns:220px 1fr}
+}
+
+@media (max-width:1000px){
+  html.lt-shell-2col .shell{grid-template-columns:220px 1fr}
+}
+
+@media (max-width:740px){
+  html.lt-shell-2col .shell{grid-template-columns:52px 1fr}
+  html.lt-shell-2col .nav-item span,
+  html.lt-shell-2col .nav-group,
+  html.lt-shell-2col .logo-text{display:none}
+  html.lt-shell-2col .nav-item{justify-content:center;padding:10px}
+}
+
+@media (min-width:1921px) and (min-height:1081px){
+  html.lt-shell-2col{zoom:1.18}
+  html.lt-shell-2col .shell{
+    grid-template-columns:250px 1fr;
+    gap:12px;
+    padding:12px;
+    height:calc(100vh / 1.18);
+  }
+  html.lt-shell-2col .nav{padding:14px 12px 12px}
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ОБЩИЕ ПРАВИЛА ДЛЯ ЯЧЕЕК КАРКАСА
+   (не размеры, но они должны быть едиными: назначение grid-area)
+   ───────────────────────────────────────────────────────────── */
+html.lt-shell .logo-cell,
+html.lt-shell-2col .logo-cell{grid-area:logo}
+
+html.lt-shell .topbar,
+html.lt-shell-2col .topbar{grid-area:topbar}
+
+html.lt-shell .nav,
+html.lt-shell-2col .nav{grid-area:nav}
+
+html.lt-shell .main,
+html.lt-shell-2col .main{grid-area:main}
+
+html.lt-shell .right{grid-area:right}
