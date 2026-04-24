@@ -2,11 +2,28 @@
 <html lang="ru">
 <head>
 <script src="/assets/dark-theme-init.js"></script>
+<script>
+  (function redirectAuthToHome() {
+    try {
+      var token = localStorage.getItem('token');
+      if (token && token.trim()) {
+        var user = null;
+        try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch (_) {}
+        // Достаточно самого наличия непустого токена — на home-auth.html
+        // /api/me всё равно перепроверит валидность.
+        // Используем replace, чтобы не засорять историю.
+        location.replace('/home-auth.html');
+      }
+    } catch (_) {}
+  })();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LASTOP GROUP — Деловая платформа</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/page-transitions.css">
+<script src="/assets/page-transitions.js" defer></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{

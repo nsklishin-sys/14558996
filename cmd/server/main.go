@@ -1137,7 +1137,19 @@ func main() {
 		mux.ServeHTTP(w, r)
 	})
 
-	mux.Handle("/", staticSecurity(http.FileServer(http.Dir("./web"))))
+	fileServer := staticSecurity(http.FileServer(http.Dir("./web")))
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Голый корень → редирект на гостевую главную.
+		// Залогиненный клиент, приземлившись на home-guest.html, мгновенно
+		// перейдёт на home-auth.html через свой init-скрипт.
+		// Прочие пути и ассеты отдаёт FileServer как раньше.
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/home-guest.html", http.StatusFound)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 
 	addr := ":8080"
 	handler := accessLog(securityHeaders(mux))
