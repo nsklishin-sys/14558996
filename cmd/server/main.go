@@ -609,7 +609,8 @@ func main() {
 			return
 		}
 
-		item, err := getCommunityByID(db, communityID)
+		authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+		item, err := getCommunityByID(db, communityID, authUserID, hasAuth)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				writeError(w, http.StatusNotFound, "Сообщество не найдено")
@@ -1299,9 +1300,13 @@ func listCommunities(db *sql.DB, authUserID int64, hasAuth bool) ([]community, e
 	return result, rows.Err()
 }
 
-func getCommunityByID(db *sql.DB, communityID int64) (community, error) {
+func getCommunityByID(db *sql.DB, communityID, authUserID int64, hasAuth bool) (community, error) {
 	var item community
 	var tagsJSON []byte
+	var currentUserID sql.NullInt64
+	if hasAuth {
+		currentUserID = sql.NullInt64{Int64: authUserID, Valid: true}
+	}
 	err := db.QueryRow(`
 		SELECT c.id,
 		       c.name,
@@ -1310,12 +1315,21 @@ func getCommunityByID(db *sql.DB, communityID int64) (community, error) {
 		       COALESCE(c.tags, '[]'::jsonb),
 		       c.privacy_level,
 		       u.public_id,
+		       (
+		           $2::bigint IS NOT NULL
+		           AND EXISTS (
+		               SELECT 1
+		               FROM community_members cm_user
+		               WHERE cm_user.community_id = c.id
+		                 AND cm_user.user_id = $2::bigint
+		           )
+		       ) AS is_member,
 		       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = c.id) AS members_count,
 		       c.created_at
 		FROM communities c
 		LEFT JOIN users u ON u.id = c.creator_id
 		WHERE c.id = $1
-	`, communityID).Scan(
+	`, communityID, currentUserID).Scan(
 		&item.ID,
 		&item.Name,
 		&item.Category,
@@ -1323,6 +1337,7 @@ func getCommunityByID(db *sql.DB, communityID int64) (community, error) {
 		&tagsJSON,
 		&item.Privacy,
 		&item.CreatorID,
+		&item.IsMember,
 		&item.Members,
 		&item.CreatedAt,
 	)
