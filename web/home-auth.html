@@ -961,10 +961,11 @@ function renderFeedFiltered(type){
     const pid=p.public_id||p.id||'';
     const id=pid?('?id='+encodeURIComponent(pid)):'';
     const authorHref = profileHref({name, user_id:p.user_id, public_id:p.author_public_id});
+    const communityBadge=(p.community_id&&p.community_name)?`<div style="font-size:11px;color:var(--g);margin-top:2px">из сообщества: ${esc(p.community_name)}</div>`:'';
     return`<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
       <div class="pc-head">
         <div class="pc-av" style="background:${avc(name)}" onclick="event.stopPropagation();location.href='${authorHref}'">${letter(name)}</div>
-        <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div></div>
+        <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div>${communityBadge}</div>
         <span class="pc-tag ${tag}">${lbl}</span>
       </div>
       <div class="pc-text">${esc(p.text||p.content||p.body||'')}</div>
