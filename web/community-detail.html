@@ -391,9 +391,39 @@ function switchTab(id, btn){document.querySelectorAll('.tab-panel').forEach(p=>p
 let joined=false;
 let communityTitle='Сообщество';
 let currentCommunityID=null;
-async function toggleJoin(){
+function syncCommunityCache(memberState,membersCount){
+  if(!currentCommunityID)return;
+  try{
+    const cacheKey='lastop_community_cache_'+String(currentCommunityID);
+    const raw=sessionStorage.getItem(cacheKey);
+    if(!raw)return;
+    const cached=JSON.parse(raw);
+    cached.is_member=memberState;
+    if(typeof membersCount==='number'&&Number.isFinite(membersCount))cached.members_count=Math.max(0,membersCount);
+    sessionStorage.setItem(cacheKey,JSON.stringify(cached));
+  }catch{}
+}
+function setJoinButtonState(isJoined){
   const btn=document.getElementById('btnJoin');
+  if(!btn)return;
+  if(isJoined){
+    btn.classList.add('joined');
+    btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Вы участник';
+  }else{
+    btn.classList.remove('joined');
+    btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';
+  }
+}
+function readMembersCount(){
   const cnt=document.getElementById('statMembers');
+  if(!cnt)return 0;
+  return parseInt(cnt.textContent.replace(/\s/g,''),10)||0;
+}
+function updateMembersCount(nextValue){
+  const cnt=document.getElementById('statMembers');
+  if(cnt)cnt.textContent=Math.max(0,nextValue).toLocaleString('ru-RU');
+}
+async function toggleJoin(){
   const nextJoined=!joined;
   if(nextJoined){
     try{
@@ -402,35 +432,36 @@ async function toggleJoin(){
         if(!r.ok)throw 0;
       }
       joined=true;
-      btn.classList.add('joined');
-      btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Вы участник';
-      if(cnt){
-        const base=parseInt(cnt.textContent.replace(/\s/g,''),10)||0;
-        cnt.textContent=(base+1).toLocaleString('ru-RU');
-      }
+      setJoinButtonState(true);
+      const membersCount=readMembersCount()+1;
+      updateMembersCount(membersCount);
+      syncCommunityCache(true,membersCount);
       toast(`Вы вступили в сообщество «${communityTitle}» ✓`,true);
     }catch{
       joined=false;
       toast('Не удалось вступить в сообщество');
     }
-  } else {
-    try{
-      if(currentCommunityID){
-        const r=await fetch(API+'/communities/'+currentCommunityID+'/leave',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
-        if(!r.ok)throw 0;
-      }
-      joined=false;
-      btn.classList.remove('joined');
-      btn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';
-      if(cnt){
-        const base=parseInt(cnt.textContent.replace(/\s/g,''),10)||0;
-        cnt.textContent=Math.max(0,base-1).toLocaleString('ru-RU');
-      }
-      toast(`Вы покинули сообщество «${communityTitle}»`);
-    }catch{
-      joined=true;
-      toast('Не удалось выйти из сообщества');
+    return;
+  }
+
+  const confirmedLeave=window.confirm(`Покинуть сообщество «${communityTitle}»?`);
+  if(!confirmedLeave)return;
+
+  try{
+    if(currentCommunityID){
+      const r=await fetch(API+'/communities/'+currentCommunityID+'/leave',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+      if(!r.ok)throw 0;
     }
+    joined=false;
+    setJoinButtonState(false);
+    const membersCount=readMembersCount()-1;
+    updateMembersCount(membersCount);
+    syncCommunityCache(false,membersCount);
+    toast(`Вы покинули сообщество «${communityTitle}»`);
+  }catch{
+    joined=true;
+    setJoinButtonState(true);
+    toast('Не удалось выйти из сообщества');
   }
 }
 function likePost(btn){const liked=btn.classList.contains('liked');const span=btn.querySelector('span');const n=parseInt(span?.textContent||'0',10);if(liked){btn.classList.remove('liked');if(span)span.textContent=n-1;}else{btn.classList.add('liked');if(span)span.textContent=n+1;btn.style.animation='heartPop .3s ease';setTimeout(()=>btn.style.animation='',300);}}
@@ -470,16 +501,7 @@ function renderCommunityProfile(c){
     membersNode.textContent=membersCount.toLocaleString('ru-RU');
   }
   joined=Boolean(c.is_member);
-  const joinBtn=document.getElementById('btnJoin');
-  if(joinBtn){
-    if(joined){
-      joinBtn.classList.add('joined');
-      joinBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#1E8A4C;fill:none;stroke-width:2;stroke-linecap:round"><polyline points="20 6 9 17 4 12"/></svg> Вы участник';
-    }else{
-      joinBtn.classList.remove('joined');
-      joinBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Вступить';
-    }
-  }
+  setJoinButtonState(joined);
   const createdAt=document.getElementById('communityCreatedAt');
   if(createdAt){createdAt.textContent=c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}):'—'}
   const typeNode=document.getElementById('communityType');if(typeNode)typeNode.textContent=c.privacy_level==='closed'?'Закрытое':'Открытое';
