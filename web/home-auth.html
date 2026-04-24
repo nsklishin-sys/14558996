@@ -570,6 +570,7 @@ const USER_NAME_TO_PUBLIC_ID = {
 };
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){
   const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
@@ -972,7 +973,7 @@ function renderFeedFiltered(type){
         <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div>${communityBadge}</div>
         <span class="pc-tag ${tag}">${lbl}</span>
       </div>
-      <div class="pc-text">${esc(p.text||p.content||p.body||'')}</div>
+      <div class="pc-text">${fmtMentions(p.text||p.content||p.body||'')}</div>
       <div class="pc-foot">
         <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||p.likes||0}</div>
         <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||p.comments||0}</div>

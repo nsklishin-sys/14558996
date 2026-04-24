@@ -686,6 +686,7 @@ const API='/api', tk=()=>localStorage.getItem('token');
 const postPublicID=new URLSearchParams(location.search).get('id');
 if(!postPublicID){location.href='/dashboard.html';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>')}
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function ago(ts){const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' дн. назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})}
@@ -876,7 +877,7 @@ async function loadPostAndComments(){
   const p=postData.post||{};
   if(p.public_id){
     const title=document.querySelector('.news-title'); if(title)title.textContent=p.title||'Публикация';
-    const text=document.querySelector('.news-text'); if(text)text.textContent=p.text||p.content||'';
+    const text=document.querySelector('.news-text'); if(text)text.innerHTML=fmtMentions(p.text||p.content||'');
     const author=document.querySelector('.news-author-name'); if(author)author.textContent=p.author||'Участник';
     const authorRole=document.querySelector('.news-author-role'); if(authorRole)authorRole.textContent=p.author_role||'Участник LASTOP';
     const authorAvatar=document.querySelector('.news-author-av'); if(authorAvatar)authorAvatar.textContent=ltr(p.author||'У');

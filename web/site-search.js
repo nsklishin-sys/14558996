@@ -53,9 +53,22 @@
     return best && best.score > 0 ? best.section : null;
   }
 
-  function runSearch(query){
+  async function runSearch(query){
     const cleaned = (query || '').trim();
     if (!cleaned) return;
+    if (cleaned.startsWith('@')){
+      try{
+        const token = localStorage.getItem('token') || '';
+        const prefix = cleaned.slice(1);
+        const r = await fetch(`/api/users/search?prefix_handle=${encodeURIComponent(prefix)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const d = await r.json();
+        const u = (d.users || [])[0];
+        if (u?.id){
+          window.location.href = `/profile_user.html?id=${encodeURIComponent(u.id)}`;
+          return;
+        }
+      }catch(_){}
+    }
 
     const match = getBestMatch(cleaned);
     if (match){
