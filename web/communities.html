@@ -680,6 +680,22 @@ function mapAPICommunityToUI(c){
     createdAt:c?.created_at||new Date().toISOString()
   };
 }
+function cacheCommunityDraft(c){
+  if(!c?.id)return;
+  try{
+    const payload={
+      id:Number(c.id),
+      name:c.name||'',
+      category:c.category||'Другое',
+      description:c.description||'',
+      tags:Array.isArray(c.tags)?c.tags:[],
+      privacy_level:c.privacy_level==='closed'?'closed':'open',
+      members_count:Number.isFinite(Number(c.members_count))?Number(c.members_count):0,
+      created_at:c.created_at||new Date().toISOString()
+    };
+    sessionStorage.setItem('lastop_community_cache_'+String(payload.id),JSON.stringify(payload));
+  }catch{}
+}
 function syncSidebar(){
   const total=COMMUNITIES.length;
   const openCount=COMMUNITIES.filter(c=>c.privacy==='open').length;
@@ -729,6 +745,7 @@ async function submitCommunity(){
       return;
     }
     const data=await r.json();
+    cacheCommunityDraft(data?.community);
     const created=mapAPICommunityToUI(data?.community);
     created.isMy=true;
     created.color=color||created.color;
