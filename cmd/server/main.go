@@ -2907,9 +2907,9 @@ CREATE INDEX IF NOT EXISTS chat_typing_started_idx
 	if err := migratePublicationSeedData(db); err != nil {
 		return fmt.Errorf("migrate publication seed data: %w", err)
 	}
-	if err := migrateEventSeedData(db); err != nil {
-		return fmt.Errorf("migrate event seed data: %w", err)
-	}
+	// if err := migrateEventSeedData(db); err != nil {
+//     return fmt.Errorf("migrate event seed data: %w", err)
+// }
 
 	return nil
 }
