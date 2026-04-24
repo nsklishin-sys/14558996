@@ -9,16 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/mail"
 	"os"
-	"regexp"
+	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/time/rate"
 )
 
 type greetingResponse struct {
@@ -87,7 +92,6 @@ type friendDTO struct {
 	Email       string `json:"email"`
 	Position    string `json:"position,omitempty"`
 	CompanyName string `json:"company_name,omitempty"`
-	IsOnline    bool   `json:"is_online"`
 }
 
 type friendCandidateDTO struct {
@@ -118,8 +122,66 @@ type createCommunityRequest struct {
 }
 
 type sessionStore struct {
+	// TODO: keep in-memory sessions for now; move to durable/shared storage in a dedicated task.
 	mu         sync.RWMutex
 	tokenToUID map[string]int64
+}
+
+type ipRateLimiter struct {
+	mu      sync.Mutex
+	limit   rate.Limit
+	burst   int
+	entries map[string]*rateEntry
+}
+
+type rateEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
+func newIPRateLimiter(limit int, interval time.Duration) *ipRateLimiter {
+	return &ipRateLimiter{
+		limit:   rate.Every(interval / time.Duration(limit)),
+		burst:   limit,
+		entries: make(map[string]*rateEntry),
+	}
+}
+
+func (l *ipRateLimiter) Allow(ip string) bool {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.entries[ip]
+	if !ok {
+		entry = &rateEntry{
+			limiter: rate.NewLimiter(l.limit, l.burst),
+		}
+		l.entries[ip] = entry
+	}
+	entry.lastSeen = now
+
+	if len(l.entries) > 10000 {
+		next := make(map[string]*rateEntry, len(l.entries))
+		for key, item := range l.entries {
+			if now.Sub(item.lastSeen) <= 10*time.Minute {
+				next[key] = item
+			}
+		}
+		l.entries = next
+	}
+
+	return entry.limiter.Allow()
 }
 
 func newSessionStore() *sessionStore {
@@ -141,8 +203,6 @@ func (s *sessionStore) getUserID(token string) (int64, bool) {
 	return userID, ok
 }
 
-var emailRe = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
-
 func main() {
 	db, err := initDBFromEnv()
 	if err != nil {
@@ -152,6 +212,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore()
+	authRateLimiter := newIPRateLimiter(10, time.Minute)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -174,9 +235,13 @@ func main() {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
+		if !authRateLimiter.Allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
+			return
+		}
 
 		var req registerRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
@@ -203,8 +268,8 @@ func main() {
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, authResponse{Token: token, User: createdUser})
 		sessions.put(token, createdUser.ID)
+		writeJSON(w, http.StatusCreated, authResponse{Token: token, User: createdUser})
 	})
 
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
@@ -212,9 +277,13 @@ func main() {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
+		if !authRateLimiter.Allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
+			return
+		}
 
 		var req loginRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
@@ -241,8 +310,8 @@ func main() {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
 		sessions.put(token, authUser.ID)
+		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
 	})
 
 	mux.HandleFunc("/api/me", func(w http.ResponseWriter, r *http.Request) {
@@ -291,7 +360,7 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"user": u})
 		case http.MethodPut:
 			var req profileUpdateRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
@@ -429,7 +498,7 @@ func main() {
 		var req struct {
 			Name string `json:"name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
@@ -520,7 +589,7 @@ func main() {
 			}
 
 			var req createCommunityRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
@@ -572,8 +641,8 @@ func main() {
 				return
 			}
 
-			var communityID int64
-			if _, err := fmt.Sscanf(idPart, "%d", &communityID); err != nil || communityID <= 0 {
+			communityID, err := strconv.ParseInt(idPart, 10, 64)
+			if err != nil || communityID <= 0 {
 				writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
 				return
 			}
@@ -603,8 +672,8 @@ func main() {
 			return
 		}
 
-		var communityID int64
-		if _, err := fmt.Sscanf(idPart, "%d", &communityID); err != nil || communityID <= 0 {
+		communityID, err := strconv.ParseInt(idPart, 10, 64)
+		if err != nil || communityID <= 0 {
 			writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
 			return
 		}
@@ -624,11 +693,21 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"community": item})
 	})
 
-	mux.Handle("/", http.FileServer(http.Dir("./web")))
+	mux.Handle("/", staticSecurity(http.FileServer(http.Dir("./web"))))
 
 	addr := ":8080"
+	handler := accessLog(securityHeaders(mux))
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
 	log.Printf("Server started at http://localhost%s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -662,13 +741,11 @@ func initDBFromEnv() (*sql.DB, error) {
 }
 
 func resolveDatabaseURL() (string, error) {
-	const railwayDatabaseURL = "postgresql://postgres:QHkIHPzHfSeSKkQnEDFkJmjQJSpUpXpb@shinkansen.proxy.rlwy.net:19703/railway"
-
 	if directURL := strings.TrimSpace(os.Getenv("DATABASE_URL")); directURL != "" {
 		return directURL, nil
 	}
 
-	return railwayDatabaseURL, nil
+	return "", fmt.Errorf("DATABASE_URL is required")
 }
 
 func waitForDB(db *sql.DB, timeout time.Duration) error {
@@ -716,9 +793,7 @@ ALTER TABLE users
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_uniq_idx ON users(public_id);
 
-UPDATE users
-SET public_id = CONCAT('u', id)
-WHERE public_id IS NULL OR public_id = '';
+-- Миграция существующих users без public_id должна выполняться вручную.
 
 CREATE TABLE IF NOT EXISTS friend_requests (
     id BIGSERIAL PRIMARY KEY,
@@ -730,6 +805,13 @@ CREATE TABLE IF NOT EXISTS friend_requests (
     CHECK (requester_id <> addressee_id),
     CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled'))
 );
+
+DO $$
+BEGIN
+    ALTER TABLE friend_requests DROP CONSTRAINT IF EXISTS friend_requests_status_check;
+    ALTER TABLE friend_requests ADD CONSTRAINT friend_requests_status_check
+      CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled', 'unfriended'));
+END$$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS friend_requests_pair_uniq_idx
 ON friend_requests(requester_id, addressee_id);
@@ -789,7 +871,7 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 		return user{}, fmt.Errorf("%w: фамилия обязательна", errValidation)
 	}
 	email := strings.ToLower(strings.TrimSpace(req.Email))
-	if !emailRe.MatchString(email) {
+	if !isValidEmail(email) {
 		return user{}, fmt.Errorf("%w: email некорректен", errValidation)
 	}
 	if len(req.Password) < 8 {
@@ -846,7 +928,7 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 
 func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
-	if !emailRe.MatchString(email) {
+	if !isValidEmail(email) {
 		return user{}, fmt.Errorf("%w: email некорректен", errValidation)
 	}
 	if strings.TrimSpace(req.Password) == "" {
@@ -965,7 +1047,7 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 		END
 		WHERE fr.status = 'accepted'
 		  AND ($1 IN (fr.requester_id, fr.addressee_id))
-		ORDER BY u.full_name
+		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -989,7 +1071,7 @@ func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 		JOIN users u ON u.id = fr.requester_id
 		WHERE fr.addressee_id = $1
 		  AND fr.status = 'pending'
-		ORDER BY fr.created_at DESC
+		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -1013,7 +1095,7 @@ func listOutgoingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 		JOIN users u ON u.id = fr.addressee_id
 		WHERE fr.requester_id = $1
 		  AND fr.status = 'pending'
-		ORDER BY fr.created_at DESC
+		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -1031,15 +1113,38 @@ func listOutgoingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 }
 
 func listFriendCandidates(db *sql.DB, userID int64, query string) ([]friendCandidateDTO, error) {
-	search := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
-	rows, err := db.Query(`
+	trimmed := strings.TrimSpace(query)
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if trimmed == "" {
+		rows, err = db.Query(`
+		SELECT u.public_id, u.full_name, u.email
+		FROM users u
+		WHERE u.id <> $1
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM friend_requests fr
+		      WHERE (
+		           (fr.requester_id = $1 AND fr.addressee_id = u.id)
+		        OR (fr.requester_id = u.id AND fr.addressee_id = $1)
+		      )
+		      AND fr.status IN ('pending', 'accepted')
+		  )
+		ORDER BY LOWER(u.full_name)
+		LIMIT 50
+	`, userID)
+	} else {
+		esc := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(trimmed))
+		search := "%" + esc + "%"
+		rows, err = db.Query(`
 		SELECT u.public_id, u.full_name, u.email
 		FROM users u
 		WHERE u.id <> $1
 		  AND (
-		      $2 = '%%'
-		      OR LOWER(u.full_name) LIKE $2
-		      OR LOWER(u.email) LIKE $2
+		      LOWER(u.full_name) LIKE $2 ESCAPE '\'
+		      OR LOWER(u.email) LIKE $2 ESCAPE '\'
 		  )
 		  AND NOT EXISTS (
 		      SELECT 1
@@ -1050,9 +1155,10 @@ func listFriendCandidates(db *sql.DB, userID int64, query string) ([]friendCandi
 		      )
 		      AND fr.status IN ('pending', 'accepted')
 		  )
-		ORDER BY u.full_name
+		ORDER BY LOWER(u.full_name)
 		LIMIT 50
 	`, userID, search)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -1074,16 +1180,47 @@ func findUserPublicIDByNameOrEmail(db *sql.DB, userID int64, value string) (stri
 		return "", fmt.Errorf("%w: укажите имя или email", errValidation)
 	}
 	vLower := strings.ToLower(v)
-	var publicID string
-	err := db.QueryRow(`
+	if isValidEmail(vLower) {
+		var publicID string
+		err := db.QueryRow(`
+			SELECT public_id
+			FROM users
+			WHERE id <> $1
+			  AND LOWER(email) = $2
+			LIMIT 1
+		`, userID, vLower).Scan(&publicID)
+		return publicID, err
+	}
+	rows, err := db.Query(`
 		SELECT public_id
 		FROM users
 		WHERE id <> $1
-		  AND (LOWER(email) = $2 OR LOWER(full_name) = $2)
-		ORDER BY CASE WHEN LOWER(email) = $2 THEN 0 ELSE 1 END, id
-		LIMIT 1
-	`, userID, vLower).Scan(&publicID)
-	return publicID, err
+		  AND LOWER(full_name) = $2
+		ORDER BY id
+		LIMIT 2
+	`, userID, vLower)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			return "", scanErr
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	if len(ids) == 0 {
+		return "", sql.ErrNoRows
+	}
+	if len(ids) > 1 {
+		return "", fmt.Errorf("%w: Найдено несколько пользователей с таким именем, используйте email", errValidation)
+	}
+	return ids[0], nil
 }
 
 func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) error {
@@ -1095,7 +1232,11 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil && !errors.Is(rerr, sql.ErrTxDone) {
+			log.Printf("tx rollback error: %v", rerr)
+		}
+	}()
 
 	var addresseeID int64
 	if err := tx.QueryRow(`SELECT id FROM users WHERE public_id = $1`, targetPublicID).Scan(&addresseeID); err != nil {
@@ -1133,7 +1274,7 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 				return err
 			}
 			return tx.Commit()
-		case "rejected", "canceled":
+		case "rejected", "canceled", "unfriended":
 			if _, err = tx.Exec(`
 				UPDATE friend_requests
 				SET requester_id = $1, addressee_id = $2, status = 'pending', updated_at = NOW()
@@ -1216,7 +1357,7 @@ func cancelFriendRequest(db *sql.DB, userID int64, addresseePublicID string) err
 func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
 	res, err := db.Exec(`
 		UPDATE friend_requests fr
-		SET status = 'canceled', updated_at = NOW()
+		SET status = 'unfriended', updated_at = NOW()
 		FROM users u
 		WHERE u.public_id = $2
 		  AND fr.status = 'accepted'
@@ -1312,7 +1453,7 @@ func getCommunityByID(db *sql.DB, communityID, authUserID int64, hasAuth bool) (
 		       c.name,
 		       c.category,
 		       COALESCE(c.description, ''),
-		       COALESCE(c.tags, '[]'::jsonb),
+		       COALESCE(array_to_json(c.tags), '[]'::json),
 		       c.privacy_level,
 		       u.public_id,
 		       (
@@ -1398,16 +1539,22 @@ func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (c
 	if err != nil {
 		return community{}, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if rerr := tx.Rollback(); rerr != nil && !errors.Is(rerr, sql.ErrTxDone) {
+			log.Printf("tx rollback error: %v", rerr)
+		}
+	}()
 
 	var created community
 	var rawTags []byte
+	var pgTags pgtype.FlatArray[string] = tags
 	err = tx.QueryRow(`
 		INSERT INTO communities(name, category, description, tags, privacy_level, creator_id)
 		VALUES ($1, $2, $3, $4::text[], $5, $6)
-		RETURNING id, name, category, description, COALESCE(array_to_json(tags), '[]'::json), privacy_level, created_at
-	`, name, category, description, toPGTextArray(tags), privacy, creatorID).
-		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &rawTags, &created.Privacy, &created.CreatedAt)
+		RETURNING id, name, category, description, COALESCE(array_to_json(tags), '[]'::json), privacy_level, created_at,
+			(SELECT public_id FROM users WHERE id = creator_id)
+	`, name, category, description, pgTags, privacy, creatorID).
+		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &rawTags, &created.Privacy, &created.CreatedAt, &created.CreatorID)
 	if err != nil {
 		return community{}, err
 	}
@@ -1475,21 +1622,6 @@ func leaveCommunity(db *sql.DB, communityID, userID int64) error {
 	return nil
 }
 
-func toPGTextArray(values []string) string {
-	if len(values) == 0 {
-		return "{}"
-	}
-
-	escaped := make([]string, 0, len(values))
-	for _, value := range values {
-		v := strings.ReplaceAll(value, `\`, `\\`)
-		v = strings.ReplaceAll(v, `"`, `\"`)
-		escaped = append(escaped, `"`+v+`"`)
-	}
-
-	return "{" + strings.Join(escaped, ",") + "}"
-}
-
 func normalizePrivacyLevel(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "open":
@@ -1509,6 +1641,66 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	return dec.Decode(dst)
+}
+
+func isValidEmail(s string) bool {
+	addr, err := mail.ParseAddress(s)
+	return err == nil && addr.Address == s
+}
+
+func securityHeaders(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.ServeHTTP(w, r)
+	})
+}
+
+func staticSecurity(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clean := path.Clean("/" + r.URL.Path)
+		for _, segment := range strings.Split(clean, "/") {
+			if strings.HasPrefix(segment, ".") && segment != "." && segment != ".." {
+				http.NotFound(w, r)
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
+func accessLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		log.Printf("%s %s status=%d duration=%s ip=%s", r.Method, r.URL.Path, rec.status, time.Since(start), clientIP(r))
+	})
+}
+
+func clientIP(r *http.Request) string {
+	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			ip := strings.TrimSpace(parts[0])
+			if ip != "" {
+				return ip
+			}
+		}
+	}
+	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+	if err == nil && host != "" {
+		return host
+	}
+	return strings.TrimSpace(r.RemoteAddr)
 }
 
 func newToken() (string, error) {

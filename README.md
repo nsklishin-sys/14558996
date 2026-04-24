@@ -9,15 +9,7 @@ export DATABASE_URL='postgresql://user:password@host:5432/dbname?sslmode=require
 go run ./cmd/server
 ```
 
-Также можно запускать сервер вообще без `DATABASE_URL`:
-
-```bash
-go run ./cmd/server
-```
-
-В текущей конфигурации при отсутствии `DATABASE_URL` сервер использует Railway PostgreSQL по умолчанию:
-
-`postgresql://postgres:QHkIHPzHfSeSKkQnEDFkJmjQJSpUpXpb@shinkansen.proxy.rlwy.net:19703/railway`
+`DATABASE_URL` обязателен, без него сервер завершится с ошибкой.
 
 После старта откройте: http://localhost:8080
 
