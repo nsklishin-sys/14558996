@@ -413,6 +413,91 @@ type createPostRequest struct {
 	PrivacyLevel string   `json:"privacy_level"`
 }
 
+type event struct {
+	ID              int64     `json:"id"`
+	PublicID        string    `json:"public_id"`
+	OrganizerID     int64     `json:"-"`
+	OrganizerPublic string    `json:"organizer_public_id"`
+	OrganizerName   string    `json:"organizer_name"`
+	CommunityID     *int64    `json:"community_id,omitempty"`
+	CommunityName   string    `json:"community_name,omitempty"`
+	Title           string    `json:"title"`
+	Description     string    `json:"description"`
+	Type            string    `json:"type"`
+	Format          string    `json:"format"`
+	Category        string    `json:"category"`
+	City            string    `json:"city"`
+	Address         string    `json:"address"`
+	Venue           string    `json:"venue"`
+	OnlineURL       string    `json:"online_url,omitempty"`
+	StartsAt        time.Time `json:"starts_at"`
+	EndsAt          time.Time `json:"ends_at"`
+	Timezone        string    `json:"timezone"`
+	CoverURL        string    `json:"cover_url,omitempty"`
+	BannerColor     string    `json:"banner_color,omitempty"`
+	FeeCents        int       `json:"fee_cents"`
+	Currency        string    `json:"currency"`
+	SeatsTotal      int       `json:"seats_total"`
+	RegisteredCount int       `json:"registered_count"`
+	SavedCount      int       `json:"saved_count"`
+	ViewsCount      int       `json:"views_count"`
+	Tags            []string  `json:"tags"`
+	Status          string    `json:"status"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	IsRegistered    bool      `json:"is_registered"`
+	IsSaved         bool      `json:"is_saved"`
+	IsMine          bool      `json:"is_mine"`
+}
+
+type createEventRequest struct {
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Type        string   `json:"type"`
+	Format      string   `json:"format"`
+	Category    string   `json:"category"`
+	City        string   `json:"city"`
+	Address     string   `json:"address"`
+	Venue       string   `json:"venue"`
+	OnlineURL   string   `json:"online_url"`
+	StartsAt    string   `json:"starts_at"`
+	EndsAt      string   `json:"ends_at"`
+	Timezone    string   `json:"timezone"`
+	CoverURL    string   `json:"cover_url"`
+	BannerColor string   `json:"banner_color"`
+	FeeCents    int      `json:"fee_cents"`
+	Currency    string   `json:"currency"`
+	SeatsTotal  int      `json:"seats_total"`
+	Tags        []string `json:"tags"`
+	CommunityID *int64   `json:"community_id,omitempty"`
+}
+
+type updateEventRequest struct {
+	Title       *string   `json:"title,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Type        *string   `json:"type,omitempty"`
+	Format      *string   `json:"format,omitempty"`
+	Category    *string   `json:"category,omitempty"`
+	City        *string   `json:"city,omitempty"`
+	Address     *string   `json:"address,omitempty"`
+	Venue       *string   `json:"venue,omitempty"`
+	OnlineURL   *string   `json:"online_url,omitempty"`
+	StartsAt    *string   `json:"starts_at,omitempty"`
+	EndsAt      *string   `json:"ends_at,omitempty"`
+	Timezone    *string   `json:"timezone,omitempty"`
+	CoverURL    *string   `json:"cover_url,omitempty"`
+	BannerColor *string   `json:"banner_color,omitempty"`
+	FeeCents    *int      `json:"fee_cents,omitempty"`
+	Currency    *string   `json:"currency,omitempty"`
+	SeatsTotal  *int      `json:"seats_total,omitempty"`
+	Tags        *[]string `json:"tags,omitempty"`
+	Status      *string   `json:"status,omitempty"`
+}
+
+type registerToEventRequest struct {
+	TicketType string `json:"ticket_type"`
+}
+
 type postComment struct {
 	ID             int64     `json:"id"`
 	AuthorPublicID string    `json:"author_public_id"`
@@ -665,6 +750,11 @@ func main() {
 	handleUpdateLimiter := newIPRateLimiter(5, 24*time.Hour)
 	accountChangeLimiter := newIPRateLimiter(5, time.Hour)
 	accountDeleteLimiter := newIPRateLimiter(3, 24*time.Hour)
+	eventCreateLimiter := newIPRateLimiter(5, time.Hour)
+	eventRegisterLimiter := newIPRateLimiter(30, time.Minute)
+	eventSaveLimiter := newIPRateLimiter(60, time.Minute)
+	eventPatchLimiter := newIPRateLimiter(30, time.Hour)
+	eventDeleteLimiter := newIPRateLimiter(10, 24*time.Hour)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -1800,6 +1890,201 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+			items, nextCursor, err := listEvents(db, authUserID, hasAuth, eventFilterFromRequest(r))
+			if err != nil {
+				handleEventError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"events": items, "next_cursor": nextCursor})
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if !eventCreateLimiter.Allow(fmt.Sprintf("event-create:%d", userID)) {
+				writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+				return
+			}
+			var req createEventRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			item, err := createEvent(db, userID, req)
+			if err != nil {
+				handleEventError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"event": item})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/events/calendar", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		year, _ := strconv.Atoi(r.URL.Query().Get("year"))
+		month, _ := strconv.Atoi(r.URL.Query().Get("month"))
+		if year < 2000 || year > 2100 || month < 1 || month > 12 {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры календаря")
+			return
+		}
+		authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+		items, err := listEventsByDate(db, year, month, authUserID, hasAuth)
+		if err != nil {
+			handleEventError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"events": items})
+	})
+
+	mux.HandleFunc("/api/events/", func(w http.ResponseWriter, r *http.Request) {
+		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/events/"), "/")
+		parts := strings.Split(rest, "/")
+		if rest == "" || len(parts) == 0 {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		publicID := parts[0]
+		if !isValidEventPublicID(publicID) {
+			writeError(w, http.StatusBadRequest, "Некорректный id мероприятия")
+			return
+		}
+		if len(parts) == 1 {
+			switch r.Method {
+			case http.MethodGet:
+				authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+				item, err := getEvent(db, publicID, authUserID, hasAuth)
+				if err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"event": item})
+			case http.MethodPatch:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				if !eventPatchLimiter.Allow(fmt.Sprintf("event-patch:%d", userID)) {
+					writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+					return
+				}
+				var req updateEventRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				item, err := updateEvent(db, userID, publicID, req)
+				if err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"event": item})
+			case http.MethodDelete:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				if !eventDeleteLimiter.Allow(fmt.Sprintf("event-delete:%d", userID)) {
+					writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+					return
+				}
+				if err := deleteEvent(db, userID, publicID); err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+
+		switch parts[1] {
+		case "register":
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if !eventRegisterLimiter.Allow(fmt.Sprintf("event-register:%d", userID)) {
+				writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+				return
+			}
+			if r.Method == http.MethodPost {
+				var req registerToEventRequest
+				_ = decodeJSON(w, r, &req)
+				status, count, err := registerToEvent(db, userID, publicID, req.TicketType)
+				if err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": status, "registered_count": count})
+				return
+			}
+			if r.Method == http.MethodDelete {
+				count, err := cancelEventRegistration(db, userID, publicID)
+				if err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "cancelled", "registered_count": count})
+				return
+			}
+		case "save":
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if !eventSaveLimiter.Allow(fmt.Sprintf("event-save:%d", userID)) {
+				writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+				return
+			}
+			if r.Method == http.MethodPost {
+				count, err := saveEvent(db, userID, publicID)
+				if err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "saved", "saved_count": count})
+				return
+			}
+			if r.Method == http.MethodDelete {
+				count, err := unsaveEvent(db, userID, publicID)
+				if err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "saved_count": count})
+				return
+			}
+		case "registrations":
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			limit := parseLimit(r.URL.Query().Get("limit"), 20, 100)
+			items, err := listEventRegistrations(db, userID, publicID, limit)
+			if err != nil {
+				handleEventError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"registrations": items})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	})
+
 	mux.HandleFunc("/api/posts", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -2447,6 +2732,75 @@ CREATE TABLE IF NOT EXISTS post_comments (
 CREATE INDEX IF NOT EXISTS post_comments_post_idx
     ON post_comments(post_id, created_at DESC) WHERE is_deleted = FALSE;
 
+-- Мероприятия платформы
+CREATE TABLE IF NOT EXISTS events (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    organizer_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 3 AND 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 10000),
+    type TEXT NOT NULL DEFAULT 'webinar',
+    format TEXT NOT NULL DEFAULT 'online',
+    category TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    venue TEXT NOT NULL DEFAULT '',
+    online_url TEXT NOT NULL DEFAULT '',
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    timezone TEXT NOT NULL DEFAULT 'Europe/Moscow',
+    cover_url TEXT NOT NULL DEFAULT '',
+    banner_color TEXT NOT NULL DEFAULT '',
+    fee_cents INTEGER NOT NULL DEFAULT 0 CHECK (fee_cents >= 0),
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    seats_total INTEGER NOT NULL DEFAULT 0 CHECK (seats_total >= 0),
+    registered_count INTEGER NOT NULL DEFAULT 0,
+    saved_count INTEGER NOT NULL DEFAULT 0,
+    views_count INTEGER NOT NULL DEFAULT 0,
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'published',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (type IN ('webinar', 'conference', 'workshop', 'networking', 'roundtable', 'meetup', 'other')),
+    CHECK (format IN ('online', 'offline', 'hybrid')),
+    CHECK (status IN ('draft', 'published', 'cancelled', 'finished')),
+    CHECK (ends_at >= starts_at)
+);
+
+CREATE INDEX IF NOT EXISTS events_starts_at_idx
+    ON events (starts_at) WHERE is_deleted = FALSE AND status = 'published';
+CREATE INDEX IF NOT EXISTS events_organizer_idx
+    ON events (organizer_id, starts_at DESC) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS events_community_idx
+    ON events (community_id, starts_at DESC) WHERE community_id IS NOT NULL AND is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS events_type_idx
+    ON events (type, starts_at DESC) WHERE is_deleted = FALSE AND status = 'published';
+
+CREATE TABLE IF NOT EXISTS event_registrations (
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ticket_type TEXT NOT NULL DEFAULT 'standard',
+    status TEXT NOT NULL DEFAULT 'confirmed',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (event_id, user_id),
+    CHECK (status IN ('confirmed', 'cancelled', 'waitlist'))
+);
+
+CREATE INDEX IF NOT EXISTS event_registrations_user_idx
+    ON event_registrations (user_id, created_at DESC) WHERE status = 'confirmed';
+
+CREATE TABLE IF NOT EXISTS event_saves (
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (event_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS event_saves_user_idx
+    ON event_saves (user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     notif_email BOOLEAN NOT NULL DEFAULT TRUE,
@@ -2552,6 +2906,9 @@ CREATE INDEX IF NOT EXISTS chat_typing_started_idx
 
 	if err := migratePublicationSeedData(db); err != nil {
 		return fmt.Errorf("migrate publication seed data: %w", err)
+	}
+	if err := migrateEventSeedData(db); err != nil {
+		return fmt.Errorf("migrate event seed data: %w", err)
 	}
 
 	return nil
@@ -4711,6 +5068,163 @@ func parseIDOrZero(raw string) int64 {
 	return v
 }
 
+var eventTypes = map[string]struct{}{
+	"webinar": {}, "conference": {}, "workshop": {}, "networking": {}, "roundtable": {}, "meetup": {}, "other": {},
+}
+var eventFormats = map[string]struct{}{"online": {}, "offline": {}, "hybrid": {}}
+var eventStatuses = map[string]struct{}{"draft": {}, "published": {}, "cancelled": {}, "finished": {}}
+var eventCurrencies = map[string]struct{}{"RUB": {}, "USD": {}, "EUR": {}, "KZT": {}, "BYN": {}}
+
+type listEventsFilter struct {
+	Type         string
+	Format       string
+	Mode         string
+	From         *time.Time
+	To           *time.Time
+	Query        string
+	Limit        int
+	BeforeCursor int64
+}
+
+func newPublicEventID() (string, error) {
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return "evt_" + hex.EncodeToString(b), nil
+}
+
+func isValidEventPublicID(s string) bool {
+	if len(s) == 13 && strings.HasPrefix(s, "evt") {
+		for _, ch := range s[3:] {
+			if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
+				return false
+			}
+		}
+		return true
+	}
+	if len(s) != 16 || !strings.HasPrefix(s, "evt_") {
+		return false
+	}
+	for _, ch := range s[4:] {
+		if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func parseEventTime(s string, tz string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC(), nil
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		loc = time.FixedZone("MSK", 3*3600)
+	}
+	t, err := time.ParseInLocation("2006-01-02T15:04", s, loc)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: неверный формат времени", errValidation)
+	}
+	return t.UTC(), nil
+}
+
+func validateEvent(req *createEventRequest, userID int64, db *sql.DB) (time.Time, time.Time, error) {
+	req.Title = strings.TrimSpace(req.Title)
+	req.Description = strings.TrimSpace(req.Description)
+	req.City = strings.TrimSpace(req.City)
+	req.OnlineURL = strings.TrimSpace(req.OnlineURL)
+	req.Timezone = strings.TrimSpace(req.Timezone)
+	if req.Timezone == "" {
+		req.Timezone = "Europe/Moscow"
+	}
+	if len(req.Title) < 3 || len(req.Title) > 200 {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: название 3..200 символов", errValidation)
+	}
+	if len(req.Description) > 10000 {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: описание слишком длинное", errValidation)
+	}
+	if req.Type == "" {
+		req.Type = "webinar"
+	}
+	if _, ok := eventTypes[req.Type]; !ok {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: некорректный type", errValidation)
+	}
+	if req.Format == "" {
+		req.Format = "online"
+	}
+	if _, ok := eventFormats[req.Format]; !ok {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: некорректный format", errValidation)
+	}
+	startsAt, err := parseEventTime(req.StartsAt, req.Timezone)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	endsAt, err := parseEventTime(req.EndsAt, req.Timezone)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	if endsAt.Before(startsAt) {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: ends_at должен быть >= starts_at", errValidation)
+	}
+	if req.Format != "online" && len(req.City) < 1 {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: для офлайн/гибрид нужен city", errValidation)
+	}
+	if req.Format != "offline" {
+		if !strings.HasPrefix(req.OnlineURL, "https://") || len(req.OnlineURL) > 500 {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: online_url должен начинаться с https://", errValidation)
+		}
+	}
+	if req.FeeCents < 0 || req.FeeCents > 100_000_000 {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: некорректная стоимость", errValidation)
+	}
+	if req.Currency == "" {
+		req.Currency = "RUB"
+	}
+	if _, ok := eventCurrencies[req.Currency]; !ok {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: некорректная валюта", errValidation)
+	}
+	if req.SeatsTotal < 0 || req.SeatsTotal > 100000 {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: некорректное количество мест", errValidation)
+	}
+	tags, err := validateTags(req.Tags)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	req.Tags = tags
+	if req.CommunityID != nil {
+		var role string
+		err := db.QueryRow(`SELECT role FROM community_members WHERE community_id=$1 AND user_id=$2`, *req.CommunityID, userID).Scan(&role)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return time.Time{}, time.Time{}, fmt.Errorf("%w: нет прав в сообществе", errForbidden)
+			}
+			return time.Time{}, time.Time{}, err
+		}
+		if role != "owner" && role != "admin" {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: нет прав в сообществе", errForbidden)
+		}
+	}
+	return startsAt, endsAt, nil
+}
+
+func handleEventError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errValidation):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, errForbidden):
+		writeError(w, http.StatusForbidden, err.Error())
+	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, "Мероприятие не найдено")
+	case errors.Is(err, errConflict):
+		writeError(w, http.StatusConflict, err.Error())
+	default:
+		log.Printf("event error: %v", err)
+		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+	}
+}
+
 func extractPathParam(pathValue, prefix string) (string, bool) {
 	if !strings.HasPrefix(pathValue, prefix) {
 		return "", false
@@ -4758,6 +5272,427 @@ func handlePostActionError(w http.ResponseWriter, err error) {
 		log.Printf("post action error: %v", err)
 		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
 	}
+}
+
+func eventFilterFromRequest(r *http.Request) listEventsFilter {
+	q := r.URL.Query()
+	f := listEventsFilter{
+		Type:         strings.TrimSpace(q.Get("type")),
+		Format:       strings.TrimSpace(q.Get("format")),
+		Mode:         strings.TrimSpace(q.Get("mode")),
+		Query:        strings.TrimSpace(q.Get("q")),
+		Limit:        parseLimit(q.Get("limit"), 20, 100),
+		BeforeCursor: parseIDOrZero(q.Get("before_id")),
+	}
+	if f.Mode == "" {
+		f.Mode = "all"
+	}
+	if raw := strings.TrimSpace(q.Get("from")); raw != "" {
+		if t, err := time.Parse(time.RFC3339, raw); err == nil {
+			u := t.UTC()
+			f.From = &u
+		}
+	}
+	if raw := strings.TrimSpace(q.Get("to")); raw != "" {
+		if t, err := time.Parse(time.RFC3339, raw); err == nil {
+			u := t.UTC()
+			f.To = &u
+		}
+	}
+	return f
+}
+
+func scanEventRow(row scanner) (event, error) {
+	var item event
+	var tagsJSON []byte
+	var communityName sql.NullString
+	var communityID sql.NullInt64
+	err := row.Scan(
+		&item.ID, &item.PublicID, &item.OrganizerID, &item.OrganizerPublic, &item.OrganizerName,
+		&communityID, &communityName, &item.Title, &item.Description, &item.Type, &item.Format, &item.Category,
+		&item.City, &item.Address, &item.Venue, &item.OnlineURL, &item.StartsAt, &item.EndsAt, &item.Timezone,
+		&item.CoverURL, &item.BannerColor, &item.FeeCents, &item.Currency, &item.SeatsTotal, &item.RegisteredCount,
+		&item.SavedCount, &item.ViewsCount, &tagsJSON, &item.Status, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		return event{}, err
+	}
+	if communityID.Valid {
+		id := communityID.Int64
+		item.CommunityID = &id
+	}
+	if communityName.Valid {
+		item.CommunityName = communityName.String
+	}
+	_ = json.Unmarshal(tagsJSON, &item.Tags)
+	return item, nil
+}
+
+type scanner interface{ Scan(dest ...any) error }
+
+func createEvent(db *sql.DB, organizerID int64, req createEventRequest) (event, error) {
+	startsAt, endsAt, err := validateEvent(&req, organizerID, db)
+	if err != nil {
+		return event{}, err
+	}
+	var pgTags pgtype.FlatArray[string] = req.Tags
+	for i := 0; i < 5; i++ {
+		pid, err := newPublicEventID()
+		if err != nil {
+			return event{}, err
+		}
+		row := db.QueryRow(`
+			INSERT INTO events (public_id, organizer_id, community_id, title, description, type, format, category, city, address, venue, online_url, starts_at, ends_at, timezone, cover_url, banner_color, fee_cents, currency, seats_total, tags, status)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'published')
+			RETURNING id, public_id, organizer_id,
+			  (SELECT public_id FROM users WHERE id=organizer_id),
+			  (SELECT full_name FROM users WHERE id=organizer_id),
+			  community_id, (SELECT name FROM communities WHERE id=community_id),
+			  title, description, type, format, category, city, address, venue, online_url, starts_at, ends_at, timezone,
+			  cover_url, banner_color, fee_cents, currency, seats_total, registered_count, saved_count, views_count,
+			  COALESCE(array_to_json(tags), '[]'::json), status, created_at, updated_at
+		`, pid, organizerID, req.CommunityID, req.Title, req.Description, req.Type, req.Format, req.Category, req.City, req.Address, req.Venue, req.OnlineURL, startsAt, endsAt, req.Timezone, req.CoverURL, req.BannerColor, req.FeeCents, req.Currency, req.SeatsTotal, pgTags)
+		item, err := scanEventRow(row)
+		if err == nil {
+			item.IsMine = true
+			return item, nil
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			continue
+		}
+		return event{}, err
+	}
+	return event{}, fmt.Errorf("failed to allocate event public_id")
+}
+
+func getEvent(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (event, error) {
+	item, err := getEventNoView(db, publicID, viewerID, hasAuth)
+	if err != nil {
+		return event{}, err
+	}
+	_, _ = db.Exec(`UPDATE events SET views_count = views_count + 1 WHERE id=$1`, item.ID)
+	item.ViewsCount++
+	return item, nil
+}
+
+func getEventNoView(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (event, error) {
+	row := db.QueryRow(`
+		SELECT e.id, e.public_id, e.organizer_id, u.public_id, u.full_name, e.community_id, COALESCE(c.name,''),
+		 e.title, e.description, e.type, e.format, e.category, e.city, e.address, e.venue, e.online_url,
+		 e.starts_at, e.ends_at, e.timezone, e.cover_url, e.banner_color, e.fee_cents, e.currency, e.seats_total,
+		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at
+		FROM events e
+		JOIN users u ON u.id=e.organizer_id
+		LEFT JOIN communities c ON c.id=e.community_id
+		WHERE e.public_id=$1 AND e.is_deleted=FALSE AND (e.status='published' OR e.organizer_id=$2)
+	`, publicID, viewerID)
+	item, err := scanEventRow(row)
+	if err != nil {
+		return event{}, err
+	}
+	if hasAuth {
+		_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM event_registrations WHERE event_id=$1 AND user_id=$2 AND status='confirmed')`, item.ID, viewerID).Scan(&item.IsRegistered)
+		_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM event_saves WHERE event_id=$1 AND user_id=$2)`, item.ID, viewerID).Scan(&item.IsSaved)
+		item.IsMine = item.OrganizerID == viewerID
+	}
+	return item, nil
+}
+
+func listEvents(db *sql.DB, viewerID int64, hasAuth bool, f listEventsFilter) ([]event, int64, error) {
+	args := []any{}
+	where := []string{"e.is_deleted=FALSE", "e.status='published'"}
+	if f.Mode == "organized" {
+		where = []string{"e.is_deleted=FALSE", "e.organizer_id=$1"}
+		args = append(args, viewerID)
+	} else if f.Mode == "mine" {
+		where = append(where, "EXISTS(SELECT 1 FROM event_registrations er WHERE er.event_id=e.id AND er.user_id=$1 AND er.status='confirmed')")
+		args = append(args, viewerID)
+	} else if f.Mode == "saved" {
+		where = append(where, "EXISTS(SELECT 1 FROM event_saves es WHERE es.event_id=e.id AND es.user_id=$1)")
+		args = append(args, viewerID)
+	}
+	if f.Type != "" {
+		args = append(args, f.Type)
+		where = append(where, fmt.Sprintf("e.type=$%d", len(args)))
+	}
+	if f.Format != "" {
+		args = append(args, f.Format)
+		where = append(where, fmt.Sprintf("e.format=$%d", len(args)))
+	}
+	if f.From != nil {
+		args = append(args, *f.From)
+		where = append(where, fmt.Sprintf("e.starts_at >= $%d", len(args)))
+	}
+	if f.To != nil {
+		args = append(args, *f.To)
+		where = append(where, fmt.Sprintf("e.starts_at <= $%d", len(args)))
+	}
+	if f.Query != "" {
+		args = append(args, "%"+chatEscapeILike(f.Query)+"%")
+		where = append(where, fmt.Sprintf("(e.title ILIKE $%d ESCAPE '\\' OR e.description ILIKE $%d ESCAPE '\\')", len(args), len(args)))
+	}
+	if f.From == nil && f.To == nil && f.Mode == "all" {
+		where = append(where, "e.starts_at >= NOW() - INTERVAL '1 day'")
+	}
+	args = append(args, f.Limit)
+	rows, err := db.Query(`
+		SELECT e.id, e.public_id, e.organizer_id, u.public_id, u.full_name, e.community_id, COALESCE(c.name,''),
+		 e.title, e.description, e.type, e.format, e.category, e.city, e.address, e.venue, e.online_url,
+		 e.starts_at, e.ends_at, e.timezone, e.cover_url, e.banner_color, e.fee_cents, e.currency, e.seats_total,
+		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at
+		FROM events e
+		JOIN users u ON u.id=e.organizer_id
+		LEFT JOIN communities c ON c.id=e.community_id
+		WHERE `+strings.Join(where, " AND ")+`
+		ORDER BY e.starts_at ASC, e.id DESC
+		LIMIT $`+strconv.Itoa(len(args)), args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var items []event
+	for rows.Next() {
+		item, err := scanEventRow(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		if hasAuth {
+			_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM event_registrations WHERE event_id=$1 AND user_id=$2 AND status='confirmed')`, item.ID, viewerID).Scan(&item.IsRegistered)
+			_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM event_saves WHERE event_id=$1 AND user_id=$2)`, item.ID, viewerID).Scan(&item.IsSaved)
+			item.IsMine = item.OrganizerID == viewerID
+		}
+		items = append(items, item)
+	}
+	return items, 0, nil
+}
+
+func updateEvent(db *sql.DB, userID int64, publicID string, req updateEventRequest) (event, error) {
+	current, err := getEventNoView(db, publicID, userID, true)
+	if err != nil {
+		return event{}, err
+	}
+	if current.OrganizerID != userID {
+		return event{}, fmt.Errorf("%w: нельзя редактировать чужое мероприятие", errForbidden)
+	}
+	if req.Title != nil {
+		current.Title = strings.TrimSpace(*req.Title)
+	}
+	if req.Description != nil {
+		current.Description = strings.TrimSpace(*req.Description)
+	}
+	if req.Type != nil {
+		current.Type = *req.Type
+	}
+	if req.Format != nil {
+		current.Format = *req.Format
+	}
+	if req.Category != nil {
+		current.Category = *req.Category
+	}
+	if req.City != nil {
+		current.City = *req.City
+	}
+	if req.Address != nil {
+		current.Address = *req.Address
+	}
+	if req.Venue != nil {
+		current.Venue = *req.Venue
+	}
+	if req.OnlineURL != nil {
+		current.OnlineURL = *req.OnlineURL
+	}
+	if req.Timezone != nil {
+		current.Timezone = *req.Timezone
+	}
+	if req.CoverURL != nil {
+		current.CoverURL = *req.CoverURL
+	}
+	if req.BannerColor != nil {
+		current.BannerColor = *req.BannerColor
+	}
+	if req.FeeCents != nil {
+		current.FeeCents = *req.FeeCents
+	}
+	if req.Currency != nil {
+		current.Currency = *req.Currency
+	}
+	if req.SeatsTotal != nil {
+		current.SeatsTotal = *req.SeatsTotal
+	}
+	if req.Status != nil {
+		if _, ok := eventStatuses[*req.Status]; !ok {
+			return event{}, fmt.Errorf("%w: некорректный status", errValidation)
+		}
+		current.Status = *req.Status
+	}
+	if req.Tags != nil {
+		current.Tags = *req.Tags
+	}
+	if req.StartsAt != nil {
+		current.StartsAt, _ = parseEventTime(*req.StartsAt, current.Timezone)
+	}
+	if req.EndsAt != nil {
+		current.EndsAt, _ = parseEventTime(*req.EndsAt, current.Timezone)
+	}
+	var pgTags pgtype.FlatArray[string] = current.Tags
+	_, err = db.Exec(`UPDATE events SET title=$1, description=$2, type=$3, format=$4, category=$5, city=$6, address=$7, venue=$8, online_url=$9, starts_at=$10, ends_at=$11, timezone=$12, cover_url=$13, banner_color=$14, fee_cents=$15, currency=$16, seats_total=$17, tags=$18, status=$19, updated_at=NOW() WHERE public_id=$20 AND organizer_id=$21`,
+		current.Title, current.Description, current.Type, current.Format, current.Category, current.City, current.Address, current.Venue, current.OnlineURL, current.StartsAt, current.EndsAt, current.Timezone, current.CoverURL, current.BannerColor, current.FeeCents, current.Currency, current.SeatsTotal, pgTags, current.Status, publicID, userID)
+	if err != nil {
+		return event{}, err
+	}
+	return getEventNoView(db, publicID, userID, true)
+}
+
+func deleteEvent(db *sql.DB, userID int64, publicID string) error {
+	res, err := db.Exec(`UPDATE events SET is_deleted=TRUE, status='cancelled', updated_at=NOW() WHERE public_id=$1 AND organizer_id=$2`, publicID, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errForbidden
+	}
+	return nil
+}
+
+func registerToEvent(db *sql.DB, userID int64, publicID, ticketType string) (string, int, error) {
+	if len(ticketType) > 32 {
+		return "", 0, fmt.Errorf("%w: ticket_type слишком длинный", errValidation)
+	}
+	if ticketType == "" {
+		ticketType = "standard"
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return "", 0, err
+	}
+	defer tx.Rollback()
+	var eventID int64
+	var seatsTotal, regCount int
+	err = tx.QueryRow(`SELECT id, seats_total, registered_count FROM events WHERE public_id=$1 AND is_deleted=FALSE AND status='published' AND ends_at > NOW()`, publicID).Scan(&eventID, &seatsTotal, &regCount)
+	if err != nil {
+		return "", 0, errNotFound
+	}
+	status := "confirmed"
+	if seatsTotal > 0 && regCount >= seatsTotal {
+		status = "waitlist"
+	}
+	_, err = tx.Exec(`INSERT INTO event_registrations(event_id,user_id,ticket_type,status) VALUES ($1,$2,$3,$4) ON CONFLICT (event_id,user_id) DO UPDATE SET status=EXCLUDED.status, ticket_type=EXCLUDED.ticket_type`, eventID, userID, ticketType, status)
+	if err != nil {
+		return "", 0, err
+	}
+	var count int
+	if err := tx.QueryRow(`UPDATE events SET registered_count=(SELECT COUNT(*) FROM event_registrations WHERE event_id=$1 AND status='confirmed') WHERE id=$1 RETURNING registered_count`, eventID).Scan(&count); err != nil {
+		return "", 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", 0, err
+	}
+	return status, count, nil
+}
+
+func cancelEventRegistration(db *sql.DB, userID int64, publicID string) (int, error) {
+	var eventID int64
+	if err := db.QueryRow(`SELECT id FROM events WHERE public_id=$1`, publicID).Scan(&eventID); err != nil {
+		return 0, errNotFound
+	}
+	_, _ = db.Exec(`UPDATE event_registrations SET status='cancelled' WHERE event_id=$1 AND user_id=$2`, eventID, userID)
+	var count int
+	if err := db.QueryRow(`UPDATE events SET registered_count=(SELECT COUNT(*) FROM event_registrations WHERE event_id=$1 AND status='confirmed') WHERE id=$1 RETURNING registered_count`, eventID).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func saveEvent(db *sql.DB, userID int64, publicID string) (int, error) {
+	var eventID int64
+	if err := db.QueryRow(`SELECT id FROM events WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&eventID); err != nil {
+		return 0, errNotFound
+	}
+	_, err := db.Exec(`INSERT INTO event_saves(event_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, eventID, userID)
+	if err != nil {
+		return 0, err
+	}
+	var count int
+	if err := db.QueryRow(`UPDATE events SET saved_count=(SELECT COUNT(*) FROM event_saves WHERE event_id=$1) WHERE id=$1 RETURNING saved_count`, eventID).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func unsaveEvent(db *sql.DB, userID int64, publicID string) (int, error) {
+	var eventID int64
+	if err := db.QueryRow(`SELECT id FROM events WHERE public_id=$1`, publicID).Scan(&eventID); err != nil {
+		return 0, errNotFound
+	}
+	_, err := db.Exec(`DELETE FROM event_saves WHERE event_id=$1 AND user_id=$2`, eventID, userID)
+	if err != nil {
+		return 0, err
+	}
+	var count int
+	if err := db.QueryRow(`UPDATE events SET saved_count=(SELECT COUNT(*) FROM event_saves WHERE event_id=$1) WHERE id=$1 RETURNING saved_count`, eventID).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func listEventsByDate(db *sql.DB, year, month int, viewerID int64, hasAuth bool) ([]event, error) {
+	from := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 1, 0).Add(-time.Second)
+	items, _, err := listEvents(db, viewerID, hasAuth, listEventsFilter{From: &from, To: &to, Limit: 200, Mode: "all"})
+	return items, err
+}
+
+func listEventRegistrations(db *sql.DB, userID int64, publicID string, limit int) ([]map[string]any, error) {
+	var eventID int64
+	var organizerID int64
+	if err := db.QueryRow(`SELECT id, organizer_id FROM events WHERE public_id=$1`, publicID).Scan(&eventID, &organizerID); err != nil {
+		return nil, errNotFound
+	}
+	if organizerID != userID {
+		return nil, errForbidden
+	}
+	rows, err := db.Query(`SELECT u.public_id, u.full_name, er.ticket_type, er.status, er.created_at FROM event_registrations er JOIN users u ON u.id=er.user_id WHERE er.event_id=$1 ORDER BY er.created_at DESC LIMIT $2`, eventID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]any
+	for rows.Next() {
+		var pub, name, ticket, status string
+		var created time.Time
+		if err := rows.Scan(&pub, &name, &ticket, &status, &created); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{"user_public_id": pub, "full_name": name, "ticket_type": ticket, "status": status, "created_at": created})
+	}
+	return out, nil
+}
+
+func migrateEventSeedData(db *sql.DB) error {
+	var seedID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE email=$1`, "seed.lastop@local").Scan(&seedID); err != nil {
+		return nil
+	}
+	seeds := []struct {
+		id    string
+		title string
+		typ   string
+		days  int
+	}{
+		{"evt1a2b3c4d5", "Вебинар: контроль поставок в 2026", "webinar", 2},
+		{"evt2a3b4c5d6", "Конференция логистических лидеров", "conference", 7},
+		{"evt3a4b5c6d7", "Воркшоп по таможенному комплаенсу", "workshop", 14},
+	}
+	for _, s := range seeds {
+		_, err := db.Exec(`INSERT INTO events(public_id, organizer_id, title, description, type, format, starts_at, ends_at, timezone, online_url, status)
+			VALUES ($1,$2,$3,$4,$5,'online',NOW()+($6||' days')::interval,NOW()+($6||' days')::interval+INTERVAL '2 hour','Europe/Moscow','https://lastop.local/events','published')
+			ON CONFLICT (public_id) DO NOTHING`, s.id, seedID, s.title, "Seed событие", s.typ, s.days)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func handleChatError(w http.ResponseWriter, err error) {

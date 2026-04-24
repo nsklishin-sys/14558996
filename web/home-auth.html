@@ -682,7 +682,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   loadTasks();
   loadChats();
   loadForumThreads();
-  loadEvents();
+  loadCalendarMonth(CAL_STATE.year,CAL_STATE.month);
   loadFeed();
   loadRec();
   document.querySelector('.feed-toolbar').addEventListener('click',e=>{
@@ -867,61 +867,45 @@ function demoForum(){return[
 ];}
 
 /* ── МЕРОПРИЯТИЯ И КАЛЕНДАРЬ ── */
-let ALL_EVENTS=[];
-async function loadEvents(){
+let CAL_STATE={year:new Date().getFullYear(),month:new Date().getMonth(),events:[],selectedDay:null};
+async function loadCalendarMonth(year,month){
+  CAL_STATE.year=year;CAL_STATE.month=month;
   try{
-    const r=await fetch(API+'/events?limit=20',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await fetch(`${API}/events/calendar?year=${year}&month=${month+1}`,{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
-    ALL_EVENTS=d.events||[];
-  }catch{ALL_EVENTS=demoEvents();}
+    CAL_STATE.events=d.events||[];
+  }catch{CAL_STATE.events=[];}
   renderCalendar();
 }
-function demoEvents(){
-  const y=new Date().getFullYear(),m=new Date().getMonth();
-  return[
-    {id:1,title:'Форум «Логистика 2026»',date:new Date(y,m,24).toISOString(),format:'offline',subtitle:'Москва · панельная дискуссия'},
-    {id:2,title:'Вебинар по таможенному комплаенсу',date:new Date(y,m,26).toISOString(),format:'online',subtitle:'LASTOP Digital · 15:00'},
-    {id:3,title:'LogisticsPro 2026',date:new Date(y,m,30).toISOString(),format:'offline',subtitle:'Москва · выставка'},
-  ];
-}
 function renderCalendar(){
-  const now=new Date(),year=now.getFullYear(),month=now.getMonth(),today=now.getDate();
   const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   const DOWS=['пн','вт','ср','чт','пт','сб','вс'];
-  const eventDays=new Set(ALL_EVENTS.map(e=>{const d=new Date(e.date);return(d.getFullYear()===year&&d.getMonth()===month)?d.getDate():null;}).filter(Boolean));
-  const firstDow=(new Date(year,month,1).getDay()+6)%7;
-  const totalDays=new Date(year,month+1,0).getDate();
-  const prevLast=new Date(year,month,0).getDate();
-  let html=`<div class="cal-month">${MONTHS[month]} ${year}</div>
-    <div class="cal-header">${DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div>
-    <div class="cal-grid">`;
+  const y=CAL_STATE.year,m=CAL_STATE.month;
+  const now=new Date();
+  const firstDow=(new Date(y,m,1).getDay()+6)%7,totalDays=new Date(y,m+1,0).getDate(),prevLast=new Date(y,m,0).getDate();
+  const byDay={};
+  CAL_STATE.events.forEach(ev=>{const d=new Date(ev.starts_at);if(d.getFullYear()===y&&d.getMonth()===m){const k=d.getDate();(byDay[k]=byDay[k]||[]).push(ev);}});
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><button class="cal-nav-btn" onclick="loadCalendarMonth(CAL_STATE.month===0?CAL_STATE.year-1:CAL_STATE.year,CAL_STATE.month===0?11:CAL_STATE.month-1)">‹</button><div class="cal-month">${MONTHS[m]} ${y}</div><div style="display:flex;gap:6px"><button class="cal-nav-btn" onclick="loadCalendarMonth(CAL_STATE.month===11?CAL_STATE.year+1:CAL_STATE.year,CAL_STATE.month===11?0:CAL_STATE.month+1)">›</button><button class="cal-today-btn" onclick="CAL_STATE.selectedDay=now.getDate();loadCalendarMonth(now.getFullYear(),now.getMonth())">Сегодня</button></div></div>`;
+  html+=`<div class="cal-header">${DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div><div class="cal-grid">`;
   for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-day other-month">${prevLast-i}</div>`;
   for(let d=1;d<=totalDays;d++){
-    const isToday=d===today,hasEvent=eventDays.has(d);
-    let cls='cal-day';
-    if(isToday)cls+=' today';else if(hasEvent)cls+=' event-day';
-    if(hasEvent)cls+=' has-event';
-    html+=`<div class="${cls}">${d}</div>`;
+    const cls=['cal-day'];if(now.getFullYear()===y&&now.getMonth()===m&&now.getDate()===d)cls.push('today');if(byDay[d]?.length)cls.push('has-event');if(CAL_STATE.selectedDay===d)cls.push('selected');
+    html+=`<button type="button" class="${cls.join(' ')}" onclick="pickDay(${d})">${d}</button>`;
   }
-  const cells=Math.ceil((firstDow+totalDays)/7)*7;
-  for(let i=1;i<=cells-firstDow-totalDays;i++)html+=`<div class="cal-day other-month">${i}</div>`;
+  const cells=Math.ceil((firstDow+totalDays)/7)*7;for(let i=1;i<=cells-firstDow-totalDays;i++)html+=`<div class="cal-day other-month">${i}</div>`;
   html+='</div>';
-  const upcoming=ALL_EVENTS.filter(e=>new Date(e.date)>=new Date(year,month,today)).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,3);
-  html+='<div class="ev-list">'+upcoming.map(e=>{
-    const d=new Date(e.date),day=d.getDate(),mon=d.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');
-    const online=e.format==='online'||e.is_online;
-    const id=e.id?'?id='+e.id:'';
-    return`<div class="ev-item" onclick="location.href='/events.html${id}'">
-      <div class="ev-date-box"><div class="ev-d">${day}</div><div class="ev-m">${mon}</div></div>
-      <div class="ev-info">
-        <div class="ev-title">${esc(e.title)}<span class="ev-tag ${online?'ev-online':'ev-live'}">${online?'онлайн':'офлайн'}</span></div>
-        <div class="ev-sub">${esc(e.subtitle||e.city||'')}</div>
-      </div></div>`;
-  }).join('')+'</div>';
+  const dayList=CAL_STATE.selectedDay&&byDay[CAL_STATE.selectedDay]?byDay[CAL_STATE.selectedDay].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)):[];
+  if(dayList.length){html+='<div class="ev-list">'+dayList.map(ev=>`<div class="ev-item" onclick="location.href='/event-detail.html?id=${encodeURIComponent(ev.public_id)}'"><div class="ev-info"><div class="ev-title">${new Date(ev.starts_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})} — ${esc(ev.title)}<span class="ev-tag">${esc(ev.format||'')}</span></div></div></div>`).join('')+'</div>';}
+  const upcoming=CAL_STATE.events.filter(e=>new Date(e.starts_at)>=new Date()).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,3);
+  html+='<div class="ev-list">'+upcoming.map(e=>`<div class="ev-item" onclick="location.href='/event-detail.html?id=${encodeURIComponent(e.public_id)}'"><div class="ev-date-box"><div class="ev-d">${new Date(e.starts_at).getDate()}</div><div class="ev-m">${new Date(e.starts_at).toLocaleDateString('ru-RU',{month:'short'}).replace('.','')}</div></div><div class="ev-info"><div class="ev-title">${esc(e.title)}<span class="ev-tag ${(e.format==='online')?'ev-online':'ev-live'}">${e.format==='online'?'онлайн':'офлайн'}</span></div></div></div>`).join('')+'</div>';
   document.getElementById('calendarWidget').innerHTML=html;
 }
-
+function pickDay(day){
+  const list=CAL_STATE.events.filter(ev=>{const d=new Date(ev.starts_at);return d.getFullYear()===CAL_STATE.year&&d.getMonth()===CAL_STATE.month&&d.getDate()===day;});
+  CAL_STATE.selectedDay=list.length?day:null;renderCalendar();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadCalendarMonth(CAL_STATE.year,CAL_STATE.month)});
 /* ── РЕКОМЕНДАЦИИ (правый сайдбар) ── */
 function loadRec(){
   const recs=[
