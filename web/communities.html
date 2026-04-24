@@ -466,6 +466,18 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0)}
+function membersLabel(n,{compact=false}={}){
+  const count=Math.max(0,Number(n)||0);
+  const formatted=compact?num(count):count.toLocaleString('ru-RU');
+  const mod100=count%100;
+  const mod10=count%10;
+  let noun='участников';
+  if(mod100<11||mod100>14){
+    if(mod10===1)noun='участник';
+    else if(mod10>=2&&mod10<=4)noun='участника';
+  }
+  return `${formatted} ${noun}`;
+}
 function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})}
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
 
@@ -506,7 +518,7 @@ function renderCard(c,i){
       <div class="cc-tags-row">${c.tags.slice(0,2).map(t=>`<span class="cc-tag">${esc(t)}</span>`).join('')}</div>
     </div>
     <div class="cc-foot">
-      <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${num(c.members)}</span>
+      <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${membersLabel(c.members)}</span>
       <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${isJoined?'Участник':'Вступить'}</button>
     </div>
   </div>`;
