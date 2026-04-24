@@ -588,45 +588,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- ═══ Таб: ПУБЛИКАЦИИ ═══ -->
   <div class="tab-content" id="tab-publications">
-    <div class="post-card">
-      <div class="pc-head">
-        <div class="pc-av" style="background:#1A8A6A">НК</div>
-        <div><div class="pc-name profile-post-name">Загрузка...</div><div class="pc-meta">Участник LASTOP · 3 ч назад</div></div>
-        <span class="pc-tag t-proj">Проект</span>
-      </div>
-      <div class="pc-text">Рады сообщить об открытии нового маршрута СНГ–ЕС. Мультимодальная перевозка с таможенным сопровождением. Принимаем грузы от 5 тонн.</div>
-      <div class="pc-foot">
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>24</div>
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>7</div>
-        <span class="pc-time">3 ч назад</span>
-      </div>
-    </div>
-    <div class="post-card">
-      <div class="pc-head">
-        <div class="pc-av" style="background:#1A8A6A">НК</div>
-        <div><div class="pc-name profile-post-name">Загрузка...</div><div class="pc-meta">Участник LASTOP · Вчера</div></div>
-        <span class="pc-tag t-news">Заметка</span>
-      </div>
-      <div class="pc-text">Важные изменения в Incoterms 2020 для контрактов с партнёрами из Китая — что учесть в Q2.</div>
-      <div class="pc-foot">
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>52</div>
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>14</div>
-        <span class="pc-time">Вчера</span>
-      </div>
-    </div>
-    <div class="post-card">
-      <div class="pc-head">
-        <div class="pc-av" style="background:#1A8A6A">НК</div>
-        <div><div class="pc-name profile-post-name">Загрузка...</div><div class="pc-meta">Участник LASTOP · 3 дня назад</div></div>
-        <span class="pc-tag t-news">Кейс</span>
-      </div>
-      <div class="pc-text">Как мы сократили время таможенного оформления на 40% за счёт электронного декларирования и интеграции с TMS.</div>
-      <div class="pc-foot">
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>87</div>
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>23</div>
-        <span class="pc-time">3 дня назад</span>
-      </div>
-    </div>
+    <div id="publicationsList"></div>
   </div>
 
   <!-- ═══ Таб: ПРОЕКТЫ ═══ -->
@@ -801,8 +763,11 @@ function avatarLetters(name){
   if(parts.length>=2)return (letter(parts[0])+letter(parts[1])).slice(0,2);
   return letter(parts[0]||name);
 }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
 const API='/api';
 const tk=()=>localStorage.getItem('token');
+let profilePosts=[];
 
 function profileStorageKey(userLike){
   const publicID=userLike?.public_id||'';
@@ -876,6 +841,38 @@ async function applyCurrentUserProfile(){
 }
 void applyCurrentUserProfile();
 
+async function loadOwnPublications(force=false){
+  if(profilePosts.length && !force)return;
+  const me=JSON.parse(localStorage.getItem('user')||'{}');
+  const pid=me.public_id;
+  if(!pid)return;
+  const list=document.getElementById('publicationsList');
+  try{
+    const r=await fetch(`${API}/users/${encodeURIComponent(pid)}/posts?limit=20`,{headers:{Authorization:'Bearer '+tk()}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||'err');
+    profilePosts=d.posts||[];
+  }catch{profilePosts=[];}
+  document.querySelectorAll('.ptab .ptab-count')[0].textContent=String(profilePosts.length);
+  const fullName=document.getElementById('profileFullName').textContent||'Пользователь';
+  const av=avatarLetters(fullName);
+  if(!profilePosts.length){list.innerHTML='<div class="section"><p class="sec-p">Вы пока ничего не публиковали</p></div>';return;}
+  list.innerHTML=profilePosts.map(p=>`<div class="post-card" data-public-id="${p.public_id}" onclick="openProfilePost('${p.public_id}','${p.type||'news'}')">
+      <button onclick="event.stopPropagation();deleteProfilePost('${p.public_id}')" style="margin-left:auto;display:block;border:none;background:transparent;cursor:pointer;color:#d33;font-size:16px">🗑</button>
+      <div class="pc-head"><div class="pc-av">${esc(av)}</div><div><div class="pc-name">${esc(fullName)}</div><div class="pc-meta">${esc(p.author_role||'Участник LASTOP')} · ${esc(ago(p.created_at))}</div></div><span class="pc-tag t-news">${esc(p.type||'news')}</span></div>
+      <div class="pc-text">${esc(p.text||p.content||'')}</div>
+      <div class="pc-foot"><div class="pc-act">${p.likes_count||0}</div><div class="pc-act">${p.comments_count||0}</div><span class="pc-time">${esc(ago(p.created_at))}</span></div>
+    </div>`).join('');
+}
+function openProfilePost(publicID,type){location.href=(type==='news'?'/news-detail.html':'/dashboard.html')+'?id='+encodeURIComponent(publicID);}
+async function deleteProfilePost(publicID){
+  if(!confirm('Удалить публикацию?'))return;
+  const r=await fetch(`${API}/posts/${encodeURIComponent(publicID)}`,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+  if(!r.ok){showToast('Не удалось удалить публикацию');return;}
+  profilePosts=profilePosts.filter(p=>p.public_id!==publicID);
+  await loadOwnPublications(true);
+}
+
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('topbarProfile').classList.toggle('open');
@@ -901,6 +898,7 @@ function switchTab(tab, btn){
   const content=document.getElementById('tab-'+tab);
   if(content)content.classList.add('active');
   if(btn)btn.classList.add('active');
+  if(tab==='publications'){void loadOwnPublications();}
   /* Прокрутка к табам */
   document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }

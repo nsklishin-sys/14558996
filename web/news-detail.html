@@ -679,6 +679,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api', tk=()=>localStorage.getItem('token');
+const postPublicID=new URLSearchParams(location.search).get('id');
+if(!postPublicID){location.href='/dashboard.html';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
@@ -700,9 +702,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElement
 /* ── ЛАЙК ── */
 let liked=false;
 let likeCount=247;
-function toggleLike(){
-  liked=!liked;
-  likeCount+=liked?1:-1;
+async function toggleLike(){
+  const r=await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/like`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){toast(d.error||'Не удалось поставить лайк');return;}
+  liked=!!d.is_liked;
+  likeCount=Number(d.likes_count||0);
   const btn=document.getElementById('btnLike');
   btn.classList.toggle('active',liked);
   btn.classList.add('bump');
@@ -841,16 +846,46 @@ function sendComment(){
   const ta=document.getElementById('commentInput');
   const text=ta.value.trim();
   if(!text){ta.focus();return;}
-  const user=JSON.parse(localStorage.getItem('user')||'{}');
-  const name=user.full_name||user.name||'Пользователь';
-  const newC={id:Date.now(),name,role:'Участник LASTOP',av:ltr(name),color:avc(name),text,likes:0,liked:false,ts:new Date().toISOString(),replies:[]};
-  comments.unshift(newC);
-  commentCount++;
-  ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
-  cancelComment();
-  renderComments();
-  toast('Комментарий опубликован ✓',true);
-  fetch(API+'/news/current/comments',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({content:text})}).catch(()=>{});
+  fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({content:text})})
+    .then(async r=>{
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){toast(d.error||'Не удалось отправить комментарий');return;}
+      const c=d.comment||{};
+      comments.push({id:c.id||Date.now(),name:c.author_name||'Пользователь',role:'Участник LASTOP',av:ltr(c.author_name||'П'),color:avc(c.author_name||'П'),text:c.content||text,likes:0,liked:false,ts:c.created_at||new Date().toISOString(),replies:[]});
+      commentCount=comments.length;
+      ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
+      cancelComment();
+      renderComments();
+      toast('Комментарий опубликован ✓',true);
+    })
+    .catch(()=>toast('Не удалось отправить комментарий'));
+}
+
+async function loadPostAndComments(){
+  const postRes=await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`,{headers:{Authorization:'Bearer '+tk()}});
+  if(postRes.status===404){
+    const container=document.querySelector('.news-card');
+    if(container)container.innerHTML='<h2>Публикация не найдена или удалена</h2>';
+    return;
+  }
+  const postData=await postRes.json().catch(()=>({}));
+  const p=postData.post||{};
+  if(p.public_id){
+    const title=document.querySelector('.news-title'); if(title)title.textContent=p.title||'Публикация';
+    const text=document.querySelector('.news-text'); if(text)text.textContent=p.text||p.content||'';
+    const author=document.querySelector('.author-name'); if(author)author.textContent=p.author||'Участник';
+    const meta=document.querySelector('.news-date'); if(meta)meta.textContent=ago(p.created_at);
+    liked=!!p.is_liked; likeCount=p.likes_count||0; commentCount=p.comments_count||0;
+    ['btnLikeCount','statLikes'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=likeCount});
+    ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
+  }
+  const comRes=await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments?limit=100`,{headers:{Authorization:'Bearer '+tk()}});
+  const comData=await comRes.json().catch(()=>({}));
+  if(comRes.ok){
+    comments=(comData.comments||[]).map(c=>({id:c.id,name:c.author_name||'Участник',role:'Участник LASTOP',av:ltr(c.author_name||'У'),color:avc(c.author_name||'У'),text:c.content,likes:0,liked:false,ts:c.created_at,replies:[]}));
+    commentCount=comments.length;
+    ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
+  }
 }
 
 /* Автораскрытие поля при вводе */
@@ -879,6 +914,7 @@ document.getElementById('commentInput').addEventListener('keydown',e=>{
     const repostAv=document.getElementById('repostUserAv');if(repostAv){repostAv.textContent=L;repostAv.style.background=color}
     const repostName=document.getElementById('repostUserName');if(repostName)repostName.textContent=name;
   }catch{}
+  await loadPostAndComments();
   renderComments();
 })();
 </script>

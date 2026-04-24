@@ -957,8 +957,9 @@ function renderFeedFiltered(type){
     const name=p.author||p.author_name||'Участник';
     const tag=TAG[p.type]||'t-news',lbl=LBL[p.type]||'Публикация';
     const time=p.created_at?ago(p.created_at):(p.ago||'');
-    const href=p.type==='forum'?'/forum.html':'/dashboard.html';
-    const id=p.id?'?id='+p.id:'';
+    const href=p.type==='news'?'/news-detail.html':(p.type==='forum'?'/forum.html':'/dashboard.html');
+    const pid=p.public_id||p.id||'';
+    const id=pid?('?id='+encodeURIComponent(pid)):'';
     const authorHref = profileHref({name, user_id:p.user_id, public_id:p.author_public_id});
     return`<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
       <div class="pc-head">
@@ -980,6 +981,7 @@ function demoFeedPosts(){return[
   {id:3,type:'companies',author:'Загрузка...',role:'Участник LASTOP',text:'ООО «Ластоп Групп» — российская интеграционная компания, формирующая инфраструктуру системного взаимодействия бизнеса. Платформа фиксирует роли участников, объединяет коммерческие и образовательные контуры.',likes_count:12,comments_count:3,created_at:new Date(Date.now()-86400000).toISOString()},
   {id:4,type:'news',author:'NorthBridge Logistics',role:'Партнёр LASTOP',text:'Открываем новый офис в Алматы — теперь обслуживаем маршруты через Казахстан с полным таможенным сопровождением и расширенной сетью агентов.',likes_count:21,comments_count:5,created_at:new Date(Date.now()-172800000).toISOString()},
 ];}
+setInterval(()=>{if(document.visibilityState==='visible'){void loadFeed();}},60000);
 </script>
 <script src="/site-search.js" defer></script>
 </body>

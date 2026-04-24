@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -121,6 +122,51 @@ type createCommunityRequest struct {
 	PrivacyLevel string   `json:"privacy_level"`
 }
 
+type post struct {
+	ID             int64     `json:"id"`
+	PublicID       string    `json:"public_id"`
+	Type           string    `json:"type"`
+	Title          string    `json:"title"`
+	Content        string    `json:"content"`
+	Text           string    `json:"text"`
+	CoverURL       string    `json:"cover_url,omitempty"`
+	Tags           []string  `json:"tags"`
+	PrivacyLevel   string    `json:"privacy_level"`
+	LikesCount     int       `json:"likes_count"`
+	CommentsCount  int       `json:"comments_count"`
+	ViewsCount     int       `json:"views_count"`
+	IsLiked        bool      `json:"is_liked"`
+	CreatedAt      time.Time `json:"created_at"`
+	AuthorID       int64     `json:"-"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author"`
+	AuthorRole     string    `json:"author_role"`
+	AuthorAvatar   string    `json:"author_avatar,omitempty"`
+}
+
+type createPostRequest struct {
+	Title        string   `json:"title"`
+	Content      string   `json:"content"`
+	Type         string   `json:"type"`
+	Tags         []string `json:"tags"`
+	CoverURL     string   `json:"cover_url"`
+	PrivacyLevel string   `json:"privacy_level"`
+}
+
+type postComment struct {
+	ID             int64     `json:"id"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author_name"`
+	Content        string    `json:"content"`
+	ParentID       *int64    `json:"parent_id,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type createCommentRequest struct {
+	Content  string `json:"content"`
+	ParentID *int64 `json:"parent_id,omitempty"`
+}
+
 type sessionStore struct {
 	// TODO: keep in-memory sessions for now; move to durable/shared storage in a dedicated task.
 	mu         sync.RWMutex
@@ -213,6 +259,8 @@ func main() {
 	mux := http.NewServeMux()
 	sessions := newSessionStore()
 	authRateLimiter := newIPRateLimiter(10, time.Minute)
+	postRateLimiter := newIPRateLimiter(10, time.Minute)
+	commentRateLimiter := newIPRateLimiter(30, time.Minute)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -382,32 +430,6 @@ func main() {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
-	})
-
-	mux.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
-			return
-		}
-
-		publicID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/users/"))
-		if publicID == "" {
-			writeError(w, http.StatusBadRequest, "public_id обязателен")
-			return
-		}
-
-		profile, err := getPublicUserProfile(db, publicID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				writeError(w, http.StatusNotFound, "Пользователь не найден")
-				return
-			}
-			log.Printf("get public user profile error: %v", err)
-			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
-			return
-		}
-
-		writeJSON(w, http.StatusOK, map[string]any{"user": profile})
 	})
 
 	mux.HandleFunc("/api/friends", func(w http.ResponseWriter, r *http.Request) {
@@ -693,6 +715,201 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"community": item})
 	})
 
+	mux.HandleFunc("/api/posts", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if !postRateLimiter.Allow(fmt.Sprintf("post:%d", userID)) {
+				writeError(w, http.StatusTooManyRequests, "Слишком много публикаций, попробуйте позже")
+				return
+			}
+			var req createPostRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			created, err := createPost(db, userID, req)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"post": created})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/posts/", func(w http.ResponseWriter, r *http.Request) {
+		publicID, ok := extractPathParam(r.URL.Path, "/api/posts/")
+		if !ok {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		if strings.HasSuffix(publicID, "/like") {
+			postPublicID := strings.TrimSuffix(publicID, "/like")
+			if !isValidPostPublicID(postPublicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id поста")
+				return
+			}
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, hasAuth := authenticatedUserID(w, r, sessions)
+			if !hasAuth {
+				return
+			}
+			isLiked, likesCount, err := toggleLike(db, postPublicID, userID)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"is_liked": isLiked, "likes_count": likesCount})
+			return
+		}
+		if strings.HasSuffix(publicID, "/comments") {
+			postPublicID := strings.TrimSuffix(publicID, "/comments")
+			if !isValidPostPublicID(postPublicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id поста")
+				return
+			}
+			switch r.Method {
+			case http.MethodGet:
+				limit := parseLimit(r.URL.Query().Get("limit"), 50, 200)
+				comments, err := listComments(db, postPublicID, limit)
+				if err != nil {
+					handlePostActionError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"comments": comments})
+			case http.MethodPost:
+				userID, hasAuth := authenticatedUserID(w, r, sessions)
+				if !hasAuth {
+					return
+				}
+				if !commentRateLimiter.Allow(fmt.Sprintf("comment:%d", userID)) {
+					writeError(w, http.StatusTooManyRequests, "Слишком много комментариев, попробуйте позже")
+					return
+				}
+				var req createCommentRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				comment, err := createComment(db, postPublicID, userID, req)
+				if err != nil {
+					handlePostActionError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusCreated, map[string]any{"comment": comment})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+		if !isValidPostPublicID(publicID) {
+			writeError(w, http.StatusBadRequest, "Некорректный id поста")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+			item, err := getPostByID(db, publicID, authUserID, hasAuth, true)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"post": item})
+		case http.MethodDelete:
+			userID, hasAuth := authenticatedUserID(w, r, sessions)
+			if !hasAuth {
+				return
+			}
+			if err := softDeletePost(db, publicID, userID); err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/feed", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+		limit := parseLimit(r.URL.Query().Get("limit"), 20, 100)
+		beforeID := parseIDOrZero(r.URL.Query().Get("before_id"))
+		postType := strings.TrimSpace(r.URL.Query().Get("type"))
+		posts, nextCursor, err := listFeed(db, authUserID, hasAuth, limit, beforeID, postType)
+		if err != nil {
+			handlePostActionError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
+	})
+
+	mux.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/posts") {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			publicID := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/users/"))
+			if publicID == "" {
+				writeError(w, http.StatusBadRequest, "public_id обязателен")
+				return
+			}
+			profile, err := getPublicUserProfile(db, publicID)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Пользователь не найден")
+					return
+				}
+				log.Printf("get public user profile error: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"user": profile})
+			return
+		}
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		publicID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/users/"), "/posts")
+		publicID = strings.TrimSpace(strings.TrimSuffix(publicID, "/"))
+		if !isValidUserPublicID(publicID) {
+			writeError(w, http.StatusBadRequest, "Некорректный id пользователя")
+			return
+		}
+		authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+		limit := parseLimit(r.URL.Query().Get("limit"), 20, 100)
+		beforeID := parseIDOrZero(r.URL.Query().Get("before_id"))
+		posts, nextCursor, err := listUserPosts(db, publicID, authUserID, hasAuth, limit, beforeID)
+		if err != nil {
+			handlePostActionError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
+	})
+
+	mux.HandleFunc("/api/news/", func(w http.ResponseWriter, r *http.Request) {
+		suffix := strings.TrimPrefix(r.URL.Path, "/api/news/")
+		if suffix == "" || strings.Contains(suffix, "//") {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		r.URL.Path = "/api/posts/" + suffix
+		mux.ServeHTTP(w, r)
+	})
+
 	mux.Handle("/", staticSecurity(http.FileServer(http.Dir("./web"))))
 
 	addr := ":8080"
@@ -846,6 +1063,59 @@ CREATE TABLE IF NOT EXISTS community_members (
 
 CREATE INDEX IF NOT EXISTS community_members_user_idx
 ON community_members(user_id);
+
+CREATE TABLE IF NOT EXISTS posts (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL DEFAULT 'news',
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    cover_url TEXT,
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    privacy_level TEXT NOT NULL DEFAULT 'public',
+    likes_count INTEGER NOT NULL DEFAULT 0,
+    comments_count INTEGER NOT NULL DEFAULT 0,
+    views_count INTEGER NOT NULL DEFAULT 0,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (type IN ('news', 'project', 'note', 'case')),
+    CHECK (privacy_level IN ('public', 'friends', 'private')),
+    CHECK (char_length(title) BETWEEN 1 AND 200),
+    CHECK (char_length(content) BETWEEN 1 AND 20000)
+);
+
+CREATE INDEX IF NOT EXISTS posts_author_created_idx
+    ON posts(author_id, created_at DESC) WHERE is_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS posts_feed_idx
+    ON posts(created_at DESC) WHERE is_deleted = FALSE AND privacy_level = 'public';
+
+CREATE INDEX IF NOT EXISTS posts_type_created_idx
+    ON posts(type, created_at DESC) WHERE is_deleted = FALSE AND privacy_level = 'public';
+
+CREATE TABLE IF NOT EXISTS post_likes (
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (post_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS post_likes_user_idx ON post_likes(user_id);
+
+CREATE TABLE IF NOT EXISTS post_comments (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    parent_id BIGINT REFERENCES post_comments(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 5000),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS post_comments_post_idx
+    ON post_comments(post_id, created_at DESC) WHERE is_deleted = FALSE;
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -1630,6 +1900,511 @@ func normalizePrivacyLevel(value string) string {
 		return "closed"
 	default:
 		return ""
+	}
+}
+
+func newPublicPostID() (string, error) {
+	buf := make([]byte, 6)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return "p" + hex.EncodeToString(buf), nil
+}
+
+func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error) {
+	title := strings.TrimSpace(req.Title)
+	if count := utf8.RuneCountInString(title); count < 3 || count > 200 {
+		return post{}, fmt.Errorf("%w: заголовок должен быть от 3 до 200 символов", errValidation)
+	}
+	content := strings.TrimSpace(req.Content)
+	if count := utf8.RuneCountInString(content); count < 10 || count > 20000 {
+		return post{}, fmt.Errorf("%w: текст должен быть от 10 до 20000 символов", errValidation)
+	}
+	postType := strings.ToLower(strings.TrimSpace(req.Type))
+	if postType == "" {
+		postType = "news"
+	}
+	if postType != "news" && postType != "project" && postType != "note" && postType != "case" {
+		return post{}, fmt.Errorf("%w: type должен быть news/project/note/case", errValidation)
+	}
+	privacy := strings.ToLower(strings.TrimSpace(req.PrivacyLevel))
+	if privacy == "" {
+		privacy = "public"
+	}
+	if privacy != "public" && privacy != "friends" && privacy != "private" {
+		return post{}, fmt.Errorf("%w: privacy_level должен быть public/friends/private", errValidation)
+	}
+	coverURL := strings.TrimSpace(req.CoverURL)
+	if coverURL != "" {
+		if utf8.RuneCountInString(coverURL) > 500 || (!strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://")) {
+			return post{}, fmt.Errorf("%w: cover_url должен начинаться с http:// или https:// и быть не длиннее 500 символов", errValidation)
+		}
+	}
+	tags := make([]string, 0, len(req.Tags))
+	seen := make(map[string]struct{}, len(req.Tags))
+	for _, raw := range req.Tags {
+		tag := strings.TrimSpace(raw)
+		if tag == "" {
+			continue
+		}
+		if utf8.RuneCountInString(tag) > 40 {
+			return post{}, fmt.Errorf("%w: тег должен быть не длиннее 40 символов", errValidation)
+		}
+		key := strings.ToLower(tag)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		tags = append(tags, tag)
+		if len(tags) > 10 {
+			return post{}, fmt.Errorf("%w: максимум 10 тегов", errValidation)
+		}
+	}
+
+	var pgTags pgtype.FlatArray[string] = tags
+	for attempts := 0; attempts < 5; attempts++ {
+		publicID, err := newPublicPostID()
+		if err != nil {
+			return post{}, err
+		}
+		created, err := scanPost(db.QueryRow(`
+			INSERT INTO posts (public_id, author_id, type, title, content, cover_url, tags, privacy_level)
+			VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7::text[], $8)
+			RETURNING id, public_id, type, title, content, COALESCE(cover_url, ''), COALESCE(array_to_json(tags), '[]'::json),
+					  privacy_level, likes_count, comments_count, views_count, created_at, author_id
+		`, publicID, authorID, postType, title, content, coverURL, pgTags, privacy))
+		if err == nil {
+			return hydratePostAuthor(db, created)
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			continue
+		}
+		return post{}, err
+	}
+	return post{}, fmt.Errorf("failed to allocate post public_id")
+}
+
+func getPostByID(db *sql.DB, publicID string, authUserID int64, hasAuth, incrementViews bool) (post, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return post{}, err
+	}
+	defer tx.Rollback()
+	if incrementViews {
+		if _, err := tx.Exec(`UPDATE posts SET views_count = views_count + 1, updated_at = NOW() WHERE public_id = $1 AND is_deleted = FALSE`, publicID); err != nil {
+			return post{}, err
+		}
+	}
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: authUserID, Valid: true}
+	}
+	var item post
+	var tagsJSON []byte
+	var coverURL string
+	err = tx.QueryRow(`
+		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
+		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count,
+		       p.comments_count, p.views_count, p.created_at, p.author_id,
+		       COALESCE(pl.user_id IS NOT NULL, FALSE)
+		FROM posts p
+		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $2::bigint
+		WHERE p.public_id = $1 AND p.is_deleted = FALSE
+		LIMIT 1
+	`, publicID, currentUser).Scan(
+		&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &coverURL, &tagsJSON,
+		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID, &item.IsLiked,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return post{}, errNotFound
+		}
+		return post{}, err
+	}
+	item.CoverURL = coverURL
+	item.Text = item.Content
+	_ = json.Unmarshal(tagsJSON, &item.Tags)
+	if item.PrivacyLevel == "private" && (!hasAuth || authUserID != item.AuthorID) {
+		return post{}, errNotFound
+	}
+	if item.PrivacyLevel == "friends" && (!hasAuth || !canViewFriendsPost(tx, authUserID, item.AuthorID)) {
+		return post{}, errNotFound
+	}
+	if err := tx.Commit(); err != nil {
+		return post{}, err
+	}
+	return hydratePostAuthor(db, item)
+}
+
+func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID int64, postType string) ([]post, *int64, error) {
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: authUserID, Valid: true}
+	}
+	args := []any{currentUser, limit + 1}
+	query := `
+		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
+		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
+		       p.views_count, p.created_at, p.author_id,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
+		       COALESCE(pl.user_id IS NOT NULL, FALSE)
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
+		WHERE p.is_deleted = FALSE AND p.privacy_level = 'public'`
+	if postType != "" {
+		postType = strings.ToLower(strings.TrimSpace(postType))
+		query += fmt.Sprintf(" AND p.type = $%d", len(args)+1)
+		args = append(args, postType)
+	}
+	if beforeID > 0 {
+		query += fmt.Sprintf(" AND p.id < $%d", len(args)+1)
+		args = append(args, beforeID)
+	}
+	query += " ORDER BY p.created_at DESC, p.id DESC LIMIT $2"
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var items []post
+	for rows.Next() {
+		var item post
+		var tagsJSON []byte
+		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
+			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked); err != nil {
+			return nil, nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &item.Tags)
+		item.Text = item.Content
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	var nextCursor *int64
+	if len(items) > limit {
+		last := items[limit-1].ID
+		nextCursor = &last
+		items = items[:limit]
+	}
+	return items, nextCursor, nil
+}
+
+func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bool, limit int, beforeID int64) ([]post, *int64, error) {
+	var targetID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, userPublicID).Scan(&targetID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, errNotFound
+		}
+		return nil, nil, err
+	}
+	isOwner := hasAuth && authUserID == targetID
+	isFriend := hasAuth && areFriends(db, authUserID, targetID)
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: authUserID, Valid: true}
+	}
+	query := `
+		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
+		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
+		       p.views_count, p.created_at, p.author_id,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
+		       COALESCE(pl.user_id IS NOT NULL, FALSE)
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
+		WHERE p.author_id = $2 AND p.is_deleted = FALSE`
+	args := []any{currentUser, targetID, limit + 1}
+	if !isOwner {
+		if isFriend {
+			query += " AND p.privacy_level IN ('public', 'friends')"
+		} else {
+			query += " AND p.privacy_level = 'public'"
+		}
+	}
+	if beforeID > 0 {
+		query += fmt.Sprintf(" AND p.id < $%d", len(args)+1)
+		args = append(args, beforeID)
+	}
+	query += " ORDER BY p.created_at DESC, p.id DESC LIMIT $3"
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var items []post
+	for rows.Next() {
+		var item post
+		var tagsJSON []byte
+		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
+			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked); err != nil {
+			return nil, nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &item.Tags)
+		item.Text = item.Content
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	var nextCursor *int64
+	if len(items) > limit {
+		last := items[limit-1].ID
+		nextCursor = &last
+		items = items[:limit]
+	}
+	return items, nextCursor, nil
+}
+
+func softDeletePost(db *sql.DB, publicID string, userID int64) error {
+	res, err := db.Exec(`UPDATE posts SET is_deleted = TRUE, updated_at = NOW() WHERE public_id = $1 AND author_id = $2 AND is_deleted = FALSE`, publicID, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNotFound
+	}
+	return nil
+}
+
+func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return false, 0, err
+	}
+	defer tx.Rollback()
+	var postID int64
+	if err := tx.QueryRow(`SELECT id FROM posts WHERE public_id = $1 AND is_deleted = FALSE`, publicID).Scan(&postID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, 0, errNotFound
+		}
+		return false, 0, err
+	}
+	var exists bool
+	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2)`, postID, userID).Scan(&exists); err != nil {
+		return false, 0, err
+	}
+	isLiked := false
+	if exists {
+		if _, err := tx.Exec(`DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2`, postID, userID); err != nil {
+			return false, 0, err
+		}
+		if _, err := tx.Exec(`UPDATE posts SET likes_count = likes_count - 1, updated_at = NOW() WHERE id = $1 AND likes_count > 0`, postID); err != nil {
+			return false, 0, err
+		}
+	} else {
+		if _, err := tx.Exec(`INSERT INTO post_likes(post_id, user_id) VALUES ($1, $2)`, postID, userID); err != nil {
+			return false, 0, err
+		}
+		if _, err := tx.Exec(`UPDATE posts SET likes_count = likes_count + 1, updated_at = NOW() WHERE id = $1`, postID); err != nil {
+			return false, 0, err
+		}
+		isLiked = true
+	}
+	var likesCount int
+	if err := tx.QueryRow(`SELECT likes_count FROM posts WHERE id = $1`, postID).Scan(&likesCount); err != nil {
+		return false, 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, 0, err
+	}
+	return isLiked, likesCount, nil
+}
+
+func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, error) {
+	rows, err := db.Query(`
+		SELECT pc.id, u.public_id, u.full_name, pc.content, pc.parent_id, pc.created_at
+		FROM post_comments pc
+		JOIN posts p ON p.id = pc.post_id
+		JOIN users u ON u.id = pc.author_id
+		WHERE p.public_id = $1 AND p.is_deleted = FALSE AND pc.is_deleted = FALSE
+		ORDER BY pc.created_at ASC, pc.id ASC
+		LIMIT $2
+	`, postPublicID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []postComment
+	for rows.Next() {
+		var c postComment
+		if err := rows.Scan(&c.ID, &c.AuthorPublicID, &c.AuthorName, &c.Content, &c.ParentID, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func createComment(db *sql.DB, postPublicID string, authorID int64, req createCommentRequest) (postComment, error) {
+	content := strings.TrimSpace(req.Content)
+	if count := utf8.RuneCountInString(content); count < 1 || count > 5000 {
+		return postComment{}, fmt.Errorf("%w: комментарий должен быть от 1 до 5000 символов", errValidation)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return postComment{}, err
+	}
+	defer tx.Rollback()
+	var postID int64
+	if err := tx.QueryRow(`SELECT id FROM posts WHERE public_id = $1 AND is_deleted = FALSE`, postPublicID).Scan(&postID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return postComment{}, errNotFound
+		}
+		return postComment{}, err
+	}
+	if req.ParentID != nil {
+		var parentPostID int64
+		if err := tx.QueryRow(`SELECT post_id FROM post_comments WHERE id = $1 AND is_deleted = FALSE`, *req.ParentID).Scan(&parentPostID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return postComment{}, fmt.Errorf("%w: родительский комментарий не найден", errValidation)
+			}
+			return postComment{}, err
+		}
+		if parentPostID != postID {
+			return postComment{}, fmt.Errorf("%w: parent_id должен принадлежать тому же посту", errValidation)
+		}
+	}
+	var created postComment
+	if err := tx.QueryRow(`
+		INSERT INTO post_comments(post_id, author_id, parent_id, content)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, parent_id, content, created_at
+	`, postID, authorID, req.ParentID, content).Scan(&created.ID, &created.ParentID, &created.Content, &created.CreatedAt); err != nil {
+		return postComment{}, err
+	}
+	if _, err := tx.Exec(`UPDATE posts SET comments_count = comments_count + 1, updated_at = NOW() WHERE id = $1`, postID); err != nil {
+		return postComment{}, err
+	}
+	if err := tx.QueryRow(`SELECT public_id, full_name FROM users WHERE id = $1`, authorID).Scan(&created.AuthorPublicID, &created.AuthorName); err != nil {
+		return postComment{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return postComment{}, err
+	}
+	return created, nil
+}
+
+func scanPost(row *sql.Row) (post, error) {
+	var item post
+	var tagsJSON []byte
+	var coverURL string
+	if err := row.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &coverURL, &tagsJSON,
+		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID); err != nil {
+		return post{}, err
+	}
+	item.CoverURL = coverURL
+	item.Text = item.Content
+	_ = json.Unmarshal(tagsJSON, &item.Tags)
+	return item, nil
+}
+
+func hydratePostAuthor(db *sql.DB, item post) (post, error) {
+	if err := db.QueryRow(`
+		SELECT public_id, full_name, COALESCE(NULLIF(position, ''), company_name, ''), COALESCE(avatar_url, '')
+		FROM users WHERE id = $1
+	`, item.AuthorID).Scan(&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar); err != nil {
+		return post{}, err
+	}
+	return item, nil
+}
+
+func canViewFriendsPost(tx *sql.Tx, authUserID, authorID int64) bool {
+	if authUserID == authorID {
+		return true
+	}
+	var ok bool
+	_ = tx.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM friend_requests
+			WHERE status = 'accepted'
+			  AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))
+		)
+	`, authUserID, authorID).Scan(&ok)
+	return ok
+}
+
+func areFriends(db *sql.DB, a, b int64) bool {
+	var ok bool
+	_ = db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM friend_requests
+			WHERE status = 'accepted'
+			  AND ((requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1))
+		)
+	`, a, b).Scan(&ok)
+	return ok
+}
+
+func parseLimit(raw string, def, max int) int {
+	v, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || v <= 0 {
+		return def
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
+
+func parseIDOrZero(raw string) int64 {
+	v, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || v < 0 {
+		return 0
+	}
+	return v
+}
+
+func extractPathParam(pathValue, prefix string) (string, bool) {
+	if !strings.HasPrefix(pathValue, prefix) {
+		return "", false
+	}
+	v := strings.Trim(strings.TrimPrefix(pathValue, prefix), "/")
+	if v == "" {
+		return "", false
+	}
+	return v, true
+}
+
+func isValidPostPublicID(s string) bool {
+	if len(s) != 13 || !strings.HasPrefix(s, "p") {
+		return false
+	}
+	for _, ch := range s[1:] {
+		if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func isValidUserPublicID(s string) bool {
+	if len(s) != 11 || !strings.HasPrefix(s, "u") {
+		return false
+	}
+	for _, ch := range s[1:] {
+		if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func handlePostActionError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errValidation):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, errConflict):
+		writeError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, "Не найдено")
+	default:
+		log.Printf("post action error: %v", err)
+		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
 	}
 }
 
