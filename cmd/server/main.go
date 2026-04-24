@@ -549,7 +549,7 @@ func main() {
 			return
 		}
 
-		if strings.HasSuffix(idPart, "/join") {
+		if strings.HasSuffix(idPart, "/join") || strings.HasSuffix(idPart, "/leave") {
 			if r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 				return
@@ -560,7 +560,13 @@ func main() {
 				return
 			}
 
-			idPart = strings.TrimSuffix(idPart, "/join")
+			action := "join"
+			if strings.HasSuffix(idPart, "/leave") {
+				action = "leave"
+				idPart = strings.TrimSuffix(idPart, "/leave")
+			} else {
+				idPart = strings.TrimSuffix(idPart, "/join")
+			}
 			if idPart == "" || strings.Contains(idPart, "/") {
 				writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
 				return
@@ -572,12 +578,18 @@ func main() {
 				return
 			}
 
-			if err := joinCommunity(db, communityID, userID); err != nil {
+			var actionErr error
+			if action == "leave" {
+				actionErr = leaveCommunity(db, communityID, userID)
+			} else {
+				actionErr = joinCommunity(db, communityID, userID)
+			}
+			if actionErr != nil {
 				switch {
-				case errors.Is(err, errNotFound):
+				case errors.Is(actionErr, errNotFound):
 					writeError(w, http.StatusNotFound, "Сообщество не найдено")
 				default:
-					log.Printf("join community error: %v", err)
+					log.Printf("%s community error: %v", action, actionErr)
 					writeError(w, http.StatusInternalServerError, "Ошибка сервера")
 				}
 				return
@@ -1418,6 +1430,31 @@ func joinCommunity(db *sql.DB, communityID, userID int64) error {
 		}
 		if !exists {
 			return fmt.Errorf("%w: сообщество не найдено", errNotFound)
+		}
+	}
+	return nil
+}
+
+func leaveCommunity(db *sql.DB, communityID, userID int64) error {
+	result, err := db.Exec(`
+		DELETE FROM community_members
+		WHERE community_id = $1 AND user_id = $2
+	`, communityID, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		var exists bool
+		if scanErr := db.QueryRow(`SELECT EXISTS (SELECT 1 FROM communities WHERE id = $1)`, communityID).Scan(&exists); scanErr != nil {
+			return scanErr
+		}
+		if !exists {
+			return errNotFound
 		}
 	}
 	return nil
