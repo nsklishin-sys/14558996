@@ -13,6 +13,33 @@
  */
 
 /* ─────────────────────────────────────────────────────────────
+   Глобальный hover-эффект для кликабельных элементов
+   (вынесено в общий файл, чтобы править в одном месте)
+   ───────────────────────────────────────────────────────────── */
+a,
+button,
+[role="button"],
+[onclick],
+input[type="button"],
+input[type="submit"],
+.btn,
+[class*="card"] {
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+
+a:hover,
+button:hover,
+[role="button"]:hover,
+[onclick]:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+.btn:hover,
+[class*="card"]:hover {
+  box-shadow: 0 14px 30px rgba(0,0,0,.35);
+  transform: translateY(-3px);
+}
+
+/* ─────────────────────────────────────────────────────────────
    СЛОЙ 1 — Страницы на CSS-переменных
    (events, news, jobs, projects, communities, exhibitions…)
    Переопределяем :root-переменные когда <html data-theme="dark">
