@@ -650,6 +650,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 [class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
 [class*="card"]:hover{box-shadow:var(--shm);transform:translateY(-3px)}
 </style>
+
+<style>
+.nd-overlay{position:fixed;inset:0;background:rgba(10,20,16,.35);backdrop-filter:blur(2px);z-index:300;opacity:0;pointer-events:none;transition:.2s}
+.nd-overlay.open{opacity:1;pointer-events:auto}.nd-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);width:min(560px,92vw);background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--shm);z-index:301;opacity:0;pointer-events:none;transition:.2s}.nd-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.nd-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--bdr);font-weight:800}.nd-close{border:0;background:transparent;cursor:pointer}.nd-tabs{display:flex;gap:8px;padding:12px}.nd-tab{padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);cursor:pointer}.nd-tab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.nd-body{padding:0 12px 12px}.nd-pane{display:none}.nd-pane.active{display:block}.nd-search,.nd-input{width:100%;height:34px;margin-bottom:8px;padding:0 10px;border:1px solid var(--bdr);border-radius:8px}.nd-list{max-height:240px;overflow:auto;border:1px solid var(--bdr);border-radius:10px}.nd-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--bdr);cursor:pointer}.nd-item:last-child{border-bottom:none}.nd-selected{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.nd-chip{padding:4px 8px;border-radius:99px;background:var(--gl);border:1px solid var(--gb);font-size:11px}.nd-submit{height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--g);background:var(--g);color:#fff;cursor:pointer}
+.msg-action-reply{position:absolute;top:4px;right:6px;font-size:11px;opacity:0;cursor:pointer}.msg-bubble:hover .msg-action-reply{opacity:1}
+.emoji-picker{position:absolute;bottom:62px;right:78px;max-width:240px;display:none;flex-wrap:wrap;gap:4px;padding:8px;background:var(--w);border:1px solid var(--bdr);border-radius:10px;box-shadow:var(--sh)}.emoji-picker.open{display:flex}.emoji-picker button{border:0;background:transparent;cursor:pointer;font-size:18px}
+</style>
 </head>
 <body>
 <div class="shell">
@@ -731,7 +740,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="dialogs-head">
       <div class="dh-row">
         <div class="dh-title">Сообщения</div>
-        <button class="dh-btn" onclick="showToast('Новый диалог')" title="Новый диалог">
+        <button class="dh-btn" onclick="openNewDialogModal()" title="Новый диалог">
           <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
@@ -767,16 +776,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </div>
       </div>
       <div class="ch-actions">
-        <button class="ch-act" title="Поиск в диалоге">
+        <button class="ch-act" title="Поиск в диалоге" onclick="openChatSearch()">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
-        <button class="ch-act" title="Аудиозвонок">
+        <button class="ch-act" title="Аудиозвонок" onclick="showToast('Аудиозвонки будут доступны в следующей версии')">
           <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
         </button>
-        <button class="ch-act" title="Видеозвонок">
+        <button class="ch-act" title="Видеозвонок" onclick="showToast('Видеозвонки будут доступны в следующей версии')">
           <svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         </button>
-        <button class="ch-act" title="Сведения о диалоге" onclick="showToast('Панель сведений')">
+        <button class="ch-act" title="Сведения о диалоге" onclick="openInfoPanel()">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>
       </div>
@@ -910,7 +919,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="reply-bar" id="replyBar">
       <div class="reply-line"></div>
       <div class="reply-body">
-        <div class="reply-to">Ответ Марии Захаровой</div>
+        <div class="reply-to" id="replyToTitle">Ответ</div>
         <div class="reply-text" id="replyText"></div>
       </div>
       <button class="reply-close" onclick="closeReply()">
@@ -920,16 +929,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
     <!-- Инпут -->
     <div class="chat-input-wrap">
-      <button class="ci-attach" onclick="showToast('Прикрепить файл')" title="Прикрепить">
+      <button class="ci-attach" onclick="triggerAttach()" title="Прикрепить">
         <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </button>
       <div class="ci-input-box">
         <textarea class="ci-textarea" id="msgInput" placeholder="Написать сообщение…" rows="1" oninput="autoGrow(this)" onkeydown="handleEnter(event)"></textarea>
         <div class="ci-inline-btns">
-          <button class="ci-inline" onclick="showToast('Эмодзи')" title="Эмодзи">
+          <button class="ci-inline" onclick="toggleEmojiPicker()" title="Эмодзи">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
           </button>
-          <button class="ci-inline" onclick="showToast('Голосовое')" title="Голосовое">
+          <button class="ci-inline" onclick="showToast('Голосовые сообщения будут доступны в следующей версии')" title="Голосовое">
             <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
         </div>
@@ -965,11 +974,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="ip-name" id="ipName">Мария Захарова</div>
       <div class="ip-role" id="ipRole">Логист · NorthBridge Logistics</div>
       <div class="ip-actions">
-        <button class="ip-btn primary" onclick="location.href='/profile.html'">
+        <button class="ip-btn primary" id="ipOpenProfileBtn" onclick="openPeerProfile()">
           <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Открыть профиль
         </button>
-        <button class="ip-btn" onclick="showToast('Добавлен(а) в друзья')">
+        <button class="ip-btn" id="ipAddFriendBtn" onclick="sendFriendRequest()">
           <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           В друзья
         </button>
@@ -1121,156 +1130,73 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 </aside>
 
+
+<div class="nd-overlay" id="newDialogOverlay" onclick="closeNewDialog()"></div>
+<div class="nd-modal" id="newDialogModal">
+  <div class="nd-head"><span>Новый диалог</span><button class="nd-close" onclick="closeNewDialog()">✕</button></div>
+  <div class="nd-tabs">
+    <button class="nd-tab active" onclick="ndSwitchTab('direct', this)">Личный</button>
+    <button class="nd-tab" onclick="ndSwitchTab('group', this)">Группа</button>
+  </div>
+  <div class="nd-body">
+    <div class="nd-pane active" id="nd-direct"><input class="nd-search" id="ndSearchUsers" placeholder="Поиск друзей…" oninput="ndSearchFriends(this.value)"><div class="nd-list" id="ndFriendList"></div></div>
+    <div class="nd-pane" id="nd-group"><input class="nd-input" id="ndGroupTitle" placeholder="Название группы"><input class="nd-search" id="ndGroupSearch" placeholder="Добавить участников…" oninput="ndSearchForGroup(this.value)"><div class="nd-list" id="ndGroupList"></div><div class="nd-selected" id="ndGroupSelected"></div><button class="nd-submit" onclick="ndCreateGroup()">Создать группу</button></div>
+  </div>
+</div>
+<input type="file" id="chatHiddenFile" style="display:none">
+<div class="emoji-picker" id="emojiPicker"></div>
 <div class="toast" id="toast"></div>
 
 <script>
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function letter(s){return((s||'?')[0]).toUpperCase();}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-
-/* ── ДРОПДАУН ПРОФИЛЯ ── */
-function toggleProfileDD(e){
-  e.stopPropagation();
-  document.getElementById('topbarProfile').classList.toggle('open');
-  document.getElementById('profileDD').classList.toggle('open');
-}
-document.addEventListener('click',e=>{
-  const dd=document.getElementById('profileDD');
-  const btn=document.getElementById('topbarProfile');
-  if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}
-});
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
-});
+const API='/api';const tk=()=>localStorage.getItem('token');
+const state={conversations:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[]};
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')} function letter(s){return((s||'?')[0]||'?').toUpperCase()}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+async function api(path,opt={}){const h={...(opt.headers||{}),Authorization:`Bearer ${tk()}`};if(opt.body&&!(opt.body instanceof FormData)){h['Content-Type']='application/json';opt.body=JSON.stringify(opt.body)};const r=await fetch(API+path,{...opt,headers:h});if(r.status===401){localStorage.removeItem('token');location.href='/login.html';throw new Error('401')}if(r.status===429)showToast('Слишком часто, подождите секунду');if(!r.ok)throw new Error((await r.text())||r.status);return r.status===204?{}:r.json()}
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
-
-/* Демо-диалоги */
-const DIALOGS=[
-  {id:1,name:'Мария Захарова',role:'NorthBridge Logistics',color:'#5AB080',preview:'Отлично, всё согласовано. Подписываем договор…',time:'09:45',unread:0,online:true,pinned:true,tag:null,fromMe:false,active:true,cat:'contacts'},
-  {id:2,name:'Алексей Петров',role:'Специалист ВЭД',color:'#3A90C0',preview:'Вы: Когда удобно созвониться?',time:'10:47',unread:0,online:true,pinned:false,tag:null,fromMe:true,cat:'contacts'},
-  {id:3,name:'LASTOP Digital',role:'Компания',color:'#1E8A4C',preview:'Новое обновление платформы v2.4 уже доступно',time:'12:05',unread:2,online:false,pinned:false,tag:'company',fromMe:false,cat:'companies'},
-  {id:4,name:'GlobalFreight',role:'Таможенный брокер',color:'#C07030',preview:'Отправили документы на проверку в ФТС',time:'Вчера',unread:5,online:true,pinned:false,tag:'company',fromMe:false,cat:'companies'},
-  {id:5,name:'Логисты СНГ',role:'8 участников',color:'#9060C0',preview:'Дмитрий: Кто возит в Казахстан?',time:'Вчера',unread:12,online:false,pinned:false,tag:'group',fromMe:false,cat:'groups'},
-  {id:6,name:'Волжский форум',role:'23 участника',color:'#B05090',preview:'Виктория: На следующей неделе встреча',time:'Вчера',unread:0,online:false,pinned:false,tag:'group',fromMe:false,cat:'groups'},
-  {id:7,name:'Сергей Иванов',role:'Logistics Manager · SGL',color:'#208090',preview:'Спасибо за контакты! Свяжусь сегодня',time:'Пн',unread:0,online:false,pinned:false,tag:null,fromMe:false,cat:'contacts'},
-  {id:8,name:'Volga Industrial',role:'Компания',color:'#633806',preview:'Вы: Да, расчёт сходится. Берём',time:'Пн',unread:0,online:false,pinned:false,tag:'company',fromMe:true,cat:'companies'},
-  {id:9,name:'Анна Лебедева',role:'Product · LASTOP',color:'#185FA5',preview:'Обсуждаем новые фичи платформы',time:'Вс',unread:1,online:true,pinned:false,tag:null,fromMe:false,cat:'contacts'},
-  {id:10,name:'NorthBridge команда',role:'14 участников',color:'#5AB080',preview:'Отчёт за Q1 готов — смотрим в четверг',time:'Чт',unread:0,online:false,pinned:false,tag:'group',fromMe:false,cat:'groups'},
-  {id:11,name:'Дмитрий Орлов',role:'Экспедитор',color:'#3B6D11',preview:'Вы: Вышлю маршрут завтра утром',time:'Ср',unread:0,online:false,pinned:false,tag:null,fromMe:true,cat:'contacts'},
-  {id:12,name:'TMS.Pro Support',role:'Техподдержка',color:'#D35A5A',preview:'Ваш запрос #4581 закрыт',time:'Ср',unread:0,online:false,pinned:false,tag:'company',fromMe:false,cat:'companies'},
-];
-
-let activeFilter='all';
-let searchQuery='';
-
-function filterTab(cat, btn){
-  activeFilter=cat;
-  document.querySelectorAll('.d-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderDialogs();
-}
-function filterDialogs(q){
-  searchQuery=q.toLowerCase();
-  renderDialogs();
-}
-function renderDialogs(){
-  let items=DIALOGS.slice();
-  if(activeFilter==='unread')items=items.filter(d=>d.unread>0);
-  else if(activeFilter==='companies')items=items.filter(d=>d.cat==='companies');
-  else if(activeFilter==='groups')items=items.filter(d=>d.cat==='groups');
-  if(searchQuery)items=items.filter(d=>d.name.toLowerCase().includes(searchQuery)||d.preview.toLowerCase().includes(searchQuery));
-
-  const list=document.getElementById('dialogList');
-  if(!items.length){
-    list.innerHTML='<div style="padding:24px 14px;text-align:center;color:var(--gmt);font-size:12px">Ничего не найдено</div>';
-    return;
-  }
-  list.innerHTML=items.map(d=>{
-    const tagHtml=d.tag==='company'?'<span class="d-tag company">Компания</span>':d.tag==='group'?'<span class="d-tag group">Группа</span>':'';
-    const prefix=d.fromMe?'<span class="me-prefix">Вы: </span>':'';
-    const preview=d.fromMe?d.preview.replace(/^Вы:\s*/,''):d.preview;
-    return `<div class="d-item ${d.active?'active':''} ${d.pinned?'pinned':''}" onclick="selectDialog(${d.id},this)">
-      <div class="d-av-wrap">
-        <div class="d-av" style="background:${d.color}">${letter(d.name)}</div>
-        ${d.online?'<div class="d-online"></div>':''}
-      </div>
-      <div class="d-body">
-        <div class="d-top">
-          <div class="d-name">${esc(d.name)}${tagHtml}</div>
-          <div class="d-time">${esc(d.time)}</div>
-        </div>
-        <div class="d-bot">
-          <div class="d-preview">${prefix}${esc(preview)}</div>
-          ${d.unread?`<span class="d-badge">${d.unread}</span>`:''}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function selectDialog(id, el){
-  document.querySelectorAll('.d-item').forEach(i=>i.classList.remove('active'));
-  el.classList.add('active');
-  const d=DIALOGS.find(x=>x.id===id);
-  if(!d)return;
-  document.getElementById('chatAv').textContent=letter(d.name);
-  document.getElementById('chatAv').style.background=d.color;
-  document.getElementById('chatName').textContent=d.name;
-  document.getElementById('chatStatus').innerHTML=d.online?'<span style="color:var(--g);font-weight:600">в сети</span>':'<span>был(а) недавно</span>';
-  /* Синхронизируем info-panel */
-  document.getElementById('ipAv').innerHTML=letter(d.name)+'<div class="ip-online"></div>';
-  document.getElementById('ipAv').style.background=d.color;
-  document.getElementById('ipName').textContent=d.name;
-  document.getElementById('ipRole').textContent=d.role;
-}
-
-/* ═══ Панель сведений ═══ */
-function openInfoPanel(){
-  document.getElementById('infoPanel').classList.add('open');
-  document.getElementById('infoOverlay').classList.add('open');
-}
-function closeInfoPanel(){
-  document.getElementById('infoPanel').classList.remove('open');
-  document.getElementById('infoOverlay').classList.remove('open');
-}
-function switchInfoTab(tab, btn){
-  document.querySelectorAll('.ip-tab').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.ip-tab-content').forEach(c=>c.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('ipt-'+tab).classList.add('active');
-}
-
-/* Инпут */
-function autoGrow(el){
-  el.style.height='auto';
-  el.style.height=Math.min(el.scrollHeight,100)+'px';
-}
-function handleEnter(e){
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
-}
-function sendMessage(){
-  const inp=document.getElementById('msgInput');
-  const txt=inp.value.trim();
-  if(!txt)return;
-  const body=document.getElementById('chatBody');
-  const typing=body.querySelector('.typing-bubble');
-  const html=`<div class="msg me"><div class="msg-group"><div class="msg-bubble">${esc(txt)}</div><div class="msg-meta"><span>${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span><span class="msg-status"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></div></div></div>`;
-  if(typing)typing.insertAdjacentHTML('beforebegin',html);
-  else body.insertAdjacentHTML('beforeend',html);
-  inp.value='';autoGrow(inp);
-  body.scrollTop=body.scrollHeight;
-  closeReply();
-}
-function closeReply(){
-  document.getElementById('replyBar').classList.remove('active');
-}
-
-/* Init */
-window.addEventListener('DOMContentLoaded',()=>{
-  renderDialogs();
-  const body=document.getElementById('chatBody');
-  body.scrollTop=body.scrollHeight;
-});
+function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
+document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
+async function loadCurrentUser(){const d=await api('/me');state.currentUser=d.user;document.getElementById('topbarName').textContent=d.user.full_name;document.getElementById('topbarRole').textContent=d.user.position||d.user.company_name||'Пользователь';document.getElementById('topbarAv').textContent=letter(d.user.full_name)}
+async function loadConversations(){const d=await api(`/chat/conversations?filter=${encodeURIComponent(state.activeFilter)}&q=${encodeURIComponent(state.searchQuery)}`);state.conversations=d.conversations||[];renderConversations()}
+function renderConversations(){const list=document.getElementById('dialogList');if(!state.conversations.length){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt)">Нет диалогов</div>';return;}list.innerHTML=state.conversations.map(c=>`<div class="d-item ${state.activeConvPublicID===c.public_id?'active':''} ${c.pinned?'pinned':''}" onclick="selectConversation('${c.public_id}')"><div class="d-av-wrap"><div class="d-av" style="background:${c.display_color}">${c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name)}</div>${c.is_online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(c.display_name)}</div></div><div class="d-bot"><div class="d-preview">${c.last_message_author?`<span class='me-prefix'>${esc(c.last_message_author)}: </span>`:''}${esc(c.last_message_text||'')}</div>${c.unread_count?`<span class='d-badge'>${c.unread_count}</span>`:''}</div></div></div>`).join('')}
+async function selectConversation(pid){state.activeConvPublicID=pid;renderConversations();const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;chatName.textContent=c.display_name;chatAv.style.background=c.display_color;chatAv.innerHTML=c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name);chatStatus.textContent=c.is_online?'в сети':'в чате';state.activeConversation=c;await loadMessages();renderInfoPanel();markRead()}
+async function loadMessages(){const d=await api(`/chat/conversations/${state.activeConvPublicID}/messages?limit=100`);state.messages=d.messages||[];renderMessages()}
+function renderMessages(){const el=chatBody;el.innerHTML='';let prevDate='';state.messages.forEach(m=>{const date=new Date(m.created_at).toDateString();if(date!==prevDate){prevDate=date;el.insertAdjacentHTML('beforeend',`<div class='date-sep'>${new Date(m.created_at).toLocaleDateString('ru-RU')}</div>`)}const mine=m.author_public_id===state.currentUser.public_id;el.insertAdjacentHTML('beforeend',`<div class='msg ${mine?'me':'them'}'><div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div><div class='msg-group'><div class='msg-bubble'>${m.reply_to?`<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>`:''}${esc(m.content||'Удалено')}${m.is_deleted?' <i>(удалено)</i>':''}<span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span></div><div class='msg-meta'><span>${new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span>${m.is_edited?'<span>(изм.)</span>':''}</div></div></div>`)});if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);el.scrollTop=el.scrollHeight}
+function openReply(id){const m=state.messages.find(x=>x.id===id);if(!m)return;state.replyTo={id:m.id,author_name:m.author_name,content_preview:(m.content||'').slice(0,60)};replyBar.classList.add('active');document.getElementById('replyToTitle').textContent='Ответ '+(m.author_name||'');document.getElementById('replyText').textContent=(m.content||'').slice(0,100)}
+function closeReply(){state.replyTo=null;replyBar.classList.remove('active')}
+function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px'}
+function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitMessage()}}
+async function submitMessage(){const txt=msgInput.value.trim();if(!txt||!state.activeConvPublicID)return;try{if(state.editing){await api(`/chat/messages/${state.editing.id}`,{method:'PATCH',body:{content:txt}});state.editing=null}else{await api(`/chat/conversations/${state.activeConvPublicID}/messages`,{method:'POST',body:{content:txt,reply_to_id:state.replyTo?.id||null}})}msgInput.value='';autoGrow(msgInput);closeReply();await loadMessages();await loadConversations()}catch{showToast('Не удалось отправить сообщение')}}
+async function sendMessage(){return submitMessage()}
+async function markRead(){if(!state.messages.length)return;await api(`/chat/conversations/${state.activeConvPublicID}/read`,{method:'POST',body:{message_id:state.messages[state.messages.length-1].id}}).catch(()=>{})}
+async function changeFilter(tab,btn){state.activeFilter=tab;document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
+function filterTab(tab,btn){changeFilter(tab,btn)}
+let sd; function filterDialogs(q){clearTimeout(sd);sd=setTimeout(async()=>{state.searchQuery=q||'';await loadConversations()},300)}
+async function openOrCreateDirectByPublicID(uid){const d=await api('/chat/conversations/direct',{method:'POST',body:{user_public_id:uid}});await loadConversations();return d.conversation}
+async function openCommunityConv(id){const d=await api(`/chat/conversations/community/${id}`,{method:'POST'});await loadConversations();return d.conversation}
+function openInfoPanel(){infoPanel.classList.add('open');infoOverlay.classList.add('open')} function closeInfoPanel(){infoPanel.classList.remove('open');infoOverlay.classList.remove('open')}
+function switchInfoTab(tab,btn){document.querySelectorAll('.ip-tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.ip-tab-content').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.getElementById('ipt-'+tab).classList.add('active')}
+function renderInfoPanel(){const c=state.activeConversation;if(!c)return;ipAv.style.background=c.display_color;ipAv.innerHTML=letter(c.display_name)+(c.is_online?'<div class="ip-online"></div>':'');ipName.textContent=c.display_name;ipRole.textContent=c.display_role||c.type;ipOpenProfileBtn.style.display=c.other_public_id?'inline-flex':'none';document.getElementById('ipAddFriendBtn').style.display=c.other_public_id?'inline-flex':'none';}
+function openPeerProfile(){const id=state.activeConversation?.other_public_id;if(id)location.href='/profile_user.html?id='+encodeURIComponent(id)}
+async function sendFriendRequest(){const id=state.activeConversation?.other_public_id;if(!id)return;await api(`/friends/request/${id}`,{method:'POST'});ipAddFriendBtn.textContent='Заявка отправлена';ipAddFriendBtn.disabled=true}
+function triggerAttach(){chatHiddenFile.click()} chatHiddenFile?.addEventListener('change',()=>showToast('Загрузка файлов будет в следующей версии. Вставьте ссылку на файл в сообщение.'))
+const emojis=['😀','😁','😂','🤣','😊','😍','😘','😎','🤝','👍','👏','🙏','🔥','✅','📦','🚚','📍','📄','💼','📊','📞','💬','🧠','⚙️','🎯','⏰','🌍','🧾','📌','💡','❤️','😅','😢','😡','😴','🤔','🙌','🎉','🚀','👀'];
+function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button onclick="insertEmoji('${e}')">${e}</button>`).join('');
+function insertEmoji(e){const i=msgInput;const s=i.selectionStart||i.value.length;const v=i.value;i.value=v.slice(0,s)+e+v.slice(s);i.focus();i.selectionStart=i.selectionEnd=s+e.length;autoGrow(i)}
+let typeDeb; function onTyping(){clearTimeout(typeDeb);if(state.activeConvPublicID)api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:true}}).catch(()=>{});typeDeb=setTimeout(()=>{if(state.activeConvPublicID)api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:false}}).catch(()=>{})},4000)}
+msgInput?.addEventListener('input',onTyping)
+async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});if(state.activeConvPublicID){await loadMessages().catch(()=>{});const t=await api(`/chat/conversations/${state.activeConvPublicID}/typing`).catch(()=>({users:[]}));state.typingUsers=t.users||[];renderMessages();}}
+function startPolling(){clearInterval(state.pollTimer);state.pollTimer=setInterval(pollTick,3000)};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pollTick()})
+function openNewDialogModal(){newDialogOverlay.classList.add('open');newDialogModal.classList.add('open');ndSearchFriends('')}
+function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogModal.classList.remove('open')}
+function ndSwitchTab(tab,btn){document.querySelectorAll('.nd-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.nd-pane').forEach(x=>x.classList.remove('active'));document.getElementById('nd-'+tab).classList.add('active')}
+async function ndSearchFriends(q){const d=await api('/friends/candidates?q='+encodeURIComponent(q||''));ndFriendList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndPickDirect('${u.id}')"><span>${esc(u.full_name)}</span><small>${esc(u.email)}</small></div>`).join('')}
+async function ndPickDirect(id){const c=await openOrCreateDirectByPublicID(id);closeNewDialog();selectConversation(c.public_id)}
+async function ndSearchForGroup(q){const d=await api('/friends/candidates?q='+encodeURIComponent(q||''));ndGroupList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndToggleGroupMember('${u.id}','${esc(u.full_name)}')"><span>${esc(u.full_name)}</span><small>${state.groupSelected.includes(u.id)?'✓':''}</small></div>`).join('')}
+function ndToggleGroupMember(id,name){if(state.groupSelected.includes(id))state.groupSelected=state.groupSelected.filter(x=>x!==id);else state.groupSelected.push(id);ndGroupSelected.innerHTML=state.groupSelected.map(x=>`<span class='nd-chip'>${x}</span>`).join('');ndSearchForGroup(ndGroupSearch.value)}
+async function ndCreateGroup(){const title=ndGroupTitle.value.trim();if(!title||state.groupSelected.length<2){showToast('Укажите название и минимум 2 участников');return}const d=await api('/chat/conversations/group',{method:'POST',body:{title,member_public_ids:state.groupSelected}});closeNewDialog();await loadConversations();selectConversation(d.conversation.public_id)}
+async function openChatSearch(){const q=prompt('Поиск в диалоге:');if(!q||!state.activeConvPublicID)return;const d=await api(`/chat/conversations/${state.activeConvPublicID}/search?q=${encodeURIComponent(q)}`).catch(()=>null);showToast(d?.messages?.length?`Найдено: ${d.messages.length}`:'Ничего не найдено')}
+window.addEventListener('DOMContentLoaded', async()=>{if(!tk()){location.href='/login.html';return;}await loadCurrentUser();await loadConversations();const p=new URLSearchParams(location.search);const up=p.get('user')||p.get('uid');const cp=p.get('community');if(up){const c=await openOrCreateDirectByPublicID(up);if(c)selectConversation(c.public_id)}else if(cp){const c=await openCommunityConv(cp);if(c)selectConversation(c.public_id)}else if(state.conversations[0])selectConversation(state.conversations[0].public_id);startPolling()})
 </script>
 </body>
 </html>

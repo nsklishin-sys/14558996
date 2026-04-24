@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"net"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -175,6 +177,126 @@ type changeRoleRequest struct {
 
 type joinRequestBody struct {
 	Message string `json:"message"`
+}
+
+type chatConversation struct {
+	ID                int64      `json:"id"`
+	PublicID          string     `json:"public_id"`
+	Type              string     `json:"type"`
+	Title             string     `json:"title"`
+	AvatarURL         string     `json:"avatar_url"`
+	CommunityID       *int64     `json:"community_id,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	LastMessageAt     *time.Time `json:"last_message_at,omitempty"`
+	DisplayName       string     `json:"display_name"`
+	DisplayRole       string     `json:"display_role"`
+	DisplayColor      string     `json:"display_color"`
+	DisplayAvatar     string     `json:"display_avatar"`
+	OtherPublicID     string     `json:"other_public_id,omitempty"`
+	LastMessageText   string     `json:"last_message_text"`
+	LastMessageAuthor string     `json:"last_message_author"`
+	UnreadCount       int        `json:"unread_count"`
+	MembersCount      int        `json:"members_count"`
+	IsOnline          bool       `json:"is_online"`
+	Pinned            bool       `json:"pinned"`
+	Muted             bool       `json:"muted"`
+	MyRole            string     `json:"my_role"`
+}
+
+type chatReplyPreview struct {
+	ID             int64  `json:"id"`
+	AuthorName     string `json:"author_name"`
+	ContentPreview string `json:"content_preview"`
+}
+
+type chatMessage struct {
+	ID             int64             `json:"id"`
+	ConversationID int64             `json:"conversation_id"`
+	AuthorPublicID string            `json:"author_public_id"`
+	AuthorName     string            `json:"author_name"`
+	AuthorColor    string            `json:"author_color"`
+	AuthorAvatar   string            `json:"author_avatar,omitempty"`
+	Content        string            `json:"content"`
+	ReplyTo        *chatReplyPreview `json:"reply_to,omitempty"`
+	IsEdited       bool              `json:"is_edited"`
+	IsDeleted      bool              `json:"is_deleted"`
+	CreatedAt      time.Time         `json:"created_at"`
+	EditedAt       *time.Time        `json:"edited_at,omitempty"`
+	IsMine         bool              `json:"is_mine"`
+}
+
+type createDirectConversationRequest struct {
+	UserPublicID string `json:"user_public_id"`
+}
+type createGroupConversationRequest struct {
+	Title     string   `json:"title"`
+	MemberIDs []string `json:"member_public_ids"`
+}
+type sendMessageRequest struct {
+	Content   string `json:"content"`
+	ReplyToID *int64 `json:"reply_to_id,omitempty"`
+}
+type editMessageRequest struct {
+	Content string `json:"content"`
+}
+type typingRequest struct {
+	IsTyping bool `json:"is_typing"`
+}
+type markReadRequest struct {
+	MessageID int64 `json:"message_id"`
+}
+type toggleBoolRequest struct {
+	Pinned bool `json:"pinned"`
+	Muted  bool `json:"muted"`
+}
+
+type chatPresenceStore struct {
+	mu   sync.Mutex
+	last map[int64]time.Time
+}
+
+func newChatPresenceStore() *chatPresenceStore {
+	return &chatPresenceStore{last: map[int64]time.Time{}}
+}
+func (s *chatPresenceStore) touch(uid int64) {
+	s.mu.Lock()
+	s.last[uid] = time.Now().UTC()
+	s.mu.Unlock()
+}
+func (s *chatPresenceStore) isOnline(uid int64) bool {
+	s.mu.Lock()
+	t := s.last[uid]
+	s.mu.Unlock()
+	return time.Since(t) < 30*time.Second
+}
+
+func newChatPublicID() (string, error) {
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return "c" + hex.EncodeToString(b), nil
+}
+func stableColorForName(name string) string {
+	pal := []string{"#5AB080", "#3A90C0", "#9060C0", "#C07030", "#1A8A6A", "#B05090", "#208090", "#3B6D11"}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(strings.ToLower(strings.TrimSpace(name))))
+	return pal[int(h.Sum32())%len(pal)]
+}
+func messagePreview(content string, maxRunes int) string {
+	c := strings.ReplaceAll(strings.TrimSpace(content), "\n", " ")
+	if utf8.RuneCountInString(c) <= maxRunes {
+		return c
+	}
+	rs := []rune(c)
+	return string(rs[:maxRunes]) + "…"
+}
+
+func chatEscapeILike(q string) string {
+	q = strings.ReplaceAll(q, "\\", "\\\\")
+	q = strings.ReplaceAll(q, "%", "\\%")
+	q = strings.ReplaceAll(q, "_", "\\_")
+	return q
 }
 
 type post struct {
@@ -653,6 +775,310 @@ func main() {
 		}
 	})
 
+	chatPresence := newChatPresenceStore()
+	chatMessageRateLimiter := newIPRateLimiter(60, time.Minute)
+	chatTypingRateLimiter := newIPRateLimiter(20, time.Minute)
+	chatCreateRateLimiter := newIPRateLimiter(10, time.Minute)
+
+	mux.HandleFunc("/api/chat/conversations", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		chatPresence.touch(userID)
+		filter := strings.TrimSpace(r.URL.Query().Get("filter"))
+		if filter == "" {
+			filter = "all"
+		}
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		items, err := listConversations(db, userID, filter, r.URL.Query().Get("q"), limit)
+		if err != nil {
+			handleChatError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"conversations": items})
+	})
+
+	mux.HandleFunc("/api/chat/conversations/direct", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		chatPresence.touch(userID)
+		if !chatCreateRateLimiter.Allow(fmt.Sprintf("chat-direct:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком часто")
+			return
+		}
+		var req createDirectConversationRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		item, err := findOrCreateDirectConversation(db, userID, req.UserPublicID)
+		if err != nil {
+			handleChatError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"conversation": item})
+	})
+
+	mux.HandleFunc("/api/chat/conversations/group", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		chatPresence.touch(userID)
+		if !chatCreateRateLimiter.Allow(fmt.Sprintf("chat-group:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком часто")
+			return
+		}
+		var req createGroupConversationRequest
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		item, err := createGroupConversation(db, userID, req)
+		if err != nil {
+			handleChatError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"conversation": item})
+	})
+
+	mux.HandleFunc("/api/chat/conversations/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		chatPresence.touch(userID)
+		tail := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/chat/conversations/"), "/")
+		parts := strings.Split(tail, "/")
+		if len(parts) == 0 || parts[0] == "" {
+			writeError(w, http.StatusBadRequest, "Некорректный путь")
+			return
+		}
+		if parts[0] == "community" && len(parts) == 2 && r.Method == http.MethodPost {
+			communityID, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil || communityID <= 0 {
+				writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
+				return
+			}
+			item, err := getOrCreateCommunityConversation(db, communityID, userID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"conversation": item})
+			return
+		}
+		publicID := parts[0]
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			item, err := getConversationByPublicID(db, userID, publicID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			if item.Type == "direct" {
+				otherID, _ := getUserIDByPublicID(db, item.OtherPublicID)
+				item.IsOnline = chatPresence.isOnline(otherID)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"conversation": item})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "messages" {
+			switch r.Method {
+			case http.MethodGet:
+				limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+				before, _ := strconv.ParseInt(r.URL.Query().Get("before_id"), 10, 64)
+				msgs, err := listMessages(db, userID, publicID, limit, before)
+				if err != nil {
+					handleChatError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"messages": msgs})
+			case http.MethodPost:
+				if !chatMessageRateLimiter.Allow(fmt.Sprintf("chat-msg:%d", userID)) {
+					writeError(w, http.StatusTooManyRequests, "Слишком часто")
+					return
+				}
+				var req sendMessageRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				msg, err := sendMessage(db, userID, publicID, req)
+				if err != nil {
+					handleChatError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusCreated, map[string]any{"message": msg})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+		if len(parts) == 2 && parts[1] == "typing" {
+			if r.Method == http.MethodPost {
+				if !chatTypingRateLimiter.Allow(fmt.Sprintf("chat-typing:%d", userID)) {
+					writeError(w, http.StatusTooManyRequests, "Слишком часто")
+					return
+				}
+				var req typingRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if err := setTyping(db, userID, publicID, req.IsTyping); err != nil {
+					handleChatError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				return
+			}
+			if r.Method == http.MethodGet {
+				items, err := listTyping(db, userID, publicID)
+				if err != nil {
+					handleChatError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"users": items})
+				return
+			}
+		}
+		if len(parts) == 2 && parts[1] == "read" && r.Method == http.MethodPost {
+			var req markReadRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if _, err := db.Exec(`UPDATE chat_participants p SET last_read_message_id=GREATEST(last_read_message_id,$1) FROM chat_conversations c WHERE c.id=p.conversation_id AND c.public_id=$2 AND p.user_id=$3`, req.MessageID, publicID, userID); err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "pin" && r.Method == http.MethodPost {
+			var req toggleBoolRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			_, err := db.Exec(`UPDATE chat_participants p SET pinned=$1 FROM chat_conversations c WHERE c.id=p.conversation_id AND c.public_id=$2 AND p.user_id=$3`, req.Pinned, publicID, userID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "mute" && r.Method == http.MethodPost {
+			var req toggleBoolRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			_, err := db.Exec(`UPDATE chat_participants p SET muted=$1 FROM chat_conversations c WHERE c.id=p.conversation_id AND c.public_id=$2 AND p.user_id=$3`, req.Muted, publicID, userID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "leave" && r.Method == http.MethodPost {
+			res, err := db.Exec(`DELETE FROM chat_participants p USING chat_conversations c WHERE c.id=p.conversation_id AND c.public_id=$1 AND p.user_id=$2 AND c.type IN ('group','community')`, publicID, userID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				writeError(w, http.StatusBadRequest, "Нельзя выйти из direct-диалога")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "search" && r.Method == http.MethodGet {
+			items, err := searchInConversation(db, userID, publicID, r.URL.Query().Get("q"))
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"messages": items})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	})
+
+	mux.HandleFunc("/api/chat/messages/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		chatPresence.touch(userID)
+		idStr := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/chat/messages/"), "/")
+		msgID, _ := strconv.ParseInt(idStr, 10, 64)
+		if msgID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		if r.Method == http.MethodDelete {
+			_, err := db.Exec(`UPDATE chat_messages SET is_deleted=TRUE,content='' WHERE id=$1 AND author_id=$2`, msgID, userID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+		if r.Method == http.MethodPatch {
+			var req editMessageRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			_, err := db.Exec(`UPDATE chat_messages SET content=$1,is_edited=TRUE,edited_at=NOW() WHERE id=$2 AND author_id=$3 AND created_at >= NOW()-INTERVAL '24 hours'`, strings.TrimSpace(req.Content), msgID, userID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	})
+
+	mux.HandleFunc("/api/chat/presence/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		_, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		pid := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/chat/presence/"), "/")
+		uid, err := getUserIDByPublicID(db, pid)
+		if err != nil {
+			handleChatError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"is_online": chatPresence.isOnline(uid)})
+	})
 	mux.HandleFunc("/api/communities", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -1407,6 +1833,63 @@ CREATE TABLE IF NOT EXISTS post_comments (
 
 CREATE INDEX IF NOT EXISTS post_comments_post_idx
     ON post_comments(post_id, created_at DESC) WHERE is_deleted = FALSE;
+
+-- Диалоги: прямые (direct, 1-на-1) и групповые (group)
+CREATE TABLE IF NOT EXISTS chat_conversations (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    type TEXT NOT NULL DEFAULT 'direct',
+    title TEXT NOT NULL DEFAULT '',
+    avatar_url TEXT NOT NULL DEFAULT '',
+    community_id BIGINT REFERENCES communities(id) ON DELETE CASCADE,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    last_message_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (type IN ('direct', 'group', 'community'))
+);
+
+CREATE INDEX IF NOT EXISTS chat_conversations_community_idx
+    ON chat_conversations(community_id) WHERE community_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS chat_participants (
+    conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member',
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_read_message_id BIGINT NOT NULL DEFAULT 0,
+    muted BOOLEAN NOT NULL DEFAULT FALSE,
+    pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (conversation_id, user_id),
+    CHECK (role IN ('owner', 'admin', 'member'))
+);
+
+CREATE INDEX IF NOT EXISTS chat_participants_user_idx
+    ON chat_participants(user_id);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id BIGSERIAL PRIMARY KEY,
+    conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 8000),
+    reply_to_id BIGINT REFERENCES chat_messages(id) ON DELETE SET NULL,
+    is_edited BOOLEAN NOT NULL DEFAULT FALSE,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS chat_messages_conversation_idx
+    ON chat_messages(conversation_id, id DESC) WHERE is_deleted = FALSE;
+
+CREATE TABLE IF NOT EXISTS chat_typing (
+    conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (conversation_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS chat_typing_started_idx
+    ON chat_typing(started_at);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -3560,6 +4043,416 @@ func handlePostActionError(w http.ResponseWriter, err error) {
 	}
 }
 
+func handleChatError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errValidation):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, errForbidden):
+		writeError(w, http.StatusForbidden, err.Error())
+	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, errConflict):
+		writeError(w, http.StatusConflict, err.Error())
+	default:
+		log.Printf("chat error: %v", err)
+		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+	}
+}
+
+func getUserIDByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT id FROM users WHERE public_id=$1`, publicID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errNotFound
+		}
+		return 0, err
+	}
+	return id, nil
+}
+
+func findOrCreateDirectConversation(db *sql.DB, userID int64, targetPublicID string) (chatConversation, error) {
+	targetID, err := getUserIDByPublicID(db, targetPublicID)
+	if err != nil {
+		return chatConversation{}, err
+	}
+	if targetID == userID {
+		return chatConversation{}, fmt.Errorf("%w: нельзя создать диалог с собой", errValidation)
+	}
+	ids := []int64{userID, targetID}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	tx, err := db.Begin()
+	if err != nil {
+		return chatConversation{}, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock($1,$2)`, ids[0], ids[1]); err != nil {
+		return chatConversation{}, err
+	}
+	var convID int64
+	err = tx.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p1 ON p1.conversation_id=c.id AND p1.user_id=$1 JOIN chat_participants p2 ON p2.conversation_id=c.id AND p2.user_id=$2 WHERE c.type='direct' LIMIT 1`, userID, targetID).Scan(&convID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return chatConversation{}, err
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		pid, _ := newChatPublicID()
+		if err := tx.QueryRow(`INSERT INTO chat_conversations(public_id,type,created_by,last_message_at) VALUES($1,'direct',$2,NOW()) RETURNING id`, pid, userID).Scan(&convID); err != nil {
+			return chatConversation{}, err
+		}
+		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,'member'),($1,$3,'member')`, convID, userID, targetID); err != nil {
+			return chatConversation{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return chatConversation{}, err
+	}
+	return getConversationByID(db, userID, convID)
+}
+
+func getConversationByID(db *sql.DB, userID, convID int64) (chatConversation, error) {
+	var pid string
+	if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id=$1`, convID).Scan(&pid); err != nil {
+		return chatConversation{}, errNotFound
+	}
+	return getConversationByPublicID(db, userID, pid)
+}
+
+func getConversationByPublicID(db *sql.DB, userID int64, publicID string) (chatConversation, error) {
+	var c chatConversation
+	var lastAuthorID sql.NullInt64
+	var lastAuthorName, lastContent string
+	var pinned, muted bool
+	var role string
+	var otherID sql.NullString
+	var otherName, otherPosition, otherCompany, otherAvatar string
+	var otherUID sql.NullInt64
+	err := db.QueryRow(`
+SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,c.last_message_at,
+       COALESCE(p.pinned,false),COALESCE(p.muted,false),COALESCE(p.role,'member'),
+       (SELECT COUNT(*) FROM chat_participants cp WHERE cp.conversation_id=c.id),
+       (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id=c.id AND m.id>p.last_read_message_id AND m.author_id<>$1 AND m.is_deleted=FALSE),
+       COALESCE((SELECT m.content FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
+       (SELECT m.author_id FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),
+       COALESCE((SELECT u.full_name FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
+       COALESCE((SELECT u2.public_id FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
+       COALESCE((SELECT u2.id FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),0),
+       COALESCE((SELECT u2.full_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
+       COALESCE((SELECT u2.position FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
+       COALESCE((SELECT u2.company_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
+       COALESCE((SELECT u2.avatar_url FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),'')
+FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id
+WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return c, errNotFound
+		}
+		return c, err
+	}
+	c.Pinned, c.Muted, c.MyRole = pinned, muted, role
+	if c.Type == "direct" {
+		c.DisplayName = otherName
+		c.DisplayRole = strings.TrimSpace(strings.TrimSpace(otherPosition+" · ") + otherCompany)
+		c.DisplayAvatar = otherAvatar
+		c.OtherPublicID = otherID.String
+		c.DisplayColor = stableColorForName(otherName)
+	} else {
+		c.DisplayName = c.Title
+		c.DisplayAvatar = c.AvatarURL
+		c.DisplayColor = stableColorForName(c.Title)
+	}
+	c.LastMessageText = messagePreview(lastContent, 120)
+	if lastAuthorID.Valid && lastAuthorID.Int64 == userID {
+		c.LastMessageAuthor = "Вы"
+	} else {
+		c.LastMessageAuthor = lastAuthorName
+	}
+	return c, nil
+}
+
+func listConversations(db *sql.DB, userID int64, filter, q string, limit int) ([]chatConversation, error) {
+	rows, err := db.Query(`SELECT c.public_id FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id WHERE p.user_id=$1 ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]chatConversation, 0)
+	for rows.Next() {
+		var pid string
+		if err := rows.Scan(&pid); err != nil {
+			return nil, err
+		}
+		c, err := getConversationByPublicID(db, userID, pid)
+		if err == nil {
+			items = append(items, c)
+		}
+	}
+	q = strings.ToLower(strings.TrimSpace(q))
+	out := make([]chatConversation, 0, len(items))
+	for _, c := range items {
+		if filter == "unread" && c.UnreadCount == 0 {
+			continue
+		}
+		if filter == "groups" && !(c.Type == "group" || c.Type == "community") {
+			continue
+		}
+		if filter == "companies" && strings.TrimSpace(c.DisplayRole) == "" {
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(c.DisplayName+" "+c.LastMessageText), q) {
+			continue
+		}
+		out = append(out, c)
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func createGroupConversation(db *sql.DB, creatorID int64, req createGroupConversationRequest) (chatConversation, error) {
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 120 {
+		return chatConversation{}, fmt.Errorf("%w: название группы 3..120", errValidation)
+	}
+	uniq := map[string]struct{}{}
+	members := make([]int64, 0, len(req.MemberIDs)+1)
+	members = append(members, creatorID)
+	for _, pid := range req.MemberIDs {
+		pid = strings.TrimSpace(pid)
+		if pid == "" {
+			continue
+		}
+		if _, ok := uniq[pid]; ok {
+			continue
+		}
+		uniq[pid] = struct{}{}
+		id, err := getUserIDByPublicID(db, pid)
+		if err != nil {
+			return chatConversation{}, err
+		}
+		if id != creatorID {
+			members = append(members, id)
+		}
+	}
+	if len(members) < 3 || len(members) > 51 {
+		return chatConversation{}, fmt.Errorf("%w: участников 2..50 кроме создателя", errValidation)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return chatConversation{}, err
+	}
+	defer tx.Rollback()
+	pid, _ := newChatPublicID()
+	var convID int64
+	if err := tx.QueryRow(`INSERT INTO chat_conversations(public_id,type,title,created_by,last_message_at) VALUES($1,'group',$2,$3,NOW()) RETURNING id`, pid, title, creatorID).Scan(&convID); err != nil {
+		return chatConversation{}, err
+	}
+	for i, uid := range members {
+		role := "member"
+		if i == 0 {
+			role = "owner"
+		}
+		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,$3)`, convID, uid, role); err != nil {
+			return chatConversation{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return chatConversation{}, err
+	}
+	return getConversationByID(db, creatorID, convID)
+}
+
+func getOrCreateCommunityConversation(db *sql.DB, communityID int64, userID int64) (chatConversation, error) {
+	var isMember bool
+	if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM community_members WHERE community_id=$1 AND user_id=$2)`, communityID, userID).Scan(&isMember); err != nil {
+		return chatConversation{}, err
+	}
+	if !isMember {
+		return chatConversation{}, fmt.Errorf("%w: вы не участник сообщества", errForbidden)
+	}
+	var convID int64
+	err := db.QueryRow(`SELECT id FROM chat_conversations WHERE type='community' AND community_id=$1 LIMIT 1`, communityID).Scan(&convID)
+	if errors.Is(err, sql.ErrNoRows) {
+		tx, err := db.Begin()
+		if err != nil {
+			return chatConversation{}, err
+		}
+		defer tx.Rollback()
+		var title, avatar string
+		if err := tx.QueryRow(`SELECT name,COALESCE(avatar_url,'') FROM communities WHERE id=$1`, communityID).Scan(&title, &avatar); err != nil {
+			return chatConversation{}, err
+		}
+		pid, _ := newChatPublicID()
+		if err := tx.QueryRow(`INSERT INTO chat_conversations(public_id,type,title,avatar_url,community_id,created_by,last_message_at) VALUES($1,'community',$2,$3,$4,$5,NOW()) RETURNING id`, pid, title, avatar, communityID, userID).Scan(&convID); err != nil {
+			return chatConversation{}, err
+		}
+		rows, err := tx.Query(`SELECT user_id,role FROM community_members WHERE community_id=$1`, communityID)
+		if err != nil {
+			return chatConversation{}, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var uid int64
+			var r string
+			_ = rows.Scan(&uid, &r)
+			role := "member"
+			if r == "owner" || r == "admin" {
+				role = "admin"
+			}
+			_, _ = tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,$3) ON CONFLICT(conversation_id,user_id) DO UPDATE SET role=EXCLUDED.role`, convID, uid, role)
+		}
+		if err := tx.Commit(); err != nil {
+			return chatConversation{}, err
+		}
+	} else if err != nil {
+		return chatConversation{}, err
+	}
+	return getConversationByID(db, userID, convID)
+}
+
+func searchInConversation(db *sql.DB, userID int64, publicID, q string) ([]chatMessage, error) {
+	cid, err := ensureParticipant(db, userID, publicID)
+	if err != nil {
+		return nil, err
+	}
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return []chatMessage{}, nil
+	}
+	pattern := "%" + chatEscapeILike(q) + "%"
+	rows, err := db.Query(`SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1 AND m.content ILIKE $2 ESCAPE '\' ORDER BY m.id DESC LIMIT 50`, cid, pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []chatMessage{}
+	for rows.Next() {
+		var m chatMessage
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+			return nil, err
+		}
+		m.AuthorColor = stableColorForName(m.AuthorName)
+		out = append(out, m)
+	}
+	return out, nil
+}
+func ensureParticipant(db *sql.DB, userID int64, conversationPublicID string) (int64, error) {
+	var cid int64
+	err := db.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id WHERE c.public_id=$1 AND p.user_id=$2`, conversationPublicID, userID).Scan(&cid)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errForbidden
+		}
+		return 0, err
+	}
+	return cid, nil
+}
+
+func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit int, beforeID int64) ([]chatMessage, error) {
+	cid, err := ensureParticipant(db, userID, conversationPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,'' ) FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1`
+	args := []any{cid}
+	if beforeID > 0 {
+		q += ` AND m.id < $2`
+		args = append(args, beforeID)
+		q += ` ORDER BY m.id DESC LIMIT $3`
+		args = append(args, limit)
+	} else {
+		q += ` ORDER BY m.id DESC LIMIT $2`
+		args = append(args, limit)
+	}
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var myPublicID string
+	_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, userID).Scan(&myPublicID)
+	out := make([]chatMessage, 0)
+	for rows.Next() {
+		var m chatMessage
+		var reply sql.NullInt64
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+			return nil, err
+		}
+		m.IsMine = m.AuthorPublicID == myPublicID
+		m.AuthorColor = stableColorForName(m.AuthorName)
+		out = append(out, m)
+	}
+	for i := 0; i < len(out)/2; i++ {
+		out[i], out[len(out)-1-i] = out[len(out)-1-i], out[i]
+	}
+	return out, nil
+}
+
+func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req sendMessageRequest) (chatMessage, error) {
+	cid, err := ensureParticipant(db, userID, conversationPublicID)
+	if err != nil {
+		return chatMessage{}, err
+	}
+	content := strings.TrimSpace(req.Content)
+	if utf8.RuneCountInString(content) < 1 || utf8.RuneCountInString(content) > 8000 {
+		return chatMessage{}, fmt.Errorf("%w: длина сообщения 1..8000", errValidation)
+	}
+	var mid int64
+	err = db.QueryRow(`INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id) VALUES($1,$2,$3,$4) RETURNING id`, cid, userID, content, req.ReplyToID).Scan(&mid)
+	if err != nil {
+		return chatMessage{}, err
+	}
+	_, _ = db.Exec(`UPDATE chat_conversations SET last_message_at=NOW() WHERE id=$1`, cid)
+	_, _ = db.Exec(`DELETE FROM chat_typing WHERE conversation_id=$1 AND user_id=$2`, cid, userID)
+	var m chatMessage
+	if err := db.QueryRow(`SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.id=$1`, mid).Scan(&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+		return chatMessage{}, err
+	}
+	m.IsMine = true
+	m.AuthorColor = stableColorForName(m.AuthorName)
+	return m, nil
+}
+
+func setTyping(db *sql.DB, userID int64, conversationPublicID string, isTyping bool) error {
+	cid, err := ensureParticipant(db, userID, conversationPublicID)
+	if err != nil {
+		return err
+	}
+	_, _ = db.Exec(`DELETE FROM chat_typing WHERE started_at < NOW() - INTERVAL '15 seconds'`)
+	if isTyping {
+		_, err = db.Exec(`INSERT INTO chat_typing(conversation_id,user_id,started_at) VALUES($1,$2,NOW()) ON CONFLICT(conversation_id,user_id) DO UPDATE SET started_at=EXCLUDED.started_at`, cid, userID)
+		return err
+	}
+	_, err = db.Exec(`DELETE FROM chat_typing WHERE conversation_id=$1 AND user_id=$2`, cid, userID)
+	return err
+}
+
+func listTyping(db *sql.DB, userID int64, conversationPublicID string) ([]map[string]any, error) {
+	cid, err := ensureParticipant(db, userID, conversationPublicID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.Query(`SELECT u.public_id,u.full_name FROM chat_typing t JOIN users u ON u.id=t.user_id WHERE t.conversation_id=$1 AND t.user_id<>$2 AND t.started_at > NOW() - INTERVAL '10 seconds'`, cid, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var pid, name string
+		if err := rows.Scan(&pid, &name); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{"public_id": pid, "name": name})
+	}
+	return out, nil
+}
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
