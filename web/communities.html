@@ -636,6 +636,7 @@ function joinCommunity(id){
       if(community){
         community.isMy=true;
         community.members=(Number(community.members)||0)+1;
+        syncCommunityStateCache(community);
       }
       updateJoinButtons(id);
       syncSidebar();
@@ -677,11 +678,29 @@ function selectColor(color,dot){
   dot.classList.add('sel');
   document.getElementById('mColor').value=color;
 }
+function readCachedCommunityState(id){
+  if(!id)return null;
+  try{
+    const raw=sessionStorage.getItem('lastop_community_cache_'+String(id));
+    if(!raw)return null;
+    const cached=JSON.parse(raw);
+    if(Number(cached?.id)!==Number(id))return null;
+    return cached;
+  }catch{
+    return null;
+  }
+}
 function mapAPICommunityToUI(c){
   const cat=(c?.category||'Другое').trim()||'Другое';
   const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
+  const id=Number(c?.id||Date.now());
+  const cached=readCachedCommunityState(id);
+  const apiMembers=Number.isFinite(Number(c?.members_count))?Math.max(0,Number(c.members_count)):0;
+  const cachedMembers=Number.isFinite(Number(cached?.members_count))?Math.max(0,Number(cached.members_count)):null;
+  const membersCount=cachedMembers===null?apiMembers:cachedMembers;
+  const isMember=typeof cached?.is_member==='boolean'?cached.is_member:Boolean(c?.is_member);
   return {
-    id:Number(c?.id||Date.now()),
+    id,
     name:c?.name||'Без названия',
     cat,
     desc:c?.description||'',
@@ -689,10 +708,10 @@ function mapAPICommunityToUI(c){
     color:avc(c?.name||cat),
     icon:icons[cat]||'💬',
     privacy:c?.privacy_level==='closed'?'closed':'open',
-    members:Number(c?.members_count||0),
+    members:membersCount,
     posts:0,
     activity:0,
-    isMy:Boolean(c?.is_member),
+    isMy:isMember,
     corporate:Boolean(c?.is_corporate),
     createdAt:c?.created_at||new Date().toISOString()
   };
@@ -711,6 +730,21 @@ function cacheCommunityDraft(c){
       created_at:c.created_at||new Date().toISOString()
     };
     sessionStorage.setItem('lastop_community_cache_'+String(payload.id),JSON.stringify(payload));
+  }catch{}
+}
+function syncCommunityStateCache(c){
+  if(!c?.id)return;
+  try{
+    const key='lastop_community_cache_'+String(c.id);
+    const raw=sessionStorage.getItem(key);
+    const prev=raw?JSON.parse(raw):{};
+    const payload={
+      ...prev,
+      id:Number(c.id),
+      members_count:Number.isFinite(Number(c.members))?Math.max(0,Number(c.members)):0,
+      is_member:Boolean(c.isMy)
+    };
+    sessionStorage.setItem(key,JSON.stringify(payload));
   }catch{}
 }
 function syncSidebar(){
@@ -766,6 +800,7 @@ async function submitCommunity(){
     const created=mapAPICommunityToUI(data?.community);
     created.isMy=true;
     created.color=color||created.color;
+    syncCommunityStateCache(created);
     COMMUNITIES.unshift(created);
     joinedSet.add(created.id);
     closeModal();
