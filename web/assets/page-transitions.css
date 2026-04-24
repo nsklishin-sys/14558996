@@ -1,0 +1,51 @@
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  LASTOP GROUP — Page Transitions
+ *  Файл: web/assets/page-transitions.css
+ *
+ *  Плавный фейд между страницами:
+ *  - View Transitions API для современных браузеров
+ *  - Opacity-fallback для старых (через JS)
+ *  - Уважение prefers-reduced-motion
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/* View Transitions API — Chrome/Edge 111+, Safari 18+ */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Fallback-фейд: класс .pt-leaving навешивается JS перед переходом */
+html.pt-leaving body {
+  opacity: 0;
+  transition: opacity 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Короткий fade-in на загрузке — симметрия с fade-out */
+@keyframes pt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+html.pt-ready body {
+  animation: pt-fade-in 160ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.01ms !important;
+  }
+  html.pt-leaving body,
+  html.pt-ready body {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+  }
+}
