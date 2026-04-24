@@ -569,15 +569,15 @@ function renderCard(item,i){
     ${item.isTop?'<span class="ic-top-badge">ТОП</span>':''}
     ${item.isNew?'<span class="ic-new">Новое</span>':''}`;
   const foot=`
-    <button class="btn-fav${isSaved?' saved':''}" onclick="toggleFav(${item.id},this)">
+    <button class="btn-fav${isSaved?' saved':''}" onclick="toggleFav(event,${item.id},this)">
       <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isSaved?'fill="var(--red)"':''}></path></svg>
     </button>
-    <button class="btn-detail" onclick="openItemDetail(event,${item.id})">Подробнее</button>
-    <button class="btn-kp" onclick="showToast('Запрос на КП отправлен ✓','success')">Запросить КП</button>`;
+    <button class="btn-detail" onclick="openItemDetail(event,${item.id},true)">Подробнее</button>
+    <button class="btn-kp" onclick="requestKP(event)">Запросить КП</button>`;
 
   /* ── ТОВАР: горизонтальная карточка, картинка справа ── */
   if(item.type==='product'){
-    return`<div class="item-card product-card" style="animation-delay:${i*.05}s">
+    return`<div class="item-card product-card" style="animation-delay:${i*.05}s" onclick="openItemDetail(event,${item.id})">
       <div class="pc-content">
         <div class="ic-badge-row">${badges}</div>
         <div class="ic-company">${esc(item.company)}</div>
@@ -600,7 +600,7 @@ function renderCard(item,i){
   }
 
   /* ── УСЛУГА: вертикальная карточка (без изменений) ── */
-  return`<div class="item-card" style="animation-delay:${i*.05}s">
+  return`<div class="item-card" style="animation-delay:${i*.05}s" onclick="openItemDetail(event,${item.id})">
     <div class="ic-top">
       <div class="ic-thumb" style="background:${st.bg};border:1px solid ${st.bc}">
         <svg viewBox="0 0 24 24" style="stroke:${st.stroke};fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round">${st.path}</svg>
@@ -626,7 +626,7 @@ function renderCard(item,i){
 /* ── РЕНДЕР СТРОКИ ── */
 function renderRow(item,i){
   const st=getStyle(item.cat);
-  return`<div class="item-row" style="animation-delay:${i*.04}s">
+  return`<div class="item-row" style="animation-delay:${i*.04}s" onclick="openItemDetail(event,${item.id})">
     <div class="ir-thumb" style="background:${st.bg};border:1px solid ${st.bc}">
       <svg viewBox="0 0 24 24" style="stroke:${st.stroke};fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round">${st.path}</svg>
     </div>
@@ -642,7 +642,7 @@ function renderRow(item,i){
     <div class="ir-right">
       <div class="ir-stars"><span class="ir-star">★</span><span style="font-size:11px;font-weight:700;color:var(--t)">${item.rating.toFixed(1)}</span><span style="font-size:10px;color:var(--gmt);margin-left:2px">(${item.reviews})</span></div>
       <span class="ir-price">${esc(item.price)}</span>
-      <button class="btn-kp" style="font-size:11px;padding:6px 12px" onclick="showToast('Запрос на КП отправлен ✓','success')">Запросить КП</button>
+      <button class="btn-kp" style="font-size:11px;padding:6px 12px" onclick="requestKP(event)">Запросить КП</button>
     </div>
   </div>`;
 }
@@ -723,16 +723,26 @@ function resetFilters(){
   applyFilters();
 }
 
-function openItemDetail(e,id){
-  if(e){e.stopPropagation();}
+function openItemDetail(e,id,force=false){
+  if(e){
+    e.stopPropagation();
+    if(!force && e.target?.closest('button')) return;
+  }
   const item=ITEMS.find(x=>x.id===id);
   if(item?.type==='service'){location.href='/service-detail.html';return;}
-  showToast('Деталка товара скоро появится');
+  if(item?.type==='product'){location.href='/product-detail.html';return;}
+  showToast('Не удалось открыть карточку');
 }
 
-function toggleFav(id,btn){
+function toggleFav(e,id,btn){
+  if(e){e.stopPropagation();}
   if(favSet.has(id)){favSet.delete(id);btn.classList.remove('saved');btn.querySelector('svg path')?.removeAttribute('fill');showToast('Удалено из избранного');}
   else{favSet.add(id);btn.classList.add('saved');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');showToast('Добавлено в избранное ✓','success');}
+}
+
+function requestKP(e){
+  if(e){e.stopPropagation();}
+  showToast('Запрос на КП отправлен ✓','success');
 }
 
 /* ── МОДАЛКА ── */
