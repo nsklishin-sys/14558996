@@ -349,7 +349,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </div>
         <div class="hero-actions">
           <button class="btn-join" id="btnJoin" onclick="toggleJoin()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Вступить</button>
-          <button class="btn-msg-co" onclick="toast('Переходим в чат сообщества…',true)"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать</button>
+          <button class="btn-msg-co" id="btnCommunityChat" onclick="openCommunityChat()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать</button>
           <button class="btn-share-co" onclick="toast('Ссылка скопирована ✓',true)"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
         </div>
       </div>
@@ -395,6 +395,8 @@ function logout(){localStorage.removeItem('token');location.href='/login.html'}
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
+
+function openCommunityChat(){const id=queryCommunityID();if(!id)return;location.href="/chat.html?community="+encodeURIComponent(id);}
 function switchTab(id, btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -610,6 +612,7 @@ function renderCommunityProfile(c){
   joined=Boolean(c.is_member);
   setJoinButtonState(joined);
   const compose=document.getElementById('composeBox');if(compose)compose.style.display=joined?'flex':'none';
+  const chatBtn=document.getElementById('btnCommunityChat');if(chatBtn)chatBtn.style.display=joined?'inline-flex':'none';
   const requestsTab=document.getElementById('requestsTabBtn');if(requestsTab)requestsTab.style.display=(myRole==='owner'||myRole==='admin'||myRole==='moderator')?'inline-flex':'none';
   const createdAt=document.getElementById('communityCreatedAt');
   if(createdAt){createdAt.textContent=c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}):'—'}
