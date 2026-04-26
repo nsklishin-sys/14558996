@@ -6494,8 +6494,12 @@ func listConversations(db *sql.DB, userID int64, filter, q string, limit int) ([
 		if filter == "groups" && !(c.Type == "group" || c.Type == "community") {
 			continue
 		}
-		if filter == "companies" && !strings.Contains(strings.ToLower(c.DisplayRole), "·") && strings.TrimSpace(c.DisplayRole) == "" {
-			continue
+		if filter == "companies" {
+			role := strings.TrimSpace(c.DisplayRole)
+			isCompany := role != "" && strings.Contains(role, "·")
+			if !isCompany {
+				continue
+			}
 		}
 		if q != "" && !strings.Contains(strings.ToLower(c.DisplayName+" "+c.LastMessageText), q) {
 			continue

@@ -1169,8 +1169,41 @@ function logout(){localStorage.removeItem('token');localStorage.removeItem('user
 function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
 async function loadCurrentUser(){const d=await api('/me');state.currentUser=d.user;document.getElementById('tpName').textContent=d.user.full_name;document.getElementById('tpRole').textContent=d.user.position||d.user.company_name||'Пользователь';document.getElementById('tpAv').textContent=letter(d.user.full_name)}
-async function loadConversations(){const d=await api(`/chat/conversations?filter=${encodeURIComponent(state.activeFilter)}&q=${encodeURIComponent(state.searchQuery)}`);state.conversations=sortConversationsByLastMessage(d.conversations||[]);saveCachedConversations();renderConversations()}
-function renderConversations(){const list=document.getElementById('dialogList');if(!state.conversations.length){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt)">Нет диалогов</div>';return;}list.innerHTML=state.conversations.map(c=>`<div class="d-item ${state.activeConvPublicID===c.public_id?'active':''} ${c.pinned?'pinned':''}" onclick="selectConversation('${c.public_id}')"><div class="d-av-wrap"><div class="d-av" style="background:${c.display_color}">${c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name)}</div>${c.is_online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(c.display_name)}</div></div><div class="d-bot"><div class="d-preview">${c.last_message_author?`<span class='me-prefix'>${esc(c.last_message_author)}: </span>`:''}${esc(c.last_message_text||'')}</div>${c.unread_count?`<span class='d-badge'>${c.unread_count}</span>`:''}</div></div></div>`).join('')}
+async function loadConversations(){
+  try{
+    const d = await api(`/chat/conversations?filter=${encodeURIComponent(state.activeFilter)}&q=${encodeURIComponent(state.searchQuery)}`);
+    state.conversations = sortConversationsByLastMessage(d.conversations || []);
+    saveCachedConversations();
+    renderConversations();
+  }catch(err){
+    // Не затираем кеш если запрос упал. Просто оставляем что было.
+    // Если кеша не было — state.conversations останется [] и UI покажет «Нет диалогов».
+    console.warn('[chat] loadConversations failed:', err);
+    if(!state.conversations) state.conversations = [];
+    renderConversations();
+  }
+}
+function renderConversations(){
+  const list = document.getElementById('dialogList');
+  if(!state.conversations || !state.conversations.length){
+    const isFiltered = state.activeFilter !== 'all' || state.searchQuery;
+    list.innerHTML = `
+      <div style="padding:32px 20px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--gp);display:grid;place-items:center;color:var(--gmt);margin-bottom:4px">
+          <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round">
+            ${isFiltered
+              ? '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'
+              : '<rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>'}
+          </svg>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--t)">${isFiltered ? 'Ничего не найдено' : 'Чатов пока нет'}</div>
+        <div style="font-size:11px;color:var(--gmt);line-height:1.5;max-width:240px">${isFiltered ? 'Попробуйте сбросить фильтр или изменить запрос' : 'Откройте профиль участника и нажмите «Написать», чтобы начать диалог'}</div>
+      </div>
+    `;
+    return;
+  }
+  list.innerHTML = state.conversations.map(c => `<div class="d-item ${state.activeConvPublicID===c.public_id?'active':''} ${c.pinned?'pinned':''}" onclick="selectConversation('${c.public_id}')"><div class="d-av-wrap"><div class="d-av" style="background:${c.display_color}">${c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name)}</div>${c.is_online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(c.display_name)}</div></div><div class="d-bot"><div class="d-preview">${c.last_message_author?`<span class='me-prefix'>${esc(c.last_message_author)}: </span>`:''}${esc(c.last_message_text||'')}</div>${c.unread_count?`<span class='d-badge'>${c.unread_count}</span>`:''}</div></div></div>`).join('');
+}
 function applyConversation(c){if(!c)return;chatName.textContent=c.display_name;chatAv.style.background=c.display_color;chatAv.innerHTML=c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name);chatStatus.textContent=c.is_online?'в сети':'в чате';state.activeConversation=c}
 async function selectConversation(pid){state.activeConvPublicID=pid;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel()}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel()}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
@@ -1215,7 +1248,64 @@ async function ndSearchForGroup(q){const d=await api('/friends/candidates?q='+en
 function ndToggleGroupMember(id,name){if(state.groupSelected.includes(id))state.groupSelected=state.groupSelected.filter(x=>x!==id);else state.groupSelected.push(id);ndGroupSelected.innerHTML=state.groupSelected.map(x=>`<span class='nd-chip'>${x}</span>`).join('');ndSearchForGroup(ndGroupSearch.value)}
 async function ndCreateGroup(){const title=ndGroupTitle.value.trim();if(!title||state.groupSelected.length<2){showToast('Укажите название и минимум 2 участников');return}const d=await api('/chat/conversations/group',{method:'POST',body:{title,member_public_ids:state.groupSelected}});closeNewDialog();await loadConversations();selectConversation(d.conversation.public_id)}
 async function openChatSearch(){const q=prompt('Поиск в диалоге:');if(!q||!state.activeConvPublicID)return;const d=await api(`/chat/conversations/${state.activeConvPublicID}/search?q=${encodeURIComponent(q)}`).catch(()=>null);showToast(d?.messages?.length?`Найдено: ${d.messages.length}`:'Ничего не найдено')}
-window.addEventListener('DOMContentLoaded', async()=>{if(!tk()){location.href='/login.html';return;}await loadCurrentUser();loadCachedConversations();await loadConversations();const p=new URLSearchParams(location.search);const up=p.get('user')||p.get('uid');const cp=p.get('community');if(up){const c=await openOrCreateDirectByPublicID(up);if(c)selectConversation(c.public_id)}else if(cp){const c=await openCommunityConv(cp);if(c)selectConversation(c.public_id)}else if(state.conversations[0])selectConversation(state.conversations[0].public_id);startPolling()})
+window.addEventListener('DOMContentLoaded', async () => {
+  if(!tk()){location.href='/login.html'; return;}
+
+  // Шаг 1: грузим юзера. Если упало — на логин.
+  try{
+    await loadCurrentUser();
+  }catch(_){
+    location.href='/login.html';
+    return;
+  }
+
+  // Шаг 2: показываем кеш сразу (мгновенный отклик)
+  const hadCache = loadCachedConversations();
+
+  // Шаг 3: грузим свежий список с API. Если упало — оставляем кеш.
+  try{
+    await loadConversations();
+  }catch(err){
+    if(!hadCache){
+      // Нет ни кеша, ни API — показываем дружелюбный empty
+      renderConversations();
+    }
+  }
+
+  // Шаг 4: разбираем URL-параметры
+  const params = new URLSearchParams(location.search);
+  const userParam = params.get('user') || params.get('uid');
+  const convParam = params.get('conv');
+  const communityParam = params.get('community');
+
+  if(convParam){
+    // Прямая ссылка на конкретный диалог из виджета
+    const exists = state.conversations.find(c => c.public_id === convParam);
+    if(exists){
+      selectConversation(convParam);
+    } else if(state.conversations.length){
+      selectConversation(state.conversations[0].public_id);
+    }
+  } else if(userParam){
+    try{
+      const conv = await openOrCreateDirectByPublicID(userParam);
+      if(conv) selectConversation(conv.public_id);
+    }catch{
+      if(state.conversations.length) selectConversation(state.conversations[0].public_id);
+    }
+  } else if(communityParam){
+    try{
+      const conv = await openCommunityConv(communityParam);
+      if(conv) selectConversation(conv.public_id);
+    }catch{
+      if(state.conversations.length) selectConversation(state.conversations[0].public_id);
+    }
+  } else if(state.conversations.length){
+    selectConversation(state.conversations[0].public_id);
+  }
+
+  startPolling();
+})
 </script>
 </body>
 </html>
