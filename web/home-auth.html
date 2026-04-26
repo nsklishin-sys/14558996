@@ -844,31 +844,61 @@ async function loadChats(){
     const r=await fetch(API+'/chat/conversations?limit=4',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
-    const items=d.conversations||d.chats||[];
+    const items=d.conversations||[];
     if(items.length){renderChats(items);return;}
   }catch{}
-  renderChats(demoChats());
+  // Если реально нет диалогов — показываем подсказку, а не demo-фейк
+  document.getElementById('chatsList').innerHTML=`
+    <div style="padding:20px 14px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--gp);display:grid;place-items:center;color:var(--gmt);margin-bottom:4px">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round">
+          <rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>
+        </svg>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--t)">Чатов пока нет</div>
+      <div style="font-size:11px;color:var(--gmt);line-height:1.4;max-width:200px">Перейдите на профиль интересного участника и нажмите «Написать»</div>
+    </div>
+  `;
 }
+
 function renderChats(items){
   document.getElementById('chatsList').innerHTML=items.slice(0,4).map(c=>{
-    const name=c.name||c.title||'Чат';
-    const msg=c.last_message||c.preview||'';
-    const time=c.last_time?ago(c.last_time):(c.time||'');
-    const unread=c.unread_count||0;
-    const chatHref = (c.user_id || USER_NAME_TO_PUBLIC_ID[name]) ? profileHref(c) : `/chat.html${c.id?'?id='+c.id:''}`;
-    return`<div class="chat-item" onclick="location.href='${chatHref}'">
-      <div class="ch-av" style="background:${avc(name)}">${letter(name)}${c.is_online?'<div class="ch-online"></div>':''}</div>
-      <div class="ch-info"><div class="ch-name">${esc(name)}</div><div class="ch-msg">${esc(msg)}</div></div>
-      <div class="ch-right"><div class="ch-time">${esc(time)}</div>${unread?`<div class="ch-bdg">${unread}</div>`:''}</div>
+    // Бэк возвращает поля display_*, last_message_*, чат-формат API.
+    // Виджет показывает их корректно без переименования.
+    const name = c.display_name || c.title || 'Чат';
+    const text = c.last_message_text || '';
+    const author = c.last_message_author ? c.last_message_author + ': ' : '';
+    const preview = author + text;
+    const time = c.last_message_at ? formatTimeShort(c.last_message_at) : '';
+    const unread = c.unread_count || 0;
+    const color = c.display_color || avc(name);
+    const initials = c.display_avatar ? '' : letter(name);
+    const avatar = c.display_avatar
+      ? `<img src="${esc(c.display_avatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`
+      : initials;
+    return `<div class="chat-item" onclick="location.href='/chat.html?conv=${encodeURIComponent(c.public_id||'')}'">
+      <div class="ch-av" style="background:${color}">${avatar}${c.is_online?'<div class="ch-online"></div>':''}</div>
+      <div class="ch-info"><div class="ch-name">${esc(name)}</div><div class="ch-msg">${esc(preview)}</div></div>
+      <div class="ch-right">${time?`<div class="ch-time">${esc(time)}</div>`:''}${unread?`<div class="ch-bdg">${unread}</div>`:''}</div>
     </div>`;
   }).join('');
 }
-function demoChats(){return[
-  {name:'Мария Захарова',last_message:'Отправила документы на проверку',time:'14:32',unread_count:2,is_online:true},
-  {name:'LASTOP Digital',last_message:'Вы: Спасибо, посмотрим!',time:'12:05',unread_count:0},
-  {name:'Алексей Петров',last_message:'Когда удобно созвониться?',time:'10:47',unread_count:5,is_online:true},
-  {name:'NorthBridge Logistics',last_message:'Новый маршрут согласован',time:'Вчера',unread_count:0},
-];}
+
+function formatTimeShort(iso){
+  try{
+    const d=new Date(iso);
+    const now=new Date();
+    const diffSec=(now-d)/1000;
+    if(diffSec<60)return 'сейчас';
+    if(diffSec<3600)return Math.floor(diffSec/60)+' мин';
+    const isToday=d.toDateString()===now.toDateString();
+    if(isToday)return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    const yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
+    if(d.toDateString()===yesterday.toDateString())return 'Вчера';
+    if(diffSec<86400*7)return Math.floor(diffSec/86400)+' дн';
+    return d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.','');
+  }catch{return '';}
+}
 
 /* ── ФОРУМ ── */
 async function loadForumThreads(){
