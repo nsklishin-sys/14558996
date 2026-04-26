@@ -745,6 +745,9 @@ function readTasksLocal(){
 }
 function writeTasksLocal(){
   localStorage.setItem(taskStorageKey(),JSON.stringify(TASKS));
+  // Уведомляем других слушателей в этой же вкладке (например /tasks.html
+  // если когда-то откроется в той же вкладке без полной перезагрузки).
+  try{ window.dispatchEvent(new CustomEvent('lastop:tasks-updated')); }catch{}
 }
 async function loadTasks(){
   const localTasks=readTasksLocal();
@@ -785,6 +788,40 @@ function renderTasks(){
       <div class="task-pri pri-${esc(t.pri)}"></div>
     </div>`).join('');
 }
+
+/* ── Слушатели обновлений виджета задач ──
+   Виджет мгновенно перерисовывается, когда задачи меняются:
+   - в другой вкладке (через storage event)
+   - в этой же вкладке через /tasks.html (через кастомный CustomEvent)
+   - при возврате на страницу через back/forward (через pageshow)
+*/
+function refreshTasksFromStorage(){
+  const fresh = readTasksLocal();
+  if(!fresh.length){
+    // Если в storage пусто, не затираем DEFAULT_TASKS — оставляем что есть.
+    return;
+  }
+  TASKS = fresh;
+  renderTasks();
+}
+
+// 1. Изменения в другой вкладке.
+window.addEventListener('storage', e => {
+  if(!e.key) return;
+  if(!e.key.startsWith('homeTasks:v1:')) return;
+  refreshTasksFromStorage();
+});
+
+// 2. Изменения в этой же вкладке (например, после возврата с /tasks.html
+//    через page-transitions без полной перезагрузки страницы).
+window.addEventListener('lastop:tasks-updated', () => {
+  refreshTasksFromStorage();
+});
+
+// 3. Страховка: при показе страницы (включая back/forward через bfcache).
+window.addEventListener('pageshow', () => {
+  refreshTasksFromStorage();
+});
 function toggleTask(id){
   const t=TASKS.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;if(t.done){t.due='Выполнено';t.overdue=false;}
