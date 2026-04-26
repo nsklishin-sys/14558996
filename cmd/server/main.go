@@ -2528,7 +2528,7 @@ func main() {
 		mux.ServeHTTP(w, r)
 	})
 
-	mux.Handle("/", staticSecurity(injectHTML(http.FileServer(http.Dir("./web")))))
+	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
 
 	addr := ":8080"
 	handler := accessLog(securityHeaders(mux))
@@ -6802,6 +6802,61 @@ func staticSecurity(h http.Handler) http.Handler {
 //
 // TODO: если в цепочке появится gzip-сжатие, injectHTML должен стоять до gzip,
 // чтобы вставка выполнялась по несжатому телу ответа.
+// staticCacheControl выставляет корректные Cache-Control заголовки для
+// статических ответов. Без этого браузеры применяют эвристическое
+// кеширование (heuristic freshness ~10% от возраста файла), из-за чего
+// обновлённые ассеты не доходят до пользователя после деплоя минутами
+// или часами.
+//
+// Стратегия:
+//   - HTML/CSS/JS  → "no-cache, must-revalidate"
+//     Браузер хранит копию, но перед каждым использованием делает
+//     условный запрос (If-None-Match / If-Modified-Since). Сервер
+//     отвечает 304 Not Modified если файл не менялся — это быстро
+//     и не грузит сеть. Если файл изменился — приходит новая версия
+//     сразу после первого F5, без Ctrl+Shift+R.
+//   - Изображения и шрифты → "public, max-age=300, must-revalidate"
+//     5 минут жёсткого кеша. Картинки меняются редко, экономим RTT.
+//   - API и всё прочее → ничего не выставляем (API сам ставит).
+//
+// Также блокируем кеширование Service Worker'ом если он когда-то
+// заведётся — заголовок Vary: Cookie помогает CDN правильно
+// сегментировать кеш по аутентификации.
+func staticCacheControl(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// API-эндпоинты — не трогаем, сами знают что нужно
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		ext := strings.ToLower(path.Ext(r.URL.Path))
+		switch ext {
+		case "", ".html", ".htm", ".js", ".mjs", ".css", ".json", ".xml", ".txt", ".map":
+			// Часто меняющиеся текстовые ассеты + HTML без расширения.
+			// no-cache + must-revalidate = браузер ВСЕГДА проверяет на сервере
+			// перед использованием, но пользуется ETag/Last-Modified для 304.
+			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".svg":
+			// Изображения меняются редко — 5 минут жёсткого кеша + revalidate
+			w.Header().Set("Cache-Control", "public, max-age=300, must-revalidate")
+		case ".woff", ".woff2", ".ttf", ".otf", ".eot":
+			// Шрифты меняются практически никогда — 1 час
+			w.Header().Set("Cache-Control", "public, max-age=3600, must-revalidate")
+		default:
+			// Неизвестное расширение — на всякий случай тоже no-cache
+			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		}
+
+		// Vary: Cookie помогает CDN не отдавать одну и ту же
+		// сессионно-зависимую страницу разным пользователям.
+		// Безопаснее по умолчанию, не вредит при отсутствии CDN.
+		w.Header().Add("Vary", "Cookie")
+
+		h.ServeHTTP(w, r)
+	})
+}
+
 func injectHTML(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
