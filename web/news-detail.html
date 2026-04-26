@@ -514,66 +514,11 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
           <span class="act-count" id="btnSaveCount">0</span>
         </button>
 
-        <!-- Репост с дропдауном -->
-        <div class="repost-wrap">
-          <button class="act-btn repost" id="btnRepost" onclick="toggleRepost(event)">
-            <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            <span class="act-label">Репост</span>
-            <span class="act-count" id="btnRepostCount">0</span>
-          </button>
-          <div class="repost-dd" id="repostDD">
-            <div class="repost-dd-head">Поделиться в…</div>
-            <!-- Личная страница -->
-            <div class="repost-item" onclick="doRepost('page')">
-              <div class="repost-item-av" style="background:#1E8A4C" id="repostUserAv">НК</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name" id="repostUserName">Моя страница</div>
-                <div class="repost-item-sub">Личный профиль</div>
-              </div>
-            </div>
-            <div class="repost-div"></div>
-            <!-- Сообщества -->
-            <div class="repost-dd-head" style="padding-top:8px">Мои сообщества</div>
-            <div class="repost-item" onclick="doRepost('comm1')">
-              <div class="repost-item-av" style="background:#1E8A4C">🚛</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">Логистика СНГ</div>
-                <div class="repost-item-sub">2 400 участников</div>
-              </div>
-            </div>
-            <div class="repost-item" onclick="doRepost('comm2')">
-              <div class="repost-item-av" style="background:#6040A0">💻</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">LogTech Россия</div>
-                <div class="repost-item-sub">834 участника</div>
-              </div>
-            </div>
-            <div class="repost-item" onclick="doRepost('comm3')">
-              <div class="repost-item-av" style="background:#B45309">💼</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">HR в логистике</div>
-                <div class="repost-item-sub">412 участников</div>
-              </div>
-            </div>
-            <div class="repost-div"></div>
-            <!-- Чат -->
-            <div class="repost-dd-head" style="padding-top:8px">Отправить в чат</div>
-            <div class="repost-item" onclick="doRepost('chat1')">
-              <div class="repost-item-av" style="background:#3A90C0">МЗ</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">Марина Захарова</div>
-                <div class="repost-item-sub">Онлайн</div>
-              </div>
-            </div>
-            <div class="repost-item" onclick="doRepost('chat2')">
-              <div class="repost-item-av" style="background:#9060C0">АП</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">Алексей Петров</div>
-                <div class="repost-item-sub">5 мин назад</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <button class="act-btn repost" id="btnRepost" onclick="doRepost('page')">
+          <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <span>Репост</span>
+          <span class="act-count" id="btnRepostCount">0</span>
+        </button>
 
       </div><!-- /news-actions -->
 
@@ -692,11 +637,8 @@ function toggleDD(e){e.stopPropagation();const tp=document.getElementById('topba
 document.addEventListener('click',e=>{
   const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');
   if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}
-  /* репост дропдаун */
-  const rd=document.getElementById('repostDD'),rb=document.getElementById('btnRepost');
-  if(rd&&!rd.contains(e.target)&&rb&&!rb.contains(e.target))rd.classList.remove('open');
 })
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){const pd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');const rd=document.getElementById('repostDD');if(pd)pd.classList.remove('open');if(tp)tp.classList.remove('open');if(rd)rd.classList.remove('open')}})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const pd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');if(pd)pd.classList.remove('open');if(tp)tp.classList.remove('open')}})
 
 /* ── ЛАЙК ── */
 let liked=false;
@@ -772,13 +714,13 @@ async function toggleSave(){
 }
 
 /* ── РЕПОСТ ── */
-function toggleRepost(e){e.stopPropagation();const dd=document.getElementById('repostDD');if(dd)dd.classList.toggle('open')}
 async function doRepost(target){
-  if (target !== 'page') {
-    toast('Репост в сообщества появится скоро');
-    return;
-  }
+  // Поскольку dropdown убран, target всегда 'page' — репост на свою страницу.
+  // Параметр оставлен для совместимости со старыми вызовами, если они где-то есть.
   if (!postPublicID) return;
+  const btn = document.getElementById('btnRepost');
+  if (btn && btn.classList.contains('busy')) return;
+  if (btn) btn.classList.add('busy');
   try {
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/repost`, {
       method: 'POST',
@@ -790,21 +732,31 @@ async function doRepost(target){
       toast(d.error || 'Не удалось сделать репост');
       return;
     }
-    const d = await r.json();
-    const dd = document.getElementById('repostDD');
-    if (dd) dd.classList.remove('open');
-    const btn = document.getElementById('btnRepost');
-    if (btn) btn.classList.remove('open');
-    toast('Опубликовано на вашей странице ✓');
-    const newCount = Number(d.post?.repost?.reposts_count || 0);
-    if (newCount > 0) {
+    // Бэк создал новый пост-репост. Перечитываем оригинал чтобы получить актуальные счётчики.
+    const refresh = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: { Authorization: 'Bearer ' + tk() } });
+    if (refresh.ok) {
+      const data = await refresh.json();
+      const p = data.post || {};
+      const newCount = Number(p.reposts_count || 0);
       const statEl = document.getElementById('statReposts');
       if (statEl) statEl.textContent = newCount.toLocaleString('ru-RU');
-      const btnEl = document.getElementById('btnRepostCount');
-      if (btnEl) btnEl.textContent = newCount.toLocaleString('ru-RU');
+      const btnCount = document.getElementById('btnRepostCount');
+      if (btnCount) btnCount.textContent = newCount;
+      // Подсветить кнопку как "репостнуто"
+      if (p.is_reposted && btn) {
+        btn.classList.add('active');
+        const svg = btn.querySelector('svg');
+        if (svg) {
+          svg.style.fill = 'none';
+          svg.style.stroke = 'var(--g)';
+        }
+      }
     }
+    toast('Опубликовано в вашей ленте ✓');
   } catch (err) {
     toast('Сеть недоступна');
+  } finally {
+    if (btn) btn.classList.remove('busy');
   }
 }
 
@@ -1131,9 +1083,21 @@ function renderPost(p){
   applySaveButtonState();
   ['btnSaveCount'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = saveCount; });
 
-  const repostCount = Number(p.reposts_count || 0);
-  const repostCountEl = document.getElementById('btnRepostCount');
-  if (repostCountEl) repostCountEl.textContent = repostCount.toLocaleString('ru-RU');
+  // Кнопка «Репост» — подсветка если текущий юзер уже репостил этот пост
+  const btnRepost = document.getElementById('btnRepost');
+  if (btnRepost) {
+    if (p.is_reposted) {
+      btnRepost.classList.add('active');
+      const svg = btnRepost.querySelector('svg');
+      if (svg) { svg.style.fill = 'none'; svg.style.stroke = 'var(--g)'; }
+    } else {
+      btnRepost.classList.remove('active');
+      const svg = btnRepost.querySelector('svg');
+      if (svg) { svg.style.fill = 'none'; svg.style.stroke = 'currentColor'; }
+    }
+  }
+  const btnRepostCount = document.getElementById('btnRepostCount');
+  if (btnRepostCount) btnRepostCount.textContent = Number(p.reposts_count || 0);
 
   commentCount = Number(p.comments_count || 0);
   ['btnComCount', 'comCountBadge'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = commentCount; });
