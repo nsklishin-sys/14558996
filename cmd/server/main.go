@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -465,7 +466,13 @@ type post struct {
 	LikesCount     int       `json:"likes_count"`
 	CommentsCount  int       `json:"comments_count"`
 	ViewsCount     int       `json:"views_count"`
+	SavesCount     int       `json:"saves_count"`
+	RepostsCount   int       `json:"reposts_count"`
 	IsLiked        bool      `json:"is_liked"`
+	IsSaved        bool      `json:"is_saved"`
+	IsReposted     bool      `json:"is_reposted"`
+	RepostedFromID int64     `json:"reposted_from_id,omitempty"`
+	Repost         *post     `json:"repost,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 	AuthorID       int64     `json:"-"`
 	AuthorPublicID string    `json:"author_public_id"`
@@ -953,6 +960,24 @@ func main() {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{"user": authUser})
+	})
+
+	mux.HandleFunc("/api/me/saved", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, hasAuth := authenticatedUserID(w, r, sessions)
+		if !hasAuth {
+			return
+		}
+		limit := parseLimit(r.URL.Query().Get("limit"), 30, 100)
+		posts, err := listSavedPosts(db, userID, limit)
+		if err != nil {
+			handlePostActionError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"posts": posts})
 	})
 
 	mux.HandleFunc("/api/profile", func(w http.ResponseWriter, r *http.Request) {
@@ -2214,6 +2239,74 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"is_liked": isLiked, "likes_count": likesCount})
 			return
 		}
+		if strings.HasSuffix(publicID, "/save") {
+			postPublicID := strings.TrimSuffix(publicID, "/save")
+			if !isValidPostPublicID(postPublicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id поста")
+				return
+			}
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, hasAuth := authenticatedUserID(w, r, sessions)
+			if !hasAuth {
+				return
+			}
+			isSaved, savesCount, err := togglePostSave(db, postPublicID, userID)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"is_saved": isSaved, "saves_count": savesCount})
+			return
+		}
+		if strings.HasSuffix(publicID, "/repost") {
+			postPublicID := strings.TrimSuffix(publicID, "/repost")
+			if !isValidPostPublicID(postPublicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id поста")
+				return
+			}
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, hasAuth := authenticatedUserID(w, r, sessions)
+			if !hasAuth {
+				return
+			}
+			var req struct {
+				Comment string `json:"comment"`
+			}
+			_ = decodeJSON(w, r, &req)
+			repost, err := createRepost(db, postPublicID, userID, strings.TrimSpace(req.Comment))
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"post": repost})
+			return
+		}
+		if strings.HasSuffix(publicID, "/view") {
+			postPublicID := strings.TrimSuffix(publicID, "/view")
+			if !isValidPostPublicID(postPublicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id поста")
+				return
+			}
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, _ := optionalAuthenticatedUserID(r, sessions)
+			ipHash := hashIP(clientIP(r))
+			counted, count, err := registerPostView(db, postPublicID, userID, ipHash)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"counted": counted, "views_count": count})
+			return
+		}
 		if strings.HasSuffix(publicID, "/comments") {
 			postPublicID := strings.TrimSuffix(publicID, "/comments")
 			if !isValidPostPublicID(postPublicID) {
@@ -2261,7 +2354,7 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
-			item, err := getPostByID(db, publicID, authUserID, hasAuth, true)
+			item, err := getPostByID(db, publicID, authUserID, hasAuth, false)
 			if err != nil {
 				handlePostActionError(w, err)
 				return
@@ -2782,7 +2875,10 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 
 ALTER TABLE posts
-    ADD COLUMN IF NOT EXISTS community_id BIGINT REFERENCES communities(id) ON DELETE CASCADE;
+    ADD COLUMN IF NOT EXISTS community_id BIGINT REFERENCES communities(id) ON DELETE CASCADE,
+    ADD COLUMN IF NOT EXISTS reposted_from_id BIGINT REFERENCES posts(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS reposts_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS saves_count INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS posts_author_created_idx
     ON posts(author_id, created_at DESC) WHERE is_deleted = FALSE;
@@ -2796,6 +2892,9 @@ CREATE INDEX IF NOT EXISTS posts_type_created_idx
 CREATE INDEX IF NOT EXISTS posts_community_created_idx
     ON posts(community_id, created_at DESC) WHERE is_deleted = FALSE AND community_id IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS idx_posts_reposted_from
+    ON posts(reposted_from_id) WHERE reposted_from_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS post_likes (
     post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -2804,6 +2903,34 @@ CREATE TABLE IF NOT EXISTS post_likes (
 );
 
 CREATE INDEX IF NOT EXISTS post_likes_user_idx ON post_likes(user_id);
+
+CREATE TABLE IF NOT EXISTS post_saves (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (post_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_saves_user_created
+    ON post_saves(user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_post_saves_post
+    ON post_saves(post_id);
+
+CREATE TABLE IF NOT EXISTS post_views (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    ip_hash TEXT NOT NULL,
+    viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_views_post_user
+    ON post_views(post_id, user_id) WHERE user_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_post_views_post_iphash_recent
+    ON post_views(post_id, ip_hash, viewed_at DESC);
 
 CREATE TABLE IF NOT EXISTS post_comments (
     id BIGSERIAL PRIMARY KEY,
@@ -4525,13 +4652,20 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 			return nil, nil, errForbidden
 		}
 	}
-	args := []any{communityID, limit + 1}
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: userID, Valid: true}
+	}
+	args := []any{communityID, limit + 1, currentUser}
 	query := `
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
-		       p.views_count, p.created_at, p.author_id,
+		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
-		       FALSE, COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       FALSE,
+		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM post_saves ps WHERE ps.post_id = p.id AND ps.user_id = $3::bigint)), FALSE),
+		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $3::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
+		       COALESCE(c.name, ''), COALESCE(c.id, 0)
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN communities c ON c.id = p.community_id
@@ -4551,12 +4685,15 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		var item post
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
-			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.CommunityName, &item.CommunityID); err != nil {
+			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
 		item.Text = item.Content
+		if err := populateRepost(db, &item, userID, hasAuth); err != nil {
+			return nil, nil, err
+		}
 		items = append(items, item)
 	}
 	var next *int64
@@ -4598,10 +4735,10 @@ func createCommunityPost(db *sql.DB, communityID, authorID int64, req createPost
 		INSERT INTO posts (public_id, author_id, community_id, type, title, content, tags, privacy_level)
 		VALUES ($1,$2,$3,'news',$4,$5,$6::text[],'public')
 		RETURNING id, public_id, type, title, content, COALESCE(cover_url,''), COALESCE(array_to_json(tags),'[]'::json),
-		          privacy_level, likes_count, comments_count, views_count, created_at, author_id
+		          privacy_level, likes_count, comments_count, views_count, saves_count, reposts_count, COALESCE(reposted_from_id, 0), created_at, author_id
 	`, publicID, authorID, communityID, title, content, pgtype.FlatArray[string](tags)).Scan(
 		&created.ID, &created.PublicID, &created.Type, &created.Title, &created.Content, &created.CoverURL, &tagsJSON,
-		&created.PrivacyLevel, &created.LikesCount, &created.CommentsCount, &created.ViewsCount, &created.CreatedAt, &created.AuthorID,
+		&created.PrivacyLevel, &created.LikesCount, &created.CommentsCount, &created.ViewsCount, &created.SavesCount, &created.RepostsCount, &created.RepostedFromID, &created.CreatedAt, &created.AuthorID,
 	); err != nil {
 		return post{}, err
 	}
@@ -4762,7 +4899,7 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 			INSERT INTO posts (public_id, author_id, type, title, content, cover_url, tags, privacy_level)
 			VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7::text[], $8)
 			RETURNING id, public_id, type, title, content, COALESCE(cover_url, ''), COALESCE(array_to_json(tags), '[]'::json),
-					  privacy_level, likes_count, comments_count, views_count, created_at, author_id
+					  privacy_level, likes_count, comments_count, views_count, saves_count, reposts_count, COALESCE(reposted_from_id, 0), created_at, author_id
 		`, publicID, authorID, postType, title, content, coverURL, pgTags, privacy))
 		if err == nil {
 			_ = saveMentions(db, "post", created.ID, authorID, content, content)
@@ -4778,16 +4915,16 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 }
 
 func getPostByID(db *sql.DB, publicID string, authUserID int64, hasAuth, incrementViews bool) (post, error) {
+	return getPostByIDInternal(db, publicID, authUserID, hasAuth, incrementViews, true)
+}
+
+func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth, incrementViews, includeRepost bool) (post, error) {
+	_ = incrementViews
 	tx, err := db.Begin()
 	if err != nil {
 		return post{}, err
 	}
 	defer tx.Rollback()
-	if incrementViews {
-		if _, err := tx.Exec(`UPDATE posts SET views_count = views_count + 1, updated_at = NOW() WHERE public_id = $1 AND is_deleted = FALSE`, publicID); err != nil {
-			return post{}, err
-		}
-	}
 	currentUser := sql.NullInt64{}
 	if hasAuth {
 		currentUser = sql.NullInt64{Int64: authUserID, Valid: true}
@@ -4799,14 +4936,21 @@ func getPostByID(db *sql.DB, publicID string, authUserID int64, hasAuth, increme
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count,
 		       p.comments_count, p.views_count, p.created_at, p.author_id,
-		       COALESCE(pl.user_id IS NOT NULL, FALSE)
+		       COALESCE(pl.user_id IS NOT NULL, FALSE),
+		       p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0),
+		       COALESCE(ps.user_id IS NOT NULL, FALSE),
+		       COALESCE(($2::bigint IS NOT NULL AND EXISTS (
+		           SELECT 1 FROM posts rp WHERE rp.author_id = $2::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE
+		       )), FALSE)
 		FROM posts p
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $2::bigint
+		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $2::bigint
 		WHERE p.public_id = $1 AND p.is_deleted = FALSE
 		LIMIT 1
 	`, publicID, currentUser).Scan(
 		&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &coverURL, &tagsJSON,
 		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID, &item.IsLiked,
+		&item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.IsSaved, &item.IsReposted,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -4826,7 +4970,16 @@ func getPostByID(db *sql.DB, publicID string, authUserID int64, hasAuth, increme
 	if err := tx.Commit(); err != nil {
 		return post{}, err
 	}
-	return hydratePostAuthor(db, item)
+	item, err = hydratePostAuthor(db, item)
+	if err != nil {
+		return post{}, err
+	}
+	if includeRepost {
+		if err := populateRepost(db, &item, authUserID, hasAuth); err != nil {
+			return post{}, err
+		}
+	}
+	return item, nil
 }
 
 func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID int64, postType string) ([]post, *int64, error) {
@@ -4838,12 +4991,16 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 	query := `
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
-		       p.views_count, p.created_at, p.author_id,
+		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
-		       COALESCE(pl.user_id IS NOT NULL, FALSE), COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       COALESCE(pl.user_id IS NOT NULL, FALSE),
+		       COALESCE(ps.user_id IS NOT NULL, FALSE),
+		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
+		       COALESCE(c.name, ''), COALESCE(c.id, 0)
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
+		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.is_deleted = FALSE AND p.privacy_level = 'public'`
 	if postType != "" {
@@ -4866,12 +5023,15 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		var item post
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
-			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.CommunityName, &item.CommunityID); err != nil {
+			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
 		item.Text = item.Content
+		if err := populateRepost(db, &item, authUserID, hasAuth); err != nil {
+			return nil, nil, err
+		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -4903,12 +5063,16 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 	query := `
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
-		       p.views_count, p.created_at, p.author_id,
+		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
-		       COALESCE(pl.user_id IS NOT NULL, FALSE), COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       COALESCE(pl.user_id IS NOT NULL, FALSE),
+		       COALESCE(ps.user_id IS NOT NULL, FALSE),
+		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
+		       COALESCE(c.name, ''), COALESCE(c.id, 0)
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
+		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.author_id = $2 AND p.is_deleted = FALSE`
 	args := []any{currentUser, targetID, limit + 1}
@@ -4934,12 +5098,15 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 		var item post
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
-			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.CommunityName, &item.CommunityID); err != nil {
+			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
 		item.Text = item.Content
+		if err := populateRepost(db, &item, authUserID, hasAuth); err != nil {
+			return nil, nil, err
+		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -4963,6 +5130,185 @@ func softDeletePost(db *sql.DB, publicID string, userID int64) error {
 		return errNotFound
 	}
 	return nil
+}
+
+func togglePostSave(db *sql.DB, postPublicID string, userID int64) (bool, int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return false, 0, err
+	}
+	defer tx.Rollback()
+
+	var postID int64
+	if err := tx.QueryRow(`SELECT id FROM posts WHERE public_id = $1 AND is_deleted = FALSE`, postPublicID).Scan(&postID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, 0, errNotFound
+		}
+		return false, 0, err
+	}
+
+	res, err := tx.Exec(`DELETE FROM post_saves WHERE post_id = $1 AND user_id = $2`, postID, userID)
+	if err != nil {
+		return false, 0, err
+	}
+	deleted, _ := res.RowsAffected()
+	isSaved := deleted == 0
+	if isSaved {
+		if _, err := tx.Exec(`INSERT INTO post_saves (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, postID, userID); err != nil {
+			return false, 0, err
+		}
+	}
+
+	delta := 1
+	if !isSaved {
+		delta = -1
+	}
+	if _, err := tx.Exec(`UPDATE posts SET saves_count = GREATEST(0, saves_count + $1), updated_at = NOW() WHERE id = $2`, delta, postID); err != nil {
+		return false, 0, err
+	}
+	var savesCount int
+	if err := tx.QueryRow(`SELECT saves_count FROM posts WHERE id = $1`, postID).Scan(&savesCount); err != nil {
+		return false, 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, 0, err
+	}
+	return isSaved, savesCount, nil
+}
+
+func createRepost(db *sql.DB, originalPublicID string, userID int64, comment string) (post, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return post{}, err
+	}
+	defer tx.Rollback()
+
+	var origID int64
+	var origCoverURL string
+	var origTags pgtype.FlatArray[string]
+	if err := tx.QueryRow(`
+		SELECT id, COALESCE(cover_url, ''), COALESCE(tags, '{}'::text[])
+		FROM posts WHERE public_id = $1 AND is_deleted = FALSE
+	`, originalPublicID).Scan(&origID, &origCoverURL, &origTags); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return post{}, errNotFound
+		}
+		return post{}, err
+	}
+
+	newPublicID, err := newPublicPostID()
+	if err != nil {
+		return post{}, err
+	}
+
+	var insertedID int64
+	if err := tx.QueryRow(`
+		INSERT INTO posts (public_id, author_id, type, title, content, tags, cover_url, privacy_level, reposted_from_id, created_at, updated_at)
+		VALUES ($1, $2, 'news', '', $3, $4::text[], NULLIF($5, ''), 'public', $6, NOW(), NOW())
+		RETURNING id
+	`, newPublicID, userID, comment, origTags, origCoverURL, origID).Scan(&insertedID); err != nil {
+		return post{}, err
+	}
+	_ = insertedID
+
+	if _, err := tx.Exec(`UPDATE posts SET reposts_count = reposts_count + 1, updated_at = NOW() WHERE id = $1`, origID); err != nil {
+		return post{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return post{}, err
+	}
+	return getPostByID(db, newPublicID, userID, true, false)
+}
+
+func registerPostView(db *sql.DB, postPublicID string, userID int64, ipHash string) (bool, int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return false, 0, err
+	}
+	defer tx.Rollback()
+	var postID int64
+	if err := tx.QueryRow(`SELECT id FROM posts WHERE public_id = $1 AND is_deleted = FALSE`, postPublicID).Scan(&postID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, 0, errNotFound
+		}
+		return false, 0, err
+	}
+	var exists bool
+	if userID > 0 {
+		err = tx.QueryRow(`
+			SELECT EXISTS (
+				SELECT 1 FROM post_views
+				WHERE post_id = $1 AND user_id = $2 AND viewed_at > NOW() - INTERVAL '12 hours'
+			)
+		`, postID, userID).Scan(&exists)
+	} else {
+		err = tx.QueryRow(`
+			SELECT EXISTS (
+				SELECT 1 FROM post_views
+				WHERE post_id = $1 AND user_id IS NULL AND ip_hash = $2 AND viewed_at > NOW() - INTERVAL '12 hours'
+			)
+		`, postID, ipHash).Scan(&exists)
+	}
+	if err != nil {
+		return false, 0, err
+	}
+	counted := false
+	if !exists {
+		var userIDArg any
+		if userID > 0 {
+			userIDArg = userID
+		}
+		if _, err := tx.Exec(`INSERT INTO post_views (post_id, user_id, ip_hash) VALUES ($1, $2, $3)`, postID, userIDArg, ipHash); err != nil {
+			return false, 0, err
+		}
+		if _, err := tx.Exec(`UPDATE posts SET views_count = views_count + 1, updated_at = NOW() WHERE id = $1`, postID); err != nil {
+			return false, 0, err
+		}
+		counted = true
+	}
+	var viewsCount int
+	if err := tx.QueryRow(`SELECT views_count FROM posts WHERE id = $1`, postID).Scan(&viewsCount); err != nil {
+		return false, 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, 0, err
+	}
+	return counted, viewsCount, nil
+}
+
+func listSavedPosts(db *sql.DB, userID int64, limit int) ([]post, error) {
+	rows, err := db.Query(`
+		SELECT p.public_id
+		FROM post_saves ps
+		JOIN posts p ON p.id = ps.post_id
+		WHERE ps.user_id = $1 AND p.is_deleted = FALSE
+		ORDER BY ps.created_at DESC
+		LIMIT $2
+	`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	items := make([]post, 0, len(ids))
+	for _, id := range ids {
+		item, err := getPostByID(db, id, userID, true, false)
+		if err != nil {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
@@ -5089,7 +5435,7 @@ func scanPost(row *sql.Row) (post, error) {
 	var tagsJSON []byte
 	var coverURL string
 	if err := row.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &coverURL, &tagsJSON,
-		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID); err != nil {
+		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID); err != nil {
 		return post{}, err
 	}
 	item.CoverURL = coverURL
@@ -5106,6 +5452,34 @@ func hydratePostAuthor(db *sql.DB, item post) (post, error) {
 		return post{}, err
 	}
 	return item, nil
+}
+
+func populateRepost(db *sql.DB, item *post, authUserID int64, hasAuth bool) error {
+	if item.RepostedFromID <= 0 {
+		return nil
+	}
+	var originalPublicID string
+	if err := db.QueryRow(`SELECT public_id FROM posts WHERE id = $1 AND is_deleted = FALSE`, item.RepostedFromID).Scan(&originalPublicID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			item.Repost = &post{Content: "Оригинал удалён", Text: "Оригинал удалён"}
+			return nil
+		}
+		return err
+	}
+	original, err := getPostByIDInternal(db, originalPublicID, authUserID, hasAuth, false, false)
+	if err != nil {
+		item.Repost = &post{Content: "Оригинал удалён", Text: "Оригинал удалён"}
+		return nil
+	}
+	original.Repost = nil
+	original.RepostedFromID = 0
+	item.Repost = &original
+	return nil
+}
+
+func hashIP(ip string) string {
+	h := sha256.Sum256([]byte(ip))
+	return hex.EncodeToString(h[:])
 }
 
 func canViewFriendsPost(tx *sql.Tx, authUserID, authorID int64) bool {
