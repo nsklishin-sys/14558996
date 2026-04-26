@@ -722,7 +722,8 @@ html.pt-ready body {
 
   window.addEventListener('pageshow', function(){ html.classList.remove('pt-leaving'); });
 })();
-</script>`
+</script>
+<script src="/site-search.js" defer></script>`
 
 func (r *statusRecorder) WriteHeader(status int) {
 	r.status = status
