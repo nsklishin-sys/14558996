@@ -70,17 +70,9 @@
       }catch(_){}
     }
 
-    const match = getBestMatch(cleaned);
-    if (match){
-      const url = new URL(match.url, window.location.origin);
-      url.searchParams.set('q', cleaned);
-      window.location.href = url.toString();
-      return;
-    }
-
-    const fallbackUrl = new URL('/home-auth.html', window.location.origin);
-    fallbackUrl.searchParams.set('q', cleaned);
-    window.location.href = fallbackUrl.toString();
+    const searchUrl = new URL('/search.html', window.location.origin);
+    searchUrl.searchParams.set('q', cleaned);
+    window.location.href = searchUrl.toString();
   }
 
   function attachSearch(input){
