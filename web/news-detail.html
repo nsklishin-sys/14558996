@@ -75,7 +75,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
 
 /* MAIN */
-.main{grid-area:main;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main{grid-area:main;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:10px;min-height:0}
 
 /* ═══ ДЕТАЛЬНАЯ КАРТОЧКА НОВОСТИ ═══ */
 
@@ -256,17 +256,8 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .com-reply{margin-top:10px;margin-left:0;padding-left:14px;border-left:2px solid var(--bdr)}
 
 /* RIGHT */
-.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;min-height:0}
 .right::-webkit-scrollbar{display:none}
-@media (min-width: 1001px){
-  html.lt-shell .shell aside.right{
-    position: sticky;
-    top: 76px;
-    align-self: flex-start;
-    max-height: calc(100vh - 92px);
-    overflow-y: auto;
-  }
-}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
 .card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
 .block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
