@@ -101,4 +101,119 @@
   };
 
   window.loadAndApplyGlobalSettings = loadAndApplyGlobalSettings;
+
+  // ═══════════════════════════════════════════════════════════════
+  // LastopFormat — единый хелпер форматирования дат/времени.
+  // Читает locale, timezone, date_format из закешированных настроек.
+  // Падает в дефолты ru-RU / Europe/Moscow / DD.MM.YYYY если кеш пуст.
+  // ═══════════════════════════════════════════════════════════════
+
+  function getFormatSettings() {
+    var s = null;
+    try {
+      s = JSON.parse(localStorage.getItem(KEY_CACHE) || 'null');
+    } catch (_) {}
+    return {
+      locale: (s && s.locale) || 'ru-RU',
+      timezone: (s && s.timezone) || 'Europe/Moscow',
+      dateFormat: (s && s.date_format) || 'DD.MM.YYYY',
+    };
+  }
+
+  // Преобразуем сокращённую локаль в полную для toLocale*
+  function fullLocale(short) {
+    if (!short) return 'ru-RU';
+    if (short === 'ru') return 'ru-RU';
+    if (short === 'en') return 'en-US';
+    // Если уже полная — возвращаем как есть
+    if (short.indexOf('-') > 0) return short;
+    return short + '-' + short.toUpperCase();
+  }
+
+  function safeDate(input) {
+    if (!input) return null;
+    var d = input instanceof Date ? input : new Date(input);
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  // Полная дата и время: "26 апр. 2026, 17:30"
+  function formatDateTime(iso) {
+    var d = safeDate(iso);
+    if (!d) return '';
+    var s = getFormatSettings();
+    var loc = fullLocale(s.locale);
+    try {
+      return d.toLocaleString(loc, {
+        timeZone: s.timezone,
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (_) {
+      return d.toLocaleString();
+    }
+  }
+
+  // Только дата: "26 апр. 2026" или "26.04.2026" в зависимости от формата
+  function formatDate(iso) {
+    var d = safeDate(iso);
+    if (!d) return '';
+    var s = getFormatSettings();
+    var loc = fullLocale(s.locale);
+    try {
+      return d.toLocaleDateString(loc, {
+        timeZone: s.timezone,
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch (_) {
+      return d.toLocaleDateString();
+    }
+  }
+
+  // Короткая дата без года: "26 апр" — для постов, комментариев свежих
+  function formatDateShort(iso) {
+    var d = safeDate(iso);
+    if (!d) return '';
+    var s = getFormatSettings();
+    var loc = fullLocale(s.locale);
+    try {
+      return d.toLocaleDateString(loc, {
+        timeZone: s.timezone,
+        day: 'numeric',
+        month: 'short',
+      }).replace(/\.$/, '');
+    } catch (_) {
+      return d.toLocaleDateString();
+    }
+  }
+
+  // Только время: "17:30"
+  function formatTime(iso) {
+    var d = safeDate(iso);
+    if (!d) return '';
+    var s = getFormatSettings();
+    var loc = fullLocale(s.locale);
+    try {
+      return d.toLocaleTimeString(loc, {
+        timeZone: s.timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (_) {
+      return d.toLocaleTimeString();
+    }
+  }
+
+  window.LastopFormat = {
+    date: formatDate,
+    dateShort: formatDateShort,
+    time: formatTime,
+    dateTime: formatDateTime,
+  };
+
 })();

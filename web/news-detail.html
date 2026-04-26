@@ -791,7 +791,7 @@ function renderComments(){
         <div class="com-head">
           <span class="com-name">${esc(c.name)}</span>
           <span class="com-role">${esc(c.role)}</span>
-          <span class="com-time">${ago(c.ts)}</span>
+          <span class="com-time">${window.LastopFormat ? window.LastopFormat.dateTime(c.ts) : ago(c.ts)}</span>
         </div>
         <div class="com-text">${esc(c.text)}</div>
         <div class="com-actions">
@@ -811,7 +811,7 @@ function renderComments(){
               <div class="com-head">
                 <span class="com-name">${esc(r.name)}</span>
                 <span class="com-role">${esc(r.role)}</span>
-                <span class="com-time">${ago(r.ts)}</span>
+                <span class="com-time">${window.LastopFormat ? window.LastopFormat.dateTime(r.ts) : ago(r.ts)}</span>
               </div>
               <div class="com-text">${esc(r.text)}</div>
               <div class="com-actions">
@@ -1013,7 +1013,10 @@ function renderPost(p){
       newsAuthorAv.style.background = authorColor;
     }
   }
-  setHTML('newsDate', `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>${esc(ago(p.created_at))}`);
+  const postDate = window.LastopFormat
+    ? window.LastopFormat.dateTime(p.created_at)
+    : new Date(p.created_at).toLocaleString('ru-RU');
+  setHTML('newsDate', `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>${esc(postDate)}`);
   setHTML('newsViews', `<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${Number(p.views_count || 0).toLocaleString('ru-RU')}`);
 
   setHTML('newsText', fmtMentions(p.text || p.content || ''));
