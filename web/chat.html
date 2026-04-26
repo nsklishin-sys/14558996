@@ -1168,7 +1168,26 @@ function saveCachedMessages(pid){if(pid)cacheWrite(cacheKeyMessages(pid),state.m
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
 function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
-async function loadCurrentUser(){const d=await api('/me');state.currentUser=d.user;document.getElementById('tpName').textContent=d.user.full_name;document.getElementById('tpRole').textContent=d.user.position||d.user.company_name||'Пользователь';document.getElementById('tpAv').textContent=letter(d.user.full_name)}
+async function loadCurrentUser(){
+  const d = await api('/me');
+  state.currentUser = d.user;
+  // ID элементов в HTML chat.html: topbarName, topbarRole, topbarAv (см. строки 680-684)
+  // Раньше код искал tpName/tpRole/tpAv — это были ID с другой страницы (template mismatch).
+  // Дополнительно защищаемся через optional chaining — если каких-то элементов вдруг нет,
+  // не падаем с TypeError, который остановит весь init чата.
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  const fullName = d.user.full_name || ((d.user.first_name || '') + ' ' + (d.user.last_name || '')).trim() || d.user.email || '';
+  set('topbarName', fullName);
+  set('topbarRole', d.user.position || d.user.company_name || 'Участник LASTOP');
+  set('topbarAv', letter(fullName));
+  // На случай если в будущем добавятся pdd-* элементы (выпадающее меню профиля)
+  set('pddName', fullName);
+  set('pddRole', d.user.position || d.user.company_name || 'Участник LASTOP');
+  set('pddAv', letter(fullName));
+}
 async function loadConversations(){
   try{
     const d = await api(`/chat/conversations?filter=${encodeURIComponent(state.activeFilter)}&q=${encodeURIComponent(state.searchQuery)}`);
@@ -1249,27 +1268,29 @@ function ndToggleGroupMember(id,name){if(state.groupSelected.includes(id))state.
 async function ndCreateGroup(){const title=ndGroupTitle.value.trim();if(!title||state.groupSelected.length<2){showToast('Укажите название и минимум 2 участников');return}const d=await api('/chat/conversations/group',{method:'POST',body:{title,member_public_ids:state.groupSelected}});closeNewDialog();await loadConversations();selectConversation(d.conversation.public_id)}
 async function openChatSearch(){const q=prompt('Поиск в диалоге:');if(!q||!state.activeConvPublicID)return;const d=await api(`/chat/conversations/${state.activeConvPublicID}/search?q=${encodeURIComponent(q)}`).catch(()=>null);showToast(d?.messages?.length?`Найдено: ${d.messages.length}`:'Ничего не найдено')}
 window.addEventListener('DOMContentLoaded', async () => {
-  if(!tk()){location.href='/login.html'; return;}
-
-  // Шаг 1: грузим юзера. Если упало — на логин.
-  try{
-    await loadCurrentUser();
-  }catch(_){
-    location.href='/login.html';
+  // Шаг 0: проверка токена
+  if (!tk()) {
+    location.href = '/login.html';
     return;
   }
 
-  // Шаг 2: показываем кеш сразу (мгновенный отклик)
-  const hadCache = loadCachedConversations();
+  // Шаг 1: грузим юзера. Если упало — логируем, не валим весь init.
+  try {
+    await loadCurrentUser();
+  } catch (err) {
+    console.warn('[chat] loadCurrentUser failed:', err);
+    // Если /api/me реально вернул 401 — api() уже сделал редирект.
+    // Если упало по другой причине (TypeError, network) — продолжаем без юзера в state.
+  }
 
-  // Шаг 3: грузим свежий список с API. Если упало — оставляем кеш.
-  try{
+  // Шаг 2: показываем кеш мгновенно
+  loadCachedConversations();
+
+  // Шаг 3: грузим свежий список диалогов
+  try {
     await loadConversations();
-  }catch(err){
-    if(!hadCache){
-      // Нет ни кеша, ни API — показываем дружелюбный empty
-      renderConversations();
-    }
+  } catch (err) {
+    console.warn('[chat] loadConversations failed:', err);
   }
 
   // Шаг 4: разбираем URL-параметры
@@ -1278,32 +1299,33 @@ window.addEventListener('DOMContentLoaded', async () => {
   const convParam = params.get('conv');
   const communityParam = params.get('community');
 
-  if(convParam){
-    // Прямая ссылка на конкретный диалог из виджета
-    const exists = state.conversations.find(c => c.public_id === convParam);
-    if(exists){
-      selectConversation(convParam);
-    } else if(state.conversations.length){
+  try {
+    if (convParam) {
+      const exists = state.conversations.find(c => c.public_id === convParam);
+      if (exists) {
+        selectConversation(convParam);
+      } else if (state.conversations.length) {
+        selectConversation(state.conversations[0].public_id);
+      }
+    } else if (userParam) {
+      const conv = await openOrCreateDirectByPublicID(userParam);
+      if (conv) selectConversation(conv.public_id);
+      else if (state.conversations.length) selectConversation(state.conversations[0].public_id);
+    } else if (communityParam) {
+      const conv = await openCommunityConv(communityParam);
+      if (conv) selectConversation(conv.public_id);
+      else if (state.conversations.length) selectConversation(state.conversations[0].public_id);
+    } else if (state.conversations.length) {
       selectConversation(state.conversations[0].public_id);
     }
-  } else if(userParam){
-    try{
-      const conv = await openOrCreateDirectByPublicID(userParam);
-      if(conv) selectConversation(conv.public_id);
-    }catch{
-      if(state.conversations.length) selectConversation(state.conversations[0].public_id);
+  } catch (err) {
+    console.warn('[chat] open conversation failed:', err);
+    if (state.conversations.length) {
+      selectConversation(state.conversations[0].public_id);
     }
-  } else if(communityParam){
-    try{
-      const conv = await openCommunityConv(communityParam);
-      if(conv) selectConversation(conv.public_id);
-    }catch{
-      if(state.conversations.length) selectConversation(state.conversations[0].public_id);
-    }
-  } else if(state.conversations.length){
-    selectConversation(state.conversations[0].public_id);
   }
 
+  // Шаг 5: polling раз в 3 сек
   startPolling();
 })
 </script>
