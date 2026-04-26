@@ -262,3 +262,115 @@ html.lt-shell-2col .topbar > .profile-dd-wrap{
   justify-content: flex-end;
   align-items: center;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ВАРИАНТ B: топбар — две самостоятельные карточки
+   ───────────────────────────────────────────────────────────────
+   Топбар (.topbar) теряет свою плашку и становится чисто
+   grid-контейнером. Поиск (.search-wrap) и обёртка профиля
+   (.profile-dd-wrap) становятся отдельными белыми карточками
+   шириной по своей grid-cell — то есть ровно по сетке колонок
+   .shell под ним.
+
+   Селекторы html.lt-shell X имеют специфичность (0,1,1) и
+   гарантированно перекрывают inline-стили .topbar/.search-wrap/
+   .topbar-profile из <style> каждой страницы (0,1,0) без
+   !important.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Общая плашка топбара становится прозрачной ── */
+html.lt-shell .topbar,
+html.lt-shell-2col .topbar{
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 10px;
+  min-height: 56px;
+}
+
+/* ── Поиск — отдельная белая карточка ── */
+html.lt-shell .topbar > .search-wrap,
+html.lt-shell-2col .topbar > .search-wrap{
+  background: var(--w);
+  border: 1px solid var(--bdr);
+  border-radius: var(--rl);
+  box-shadow: var(--sh);
+  padding: 0 14px 0 14px;
+  min-height: 56px;
+  height: 56px;
+  align-items: center;
+  position: relative;
+  display: flex;
+}
+
+/* Иконка лупы внутри новой карточки поиска — выровнять под padding */
+html.lt-shell .topbar > .search-wrap > .search-icon,
+html.lt-shell-2col .topbar > .search-wrap > .search-icon{
+  left: 14px;
+}
+
+/* Сам input — без собственной обводки и фона, живёт внутри карточки */
+html.lt-shell .topbar > .search-wrap > input,
+html.lt-shell-2col .topbar > .search-wrap > input{
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  height: 36px;
+  padding: 0 0 0 22px;
+  width: 100%;
+  outline: none;
+  box-shadow: none;
+}
+html.lt-shell .topbar > .search-wrap > input:focus,
+html.lt-shell-2col .topbar > .search-wrap > input:focus{
+  border: none;
+  box-shadow: none;
+}
+
+/* ── Обёртка профиля — отдельная белая карточка ── */
+html.lt-shell .topbar > .profile-dd-wrap{
+  background: var(--w);
+  border: 1px solid var(--bdr);
+  border-radius: var(--rl);
+  box-shadow: var(--sh);
+  padding: 6px 14px;
+  min-height: 56px;
+  height: 56px;
+  align-items: center;
+  /* существующие grid-cell правила оставляем как есть */
+}
+
+/* Сама карточка профиля внутри обёртки — теряет свою плашку,
+   потому что родитель теперь белая карточка целиком */
+html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile{
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+}
+html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile:hover{
+  background: var(--gp);
+  border-radius: var(--rm);
+}
+html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile.open{
+  background: var(--gp);
+  border-radius: var(--rm);
+}
+
+/* Дропдаун профиля — позиционирование от обёртки-карточки */
+html.lt-shell .topbar > .profile-dd-wrap > .profile-dd{
+  top: calc(100% + 8px);
+  right: 0;
+}
+
+/* ── Двухколоночный каркас (chat.html) ── */
+/* В chat.html правого сайдбара под топбаром нет, профиль скрыт.
+   Поиск — единственная карточка топбара. Она занимает всю ширину
+   родителя через flex. */
+html.lt-shell-2col .topbar > .search-wrap{
+  flex: 1 1 auto;
+}
