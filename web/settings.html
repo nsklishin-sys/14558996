@@ -1146,9 +1146,29 @@ async function saveSettings(section){
     body.timezone=document.getElementById('timezoneSelect').value;
     body.date_format=document.getElementById('dateFormatSelect').value;
   }
-  const r=await fetch(API+`/settings/${section}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
-  const d=await r.json().catch(()=>({}));
-  showToast(r.ok?'Настройки сохранены ✓':(d.error||'Ошибка сохранения'));
+  try{
+    const r=await fetch(API+`/settings/${section}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){
+      showToast(d.error||'Ошибка сохранения');
+      return;
+    }
+    showToast('Настройки сохранены ✓');
+
+    // Применяем настройки к текущей странице немедленно
+    if (window.LastopSettings && window.LastopSettings.apply) {
+      // Сначала перечитаем все настройки с бэка (бэк мог дополнить дефолтами)
+      try {
+        const fresh = await fetch(API + '/settings', { headers: { Authorization: 'Bearer ' + tk() } });
+        if (fresh.ok) {
+          const data = await fresh.json();
+          if (data.settings) window.LastopSettings.apply(data.settings);
+        }
+      } catch {}
+    }
+  }catch{
+    showToast('Ошибка сохранения');
+  }
 }
 async function confirmDelete(){
   const current_password=prompt('Введите пароль');
@@ -1207,6 +1227,11 @@ function applySettingsToUI(s){
   setSelectValue('timezoneSelect',s.timezone||detectDefaultTimezone(),'Europe/Moscow');
   setSelectValue('dateFormatSelect',s.date_format||detectDefaultDateFormat(),'DD.MM.YYYY');
   if(s.theme){markThemeCard(s.theme);if(window.LastopTheme?.set)window.LastopTheme.set(s.theme);}
+
+  // Применяем глобальные настройки к текущей странице немедленно (без перезагрузки)
+  if (window.LastopSettings && window.LastopSettings.apply) {
+    window.LastopSettings.apply(s);
+  }
 }
 async function changePassword(){
   const current_password=prompt('Текущий пароль');
