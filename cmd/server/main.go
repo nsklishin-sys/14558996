@@ -3498,7 +3498,7 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email, COALESCE(handle, ''),
 			COALESCE(avatar_url, ''), COALESCE(position, ''), COALESCE(company_name, ''),
-			COALESCE(bio, ''), COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(website, '')
+			COALESCE(bio, ''), COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, '')
 		FROM users
 		WHERE public_id = $1 AND is_deleted = FALSE
 	`, publicID).Scan(
@@ -3516,7 +3516,6 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 		&profile.Phone,
 		&profile.Location,
 		&profile.City,
-		&profile.Website,
 	)
 	if err != nil {
 		return publicUserProfile{}, err
@@ -3545,7 +3544,6 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 		profile.Email = ""
 		profile.Location = ""
 		profile.City = ""
-		profile.Website = ""
 		profile.CanMessage = false
 		return profile, nil
 	}
