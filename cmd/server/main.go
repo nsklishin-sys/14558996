@@ -592,10 +592,22 @@ type createCommentRequest struct {
 }
 
 type sessionStore struct {
-	// TODO: keep in-memory sessions for now; move to durable/shared storage in a dedicated task.
-	mu         sync.RWMutex
-	tokenToUID map[string]int64
+	db    *sql.DB
+	cache *sessionCache
 }
+
+type sessionCache struct {
+	mu    sync.RWMutex
+	items map[string]sessionCacheEntry
+}
+
+type sessionCacheEntry struct {
+	userID   int64
+	cachedAt time.Time
+}
+
+const sessionCacheTTL = 10 * time.Minute
+const sessionLifetime = 30 * 24 * time.Hour
 
 type ipRateLimiter struct {
 	mu      sync.Mutex
@@ -775,43 +787,149 @@ func (l *ipRateLimiter) Allow(ip string) bool {
 	return entry.limiter.Allow()
 }
 
-func newSessionStore() *sessionStore {
-	return &sessionStore{
-		tokenToUID: make(map[string]int64),
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
+}
+
+func newSessionStore(db *sql.DB) *sessionStore {
+	s := &sessionStore{
+		db: db,
+		cache: &sessionCache{
+			items: make(map[string]sessionCacheEntry),
+		},
 	}
+	go s.cleanupLoop()
+	return s
 }
 
 func (s *sessionStore) put(token string, userID int64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.tokenToUID[token] = userID
+	th := hashToken(token)
+	expires := time.Now().Add(sessionLifetime)
+
+	_, err := s.db.Exec(`
+		INSERT INTO sessions (token_hash, user_id, expires_at, last_seen_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (token_hash) DO UPDATE
+		SET last_seen_at = NOW(), expires_at = EXCLUDED.expires_at
+	`, th, userID, expires)
+	if err != nil {
+		log.Printf("[sessions] put failed: %v", err)
+	}
+
+	s.cache.mu.Lock()
+	s.cache.items[th] = sessionCacheEntry{userID: userID, cachedAt: time.Now()}
+	s.cache.mu.Unlock()
 }
 
 func (s *sessionStore) getUserID(token string) (int64, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	userID, ok := s.tokenToUID[token]
-	return userID, ok
+	if token == "" {
+		return 0, false
+	}
+
+	th := hashToken(token)
+
+	s.cache.mu.RLock()
+	if entry, ok := s.cache.items[th]; ok {
+		if time.Since(entry.cachedAt) < sessionCacheTTL {
+			s.cache.mu.RUnlock()
+			return entry.userID, true
+		}
+	}
+	s.cache.mu.RUnlock()
+
+	var userID int64
+	var expiresAt time.Time
+	err := s.db.QueryRow(`
+		SELECT user_id, expires_at FROM sessions WHERE token_hash = $1
+	`, th).Scan(&userID, &expiresAt)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("[sessions] getUserID failed: %v", err)
+		}
+		return 0, false
+	}
+
+	if time.Now().After(expiresAt) {
+		_, _ = s.db.Exec(`DELETE FROM sessions WHERE token_hash = $1`, th)
+		s.cache.mu.Lock()
+		delete(s.cache.items, th)
+		s.cache.mu.Unlock()
+		return 0, false
+	}
+
+	go func() {
+		_, _ = s.db.Exec(`UPDATE sessions SET last_seen_at = NOW() WHERE token_hash = $1`, th)
+	}()
+
+	s.cache.mu.Lock()
+	s.cache.items[th] = sessionCacheEntry{userID: userID, cachedAt: time.Now()}
+	s.cache.mu.Unlock()
+
+	return userID, true
 }
 
 func (s *sessionStore) invalidateUser(userID int64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for token, uid := range s.tokenToUID {
-		if uid == userID {
-			delete(s.tokenToUID, token)
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE user_id = $1`, userID)
+	if err != nil {
+		log.Printf("[sessions] invalidateUser failed: %v", err)
+	}
+
+	s.cache.mu.Lock()
+	for th, entry := range s.cache.items {
+		if entry.userID == userID {
+			delete(s.cache.items, th)
 		}
 	}
+	s.cache.mu.Unlock()
 }
 
 func (s *sessionStore) invalidateUserExcept(userID int64, exceptToken string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for token, uid := range s.tokenToUID {
-		if uid == userID && token != exceptToken {
-			delete(s.tokenToUID, token)
+	exceptHash := hashToken(exceptToken)
+	_, err := s.db.Exec(`
+		DELETE FROM sessions WHERE user_id = $1 AND token_hash != $2
+	`, userID, exceptHash)
+	if err != nil {
+		log.Printf("[sessions] invalidateUserExcept failed: %v", err)
+	}
+
+	s.cache.mu.Lock()
+	for th, entry := range s.cache.items {
+		if entry.userID == userID && th != exceptHash {
+			delete(s.cache.items, th)
 		}
 	}
+	s.cache.mu.Unlock()
+}
+
+func (s *sessionStore) cleanupLoop() {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		s.cleanupExpired()
+	}
+}
+
+func (s *sessionStore) cleanupExpired() {
+	res, err := s.db.Exec(`DELETE FROM sessions WHERE expires_at < NOW()`)
+	if err != nil {
+		log.Printf("[sessions] cleanup failed: %v", err)
+		return
+	}
+
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		log.Printf("[sessions] cleaned up %d expired sessions", n)
+	}
+
+	cutoff := time.Now().Add(-sessionCacheTTL)
+	s.cache.mu.Lock()
+	for th, entry := range s.cache.items {
+		if entry.cachedAt.Before(cutoff) {
+			delete(s.cache.items, th)
+		}
+	}
+	s.cache.mu.Unlock()
 }
 
 func main() {
@@ -822,7 +940,7 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
-	sessions := newSessionStore()
+	sessions := newSessionStore(db)
 	authRateLimiter := newIPRateLimiter(10, time.Minute)
 	postRateLimiter := newIPRateLimiter(10, time.Minute)
 	commentRateLimiter := newIPRateLimiter(30, time.Minute)
@@ -2744,6 +2862,17 @@ CREATE INDEX IF NOT EXISTS users_handle_prefix_idx
 CREATE UNIQUE INDEX IF NOT EXISTS users_public_id_uniq_idx ON users(public_id);
 
 -- Миграция существующих users без public_id должна выполняться вручную.
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 days')
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
 CREATE TABLE IF NOT EXISTS friend_requests (
     id BIGSERIAL PRIMARY KEY,
