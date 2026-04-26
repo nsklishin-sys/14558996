@@ -374,3 +374,64 @@ html.lt-shell .topbar > .profile-dd-wrap > .profile-dd{
 html.lt-shell-2col .topbar > .search-wrap{
   flex: 1 1 auto;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ГЛОБАЛЬНЫЕ НАСТРОЙКИ — применяются по data-attr на <html>
+   Управляются через global-settings.js
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Компактная лента — уменьшаем padding и шрифт у карточек */
+html[data-compact-feed="1"] .post-card,
+html[data-compact-feed="1"] .feed-card,
+html[data-compact-feed="1"] .news-card,
+html[data-compact-feed="1"] .saved-card{
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+html[data-compact-feed="1"] .post-card .post-text,
+html[data-compact-feed="1"] .feed-card .post-text,
+html[data-compact-feed="1"] .news-card .news-text,
+html[data-compact-feed="1"] .saved-card .saved-card-text{
+  font-size: 13px;
+  -webkit-line-clamp: 2;
+}
+
+html[data-compact-feed="1"] .post-card .post-stats,
+html[data-compact-feed="1"] .feed-card .post-stats{
+  padding-top: 8px;
+}
+
+/* Широкая раскладка — пожимаем правый сайдбар, расширяем main */
+@media (min-width: 1001px){
+  html[data-layout-mode="wide"] .shell{
+    grid-template-columns: 220px 1fr 220px;
+  }
+}
+@media (min-width: 1400px){
+  html[data-layout-mode="wide"] .shell{
+    grid-template-columns: 240px 1fr 240px;
+  }
+}
+
+/* Топбар тоже пересчитывается под новые grid-cols автоматически
+   через существующий правило html.lt-shell .topbar { grid-template-columns: 1fr ... } */
+@media (min-width: 1001px){
+  html[data-layout-mode="wide"].lt-shell .topbar,
+  html[data-layout-mode="wide"].lt-shell-2col .topbar{
+    grid-template-columns: 1fr 220px;
+  }
+}
+@media (min-width: 1400px){
+  html[data-layout-mode="wide"].lt-shell .topbar{
+    grid-template-columns: 1fr 240px;
+  }
+}
+
+/* Скрытие кнопки «Написать» на профилях, если получатель не разрешает писать всем.
+   Кнопка скрывается только если у текущего юзера в настройках стоит "только контакты" / "никто".
+   Реальная проверка получателя делается в самой странице profile_user.html (см. часть E). */
+html[data-msg-perm="contacts"] [data-action="write-message"],
+html[data-msg-perm="none"] [data-action="write-message"]{
+  display: none;
+}
