@@ -2905,11 +2905,11 @@ CREATE INDEX IF NOT EXISTS chat_typing_started_idx
 	}
 
 	if err := migratePublicationSeedData(db); err != nil {
-		return fmt.Errorf("migrate publication seed data: %w", err)
+		log.Printf("WARN: migrate publication seed data failed: %v", err)
 	}
-	// if err := migrateEventSeedData(db); err != nil {
-//     return fmt.Errorf("migrate event seed data: %w", err)
-// }
+	if err := migrateEventSeedData(db); err != nil {
+		log.Printf("WARN: migrate event seed data failed: %v", err)
+	}
 
 	return nil
 }
@@ -5670,28 +5670,191 @@ func listEventRegistrations(db *sql.DB, userID int64, publicID string, limit int
 }
 
 func migrateEventSeedData(db *sql.DB) error {
-	var seedID int64
-	if err := db.QueryRow(`SELECT id FROM users WHERE email=$1`, "seed.lastop@local").Scan(&seedID); err != nil {
-		return nil
+	const seedUserEmail = "seed.lastop@local"
+
+	var organizerID int64
+	err := db.QueryRow(`SELECT id FROM users WHERE email = $1`, seedUserEmail).Scan(&organizerID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("lookup seed organizer: %w", err)
 	}
-	seeds := []struct {
-		id    string
-		title string
-		typ   string
-		days  int
-	}{
-		{"evt1a2b3c4d5", "Вебинар: контроль поставок в 2026", "webinar", 2},
-		{"evt2a3b4c5d6", "Конференция логистических лидеров", "conference", 7},
-		{"evt3a4b5c6d7", "Воркшоп по таможенному комплаенсу", "workshop", 14},
+
+	type eventSeed struct {
+		PublicID    string
+		Title       string
+		Description string
+		Type        string
+		Category    string
+		Format      string
+		City        string
+		Address     string
+		Venue       string
+		OnlineURL   string
+		StartsIn    time.Duration
+		DurationMin int
+		Timezone    string
+		FeeCents    int
+		Currency    string
+		SeatsTotal  int
+		Tags        []string
+		CoverURL    string
+		BannerColor string
+		Status      string
 	}
+
+	seeds := []eventSeed{
+		{
+			PublicID:    "evtseed1a2b3c",
+			Title:       "Запуск платформы LASTOP",
+			Description: "Демо-вебинар к запуску платформы. Покажем основные возможности и ответим на вопросы.",
+			Type:        "webinar",
+			Category:    "Платформа",
+			Format:      "online",
+			City:        "",
+			Address:     "",
+			Venue:       "",
+			OnlineURL:   "https://meet.lastop.example/launch",
+			StartsIn:    48 * time.Hour,
+			DurationMin: 60,
+			Timezone:    "Europe/Moscow",
+			FeeCents:    0,
+			Currency:    "RUB",
+			SeatsTotal:  0,
+			Tags:        []string{"вебинар", "запуск"},
+			CoverURL:    "",
+			BannerColor: "",
+			Status:      "published",
+		},
+		{
+			PublicID:    "evtseed4d5e6f",
+			Title:       "Networking-завтрак: логистика 2026",
+			Description: "Встреча для специалистов отрасли. Завтрак, кофе, обмен контактами.",
+			Type:        "networking",
+			Category:    "Логистика",
+			Format:      "offline",
+			City:        "Москва",
+			Address:     "Лесная ул., 5",
+			Venue:       "Лофт «Северный»",
+			OnlineURL:   "",
+			StartsIn:    7 * 24 * time.Hour,
+			DurationMin: 120,
+			Timezone:    "Europe/Moscow",
+			FeeCents:    150000,
+			Currency:    "RUB",
+			SeatsTotal:  40,
+			Tags:        []string{"нетворкинг", "москва"},
+			CoverURL:    "",
+			BannerColor: "",
+			Status:      "published",
+		},
+		{
+			PublicID:    "evtseed789abc",
+			Title:       "Воркшоп: оптимизация маршрутов",
+			Description: "Практический разбор кейсов и инструментов планирования маршрутов.",
+			Type:        "workshop",
+			Category:    "Транспорт",
+			Format:      "hybrid",
+			City:        "Санкт-Петербург",
+			Address:     "Невский пр., 100",
+			Venue:       "Бизнес-центр «Невский»",
+			OnlineURL:   "https://meet.lastop.example/workshop",
+			StartsIn:    14 * 24 * time.Hour,
+			DurationMin: 180,
+			Timezone:    "Europe/Moscow",
+			FeeCents:    0,
+			Currency:    "RUB",
+			SeatsTotal:  60,
+			Tags:        []string{"воркшоп", "маршруты"},
+			CoverURL:    "",
+			BannerColor: "",
+			Status:      "published",
+		},
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
 	for _, s := range seeds {
-		_, err := db.Exec(`INSERT INTO events(public_id, organizer_id, title, description, type, format, starts_at, ends_at, timezone, online_url, status)
-			VALUES ($1,$2,$3,$4,$5,'online',NOW()+($6||' days')::interval,NOW()+($6||' days')::interval+INTERVAL '2 hour','Europe/Moscow','https://lastop.local/events','published')
-			ON CONFLICT (public_id) DO NOTHING`, s.id, seedID, s.title, "Seed событие", s.typ, s.days)
+		starts := time.Now().Add(s.StartsIn).UTC()
+		ends := starts.Add(time.Duration(s.DurationMin) * time.Minute)
+
+		// Маппинг колонок и аргументов миграции seed-мероприятий.
+		// Любое расхождение между порядком колонок и порядком аргументов
+		// в Exec приведёт к runtime-ошибке кодирования pgx.
+		//
+		// $1  public_id      string    TEXT
+		// $2  organizer_id   int64     BIGINT
+		// $3  title          string    TEXT
+		// $4  description    string    TEXT
+		// $5  type           string    TEXT
+		// $6  category       string    TEXT
+		// $7  format         string    TEXT
+		// $8  city           string    TEXT
+		// $9  address        string    TEXT
+		// $10 venue          string    TEXT
+		// $11 online_url     string    TEXT
+		// $12 starts_at      time.Time TIMESTAMPTZ
+		// $13 ends_at        time.Time TIMESTAMPTZ
+		// $14 timezone       string    TEXT
+		// $15 fee_cents      int       INTEGER
+		// $16 currency       string    TEXT
+		// $17 seats_total    int       INTEGER
+		// $18 tags           []string  TEXT[]
+		// $19 cover_url      string    TEXT
+		// $20 banner_color   string    TEXT
+		// $21 status         string    TEXT
+		_, err := tx.Exec(`
+			INSERT INTO events (
+				public_id, organizer_id, title, description, type,
+				category, format, city, address, venue,
+				online_url, starts_at, ends_at, timezone, fee_cents,
+				currency, seats_total, tags, cover_url, banner_color,
+				status
+			) VALUES (
+				$1,  $2,  $3,  $4,  $5,
+				$6,  $7,  $8,  $9,  $10,
+				$11, $12, $13, $14, $15,
+				$16, $17, $18, $19, $20,
+				$21
+			)
+			ON CONFLICT (public_id) DO NOTHING
+		`,
+			s.PublicID,
+			organizerID,
+			s.Title,
+			s.Description,
+			s.Type,
+			s.Category,
+			s.Format,
+			s.City,
+			s.Address,
+			s.Venue,
+			s.OnlineURL,
+			starts,
+			ends,
+			s.Timezone,
+			s.FeeCents,
+			s.Currency,
+			s.SeatsTotal,
+			s.Tags,
+			s.CoverURL,
+			s.BannerColor,
+			s.Status,
+		)
 		if err != nil {
-			return err
+			return fmt.Errorf("insert seed event %s: %w", s.PublicID, err)
 		}
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+
 	return nil
 }
 
