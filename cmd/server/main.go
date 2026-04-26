@@ -260,6 +260,78 @@ type joinRequestBody struct {
 	Message string `json:"message"`
 }
 
+type searchUser struct {
+	PublicID    string  `json:"public_id"`
+	FullName    string  `json:"full_name"`
+	Handle      string  `json:"handle"`
+	Position    string  `json:"position"`
+	CompanyName string  `json:"company_name"`
+	Bio         string  `json:"bio"`
+	City        string  `json:"city"`
+	Score       float64 `json:"score,omitempty"`
+}
+
+type searchPost struct {
+	PublicID       string    `json:"public_id"`
+	Content        string    `json:"content"`
+	Category       string    `json:"category"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author_name"`
+	LikesCount     int       `json:"likes_count"`
+	CommentsCount  int       `json:"comments_count"`
+	CreatedAt      time.Time `json:"created_at"`
+	Score          float64   `json:"score,omitempty"`
+}
+
+type searchCommunity struct {
+	PublicID     string  `json:"public_id"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	Region       string  `json:"region"`
+	Category     string  `json:"category"`
+	Color        string  `json:"color"`
+	MembersCount int     `json:"members_count"`
+	Privacy      string  `json:"privacy"`
+	Score        float64 `json:"score,omitempty"`
+}
+
+type searchEvent struct {
+	PublicID        string    `json:"public_id"`
+	Title           string    `json:"title"`
+	Description     string    `json:"description"`
+	Type            string    `json:"type"`
+	Format          string    `json:"format"`
+	City            string    `json:"city"`
+	StartsAt        time.Time `json:"starts_at"`
+	RegisteredCount int       `json:"registered_count"`
+	BannerColor     string    `json:"banner_color"`
+	Score           float64   `json:"score,omitempty"`
+}
+
+type searchCompany struct {
+	Name        string  `json:"name"`
+	Industry    string  `json:"industry"`
+	City        string  `json:"city"`
+	IsPartner   bool    `json:"is_partner"`
+	Description string  `json:"description"`
+	Score       float64 `json:"score,omitempty"`
+}
+
+type searchSection struct{}
+
+type searchResult struct {
+	Query       string            `json:"query"`
+	Total       int               `json:"total"`
+	TookMS      int64             `json:"took_ms"`
+	Counts      map[string]int    `json:"counts"`
+	Users       []searchUser      `json:"users,omitempty"`
+	Posts       []searchPost      `json:"posts,omitempty"`
+	Communities []searchCommunity `json:"communities,omitempty"`
+	Events      []searchEvent     `json:"events,omitempty"`
+	Companies   []searchCompany   `json:"companies,omitempty"`
+	Sections    []searchSection   `json:"sections"`
+}
+
 type chatConversation struct {
 	ID                int64      `json:"id"`
 	PublicID          string     `json:"public_id"`
@@ -755,6 +827,7 @@ func main() {
 	eventSaveLimiter := newIPRateLimiter(60, time.Minute)
 	eventPatchLimiter := newIPRateLimiter(30, time.Hour)
 	eventDeleteLimiter := newIPRateLimiter(10, 24*time.Hour)
+	searchLimiter := newIPRateLimiter(60, time.Minute)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -2266,6 +2339,18 @@ func main() {
 			out = append(out, row)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"users": out})
+	})
+
+	mux.HandleFunc("/api/search", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		if !searchLimiter.Allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "too many requests")
+			return
+		}
+		handleGlobalSearch(w, r, db, sessions)
 	})
 
 	mux.HandleFunc("/api/users/by-handle/", func(w http.ResponseWriter, r *http.Request) {
@@ -5066,6 +5151,400 @@ func parseIDOrZero(raw string) int64 {
 		return 0
 	}
 	return v
+}
+
+func parseIntDefault(s string, def int) int {
+	if s == "" {
+		return def
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+func searchEscapeILike(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}
+
+func handleGlobalSearch(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *sessionStore) {
+	started := time.Now()
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if utf8.RuneCountInString(q) < 2 {
+		writeError(w, http.StatusBadRequest, "запрос слишком короткий")
+		return
+	}
+	if utf8.RuneCountInString(q) > 200 {
+		q = string([]rune(q)[:200])
+	}
+
+	typ := strings.TrimSpace(r.URL.Query().Get("type"))
+	if typ == "" {
+		typ = "all"
+	}
+	switch typ {
+	case "all", "users", "posts", "communities", "events", "companies", "sections":
+	default:
+		typ = "all"
+	}
+
+	sortBy := strings.TrimSpace(r.URL.Query().Get("sort"))
+	if sortBy == "" {
+		sortBy = "relevance"
+	}
+	switch sortBy {
+	case "relevance", "recent", "popular":
+	default:
+		sortBy = "relevance"
+	}
+
+	limit := parseIntDefault(strings.TrimSpace(r.URL.Query().Get("limit")), 50)
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset := parseIntDefault(strings.TrimSpace(r.URL.Query().Get("offset")), 0)
+	if offset < 0 {
+		offset = 0
+	}
+
+	viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+
+	res := searchResult{
+		Query: q,
+		Counts: map[string]int{
+			"users": 0, "posts": 0, "communities": 0, "events": 0, "companies": 0, "sections": 0,
+		},
+		Users:       []searchUser{},
+		Posts:       []searchPost{},
+		Communities: []searchCommunity{},
+		Events:      []searchEvent{},
+		Companies:   []searchCompany{},
+		Sections:    []searchSection{},
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	runOne := func(category string, fn func() (int, error)) {
+		if typ != "all" && typ != category {
+			return
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			n, err := fn()
+			if err != nil {
+				log.Printf("search %s: %v", category, err)
+				return
+			}
+			mu.Lock()
+			res.Counts[category] = n
+			mu.Unlock()
+		}()
+	}
+
+	runOne("users", func() (int, error) { return searchUsersInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("posts", func() (int, error) { return searchPostsInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("communities", func() (int, error) { return searchCommunitiesInto(db, q, sortBy, limit, offset, viewerID, &res, &mu) })
+	runOne("events", func() (int, error) { return searchEventsInto(db, q, sortBy, limit, offset, viewerID, &res, &mu) })
+	runOne("companies", func() (int, error) { return searchCompaniesInto(db, q, sortBy, limit, offset, &res, &mu) })
+
+	wg.Wait()
+
+	res.Total = res.Counts["users"] + res.Counts["posts"] + res.Counts["communities"] + res.Counts["events"] + res.Counts["companies"]
+	res.TookMS = time.Since(started).Milliseconds()
+	writeJSON(w, http.StatusOK, res)
+}
+
+func searchUsersInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, full_name"
+	if sortBy == "recent" {
+		orderBy = "created_at DESC, full_name"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT
+			public_id, full_name, COALESCE(handle,'') AS handle,
+			COALESCE(position,'') AS position,
+			COALESCE(company_name,'') AS company_name,
+			COALESCE(bio,'') AS bio,
+			COALESCE(city,'') AS city,
+			(
+				CASE WHEN LOWER(full_name) = LOWER($1) THEN 10 ELSE 0 END +
+				CASE WHEN LOWER(full_name) LIKE LOWER($1) || '%' THEN 5 ELSE 0 END +
+				CASE WHEN LOWER(COALESCE(handle,'')) = LOWER($1) THEN 8 ELSE 0 END +
+				CASE WHEN LOWER(COALESCE(handle,'')) LIKE LOWER($1) || '%' THEN 4 ELSE 0 END +
+				CASE WHEN COALESCE(position,'') ILIKE '%' || $2 || '%' ESCAPE '\' THEN 3 ELSE 0 END +
+				CASE WHEN COALESCE(company_name,'') ILIKE '%' || $2 || '%' ESCAPE '\' THEN 3 ELSE 0 END +
+				CASE WHEN COALESCE(bio,'') ILIKE '%' || $2 || '%' ESCAPE '\' THEN 1 ELSE 0 END +
+				CASE WHEN COALESCE(city,'') ILIKE '%' || $2 || '%' ESCAPE '\' THEN 1 ELSE 0 END
+			) AS score
+		FROM users
+		WHERE is_deleted = FALSE
+		  AND (
+			full_name ILIKE '%' || $2 || '%' ESCAPE '\' OR
+			COALESCE(handle,'') ILIKE '%' || $2 || '%' ESCAPE '\' OR
+			COALESCE(position,'') ILIKE '%' || $2 || '%' ESCAPE '\' OR
+			COALESCE(company_name,'') ILIKE '%' || $2 || '%' ESCAPE '\' OR
+			COALESCE(bio,'') ILIKE '%' || $2 || '%' ESCAPE '\' OR
+			COALESCE(city,'') ILIKE '%' || $2 || '%' ESCAPE '\'
+		  )
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, q, escaped, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchUser, 0, limit)
+	for rows.Next() {
+		var item searchUser
+		if err := rows.Scan(&item.PublicID, &item.FullName, &item.Handle, &item.Position, &item.CompanyName, &item.Bio, &item.City, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Users = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchPostsInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, p.created_at DESC"
+	if sortBy == "recent" {
+		orderBy = "p.created_at DESC"
+	} else if sortBy == "popular" {
+		orderBy = "COALESCE(p.likes_count, 0) DESC, p.created_at DESC"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT
+			p.public_id,
+			LEFT(p.content, 400) AS content,
+			'' AS category,
+			u.public_id AS author_public_id,
+			u.full_name AS author_name,
+			COALESCE(p.likes_count, 0) AS likes_count,
+			COALESCE(p.comments_count, 0) AS comments_count,
+			p.created_at,
+			(
+				CASE WHEN p.content ILIKE '%' || $1 || '%' ESCAPE '\' THEN 5 ELSE 0 END +
+				LN(GREATEST(COALESCE(p.likes_count,0), 1) + 1)
+			) AS score
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE COALESCE(p.is_deleted, FALSE) = FALSE
+		  AND p.privacy_level = 'public'
+		  AND p.content ILIKE '%' || $1 || '%' ESCAPE '\'
+		ORDER BY `+orderBy+`
+		LIMIT $2 OFFSET $3
+	`, escaped, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchPost, 0, limit)
+	for rows.Next() {
+		var item searchPost
+		if err := rows.Scan(&item.PublicID, &item.Content, &item.Category, &item.AuthorPublicID, &item.AuthorName, &item.LikesCount, &item.CommentsCount, &item.CreatedAt, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Posts = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchCommunitiesInto(db *sql.DB, q, sortBy string, limit, offset int, viewerID int64, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, name"
+	if sortBy == "recent" {
+		orderBy = "created_at DESC, name"
+	} else if sortBy == "popular" {
+		orderBy = "members_count DESC, name"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT
+			public_id, name,
+			COALESCE(description,'') AS description,
+			COALESCE(region,'') AS region,
+			COALESCE(category,'') AS category,
+			COALESCE(color,'') AS color,
+			COALESCE((SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = communities.id), 0) AS members_count,
+			COALESCE(privacy_level,'open') AS privacy,
+			(
+				CASE WHEN LOWER(name) = LOWER($2) THEN 10 ELSE 0 END +
+				CASE WHEN LOWER(name) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+				CASE WHEN COALESCE(category,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 3 ELSE 0 END +
+				CASE WHEN COALESCE(region,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 2 ELSE 0 END +
+				CASE WHEN COALESCE(description,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 1 ELSE 0 END
+			) AS score
+		FROM communities
+		WHERE COALESCE(is_deleted, FALSE) = FALSE
+		  AND (
+			privacy_level = 'open' OR privacy_level IS NULL OR $5 IN (
+				SELECT user_id FROM community_members WHERE community_id = communities.id
+			)
+		  )
+		  AND (
+			name ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(description,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(region,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(category,'') ILIKE '%' || $1 || '%' ESCAPE '\'
+		  )
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset, viewerID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchCommunity, 0, limit)
+	for rows.Next() {
+		var item searchCommunity
+		if err := rows.Scan(&item.PublicID, &item.Name, &item.Description, &item.Region, &item.Category, &item.Color, &item.MembersCount, &item.Privacy, &item.Score); err != nil {
+			return 0, err
+		}
+		if item.Privacy == "open" {
+			item.Privacy = "public"
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Communities = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchEventsInto(db *sql.DB, q, sortBy string, limit, offset int, viewerID int64, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, e.starts_at ASC"
+	if sortBy == "recent" {
+		orderBy = "e.created_at DESC"
+	} else if sortBy == "popular" {
+		orderBy = "COALESCE(e.registered_count, 0) DESC, e.starts_at ASC"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT
+			e.public_id, e.title,
+			LEFT(COALESCE(e.description,''), 400) AS description,
+			e.type, e.format,
+			COALESCE(e.city,'') AS city,
+			e.starts_at,
+			COALESCE(e.registered_count, 0) AS registered_count,
+			COALESCE(e.banner_color,'') AS banner_color,
+			(
+				CASE WHEN LOWER(e.title) = LOWER($2) THEN 10 ELSE 0 END +
+				CASE WHEN LOWER(e.title) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+				CASE WHEN COALESCE(e.category,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 3 ELSE 0 END +
+				CASE WHEN COALESCE(e.city,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 2 ELSE 0 END +
+				CASE WHEN COALESCE(e.description,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 1 ELSE 0 END +
+				LN(GREATEST(COALESCE(e.registered_count,0), 1) + 1)
+			) AS score
+		FROM events e
+		LEFT JOIN communities c ON c.id = e.community_id
+		WHERE COALESCE(e.is_deleted, FALSE) = FALSE
+		  AND e.status = 'published'
+		  AND (
+			c.id IS NULL OR c.privacy_level = 'open' OR $5 IN (
+				SELECT user_id FROM community_members WHERE community_id = c.id
+			)
+		  )
+		  AND (
+			e.title ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(e.description,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(e.city,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(e.category,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			EXISTS (SELECT 1 FROM unnest(COALESCE(e.tags,'{}'::text[])) t WHERE t ILIKE '%' || $1 || '%' ESCAPE '\')
+		  )
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset, viewerID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchEvent, 0, limit)
+	for rows.Next() {
+		var item searchEvent
+		if err := rows.Scan(&item.PublicID, &item.Title, &item.Description, &item.Type, &item.Format, &item.City, &item.StartsAt, &item.RegisteredCount, &item.BannerColor, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Events = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchCompaniesInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, employee_count DESC"
+	if sortBy == "recent" || sortBy == "popular" {
+		orderBy = "employee_count DESC, name"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT
+			company_name AS name,
+			COUNT(*) AS employee_count,
+			MAX(COALESCE(position,'')) AS industry,
+			MAX(COALESCE(city,'')) AS city,
+			(
+				CASE WHEN LOWER(company_name) = LOWER($2) THEN 10 ELSE 0 END +
+				CASE WHEN LOWER(company_name) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END
+			) AS score
+		FROM users
+		WHERE is_deleted = FALSE
+		  AND COALESCE(company_name,'') <> ''
+		  AND company_name ILIKE '%' || $1 || '%' ESCAPE '\'
+		GROUP BY company_name
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchCompany, 0, limit)
+	for rows.Next() {
+		var item searchCompany
+		var employeeCount int
+		if err := rows.Scan(&item.Name, &employeeCount, &item.Industry, &item.City, &item.Score); err != nil {
+			return 0, err
+		}
+		item.IsPartner = false
+		item.Description = ""
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Companies = out
+	mu.Unlock()
+	return len(out), nil
 }
 
 var eventTypes = map[string]struct{}{
