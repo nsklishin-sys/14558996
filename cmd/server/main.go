@@ -87,12 +87,25 @@ type authResponse struct {
 }
 
 type publicUserProfile struct {
-	PublicID  string `json:"public_id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	FullName  string `json:"full_name"`
-	Email     string `json:"email"`
-	Handle    string `json:"handle,omitempty"`
+	PublicID    string  `json:"public_id"`
+	FirstName   string  `json:"first_name,omitempty"`
+	LastName    string  `json:"last_name,omitempty"`
+	FullName    string  `json:"full_name"`
+	Email       string  `json:"email,omitempty"`
+	Handle      string  `json:"handle,omitempty"`
+	AvatarURL   string  `json:"avatar_url,omitempty"`
+	Position    string  `json:"position,omitempty"`
+	CompanyName string  `json:"company_name,omitempty"`
+	Bio         string  `json:"bio,omitempty"`
+	Phone       string  `json:"phone,omitempty"`
+	Location    string  `json:"location,omitempty"`
+	City        string  `json:"city,omitempty"`
+	Website     string  `json:"website,omitempty"`
+	IsOnline    bool    `json:"is_online"`
+	LastSeenAt  *string `json:"last_seen_at,omitempty"`
+	IsPrivate   bool    `json:"is_private"`
+	CanMessage  bool    `json:"can_message"`
+	IsSelf      bool    `json:"is_self"`
 }
 
 type userSettings struct {
@@ -1584,6 +1597,19 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
+		targetID, err := getUserIDByPublicID(db, req.UserPublicID)
+		if err != nil {
+			handleChatError(w, err)
+			return
+		}
+		otherSettings, err := loadUserSettings(db, targetID)
+		if err != nil {
+			otherSettings = userSettings{PrivacyWhoCanMessage: "all"}
+		}
+		if !canViewerMessageOwner(db, userID, targetID, otherSettings.PrivacyWhoCanMessage) {
+			writeError(w, http.StatusForbidden, "Этот пользователь ограничил приём сообщений")
+			return
+		}
 		item, err := findOrCreateDirectConversation(db, userID, req.UserPublicID)
 		if err != nil {
 			handleChatError(w, err)
@@ -2698,7 +2724,8 @@ func main() {
 				writeError(w, http.StatusBadRequest, "Некорректный id пользователя")
 				return
 			}
-			profile, err := getPublicUserProfile(db, publicID)
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			profile, err := getPublicUserProfile(db, publicID, viewerID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					writeError(w, http.StatusNotFound, "Пользователь не найден")
@@ -3465,18 +3492,111 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	return u, nil
 }
 
-func getPublicUserProfile(db *sql.DB, publicID string) (publicUserProfile, error) {
+func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUserProfile, error) {
 	var profile publicUserProfile
+	var ownerID int64
 	err := db.QueryRow(`
-		SELECT public_id, first_name, last_name, full_name, email, COALESCE(handle, '')
+		SELECT id, public_id, first_name, last_name, full_name, email, COALESCE(handle, ''),
+			COALESCE(avatar_url, ''), COALESCE(position, ''), COALESCE(company_name, ''),
+			COALESCE(bio, ''), COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(website, '')
 		FROM users
 		WHERE public_id = $1 AND is_deleted = FALSE
-	`, publicID).Scan(&profile.PublicID, &profile.FirstName, &profile.LastName, &profile.FullName, &profile.Email, &profile.Handle)
+	`, publicID).Scan(
+		&ownerID,
+		&profile.PublicID,
+		&profile.FirstName,
+		&profile.LastName,
+		&profile.FullName,
+		&profile.Email,
+		&profile.Handle,
+		&profile.AvatarURL,
+		&profile.Position,
+		&profile.CompanyName,
+		&profile.Bio,
+		&profile.Phone,
+		&profile.Location,
+		&profile.City,
+		&profile.Website,
+	)
 	if err != nil {
 		return publicUserProfile{}, err
 	}
-
+	isSelf := viewerID > 0 && viewerID == ownerID
+	profile.IsSelf = isSelf
+	settings, err := loadUserSettings(db, ownerID)
+	if err != nil {
+		settings = userSettings{
+			PrivacyProfilePrivate: false,
+			PrivacyShowEmail:      false,
+			PrivacyShowPhone:      false,
+			PrivacyShowOnline:     true,
+			PrivacyShowLastSeen:   false,
+			PrivacyWhoCanMessage:  "all",
+		}
+	}
+	profile.IsPrivate = settings.PrivacyProfilePrivate && !isSelf
+	if profile.IsPrivate {
+		profile.FirstName = ""
+		profile.LastName = ""
+		profile.Position = ""
+		profile.CompanyName = ""
+		profile.Bio = ""
+		profile.Phone = ""
+		profile.Email = ""
+		profile.Location = ""
+		profile.City = ""
+		profile.Website = ""
+		profile.CanMessage = false
+		return profile, nil
+	}
+	if !isSelf && !settings.PrivacyShowEmail {
+		profile.Email = ""
+	}
+	if !isSelf && !settings.PrivacyShowPhone {
+		profile.Phone = ""
+	}
+	if isSelf || settings.PrivacyShowOnline {
+		profile.IsOnline = hasActiveSession(db, ownerID)
+	}
+	if isSelf || settings.PrivacyShowLastSeen {
+		var seen sql.NullTime
+		if err := db.QueryRow(`SELECT MAX(last_seen_at) FROM sessions WHERE user_id=$1`, ownerID).Scan(&seen); err == nil && seen.Valid {
+			formatted := seen.Time.UTC().Format(time.RFC3339)
+			profile.LastSeenAt = &formatted
+		}
+	}
+	profile.CanMessage = canViewerMessageOwner(db, viewerID, ownerID, settings.PrivacyWhoCanMessage)
 	return profile, nil
+}
+
+func canViewerMessageOwner(db *sql.DB, viewerID, ownerID int64, whoCanMessage string) bool {
+	if viewerID == 0 || viewerID == ownerID {
+		return false
+	}
+	switch strings.TrimSpace(strings.ToLower(whoCanMessage)) {
+	case "nobody":
+		return false
+	case "contacts":
+		var hasContact bool
+		err := db.QueryRow(`
+			SELECT EXISTS(
+				SELECT 1
+				FROM chat_conversations cc
+				JOIN chat_participants p1 ON p1.conversation_id = cc.id AND p1.user_id = $1
+				JOIN chat_participants p2 ON p2.conversation_id = cc.id AND p2.user_id = $2
+				WHERE cc.type = 'direct'
+			)
+		`, viewerID, ownerID).Scan(&hasContact)
+		return err == nil && hasContact
+	default:
+		return true
+	}
+}
+
+func hasActiveSession(db *sql.DB, userID int64) bool {
+	var isOnline bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM sessions WHERE user_id=$1 AND expires_at > NOW())`, userID).Scan(&isOnline)
+	return err == nil && isOnline
 }
 
 func getUserByID(db *sql.DB, userID int64) (user, error) {
