@@ -1061,6 +1061,7 @@ function loadRec(){
 
 /* ── ЛЕНТА ── */
 let allPosts=[];
+let _feedRenderSig='';
 async function loadFeed(){
   document.getElementById('feed').innerHTML=skels(3,100);
   try{
@@ -1073,7 +1074,18 @@ async function loadFeed(){
   renderFeedFiltered('all');
 }
 function renderFeedFiltered(type){
-  const posts=type==='all'?allPosts:allPosts.filter(p=>p.type===type);
+  // Сигнатура для определения изменений ленты — позволяет избежать
+  // перерисовки DOM на 60-секундном polling-тике если данные те же.
+  const posts=(allPosts||[]).filter(p=>type==='all'||p.type===type);
+  const sig=JSON.stringify(posts.map(p=>[
+    p.public_id,
+    p.likes_count,
+    p.comments_count,
+    p.views_count,
+    p.is_liked?1:0
+  ]))+'|'+type;
+  if(sig===_feedRenderSig)return;
+  _feedRenderSig=sig;
   const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum',events:'t-proj'};
   const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум',events:'Мероприятия'};
   const feed=document.getElementById('feed');
