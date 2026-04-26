@@ -199,49 +199,112 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .fi-cnt{font-size:10px;color:var(--gmt)}
 .fi-new{padding:1px 6px;border-radius:99px;background:var(--gl);border:1px solid var(--gb);color:var(--g);font-size:9px;font-weight:700}
 
-.cal-month{font-size:11px;font-weight:700;color:var(--t);margin-bottom:5px;text-align:center}
-.cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px}
-.cal-dow{font-size:8.5px;font-weight:700;color:var(--gmt);text-align:center;text-transform:uppercase}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:8px}
-.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:5px;font-size:10px;font-weight:600;color:var(--tm);cursor:pointer;position:relative;transition:background .12s}
-.cal-day:hover:not(.today){background:var(--gp);color:var(--g)}
-.cal-day.other-month{color:var(--bdr);cursor:default}
-.cal-day.other-month:hover{background:none;color:var(--bdr)}
-.cal-day.today{background:var(--g);color:#fff;font-weight:800}
-.cal-day.has-event::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--gm)}
-.cal-day.today.has-event::after{background:rgba(255,255,255,.7)}
-.cal-day.event-day{background:var(--gl);color:var(--g);font-weight:700}
+/* ── Календарь мероприятий: чистый светлый стиль ── */
+.cal-headrow{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin-bottom:10px
+}
+.cal-headrow-right{display:flex;gap:6px;align-items:center}
+.cal-month{
+  font-size:13px;font-weight:800;color:var(--t);
+  text-align:center;flex:1;margin:0
+}
 .cal-nav-btn{
-  width:22px;height:22px;border-radius:6px;border:1.5px solid var(--bdr);
-  background:var(--w);color:var(--gmt);font-size:12px;font-weight:800;
+  width:24px;height:24px;border-radius:7px;border:1px solid var(--bdr);
+  background:var(--w);color:var(--gmt);font-size:14px;font-weight:700;
   display:inline-grid;place-items:center;cursor:pointer;font-family:inherit;
   transition:all .15s;line-height:1;padding:0
 }
 .cal-nav-btn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
 .cal-today-btn{
-  padding:3px 10px;border-radius:99px;background:var(--gl);
-  color:var(--g);border:1.5px solid var(--gb);font-size:9px;font-weight:800;
-  cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.06em;
-  transition:all .15s;line-height:1.4
+  padding:5px 12px;border-radius:99px;background:transparent;
+  color:var(--g);border:1px solid var(--gb);
+  font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;
+  text-transform:uppercase;letter-spacing:.04em;
+  transition:all .15s;line-height:1.2;white-space:nowrap
 }
-.cal-today-btn:hover{background:var(--g);color:#fff;border-color:var(--g)}
-.cal-day.selected{background:var(--gl);color:var(--g);font-weight:800;outline:1.5px solid var(--gb);outline-offset:-1.5px}
-.cal-day.selected.today{background:var(--g);color:#fff;outline-color:var(--gm)}
-.cal-headrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
-.cal-headrow-right{display:flex;gap:6px;align-items:center}
-.cal-headrow .cal-month{margin-bottom:0}
-.ev-list{display:flex;flex-direction:column;gap:4px}
-.ev-item{display:flex;gap:7px;align-items:flex-start;padding:5px 7px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);cursor:pointer;transition:border-color .12s}
-.ev-item:hover{border-color:var(--gb)}
-.ev-date-box{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0}
-.ev-d{font-size:13px;font-weight:800;color:var(--g);line-height:1}
-.ev-m{font-size:8px;font-weight:700;color:var(--gmt);text-transform:uppercase}
-.ev-info{min-width:0;flex:1}
-.ev-title{font-size:10px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
-.ev-sub{font-size:9px;color:var(--gmt)}
-.ev-tag{display:inline-block;padding:1px 5px;border-radius:99px;font-size:8px;font-weight:700;margin-left:2px}
-.ev-online{background:#E6F1FB;color:#185FA5}
-.ev-live{background:var(--gl);color:#3B6D11}
+.cal-today-btn:hover{background:var(--gp);border-color:var(--g)}
+
+.cal-header{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  gap:2px;margin-bottom:6px
+}
+.cal-dow{
+  font-size:10px;font-weight:700;color:var(--gmt);
+  text-align:center;text-transform:uppercase;letter-spacing:.04em;
+  padding:4px 0
+}
+
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  gap:2px;margin-bottom:12px
+}
+.cal-day{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:12px;font-weight:600;color:var(--t);
+  cursor:pointer;position:relative;
+  background:transparent;border:1px solid transparent;
+  transition:background .12s,border-color .12s,color .12s
+}
+.cal-day:hover{background:var(--gp);color:var(--g)}
+.cal-day.other-month{color:var(--bdr);cursor:default;font-weight:500}
+.cal-day.other-month:hover{background:transparent;color:var(--bdr)}
+
+/* Сегодня — рамка, не заливка. Светлый чистый стиль. */
+.cal-day.today{
+  background:var(--w);
+  border:1.5px solid var(--g);
+  color:var(--g);font-weight:800
+}
+.cal-day.today:hover{background:var(--gp)}
+
+/* Маркер событий — точка снизу. Заметная. */
+.cal-day.has-event::after{
+  content:'';position:absolute;bottom:3px;left:50%;
+  transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--g)
+}
+
+/* Выбранный день — мягкая заливка */
+.cal-day.selected{
+  background:var(--gp);color:var(--g);font-weight:800;
+  border:1px solid var(--gb)
+}
+.cal-day.selected.today{
+  background:var(--gp);border-color:var(--g)
+}
+.cal-day.selected.has-event::after{background:var(--g)}
+
+/* ── Список ближайших событий снизу ── */
+.ev-list{display:flex;flex-direction:column;gap:6px}
+.ev-item{
+  display:flex;align-items:center;gap:10px;padding:8px;
+  background:var(--w);border:1px solid var(--bdr);border-radius:10px;
+  cursor:pointer;transition:all .15s;text-decoration:none;color:inherit
+}
+.ev-item:hover{border-color:var(--gb);background:var(--gp)}
+.ev-date-box{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:6px 10px;background:var(--gp);border-radius:8px;
+  min-width:42px;flex-shrink:0
+}
+.ev-d{font-size:15px;font-weight:800;color:var(--g);line-height:1}
+.ev-m{
+  font-size:9px;font-weight:700;color:var(--g);
+  text-transform:uppercase;letter-spacing:.04em;margin-top:2px;line-height:1
+}
+.ev-info{flex:1;min-width:0}
+.ev-title{
+  font-size:12px;font-weight:700;color:var(--t);line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;gap:6px
+}
+.ev-tag{
+  font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;
+  text-transform:uppercase;letter-spacing:.03em;flex-shrink:0
+}
+.ev-online{background:var(--gp);color:var(--g);border:1px solid var(--gb)}
+.ev-live{background:#FFF6E0;color:#B07A00;border:1px solid #F5DDA0}
 
 @media (min-width:1700px){
   html,body{font-size:16px}
