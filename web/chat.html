@@ -1150,6 +1150,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script>
 const API='/api';const tk=()=>localStorage.getItem('token');
 const state={conversations:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[]};
+const renderCache={conversationsSig:'',messagesSig:'',typingSig:''};
+function makeSig(obj){try{return JSON.stringify(obj)}catch{return''}}
 const CHAT_CACHE_NS='chat-cache-v1';
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')} function letter(s){return((s||'?')[0]||'?').toUpperCase()}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -1203,6 +1205,10 @@ async function loadConversations(){
   }
 }
 function renderConversations(){
+  const sig=makeSig((state.conversations||[]).map(c=>[c.public_id,c.last_message_at,c.last_message_text,c.unread_count,c.is_online?1:0,c.display_name,c.pinned?1:0]));
+  const fullSig=sig+'|'+(state.activeConvPublicID||'')+'|'+(state.activeFilter||'')+'|'+(state.searchQuery||'');
+  if(fullSig===renderCache.conversationsSig)return;
+  renderCache.conversationsSig=fullSig;
   const list = document.getElementById('dialogList');
   if(!state.conversations || !state.conversations.length){
     const isFiltered = state.activeFilter !== 'all' || state.searchQuery;
@@ -1224,9 +1230,22 @@ function renderConversations(){
   list.innerHTML = state.conversations.map(c => `<div class="d-item ${state.activeConvPublicID===c.public_id?'active':''} ${c.pinned?'pinned':''}" onclick="selectConversation('${c.public_id}')"><div class="d-av-wrap"><div class="d-av" style="background:${c.display_color}">${c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name)}</div>${c.is_online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(c.display_name)}</div></div><div class="d-bot"><div class="d-preview">${c.last_message_author?`<span class='me-prefix'>${esc(c.last_message_author)}: </span>`:''}${esc(c.last_message_text||'')}</div>${c.unread_count?`<span class='d-badge'>${c.unread_count}</span>`:''}</div></div></div>`).join('');
 }
 function applyConversation(c){if(!c)return;chatName.textContent=c.display_name;chatAv.style.background=c.display_color;chatAv.innerHTML=c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name);chatStatus.textContent=c.is_online?'в сети':'в чате';state.activeConversation=c}
-async function selectConversation(pid){state.activeConvPublicID=pid;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel()}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel()}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){state.activeConvPublicID=pid;renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel()}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel()}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
-function renderMessages(){const el=chatBody;el.innerHTML='';let prevDate='';state.messages.forEach(m=>{const date=new Date(m.created_at).toDateString();if(date!==prevDate){prevDate=date;el.insertAdjacentHTML('beforeend',`<div class='date-sep'>${new Date(m.created_at).toLocaleDateString('ru-RU')}</div>`)}const mine=m.author_public_id===state.currentUser.public_id;el.insertAdjacentHTML('beforeend',`<div class='msg ${mine?'me':'them'}'><div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div><div class='msg-group'><div class='msg-bubble'>${m.reply_to?`<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>`:''}${esc(m.content||'Удалено')}${m.is_deleted?' <i>(удалено)</i>':''}<span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span></div><div class='msg-meta'><span>${new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span>${m.is_edited?'<span>(изм.)</span>':''}</div></div></div>`)});if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);el.scrollTop=el.scrollHeight}
+function renderMessages(){
+  const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at]));
+  const typingSig=makeSig((state.typingUsers||[]).map(u=>u.public_id||u.user_id||u));
+  const fullSig=sig+'|'+typingSig+'|'+(state.activeConvPublicID||'');
+  if(fullSig===renderCache.messagesSig)return;
+  renderCache.messagesSig=fullSig;
+  renderCache.typingSig=typingSig;
+  const el=chatBody;
+  const wasAtBottom=el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true;
+  const prevScroll=el?el.scrollTop:0;
+  el.innerHTML='';let prevDate='';state.messages.forEach(m=>{const date=new Date(m.created_at).toDateString();if(date!==prevDate){prevDate=date;el.insertAdjacentHTML('beforeend',`<div class='date-sep'>${new Date(m.created_at).toLocaleDateString('ru-RU')}</div>`)}const mine=m.author_public_id===state.currentUser.public_id;el.insertAdjacentHTML('beforeend',`<div class='msg ${mine?'me':'them'}'><div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div><div class='msg-group'><div class='msg-bubble'>${m.reply_to?`<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>`:''}${esc(m.content||'Удалено')}${m.is_deleted?' <i>(удалено)</i>':''}<span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span></div><div class='msg-meta'><span>${new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span>${m.is_edited?'<span>(изм.)</span>':''}</div></div></div>`)});
+  if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);
+  if(el){if(wasAtBottom)el.scrollTop=el.scrollHeight;else el.scrollTop=prevScroll}
+}
 function openReply(id){const m=state.messages.find(x=>x.id===id);if(!m)return;state.replyTo={id:m.id,author_name:m.author_name,content_preview:(m.content||'').slice(0,60)};replyBar.classList.add('active');document.getElementById('replyName').textContent=m.author_name;document.getElementById('replyText').textContent=(m.content||'').slice(0,100)}
 function closeReply(){state.replyTo=null;replyBar.classList.remove('active')}
 function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px'}
@@ -1234,9 +1253,9 @@ function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();subm
 async function submitMessage(){const txt=msgInput.value.trim();if(!txt||!state.activeConvPublicID)return;try{if(state.editing){await api(`/chat/messages/${state.editing.id}`,{method:'PATCH',body:{content:txt}});state.editing=null}else{await api(`/chat/conversations/${state.activeConvPublicID}/messages`,{method:'POST',body:{content:txt,reply_to_id:state.replyTo?.id||null}})}msgInput.value='';autoGrow(msgInput);closeReply();await loadMessages();await loadConversations()}catch{showToast('Не удалось отправить сообщение')}}
 async function sendMessage(){return submitMessage()}
 async function markRead(){if(!state.messages.length)return;await api(`/chat/conversations/${state.activeConvPublicID}/read`,{method:'POST',body:{message_id:state.messages[state.messages.length-1].id}}).catch(()=>{})}
-async function changeFilter(tab,btn){state.activeFilter=tab;document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
+async function changeFilter(tab,btn){state.activeFilter=tab;renderCache.conversationsSig='';document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
 function filterTab(tab,btn){changeFilter(tab,btn)}
-let sd; function filterDialogs(q){clearTimeout(sd);sd=setTimeout(async()=>{state.searchQuery=q||'';await loadConversations()},300)}
+let sd; function filterDialogs(q){clearTimeout(sd);sd=setTimeout(async()=>{state.searchQuery=q||'';renderCache.conversationsSig='';await loadConversations()},300)}
 async function openOrCreateDirectByPublicID(uid){const d=await api('/chat/conversations/direct',{method:'POST',body:{user_public_id:uid}});await loadConversations();return d.conversation}
 async function openCommunityConv(id){const d=await api(`/chat/conversations/community/${id}`,{method:'POST'});await loadConversations();return d.conversation}
 function openInfoPanel(){infoPanel.classList.add('open');infoOverlay.classList.add('open')} function closeInfoPanel(){infoPanel.classList.remove('open');infoOverlay.classList.remove('open')}
