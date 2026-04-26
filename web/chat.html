@@ -1242,7 +1242,18 @@ function renderMessages(){
   const el=chatBody;
   const wasAtBottom=el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true;
   const prevScroll=el?el.scrollTop:0;
-  el.innerHTML='';let prevDate='';state.messages.forEach(m=>{const date=new Date(m.created_at).toDateString();if(date!==prevDate){prevDate=date;el.insertAdjacentHTML('beforeend',`<div class='date-sep'>${new Date(m.created_at).toLocaleDateString('ru-RU')}</div>`)}const mine=m.author_public_id===state.currentUser.public_id;el.insertAdjacentHTML('beforeend',`<div class='msg ${mine?'me':'them'}'><div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div><div class='msg-group'><div class='msg-bubble'>${m.reply_to?`<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>`:''}${esc(m.content||'Удалено')}${m.is_deleted?' <i>(удалено)</i>':''}<span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span></div><div class='msg-meta'><span>${new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span>${m.is_edited?'<span>(изм.)</span>':''}</div></div></div>`)});
+  el.innerHTML='';let prevDate='';state.messages.forEach(m=>{
+    const createdAt = new Date(m.created_at);
+    const date = createdAt.toDateString();
+    if(date!==prevDate){
+      prevDate=date;
+      const divider = window.LastopFormat ? window.LastopFormat.date(m.created_at) : createdAt.toLocaleDateString('ru-RU');
+      el.insertAdjacentHTML('beforeend',`<div class='date-sep'>${divider}</div>`);
+    }
+    const mine=m.author_public_id===state.currentUser.public_id;
+    const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    el.insertAdjacentHTML('beforeend',`<div class='msg ${mine?'me':'them'}'><div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div><div class='msg-group'><div class='msg-bubble'>${m.reply_to?`<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>`:''}${esc(m.content||'Удалено')}${m.is_deleted?' <i>(удалено)</i>':''}<span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span></div><div class='msg-meta'><span>${msgTime}</span>${m.is_edited?'<span>(изм.)</span>':''}</div></div></div>`);
+  });
   if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);
   if(el){if(wasAtBottom)el.scrollTop=el.scrollHeight;else el.scrollTop=prevScroll}
 }

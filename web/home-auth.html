@@ -668,7 +668,7 @@ function ago(ts){
   if(m<60)return m+' мин назад';
   if(m<1440)return Math.floor(m/60)+' ч назад';
   if(m<10080)return Math.floor(m/1440)+' д назад';
-  return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});
+  return window.LastopFormat ? window.LastopFormat.dateShort(ts) : new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});
 }
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
 function greet(){const h=new Date().getHours();if(h<6)return'Доброй ночи';if(h<12)return'Доброе утро';if(h<18)return'Добрый день';return'Добрый вечер';}
@@ -978,11 +978,11 @@ function formatTimeShort(iso){
     if(diffSec<60)return 'сейчас';
     if(diffSec<3600)return Math.floor(diffSec/60)+' мин';
     const isToday=d.toDateString()===now.toDateString();
-    if(isToday)return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    if(isToday)return window.LastopFormat ? window.LastopFormat.time(d) : d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     const yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
     if(d.toDateString()===yesterday.toDateString())return 'Вчера';
     if(diffSec<86400*7)return Math.floor(diffSec/86400)+' дн';
-    return d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.','');
+    return window.LastopFormat ? window.LastopFormat.dateShort(d) : d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.','');
   }catch{return '';}
 }
 
@@ -1055,7 +1055,9 @@ function renderCalendar(){
     html += '<div class="ev-list">' + dayList.map(ev => {
       const d = new Date(ev.starts_at);
       const day = d.getDate();
-      const mon = d.toLocaleDateString('ru-RU', {month:'short'}).replace('.', '');
+      const mon = window.LastopFormat
+        ? window.LastopFormat.dateShort(d).split(' ')[1] || d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')
+        : d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '');
       const fmt = ev.format === 'online' ? 'онлайн' : 'офлайн';
       const fmtCls = ev.format === 'online' ? 'ev-online' : 'ev-live';
       return `<div class="ev-item" onclick="location.href='/event-detail.html?id=${encodeURIComponent(ev.public_id)}'">
@@ -1073,7 +1075,9 @@ function renderCalendar(){
       html += '<div class="ev-list">' + upcoming.map(e => {
         const d = new Date(e.starts_at);
         const day = d.getDate();
-        const mon = d.toLocaleDateString('ru-RU', {month:'short'}).replace('.', '');
+        const mon = window.LastopFormat
+        ? window.LastopFormat.dateShort(d).split(' ')[1] || d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')
+        : d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '');
         return `<div class="ev-item" onclick="location.href='/event-detail.html?id=${encodeURIComponent(e.public_id)}'">
           <div class="ev-date-box"><div class="ev-d">${day}</div><div class="ev-m">${mon}</div></div>
           <div class="ev-info"><div class="ev-title">${esc(e.title)}<span class="ev-tag ${(e.format==='online')?'ev-online':'ev-live'}">${e.format==='online'?'онлайн':'офлайн'}</span></div></div>

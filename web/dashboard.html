@@ -622,7 +622,7 @@ function escAttr(s){return String(s||'').replace(/'/g,"&#39;").replace(/"/g,'&qu
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
-function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
+function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return window.LastopFormat ? window.LastopFormat.dateShort(ts) : new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
 /* ── DROPDOWN ── */
