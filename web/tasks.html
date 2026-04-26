@@ -912,7 +912,13 @@ function syncToHomeWidget(){
     pri:t.pri||'lo',
     done:!!t.done
   }));
-  try{localStorage.setItem(homeStorageKey(),JSON.stringify(list));}catch{}
+  try{
+    localStorage.setItem(homeStorageKey(),JSON.stringify(list));
+    // Уведомляем виджет на главной если она открыта в этой же вкладке
+    // (после page-transitions). Storage event для другой вкладки
+    // диспатчится автоматически браузером.
+    window.dispatchEvent(new CustomEvent('lastop:tasks-updated'));
+  }catch{}
 }
 
 /* ═══ DATE HELPERS ═══ */
