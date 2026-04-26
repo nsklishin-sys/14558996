@@ -19,10 +19,10 @@
   --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
-html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
 
 /* ═══ SHELL ═══ */
-.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";min-height:100vh;gap:10px;padding:10px}
 
 /* LOGO */
 .logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh)}
@@ -75,9 +75,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
 
 /* MAIN */
-.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
-.main::-webkit-scrollbar{width:4px}
-.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.main{grid-area:main;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
 
 /* ═══ ДЕТАЛЬНАЯ КАРТОЧКА НОВОСТИ ═══ */
 
@@ -148,10 +146,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .news-quote cite{display:block;margin-top:8px;font-size:11px;font-weight:700;font-style:normal;color:var(--gmt)}
 
 /* Метки / теги */
-.news-tags{display:flex;flex-wrap:wrap;gap:6px;padding:16px 0;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);margin-bottom:16px}
-.news-tag{padding:5px 12px;border-radius:99px;background:var(--gp);border:1.5px solid var(--bdr);font-size:11px;font-weight:700;color:var(--gmt);cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-.news-tag:hover{background:var(--gl);border-color:var(--gb);color:var(--g)}
-.news-tag svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.news-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 16px}
+.news-tag{font-size:11px;font-weight:700;color:var(--g);background:var(--gp);padding:4px 10px;border-radius:99px;border:1px solid var(--gb);text-decoration:none;cursor:pointer;transition:all .12s}
+.news-tag:hover{background:var(--gl);border-color:var(--g)}
+
+.news-repost-banner{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gmt);padding:8px 12px;background:var(--gp);border-radius:8px;margin-bottom:12px;border:1px solid var(--bdr)}
+.news-repost-banner svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.news-repost-banner a{color:var(--g);font-weight:700;text-decoration:none}
+.news-repost-banner a:hover{text-decoration:underline}
+.news-repost-original{margin-top:14px;padding:14px;border:1px solid var(--bdr);border-radius:12px;background:var(--gp)}
+.news-repost-original-author{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:700}
+.news-repost-original-av{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:800}
+.news-repost-original-text{font-size:14px;color:var(--t);line-height:1.5}
 
 /* ── ПАНЕЛЬ ДЕЙСТВИЙ ── */
 .news-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -252,6 +258,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* RIGHT */
 .right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .right::-webkit-scrollbar{display:none}
+@media (min-width: 1001px){
+  html.lt-shell .shell aside.right{
+    position: sticky;
+    top: 76px;
+    align-self: flex-start;
+    max-height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
 .card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
 .block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
@@ -425,81 +440,46 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <!-- Мета -->
       <div class="news-meta">
         <div class="news-author">
-          <div class="news-author-av" style="background:#1E8A4C">НБ</div>
+          <div class="news-author-av" id="newsAuthorAv"></div>
           <div>
-            <div class="news-author-name">NorthBridge Logistics</div>
-            <div class="news-author-role">Официальный канал</div>
+            <div class="news-author-name" id="newsAuthorName"></div>
+            <div class="news-author-role" id="newsAuthorRole"></div>
           </div>
         </div>
         <span class="news-meta-sep"></span>
-        <span class="news-date">
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          23 апреля 2026
-        </span>
+        <span class="news-date" id="newsDate"></span>
         <span class="news-date">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           5 мин чтения
         </span>
-        <span class="news-views">
-          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          2 840 просмотров
-        </span>
+        <span class="news-views" id="newsViews"></span>
       </div>
 
       <!-- Заголовок -->
-      <h1 class="news-title">Новые правила таможенного оформления ЕАЭС вступают в силу с 1 мая 2026 года</h1>
+      <div class="news-repost-banner" id="newsRepostBanner" style="display:none">
+        <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span id="newsRepostBannerText"></span>
+      </div>
+
+      <h1 class="news-title" id="newsTitle"></h1>
 
       <!-- Лид -->
-      <p class="news-lead">С 1 мая 2026 года вступают в силу изменения в таможенном регулировании ЕАЭС, затрагивающие порядок декларирования, ставки пошлин и требования к документации. Рассказываем о главном.</p>
+      <p class="news-lead" id="newsLead"></p>
 
       <!-- Текст -->
-      <div class="news-text">
-        <p>Евразийская экономическая комиссия утвердила пакет поправок к Таможенному кодексу ЕАЭС, который кардинально меняет порядок работы с таможенными декларациями для компаний, занимающихся внешнеэкономической деятельностью в регионе.</p>
+      <div class="news-tags" id="newsTags" style="display:none"></div>
 
-        <p><strong>Что меняется с 1 мая.</strong> Прежде всего, вводится обязательная предварительная электронная подача деклараций за 24 часа до пересечения границы для товаров первой и второй категорий риска. Компании, не успевшие перейти на новый формат, будут обязаны проходить дополнительный досмотр — это существенно увеличит время прохождения таможни.</p>
+      <div class="news-text" id="newsText"></div>
 
-        <p>Ставки ввозных таможенных пошлин на ряд товаров также пересматриваются. Наибольшее изменение коснётся электроники и промышленного оборудования из стран вне ЕАЭС — ставка снизится с 12% до 8%, что должно стимулировать импорт технологических решений.</p>
-      </div>
-
-      <blockquote class="news-quote">
-        «Переход на цифровое декларирование — это неизбежный шаг. Те компании, которые начали готовиться заранее, выиграют в скорости и снизят административную нагрузку минимум на 30%.»
-        <cite>— Марина Захарова, таможенный брокер, ТаможПром</cite>
-      </blockquote>
-
-      <div class="news-text">
-        <p>Особое внимание следует обратить на новые требования к маркировке товаров. Теперь обязательной становится QR-маркировка для 14 дополнительных категорий, включая строительные материалы и запасные части для промышленного оборудования.</p>
-
-        <p><strong>Переходный период.</strong> ЕЭК предусмотрела переходный период до 1 сентября 2026 года, в течение которого штрафные санкции за несоблюдение требований применяться не будут — только предупреждения. Тем не менее рекомендуется начать подготовку уже сейчас.</p>
-
-        <p>По оценкам аналитиков LASTOP Digital, порядка 34% российских компаний-участников ВЭД ещё не приступили к адаптации своих процессов к новым требованиям. Платформа LASTOP запускает серию бесплатных вебинаров по теме — ссылки на регистрацию доступны в разделе Мероприятия.</p>
-      </div>
-
-      <!-- Теги / метки -->
-      <div class="news-tags">
-        <a class="news-tag" href="/dashboard.html?tag=еаэс">
-          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          ЕАЭС
-        </a>
-        <a class="news-tag" href="/dashboard.html?tag=таможня">
-          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          Таможня
-        </a>
-        <a class="news-tag" href="/dashboard.html?tag=вэд">
-          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          ВЭД
-        </a>
-        <a class="news-tag" href="/dashboard.html?tag=декларирование">
-          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          Декларирование
-        </a>
-        <a class="news-tag" href="/dashboard.html?tag=логистика">
-          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          Логистика
-        </a>
-        <a class="news-tag" href="/dashboard.html?tag=изменения-2026">
-          <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          Изменения 2026
-        </a>
+      <div class="news-repost-original" id="newsRepostOriginal" style="display:none">
+        <div class="news-repost-original-author">
+          <div class="news-repost-original-av" id="newsRepostOriginalAv"></div>
+          <div>
+            <div id="newsRepostOriginalName"></div>
+            <div style="font-size:10px;color:var(--gmt);font-weight:600" id="newsRepostOriginalRole"></div>
+          </div>
+        </div>
+        <div class="news-repost-original-text" id="newsRepostOriginalText"></div>
       </div>
 
       <!-- Кнопки действий -->
@@ -509,21 +489,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <button class="act-btn like" id="btnLike" onclick="toggleLike()">
           <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           <span class="act-label">Нравится</span>
-          <span class="act-count" id="btnLikeCount">247</span>
+          <span class="act-count" id="btnLikeCount">0</span>
         </button>
 
         <!-- Комментарий -->
         <button class="act-btn comment-cta" onclick="focusComment()">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="act-label">Комментировать</span>
-          <span class="act-count" id="btnComCount">38</span>
+          <span class="act-count" id="btnComCount">0</span>
         </button>
 
         <!-- Сохранить -->
         <button class="act-btn save" id="btnSave" onclick="toggleSave()">
           <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           <span class="act-label">Сохранить</span>
-          <span class="act-count" id="btnSaveCount">56</span>
+          <span class="act-count" id="btnSaveCount">0</span>
         </button>
 
         <!-- Репост с дропдауном -->
@@ -531,7 +511,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <button class="act-btn repost" id="btnRepost" onclick="toggleRepost(event)">
             <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             <span class="act-label">Репост</span>
-            <span class="act-count">14</span>
+            <span class="act-count" id="btnRepostCount">0</span>
           </button>
           <div class="repost-dd" id="repostDD">
             <div class="repost-dd-head">Поделиться в…</div>
@@ -593,7 +573,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="comments-section" style="margin-top:24px">
         <div class="comments-title">
           Комментарии
-          <span class="comments-count" id="comCountBadge">38</span>
+          <span class="comments-count" id="comCountBadge">0</span>
         </div>
 
         <!-- Поле ввода -->
@@ -623,11 +603,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Об авторе -->
   <div class="card">
     <div class="block-title">Автор публикации</div>
-    <div class="author-block" onclick="location.href='/companies.html'">
-      <div class="author-av-lg" style="background:#1E8A4C">N</div>
+    <div class="author-block" id="sidebarAuthorBlock">
+      <div class="author-av-lg" id="sidebarAuthorAv"></div>
       <div>
-        <div class="author-name-lg">NorthBridge Logistics</div>
-        <div class="author-role-lg">Логистика · Москва · 3 100 подписчиков</div>
+        <div class="author-name-lg" id="sidebarAuthorName"></div>
+        <div class="author-role-lg" id="sidebarAuthorRole"></div>
       </div>
     </div>
     <button class="btn-follow" id="btnFollow" onclick="toggleFollow()">+ Подписаться</button>
@@ -636,11 +616,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Статистика -->
   <div class="card">
     <div class="block-title">Статистика</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val">2 840</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Лайков</span><span class="stat-val" id="statLikes">247</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Комментариев</span><span class="stat-val" id="statComments">38</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Репостов</span><span class="stat-val">14</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Сохранений</span><span class="stat-val" id="statSaves">56</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val" id="statViews">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Лайков</span><span class="stat-val" id="statLikes">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Комментариев</span><span class="stat-val" id="statComments">—</span></div>
+    <div class="stat-row">
+      <span class="stat-lbl">
+        <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        Репостов
+      </span>
+      <span class="stat-val" id="statReposts">—</span>
+    </div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Сохранений</span><span class="stat-val" id="statSaves">—</span></div>
   </div>
 
   <!-- Похожие новости -->
@@ -690,11 +676,11 @@ function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function ago(ts){const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' дн. назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'})}
-function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
+function toast(msg,ok){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 
 /* DROPDOWN профиля */
-function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
+function toggleDD(e){e.stopPropagation();const tp=document.getElementById('topbarProfile');const pd=document.getElementById('profileDD');if(tp)tp.classList.toggle('open');if(pd)pd.classList.toggle('open')}
 document.addEventListener('click',e=>{
   const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');
   if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}
@@ -702,48 +688,116 @@ document.addEventListener('click',e=>{
   const rd=document.getElementById('repostDD'),rb=document.getElementById('btnRepost');
   if(rd&&!rd.contains(e.target)&&rb&&!rb.contains(e.target))rd.classList.remove('open');
 })
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');document.getElementById('repostDD').classList.remove('open')}})
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const pd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');const rd=document.getElementById('repostDD');if(pd)pd.classList.remove('open');if(tp)tp.classList.remove('open');if(rd)rd.classList.remove('open')}})
 
 /* ── ЛАЙК ── */
 let liked=false;
-let likeCount=247;
+let likeCount=0;
+function applyLikeButtonState(){
+  const btn = document.getElementById('btnLike');
+  if (!btn) return;
+  btn.classList.toggle('active', liked);
+  const svg = btn.querySelector('svg');
+  if (svg) {
+    svg.style.fill = liked ? 'var(--red)' : 'none';
+    svg.style.stroke = liked ? 'var(--red)' : 'currentColor';
+  }
+}
+
 async function toggleLike(){
-  const r=await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/like`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok){toast(d.error||'Не удалось поставить лайк');return;}
-  liked=!!d.is_liked;
-  likeCount=Number(d.likes_count||0);
-  const btn=document.getElementById('btnLike');
-  btn.classList.toggle('active',liked);
-  btn.classList.add('bump');
-  setTimeout(()=>btn.classList.remove('bump'),300);
-  if(liked){const svg=btn.querySelector('svg');svg.style.fill='var(--red)';svg.style.stroke='var(--red)'}
-  else{const svg=btn.querySelector('svg');svg.style.fill='none';svg.style.stroke='currentColor'}
-  ['btnLikeCount','statLikes'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=likeCount});
-  toast(liked?'Вам понравилось ❤️':'Лайк убран');
+  if (!postPublicID) return;
+  try {
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/like`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk() } });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.error || 'Не удалось поставить лайк');
+      return;
+    }
+    const d = await r.json();
+    liked = !!d.is_liked;
+    likeCount = Number(d.likes_count || 0);
+    applyLikeButtonState();
+    const btn = document.getElementById('btnLike');
+    if (btn) {
+      btn.classList.add('bump');
+      setTimeout(() => btn.classList.remove('bump'), 300);
+    }
+    ['btnLikeCount', 'statLikes'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = Number(likeCount).toLocaleString('ru-RU'); });
+    toast(liked ? 'Вам понравилось ❤️' : 'Лайк убран');
+  } catch (err) {
+    toast('Сеть недоступна');
+  }
 }
 
 /* ── СОХРАНИТЬ ── */
 let saved=false;
-let saveCount=56;
-function toggleSave(){
-  saved=!saved;
-  saveCount+=saved?1:-1;
-  const btn=document.getElementById('btnSave');
-  const icon=document.getElementById('saveIcon');
-  btn.classList.toggle('active',saved);
-  if(saved){icon.style.fill='var(--g)';icon.style.stroke='var(--g)'}
-  else{icon.style.fill='none';icon.style.stroke='currentColor'}
-  ['btnSaveCount','statSaves'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=saveCount});
-  toast(saved?'Добавлено в избранное ✓':'Убрано из избранного',saved);
+let saveCount=0;
+function applySaveButtonState(){
+  const btn = document.getElementById('btnSave');
+  const icon = document.getElementById('saveIcon');
+  if (!btn) return;
+  btn.classList.toggle('active', saved);
+  if (icon) {
+    icon.style.fill = saved ? 'var(--g)' : 'none';
+    icon.style.stroke = saved ? 'var(--g)' : 'currentColor';
+  }
+}
+
+async function toggleSave(){
+  if (!postPublicID) return;
+  try {
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/save`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk() } });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.error || 'Не удалось сохранить');
+      return;
+    }
+    const d = await r.json();
+    saved = !!d.is_saved;
+    saveCount = Number(d.saves_count || 0);
+    applySaveButtonState();
+    ['btnSaveCount', 'statSaves'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = Number(saveCount).toLocaleString('ru-RU'); });
+    toast(saved ? 'Добавлено в избранное ✓' : 'Убрано из избранного');
+  } catch (err) {
+    toast('Сеть недоступна');
+  }
 }
 
 /* ── РЕПОСТ ── */
-function toggleRepost(e){e.stopPropagation();document.getElementById('repostDD').classList.toggle('open')}
-function doRepost(target){
-  document.getElementById('repostDD').classList.remove('open');
-  const names={page:'вашей странице',comm1:'«Логистика СНГ»',comm2:'«LogTech Россия»',comm3:'«HR в логистике»',chat1:'Марине Захаровой',chat2:'Алексею Петрову'};
-  toast('Поделились на '+( names[target]||''), true);
+function toggleRepost(e){e.stopPropagation();const dd=document.getElementById('repostDD');if(dd)dd.classList.toggle('open')}
+async function doRepost(target){
+  if (target !== 'page') {
+    toast('Репост в сообщества появится скоро');
+    return;
+  }
+  if (!postPublicID) return;
+  try {
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/repost`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment: '' })
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.error || 'Не удалось сделать репост');
+      return;
+    }
+    const d = await r.json();
+    const dd = document.getElementById('repostDD');
+    if (dd) dd.classList.remove('open');
+    const btn = document.getElementById('btnRepost');
+    if (btn) btn.classList.remove('open');
+    toast('Опубликовано на вашей странице ✓');
+    const newCount = Number(d.post?.repost?.reposts_count || 0);
+    if (newCount > 0) {
+      const statEl = document.getElementById('statReposts');
+      if (statEl) statEl.textContent = newCount.toLocaleString('ru-RU');
+      const btnEl = document.getElementById('btnRepostCount');
+      if (btnEl) btnEl.textContent = newCount.toLocaleString('ru-RU');
+    }
+  } catch (err) {
+    toast('Сеть недоступна');
+  }
 }
 
 /* ── ПОДПИСКА НА АВТОРА ── */
@@ -768,7 +822,9 @@ let comments=[...DEMO_COMMENTS];
 let commentCount=38;
 
 function renderComments(){
-  document.getElementById('commentsList').innerHTML=comments.map((c,i)=>`
+  const commentsList=document.getElementById('commentsList');
+  if(!commentsList)return;
+  commentsList.innerHTML=comments.map((c,i)=>`
     <div class="comment" style="animation-delay:${i*.06}s">
       <div class="com-av" style="background:${c.color}">${c.av}</div>
       <div class="com-body">
@@ -826,106 +882,286 @@ let replyingTo='';
 function replyTo(name){
   replyingTo=name;
   const ta=document.getElementById('commentInput');
+  if(!ta)return;
   ta.value='@'+name+' ';
   ta.focus();
-  document.getElementById('ciActions').style.display='flex';
+  const actions=document.getElementById('ciActions');
+  if(actions)actions.style.display='flex';
   ta.style.minHeight='80px';
 }
 
 function focusComment(){
   const ta=document.getElementById('commentInput');
+  if(!ta)return;
   ta.focus();
   ta.scrollIntoView({behavior:'smooth',block:'center'});
-  document.getElementById('ciActions').style.display='flex';
+  const actions=document.getElementById('ciActions');
+  if(actions)actions.style.display='flex';
   ta.style.minHeight='80px';
 }
 
 function cancelComment(){
   const ta=document.getElementById('commentInput');
+  if(!ta)return;
   ta.value='';ta.style.minHeight='44px';
-  document.getElementById('ciActions').style.display='none';
+  const actions=document.getElementById('ciActions');
+  if(actions)actions.style.display='none';
   replyingTo='';
 }
 
-function sendComment(){
-  const ta=document.getElementById('commentInput');
-  const text=ta.value.trim();
-  if(!text){ta.focus();return;}
-  fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({content:text})})
-    .then(async r=>{
-      const d=await r.json().catch(()=>({}));
-      if(!r.ok){toast(d.error||'Не удалось отправить комментарий');return;}
-      const c=d.comment||{};
-      comments.push({id:c.id||Date.now(),name:c.author_name||'Пользователь',role:'Участник LASTOP',av:ltr(c.author_name||'П'),color:avc(c.author_name||'П'),text:c.content||text,likes:0,liked:false,ts:c.created_at||new Date().toISOString(),replies:[]});
-      commentCount=comments.length;
-      ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
-      cancelComment();
-      renderComments();
-      toast('Комментарий опубликован ✓',true);
-    })
-    .catch(()=>toast('Не удалось отправить комментарий'));
+async function sendComment(){
+  const input = document.getElementById('commentInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  if (!postPublicID) return;
+  try {
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text })
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.error || 'Не удалось отправить комментарий');
+      return;
+    }
+    const d = await r.json();
+    const c = d.comment || {};
+    comments.unshift({
+      id: c.id,
+      public_id: c.author_public_id || '',
+      name: c.author_name || 'Участник',
+      role: c.author_role || 'Участник LASTOP',
+      av: ltr(c.author_name || 'У'),
+      color: c.author_color || avc(c.author_name || 'У'),
+      text: c.content || text,
+      likes: 0,
+      liked: false,
+      ts: c.created_at || new Date().toISOString(),
+      replies: []
+    });
+    commentCount++;
+    ['btnComCount', 'comCountBadge', 'statComments'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = commentCount;
+    });
+    renderComments();
+    input.value = '';
+    input.style.minHeight = '';
+    const actions = document.getElementById('ciActions');
+    if (actions) actions.style.display = 'none';
+    toast('Комментарий добавлен ✓');
+  } catch (err) {
+    toast('Сеть недоступна');
+  }
 }
 
 async function loadPostAndComments(){
-  const postRes=await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`,{headers:{Authorization:'Bearer '+tk()}});
-  if(postRes.status===404){
-    const container=document.querySelector('.news-card');
-    if(container)container.innerHTML='<h2>Публикация не найдена или удалена</h2>';
+  let post = null;
+  try {
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: { Authorization: 'Bearer ' + tk() } });
+    if (r.status === 404) {
+      const container = document.querySelector('.news-card');
+      if (container) container.innerHTML = '<h2 style="padding:40px;text-align:center;color:var(--gmt)">Публикация не найдена или удалена</h2>';
+      return;
+    }
+    if (!r.ok) throw new Error('post status ' + r.status);
+    const json = await r.json();
+    post = json.post || null;
+  } catch (err) {
+    console.warn('[news] loadPost failed:', err);
     return;
   }
-  const postData=await postRes.json().catch(()=>({}));
-  const p=postData.post||{};
-  if(p.public_id){
-    const title=document.querySelector('.news-title'); if(title)title.textContent=p.title||'Публикация';
-    const text=document.querySelector('.news-text'); if(text)text.innerHTML=fmtMentions(p.text||p.content||'');
-    const author=document.querySelector('.news-author-name'); if(author)author.textContent=p.author||'Участник';
-    const authorRole=document.querySelector('.news-author-role'); if(authorRole)authorRole.textContent=p.author_role||'Участник LASTOP';
-    const authorAvatar=document.querySelector('.news-author-av'); if(authorAvatar)authorAvatar.textContent=ltr(p.author||'У');
-    const metaItems=document.querySelectorAll('.news-date');
-    if(metaItems&&metaItems[0])metaItems[0].innerHTML=`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>${esc(ago(p.created_at))}`;
-    const viewsNode=document.querySelector('.news-views');
-    if(viewsNode)viewsNode.innerHTML=`<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${Number(p.views_count||0).toLocaleString('ru-RU')}`;
-    liked=!!p.is_liked; likeCount=p.likes_count||0; commentCount=p.comments_count||0;
-    ['btnLikeCount','statLikes'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=likeCount});
-    ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
-  }
-  const comRes=await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments?limit=100`,{headers:{Authorization:'Bearer '+tk()}});
-  const comData=await comRes.json().catch(()=>({}));
-  if(comRes.ok){
-    comments=(comData.comments||[]).map(c=>({id:c.id,name:c.author_name||'Участник',role:'Участник LASTOP',av:ltr(c.author_name||'У'),color:avc(c.author_name||'У'),text:c.content,likes:0,liked:false,ts:c.created_at,replies:[]}));
-    commentCount=comments.length;
-    ['btnComCount','comCountBadge','statComments'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=commentCount});
+  if (!post || !post.public_id) return;
+
+  fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/view`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk() } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (d && typeof d.views_count === 'number') {
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = Number(v).toLocaleString('ru-RU'); };
+        set('statViews', d.views_count);
+        const newsViews = document.getElementById('newsViews');
+        if (newsViews) newsViews.innerHTML = `<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${Number(d.views_count).toLocaleString('ru-RU')}`;
+      }
+    })
+    .catch(() => {});
+
+  renderPost(post);
+
+  try {
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments?limit=100`, { headers: { Authorization: 'Bearer ' + tk() } });
+    if (r.ok) {
+      const d = await r.json();
+      comments = (d.comments || []).map(c => ({
+        id: c.id,
+        public_id: c.author_public_id || '',
+        name: c.author_name || 'Участник',
+        role: c.author_role || 'Участник LASTOP',
+        av: ltr(c.author_name || 'У'),
+        color: c.author_color || avc(c.author_name || 'У'),
+        text: c.content,
+        likes: 0,
+        liked: false,
+        ts: c.created_at,
+        replies: []
+      }));
+      commentCount = comments.length;
+      ['btnComCount', 'comCountBadge', 'statComments'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = commentCount;
+      });
+      renderComments();
+    }
+  } catch (err) {
+    console.warn('[news] loadComments failed:', err);
   }
 }
 
+function renderPost(p){
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? ''; };
+  const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? ''; };
+
+  set('newsTitle', p.title || '');
+  const leadEl = document.getElementById('newsLead');
+  if (leadEl) {
+    const leadSrc = String(p.content || p.text || '').replace(/\s+/g, ' ').trim();
+    if (leadSrc) {
+      leadEl.style.display = '';
+      leadEl.textContent = leadSrc.slice(0, 220) + (leadSrc.length > 220 ? '…' : '');
+    } else {
+      leadEl.style.display = 'none';
+      leadEl.textContent = '';
+    }
+  }
+
+  const isRepost = !!(p.repost && p.repost.public_id);
+  const author = p;
+  const authorName = author.author || 'Участник';
+  const authorRole = author.author_role || 'Участник LASTOP';
+  const authorPublicID = author.author_public_id || '';
+  const authorColor = avc(authorName);
+
+  set('newsAuthorName', authorName);
+  set('newsAuthorRole', authorRole);
+  const newsAuthorAv = document.getElementById('newsAuthorAv');
+  if (newsAuthorAv) {
+    if (author.author_avatar) {
+      newsAuthorAv.innerHTML = `<img src="${esc(author.author_avatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
+    } else {
+      newsAuthorAv.textContent = ltr(authorName);
+      newsAuthorAv.style.background = authorColor;
+    }
+  }
+  setHTML('newsDate', `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>${esc(ago(p.created_at))}`);
+  setHTML('newsViews', `<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${Number(p.views_count || 0).toLocaleString('ru-RU')}`);
+
+  setHTML('newsText', fmtMentions(p.text || p.content || ''));
+
+  const tagsEl = document.getElementById('newsTags');
+  const tags = Array.isArray(p.tags) ? p.tags.filter(Boolean) : [];
+  if (tagsEl) {
+    if (tags.length) {
+      tagsEl.style.display = 'flex';
+      tagsEl.innerHTML = tags.map(t => `<a class="news-tag" href="/search.html?q=${encodeURIComponent('#' + t)}">#${esc(t)}</a>`).join('');
+    } else {
+      tagsEl.style.display = 'none';
+      tagsEl.innerHTML = '';
+    }
+  }
+
+  const banner = document.getElementById('newsRepostBanner');
+  const bannerText = document.getElementById('newsRepostBannerText');
+  const original = document.getElementById('newsRepostOriginal');
+  if (isRepost && banner && bannerText && original) {
+    banner.style.display = 'flex';
+    bannerText.innerHTML = `${esc(authorName)} поделился публикацией <a href="/profile_user.html?id=${encodeURIComponent(p.repost.author_public_id || '')}">${esc(p.repost.author || 'участника')}</a>`;
+    original.style.display = 'block';
+    const origAv = document.getElementById('newsRepostOriginalAv');
+    if (origAv) {
+      origAv.textContent = ltr(p.repost.author || 'У');
+      origAv.style.background = avc(p.repost.author || 'У');
+    }
+    set('newsRepostOriginalName', p.repost.author || 'Участник');
+    set('newsRepostOriginalRole', p.repost.author_role || 'Участник LASTOP');
+    setHTML('newsRepostOriginalText', fmtMentions(p.repost.text || p.repost.content || ''));
+  } else if (banner && original) {
+    banner.style.display = 'none';
+    original.style.display = 'none';
+  }
+
+  const sidebarBlock = document.getElementById('sidebarAuthorBlock');
+  if (sidebarBlock && authorPublicID) {
+    sidebarBlock.style.cursor = 'pointer';
+    sidebarBlock.onclick = () => location.href = '/profile_user.html?id=' + encodeURIComponent(authorPublicID);
+  }
+  const sidebarAv = document.getElementById('sidebarAuthorAv');
+  if (sidebarAv) {
+    if (author.author_avatar) {
+      sidebarAv.innerHTML = `<img src="${esc(author.author_avatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
+    } else {
+      sidebarAv.textContent = ltr(authorName);
+      sidebarAv.style.background = authorColor;
+    }
+  }
+  set('sidebarAuthorName', authorName);
+  set('sidebarAuthorRole', authorRole);
+
+  set('statViews', Number(p.views_count || 0).toLocaleString('ru-RU'));
+  set('statLikes', Number(p.likes_count || 0).toLocaleString('ru-RU'));
+  set('statComments', Number(p.comments_count || 0).toLocaleString('ru-RU'));
+  set('statSaves', Number(p.saves_count || 0).toLocaleString('ru-RU'));
+  set('statReposts', Number(p.reposts_count || 0).toLocaleString('ru-RU'));
+
+  liked = !!p.is_liked;
+  likeCount = Number(p.likes_count || 0);
+  applyLikeButtonState();
+  ['btnLikeCount'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = likeCount; });
+
+  saved = !!p.is_saved;
+  saveCount = Number(p.saves_count || 0);
+  applySaveButtonState();
+  ['btnSaveCount'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = saveCount; });
+
+  const repostCount = Number(p.reposts_count || 0);
+  const repostCountEl = document.getElementById('btnRepostCount');
+  if (repostCountEl) repostCountEl.textContent = repostCount.toLocaleString('ru-RU');
+
+  commentCount = Number(p.comments_count || 0);
+  ['btnComCount', 'comCountBadge'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = commentCount; });
+}
+
 /* Автораскрытие поля при вводе */
-document.getElementById('commentInput').addEventListener('focus',()=>{
-  document.getElementById('ciActions').style.display='flex';
-  document.getElementById('commentInput').style.minHeight='80px';
-});
-document.getElementById('commentInput').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){sendComment();}
-  if(e.key==='Escape'){cancelComment();}
-});
+const commentInputEl=document.getElementById('commentInput');
+if(commentInputEl){
+  commentInputEl.addEventListener('focus',()=>{
+    const actions=document.getElementById('ciActions');
+    if(actions)actions.style.display='flex';
+    commentInputEl.style.minHeight='80px';
+  });
+  commentInputEl.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){sendComment();}
+    if(e.key==='Escape'){cancelComment();}
+  });
+}
 
 /* АВТОРИЗАЦИЯ */
-(async()=>{
+(async () => {
   if(!tk()){location.href='/login.html';return}
   try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await fetch(API + '/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
     const color=avc(name);const L=ltr(name);
     ['topbarAv','pddAv','ciAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
     ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
-    const role=user.role||user.position||'Участник LASTOP';
-    ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
     const repostAv=document.getElementById('repostUserAv');if(repostAv){repostAv.textContent=L;repostAv.style.background=color}
     const repostName=document.getElementById('repostUserName');if(repostName)repostName.textContent=name;
-  }catch{}
-  await loadPostAndComments();
-  renderComments();
+  } catch (err) {
+    console.warn('[news] loadCurrentUser failed:', err);
+  }
+  loadPostAndComments();
 })();
 </script>
 </body>
