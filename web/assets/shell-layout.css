@@ -152,24 +152,27 @@ html.lt-shell-2col .main{grid-area:main}
 html.lt-shell .right{grid-area:right}
 
 /* ═══════════════════════════════════════════════════════════════
-   ТОПБАР — внутренняя сетка, повторяющая колонки .shell
+   ТОПБАР — внутренняя сетка повторяет колонки .shell
    ───────────────────────────────────────────────────────────────
-   Цель: правая граница поиска совпадает с правой границей main,
-   левая граница карточки профиля совпадает с левой границей right.
+   Цель: правый край поиска совпадает с правым краем main,
+         левый край карточки профиля совпадает с левым краем right.
 
-   Достигается тем, что .topbar внутри использует grid с теми же
-   двумя правыми колонками, что и .shell: 1fr 300px. Брейкпоинты
-   совпадают с .shell, поэтому выравнивание держится при ресайзе.
+   Сейчас в каждой странице .topbar объявлен через display:flex.
+   Мы перекрываем его на display:grid с теми же двумя правыми
+   колонками что и в .shell: 1fr 300px (на 1200px — 260px,
+   на 1920+ — 340px). Колоночный gap совпадает с .shell (10px,
+   на 1920+ — 12px).
 
-   Селектор html.lt-shell .topbar даёт специфичность (0,1,1),
-   что автоматически перекрывает inline .topbar{display:flex;...}
-   во всех страницах без !important.
+   Селектор html.lt-shell .topbar даёт специфичность (0,1,1) и
+   перекрывает inline .topbar{display:flex; ...} (0,1,0) без
+   !important. flex: initial на потомках сбрасывает остаточные
+   inline flex-grow.
 
-   Для html.lt-shell-2col (chat.html) правого сайдбара нет, поэтому
-   там оставляем flex и просто прижимаем профиль к правому краю.
+   Двухколоночный каркас (.lt-shell-2col, chat.html) сохраняет
+   flex — там нет правого сайдбара, к чему выравнивать профиль.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Трёхколоночный каркас: топбар повторяет main + right ── */
+/* ── Базовый трёхколоночный каркас: 1fr 300px ── */
 html.lt-shell .topbar{
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -180,22 +183,22 @@ html.lt-shell .topbar{
 
 html.lt-shell .topbar > .search-wrap{
   grid-column: 1;
-  min-width: 0;
   flex: initial;
   width: 100%;
+  min-width: 0;
 }
 
 html.lt-shell .topbar > .profile-dd-wrap{
   grid-column: 2;
-  min-width: 0;
   flex: initial;
   width: 100%;
+  min-width: 0;
   display: flex;
   justify-content: flex-end;
   align-items: center;
 }
 
-/* ── Средние экраны: повторяем .shell (1fr 260px) ── */
+/* ── Средние экраны: 1fr 260px (как .shell) ── */
 @media (max-width: 1200px){
   html.lt-shell .topbar{
     grid-template-columns: 1fr 260px;
@@ -212,7 +215,9 @@ html.lt-shell .topbar > .profile-dd-wrap{
   }
 }
 
-/* ── 4K / large desktop: повторяем .shell (1fr 340px) ── */
+/* ── Мобильный: профиль уже скрыт правилом 1000px, добавлять ничего не нужно ── */
+
+/* ── 4K / large desktop: 1fr 340px (как .shell) ── */
 @media (min-width: 1921px) and (min-height: 1081px){
   html.lt-shell .topbar{
     grid-template-columns: 1fr 340px;
@@ -220,19 +225,19 @@ html.lt-shell .topbar > .profile-dd-wrap{
   }
 }
 
-/* ── Двухколоночный каркас (chat.html): без сетки внутри топбара ──
-   Здесь правого сайдбара под топбаром нет, поэтому grid не нужен.
-   Оставляем flex и прижимаем профиль к правому краю.
+/* ── Двухколоночный каркас (chat.html): без grid внутри топбара ──
+   В chat.html нет правого сайдбара под топбаром, поэтому нет
+   границы куда выравнивать профиль. Оставляем flex и просто
+   прижимаем профиль к правому краю.
 */
 html.lt-shell-2col .topbar{
-  /* нет grid — наследуется flex из inline-стиля страницы */
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 html.lt-shell-2col .topbar > .search-wrap{
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
