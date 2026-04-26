@@ -952,8 +952,6 @@ function populateUI(){
   document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
   const selfProfileHref=profileHref(currentUser);
   document.querySelectorAll('a[href=\"/profile.html\"]').forEach((a)=>{a.href=selfProfileHref;});
-  const openProfileBtn=document.querySelector('button[onclick=\"location.href=\\'/profile.html\\'\"]');
-  if(openProfileBtn){openProfileBtn.setAttribute('onclick',`location.href='${selfProfileHref}'`);}
   /* Аватар */
   const av=document.getElementById('avatarPreview');
   if(currentUser.avatar_url){av.innerHTML=`<img src="${currentUser.avatar_url}" alt="${esc(name)}">`;} else{av.textContent=ltr;av.style.background=color;}
