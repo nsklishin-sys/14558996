@@ -148,14 +148,14 @@
           const d=r.ok?await r.json():{users:[]};
           render({users:d.users||[],posts:[],communities:[],events:[],companies:[]},q,true);
           return;
-        }catch{render({users:[],posts:[],communities:[],events:[],companies:[]},q,true);return;}
-      }
+        }
+      }catch(_){}
+    }
 
-      // Главный эндпоинт
-      try{
-        const r=await fetch(`${API}/search?q=${encodeURIComponent(q)}&limit=8`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
-        if(r.ok){const d=await r.json();render(d,q,false);return;}
-      }catch{}
+    const searchUrl = new URL('/search.html', window.location.origin);
+    searchUrl.searchParams.set('q', cleaned);
+    window.location.href = searchUrl.toString();
+  }
 
       // Fallback: только пользователи + переход на полный поиск
       try{
