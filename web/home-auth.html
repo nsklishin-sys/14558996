@@ -1212,44 +1212,158 @@ async function loadFeed(){
   renderFeedFiltered('all');
 }
 function renderFeedFiltered(type){
-  // Сигнатура для определения изменений ленты — позволяет избежать
-  // перерисовки DOM на 60-секундном polling-тике если данные те же.
-  const posts=(allPosts||[]).filter(p=>type==='all'||p.type===type);
-  const sig=JSON.stringify(posts.map(p=>[
-    p.public_id,
-    p.likes_count,
-    p.comments_count,
-    p.views_count,
-    p.is_liked?1:0
-  ]))+'|'+type;
-  if(sig===_feedRenderSig)return;
-  _feedRenderSig=sig;
-  const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum',events:'t-proj'};
-  const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум',events:'Мероприятия'};
-  const feed=document.getElementById('feed');
-  if(!posts.length){feed.innerHTML=`<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">В этом разделе пока нет публикаций</span></div>`;return;}
-  feed.innerHTML=posts.map((p,i)=>{
-    const name=p.author||p.author_name||'Участник';
-    const tag=TAG[p.type]||'t-news',lbl=LBL[p.type]||'Публикация';
-    const time=p.created_at?ago(p.created_at):(p.ago||'');
-    const href=p.type==='news'?'/news-detail.html':(p.type==='forum'?'/forum.html':'/dashboard.html');
-    const pid=p.public_id||p.id||'';
-    const id=pid?('?id='+encodeURIComponent(pid)):'';
-    const authorHref = profileHref({name, user_id:p.user_id, public_id:p.author_public_id});
-    const communityBadge=(p.community_id&&p.community_name)?`<div style="font-size:11px;color:var(--g);margin-top:2px">из сообщества: ${esc(p.community_name)}</div>`:'';
-    return`<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
+  const feed = document.getElementById('feed');
+  if (!feed) return;
+
+  // Сбрасываем сигнатуру при переключении на не-постовые вкладки,
+  // чтобы при возврате на 'all' лента точно перерисовалась.
+  if (type === 'projects' || type === 'forum' || type === 'companies') {
+    _feedRenderSig = '';
+    if (type === 'projects') {
+      renderFeedStub(feed, '🚧', 'Раздел проектов в разработке',
+        'Скоро здесь появится возможность публиковать и обсуждать проекты сообщества.');
+      return;
+    }
+    if (type === 'forum') {
+      renderFeedStub(feed, '💬', 'Форум готовится к запуску',
+        'Раздел для обсуждений и тематических веток откроется в ближайших обновлениях.');
+      return;
+    }
+    if (type === 'companies') {
+      renderFeedCompanies(feed);
+      return;
+    }
+  }
+
+  // Стандартная логика для 'all' и 'news'
+  const posts = (allPosts || []).filter(p => type === 'all' || p.type === type);
+  const sig = JSON.stringify(posts.map(p => [
+    p.public_id, p.likes_count, p.comments_count, p.views_count, p.is_liked ? 1 : 0
+  ])) + '|' + type;
+  if (sig === _feedRenderSig) return;
+  _feedRenderSig = sig;
+
+  const TAG = {news:'t-news', projects:'t-proj', companies:'t-co', forum:'t-forum', events:'t-proj'};
+  const LBL = {news:'Новости', projects:'Проекты', companies:'Компании', forum:'Форум', events:'Мероприятия'};
+
+  if (!posts.length) {
+    feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">В этом разделе пока нет публикаций</span></div>`;
+    return;
+  }
+
+  feed.innerHTML = posts.map((p, i) => {
+    const name = p.author || p.author_name || 'Участник';
+    const tag = TAG[p.type] || 't-news', lbl = LBL[p.type] || 'Публикация';
+    const time = p.created_at ? ago(p.created_at) : (p.ago || '');
+    const href = p.type === 'news' ? '/news-detail.html' : (p.type === 'forum' ? '/forum.html' : '/dashboard.html');
+    const pid = p.public_id || p.id || '';
+    const id = pid ? ('?id=' + encodeURIComponent(pid)) : '';
+    const authorHref = profileHref({name, user_id: p.user_id, public_id: p.author_public_id});
+    const communityBadge = (p.community_id && p.community_name)
+      ? `<div style="font-size:11px;color:var(--g);margin-top:2px">из сообщества: ${esc(p.community_name)}</div>`
+      : '';
+    return `<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
       <div class="pc-head">
         <div class="pc-av" style="background:${avc(name)}" onclick="event.stopPropagation();location.href='${authorHref}'">${letter(name)}</div>
-        <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div>${communityBadge}</div>
+        <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role || p.author_role || '')}${(p.role || p.author_role) ? ' · ' : ''}${esc(time)}</div>${communityBadge}</div>
         <span class="pc-tag ${tag}">${lbl}</span>
       </div>
       ${p.title ? `<div class="pc-title">${esc(p.title)}</div>` : ''}
-      <div class="pc-text">${fmtMentions(p.text||p.content||p.body||'')}</div>
+      <div class="pc-text">${fmtMentions(p.text || p.content || p.body || '')}</div>
       <div class="pc-foot">
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||p.likes||0}</div>
-        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||p.comments||0}</div>
+        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count || p.likes || 0}</div>
+        <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count || p.comments || 0}</div>
         <span class="pc-time">${esc(time)}</span>
       </div></div>`;
+  }).join('');
+}
+
+function renderFeedStub(container, icon, title, subtitle){
+  container.innerHTML = `
+    <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:48px 24px;text-align:center;animation:fadeUp .25s ease both">
+      <div style="font-size:42px;line-height:1;margin-bottom:14px">${icon}</div>
+      <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:6px">${esc(title)}</div>
+      <div style="font-size:13px;color:var(--gmt);line-height:1.5;max-width:380px;margin:0 auto">${esc(subtitle)}</div>
+    </div>`;
+}
+
+// Кеш компаний — грузим один раз за сессию страницы (повторное переключение
+// на вкладку не дёргает API). Если нужны свежие данные — перезагрузка страницы.
+let _companiesCache = null;
+let _companiesLoading = false;
+
+async function renderFeedCompanies(container){
+  // Если уже грузим — просто покажем skeleton
+  if (_companiesLoading) {
+    container.innerHTML = skels(3, 80);
+    return;
+  }
+  // Если в кеше есть — рисуем сразу
+  if (_companiesCache) {
+    rerenderCompanies(container, _companiesCache);
+    return;
+  }
+
+  // Первая загрузка
+  _companiesLoading = true;
+  container.innerHTML = skels(3, 80);
+
+  try {
+    const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
+    const r = await fetch(API + '/communities', {headers});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = (d.communities || []).slice(0, 10);
+    _companiesCache = items;
+    rerenderCompanies(container, items);
+  } catch {
+    container.innerHTML = `
+      <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:32px 24px;text-align:center">
+        <div style="font-size:13px;color:var(--gmt);font-style:italic">Не удалось загрузить список компаний</div>
+      </div>`;
+  } finally {
+    _companiesLoading = false;
+  }
+}
+
+function rerenderCompanies(container, items){
+  if (!items || !items.length) {
+    container.innerHTML = `
+      <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:48px 24px;text-align:center">
+        <div style="font-size:42px;margin-bottom:14px">🏢</div>
+        <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:6px">Пока нет компаний</div>
+        <div style="font-size:13px;color:var(--gmt)">Будьте первыми — создайте сообщество компании в разделе «Сообщества».</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = items.map((c, i) => {
+    const name = c.name || 'Без названия';
+    const cat = c.category || 'Сообщество';
+    const desc = (c.description || '').slice(0, 140);
+    const members = Number(c.members_count || 0);
+    const color = c.color || avc(name);
+    const initial = letter(name);
+    const created = c.created_at ? ago(c.created_at) : '';
+    const href = '/community-detail.html?id=' + encodeURIComponent(c.id);
+
+    return `<div class="post-card" style="animation-delay:${i*.05}s;cursor:pointer" onclick="location.href='${href}'">
+      <div class="pc-head">
+        <div class="pc-av" style="background:${color}">${esc(initial)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="pc-name">${esc(name)}</div>
+          <div class="pc-meta">${esc(cat)}${created ? ' · ' + esc(created) : ''}</div>
+        </div>
+        <span class="pc-tag t-co">Компания</span>
+      </div>
+      ${desc ? `<div class="pc-text">${esc(desc)}</div>` : ''}
+      <div class="pc-foot">
+        <div class="pc-act">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          ${members} ${members === 1 ? 'участник' : (members < 5 ? 'участника' : 'участников')}
+        </div>
+      </div>
+    </div>`;
   }).join('');
 }
 function demoFeedPosts(){return[
