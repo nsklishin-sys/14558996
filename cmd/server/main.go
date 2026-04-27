@@ -4677,6 +4677,13 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 		return fmt.Errorf("%w: нельзя добавить себя в друзья", errValidation)
 	}
 
+	// outcome: что в итоге произошло
+	//   "request_sent" — заявка ушла адресату
+	//   "auto_accepted" — встречная заявка от адресата автоматически принята
+	//   "" — пропускаем уведомление
+	outcome := ""
+	var notifyTargetID int64
+
 	var existingStatus string
 	var existingRequesterID, existingAddresseeID int64
 	err = tx.QueryRow(`
@@ -4694,6 +4701,7 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 			if existingRequesterID == requesterID {
 				return fmt.Errorf("%w: заявка уже отправлена", errConflict)
 			}
+			// Встречная заявка от него → принимаем
 			if _, err = tx.Exec(`
 				UPDATE friend_requests
 				SET status = 'accepted', updated_at = NOW()
@@ -4701,7 +4709,10 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 			`, existingRequesterID, existingAddresseeID); err != nil {
 				return err
 			}
-			return tx.Commit()
+			// Уведомляем оригинального автора заявки (existingRequesterID == addresseeID),
+			// что мы её приняли
+			outcome = "auto_accepted"
+			notifyTargetID = existingRequesterID
 		case "rejected", "canceled", "unfriended":
 			if _, err = tx.Exec(`
 				UPDATE friend_requests
@@ -4710,40 +4721,102 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 			`, requesterID, addresseeID, existingRequesterID, existingAddresseeID); err != nil {
 				return err
 			}
-			return tx.Commit()
+			outcome = "request_sent"
+			notifyTargetID = addresseeID
 		}
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return err
+	} else {
+		// Новая заявка
+		if _, err = tx.Exec(`
+			INSERT INTO friend_requests(requester_id, addressee_id, status)
+			VALUES ($1, $2, 'pending')
+		`, requesterID, addresseeID); err != nil {
+			return err
+		}
+		outcome = "request_sent"
+		notifyTargetID = addresseeID
 	}
 
-	if _, err = tx.Exec(`
-		INSERT INTO friend_requests(requester_id, addressee_id, status)
-		VALUES ($1, $2, 'pending')
-	`, requesterID, addresseeID); err != nil {
+	if err := tx.Commit(); err != nil {
 		return err
 	}
-	return tx.Commit()
-}
 
+	// Уведомление — best-effort, после commit
+	if outcome != "" && notifyTargetID != 0 && notifyTargetID != requesterID {
+		actorName := getUserDisplayName(db, requesterID)
+		switch outcome {
+		case "request_sent":
+			title := actorName + " отправил вам заявку в друзья"
+			if err := createNotification(db, createNotificationParams{
+				RecipientID: notifyTargetID,
+				ActorID:     requesterID,
+				Type:        "friend_request",
+				SourceType:  "user",
+				SourceID:    requesterID,
+				Title:       title,
+			}); err != nil {
+				log.Printf("notif friend_request: %v", err)
+			}
+		case "auto_accepted":
+			title := actorName + " принял вашу заявку в друзья"
+			if err := createNotification(db, createNotificationParams{
+				RecipientID: notifyTargetID,
+				ActorID:     requesterID,
+				Type:        "friend_accepted",
+				SourceType:  "user",
+				SourceID:    requesterID,
+				Title:       title,
+			}); err != nil {
+				log.Printf("notif friend_accepted: %v", err)
+			}
+		}
+	}
+	return nil
+}
 func acceptFriendRequest(db *sql.DB, userID int64, requesterPublicID string) error {
+	requesterPublicID = strings.TrimSpace(requesterPublicID)
+
+	// Сначала находим requesterID для уведомления
+	var requesterID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, requesterPublicID).Scan(&requesterID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: пользователь не найден", errNotFound)
+		}
+		return err
+	}
+
 	res, err := db.Exec(`
-		UPDATE friend_requests fr
+		UPDATE friend_requests
 		SET status = 'accepted', updated_at = NOW()
-		FROM users u
-		WHERE fr.requester_id = u.id
-		  AND fr.addressee_id = $1
-		  AND fr.status = 'pending'
-		  AND u.public_id = $2
-	`, userID, strings.TrimSpace(requesterPublicID))
+		WHERE requester_id = $1
+		  AND addressee_id = $2
+		  AND status = 'pending'
+	`, requesterID, userID)
 	if err != nil {
 		return err
 	}
 	if rows, _ := res.RowsAffected(); rows == 0 {
 		return fmt.Errorf("%w: заявка не найдена", errNotFound)
 	}
+
+	// Уведомляем отправителя что мы приняли его заявку — best-effort
+	if requesterID != 0 && requesterID != userID {
+		actorName := getUserDisplayName(db, userID)
+		title := actorName + " принял вашу заявку в друзья"
+		if err := createNotification(db, createNotificationParams{
+			RecipientID: requesterID,
+			ActorID:     userID,
+			Type:        "friend_accepted",
+			SourceType:  "user",
+			SourceID:    userID,
+			Title:       title,
+		}); err != nil {
+			log.Printf("notif friend_accepted: %v", err)
+		}
+	}
 	return nil
 }
-
 func rejectFriendRequest(db *sql.DB, userID int64, requesterPublicID string) error {
 	res, err := db.Exec(`
 		UPDATE friend_requests fr
@@ -8819,7 +8892,59 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 	}
 	m.IsMine = true
 	m.AuthorColor = stableColorForName(m.AuthorName)
+
+	// Уведомление получателю — best-effort, после основной операции.
+	// Только для direct-чатов (1-на-1). Для групповых/community-чатов не уведомляем,
+	// чтобы не спамить участников.
+	go notifyOnChatMessage(db, cid, conversationPublicID, userID, content)
+
 	return m, nil
+}
+
+// notifyOnChatMessage отправляет уведомление получателю в direct-чате.
+// Для групповых/community-чатов не уведомляет (избегаем спама).
+// Запускать в горутине после основной операции.
+func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID string, actorID int64, content string) {
+	// 1. Проверяем тип чата — только direct
+	var chatType string
+	if err := db.QueryRow(`SELECT type FROM chat_conversations WHERE id = $1`, conversationID).Scan(&chatType); err != nil {
+		log.Printf("notif chat: get type: %v", err)
+		return
+	}
+	if chatType != "direct" {
+		return // групповые/community не уведомляем
+	}
+
+	// 2. Достаём ID собеседника
+	var recipientID int64
+	if err := db.QueryRow(`
+		SELECT user_id FROM chat_participants
+		WHERE conversation_id = $1 AND user_id <> $2
+		LIMIT 1
+	`, conversationID, actorID).Scan(&recipientID); err != nil {
+		log.Printf("notif chat: get recipient: %v", err)
+		return
+	}
+	if recipientID == 0 || recipientID == actorID {
+		return
+	}
+
+	// 3. Создаём уведомление
+	actorName := getUserDisplayName(db, actorID)
+	title := actorName + " написал вам"
+	preview := truncateRunes(content, 200)
+	if err := createNotification(db, createNotificationParams{
+		RecipientID:    recipientID,
+		ActorID:        actorID,
+		Type:           "chat_message",
+		SourceType:     "chat",
+		SourceID:       conversationID,
+		SourcePublicID: conversationPublicID,
+		Title:          title,
+		Preview:        preview,
+	}); err != nil {
+		log.Printf("notif chat_message: %v", err)
+	}
 }
 
 func setTyping(db *sql.DB, userID int64, conversationPublicID string, isTyping bool) error {
