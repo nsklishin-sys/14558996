@@ -192,13 +192,18 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .sort-btn.active{background:var(--gl);color:var(--g);border-color:var(--gb);font-weight:700}
 
 /* ── Новостная карточка ── */
+#newsFeed{display:flex;flex-direction:column;gap:12px}
 .news-card{
   background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
   padding:16px 18px;box-shadow:var(--sh);cursor:pointer;
-  transition:box-shadow .2s,transform .15s;
+  transition:box-shadow .2s,transform .2s,border-color .2s;
   animation:fadeUp .3s ease both
 }
-.news-card:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.news-card:hover{
+  box-shadow:0 6px 20px rgba(30,138,76,.12);
+  transform:translateY(-2px);
+  border-color:var(--gb)
+}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .nc-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
 .nc-av{width:38px;height:38px;border-radius:10px;font-size:12px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
@@ -378,8 +383,9 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 /* Hover выделение новостных блоков: приподнимание + чёрная тень */
 .news-hero:hover,
 .news-card:hover{
-  box-shadow:0 14px 34px rgba(0,0,0,.34);
-  transform:translateY(-6px);
+  box-shadow:0 6px 20px rgba(30,138,76,.12);
+  transform:translateY(-2px);
+  border-color:var(--gb)
 }
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
