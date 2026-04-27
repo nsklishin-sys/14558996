@@ -211,6 +211,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ni-partner{background:var(--gl);color:var(--g)}
 .ni-contract{background:#FEF3C7;color:#B45309}
 .ni-attn{background:#E6F1FB;color:#185FA5}
+/* Категории нужд (сопоставление с category_role на бэке) */
+.ni-finance{background:#F0EBFA;color:#6040A0}
+.ni-transport{background:#FEF3E2;color:#B45309}
+.ni-customs{background:#E5F1FB;color:#185FA5}
+.ni-it{background:#E8F5EE;color:var(--g)}
+.ni-marketing{background:#FCE7F3;color:#B65581}
+.ni-legal{background:#FEF1E1;color:#B85B1A}
+.ni-consulting{background:#E8F5EE;color:var(--g)}
+.ni-manufacturing{background:#EFF1F4;color:#475569}
+.ni-other{background:var(--gp);color:var(--gmt)}
 .need-body{flex:1;min-width:0}
 .need-type{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
 .need-title{font-size:14px;font-weight:800;color:var(--t);margin-bottom:4px;line-height:1.3}
@@ -664,45 +674,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Этапы
     </div>
-    <div class="stages">
-      <div class="stage">
-        <div class="stage-dot sd-done"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <div class="stage-body">
-          <div class="stage-name">Анализ и маршрутизация</div>
-          <div class="stage-meta">март 2026 · 3 участника</div>
-          <span class="stage-status ss-done">✓ Завершён</span>
-        </div>
-      </div>
-      <div class="stage">
-        <div class="stage-dot sd-done"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <div class="stage-body">
-          <div class="stage-name">Пилотные отправки (3 рейса)</div>
-          <div class="stage-meta">март – апрель 2026 · 5 участников</div>
-          <span class="stage-status ss-done">✓ Завершён</span>
-        </div>
-      </div>
-      <div class="stage">
-        <div class="stage-dot sd-active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="#fff" stroke="none"/></svg></div>
-        <div class="stage-body">
-          <div class="stage-name">Масштабирование и регулярные отправки</div>
-          <div class="stage-meta">май – июль 2026 · в процессе</div>
-          <span class="stage-status ss-active">В работе</span>
-        </div>
-      </div>
-      <div class="stage">
+    <div class="stages" id="stagesList">
+      <!-- Скелетон загрузки -->
+      <div class="stage" id="stagesSkel">
         <div class="stage-dot sd-plan"></div>
         <div class="stage-body">
-          <div class="stage-name">Цифровизация документооборота</div>
-          <div class="stage-meta">август 2026</div>
-          <span class="stage-status ss-plan">Запланировано</span>
-        </div>
-      </div>
-      <div class="stage">
-        <div class="stage-dot sd-plan"></div>
-        <div class="stage-body">
-          <div class="stage-name">Запуск регулярного сервиса</div>
-          <div class="stage-meta">сентябрь 2026</div>
-          <span class="stage-status ss-plan">Запланировано</span>
+          <div class="stage-name" style="color:var(--gmt);font-style:italic">Загрузка этапов…</div>
         </div>
       </div>
     </div>
@@ -725,80 +702,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Чем можете помочь проекту
     </div>
-    <div class="needs-list">
-
-      <!-- Нужда 1: Инвестиции -->
-      <div class="need-card">
-        <div class="need-icon ni-invest">
-          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        <div class="need-body">
-          <div class="need-type" style="color:#6040A0">Инвестиции</div>
-          <div class="need-title">Финансирование масштабирования маршрута</div>
-          <div class="need-desc">Ищем инвестора для расширения частоты отправок с 2 до 8 рейсов в месяц. Объём: от 3 млн ₽. ROI от 24% годовых по нашей модели. Готовы предоставить финансовую модель и результаты пилота.</div>
-          <div class="need-footer">
-            <span class="need-tag">от 3 млн ₽</span>
-            <span class="need-tag">ROI 24%+</span>
-            <span class="need-tag">логистика</span>
-            <button class="need-respond" id="nr1" onclick="openRespondModal('Финансирование масштабирования маршрута')">Откликнуться</button>
-          </div>
-        </div>
+    <div class="needs-list" id="needsList">
+      <div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic" id="needsSkel">
+        Загрузка потребностей…
       </div>
-
-      <!-- Нужда 2: Партнёры -->
-      <div class="need-card">
-        <div class="need-icon ni-partner">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-        <div class="need-body">
-          <div class="need-type" style="color:var(--g)">Партнёры</div>
-          <div class="need-title">Таможенный брокер на стороне Казахстана</div>
-          <div class="need-desc">Нужен сертифицированный таможенный брокер в Алматы или Нур-Султане с опытом работы с российскими контрагентами. Приоритет — компании с опытом декларирования в системе ЕАЭС.</div>
-          <div class="need-footer">
-            <span class="need-tag">Казахстан</span>
-            <span class="need-tag">таможня</span>
-            <span class="need-tag">ЕАЭС</span>
-            <button class="need-respond" id="nr2" onclick="openRespondModal('Таможенный брокер на стороне Казахстана')">Откликнуться</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Нужда 3: Подрядчики -->
-      <div class="need-card">
-        <div class="need-icon ni-contract">
-          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-        </div>
-        <div class="need-body">
-          <div class="need-type" style="color:#B45309">Подрядчики</div>
-          <div class="need-title">Транспортная компания для плеча Оренбург — Алматы</div>
-          <div class="need-desc">Ищем надёжного автоперевозчика с разрешениями на международные перевозки Россия–Казахстан. Требования: тягач + рефрижератор, GPS-мониторинг, опыт от 2 лет. Объём: 4–6 рейсов в месяц.</div>
-          <div class="need-footer">
-            <span class="need-tag">авто</span>
-            <span class="need-tag">рефрижератор</span>
-            <span class="need-tag">международные</span>
-            <button class="need-respond" id="nr3" onclick="openRespondModal('Транспортная компания Оренбург — Алматы')">Откликнуться</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Нужда 4: Внимание/экспертиза -->
-      <div class="need-card">
-        <div class="need-icon ni-attn">
-          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </div>
-        <div class="need-body">
-          <div class="need-type" style="color:#185FA5">Экспертиза</div>
-          <div class="need-title">Консультант по цифровому декларированию ЕАЭС</div>
-          <div class="need-desc">Нужен эксперт по новым правилам электронного декларирования, вступающим в силу с 1 мая 2026 года. Формат: 2–3 консультации по 2 часа. Возможна оплата или партнёрство.</div>
-          <div class="need-footer">
-            <span class="need-tag">консультация</span>
-            <span class="need-tag">ЕАЭС</span>
-            <span class="need-tag">декларирование</span>
-            <button class="need-respond" id="nr4" onclick="openRespondModal('Консультант по цифровому декларированию')">Откликнуться</button>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 
@@ -1076,24 +983,70 @@ function toggleSave(){
 }
 
 /* МОДАЛКА */
-let currentNeed='';
-function openRespondModal(need){
-  currentNeed=need;
-  document.getElementById('modalNeedTitle').textContent='Отклик: '+need;
+let _currentNeedID = 0;
+let _currentNeedTitle = '';
+
+function openRespondModal(needID, needTitle){
+  _currentNeedID = needID;
+  _currentNeedTitle = needTitle || '';
+  document.getElementById('modalNeedTitle').textContent = 'Отклик: ' + (needTitle || '');
+  // Очищаем поля
+  const role = document.getElementById('mRole'); if(role) role.value = '';
+  const msg = document.getElementById('mMessage'); if(msg) msg.value = '';
+  const contact = document.getElementById('mContact'); if(contact) contact.value = '';
   document.getElementById('modalBg').classList.add('open');
-  setTimeout(()=>document.getElementById('mRole').focus(),150);
+  setTimeout(() => document.getElementById('mRole')?.focus(), 150);
 }
-function closeModal(){document.getElementById('modalBg').classList.remove('open')}
-function submitRespond(){
-  const role=(document.getElementById('mRole')?.value||'').trim();
-  if(!role){document.getElementById('mRole').focus();return}
-  closeModal();
-  applied=true;
-  const b=document.getElementById('btnRespond');
-  b.classList.add('applied');
-  b.innerHTML='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span>Отклик отправлен</span>';
-  const rc=document.getElementById('responsesCount');if(rc)rc.textContent=parseInt(rc.textContent)+1;
-  toast('Отклик отправлен! Автор получит уведомление ✓',true);
+
+function closeModal(){
+  document.getElementById('modalBg').classList.remove('open');
+}
+
+async function submitRespond(){
+  const role = (document.getElementById('mRole')?.value || '').trim();
+  const message = (document.getElementById('mMessage')?.value || '').trim();
+  const contact = (document.getElementById('mContact')?.value || '').trim();
+  if (!role){ document.getElementById('mRole').focus(); return; }
+
+  // Собираем единый текст для первого сообщения в чате
+  let fullMessage = '';
+  if (role) fullMessage += 'Роль: ' + role + '\n';
+  if (message) fullMessage += '\n' + message + '\n';
+  if (contact) fullMessage += '\nКонтакт: ' + contact;
+  fullMessage = fullMessage.trim();
+  if (!fullMessage) fullMessage = 'Готов помочь проекту. Свяжитесь со мной.';
+
+  const projectPID = new URLSearchParams(location.search).get('id');
+  if (!projectPID || !_currentNeedID){
+    toast('Не удалось отправить отклик');
+    return;
+  }
+
+  const submitBtn = document.querySelector('#modalBg .btn-submit');
+  if (submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Отправка…'; }
+
+  try{
+    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs/' + _currentNeedID + '/respond', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: fullMessage })
+    });
+    if (r.status === 409){
+      toast('Вы уже откликались на эту потребность');
+      closeModal();
+      return;
+    }
+    if (!r.ok) throw new Error('http ' + r.status);
+    closeModal();
+    toast('Отклик отправлен! Автор получит уведомление ✓', true);
+    // Перезагружаем нужды чтобы обновить флаг viewer_has_responded и счётчик откликов
+    loadNeeds();
+  }catch(err){
+    console.error('respond error', err);
+    toast('Не удалось отправить. Попробуйте ещё раз.');
+  }finally{
+    if (submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Отправить отклик'; }
+  }
 }
 
 
@@ -1324,6 +1277,197 @@ if (document.readyState === 'loading') {
 } else {
   loadProject();
 }
+
+// ── ЭТАПЫ И НУЖДЫ ─────────────────────────────────────────
+
+const STAGE_STATUS_LABELS = {
+  'planned':     'Запланировано',
+  'in_progress': 'В работе',
+  'done':        'Завершён'
+};
+const STAGE_STATUS_CLASS = {
+  'planned':     'ss-plan',
+  'in_progress': 'ss-active',
+  'done':        'ss-done'
+};
+const STAGE_DOT_CLASS = {
+  'planned':     'sd-plan',
+  'in_progress': 'sd-active',
+  'done':        'sd-done'
+};
+
+const NEED_CATEGORY_LABELS = {
+  'finance':       'Финансирование',
+  'transport':     'Транспорт и логистика',
+  'customs':       'Таможня и ВЭД',
+  'it':            'IT и автоматизация',
+  'marketing':     'Маркетинг и продажи',
+  'legal':         'Юридическое',
+  'consulting':    'Консалтинг',
+  'manufacturing': 'Производство',
+  'other':         'Другое'
+};
+const NEED_CATEGORY_COLORS = {
+  'finance':       '#6040A0',
+  'transport':     '#B45309',
+  'customs':       '#185FA5',
+  'it':            'var(--g)',
+  'marketing':     '#B65581',
+  'legal':         '#B85B1A',
+  'consulting':    'var(--g)',
+  'manufacturing': '#475569',
+  'other':         'var(--gmt)'
+};
+
+function formatRuDate(iso){
+  if (!iso) return '';
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }catch{ return ''; }
+}
+
+function formatStageDates(start, end){
+  if (!start && !end) return '';
+  if (start && end) return formatRuDate(start) + ' — ' + formatRuDate(end);
+  if (start) return 'с ' + formatRuDate(start);
+  return 'до ' + formatRuDate(end);
+}
+
+async function loadStages(){
+  const projectPID = new URLSearchParams(location.search).get('id');
+  if (!projectPID) return;
+  const list = document.getElementById('stagesList');
+  if (!list) return;
+
+  try{
+    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/stages', {
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    const stages = d.stages || [];
+
+    if (stages.length === 0){
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic">Этапы пока не добавлены</div>';
+      return;
+    }
+
+    list.innerHTML = stages.map(s => {
+      const dotClass = STAGE_DOT_CLASS[s.status] || 'sd-plan';
+      const statusClass = STAGE_STATUS_CLASS[s.status] || 'ss-plan';
+      const statusLabel = STAGE_STATUS_LABELS[s.status] || 'Запланировано';
+      const isDone = s.status === 'done';
+      const dotInner = isDone
+        ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
+        : (s.status === 'in_progress'
+            ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="#fff" stroke="none"/></svg>'
+            : '');
+      const dates = formatStageDates(s.start_date, s.end_date);
+      const assignee = s.assignee_name ? ' · ' + esc(s.assignee_name) : '';
+      const meta = (dates || assignee) ? '<div class="stage-meta">' + esc(dates) + assignee + '</div>' : '';
+      const desc = s.description ? '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:6px">' + esc(s.description) + '</div>' : '';
+
+      const subtasks = (s.subtasks || []);
+      let subtasksHTML = '';
+      if (subtasks.length){
+        const doneCount = subtasks.filter(st => st.is_done).length;
+        const items = subtasks.map(st =>
+          '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:' + (st.is_done ? 'var(--gmt)' : 'var(--t)') + ';' + (st.is_done ? 'text-decoration:line-through' : '') + '">'
+          + '<span style="width:14px;height:14px;border-radius:4px;border:1.5px solid ' + (st.is_done ? 'var(--g)' : 'var(--bdr)') + ';background:' + (st.is_done ? 'var(--g)' : 'transparent') + ';display:inline-grid;place-items:center;flex-shrink:0">'
+          + (st.is_done ? '<svg viewBox="0 0 24 24" style="width:9px;height:9px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg>' : '')
+          + '</span>'
+          + '<span>' + esc(st.title) + '</span>'
+          + '</div>'
+        ).join('');
+        subtasksHTML = '<div style="margin-top:8px;padding:10px 12px;background:var(--gp);border-radius:8px">'
+          + '<div style="font-size:11px;font-weight:700;color:var(--tm);margin-bottom:4px;letter-spacing:.02em;text-transform:uppercase">Подзадачи · ' + doneCount + '/' + subtasks.length + '</div>'
+          + items
+          + '</div>';
+      }
+
+      return '<div class="stage">'
+        + '<div class="stage-dot ' + dotClass + '">' + dotInner + '</div>'
+        + '<div class="stage-body">'
+        +   '<div class="stage-name">' + esc(s.title) + '</div>'
+        +   meta
+        +   desc
+        +   subtasksHTML
+        +   '<span class="stage-status ' + statusClass + '" style="margin-top:8px">' + statusLabel + '</span>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }catch(err){
+    console.error('loadStages', err);
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red);font-size:12px">Не удалось загрузить этапы</div>';
+  }
+}
+
+async function loadNeeds(){
+  const projectPID = new URLSearchParams(location.search).get('id');
+  if (!projectPID) return;
+  const list = document.getElementById('needsList');
+  if (!list) return;
+
+  try{
+    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs', {
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    const needs = (d.needs || []).filter(n => n.status === 'open'); // показываем только открытые
+
+    if (needs.length === 0){
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic">Открытых потребностей пока нет</div>';
+      return;
+    }
+
+    list.innerHTML = needs.map(n => {
+      const catLabel = NEED_CATEGORY_LABELS[n.category_role] || n.category_role;
+      const catColor = NEED_CATEGORY_COLORS[n.category_role] || 'var(--gmt)';
+      const iconClass = 'ni-' + (n.category_role || 'other');
+      const responded = !!n.viewer_has_responded;
+      const respondBtnHTML = responded
+        ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
+        : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', ' + JSON.stringify(n.title) + ')">Откликнуться</button>';
+
+      const responsesInfo = (n.responses_count > 0)
+        ? '<span class="need-tag" style="background:var(--gl);color:var(--g)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;display:inline-block;vertical-align:-2px;margin-right:3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</span>'
+        : '';
+
+      return '<div class="need-card">'
+        + '<div class="need-icon ' + iconClass + '">'
+        +   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        + '</div>'
+        + '<div class="need-body">'
+        +   '<div class="need-type" style="color:' + catColor + '">' + esc(catLabel) + '</div>'
+        +   '<div class="need-title">' + esc(n.title) + '</div>'
+        +   (n.description ? '<div class="need-desc">' + esc(n.description) + '</div>' : '')
+        +   '<div class="need-footer">'
+        +     responsesInfo
+        +     respondBtnHTML
+        +   '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }catch(err){
+    console.error('loadNeeds', err);
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red);font-size:12px">Не удалось загрузить потребности</div>';
+  }
+}
+
+function pluralRu(n, forms){
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return forms[0];
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return forms[1];
+  return forms[2];
+}
+
+// Запускаем загрузку этапов и нужд при инициализации страницы
+document.addEventListener('DOMContentLoaded', () => {
+  loadStages();
+  loadNeeds();
+});
 
 /* АВТОРИЗАЦИЯ */
 (async()=>{
