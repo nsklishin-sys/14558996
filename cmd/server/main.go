@@ -506,6 +506,34 @@ type post struct {
 	CommunityName  string    `json:"community_name,omitempty"`
 }
 
+type notification struct {
+	ID             int64     `json:"id"`
+	Type           string    `json:"type"`
+	SourceType     string    `json:"source_type,omitempty"`
+	SourceID       int64     `json:"source_id,omitempty"`
+	SourcePublicID string    `json:"source_public_id,omitempty"`
+	Title          string    `json:"title"`
+	Preview        string    `json:"preview,omitempty"`
+	IsRead         bool      `json:"is_read"`
+	CreatedAt      time.Time `json:"created_at"`
+
+	ActorPublicID string `json:"actor_public_id,omitempty"`
+	ActorName     string `json:"actor_name,omitempty"`
+	ActorColor    string `json:"actor_color,omitempty"`
+	ActorAvatar   string `json:"actor_avatar,omitempty"`
+}
+
+type createNotificationParams struct {
+	RecipientID    int64
+	ActorID        int64
+	Type           string
+	SourceType     string
+	SourceID       int64
+	SourcePublicID string
+	Title          string
+	Preview        string
+}
+
 type createPostRequest struct {
 	Title        string   `json:"title"`
 	Content      string   `json:"content"`
@@ -2966,6 +2994,101 @@ func main() {
 		writeError(w, http.StatusNotFound, "Маршрут не найден")
 	})
 
+	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		limit := 30
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n >= 1 && n <= 100 {
+				limit = n
+			}
+		}
+		var beforeID int64
+		if b := r.URL.Query().Get("before_id"); b != "" {
+			if n, err := strconv.ParseInt(b, 10, 64); err == nil && n > 0 {
+				beforeID = n
+			}
+		}
+		onlyUnread := r.URL.Query().Get("unread") == "1"
+
+		items, err := listNotifications(db, userID, limit, beforeID, onlyUnread)
+		if err != nil {
+			log.Printf("listNotifications: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось получить уведомления")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"notifications": items})
+	})
+
+	mux.HandleFunc("/api/notifications/unread_count", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		n, err := countUnreadNotifications(db, userID)
+		if err != nil {
+			log.Printf("countUnreadNotifications: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"count": n})
+	})
+
+	mux.HandleFunc("/api/notifications/read_all", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if err := markAllNotificationsRead(db, userID); err != nil {
+			log.Printf("markAllNotificationsRead: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
+
+	mux.HandleFunc("/api/notifications/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		path := strings.TrimPrefix(r.URL.Path, "/api/notifications/")
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) != 2 || parts[1] != "read" {
+			writeError(w, http.StatusNotFound, "Маршрут не найден")
+			return
+		}
+		notifID, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil || notifID <= 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		if err := markNotificationRead(db, userID, notifID); err != nil {
+			log.Printf("markNotificationRead: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
+
 	mux.HandleFunc("/api/users/search", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -3773,6 +3896,33 @@ CREATE TABLE IF NOT EXISTS chat_typing (
 
 CREATE INDEX IF NOT EXISTS chat_typing_started_idx
     ON chat_typing(started_at);
+
+-- ── Уведомления (Спринт 12.1) ──
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGSERIAL PRIMARY KEY,
+    recipient_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    actor_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    type TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT '',
+    source_id BIGINT NOT NULL DEFAULT 0,
+    source_public_id TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 500),
+    preview TEXT NOT NULL DEFAULT '' CHECK (char_length(preview) <= 1000),
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS notifications_recipient_unread_idx
+    ON notifications (recipient_id, is_read, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS notifications_recipient_created_idx
+    ON notifications (recipient_id, created_at DESC);
+
+-- Идемпотентность: одно событие одного типа от одного актора по одному источнику = одна запись.
+-- При попытке вставить дубль — ON CONFLICT DO NOTHING.
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_dedup_idx
+    ON notifications (recipient_id, type, source_type, source_id, COALESCE(actor_id, 0));
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -4157,6 +4307,85 @@ func tokenFromRequest(r *http.Request) string {
 		return ""
 	}
 	return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+}
+
+// createNotification создаёт уведомление для recipient'а.
+// Идемпотентно через unique-индекс: одно событие одного типа от одного актора
+// по одному источнику = одна запись.
+//
+// Не пишет уведомление если:
+//   - recipient == actor (юзер сам себе);
+//   - recipient'а не существует;
+//   - у recipient'а соответствующий notif-тогл выключен (для известных типов).
+//
+// Не возвращает ошибку если уведомление "не нужно создавать" — это нормальный путь.
+func createNotification(db *sql.DB, p createNotificationParams) error {
+	if p.RecipientID == 0 || strings.TrimSpace(p.Type) == "" || strings.TrimSpace(p.Title) == "" {
+		return fmt.Errorf("createNotification: invalid params")
+	}
+	if p.RecipientID == p.ActorID && p.ActorID != 0 {
+		return nil
+	}
+
+	var recipientExists bool
+	if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND is_deleted = FALSE)`, p.RecipientID).Scan(&recipientExists); err != nil || !recipientExists {
+		return nil
+	}
+
+	if !shouldCreateNotificationForType(db, p.RecipientID, p.Type) {
+		return nil
+	}
+
+	title := strings.TrimSpace(p.Title)
+	if utf8.RuneCountInString(title) > 500 {
+		runes := []rune(title)
+		title = string(runes[:500])
+	}
+	preview := strings.TrimSpace(p.Preview)
+	if utf8.RuneCountInString(preview) > 1000 {
+		runes := []rune(preview)
+		preview = string(runes[:1000])
+	}
+
+	var actorIDArg any
+	if p.ActorID != 0 {
+		actorIDArg = p.ActorID
+	}
+
+	_, err := db.Exec(`
+		INSERT INTO notifications (recipient_id, actor_id, type, source_type, source_id, source_public_id, title, preview)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT DO NOTHING`,
+		p.RecipientID, actorIDArg, p.Type, p.SourceType, p.SourceID, p.SourcePublicID, title, preview)
+	return err
+}
+
+// shouldCreateNotificationForType решает, нужно ли создавать уведомление,
+// глядя на тогл соответствующей категории в settings юзера.
+// Если тип неизвестен или тогл не определён — пропускает (создаёт).
+func shouldCreateNotificationForType(db *sql.DB, userID int64, notifType string) bool {
+	var col string
+	switch notifType {
+	case "post_like", "comment_like":
+		col = "notif_reactions"
+	case "post_comment", "comment_reply", "forum_reply":
+		col = "notif_reactions"
+	case "mention":
+		col = "notif_mentions"
+	case "friend_request", "friend_accepted":
+		col = "notif_friend_requests"
+	case "chat_message":
+		col = "notif_chat_messages"
+	default:
+		return true
+	}
+
+	var enabled bool
+	err := db.QueryRow(fmt.Sprintf(`SELECT %s FROM users WHERE id = $1 AND is_deleted = FALSE`, col), userID).Scan(&enabled)
+	if err != nil {
+		return true
+	}
+	return enabled
 }
 
 func handleAccountError(w http.ResponseWriter, err error) {
@@ -5797,6 +6026,90 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		items = items[:limit]
 	}
 	return items, nextCursor, nil
+}
+
+// listNotifications возвращает список уведомлений юзера с информацией об акторе.
+// Параметры: limit, before_id (пагинация назад), only_unread.
+func listNotifications(db *sql.DB, userID int64, limit int, beforeID int64, onlyUnread bool) ([]notification, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+
+	where := []string{"n.recipient_id = $1"}
+	args := []any{userID}
+	argIdx := 2
+
+	if beforeID > 0 {
+		where = append(where, fmt.Sprintf("n.id < $%d", argIdx))
+		args = append(args, beforeID)
+		argIdx++
+	}
+	if onlyUnread {
+		where = append(where, "n.is_read = FALSE")
+	}
+
+	query := fmt.Sprintf(`
+		SELECT n.id, n.type, n.source_type, n.source_id, n.source_public_id,
+		       n.title, n.preview, n.is_read, n.created_at,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, '')
+		FROM notifications n
+		LEFT JOIN users u ON u.id = n.actor_id
+		WHERE %s
+		ORDER BY n.created_at DESC, n.id DESC
+		LIMIT %d`, strings.Join(where, " AND "), limit)
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []notification
+	for rows.Next() {
+		var n notification
+		if err := rows.Scan(&n.ID, &n.Type, &n.SourceType, &n.SourceID, &n.SourcePublicID,
+			&n.Title, &n.Preview, &n.IsRead, &n.CreatedAt,
+			&n.ActorPublicID, &n.ActorName, &n.ActorAvatar); err != nil {
+			return nil, err
+		}
+		if n.ActorName != "" {
+			n.ActorColor = stableColorForName(n.ActorName)
+		}
+		items = append(items, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = []notification{}
+	}
+	return items, nil
+}
+
+func countUnreadNotifications(db *sql.DB, userID int64) (int, error) {
+	var n int
+	err := db.QueryRow(`SELECT COUNT(*) FROM notifications WHERE recipient_id = $1 AND is_read = FALSE`, userID).Scan(&n)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+func markNotificationRead(db *sql.DB, userID int64, notifID int64) error {
+	res, err := db.Exec(`UPDATE notifications SET is_read = TRUE WHERE id = $1 AND recipient_id = $2 AND is_read = FALSE`, notifID, userID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil
+	}
+	return nil
+}
+
+func markAllNotificationsRead(db *sql.DB, userID int64) error {
+	_, err := db.Exec(`UPDATE notifications SET is_read = TRUE WHERE recipient_id = $1 AND is_read = FALSE`, userID)
+	return err
 }
 
 // generateProjectPublicID генерирует уникальный public_id для проекта формата "p_<base36>".
