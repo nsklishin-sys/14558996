@@ -261,10 +261,35 @@ html.lt-shell-2col .topbar > .search-wrap{
 }
 
 html.lt-shell-2col .topbar > .profile-dd-wrap{
-  flex: 0 0 auto;
+  flex: 0 0 300px;
+  width: 300px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
+}
+
+/* Средние экраны: 260px (как .shell на 1200px) */
+@media (max-width: 1200px){
+  html.lt-shell-2col .topbar > .profile-dd-wrap{
+    flex: 0 0 260px;
+    width: 260px;
+  }
+}
+
+/* Узкие: профиль скрывается, остаётся колокольчик в шапке */
+@media (max-width: 1000px){
+  html.lt-shell-2col .topbar > .profile-dd-wrap{
+    flex: 0 0 auto;
+    width: auto;
+  }
+}
+
+/* 4K: 340px */
+@media (min-width: 1921px) and (min-height: 1081px){
+  html.lt-shell-2col .topbar > .profile-dd-wrap{
+    flex: 0 0 340px;
+    width: 340px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
