@@ -500,27 +500,35 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     </div>
   </div>
 
-  <!-- Главная новость (hero) -->
-  <div class="news-hero" id="heroCard" onclick="openHeroNews()">
+  <!-- Главная новость (hero) — заполняется из /api/posts/top?period=day -->
+  <div class="news-hero" id="heroCard" style="display:none">
     <div class="nh-cover">
       <span class="nh-badge">🔥 Главная новость дня</span>
     </div>
     <div class="nh-body">
-      <div class="nh-cat">Логистика · LASTOP</div>
-      <div class="nh-title">Экспорт стройматериалов из России вырос на 12% в Q2 2026 — рекордный показатель за 5 лет</div>
-      <div class="nh-text">Аналитики фиксируют устойчивый рост на фоне расширения контейнерных маршрутов через Казахстан и Беларусь. Ключевые направления — Ближний Восток и Средняя Азия.</div>
+      <div class="nh-cat" id="heroCat">Загрузка…</div>
+      <div class="nh-title" id="heroTitle">—</div>
+      <div class="nh-text" id="heroText">—</div>
       <div class="nh-foot">
         <div class="nh-author">
-          <div class="nh-av" style="background:#1E8A4C">L</div>
-          <span class="nh-name">LASTOP Digital</span>
+          <div class="nh-av" id="heroAv" style="background:#1E8A4C">L</div>
+          <span class="nh-name" id="heroName">LASTOP</span>
         </div>
         <div class="nh-stats">
-          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>3 847</span>
-          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>124</span>
-          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>38</span>
+          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span id="heroViews">0</span></span>
+          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span id="heroLikes">0</span></span>
+          <span class="nh-stat"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span id="heroComments">0</span></span>
         </div>
-        <span class="nh-time">Сегодня · 09:40</span>
+        <span class="nh-time" id="heroTime">—</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Заглушка если за день нет популярных постов -->
+  <div class="news-hero" id="heroEmpty" style="display:none;cursor:default">
+    <div class="nh-body" style="text-align:center;padding:40px 20px">
+      <div style="font-size:14px;color:var(--gmt);font-weight:600">📭 Сегодня ещё нет популярных публикаций</div>
+      <div style="font-size:12px;color:var(--gmt);margin-top:6px">Будь первым — поделись новостью!</div>
     </div>
   </div>
 
@@ -770,22 +778,6 @@ function openNewsDetail(publicID,event){
   location.href='/news-detail.html?id='+encodeURIComponent(publicID);
 }
 
-function openHeroNews(){
-  const hero={
-    id:'hero',
-    cat:'Логистика',
-    author:'LASTOP Digital',
-    role:'Платформа',
-    title:'Экспорт стройматериалов из России вырос на 12% в Q2 2026 — рекордный показатель за 5 лет',
-    text:'Аналитики фиксируют устойчивый рост на фоне расширения контейнерных маршрутов через Казахстан и Беларусь. Ключевые направления — Ближний Восток и Средняя Азия.',
-    views:3847,
-    likes:124,
-    comments:38,
-    ts:new Date().toISOString()
-  };
-  localStorage.setItem('selectedNews',JSON.stringify(hero));
-  location.href='/news-detail.html';
-}
 
 function renderFeed(){
   const feed=document.getElementById('newsFeed');
@@ -1011,19 +1003,95 @@ async function submitPost(){
   }
 }
 
-/* ── ТОП НЕДЕЛИ ── */
-function renderTopList(){
-  const top=[...DEMO_NEWS].sort((a,b)=>b.views-a.views).slice(0,5);
-  const medals=['gold','silver','bronze','',''];
-  document.getElementById('topList').innerHTML=top.map((n,i)=>`
-    <div class="top-item" onclick="showToast('Открываем публикацию…')">
-      <div class="top-num ${medals[i]}">${i+1}</div>
+/* ── ТОП НЕДЕЛИ И HERO ── */
+
+async function loadHeroNews(){
+  const heroCard = document.getElementById('heroCard');
+  const heroEmpty = document.getElementById('heroEmpty');
+  if (!heroCard || !heroEmpty) return;
+
+  try {
+    const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
+    const r = await fetch(API + '/posts/top?period=day&limit=1', {headers});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const post = (d.posts && d.posts[0]) || null;
+
+    if (!post) {
+      heroCard.style.display = 'none';
+      heroEmpty.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + (post.author || 'LASTOP');
+    document.getElementById('heroTitle').textContent = post.title || '(без заголовка)';
+    document.getElementById('heroText').textContent = (post.text || post.content || '').slice(0, 240);
+    document.getElementById('heroName').textContent = post.author || 'LASTOP';
+    const av = document.getElementById('heroAv');
+    if (av) {
+      av.textContent = letter(post.author || 'L');
+      av.style.background = avc(post.author || 'L');
+    }
+    document.getElementById('heroViews').textContent = num(post.views_count || 0);
+    document.getElementById('heroLikes').textContent = num(post.likes_count || 0);
+    document.getElementById('heroComments').textContent = num(post.comments_count || 0);
+    document.getElementById('heroTime').textContent = ago(post.created_at);
+
+    heroCard.onclick = () => {
+      location.href = '/news-detail.html?id=' + encodeURIComponent(post.public_id);
+    };
+    heroCard.style.cursor = 'pointer';
+    heroCard.style.display = 'block';
+    heroEmpty.style.display = 'none';
+  } catch {
+    heroCard.style.display = 'none';
+    heroEmpty.style.display = 'block';
+  }
+}
+
+async function loadTopWeek(){
+  const list = document.getElementById('topList');
+  if (!list) return;
+
+  list.innerHTML = '<div style="font-size:12px;color:var(--gmt);padding:12px;text-align:center">Загрузка топа…</div>';
+
+  try {
+    const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
+    const r = await fetch(API + '/posts/top?period=week&limit=5', {headers});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const posts = d.posts || [];
+
+    if (!posts.length) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--gmt);padding:12px;text-align:center;font-style:italic">Пока нет публикаций за неделю</div>';
+      return;
+    }
+
+    renderTopList(posts);
+  } catch {
+    list.innerHTML = '<div style="font-size:12px;color:var(--gmt);padding:12px;text-align:center;font-style:italic">Не удалось загрузить топ</div>';
+  }
+}
+
+function renderTopList(posts){
+  const list = document.getElementById('topList');
+  if (!list) return;
+  const medals = ['gold', 'silver', 'bronze', '', ''];
+  list.innerHTML = posts.map((n, i) => {
+    const title = esc(n.title || '(без заголовка)');
+    const author = esc(n.author || 'LASTOP');
+    const cat = (n.tags && n.tags.length ? '#' + esc(n.tags[0]) : 'Публикация');
+    const views = num(n.views_count || 0);
+    const pid = n.public_id || '';
+    return `<div class="top-item" onclick="location.href='/news-detail.html?id=${encodeURIComponent(pid)}'">
+      <div class="top-num ${medals[i] || ''}">${i + 1}</div>
       <div class="top-body">
-        <div class="top-title">${esc(n.title)}</div>
-        <div class="top-meta">${esc(n.cat)} · ${esc(n.src)}</div>
+        <div class="top-title">${title}</div>
+        <div class="top-meta">${cat} · ${author}</div>
       </div>
-      <span class="top-views">${num(n.views)}</span>
-    </div>`).join('');
+      <span class="top-views">${views}</span>
+    </div>`;
+  }).join('');
 }
 
 /* ── ИСТОЧНИКИ ── */
@@ -1071,7 +1139,8 @@ function toggleFollow(btn){
   }
 
   applyFilters();
-  renderTopList();
+  loadHeroNews();
+  loadTopWeek();
 })();
 
 // Если в URL есть ?compose=1 — открываем форму создания поста сразу при загрузке.
