@@ -957,23 +957,62 @@ async function loadTasks(){
   writeTasksLocal();
   renderTasks();
 }
+// Делегированный клик-обработчик для виджета задач.
+// Навешивается один раз (защита через data-clicks-ready), маршрутизирует
+// клики по data-action: toggle (чекбокс) или open (переход на страницу задач).
+//
+// id задачи может быть как числом (старые дефолтные задачи), так и строкой
+// формата "t_<base36>" (создано через /tasks.html). Передаём как есть.
+function setupTasksWidgetClicks(){
+  const list = document.getElementById('tasksList');
+  if (!list) return;
+  if (list.dataset.clicksReady === '1') return;
+  list.dataset.clicksReady = '1';
+
+  list.addEventListener('click', function(e){
+    const card = e.target.closest('.task-item');
+    if (!card) return;
+    const idRaw = card.getAttribute('data-task-id');
+    if (!idRaw) return;
+
+    // id из data-* всегда приходит строкой. Если в TASKS он хранится числом —
+    // toggleTask найдёт его через === только если мы передадим число.
+    // Поэтому пробуем оба варианта: сначала как есть (строка),
+    // потом числом если конвертация даёт валидное число.
+    const id = (/^\d+$/.test(idRaw)) ? Number(idRaw) : idRaw;
+
+    // Клик по чекбоксу (или иконке внутри него)
+    if (e.target.closest('[data-action="toggle"]')) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (typeof toggleTask === 'function') {
+        toggleTask(id);
+      }
+      return;
+    }
+
+    // Клик по любой другой части карточки → переход на страницу задач
+    window.location.href = '/tasks.html';
+  });
+}
 function renderTasks(){
   const list = document.getElementById('tasksList');
   if (!list) return;
+  setupTasksWidgetClicks(); // навешиваем делегированный обработчик (с защитой внутри)
   if (!TASKS.length) {
     list.innerHTML = `<div style="padding:12px;text-align:center;font-size:11px;color:var(--gmt);font-style:italic">Задач нет — добавьте первую!</div>`;
     return;
   }
   list.innerHTML = TASKS.slice(0, 4).map(t => `
-    <div class="task-item ${t.done ? 'done' : ''}" onclick="location.href='/tasks.html'">
-      <div class="tcheck ${t.done ? 'done' : ''}" onclick="event.stopPropagation();toggleTask(${t.id})">
+    <div class="task-item ${t.done ? 'done' : ''}" data-task-id="${esc(String(t.id))}">
+      <div class="tcheck ${t.done ? 'done' : ''}" data-action="toggle">
         <svg class="tck-ico" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg>
       </div>
-      <div class="task-body">
+      <div class="task-body" data-action="open">
         <div class="task-ttl ${t.done ? 'done-t' : ''}">${esc(t.title)}</div>
         <div class="task-due ${t.overdue ? 'overdue' : ''}">${esc(t.due)}</div>
       </div>
-      <div class="task-pri pri-${esc(t.pri)}"></div>
+      <div class="task-pri pri-${esc(t.pri)}" data-action="open"></div>
     </div>`).join('');
 }
 
