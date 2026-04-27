@@ -216,4 +216,42 @@
     dateTime: formatDateTime,
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // Рекламная плашка — добавляется в правый сайдбар на всех страницах
+  // у которых он есть. Если уже была — не дублируем.
+  // В будущем заменится системой ротации рекламных кампаний.
+  // ═══════════════════════════════════════════════════════════════
+
+  function injectAdBlock() {
+    const sidebar = document.querySelector('aside.right');
+    if (!sidebar) return; // нет правого сайдбара — нечего инжектить
+    if (sidebar.querySelector('.ad-block')) return; // уже есть, не дублируем
+
+    const ad = document.createElement('div');
+    ad.className = 'ad-block';
+    ad.innerHTML =
+      '<div class="ad-label">реклама</div>' +
+      '<div class="ad-content">' +
+        '<div class="ad-title">LogisticsPro 2026</div>' +
+        '<div class="ad-sub">Выставка · Москва · май</div>' +
+        '<button class="ad-btn" type="button">Узнать подробнее</button>' +
+      '</div>';
+
+    const btn = ad.querySelector('.ad-btn');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        window.location.href = '/events.html';
+      });
+    }
+
+    sidebar.appendChild(ad);
+  }
+
+  // Запускаем после загрузки DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectAdBlock);
+  } else {
+    injectAdBlock();
+  }
+
 })();
