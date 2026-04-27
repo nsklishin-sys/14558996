@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -2858,7 +2859,7 @@ func main() {
 	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
 
 	addr := ":8080"
-	handler := accessLog(securityHeaders(mux))
+	handler := gzipMiddleware(accessLog(securityHeaders(mux)))
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
@@ -7591,6 +7592,87 @@ func securityHeaders(h http.Handler) http.Handler {
 	})
 }
 
+// gzipResponseWriter оборачивает http.ResponseWriter и пишет в gzip.Writer.
+// Перехватывает WriteHeader чтобы убрать Content-Length (он будет неверным
+// после сжатия) и добавить Content-Encoding/Vary.
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gw          *gzip.Writer
+	headersSent bool
+}
+
+func (g *gzipResponseWriter) WriteHeader(status int) {
+	if !g.headersSent {
+		g.headersSent = true
+		h := g.ResponseWriter.Header()
+		h.Del("Content-Length")
+		h.Set("Content-Encoding", "gzip")
+		h.Add("Vary", "Accept-Encoding")
+	}
+	g.ResponseWriter.WriteHeader(status)
+}
+
+func (g *gzipResponseWriter) Write(b []byte) (int, error) {
+	if !g.headersSent {
+		g.WriteHeader(http.StatusOK)
+	}
+	return g.gw.Write(b)
+}
+
+func (g *gzipResponseWriter) Flush() {
+	if g.gw != nil {
+		_ = g.gw.Flush()
+	}
+	if f, ok := g.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+var skipGzipExt = map[string]struct{}{
+	".png": {}, ".jpg": {}, ".jpeg": {}, ".webp": {}, ".gif": {},
+	".ico": {}, ".bmp": {}, ".tif": {}, ".tiff": {},
+	".mp4": {}, ".webm": {}, ".mp3": {}, ".wav": {}, ".ogg": {},
+	".zip": {}, ".gz": {}, ".rar": {}, ".7z": {},
+	".woff": {}, ".woff2": {},
+	".pdf": {},
+}
+
+func shouldSkipGzip(p string) bool {
+	dot := strings.LastIndex(p, ".")
+	if dot < 0 {
+		return false
+	}
+	ext := strings.ToLower(p[dot:])
+	_, ok := skipGzipExt[ext]
+	return ok
+}
+
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if shouldSkipGzip(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+
+		gw := &gzipResponseWriter{
+			ResponseWriter: w,
+			gw:             gz,
+		}
+		next.ServeHTTP(gw, r)
+	})
+}
+
 func staticSecurity(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clean := path.Clean("/" + r.URL.Path)
@@ -7608,8 +7690,6 @@ func staticSecurity(h http.Handler) http.Handler {
 // HTML-ответов вставляет htmlInject перед </head>. Для всех остальных
 // ответов (CSS, JS, PNG, JSON API) ничего не меняет — пропускает as-is.
 //
-// TODO: если в цепочке появится gzip-сжатие, injectHTML должен стоять до gzip,
-// чтобы вставка выполнялась по несжатому телу ответа.
 // staticCacheControl выставляет корректные Cache-Control заголовки для
 // статических ответов. Без этого браузеры применяют эвристическое
 // кеширование (heuristic freshness ~10% от возраста файла), из-за чего
