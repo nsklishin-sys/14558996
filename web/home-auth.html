@@ -659,6 +659,20 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     <div id="recList"></div>
   </div>
 
+
+
+  <!-- Виджет "Последние проекты" -->
+  <div class="widget" id="recentProjectsWidget" style="display:none">
+    <div class="widget-head">
+      <div class="widget-title">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Последние проекты
+      </div>
+      <a class="wmore" href="/projects.html">Все →</a>
+    </div>
+    <div id="recentProjectsList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+  </div>
+
   <div class="ad-block">
     <div class="ad-label">реклама</div>
     <div class="ad-content">
@@ -802,6 +816,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   loadCalendarMonth(CAL_STATE.year,CAL_STATE.month);
   loadFeed();
   loadRec();
+  loadRecentProjects();
   document.querySelector('.feed-toolbar').addEventListener('click',e=>{
     const btn=e.target.closest('.ftab');if(!btn)return;
     document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
@@ -809,6 +824,45 @@ window.addEventListener('DOMContentLoaded',()=>{
     renderFeedFiltered(btn.dataset.type);
   });
 });
+
+
+
+async function loadRecentProjects(){
+  const widget = document.getElementById('recentProjectsWidget');
+  const list = document.getElementById('recentProjectsList');
+  if (!list || !widget) return;
+  try {
+    const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
+    const r = await fetch(API + '/projects?limit=5', { headers });
+    if (!r.ok) throw 0;
+    const data = await r.json();
+    const items = data.projects || [];
+    if (!items.length) {
+      widget.style.display = 'none';
+      return;
+    }
+    widget.style.display = '';
+    list.innerHTML = items.map(p => {
+      const initial = (p.title || '?').charAt(0).toUpperCase();
+      const stColor = p.status === 'active' ? 'var(--g)' :
+                      p.status === 'planned' ? '#B45309' :
+                      p.status === 'paused' ? '#7A6E1A' : 'var(--gmt)';
+      return `<a href="/project-detail.html?id=${encodeURIComponent(p.public_id)}"
+                 style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:var(--rm);text-decoration:none;color:inherit;transition:background .15s"
+                 onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
+        <div style="width:30px;height:30px;border-radius:8px;background:${esc(p.cover_color || '#1E8A4C')};color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">${esc(initial)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</div>
+          <div style="font-size:10px;color:${stColor};margin-top:1px">
+            ${p.members_count || 1} уч. · ${p.category || 'Проект'}
+          </div>
+        </div>
+      </a>`;
+    }).join('');
+  } catch {
+    widget.style.display = 'none';
+  }
+}
 
 /* ── СТАТИСТИКА ── */
 async function loadPlatformStats(){
