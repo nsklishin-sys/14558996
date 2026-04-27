@@ -783,18 +783,71 @@ window.addEventListener('DOMContentLoaded',()=>{
 /* ── СТАТИСТИКА ── */
 async function loadPlatformStats(){
   try{
-    const r=await fetch(API+'/stats',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    document.getElementById('statMembers').textContent=num(d.members||d.users||0);
-    document.getElementById('statNews').textContent=num(d.news||d.posts||0);
-    document.getElementById('statEvents').textContent=num(d.events||0);
-    if(d.my_contacts!=null)document.getElementById('pddFriends').textContent=num(d.my_contacts);
-    if(d.my_communities!=null)document.getElementById('pddComm').textContent=num(d.my_communities);
-  }catch{
-    document.getElementById('statMembers').textContent='1 247';
-    document.getElementById('statNews').textContent='48';
-    document.getElementById('statEvents').textContent='12';
+    // Эндпоинт не требует авторизации — но передаём токен если есть
+    // (на случай если в будущем мы добавим персональные поля типа my_contacts).
+    const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
+    const r = await fetch(API + '/stats', {headers});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+
+    // Большие цифры наверху
+    const sm = document.getElementById('statMembers');
+    if (sm) sm.textContent = num(d.members || d.users || 0);
+    const sn = document.getElementById('statNews');
+    if (sn) sn.textContent = num(d.news || d.posts || 0);
+    const se = document.getElementById('statEvents');
+    if (se) se.textContent = num(d.events || 0);
+
+    // Правый сайдбар: «Активных сейчас»
+    const la = document.getElementById('liveActive');
+    if (la) la.textContent = (d.active_now != null ? num(d.active_now) : '—');
+
+    // Правый сайдбар: «Топ новость недели»
+    const ltn = document.getElementById('liveTopNews');
+    if (ltn) {
+      if (d.top_news_week && d.top_news_week.public_id) {
+        const truncated = (d.top_news_week.title || '').slice(0, 32);
+        ltn.textContent = truncated + (d.top_news_week.title && d.top_news_week.title.length > 32 ? '… ↗' : ' ↗');
+        ltn.href = '/news-detail.html?id=' + encodeURIComponent(d.top_news_week.public_id);
+      } else {
+        ltn.textContent = 'Пока нет публикаций';
+        ltn.removeAttribute('href');
+        ltn.style.color = 'var(--gmt)';
+        ltn.style.fontStyle = 'italic';
+      }
+    }
+
+    // Правый сайдбар: «Тренд дня»
+    const lt = document.getElementById('liveTrend');
+    if (lt) {
+      if (d.trend_today) {
+        lt.textContent = '#' + d.trend_today;
+        lt.href = '/dashboard.html?tag=' + encodeURIComponent(d.trend_today);
+      } else {
+        lt.textContent = 'Пока без тренда';
+        lt.removeAttribute('href');
+        lt.style.color = 'var(--gmt)';
+        lt.style.fontStyle = 'italic';
+      }
+    }
+
+    // Профильное меню (если есть)
+    if (d.my_contacts != null) {
+      const pf = document.getElementById('pddFriends');
+      if (pf) pf.textContent = num(d.my_contacts);
+    }
+    if (d.my_communities != null) {
+      const pc = document.getElementById('pddComm');
+      if (pc) pc.textContent = num(d.my_communities);
+    }
+  } catch {
+    // Если бэк недоступен — оставляем плейсхолдеры в HTML без изменений.
+    // Не выставляем хардкод 1247/48/12 — лучше «—» чем фейк.
+    const ids = ['statMembers', 'statNews', 'statEvents'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && (el.textContent === '—' || !el.textContent.trim())) el.textContent = '—';
+    });
   }
 }
 
