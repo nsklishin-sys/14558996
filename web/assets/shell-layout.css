@@ -194,13 +194,13 @@ html.lt-shell .topbar > .profile-dd-wrap{
   width: 100%;
   min-width: 0;
   display: flex;
-  justify-content: stretch;
   align-items: center;
+  gap: 8px; /* зазор между колокольчиком и карточкой профиля */
 }
 
 /* ── Карточка профиля растягивается на всю ширину обёртки ── */
 html.lt-shell .topbar .topbar-profile{
-  width: 100%;
+  min-width: 0;
   flex: 1 1 auto;
   /* По умолчанию padding 6px 52px 6px 12px — большой правый padding для стрелки.
      В растянутой карточке стрелка прижимается к правому краю автоматически
@@ -223,10 +223,14 @@ html.lt-shell .topbar .topbar-profile .tp-arrow{
 /* ── Узкие экраны: правый сайдбар скрыт, топбар одноколоночный ── */
 @media (max-width: 1000px){
   html.lt-shell .topbar{
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
+  }
+  /* На мобиле обёртка профиля остаётся, но карточка профиля скрыта — виден только колокольчик */
+  html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile{
+    display: none;
   }
   html.lt-shell .topbar > .profile-dd-wrap{
-    display: none;
+    width: auto;
   }
 }
 
@@ -503,9 +507,10 @@ html[data-theme="dark"] .ad-sub{color:#9080C0}
    ═══════════════════════════════════════════════════════════════ */
 .notif-bell-wrap{
   position:relative;
-  display:inline-block;
+  display:inline-flex;
+  align-items:center;
   flex-shrink:0;
-  margin-right:8px
+  /* margin-right убран — теперь зазор задаёт gap у .profile-dd-wrap */
 }
 .notif-bell{
   position:relative;

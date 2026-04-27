@@ -275,7 +275,7 @@
     if (!topbar) return; // нет шапки на странице (например login.html)
     if (topbar.querySelector('.notif-bell')) return; // уже есть, не дублируем
 
-    // Вставляем колокольчик ДО блока .profile-dd-wrap (или просто в конец topbar если такого блока нет)
+    // Вставляем колокольчик внутрь правой ячейки топбара рядом с профилем
     const profileWrap = topbar.querySelector('.profile-dd-wrap');
 
     const wrap = document.createElement('div');
@@ -296,9 +296,16 @@
         '<div class="notif-dd-foot"><a href="/notifications.html">Все уведомления →</a></div>' +
       '</div>';
 
-    if (profileWrap) {
-      topbar.insertBefore(wrap, profileWrap);
+    const topbarProfile = profileWrap ? profileWrap.querySelector('.topbar-profile') : null;
+
+    if (profileWrap && topbarProfile) {
+      // Кладём колокольчик ВНУТРЬ .profile-dd-wrap, перед .topbar-profile
+      profileWrap.insertBefore(wrap, topbarProfile);
+    } else if (profileWrap) {
+      // Если карточки профиля нет, но обёртка есть — в начало обёртки
+      profileWrap.insertBefore(wrap, profileWrap.firstChild);
     } else {
+      // Совсем другая разметка — fallback в конец topbar
       topbar.appendChild(wrap);
     }
 
