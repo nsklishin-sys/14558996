@@ -602,6 +602,83 @@ type addProjectMemberRequest struct {
 	Role         string `json:"role,omitempty"`
 }
 
+type projectStage struct {
+	ID           int64          `json:"id"`
+	ProjectID    int64          `json:"project_id"`
+	Title        string         `json:"title"`
+	Description  string         `json:"description,omitempty"`
+	Status       string         `json:"status"`
+	StartDate    *string        `json:"start_date,omitempty"`
+	EndDate      *string        `json:"end_date,omitempty"`
+	AssigneeID   int64          `json:"assignee_id,omitempty"`
+	AssigneeName string         `json:"assignee_name,omitempty"`
+	AssigneePID  string         `json:"assignee_public_id,omitempty"`
+	SortOrder    int            `json:"sort_order"`
+	Subtasks     []stageSubtask `json:"subtasks"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+}
+
+type stageSubtask struct {
+	ID        int64     `json:"id"`
+	StageID   int64     `json:"stage_id"`
+	Title     string    `json:"title"`
+	IsDone    bool      `json:"is_done"`
+	SortOrder int       `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type projectNeed struct {
+	ID                 int64     `json:"id"`
+	PublicID           string    `json:"public_id"`
+	ProjectID          int64     `json:"project_id"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description,omitempty"`
+	CategoryRole       string    `json:"category_role"`
+	Status             string    `json:"status"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	ResponsesCount     int       `json:"responses_count"`
+	ViewerHasResponded bool      `json:"viewer_has_responded"`
+}
+
+type needResponse struct {
+	ID                 int64     `json:"id"`
+	NeedID             int64     `json:"need_id"`
+	ResponderID        int64     `json:"responder_id"`
+	ResponderName      string    `json:"responder_name,omitempty"`
+	ResponderPublicID  string    `json:"responder_public_id,omitempty"`
+	Message            string    `json:"message"`
+	ChatConversationID int64     `json:"chat_conversation_id,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+type stageRequest struct {
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Status      string  `json:"status"`
+	StartDate   *string `json:"start_date,omitempty"`
+	EndDate     *string `json:"end_date,omitempty"`
+	AssigneeID  int64   `json:"assignee_id,omitempty"`
+	SortOrder   *int    `json:"sort_order,omitempty"`
+}
+
+type subtaskRequest struct {
+	Title  string `json:"title"`
+	IsDone *bool  `json:"is_done,omitempty"`
+}
+
+type needRequest struct {
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	CategoryRole string `json:"category_role"`
+	Status       string `json:"status"`
+}
+
+type respondToNeedRequest struct {
+	Message string `json:"message"`
+}
+
 type event struct {
 	ID              int64     `json:"id"`
 	PublicID        string    `json:"public_id"`
@@ -2874,6 +2951,273 @@ func main() {
 		}
 		publicID := parts[0]
 
+		if len(parts) >= 2 && parts[1] == "stages" {
+			projectID, err := getProjectIDByPublicID(db, publicID)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Проект не найден")
+				return
+			}
+			if len(parts) == 2 {
+				switch r.Method {
+				case http.MethodGet:
+					stages, err := listProjectStages(db, projectID)
+					if err != nil {
+						log.Printf("listProjectStages: %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"stages": stages})
+				case http.MethodPost:
+					actorID, ok := authenticatedUserID(w, r, sessions)
+					if !ok {
+						return
+					}
+					var req stageRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					stage, err := createProjectStage(db, projectID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusCreated, map[string]any{"stage": stage})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+
+			if len(parts) == 4 && parts[2] == "subtasks" {
+				subtaskID, err := strconv.ParseInt(parts[3], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id подзадачи")
+					return
+				}
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				switch r.Method {
+				case http.MethodPatch:
+					var req subtaskRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					st, err := updateStageSubtask(db, projectID, subtaskID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"subtask": st})
+				case http.MethodDelete:
+					if err := deleteStageSubtask(db, projectID, subtaskID, actorID); err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+
+			if len(parts) == 3 {
+				stageID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id этапа")
+					return
+				}
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				switch r.Method {
+				case http.MethodPatch:
+					var req stageRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					stage, err := updateProjectStage(db, projectID, stageID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"stage": stage})
+				case http.MethodDelete:
+					if err := deleteProjectStage(db, projectID, stageID, actorID); err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+
+			if len(parts) == 4 && parts[3] == "subtasks" {
+				stageID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id этапа")
+					return
+				}
+				if r.Method != http.MethodPost {
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+					return
+				}
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var req subtaskRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				st, err := createStageSubtask(db, projectID, stageID, actorID, req)
+				if err != nil {
+					handleProjectActionError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusCreated, map[string]any{"subtask": st})
+				return
+			}
+			writeError(w, http.StatusNotFound, "Маршрут не найден")
+			return
+		}
+
+		if len(parts) >= 2 && parts[1] == "needs" {
+			projectID, err := getProjectIDByPublicID(db, publicID)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Проект не найден")
+				return
+			}
+			if len(parts) == 2 {
+				switch r.Method {
+				case http.MethodGet:
+					viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+					needs, err := listProjectNeeds(db, projectID, viewerID)
+					if err != nil {
+						log.Printf("listProjectNeeds: %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"needs": needs})
+				case http.MethodPost:
+					actorID, ok := authenticatedUserID(w, r, sessions)
+					if !ok {
+						return
+					}
+					var req needRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					need, err := createProjectNeed(db, projectID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusCreated, map[string]any{"need": need})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+
+			if len(parts) == 3 {
+				needID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id потребности")
+					return
+				}
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				switch r.Method {
+				case http.MethodPatch:
+					var req needRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					need, err := updateProjectNeed(db, projectID, needID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"need": need})
+				case http.MethodDelete:
+					if err := deleteProjectNeed(db, projectID, needID, actorID); err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+
+			if len(parts) == 4 && parts[3] == "respond" {
+				needID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id потребности")
+					return
+				}
+				if r.Method != http.MethodPost {
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+					return
+				}
+				responderID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var req respondToNeedRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				resp, err := respondToNeed(db, needID, responderID, req)
+				if err != nil {
+					handleProjectActionError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusCreated, map[string]any{"response": resp})
+				return
+			}
+
+			if len(parts) == 4 && parts[3] == "responses" {
+				needID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id потребности")
+					return
+				}
+				if r.Method != http.MethodGet {
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+					return
+				}
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				responses, err := listNeedResponses(db, projectID, needID, actorID)
+				if err != nil {
+					handleProjectActionError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"responses": responses})
+				return
+			}
+			writeError(w, http.StatusNotFound, "Маршрут не найден")
+			return
+		}
+
 		if len(parts) == 1 {
 			switch r.Method {
 			case http.MethodGet:
@@ -3922,8 +4266,81 @@ CREATE INDEX IF NOT EXISTS notifications_recipient_created_idx
 
 -- Идемпотентность: одно событие одного типа от одного актора по одному источнику = одна запись.
 -- При попытке вставить дубль — ON CONFLICT DO NOTHING.
+
 CREATE UNIQUE INDEX IF NOT EXISTS notifications_dedup_idx
     ON notifications (recipient_id, type, source_type, source_id, COALESCE(actor_id, 0));
+
+-- ── Этапы проекта (Спринт 6.4.1) ──
+CREATE TABLE IF NOT EXISTS project_stages (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 5000),
+    status TEXT NOT NULL DEFAULT 'planned'
+        CHECK (status IN ('planned', 'in_progress', 'done')),
+    start_date DATE,
+    end_date DATE,
+    assignee_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS project_stages_project_idx
+    ON project_stages (project_id, sort_order, id);
+
+-- Подзадачи этапа (чек-лист)
+CREATE TABLE IF NOT EXISTS stage_subtasks (
+    id BIGSERIAL PRIMARY KEY,
+    stage_id BIGINT NOT NULL REFERENCES project_stages(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 300),
+    is_done BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS stage_subtasks_stage_idx
+    ON stage_subtasks (stage_id, sort_order, id);
+
+-- Потребности проекта (что ищем в команду)
+CREATE TABLE IF NOT EXISTS project_needs (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 5000),
+    category_role TEXT NOT NULL DEFAULT 'other'
+        CHECK (category_role IN (
+            'finance', 'transport', 'customs', 'it', 'marketing',
+            'legal', 'consulting', 'manufacturing', 'other'
+        )),
+    status TEXT NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'closed')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS project_needs_project_idx
+    ON project_needs (project_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS project_needs_category_idx
+    ON project_needs (category_role, status) WHERE status = 'open';
+
+-- Отклики на потребности (для отслеживания, кто уже откликнулся)
+CREATE TABLE IF NOT EXISTS need_responses (
+    id BIGSERIAL PRIMARY KEY,
+    need_id BIGINT NOT NULL REFERENCES project_needs(id) ON DELETE CASCADE,
+    responder_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL DEFAULT '' CHECK (char_length(message) <= 2000),
+    chat_conversation_id BIGINT REFERENCES chat_conversations(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS need_responses_uniq_idx
+    ON need_responses (need_id, responder_id);
+
+CREATE INDEX IF NOT EXISTS need_responses_responder_idx
+    ON need_responses (responder_id, created_at DESC);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -4453,6 +4870,87 @@ func getUserDisplayName(db *sql.DB, userID int64) string {
 	return "Кто-то"
 }
 
+func canManageProject(db *sql.DB, projectID, userID int64) bool {
+	if userID == 0 {
+		return false
+	}
+	var role string
+	err := db.QueryRow(`
+		SELECT role FROM project_members
+		WHERE project_id = $1 AND user_id = $2
+	`, projectID, userID).Scan(&role)
+	if err != nil {
+		return false
+	}
+	return role == "owner" || role == "admin"
+}
+
+func isProjectMember(db *sql.DB, projectID, userID int64) bool {
+	if userID == 0 {
+		return false
+	}
+	var exists bool
+	err := db.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2)
+	`, projectID, userID).Scan(&exists)
+	return err == nil && exists
+}
+
+func getProjectIDByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT id FROM projects WHERE public_id = $1 AND is_deleted = FALSE`, publicID).Scan(&id)
+	return id, err
+}
+
+func validateStageStatus(s string) error {
+	switch s {
+	case "planned", "in_progress", "done":
+		return nil
+	}
+	return fmt.Errorf("%w: status должен быть planned/in_progress/done", errValidation)
+}
+
+func validateNeedCategory(c string) error {
+	switch c {
+	case "finance", "transport", "customs", "it", "marketing",
+		"legal", "consulting", "manufacturing", "other":
+		return nil
+	}
+	return fmt.Errorf("%w: некорректная category_role", errValidation)
+}
+
+func validateNeedStatus(s string) error {
+	switch s {
+	case "open", "closed":
+		return nil
+	}
+	return fmt.Errorf("%w: status должен быть open/closed", errValidation)
+}
+
+func generateNeedPublicID() string {
+	n := time.Now().UnixNano()
+	return "n_" + strconv.FormatInt(n, 36)
+}
+
+func parseDateOrNil(s *string) (*time.Time, error) {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", strings.TrimSpace(*s))
+	if err != nil {
+		return nil, fmt.Errorf("%w: дата должна быть в формате YYYY-MM-DD", errValidation)
+	}
+	return &t, nil
+}
+
+func formatDateOrNil(t sql.NullTime) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.Time.Format("2006-01-02")
+	return &s
+}
+
 // truncateRunes обрезает строку до n рун (без обрыва символа Unicode), добавляя «…» если обрезано.
 func truncateRunes(s string, n int) string {
 	if utf8.RuneCountInString(s) <= n {
@@ -4505,6 +5003,25 @@ func handleFriendActionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, err.Error())
 	default:
+		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+	}
+}
+
+func handleProjectActionError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+	switch {
+	case errors.Is(err, errValidation):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, "Не найдено")
+	case errors.Is(err, errForbidden):
+		writeError(w, http.StatusForbidden, err.Error())
+	case errors.Is(err, errConflict):
+		writeError(w, http.StatusConflict, err.Error())
+	default:
+		log.Printf("project action: %v", err)
 		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
 	}
 }
@@ -6657,6 +7174,640 @@ func addProjectMember(db *sql.DB, viewerID int64, publicID string, req addProjec
 	}
 
 	return nil
+}
+
+func listProjectStages(db *sql.DB, projectID int64) ([]projectStage, error) {
+	rows, err := db.Query(`
+		SELECT s.id, s.project_id, s.title, s.description, s.status,
+		       s.start_date, s.end_date,
+		       COALESCE(s.assignee_id, 0),
+		       COALESCE(u.full_name, ''),
+		       COALESCE(u.public_id, ''),
+		       s.sort_order, s.created_at, s.updated_at
+		FROM project_stages s
+		LEFT JOIN users u ON u.id = s.assignee_id
+		WHERE s.project_id = $1
+		ORDER BY s.sort_order ASC, s.id ASC
+	`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stages []projectStage
+	var stageIDs []int64
+	for rows.Next() {
+		var s projectStage
+		var startDate, endDate sql.NullTime
+		if err := rows.Scan(&s.ID, &s.ProjectID, &s.Title, &s.Description, &s.Status,
+			&startDate, &endDate, &s.AssigneeID, &s.AssigneeName, &s.AssigneePID,
+			&s.SortOrder, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		s.StartDate = formatDateOrNil(startDate)
+		s.EndDate = formatDateOrNil(endDate)
+		s.Subtasks = []stageSubtask{}
+		stages = append(stages, s)
+		stageIDs = append(stageIDs, s.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(stages) == 0 {
+		return []projectStage{}, nil
+	}
+
+	subRows, err := db.Query(`
+		SELECT id, stage_id, title, is_done, sort_order, created_at
+		FROM stage_subtasks
+		WHERE stage_id = ANY($1)
+		ORDER BY sort_order ASC, id ASC
+	`, pgtype.FlatArray[int64](stageIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer subRows.Close()
+	subtasksByStage := make(map[int64][]stageSubtask)
+	for subRows.Next() {
+		var st stageSubtask
+		if err := subRows.Scan(&st.ID, &st.StageID, &st.Title, &st.IsDone, &st.SortOrder, &st.CreatedAt); err != nil {
+			return nil, err
+		}
+		subtasksByStage[st.StageID] = append(subtasksByStage[st.StageID], st)
+	}
+	if err := subRows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range stages {
+		if subs, ok := subtasksByStage[stages[i].ID]; ok {
+			stages[i].Subtasks = subs
+		}
+	}
+	return stages, nil
+}
+
+func createProjectStage(db *sql.DB, projectID, actorID int64, req stageRequest) (projectStage, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return projectStage{}, fmt.Errorf("%w: только владелец/админ может создавать этапы", errForbidden)
+	}
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) < 1 || utf8.RuneCountInString(title) > 200 {
+		return projectStage{}, fmt.Errorf("%w: название этапа 1..200", errValidation)
+	}
+	desc := strings.TrimSpace(req.Description)
+	if utf8.RuneCountInString(desc) > 5000 {
+		return projectStage{}, fmt.Errorf("%w: описание этапа до 5000", errValidation)
+	}
+	status := strings.TrimSpace(req.Status)
+	if status == "" {
+		status = "planned"
+	}
+	if err := validateStageStatus(status); err != nil {
+		return projectStage{}, err
+	}
+	startDate, err := parseDateOrNil(req.StartDate)
+	if err != nil {
+		return projectStage{}, err
+	}
+	endDate, err := parseDateOrNil(req.EndDate)
+	if err != nil {
+		return projectStage{}, err
+	}
+	var assigneeArg any
+	if req.AssigneeID != 0 {
+		if !isProjectMember(db, projectID, req.AssigneeID) {
+			return projectStage{}, fmt.Errorf("%w: исполнитель должен быть участником проекта", errValidation)
+		}
+		assigneeArg = req.AssigneeID
+	}
+	sortOrder := 0
+	if req.SortOrder != nil {
+		sortOrder = *req.SortOrder
+	} else {
+		_ = db.QueryRow(`SELECT COALESCE(MAX(sort_order), 0) + 1 FROM project_stages WHERE project_id = $1`, projectID).Scan(&sortOrder)
+	}
+
+	var id int64
+	err = db.QueryRow(`
+		INSERT INTO project_stages (project_id, title, description, status, start_date, end_date, assignee_id, sort_order)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`, projectID, title, desc, status, startDate, endDate, assigneeArg, sortOrder).Scan(&id)
+	if err != nil {
+		return projectStage{}, err
+	}
+	return getProjectStage(db, id)
+}
+
+func getProjectStage(db *sql.DB, stageID int64) (projectStage, error) {
+	var s projectStage
+	var startDate, endDate sql.NullTime
+	err := db.QueryRow(`
+		SELECT s.id, s.project_id, s.title, s.description, s.status,
+		       s.start_date, s.end_date,
+		       COALESCE(s.assignee_id, 0),
+		       COALESCE(u.full_name, ''),
+		       COALESCE(u.public_id, ''),
+		       s.sort_order, s.created_at, s.updated_at
+		FROM project_stages s
+		LEFT JOIN users u ON u.id = s.assignee_id
+		WHERE s.id = $1
+	`, stageID).Scan(&s.ID, &s.ProjectID, &s.Title, &s.Description, &s.Status,
+		&startDate, &endDate, &s.AssigneeID, &s.AssigneeName, &s.AssigneePID,
+		&s.SortOrder, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
+		return projectStage{}, err
+	}
+	s.StartDate = formatDateOrNil(startDate)
+	s.EndDate = formatDateOrNil(endDate)
+	s.Subtasks = []stageSubtask{}
+	subRows, err := db.Query(`SELECT id, stage_id, title, is_done, sort_order, created_at FROM stage_subtasks WHERE stage_id = $1 ORDER BY sort_order, id`, stageID)
+	if err != nil {
+		return s, err
+	}
+	defer subRows.Close()
+	for subRows.Next() {
+		var st stageSubtask
+		if err := subRows.Scan(&st.ID, &st.StageID, &st.Title, &st.IsDone, &st.SortOrder, &st.CreatedAt); err != nil {
+			return s, err
+		}
+		s.Subtasks = append(s.Subtasks, st)
+	}
+	return s, subRows.Err()
+}
+
+func updateProjectStage(db *sql.DB, projectID, stageID, actorID int64, req stageRequest) (projectStage, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return projectStage{}, fmt.Errorf("%w: только владелец/админ может редактировать", errForbidden)
+	}
+	var existingProjectID int64
+	if err := db.QueryRow(`SELECT project_id FROM project_stages WHERE id = $1`, stageID).Scan(&existingProjectID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return projectStage{}, errNotFound
+		}
+		return projectStage{}, err
+	}
+	if existingProjectID != projectID {
+		return projectStage{}, errNotFound
+	}
+	sets := []string{}
+	args := []any{}
+	argIdx := 1
+	if title := strings.TrimSpace(req.Title); title != "" {
+		if utf8.RuneCountInString(title) > 200 {
+			return projectStage{}, fmt.Errorf("%w: название до 200", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, title)
+		argIdx++
+	}
+	if utf8.RuneCountInString(req.Description) > 5000 {
+		return projectStage{}, fmt.Errorf("%w: описание до 5000", errValidation)
+	}
+	sets = append(sets, fmt.Sprintf("description = $%d", argIdx))
+	args = append(args, strings.TrimSpace(req.Description))
+	argIdx++
+	if status := strings.TrimSpace(req.Status); status != "" {
+		if err := validateStageStatus(status); err != nil {
+			return projectStage{}, err
+		}
+		sets = append(sets, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if req.StartDate != nil {
+		startDate, err := parseDateOrNil(req.StartDate)
+		if err != nil {
+			return projectStage{}, err
+		}
+		sets = append(sets, fmt.Sprintf("start_date = $%d", argIdx))
+		args = append(args, startDate)
+		argIdx++
+	}
+	if req.EndDate != nil {
+		endDate, err := parseDateOrNil(req.EndDate)
+		if err != nil {
+			return projectStage{}, err
+		}
+		sets = append(sets, fmt.Sprintf("end_date = $%d", argIdx))
+		args = append(args, endDate)
+		argIdx++
+	}
+	if req.AssigneeID != 0 {
+		if req.AssigneeID == -1 {
+			sets = append(sets, fmt.Sprintf("assignee_id = $%d", argIdx))
+			args = append(args, nil)
+			argIdx++
+		} else {
+			if !isProjectMember(db, projectID, req.AssigneeID) {
+				return projectStage{}, fmt.Errorf("%w: исполнитель должен быть участником проекта", errValidation)
+			}
+			sets = append(sets, fmt.Sprintf("assignee_id = $%d", argIdx))
+			args = append(args, req.AssigneeID)
+			argIdx++
+		}
+	}
+	if req.SortOrder != nil {
+		sets = append(sets, fmt.Sprintf("sort_order = $%d", argIdx))
+		args = append(args, *req.SortOrder)
+		argIdx++
+	}
+	if len(sets) == 0 {
+		return getProjectStage(db, stageID)
+	}
+	sets = append(sets, "updated_at = NOW()")
+	args = append(args, stageID)
+	query := fmt.Sprintf(`UPDATE project_stages SET %s WHERE id = $%d`, strings.Join(sets, ", "), argIdx)
+	if _, err := db.Exec(query, args...); err != nil {
+		return projectStage{}, err
+	}
+	return getProjectStage(db, stageID)
+}
+
+func deleteProjectStage(db *sql.DB, projectID, stageID, actorID int64) error {
+	if !canManageProject(db, projectID, actorID) {
+		return fmt.Errorf("%w: только владелец/админ может удалять этапы", errForbidden)
+	}
+	res, err := db.Exec(`DELETE FROM project_stages WHERE id = $1 AND project_id = $2`, stageID, projectID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNotFound
+	}
+	return nil
+}
+
+func createStageSubtask(db *sql.DB, projectID, stageID, actorID int64, req subtaskRequest) (stageSubtask, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return stageSubtask{}, fmt.Errorf("%w: только владелец/админ", errForbidden)
+	}
+	var existingProjectID int64
+	if err := db.QueryRow(`SELECT project_id FROM project_stages WHERE id = $1`, stageID).Scan(&existingProjectID); err != nil {
+		return stageSubtask{}, errNotFound
+	}
+	if existingProjectID != projectID {
+		return stageSubtask{}, errNotFound
+	}
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) < 1 || utf8.RuneCountInString(title) > 300 {
+		return stageSubtask{}, fmt.Errorf("%w: название подзадачи 1..300", errValidation)
+	}
+	var sortOrder int
+	_ = db.QueryRow(`SELECT COALESCE(MAX(sort_order), 0) + 1 FROM stage_subtasks WHERE stage_id = $1`, stageID).Scan(&sortOrder)
+
+	var st stageSubtask
+	err := db.QueryRow(`
+		INSERT INTO stage_subtasks (stage_id, title, sort_order)
+		VALUES ($1, $2, $3)
+		RETURNING id, stage_id, title, is_done, sort_order, created_at
+	`, stageID, title, sortOrder).Scan(&st.ID, &st.StageID, &st.Title, &st.IsDone, &st.SortOrder, &st.CreatedAt)
+	return st, err
+}
+
+func updateStageSubtask(db *sql.DB, projectID, subtaskID, actorID int64, req subtaskRequest) (stageSubtask, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return stageSubtask{}, fmt.Errorf("%w: только владелец/админ", errForbidden)
+	}
+	var existingProjectID int64
+	err := db.QueryRow(`
+		SELECT s.project_id FROM stage_subtasks sub
+		JOIN project_stages s ON s.id = sub.stage_id
+		WHERE sub.id = $1
+	`, subtaskID).Scan(&existingProjectID)
+	if err != nil {
+		return stageSubtask{}, errNotFound
+	}
+	if existingProjectID != projectID {
+		return stageSubtask{}, errNotFound
+	}
+	sets := []string{}
+	args := []any{}
+	argIdx := 1
+	if title := strings.TrimSpace(req.Title); title != "" {
+		if utf8.RuneCountInString(title) > 300 {
+			return stageSubtask{}, fmt.Errorf("%w: до 300 символов", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, title)
+		argIdx++
+	}
+	if req.IsDone != nil {
+		sets = append(sets, fmt.Sprintf("is_done = $%d", argIdx))
+		args = append(args, *req.IsDone)
+		argIdx++
+	}
+	if len(sets) == 0 {
+		return stageSubtask{}, fmt.Errorf("%w: нечего обновлять", errValidation)
+	}
+	args = append(args, subtaskID)
+	query := fmt.Sprintf(`UPDATE stage_subtasks SET %s WHERE id = $%d
+		RETURNING id, stage_id, title, is_done, sort_order, created_at`,
+		strings.Join(sets, ", "), argIdx)
+	var st stageSubtask
+	err = db.QueryRow(query, args...).Scan(&st.ID, &st.StageID, &st.Title, &st.IsDone, &st.SortOrder, &st.CreatedAt)
+	return st, err
+}
+
+func deleteStageSubtask(db *sql.DB, projectID, subtaskID, actorID int64) error {
+	if !canManageProject(db, projectID, actorID) {
+		return fmt.Errorf("%w: только владелец/админ", errForbidden)
+	}
+	res, err := db.Exec(`
+		DELETE FROM stage_subtasks
+		WHERE id = $1 AND stage_id IN (SELECT id FROM project_stages WHERE project_id = $2)
+	`, subtaskID, projectID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNotFound
+	}
+	return nil
+}
+
+func listProjectNeeds(db *sql.DB, projectID, viewerID int64) ([]projectNeed, error) {
+	rows, err := db.Query(`
+		SELECT n.id, n.public_id, n.project_id, n.title, n.description, n.category_role,
+		       n.status, n.created_at, n.updated_at,
+		       COALESCE((SELECT COUNT(*) FROM need_responses WHERE need_id = n.id), 0) AS responses_count,
+		       EXISTS(SELECT 1 FROM need_responses WHERE need_id = n.id AND responder_id = $2) AS viewer_has_responded
+		FROM project_needs n
+		WHERE n.project_id = $1
+		ORDER BY n.status ASC, n.created_at DESC
+	`, projectID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	needs := []projectNeed{}
+	for rows.Next() {
+		var n projectNeed
+		if err := rows.Scan(&n.ID, &n.PublicID, &n.ProjectID, &n.Title, &n.Description, &n.CategoryRole,
+			&n.Status, &n.CreatedAt, &n.UpdatedAt, &n.ResponsesCount, &n.ViewerHasResponded); err != nil {
+			return nil, err
+		}
+		needs = append(needs, n)
+	}
+	return needs, rows.Err()
+}
+
+func createProjectNeed(db *sql.DB, projectID, actorID int64, req needRequest) (projectNeed, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return projectNeed{}, fmt.Errorf("%w: только владелец/админ может создавать потребности", errForbidden)
+	}
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) < 1 || utf8.RuneCountInString(title) > 200 {
+		return projectNeed{}, fmt.Errorf("%w: название 1..200", errValidation)
+	}
+	desc := strings.TrimSpace(req.Description)
+	if utf8.RuneCountInString(desc) > 5000 {
+		return projectNeed{}, fmt.Errorf("%w: описание до 5000", errValidation)
+	}
+	category := strings.TrimSpace(req.CategoryRole)
+	if category == "" {
+		category = "other"
+	}
+	if err := validateNeedCategory(category); err != nil {
+		return projectNeed{}, err
+	}
+	status := strings.TrimSpace(req.Status)
+	if status == "" {
+		status = "open"
+	}
+	if err := validateNeedStatus(status); err != nil {
+		return projectNeed{}, err
+	}
+	publicID := generateNeedPublicID()
+	var id int64
+	err := db.QueryRow(`
+		INSERT INTO project_needs (public_id, project_id, title, description, category_role, status)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`, publicID, projectID, title, desc, category, status).Scan(&id)
+	if err != nil {
+		return projectNeed{}, err
+	}
+	return getProjectNeedByID(db, id, actorID)
+}
+
+func getProjectNeedByID(db *sql.DB, needID, viewerID int64) (projectNeed, error) {
+	var n projectNeed
+	err := db.QueryRow(`
+		SELECT n.id, n.public_id, n.project_id, n.title, n.description, n.category_role,
+		       n.status, n.created_at, n.updated_at,
+		       COALESCE((SELECT COUNT(*) FROM need_responses WHERE need_id = n.id), 0),
+		       EXISTS(SELECT 1 FROM need_responses WHERE need_id = n.id AND responder_id = $2)
+		FROM project_needs n
+		WHERE n.id = $1
+	`, needID, viewerID).Scan(&n.ID, &n.PublicID, &n.ProjectID, &n.Title, &n.Description, &n.CategoryRole,
+		&n.Status, &n.CreatedAt, &n.UpdatedAt, &n.ResponsesCount, &n.ViewerHasResponded)
+	return n, err
+}
+
+func updateProjectNeed(db *sql.DB, projectID, needID, actorID int64, req needRequest) (projectNeed, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return projectNeed{}, fmt.Errorf("%w: только владелец/админ", errForbidden)
+	}
+	var existingProjectID int64
+	if err := db.QueryRow(`SELECT project_id FROM project_needs WHERE id = $1`, needID).Scan(&existingProjectID); err != nil {
+		return projectNeed{}, errNotFound
+	}
+	if existingProjectID != projectID {
+		return projectNeed{}, errNotFound
+	}
+	sets := []string{}
+	args := []any{}
+	argIdx := 1
+	if title := strings.TrimSpace(req.Title); title != "" {
+		if utf8.RuneCountInString(title) > 200 {
+			return projectNeed{}, fmt.Errorf("%w: название до 200", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, title)
+		argIdx++
+	}
+	if utf8.RuneCountInString(req.Description) > 5000 {
+		return projectNeed{}, fmt.Errorf("%w: описание до 5000", errValidation)
+	}
+	sets = append(sets, fmt.Sprintf("description = $%d", argIdx))
+	args = append(args, strings.TrimSpace(req.Description))
+	argIdx++
+	if cat := strings.TrimSpace(req.CategoryRole); cat != "" {
+		if err := validateNeedCategory(cat); err != nil {
+			return projectNeed{}, err
+		}
+		sets = append(sets, fmt.Sprintf("category_role = $%d", argIdx))
+		args = append(args, cat)
+		argIdx++
+	}
+	if status := strings.TrimSpace(req.Status); status != "" {
+		if err := validateNeedStatus(status); err != nil {
+			return projectNeed{}, err
+		}
+		sets = append(sets, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if len(sets) == 0 {
+		return getProjectNeedByID(db, needID, actorID)
+	}
+	sets = append(sets, "updated_at = NOW()")
+	args = append(args, needID)
+	query := fmt.Sprintf(`UPDATE project_needs SET %s WHERE id = $%d`, strings.Join(sets, ", "), argIdx)
+	if _, err := db.Exec(query, args...); err != nil {
+		return projectNeed{}, err
+	}
+	return getProjectNeedByID(db, needID, actorID)
+}
+
+func deleteProjectNeed(db *sql.DB, projectID, needID, actorID int64) error {
+	if !canManageProject(db, projectID, actorID) {
+		return fmt.Errorf("%w: только владелец/админ", errForbidden)
+	}
+	res, err := db.Exec(`DELETE FROM project_needs WHERE id = $1 AND project_id = $2`, needID, projectID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNotFound
+	}
+	return nil
+}
+
+func respondToNeed(db *sql.DB, needID, responderID int64, req respondToNeedRequest) (needResponse, error) {
+	message := strings.TrimSpace(req.Message)
+	if utf8.RuneCountInString(message) < 1 || utf8.RuneCountInString(message) > 2000 {
+		return needResponse{}, fmt.Errorf("%w: сообщение 1..2000 символов", errValidation)
+	}
+
+	var projectID int64
+	var needTitle, needStatus string
+	if err := db.QueryRow(`
+		SELECT project_id, title, status FROM project_needs WHERE id = $1
+	`, needID).Scan(&projectID, &needTitle, &needStatus); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return needResponse{}, errNotFound
+		}
+		return needResponse{}, err
+	}
+	if needStatus != "open" {
+		return needResponse{}, fmt.Errorf("%w: потребность закрыта", errValidation)
+	}
+
+	var ownerID int64
+	if err := db.QueryRow(`
+		SELECT user_id FROM project_members
+		WHERE project_id = $1 AND role = 'owner'
+		LIMIT 1
+	`, projectID).Scan(&ownerID); err != nil {
+		return needResponse{}, fmt.Errorf("%w: владелец проекта не найден", errNotFound)
+	}
+
+	if responderID == ownerID {
+		return needResponse{}, fmt.Errorf("%w: владелец не может откликаться на свой need", errValidation)
+	}
+
+	var existingResponse int64
+	err := db.QueryRow(`SELECT id FROM need_responses WHERE need_id = $1 AND responder_id = $2`, needID, responderID).Scan(&existingResponse)
+	if err == nil {
+		return needResponse{}, fmt.Errorf("%w: вы уже откликались на эту потребность", errConflict)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return needResponse{}, err
+	}
+
+	chatID, err := findOrCreateDirectChat(db, responderID, ownerID)
+	if err != nil {
+		return needResponse{}, fmt.Errorf("чат: %v", err)
+	}
+
+	var chatPublicID string
+	if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id = $1`, chatID).Scan(&chatPublicID); err != nil {
+		return needResponse{}, err
+	}
+
+	fullMessage := "📋 Отклик на «" + needTitle + "»\n\n" + message
+	_, err = sendMessage(db, responderID, chatPublicID, sendMessageRequest{Content: fullMessage})
+	if err != nil {
+		return needResponse{}, fmt.Errorf("сообщение: %v", err)
+	}
+
+	var resp needResponse
+	err = db.QueryRow(`
+		INSERT INTO need_responses (need_id, responder_id, message, chat_conversation_id)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, need_id, responder_id, message, COALESCE(chat_conversation_id, 0), created_at
+	`, needID, responderID, message, chatID).Scan(&resp.ID, &resp.NeedID, &resp.ResponderID, &resp.Message, &resp.ChatConversationID, &resp.CreatedAt)
+	if err != nil {
+		return needResponse{}, err
+	}
+	return resp, nil
+}
+
+func findOrCreateDirectChat(db *sql.DB, userA, userB int64) (int64, error) {
+	if userA == userB {
+		return 0, fmt.Errorf("%w: нельзя создать чат с собой", errValidation)
+	}
+	var existingID int64
+	err := db.QueryRow(`
+		SELECT cc.id
+		FROM chat_conversations cc
+		JOIN chat_participants p1 ON p1.conversation_id = cc.id AND p1.user_id = $1
+		JOIN chat_participants p2 ON p2.conversation_id = cc.id AND p2.user_id = $2
+		WHERE cc.type = 'direct'
+		LIMIT 1
+	`, userA, userB).Scan(&existingID)
+	if err == nil {
+		return existingID, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+	publicID := "c_" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	var newID int64
+	err = db.QueryRow(`
+		INSERT INTO chat_conversations (public_id, type, created_at, last_message_at)
+		VALUES ($1, 'direct', NOW(), NOW())
+		RETURNING id
+	`, publicID).Scan(&newID)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := db.Exec(`
+		INSERT INTO chat_participants (conversation_id, user_id) VALUES ($1, $2), ($1, $3)
+	`, newID, userA, userB); err != nil {
+		return 0, err
+	}
+	return newID, nil
+}
+
+func listNeedResponses(db *sql.DB, projectID, needID, actorID int64) ([]needResponse, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return nil, fmt.Errorf("%w: только владелец/админ может видеть отклики", errForbidden)
+	}
+	rows, err := db.Query(`
+		SELECT r.id, r.need_id, r.responder_id, u.full_name, u.public_id,
+		       r.message, COALESCE(r.chat_conversation_id, 0), r.created_at
+		FROM need_responses r
+		JOIN users u ON u.id = r.responder_id
+		WHERE r.need_id = $1
+		ORDER BY r.created_at DESC
+	`, needID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []needResponse{}
+	for rows.Next() {
+		var r needResponse
+		if err := rows.Scan(&r.ID, &r.NeedID, &r.ResponderID, &r.ResponderName, &r.ResponderPublicID,
+			&r.Message, &r.ChatConversationID, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 // removeProjectMember удаляет участника. Owner/admin может убрать любого, остальные — только себя.
