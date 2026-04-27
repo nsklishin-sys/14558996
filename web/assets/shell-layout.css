@@ -371,6 +371,41 @@ html.lt-shell .topbar > .profile-dd-wrap > .profile-dd{
   right: 0;
 }
 
+/* ── Двухколоночный каркас (chat.html): обёртка профиля — отдельная белая карточка ── */
+html.lt-shell-2col .topbar > .profile-dd-wrap{
+  background: var(--w);
+  border: 1px solid var(--bdr);
+  border-radius: var(--rl);
+  box-shadow: var(--sh);
+  padding: 6px 14px;
+  min-height: 56px;
+  height: 56px;
+  align-items: center;
+}
+
+/* Сама карточка профиля внутри обёртки — теряет свою плашку (родитель уже белая карточка) */
+html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile{
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+}
+html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile:hover{
+  background: var(--gp);
+  border-radius: var(--rm);
+}
+html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile.open{
+  background: var(--gp);
+  border-radius: var(--rm);
+}
+
+/* Дропдаун профиля — позиционирование от обёртки-карточки */
+html.lt-shell-2col .topbar > .profile-dd-wrap > .profile-dd{
+  top: calc(100% + 8px);
+  right: 0;
+}
+
 /* ── Двухколоночный каркас (chat.html) ── */
 /* В chat.html правого сайдбара под топбаром нет, профиль скрыт.
    Поиск — единственная карточка топбара. Она занимает всю ширину
