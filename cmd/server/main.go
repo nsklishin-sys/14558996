@@ -619,8 +619,19 @@ type sessionCacheEntry struct {
 	cachedAt time.Time
 }
 
+// statsCache — простой in-memory кеш для /api/stats.
+// TTL 60 секунд. Не нужен для production-уровня, но избавляет от частых COUNT'ов.
+type statsCache struct {
+	mu      sync.RWMutex
+	payload []byte
+	fetched time.Time
+}
+
 const sessionCacheTTL = 10 * time.Minute
+const statsCacheTTL = 60 * time.Second
 const sessionLifetime = 30 * 24 * time.Hour
+
+var globalStatsCache = &statsCache{}
 
 type ipRateLimiter struct {
 	mu      sync.Mutex
@@ -1094,6 +1105,46 @@ func main() {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{"user": authUser})
+	})
+
+	mux.HandleFunc("/api/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		globalStatsCache.mu.RLock()
+		if globalStatsCache.payload != nil && time.Since(globalStatsCache.fetched) < statsCacheTTL {
+			cached := append([]byte(nil), globalStatsCache.payload...)
+			globalStatsCache.mu.RUnlock()
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "public, max-age=60")
+			_, _ = w.Write(cached)
+			return
+		}
+		globalStatsCache.mu.RUnlock()
+
+		stats, err := computePlatformStats(db)
+		if err != nil {
+			log.Printf("computePlatformStats failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось получить статистику")
+			return
+		}
+
+		payload, err := json.Marshal(stats)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка сериализации")
+			return
+		}
+
+		globalStatsCache.mu.Lock()
+		globalStatsCache.payload = append([]byte(nil), payload...)
+		globalStatsCache.fetched = time.Now()
+		globalStatsCache.mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		_, _ = w.Write(payload)
 	})
 
 	mux.HandleFunc("/api/me/saved", func(w http.ResponseWriter, r *http.Request) {
@@ -7765,6 +7816,110 @@ func loadUserSettings(db *sql.DB, userID int64) (userSettings, error) {
 		&s.Theme, &s.LayoutMode, &s.CompactFeed, &s.Locale, &s.Timezone, &s.DateFormat,
 	)
 	return s, err
+}
+
+// computePlatformStats собирает агрегированные данные платформы.
+// Использует только COUNT-запросы и индексы. Тяжёлых JOIN'ов нет.
+func computePlatformStats(db *sql.DB) (map[string]any, error) {
+	out := map[string]any{
+		"members":       0,
+		"news":          0,
+		"events":        0,
+		"active_now":    0,
+		"top_news_week": nil,
+		"trend_today":   nil,
+	}
+
+	// 1. Members
+	var members int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_deleted = FALSE`).Scan(&members); err != nil {
+		return nil, err
+	}
+	out["members"] = members
+
+	// 2. News (опубликованные посты)
+	var news int64
+	if err := db.QueryRow(`
+		SELECT COUNT(*) FROM posts
+		WHERE type = 'news' AND is_deleted = FALSE AND privacy_level = 'public'
+	`).Scan(&news); err != nil {
+		return nil, err
+	}
+	out["news"] = news
+
+	// 3. Events (актуальные/будущие)
+	var events int64
+	if err := db.QueryRow(`
+		SELECT COUNT(*) FROM events
+		WHERE is_deleted = FALSE
+		  AND status = 'published'
+		  AND (ends_at >= NOW() OR starts_at >= NOW())
+	`).Scan(&events); err != nil {
+		return nil, err
+	}
+	out["events"] = events
+
+	// 4. Active now — уникальные user_id с активной сессией за последние 5 минут
+	var activeNow int64
+	if err := db.QueryRow(`
+		SELECT COUNT(DISTINCT user_id) FROM sessions
+		WHERE last_seen_at > NOW() - INTERVAL '5 minutes'
+		  AND expires_at > NOW()
+	`).Scan(&activeNow); err != nil {
+		return nil, err
+	}
+	out["active_now"] = activeNow
+
+	// 5. Top news week — посты за 7 дней по weighted score.
+	var topPublicID, topTitle string
+	err := db.QueryRow(`
+		SELECT public_id, title
+		FROM posts
+		WHERE type = 'news'
+		  AND is_deleted = FALSE
+		  AND privacy_level = 'public'
+		  AND created_at > NOW() - INTERVAL '7 days'
+		ORDER BY (likes_count * 3 + comments_count * 2 + saves_count * 5 + views_count * 0.1) DESC,
+		         created_at DESC
+		LIMIT 1
+	`).Scan(&topPublicID, &topTitle)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	} else if topPublicID != "" {
+		out["top_news_week"] = map[string]any{
+			"public_id": topPublicID,
+			"title":     topTitle,
+		}
+	}
+
+	// 6. Trend today — самый частый тег в постах за последние 24 часа.
+	var trendTag string
+	err = db.QueryRow(`
+		SELECT tag FROM (
+			SELECT UNNEST(tags) AS tag
+			FROM posts
+			WHERE created_at > NOW() - INTERVAL '24 hours'
+			  AND type = 'news'
+			  AND is_deleted = FALSE
+			  AND privacy_level = 'public'
+			  AND tags IS NOT NULL
+		) AS t
+		WHERE tag IS NOT NULL AND tag <> ''
+		GROUP BY tag
+		ORDER BY COUNT(*) DESC, tag ASC
+		LIMIT 1
+	`).Scan(&trendTag)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	} else if trendTag != "" {
+		out["trend_today"] = trendTag
+	}
+
+	return out, nil
 }
 
 func updateNotificationSettings(db *sql.DB, userID int64, req updateNotificationsRequest) error {
