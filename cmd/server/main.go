@@ -515,6 +515,64 @@ type createPostRequest struct {
 	PrivacyLevel string   `json:"privacy_level"`
 }
 
+type project struct {
+	ID            int64      `json:"id"`
+	PublicID      string     `json:"public_id"`
+	OwnerID       int64      `json:"-"`
+	Title         string     `json:"title"`
+	Description   string     `json:"description"`
+	Category      string     `json:"category,omitempty"`
+	Status        string     `json:"status"`
+	Deadline      *time.Time `json:"deadline,omitempty"`
+	Budget        *int64     `json:"budget,omitempty"`
+	CoverColor    string     `json:"cover_color"`
+	Tags          []string   `json:"tags"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	OwnerPublicID string     `json:"owner_public_id,omitempty"`
+	OwnerName     string     `json:"owner_name,omitempty"`
+	OwnerAvatar   string     `json:"owner_avatar,omitempty"`
+	MembersCount  int        `json:"members_count"`
+	IsMember      bool       `json:"is_member"`
+	IsOwner       bool       `json:"is_owner"`
+}
+
+type projectMember struct {
+	UserPublicID string    `json:"user_public_id"`
+	UserName     string    `json:"user_name"`
+	UserAvatar   string    `json:"user_avatar,omitempty"`
+	UserColor    string    `json:"user_color"`
+	Role         string    `json:"role"`
+	JoinedAt     time.Time `json:"joined_at"`
+}
+
+type createProjectRequest struct {
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Category    string     `json:"category"`
+	Status      string     `json:"status"`
+	Deadline    *time.Time `json:"deadline,omitempty"`
+	Budget      *int64     `json:"budget,omitempty"`
+	CoverColor  string     `json:"cover_color"`
+	Tags        []string   `json:"tags"`
+}
+
+type updateProjectRequest struct {
+	Title       *string    `json:"title,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Category    *string    `json:"category,omitempty"`
+	Status      *string    `json:"status,omitempty"`
+	Deadline    *time.Time `json:"deadline,omitempty"`
+	Budget      *int64     `json:"budget,omitempty"`
+	CoverColor  *string    `json:"cover_color,omitempty"`
+	Tags        *[]string  `json:"tags,omitempty"`
+}
+
+type addProjectMemberRequest struct {
+	UserPublicID string `json:"user_public_id"`
+	Role         string `json:"role,omitempty"`
+}
+
 type event struct {
 	ID              int64     `json:"id"`
 	PublicID        string    `json:"public_id"`
@@ -2731,6 +2789,183 @@ func main() {
 		})
 	})
 
+	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			filters := map[string]string{
+				"category":   r.URL.Query().Get("category"),
+				"status":     r.URL.Query().Get("status"),
+				"owner_only": r.URL.Query().Get("owner_only"),
+				"search":     r.URL.Query().Get("search"),
+				"sort":       r.URL.Query().Get("sort"),
+				"limit":      r.URL.Query().Get("limit"),
+			}
+			items, err := listProjects(db, viewerID, filters)
+			if err != nil {
+				log.Printf("listProjects: %v", err)
+				writeError(w, http.StatusInternalServerError, "Не удалось получить проекты")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"projects": items})
+
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req createProjectRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			p, err := createProject(db, userID, req)
+			if err != nil {
+				if errors.Is(err, errValidation) {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				log.Printf("createProject: %v", err)
+				writeError(w, http.StatusInternalServerError, "Не удалось создать проект")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"project": p})
+
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/projects/")
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" {
+			writeError(w, http.StatusBadRequest, "Не указан public_id")
+			return
+		}
+		publicID := parts[0]
+
+		if len(parts) == 1 {
+			switch r.Method {
+			case http.MethodGet:
+				viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+				p, err := getProject(db, viewerID, publicID)
+				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						writeError(w, http.StatusNotFound, "Проект не найден")
+						return
+					}
+					log.Printf("getProject: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				members, _ := listProjectMembers(db, p.ID)
+				writeJSON(w, http.StatusOK, map[string]any{"project": p, "members": members})
+
+			case http.MethodPatch:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var req updateProjectRequest
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				p, err := updateProject(db, userID, publicID, req)
+				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						writeError(w, http.StatusNotFound, "Проект не найден")
+						return
+					}
+					if errors.Is(err, errValidation) {
+						writeError(w, http.StatusBadRequest, err.Error())
+						return
+					}
+					if errors.Is(err, errForbidden) {
+						writeError(w, http.StatusForbidden, err.Error())
+						return
+					}
+					log.Printf("updateProject: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"project": p})
+
+			case http.MethodDelete:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				if err := deleteProject(db, userID, publicID); err != nil {
+					if errors.Is(err, errForbidden) {
+						writeError(w, http.StatusForbidden, err.Error())
+						return
+					}
+					log.Printf("deleteProject: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+
+		if len(parts) == 2 && parts[1] == "members" && r.Method == http.MethodPost {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req addProjectMemberRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if err := addProjectMember(db, userID, publicID, req); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Проект или пользователь не найден")
+					return
+				}
+				if errors.Is(err, errForbidden) {
+					writeError(w, http.StatusForbidden, err.Error())
+					return
+				}
+				log.Printf("addProjectMember: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"added": true})
+			return
+		}
+
+		if len(parts) == 3 && parts[1] == "members" && r.Method == http.MethodDelete {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := removeProjectMember(db, userID, publicID, parts[2]); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Не найден")
+					return
+				}
+				if errors.Is(err, errForbidden) {
+					writeError(w, http.StatusForbidden, err.Error())
+					return
+				}
+				log.Printf("removeProjectMember: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"removed": true})
+			return
+		}
+
+		writeError(w, http.StatusNotFound, "Маршрут не найден")
+	})
+
 	mux.HandleFunc("/api/users/search", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -3389,6 +3624,45 @@ CREATE TABLE IF NOT EXISTS event_saves (
 
 CREATE INDEX IF NOT EXISTS event_saves_user_idx
     ON event_saves (user_id, created_at DESC);
+
+-- ── Проекты (Спринт 6.1) ──
+
+CREATE TABLE IF NOT EXISTS projects (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 5000),
+    category TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('planned', 'active', 'paused', 'done')),
+    deadline TIMESTAMPTZ,
+    budget BIGINT,
+    cover_color TEXT NOT NULL DEFAULT '#1E8A4C',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS projects_created_idx
+    ON projects(created_at DESC) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS projects_owner_idx
+    ON projects(owner_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS projects_status_idx
+    ON projects(status) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS projects_tags_gin_idx
+    ON projects USING GIN(tags) WHERE is_deleted = FALSE;
+
+CREATE TABLE IF NOT EXISTS project_members (
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (project_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS project_members_user_idx
+    ON project_members(user_id);
 
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -5523,6 +5797,404 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		items = items[:limit]
 	}
 	return items, nextCursor, nil
+}
+
+// generateProjectPublicID генерирует уникальный public_id для проекта формата "p_<base36>".
+func generateProjectPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "p_" + hex.EncodeToString(b)
+}
+
+// validateProjectStatus проверяет что статус — один из допустимых.
+func validateProjectStatus(s string) bool {
+	switch s {
+	case "planned", "active", "paused", "done":
+		return true
+	}
+	return false
+}
+
+// listProjects возвращает список проектов с фильтрами и сортировкой.
+func listProjects(db *sql.DB, viewerID int64, filters map[string]string) ([]project, error) {
+	where := []string{"p.is_deleted = FALSE"}
+	args := []any{viewerID}
+	argIdx := 2
+
+	if cat := strings.TrimSpace(filters["category"]); cat != "" {
+		where = append(where, fmt.Sprintf("p.category = $%d", argIdx))
+		args = append(args, cat)
+		argIdx++
+	}
+	if st := strings.TrimSpace(filters["status"]); st != "" && validateProjectStatus(st) {
+		where = append(where, fmt.Sprintf("p.status = $%d", argIdx))
+		args = append(args, st)
+		argIdx++
+	}
+	if filters["owner_only"] == "1" && viewerID > 0 {
+		where = append(where, fmt.Sprintf("p.owner_id = $%d", argIdx))
+		args = append(args, viewerID)
+		argIdx++
+	}
+	if q := strings.TrimSpace(filters["search"]); q != "" {
+		where = append(where, fmt.Sprintf("(p.title ILIKE $%d OR p.description ILIKE $%d)", argIdx, argIdx))
+		args = append(args, "%"+q+"%")
+		argIdx++
+	}
+
+	orderBy := "p.created_at DESC"
+	switch filters["sort"] {
+	case "deadline":
+		orderBy = "p.deadline ASC NULLS LAST, p.created_at DESC"
+	case "members":
+		orderBy = "members_count DESC, p.created_at DESC"
+	}
+
+	limit := 50
+	if l := filters["limit"]; l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n >= 1 && n <= 100 {
+			limit = n
+		}
+	}
+
+	query := fmt.Sprintf(`
+		SELECT p.id, p.public_id, p.owner_id, p.title, p.description, p.category, p.status,
+		       p.deadline, p.budget, p.cover_color, COALESCE(array_to_json(p.tags), '[]'::json),
+		       p.created_at, p.updated_at,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
+		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
+		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member
+		FROM projects p
+		LEFT JOIN users u ON u.id = p.owner_id
+		WHERE %s
+		ORDER BY %s
+		LIMIT %d`, strings.Join(where, " AND "), orderBy, limit)
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []project
+	for rows.Next() {
+		var p project
+		var tagsJSON []byte
+		var membersCount int
+		var isMember bool
+		if err := rows.Scan(&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
+			&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
+			&p.CreatedAt, &p.UpdatedAt,
+			&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
+			&membersCount, &isMember); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &p.Tags)
+		if p.Tags == nil {
+			p.Tags = []string{}
+		}
+		p.MembersCount = membersCount
+		p.IsMember = isMember
+		p.IsOwner = p.OwnerID == viewerID
+		items = append(items, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = []project{}
+	}
+	return items, nil
+}
+
+// getProject возвращает один проект по public_id, с проверкой is_deleted.
+func getProject(db *sql.DB, viewerID int64, publicID string) (project, error) {
+	var p project
+	var tagsJSON []byte
+	err := db.QueryRow(`
+		SELECT p.id, p.public_id, p.owner_id, p.title, p.description, p.category, p.status,
+		       p.deadline, p.budget, p.cover_color, COALESCE(array_to_json(p.tags), '[]'::json),
+		       p.created_at, p.updated_at,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
+		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
+		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member
+		FROM projects p
+		LEFT JOIN users u ON u.id = p.owner_id
+		WHERE p.public_id = $2 AND p.is_deleted = FALSE`, viewerID, publicID).Scan(
+		&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
+		&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
+		&p.CreatedAt, &p.UpdatedAt,
+		&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
+		&p.MembersCount, &p.IsMember,
+	)
+	if err != nil {
+		return p, err
+	}
+	_ = json.Unmarshal(tagsJSON, &p.Tags)
+	if p.Tags == nil {
+		p.Tags = []string{}
+	}
+	p.IsOwner = p.OwnerID == viewerID
+	return p, nil
+}
+
+// listProjectMembers возвращает участников проекта с инфо о юзере.
+func listProjectMembers(db *sql.DB, projectID int64) ([]projectMember, error) {
+	rows, err := db.Query(`
+		SELECT u.public_id, u.full_name, COALESCE(u.avatar_url, ''), pm.role, pm.joined_at
+		FROM project_members pm
+		JOIN users u ON u.id = pm.user_id
+		WHERE pm.project_id = $1
+		ORDER BY 
+			CASE pm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+			pm.joined_at ASC`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var members []projectMember
+	for rows.Next() {
+		var m projectMember
+		if err := rows.Scan(&m.UserPublicID, &m.UserName, &m.UserAvatar, &m.Role, &m.JoinedAt); err != nil {
+			return nil, err
+		}
+		m.UserColor = stableColorForName(m.UserName)
+		members = append(members, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if members == nil {
+		members = []projectMember{}
+	}
+	return members, nil
+}
+
+// createProject создаёт проект и автоматически добавляет owner'а в project_members.
+func createProject(db *sql.DB, ownerID int64, req createProjectRequest) (project, error) {
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) < 1 || utf8.RuneCountInString(title) > 200 {
+		return project{}, fmt.Errorf("%w: длина названия 1..200", errValidation)
+	}
+	description := strings.TrimSpace(req.Description)
+	if utf8.RuneCountInString(description) > 5000 {
+		return project{}, fmt.Errorf("%w: описание до 5000 символов", errValidation)
+	}
+	status := req.Status
+	if status == "" {
+		status = "active"
+	}
+	if !validateProjectStatus(status) {
+		return project{}, fmt.Errorf("%w: некорректный статус", errValidation)
+	}
+	coverColor := strings.TrimSpace(req.CoverColor)
+	if coverColor == "" {
+		coverColor = "#1E8A4C"
+	}
+	if !regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`).MatchString(coverColor) {
+		coverColor = "#1E8A4C"
+	}
+	tags := req.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	if len(tags) > 10 {
+		tags = tags[:10]
+	}
+
+	publicID := generateProjectPublicID()
+	var pid int64
+	err := db.QueryRow(`
+		INSERT INTO projects (public_id, owner_id, title, description, category, status, deadline, budget, cover_color, tags)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id`,
+		publicID, ownerID, title, description, strings.TrimSpace(req.Category), status,
+		req.Deadline, req.Budget, coverColor, tags,
+	).Scan(&pid)
+	if err != nil {
+		return project{}, err
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO project_members (project_id, user_id, role)
+		VALUES ($1, $2, 'owner')
+		ON CONFLICT DO NOTHING`, pid, ownerID)
+	if err != nil {
+		return project{}, err
+	}
+
+	return getProject(db, ownerID, publicID)
+}
+
+// updateProject — только owner или admin. Возвращает обновлённый проект.
+func updateProject(db *sql.DB, viewerID int64, publicID string, req updateProjectRequest) (project, error) {
+	var ownerID int64
+	var role sql.NullString
+	err := db.QueryRow(`
+		SELECT p.owner_id, pm.role
+		FROM projects p
+		LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+		WHERE p.public_id = $2 AND p.is_deleted = FALSE`, viewerID, publicID).Scan(&ownerID, &role)
+	if err != nil {
+		return project{}, err
+	}
+	if ownerID != viewerID && (!role.Valid || (role.String != "owner" && role.String != "admin")) {
+		return project{}, fmt.Errorf("%w: только владелец или администратор может редактировать", errForbidden)
+	}
+
+	sets := []string{}
+	args := []any{}
+	argIdx := 1
+
+	if req.Title != nil {
+		title := strings.TrimSpace(*req.Title)
+		if utf8.RuneCountInString(title) < 1 || utf8.RuneCountInString(title) > 200 {
+			return project{}, fmt.Errorf("%w: длина названия 1..200", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, title)
+		argIdx++
+	}
+	if req.Description != nil {
+		desc := strings.TrimSpace(*req.Description)
+		if utf8.RuneCountInString(desc) > 5000 {
+			return project{}, fmt.Errorf("%w: описание до 5000", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("description = $%d", argIdx))
+		args = append(args, desc)
+		argIdx++
+	}
+	if req.Category != nil {
+		sets = append(sets, fmt.Sprintf("category = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.Category))
+		argIdx++
+	}
+	if req.Status != nil {
+		if !validateProjectStatus(*req.Status) {
+			return project{}, fmt.Errorf("%w: некорректный статус", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, *req.Status)
+		argIdx++
+	}
+	if req.Deadline != nil {
+		sets = append(sets, fmt.Sprintf("deadline = $%d", argIdx))
+		args = append(args, *req.Deadline)
+		argIdx++
+	}
+	if req.Budget != nil {
+		sets = append(sets, fmt.Sprintf("budget = $%d", argIdx))
+		args = append(args, *req.Budget)
+		argIdx++
+	}
+	if req.CoverColor != nil {
+		cc := strings.TrimSpace(*req.CoverColor)
+		if !regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`).MatchString(cc) {
+			cc = "#1E8A4C"
+		}
+		sets = append(sets, fmt.Sprintf("cover_color = $%d", argIdx))
+		args = append(args, cc)
+		argIdx++
+	}
+	if req.Tags != nil {
+		tags := *req.Tags
+		if len(tags) > 10 {
+			tags = tags[:10]
+		}
+		sets = append(sets, fmt.Sprintf("tags = $%d", argIdx))
+		args = append(args, tags)
+		argIdx++
+	}
+
+	if len(sets) == 0 {
+		return getProject(db, viewerID, publicID)
+	}
+
+	sets = append(sets, "updated_at = NOW()")
+	query := fmt.Sprintf("UPDATE projects SET %s WHERE public_id = $%d", strings.Join(sets, ", "), argIdx)
+	args = append(args, publicID)
+
+	if _, err := db.Exec(query, args...); err != nil {
+		return project{}, err
+	}
+
+	return getProject(db, viewerID, publicID)
+}
+
+// deleteProject — soft-delete. Только owner.
+func deleteProject(db *sql.DB, viewerID int64, publicID string) error {
+	res, err := db.Exec(`
+		UPDATE projects SET is_deleted = TRUE, updated_at = NOW()
+		WHERE public_id = $1 AND owner_id = $2 AND is_deleted = FALSE`, publicID, viewerID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("%w: проект не найден или нет прав", errForbidden)
+	}
+	return nil
+}
+
+// addProjectMember добавляет участника. Только owner/admin.
+func addProjectMember(db *sql.DB, viewerID int64, publicID string, req addProjectMemberRequest) error {
+	var pid int64
+	var ownerID int64
+	var role sql.NullString
+	err := db.QueryRow(`
+		SELECT p.id, p.owner_id, pm.role
+		FROM projects p
+		LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+		WHERE p.public_id = $2 AND p.is_deleted = FALSE`, viewerID, publicID).Scan(&pid, &ownerID, &role)
+	if err != nil {
+		return err
+	}
+	if ownerID != viewerID && (!role.Valid || (role.String != "owner" && role.String != "admin")) {
+		return fmt.Errorf("%w: только владелец или администратор может добавлять участников", errForbidden)
+	}
+
+	var newUserID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1 AND is_deleted = FALSE`, req.UserPublicID).Scan(&newUserID); err != nil {
+		return err
+	}
+
+	newRole := strings.ToLower(strings.TrimSpace(req.Role))
+	if newRole != "admin" && newRole != "member" {
+		newRole = "member"
+	}
+
+	_, err = db.Exec(`
+		INSERT INTO project_members (project_id, user_id, role)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (project_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+		pid, newUserID, newRole)
+	return err
+}
+
+// removeProjectMember удаляет участника. Owner/admin может убрать любого, остальные — только себя.
+func removeProjectMember(db *sql.DB, viewerID int64, publicID, targetUserPublicID string) error {
+	var pid, ownerID, targetID int64
+	var role sql.NullString
+	err := db.QueryRow(`
+		SELECT p.id, p.owner_id, pm.role
+		FROM projects p
+		LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+		WHERE p.public_id = $2 AND p.is_deleted = FALSE`, viewerID, publicID).Scan(&pid, &ownerID, &role)
+	if err != nil {
+		return err
+	}
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, targetUserPublicID).Scan(&targetID); err != nil {
+		return err
+	}
+	if targetID == ownerID {
+		return fmt.Errorf("%w: владелец не может покинуть свой проект", errForbidden)
+	}
+	isPriv := ownerID == viewerID || (role.Valid && role.String == "admin")
+	if !isPriv && targetID != viewerID {
+		return fmt.Errorf("%w: можно удалить только себя", errForbidden)
+	}
+	_, err = db.Exec(`DELETE FROM project_members WHERE project_id = $1 AND user_id = $2`, pid, targetID)
+	return err
 }
 
 // listTopPosts возвращает посты, отсортированные по weighted score
