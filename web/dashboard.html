@@ -934,6 +934,28 @@ function toggleFollow(btn){
   applyFilters();
   renderTopList();
 })();
+
+// Если в URL есть ?compose=1 — открываем форму создания поста сразу при загрузке.
+// Это сценарий когда юзер кликнул "Опубликовать" на главной и был перенаправлен сюда.
+(function autoOpenComposer(){
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get('compose') === '1') {
+      // Ждём пока DOM полностью отрендерится и токен/юзер загрузятся.
+      // 200мс достаточно чтобы все async-init функции отработали.
+      setTimeout(() => {
+        if (typeof openCompose === 'function') {
+          openCompose();
+        }
+        // Чистим query-string чтобы при перезагрузке/back-кнопке не открывалось снова.
+        const url = new URL(location.href);
+        url.searchParams.delete('compose');
+        history.replaceState({}, '', url.toString());
+      }, 200);
+    }
+  } catch (_) {}
+})();
+
 </script>
 </body>
 </html>

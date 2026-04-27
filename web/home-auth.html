@@ -334,6 +334,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .t-news{background:#E6F1FB;color:#185FA5}
 .t-co{background:#FAEEDA;color:#633806}
 .t-forum{background:#F1EFE8;color:#5F5E5A}
+.pc-title{font-size:15px;font-weight:800;color:var(--t);line-height:1.35;margin-bottom:6px;letter-spacing:-.005em;word-break:break-word;overflow-wrap:anywhere}
 .pc-text{font-size:12px;color:var(--tm);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pc-foot{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--bdr)}
 .pc-act{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--gmt);cursor:pointer;transition:color .12s}
@@ -550,8 +551,8 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   <!-- Строка публикации -->
   <div class="compose-bar">
     <div class="cb-av" id="composeAv">?</div>
-    <span class="cb-ph" onclick="location.href='/dashboard.html'">Поделитесь новостью или проектом…</span>
-    <button class="cb-btn" onclick="location.href='/dashboard.html'">Опубликовать</button>
+    <span class="cb-ph" onclick="location.href='/dashboard.html?compose=1'">Поделитесь новостью или проектом…</span>
+    <button class="cb-btn" onclick="location.href='/dashboard.html?compose=1'">Опубликовать</button>
   </div>
 
   <!-- Виджеты в ряд -->
@@ -1189,6 +1190,7 @@ function renderFeedFiltered(type){
         <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role||p.author_role||'')}${(p.role||p.author_role)?' · ':''}${esc(time)}</div>${communityBadge}</div>
         <span class="pc-tag ${tag}">${lbl}</span>
       </div>
+      ${p.title ? `<div class="pc-title">${esc(p.title)}</div>` : ''}
       <div class="pc-text">${fmtMentions(p.text||p.content||p.body||'')}</div>
       <div class="pc-foot">
         <div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||p.likes||0}</div>
