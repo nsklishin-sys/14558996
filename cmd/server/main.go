@@ -2590,6 +2590,41 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
 	})
 
+	mux.HandleFunc("/api/posts/top", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		period := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("period")))
+		if period != "day" && period != "week" {
+			period = "week"
+		}
+
+		limit := 5
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n >= 1 && n <= 10 {
+				limit = n
+			}
+		}
+
+		authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
+		items, err := listTopPosts(db, authUserID, hasAuth, period, limit)
+		if err != nil {
+			log.Printf("listTopPosts failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось получить топ постов")
+			return
+		}
+		if items == nil {
+			items = []post{}
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"posts":  items,
+			"period": period,
+		})
+	})
+
 	mux.HandleFunc("/api/users/search", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -5345,6 +5380,78 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		items = items[:limit]
 	}
 	return items, nextCursor, nil
+}
+
+// listTopPosts возвращает посты, отсортированные по weighted score
+// за указанный период. Используется для hero-блока ("Главная новость дня",
+// period=day) и блока "Топ недели" (period=week) на /dashboard.html.
+//
+// score = likes_count*3 + comments_count*2 + saves_count*5 + views_count*0.1
+//
+// period: "day" (24 часа) или "week" (7 дней). По умолчанию week.
+// limit: 1..10. По умолчанию 5.
+func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, limit int) ([]post, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	if limit > 10 {
+		limit = 10
+	}
+	interval := "7 days"
+	if period == "day" {
+		interval = "24 hours"
+	}
+
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: authUserID, Valid: true}
+	}
+
+	query := fmt.Sprintf(`
+		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
+		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
+		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
+		       COALESCE(pl.user_id IS NOT NULL, FALSE),
+		       COALESCE(ps.user_id IS NOT NULL, FALSE),
+		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
+		       COALESCE(c.name, ''), COALESCE(c.id, 0)
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
+		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
+		LEFT JOIN communities c ON c.id = p.community_id
+		WHERE p.is_deleted = FALSE
+		  AND p.privacy_level = 'public'
+		  AND p.type = 'news'
+		  AND p.created_at > NOW() - INTERVAL '%s'
+		ORDER BY (p.likes_count * 3 + p.comments_count * 2 + p.saves_count * 5 + p.views_count * 0.1) DESC,
+		         p.created_at DESC
+		LIMIT $2`, interval)
+
+	rows, err := db.Query(query, currentUser, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []post
+	for rows.Next() {
+		var item post
+		var tagsJSON []byte
+		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
+			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &item.Tags)
+		item.Text = item.Content
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bool, limit int, beforeID int64) ([]post, *int64, error) {
