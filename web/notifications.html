@@ -119,11 +119,44 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ntab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
 .ntab.active{background:var(--g);color:#fff;border-color:var(--g)}
 
-/* Список уведомлений */
-.n-list{
+/* ═══ ГРУППЫ ═══ */
+.n-groups{display:flex;flex-direction:column;gap:14px;flex-shrink:0}
+
+.n-group{
   background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
-  box-shadow:var(--sh);overflow:hidden;flex-shrink:0
+  box-shadow:var(--sh);overflow:hidden
 }
+.n-group-head{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--bdr);
+  background:var(--gp)
+}
+.n-group-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:grid;place-items:center;flex-shrink:0;
+  background:var(--w);border:1px solid var(--gb)
+}
+.n-group-icon svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.n-group-title{
+  font-size:14px;font-weight:800;color:var(--t);
+  letter-spacing:-.005em;flex:1;min-width:0
+}
+.n-group-counts{
+  display:flex;align-items:center;gap:8px;flex-shrink:0
+}
+.n-group-count{
+  font-size:11px;font-weight:600;
+  color:var(--gmt)
+}
+.n-group-unread{
+  font-size:10px;font-weight:800;
+  color:#fff;background:var(--g);
+  padding:3px 9px;border-radius:99px;
+  letter-spacing:.02em
+}
+
+/* ═══ Карточка уведомления ═══ */
 .n-item{
   display:flex;gap:12px;
   padding:14px 18px 14px 24px;
@@ -179,7 +212,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   color:var(--gmt);
   font-weight:500
 }
+
+/* ═══ Empty / Loader ═══ */
 .n-empty{
+  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
+  box-shadow:var(--sh);
   padding:60px 24px;
   text-align:center
 }
@@ -200,9 +237,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   max-width:340px;
   margin:0 auto
 }
-.load-more-wrap{
-  padding:14px;text-align:center;flex-shrink:0
-}
+
+/* ═══ Загрузить ещё ═══ */
+.load-more-wrap{padding:14px;text-align:center;flex-shrink:0}
 .load-more{
   padding:8px 18px;border-radius:var(--rm);
   background:transparent;border:1.5px solid var(--bdr);
@@ -213,7 +250,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .load-more:hover{border-color:var(--gb);background:var(--gl);color:var(--g)}
 .load-more:disabled{opacity:.5;cursor:default}
 
-/* Toast */
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
   background:var(--t);color:#fff;
@@ -304,8 +340,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <button class="ntab" data-filter="unread" onclick="setFilter('unread', this)">Непрочитанные</button>
   </div>
 
-  <!-- Список -->
-  <div class="n-list" id="nList">
+  <!-- Группы -->
+  <div class="n-groups" id="nGroups">
     <div class="n-empty"><span class="nei">⏳</span><div class="net">Загрузка…</div></div>
   </div>
 
@@ -316,9 +352,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 </div><!-- /.main -->
 
-<!-- Правый сайдбар: пустой, реклама инжектится через global-settings.js -->
 <aside class="right">
-  <!-- Реклама инжектится автоматически -->
+  <!-- Реклама инжектится через global-settings.js -->
 </aside>
 
 </div><!-- /.shell -->
@@ -331,6 +366,48 @@ function tk(){ try { return localStorage.getItem('token') || ''; } catch { retur
 function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
 function showToast(msg){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(()=>{t.classList.remove('show')},2500);}
 
+// ═════ КОНФИГ ГРУПП ═════
+// Порядок: Чат → Новости → Форум → Проекты → Система.
+const GROUP_DEFS = [
+  {
+    key: 'chat',
+    title: 'Чат',
+    sourceTypes: ['chat'],
+    icon: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+  },
+  {
+    key: 'news',
+    title: 'Новости',
+    sourceTypes: ['post', 'comment'],
+    icon: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>'
+  },
+  {
+    key: 'forum',
+    title: 'Форум',
+    sourceTypes: ['forum_topic', 'forum_post'],
+    icon: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>'
+  },
+  {
+    key: 'projects',
+    title: 'Проекты',
+    sourceTypes: ['project', 'need'],
+    icon: '<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+  },
+  {
+    key: 'system',
+    title: 'Система',
+    sourceTypes: ['system'],
+    icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+  }
+];
+
+// Маппинг source_type → ключ группы
+const SOURCE_TYPE_TO_GROUP = (() => {
+  const map = {};
+  GROUP_DEFS.forEach(g => g.sourceTypes.forEach(st => { map[st] = g.key; }));
+  return map;
+})();
+
 let currentFilter='all';
 let lastLoadedID=0;
 let allLoadedItems=[];
@@ -338,7 +415,7 @@ let isLoading=false;
 
 if(!tk()){ location.href='/login.html'; }
 
-// Profile dropdown stub
+// Profile dropdown
 function toggleProfileDD(e){
   if(e)e.stopPropagation();
   const dd=document.getElementById('profileDD');
@@ -359,7 +436,6 @@ function logout(){
   location.href='/login.html';
 }
 
-// Загрузить инфу о юзере для топбара
 async function loadMe(){
   try{
     const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
@@ -390,11 +466,11 @@ function resetAndLoad(){
 }
 
 async function loadFirstPage(){
-  const list=document.getElementById('nList');
-  list.innerHTML='<div class="n-empty"><span class="nei">⏳</span><div class="net">Загрузка…</div></div>';
+  const wrap=document.getElementById('nGroups');
+  wrap.innerHTML='<div class="n-empty"><span class="nei">⏳</span><div class="net">Загрузка…</div></div>';
   const items=await fetchNotifications();
   allLoadedItems=items;
-  renderList();
+  renderGroups();
   updateHeadSub();
 }
 
@@ -405,14 +481,16 @@ async function loadMoreNotifs(){
   if(btn){btn.disabled=true;btn.textContent='Загрузка…';}
   const items=await fetchNotifications();
   allLoadedItems=allLoadedItems.concat(items);
-  renderList();
+  renderGroups();
+  updateHeadSub();
   if(btn){btn.disabled=false;btn.textContent='Загрузить ещё';}
   isLoading=false;
 }
 
 async function fetchNotifications(){
   const params=new URLSearchParams();
-  params.set('limit','20');
+  // Грузим по 50 за раз — больше потому что распределяются по группам
+  params.set('limit','50');
   if(lastLoadedID>0)params.set('before_id',lastLoadedID);
   if(currentFilter==='unread')params.set('unread','1');
   try{
@@ -441,28 +519,55 @@ function pluralRu(n,forms){
   return forms[2];
 }
 
-function renderList(){
-  const list=document.getElementById('nList');
+// Группировка по source_type
+function groupItems(items){
+  const buckets = {};
+  GROUP_DEFS.forEach(g => { buckets[g.key] = []; });
+  items.forEach(n => {
+    // Неизвестные source_type — в "система" как fallback
+    const groupKey = SOURCE_TYPE_TO_GROUP[n.source_type] || 'system';
+    if (!buckets[groupKey]) buckets[groupKey] = [];
+    buckets[groupKey].push(n);
+  });
+  // Внутри группы по дате DESC
+  Object.keys(buckets).forEach(k => {
+    buckets[k].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  });
+  return buckets;
+}
+
+function renderGroups(){
+  const wrap=document.getElementById('nGroups');
   const moreWrap=document.getElementById('loadMoreWrap');
+
   if(!allLoadedItems.length){
-    list.innerHTML=currentFilter==='unread'
+    wrap.innerHTML=currentFilter==='unread'
       ? '<div class="n-empty"><span class="nei">✓</span><div class="net">Все прочитано</div><div class="nes">Нет непрочитанных уведомлений.</div></div>'
       : '<div class="n-empty"><span class="nei">📭</span><div class="net">Уведомлений пока нет</div><div class="nes">Здесь будут появляться отклики, лайки, комментарии и приглашения в проекты.</div></div>';
     moreWrap.style.display='none';
     return;
   }
-  list.innerHTML=allLoadedItems.map(itemHTML).join('');
-  moreWrap.style.display=allLoadedItems.length>=20?'':'none';
 
-  list.querySelectorAll('.n-item').forEach(el=>{
+  const buckets = groupItems(allLoadedItems);
+
+  // Только непустые группы в порядке GROUP_DEFS
+  const html = GROUP_DEFS
+    .filter(g => buckets[g.key] && buckets[g.key].length > 0)
+    .map(g => groupHTML(g, buckets[g.key]))
+    .join('');
+
+  wrap.innerHTML = html;
+  moreWrap.style.display = allLoadedItems.length >= 50 ? '' : 'none';
+
+  // Делегируем клик
+  wrap.querySelectorAll('.n-item').forEach(el=>{
     el.addEventListener('click',async()=>{
       const id=el.getAttribute('data-id');
       const href=el.getAttribute('data-href');
       if(el.classList.contains('unread')&&id){
         el.classList.remove('unread');
-        // Обновляем модель локально чтобы счётчик в шапке был корректен
         const item=allLoadedItems.find(n=>String(n.id)===String(id));
-        if(item){item.is_read=true;updateHeadSub();}
+        if(item){item.is_read=true;updateHeadSub();updateGroupCounts();}
         try{
           await fetch(API+'/notifications/'+id+'/read',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
         }catch{}
@@ -470,6 +575,46 @@ function renderList(){
       if(href&&href!=='#')location.href=href;
     });
   });
+}
+
+// Обновить счётчики в заголовках групп без полного перерендера
+function updateGroupCounts(){
+  const buckets = groupItems(allLoadedItems);
+  document.querySelectorAll('.n-group').forEach(groupEl => {
+    const key = groupEl.getAttribute('data-group-key');
+    if (!key) return;
+    const items = buckets[key] || [];
+    const unread = items.filter(n => !n.is_read).length;
+    const counts = groupEl.querySelector('.n-group-counts');
+    if (!counts) return;
+    let badge = counts.querySelector('.n-group-unread');
+    if (unread > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'n-group-unread';
+        counts.appendChild(badge);
+      }
+      badge.textContent = unread + ' ' + pluralRu(unread, ['новое','новых','новых']);
+    } else if (badge) {
+      badge.remove();
+    }
+  });
+}
+
+function groupHTML(groupDef, items){
+  const total = items.length;
+  const unread = items.filter(n => !n.is_read).length;
+  return `<div class="n-group" data-group-key="${escHtml(groupDef.key)}">
+    <div class="n-group-head">
+      <div class="n-group-icon">${groupDef.icon}</div>
+      <div class="n-group-title">${escHtml(groupDef.title)}</div>
+      <div class="n-group-counts">
+        <span class="n-group-count">${total} ${pluralRu(total, ['уведомление','уведомления','уведомлений'])}</span>
+        ${unread > 0 ? `<span class="n-group-unread">${unread} ${pluralRu(unread, ['новое','новых','новых'])}</span>` : ''}
+      </div>
+    </div>
+    ${items.map(itemHTML).join('')}
+  </div>`;
 }
 
 function itemHTML(n){
@@ -502,6 +647,7 @@ function buildHref(n){
     case 'need':
       return n.source_public_id?'/project-detail.html?id='+encodeURIComponent(n.source_public_id):'/projects.html';
     case 'forum_topic':
+    case 'forum_post':
       return n.source_public_id?'/forum.html?topic='+encodeURIComponent(n.source_public_id):'/forum.html';
     case 'chat': return '/chat.html';
     default: return '#';
@@ -534,6 +680,7 @@ async function pageMarkAll(){
     allLoadedItems.forEach(n=>{n.is_read=true;});
     updateHeadSub();
     if(currentFilter==='unread')resetAndLoad();
+    else updateGroupCounts();
   }catch{
     showToast('Ошибка');
   }finally{
