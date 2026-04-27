@@ -1139,13 +1139,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="nd-pane" id="nd-group"><input class="nd-input" id="ndGroupTitle" placeholder="Название группы"><input class="nd-search" id="ndGroupSearch" placeholder="Добавить участников…" oninput="ndSearchForGroup(this.value)"><div class="nd-list" id="ndGroupList"></div><div class="nd-selected" id="ndGroupSelected"></div><button class="nd-submit" onclick="ndCreateGroup()">Создать группу</button></div>
   </div>
 </div>
-<input type="file" id="chatHiddenFile" style="display:none">
+<input id="chatHiddenFile" type="file" hidden accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt">
 <div class="emoji-picker" id="emojiPicker"></div>
 <div class="toast" id="toast"></div>
 
 <script>
 const API='/api';const tk=()=>localStorage.getItem('token');
-const state={conversations:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[]};
+const state={conversations:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[],uploading:false};
 const renderCache={conversationsSig:'',messagesSig:'',typingSig:''};
 function makeSig(obj){try{return JSON.stringify(obj)}catch{return''}}
 const CHAT_CACHE_NS='chat-cache-v1';
@@ -1248,16 +1248,100 @@ function renderMessages(){
     }
     const mine=m.author_public_id===state.currentUser.public_id;
     const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-    el.insertAdjacentHTML('beforeend',`<div class='msg ${mine?'me':'them'}'><div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div><div class='msg-group'><div class='msg-bubble'>${m.reply_to?`<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>`:''}${esc(m.content||'Удалено')}${m.is_deleted?' <i>(удалено)</i>':''}<span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span></div><div class='msg-meta'><span>${msgTime}</span>${m.is_edited?'<span>(изм.)</span>':''}</div></div></div>`);
+    const attachHTML = renderAttachment(m);
+    const contentHTML = m.content ? esc(m.content) : '';
+    const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
+    const replyHTML = m.reply_to ? `<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>` : '';
+
+    el.insertAdjacentHTML('beforeend', `
+      <div class='msg ${mine?'me':'them'}'>
+        <div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div>
+        <div class='msg-group'>
+          <div class='msg-bubble'>
+            ${replyHTML}
+            ${contentHTML}${deletedNote}
+            ${attachHTML}
+            <span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span>
+          </div>
+          <div class='msg-meta'>
+            <span>${msgTime}</span>
+            ${m.is_edited ? '<span>(изм.)</span>' : ''}
+          </div>
+        </div>
+      </div>`);
   });
   if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);
   if(el){if(wasAtBottom)el.scrollTop=el.scrollHeight;else el.scrollTop=prevScroll}
+}
+function renderAttachment(m){
+  if (!m.attachment_url) return '';
+  const url = m.attachment_url;
+  const name = m.attachment_name || 'файл';
+  const type = m.attachment_type || '';
+  const size = m.attachment_size || 0;
+  const isImage = type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
+
+  if (isImage) {
+    return `<div class='msg-image' onclick="window.open('${esc(url)}', '_blank')">
+      <img src='${esc(url)}' alt='${esc(name)}' loading='lazy'>
+    </div>`;
+  }
+
+  // Иначе — карточка файла
+  const sizeStr = size < 1024 ? size + ' Б' :
+                  size < 1024*1024 ? (size/1024).toFixed(1) + ' КБ' :
+                  (size/1024/1024).toFixed(1) + ' МБ';
+  // Иконка по типу
+  const isPdf = /\.pdf$/i.test(url);
+  const isDoc = /\.(docx?|odt|rtf)$/i.test(url);
+  const isXls = /\.(xlsx?|csv|ods)$/i.test(url);
+  const iconType = isPdf ? '📄' : isDoc ? '📝' : isXls ? '📊' : '📎';
+
+  return `<div class='msg-files' style='margin-top:6px'>
+    <a href='${esc(url)}' target='_blank' rel='noopener' download='${esc(name)}' class='msg-file' style='text-decoration:none;color:inherit'>
+      <div class='mf-icon' style='font-size:20px'>${iconType}</div>
+      <div class='mf-body'>
+        <div class='mf-name'>${esc(name)}</div>
+        <div class='mf-size'>${sizeStr}</div>
+      </div>
+    </a>
+  </div>`;
 }
 function openReply(id){const m=state.messages.find(x=>x.id===id);if(!m)return;state.replyTo={id:m.id,author_name:m.author_name,content_preview:(m.content||'').slice(0,60)};replyBar.classList.add('active');document.getElementById('replyName').textContent=m.author_name;document.getElementById('replyText').textContent=(m.content||'').slice(0,100)}
 function closeReply(){state.replyTo=null;replyBar.classList.remove('active')}
 function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px'}
 function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitMessage()}}
-async function submitMessage(){const txt=msgInput.value.trim();if(!txt||!state.activeConvPublicID)return;try{if(state.editing){await api(`/chat/messages/${state.editing.id}`,{method:'PATCH',body:{content:txt}});state.editing=null}else{await api(`/chat/conversations/${state.activeConvPublicID}/messages`,{method:'POST',body:{content:txt,reply_to_id:state.replyTo?.id||null}})}msgInput.value='';autoGrow(msgInput);closeReply();await loadMessages();await loadConversations()}catch{showToast('Не удалось отправить сообщение')}}
+async function submitMessage(){
+  const txt = msgInput.value.trim();
+  if ((!txt && !pendingAttachment) || !state.activeConvPublicID) return;
+  try {
+    if (state.editing) {
+      await api(`/chat/messages/${state.editing.id}`, {method: 'PATCH', body: {content: txt}});
+      state.editing = null;
+    } else {
+      const body = {
+        content: txt,
+        reply_to_id: state.replyTo?.id || null
+      };
+      if (pendingAttachment) {
+        body.attachment_url = pendingAttachment.url;
+        body.attachment_name = pendingAttachment.name;
+        body.attachment_type = pendingAttachment.type;
+        body.attachment_size = pendingAttachment.size;
+      }
+      await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method: 'POST', body});
+    }
+    msgInput.value = '';
+    autoGrow(msgInput);
+    closeReply();
+    pendingAttachment = null;
+    hidePreview();
+    await loadMessages();
+    await loadConversations();
+  } catch {
+    showToast('Не удалось отправить сообщение');
+  }
+}
 async function sendMessage(){return submitMessage()}
 async function markRead(){if(!state.messages.length)return;await api(`/chat/conversations/${state.activeConvPublicID}/read`,{method:'POST',body:{message_id:state.messages[state.messages.length-1].id}}).catch(()=>{})}
 async function changeFilter(tab,btn){state.activeFilter=tab;renderCache.conversationsSig='';document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
@@ -1270,7 +1354,113 @@ function switchInfoTab(tab,btn){document.querySelectorAll('.ip-tab').forEach(x=>
 function renderInfoPanel(){const c=state.activeConversation;if(!c)return;ipAv.style.background=c.display_color;ipAv.innerHTML=letter(c.display_name)+(c.is_online?'<div class="ip-online"></div>':'');ipName.textContent=c.display_name;ipRole.textContent=c.display_role||c.type;ipOpenProfileBtn.style.display=c.other_public_id?'inline-flex':'none';document.getElementById('ipAddFriendBtn').style.display=c.other_public_id?'inline-flex':'none';}
 function openPeerProfile(){const id=state.activeConversation?.other_public_id;if(id)location.href='/profile_user.html?id='+encodeURIComponent(id)}
 async function sendFriendRequest(){const id=state.activeConversation?.other_public_id;if(!id)return;await api(`/friends/request/${id}`,{method:'POST'});ipAddFriendBtn.textContent='Заявка отправлена';ipAddFriendBtn.disabled=true}
-function triggerAttach(){chatHiddenFile.click()} chatHiddenFile?.addEventListener('change',()=>showToast('Загрузка файлов будет в следующей версии. Вставьте ссылку на файл в сообщение.'))
+// ── Вложения ─────────────────────────────────────────────────────
+let pendingAttachment = null; // {url, name, size, type} — файл готов к отправке
+
+function triggerAttach(){
+  if (state.uploading) return;
+  chatHiddenFile.click();
+}
+
+chatHiddenFile?.addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  // Сбрасываем input чтобы можно было выбрать тот же файл повторно
+  e.target.value = '';
+
+  // Проверка размера 25 МБ
+  if (file.size > 25 * 1024 * 1024) {
+    showToast('Файл слишком большой (макс. 25 МБ)');
+    return;
+  }
+
+  state.uploading = true;
+  showUploadingPreview(file);
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') },
+      body: fd
+    });
+    if (!r.ok) {
+      const errData = await r.json().catch(() => ({}));
+      throw new Error(errData.error || 'Загрузка не удалась');
+    }
+    const data = await r.json();
+    pendingAttachment = {
+      url: data.url,
+      name: data.name,
+      size: data.size,
+      type: data.type
+    };
+    showReadyPreview();
+  } catch (err) {
+    showToast(err.message || 'Не удалось загрузить файл');
+    pendingAttachment = null;
+    hidePreview();
+  } finally {
+    state.uploading = false;
+  }
+});
+
+function showUploadingPreview(file){
+  let bar = document.getElementById('attachPreview');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'attachPreview';
+    bar.style.cssText = 'padding:8px 14px;background:var(--gp);border-top:1px solid var(--bdr);display:flex;align-items:center;gap:10px;flex-shrink:0;font-size:12px';
+    const wrap = document.querySelector('.chat-input-wrap');
+    if (wrap && wrap.parentNode) wrap.parentNode.insertBefore(bar, wrap);
+  }
+  const sizeStr = formatFileSize(file.size);
+  bar.innerHTML = `
+    <div style="width:32px;height:32px;border-radius:8px;background:var(--w);display:grid;place-items:center;flex-shrink:0">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:var(--gmt);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M12 2v6m0 0l3-3m-3 3l-3-3"/><path d="M3 12v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(file.name)}</div>
+      <div style="font-size:11px;color:var(--gmt)">Загрузка… ${sizeStr}</div>
+    </div>`;
+  bar.style.display = 'flex';
+}
+
+function showReadyPreview(){
+  const bar = document.getElementById('attachPreview');
+  if (!bar || !pendingAttachment) return;
+  const isImage = (pendingAttachment.type || '').startsWith('image/');
+  const sizeStr = formatFileSize(pendingAttachment.size);
+  const iconHTML = isImage
+    ? `<img src="${esc(pendingAttachment.url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover">`
+    : `<div style="width:32px;height:32px;border-radius:8px;background:var(--w);display:grid;place-items:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>`;
+  bar.innerHTML = `
+    ${iconHTML}
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(pendingAttachment.name)}</div>
+      <div style="font-size:11px;color:var(--g)">✓ Готово · ${sizeStr}</div>
+    </div>
+    <button type="button" onclick="cancelAttachment()" style="background:none;border:none;color:var(--gmt);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px">×</button>`;
+}
+
+function cancelAttachment(){
+  pendingAttachment = null;
+  hidePreview();
+}
+
+function hidePreview(){
+  const bar = document.getElementById('attachPreview');
+  if (bar) bar.remove();
+}
+
+function formatFileSize(bytes){
+  if (bytes < 1024) return bytes + ' Б';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' КБ';
+  return (bytes/1024/1024).toFixed(1) + ' МБ';
+}
 const emojis=['😀','😁','😂','🤣','😊','😍','😘','😎','🤝','👍','👏','🙏','🔥','✅','📦','🚚','📍','📄','💼','📊','📞','💬','🧠','⚙️','🎯','⏰','🌍','🧾','📌','💡','❤️','😅','😢','😡','😴','🤔','🙌','🎉','🚀','👀'];
 function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button onclick="insertEmoji('${e}')">${e}</button>`).join('');
 function insertEmoji(e){const i=msgInput;const s=i.selectionStart||i.value.length;const v=i.value;i.value=v.slice(0,s)+e+v.slice(s);i.focus();i.selectionStart=i.selectionEnd=s+e.length;autoGrow(i)}
