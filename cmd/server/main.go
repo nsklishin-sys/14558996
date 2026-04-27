@@ -3140,6 +3140,28 @@ CREATE INDEX IF NOT EXISTS posts_community_created_idx
 CREATE INDEX IF NOT EXISTS idx_posts_reposted_from
     ON posts(reposted_from_id) WHERE reposted_from_id IS NOT NULL;
 
+-- ── Индексы для /api/stats и /api/posts/top (Спринт 3.5.1) ──
+
+-- GIN-индекс на массив tags. Ускоряет:
+--  • UNNEST(tags) GROUP BY tag в trend_today (/api/stats)
+--  • будущие фильтры ленты по тегу (?tag=...)
+--  • поиск постов по тегу через  tags @> ARRAY[...]
+CREATE INDEX IF NOT EXISTS posts_tags_gin_idx
+    ON posts USING GIN (tags) WHERE is_deleted = FALSE;
+
+-- Expression-индекс на weighted score для /api/posts/top.
+-- Формула: likes_count*3 + comments_count*2 + saves_count*5 + views_count*0.1
+-- PostgreSQL может использовать его для ORDER BY по этому выражению
+-- БЕЗ пересчёта на каждой строке.
+CREATE INDEX IF NOT EXISTS posts_weighted_score_idx
+    ON posts ((likes_count * 3 + comments_count * 2 + saves_count * 5 + views_count * 0.1) DESC, created_at DESC)
+    WHERE is_deleted = FALSE AND privacy_level = 'public';
+
+-- Composite индекс для пагинации ленты с курсором.
+-- ORDER BY created_at DESC, id DESC + WHERE id < $beforeID попадает прямо в этот индекс.
+CREATE INDEX IF NOT EXISTS posts_feed_pagination_idx
+    ON posts (created_at DESC, id DESC) WHERE is_deleted = FALSE AND privacy_level = 'public';
+
 CREATE TABLE IF NOT EXISTS post_likes (
     post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
