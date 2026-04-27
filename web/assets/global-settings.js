@@ -254,4 +254,295 @@
     injectAdBlock();
   }
 
+
+  // ═══════════════════════════════════════════════════════════════
+  // Колокольчик уведомлений — инжектится в .topbar на всех страницах
+  // ═══════════════════════════════════════════════════════════════
+
+  let _notifPollTimer = null;
+  let _notifBellEl = null;
+  let _notifDDEl = null;
+  let _notifBadgeEl = null;
+  let _notifIsOpen = false;
+  let _notifLastUnread = 0;
+
+  function injectNotifBell() {
+    // Инжектим только если юзер залогинен (есть токен)
+    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    if (!token) return;
+
+    const topbar = document.querySelector('.topbar');
+    if (!topbar) return; // нет шапки на странице (например login.html)
+    if (topbar.querySelector('.notif-bell')) return; // уже есть, не дублируем
+
+    // Вставляем колокольчик ДО блока .profile-dd-wrap (или просто в конец topbar если такого блока нет)
+    const profileWrap = topbar.querySelector('.profile-dd-wrap');
+
+    const wrap = document.createElement('div');
+    wrap.className = 'notif-bell-wrap';
+    wrap.innerHTML =
+      '<button class="notif-bell" id="notifBell" type="button" aria-label="Уведомления">' +
+        '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+        '<span class="notif-bell-badge" id="notifBellBadge">0</span>' +
+      '</button>' +
+      '<div class="notif-dd" id="notifDD" role="menu">' +
+        '<div class="notif-dd-head">' +
+          '<span class="notif-dd-title">Уведомления</span>' +
+          '<button class="notif-mark-all" id="notifMarkAll" type="button">Прочитать всё</button>' +
+        '</div>' +
+        '<div class="notif-list" id="notifList">' +
+          '<div class="notif-empty"><span class="nei">📭</span>Загрузка…</div>' +
+        '</div>' +
+        '<div class="notif-dd-foot"><a href="/notifications.html">Все уведомления →</a></div>' +
+      '</div>';
+
+    if (profileWrap) {
+      topbar.insertBefore(wrap, profileWrap);
+    } else {
+      topbar.appendChild(wrap);
+    }
+
+    _notifBellEl = wrap.querySelector('.notif-bell');
+    _notifDDEl = wrap.querySelector('.notif-dd');
+    _notifBadgeEl = wrap.querySelector('.notif-bell-badge');
+
+    _notifBellEl.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleNotifDropdown();
+    });
+
+    wrap.querySelector('#notifMarkAll').addEventListener('click', function(e) {
+      e.stopPropagation();
+      markAllNotifications();
+    });
+
+    // Закрываем dropdown при клике вне
+    document.addEventListener('click', function(e) {
+      if (_notifIsOpen && !wrap.contains(e.target)) {
+        closeNotifDropdown();
+      }
+    });
+
+    // Закрываем по Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && _notifIsOpen) closeNotifDropdown();
+    });
+
+    // Стартуем polling и первый запрос
+    refreshUnreadCount();
+    if (_notifPollTimer) clearInterval(_notifPollTimer);
+    _notifPollTimer = setInterval(refreshUnreadCount, 60000);
+  }
+
+  function toggleNotifDropdown() {
+    if (_notifIsOpen) {
+      closeNotifDropdown();
+    } else {
+      openNotifDropdown();
+    }
+  }
+
+  function openNotifDropdown() {
+    if (!_notifDDEl || !_notifBellEl) return;
+    _notifIsOpen = true;
+    _notifDDEl.classList.add('open');
+    _notifBellEl.classList.add('open');
+    loadNotifList();
+  }
+
+  function closeNotifDropdown() {
+    if (!_notifDDEl || !_notifBellEl) return;
+    _notifIsOpen = false;
+    _notifDDEl.classList.remove('open');
+    _notifBellEl.classList.remove('open');
+  }
+
+  async function refreshUnreadCount() {
+    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    if (!token || !_notifBadgeEl) return;
+    try {
+      const r = await fetch('/api/notifications/unread_count', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!r.ok) return;
+      const d = await r.json();
+      const n = Number(d.count || 0);
+      _notifLastUnread = n;
+      if (n > 0) {
+        _notifBadgeEl.textContent = n > 99 ? '99+' : String(n);
+        _notifBadgeEl.classList.add('has-unread');
+      } else {
+        _notifBadgeEl.classList.remove('has-unread');
+      }
+    } catch { /* без шума */ }
+  }
+
+  async function loadNotifList() {
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    if (!token) {
+      list.innerHTML = '<div class="notif-empty">Войдите чтобы видеть уведомления</div>';
+      return;
+    }
+    try {
+      const r = await fetch('/api/notifications?limit=10', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!r.ok) throw 0;
+      const d = await r.json();
+      renderNotifList(d.notifications || []);
+    } catch {
+      list.innerHTML = '<div class="notif-empty">Не удалось загрузить</div>';
+    }
+  }
+
+  function renderNotifList(items) {
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    if (!items.length) {
+      list.innerHTML = '<div class="notif-empty"><span class="nei">📭</span>Уведомлений пока нет</div>';
+      return;
+    }
+    list.innerHTML = items.map(notifItemHTML).join('');
+
+    // Делегированный клик: пометить как прочитанное и перейти по ссылке
+    list.querySelectorAll('.notif-item').forEach(function(el) {
+      el.addEventListener('click', async function(e) {
+        const id = el.getAttribute('data-id');
+        const href = el.getAttribute('data-href');
+        const wasUnread = el.classList.contains('unread');
+        if (wasUnread && id) {
+          // Помечаем прочитанным «оптимистично»
+          el.classList.remove('unread');
+          if (_notifLastUnread > 0) {
+            _notifLastUnread--;
+            if (_notifLastUnread > 0) {
+              _notifBadgeEl.textContent = _notifLastUnread > 99 ? '99+' : String(_notifLastUnread);
+            } else {
+              _notifBadgeEl.classList.remove('has-unread');
+            }
+          }
+          // На фоне отправляем POST
+          try {
+            const token = localStorage.getItem('token');
+            await fetch('/api/notifications/' + id + '/read', {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + token }
+            });
+          } catch {}
+        }
+        if (href && href !== '#') {
+          // Не блокируем — браузер сам перейдёт по data-href
+          window.location.href = href;
+        }
+      });
+    });
+  }
+
+  function notifItemHTML(n) {
+    const isUnread = !n.is_read;
+    const initial = (n.actor_name || 'С').charAt(0).toUpperCase();
+    const isSystem = !n.actor_name || !n.actor_public_id;
+    const avClass = isSystem ? 'notif-av notif-av-system' : 'notif-av';
+    const avStyle = isSystem ? '' : 'background:' + escAttr(n.actor_color || '#1E8A4C');
+    const avContent = isSystem ? svgSystemBell() : escHtml(initial);
+    const href = buildNotifHref(n);
+    const time = formatNotifTime(n.created_at);
+
+    return '<a class="notif-item ' + (isUnread ? 'unread' : '') + '" data-id="' + escAttr(String(n.id)) + '" data-href="' + escAttr(href) + '">' +
+      '<div class="' + avClass + '" style="' + avStyle + '">' + avContent + '</div>' +
+      '<div class="notif-body">' +
+        '<div class="notif-title">' + escHtml(n.title || '') + '</div>' +
+        (n.preview ? '<div class="notif-preview">' + escHtml(n.preview) + '</div>' : '') +
+        '<div class="notif-time">' + escHtml(time) + '</div>' +
+      '</div>' +
+    '</a>';
+  }
+
+  function svgSystemBell() {
+    return '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+  }
+
+  function buildNotifHref(n) {
+    // Маппинг source_type → URL
+    switch (n.source_type) {
+      case 'post':
+        return n.source_public_id
+          ? '/news-detail.html?id=' + encodeURIComponent(n.source_public_id)
+          : '/dashboard.html';
+      case 'project':
+      case 'need':
+        return n.source_public_id
+          ? '/project-detail.html?id=' + encodeURIComponent(n.source_public_id)
+          : '/projects.html';
+      case 'comment':
+        return n.source_public_id
+          ? '/news-detail.html?id=' + encodeURIComponent(n.source_public_id)
+          : '/dashboard.html';
+      case 'forum_topic':
+        return n.source_public_id
+          ? '/forum.html?topic=' + encodeURIComponent(n.source_public_id)
+          : '/forum.html';
+      case 'chat':
+        return '/chat.html';
+      default:
+        return '#';
+    }
+  }
+
+  function formatNotifTime(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const now = new Date();
+      const diff = (now - d) / 1000; // секунды
+      if (diff < 60) return 'сейчас';
+      if (diff < 3600) return Math.floor(diff / 60) + ' мин';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' ч';
+      if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' д';
+      return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    } catch { return ''; }
+  }
+
+  async function markAllNotifications() {
+    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    if (!token) return;
+    const btn = document.getElementById('notifMarkAll');
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    try {
+      await fetch('/api/notifications/read_all', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      _notifLastUnread = 0;
+      if (_notifBadgeEl) _notifBadgeEl.classList.remove('has-unread');
+      // Перерисовываем список (все станут «прочитанными»)
+      const list = document.getElementById('notifList');
+      if (list) {
+        list.querySelectorAll('.notif-item.unread').forEach(function(el) {
+          el.classList.remove('unread');
+        });
+      }
+    } catch {}
+    finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Прочитать всё'; }
+    }
+  }
+
+  // Helpers — экранирование (если global-settings уже имеет esc — переиспользуем)
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+  function escAttr(s) { return escHtml(s); }
+
+  // Запускаем после DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectNotifBell);
+  } else {
+    injectNotifBell();
+  }
+
 })();
