@@ -89,25 +89,26 @@ type authResponse struct {
 }
 
 type publicUserProfile struct {
-	PublicID    string  `json:"public_id"`
-	FirstName   string  `json:"first_name,omitempty"`
-	LastName    string  `json:"last_name,omitempty"`
-	FullName    string  `json:"full_name"`
-	Email       string  `json:"email,omitempty"`
-	Handle      string  `json:"handle,omitempty"`
-	AvatarURL   string  `json:"avatar_url,omitempty"`
-	Position    string  `json:"position,omitempty"`
-	CompanyName string  `json:"company_name,omitempty"`
-	Bio         string  `json:"bio,omitempty"`
-	Phone       string  `json:"phone,omitempty"`
-	Location    string  `json:"location,omitempty"`
-	City        string  `json:"city,omitempty"`
-	Website     string  `json:"website,omitempty"`
-	IsOnline    bool    `json:"is_online"`
-	LastSeenAt  *string `json:"last_seen_at,omitempty"`
-	IsPrivate   bool    `json:"is_private"`
-	CanMessage  bool    `json:"can_message"`
-	IsSelf      bool    `json:"is_self"`
+	PublicID     string  `json:"public_id"`
+	FirstName    string  `json:"first_name,omitempty"`
+	LastName     string  `json:"last_name,omitempty"`
+	FullName     string  `json:"full_name"`
+	Email        string  `json:"email,omitempty"`
+	Handle       string  `json:"handle,omitempty"`
+	AvatarURL    string  `json:"avatar_url,omitempty"`
+	Position     string  `json:"position,omitempty"`
+	CompanyName  string  `json:"company_name,omitempty"`
+	Bio          string  `json:"bio,omitempty"`
+	Phone        string  `json:"phone,omitempty"`
+	Location     string  `json:"location,omitempty"`
+	City         string  `json:"city,omitempty"`
+	Website      string  `json:"website,omitempty"`
+	IsOnline     bool    `json:"is_online"`
+	LastSeenAt   *string `json:"last_seen_at,omitempty"`
+	IsPrivate    bool    `json:"is_private"`
+	CanMessage   bool    `json:"can_message"`
+	IsSelf       bool    `json:"is_self"`
+	FriendStatus string  `json:"friend_status,omitempty"` // "none" | "outgoing" | "incoming" | "friends" | "self"
 }
 
 type userSettings struct {
@@ -4217,7 +4218,50 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 		}
 	}
 	profile.CanMessage = canViewerMessageOwner(db, viewerID, ownerID, settings.PrivacyWhoCanMessage)
+	profile.FriendStatus = computeFriendStatus(db, viewerID, ownerID)
 	return profile, nil
+}
+
+// computeFriendStatus возвращает статус отношения viewerID к ownerID:
+//
+//	"self"     — это сам юзер
+//	"friends"  — заявка accepted
+//	"outgoing" — viewer отправил заявку (pending)
+//	"incoming" — owner отправил заявку viewer'у (pending)
+//	"none"     — никаких отношений (или были rejected/canceled/unfriended)
+//
+// Если viewerID == 0 (не авторизован) — возвращает "none".
+func computeFriendStatus(db *sql.DB, viewerID, ownerID int64) string {
+	if viewerID == 0 {
+		return "none"
+	}
+	if viewerID == ownerID {
+		return "self"
+	}
+	var requesterID, addresseeID int64
+	var status string
+	err := db.QueryRow(`
+		SELECT requester_id, addressee_id, status
+		FROM friend_requests
+		WHERE (requester_id = $1 AND addressee_id = $2)
+		   OR (requester_id = $2 AND addressee_id = $1)
+		LIMIT 1
+	`, viewerID, ownerID).Scan(&requesterID, &addresseeID, &status)
+	if err != nil {
+		return "none" // нет записи или ошибка → none
+	}
+	switch status {
+	case "accepted":
+		return "friends"
+	case "pending":
+		if requesterID == viewerID {
+			return "outgoing"
+		}
+		return "incoming"
+	default:
+		// rejected, canceled, unfriended → можно отправить новую
+		return "none"
+	}
 }
 
 func canViewerMessageOwner(db *sql.DB, viewerID, ownerID int64, whoCanMessage string) bool {
