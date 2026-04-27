@@ -3061,6 +3061,34 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
 
+	// ВРЕМЕННЫЙ ЭНДПОИНТ для проверки уведомлений в Спринте 12.1.
+	// Будет удалён в Спринте 12.3 когда появятся реальные триггеры.
+	mux.HandleFunc("/api/notifications/_test", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+
+		err := createNotification(db, createNotificationParams{
+			RecipientID: userID,
+			ActorID:     0, // системное
+			Type:        "system",
+			SourceType:  "system",
+			SourceID:    0,
+			Title:       "Тестовое уведомление " + time.Now().Format("15:04:05"),
+			Preview:     "Это уведомление создано через временный dev-эндпоинт для проверки Спринта 12.1.",
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"created": true})
+	})
+
 	mux.HandleFunc("/api/notifications/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
