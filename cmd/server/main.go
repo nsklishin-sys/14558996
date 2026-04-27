@@ -3061,34 +3061,6 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
 
-	// ВРЕМЕННЫЙ ЭНДПОИНТ для проверки уведомлений в Спринте 12.1.
-	// Будет удалён в Спринте 12.3 когда появятся реальные триггеры.
-	mux.HandleFunc("/api/notifications/_test", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
-			return
-		}
-		userID, ok := authenticatedUserID(w, r, sessions)
-		if !ok {
-			return
-		}
-
-		err := createNotification(db, createNotificationParams{
-			RecipientID: userID,
-			ActorID:     0, // системное
-			Type:        "system",
-			SourceType:  "system",
-			SourceID:    0,
-			Title:       "Тестовое уведомление " + time.Now().Format("15:04:05"),
-			Preview:     "Это уведомление создано через временный dev-эндпоинт для проверки Спринта 12.1.",
-		})
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"created": true})
-	})
-
 	mux.HandleFunc("/api/notifications/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -4414,6 +4386,39 @@ func shouldCreateNotificationForType(db *sql.DB, userID int64, notifType string)
 		return true
 	}
 	return enabled
+}
+
+// getUserDisplayName возвращает отображаемое имя юзера (full_name, или handle если имени нет).
+// Используется в текстах уведомлений.
+func getUserDisplayName(db *sql.DB, userID int64) string {
+	if userID == 0 {
+		return "Кто-то"
+	}
+	var fullName, handle string
+	err := db.QueryRow(`SELECT COALESCE(full_name, ''), COALESCE(handle, '') FROM users WHERE id = $1`, userID).Scan(&fullName, &handle)
+	if err != nil {
+		return "Кто-то"
+	}
+	fullName = strings.TrimSpace(fullName)
+	if fullName != "" {
+		return fullName
+	}
+	if handle != "" {
+		return "@" + handle
+	}
+	return "Кто-то"
+}
+
+// truncateRunes обрезает строку до n рун (без обрыва символа Unicode), добавляя «…» если обрезано.
+func truncateRunes(s string, n int) string {
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+	runes := []rune(s)
+	if n <= 1 {
+		return string(runes[:n])
+	}
+	return string(runes[:n-1]) + "…"
 }
 
 func handleAccountError(w http.ResponseWriter, err error) {
@@ -6509,7 +6514,32 @@ func addProjectMember(db *sql.DB, viewerID int64, publicID string, req addProjec
 		VALUES ($1, $2, $3)
 		ON CONFLICT (project_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
 		pid, newUserID, newRole)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if newUserID != 0 && newUserID != viewerID {
+		actorName := getUserDisplayName(db, viewerID)
+		var projectTitle, projectPublicID string
+		_ = db.QueryRow(`SELECT title, public_id FROM projects WHERE id = $1`, pid).Scan(&projectTitle, &projectPublicID)
+		title := actorName + " добавил вас в проект"
+		if projectTitle != "" {
+			title = actorName + " добавил вас в проект «" + truncateRunes(projectTitle, 80) + "»"
+		}
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    newUserID,
+			ActorID:        viewerID,
+			Type:           "project_member_added",
+			SourceType:     "project",
+			SourceID:       pid,
+			SourcePublicID: projectPublicID,
+			Title:          title,
+		}); err != nil {
+			log.Printf("notif project_member_added: %v", err)
+		}
+	}
+
+	return nil
 }
 
 // removeProjectMember удаляет участника. Owner/admin может убрать любого, остальные — только себя.
@@ -6909,6 +6939,14 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 		}
 		isLiked = true
 	}
+
+	var postAuthorID int64
+	var postTitle, postPreview string
+	if isLiked {
+		_ = tx.QueryRow(`SELECT author_id, COALESCE(title, ''), COALESCE(LEFT(content, 200), '') FROM posts WHERE id = $1`, postID).
+			Scan(&postAuthorID, &postTitle, &postPreview)
+	}
+
 	var likesCount int
 	if err := tx.QueryRow(`SELECT likes_count FROM posts WHERE id = $1`, postID).Scan(&likesCount); err != nil {
 		return false, 0, err
@@ -6916,6 +6954,27 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 	if err := tx.Commit(); err != nil {
 		return false, 0, err
 	}
+
+	if isLiked && postAuthorID != 0 && postAuthorID != userID {
+		actorName := getUserDisplayName(db, userID)
+		title := actorName + " оценил вашу публикацию"
+		if postTitle != "" {
+			title = actorName + " оценил «" + truncateRunes(postTitle, 80) + "»"
+		}
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    postAuthorID,
+			ActorID:        userID,
+			Type:           "post_like",
+			SourceType:     "post",
+			SourceID:       postID,
+			SourcePublicID: publicID,
+			Title:          title,
+			Preview:        postPreview,
+		}); err != nil {
+			log.Printf("notif post_like: %v", err)
+		}
+	}
+
 	return isLiked, likesCount, nil
 }
 
@@ -6990,8 +7049,74 @@ func createComment(db *sql.DB, postPublicID string, authorID int64, req createCo
 	if err := tx.Commit(); err != nil {
 		return postComment{}, err
 	}
+
+	go notifyOnComment(db, postID, postPublicID, created.ID, created.ParentID, authorID, content)
+
 	_ = saveMentions(db, "comment", created.ID, authorID, content, content)
 	return created, nil
+}
+
+// notifyOnComment создаёт уведомление при комментарии:
+// - корневой коммент → автору поста ('post_comment')
+// - ответ на чужой коммент → автору родительского ('comment_reply')
+// Запускать в горутине после tx.Commit (не должна блокировать ответ).
+func notifyOnComment(db *sql.DB, postID int64, postPublicID string, commentID int64, parentID *int64, actorID int64, content string) {
+	actorName := getUserDisplayName(db, actorID)
+	preview := truncateRunes(content, 200)
+
+	if parentID != nil && *parentID > 0 {
+		var parentAuthorID int64
+		if err := db.QueryRow(`SELECT author_id FROM post_comments WHERE id = $1 AND is_deleted = FALSE`, *parentID).Scan(&parentAuthorID); err == nil && parentAuthorID != 0 && parentAuthorID != actorID {
+			title := actorName + " ответил на ваш комментарий"
+			if err := createNotification(db, createNotificationParams{
+				RecipientID:    parentAuthorID,
+				ActorID:        actorID,
+				Type:           "comment_reply",
+				SourceType:     "comment",
+				SourceID:       commentID,
+				SourcePublicID: postPublicID,
+				Title:          title,
+				Preview:        preview,
+			}); err != nil {
+				log.Printf("notif comment_reply: %v", err)
+			}
+		}
+
+		var postAuthorID int64
+		if err := db.QueryRow(`SELECT author_id FROM posts WHERE id = $1`, postID).Scan(&postAuthorID); err == nil && postAuthorID != 0 && postAuthorID != actorID && postAuthorID != parentAuthorID {
+			title := actorName + " прокомментировал вашу публикацию"
+			if err := createNotification(db, createNotificationParams{
+				RecipientID:    postAuthorID,
+				ActorID:        actorID,
+				Type:           "post_comment",
+				SourceType:     "post",
+				SourceID:       postID,
+				SourcePublicID: postPublicID,
+				Title:          title,
+				Preview:        preview,
+			}); err != nil {
+				log.Printf("notif post_comment (reply): %v", err)
+			}
+		}
+		return
+	}
+
+	var postAuthorID int64
+	if err := db.QueryRow(`SELECT author_id FROM posts WHERE id = $1`, postID).Scan(&postAuthorID); err == nil && postAuthorID != 0 && postAuthorID != actorID {
+		title := actorName + " прокомментировал вашу публикацию"
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    postAuthorID,
+			ActorID:        actorID,
+			Type:           "post_comment",
+			SourceType:     "post",
+			SourceID:       postID,
+			SourcePublicID: postPublicID,
+			Title:          title,
+			Preview:        preview,
+		}); err != nil {
+			log.Printf("notif post_comment: %v", err)
+		}
+	}
 }
 
 func scanPost(row *sql.Row) (post, error) {
@@ -9477,6 +9602,7 @@ func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, te
 		return err
 	}
 	defer rows.Close()
+	actorName := getUserDisplayName(db, actorUserID)
 	for rows.Next() {
 		var uid int64
 		if err := rows.Scan(&uid); err != nil {
@@ -9487,6 +9613,26 @@ func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, te
 		}
 		_, _ = db.Exec(`INSERT INTO user_mentions(mentioned_user_id, actor_user_id, source_type, source_id, preview) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
 			uid, actorUserID, sourceType, sourceID, preview)
+
+		var sourcePublicID string
+		if sourceType == "post" {
+			_ = db.QueryRow(`SELECT public_id FROM posts WHERE id = $1`, sourceID).Scan(&sourcePublicID)
+		} else if sourceType == "comment" {
+			_ = db.QueryRow(`SELECT p.public_id FROM posts p JOIN post_comments pc ON pc.post_id = p.id WHERE pc.id = $1`, sourceID).Scan(&sourcePublicID)
+		}
+		title := actorName + " упомянул вас"
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    uid,
+			ActorID:        actorUserID,
+			Type:           "mention",
+			SourceType:     sourceType,
+			SourceID:       sourceID,
+			SourcePublicID: sourcePublicID,
+			Title:          title,
+			Preview:        preview,
+		}); err != nil {
+			log.Printf("notif mention: %v", err)
+		}
 	}
 	return rows.Err()
 }
