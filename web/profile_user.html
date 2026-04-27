@@ -166,6 +166,36 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .btn-sec:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
 .btn-sec svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+.btn-friend{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:10px 18px;border-radius:99px;
+  background:var(--g);color:#fff;border:none;
+  font-family:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap
+}
+.btn-friend:hover{background:var(--gm);box-shadow:0 4px 12px rgba(30,138,76,.3)}
+.btn-friend:disabled{opacity:.6;cursor:default}
+.btn-friend svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* Состояние "outgoing" — заявка отправлена (бледнее) */
+.btn-friend.is-outgoing{
+  background:transparent;color:var(--g);border:1.5px solid var(--gb);box-shadow:none
+}
+.btn-friend.is-outgoing:hover{background:var(--gl);border-color:var(--g)}
+.btn-friend.is-outgoing svg{stroke:var(--g)}
+
+/* Состояние "incoming" — пришла заявка (акцент) */
+.btn-friend.is-incoming{background:var(--g)}
+
+/* Состояние "friends" — уже друзья (тихо) */
+.btn-friend.is-friends{
+  background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none
+}
+.btn-friend.is-friends:hover{background:#FEE;border-color:var(--red);color:var(--red)}
+.btn-friend.is-friends:hover svg{stroke:var(--red)}
+.btn-friend.is-friends svg{stroke:var(--g)}
 .btn-ico{
   width:34px;height:34px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);
   display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0
@@ -534,6 +564,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
             <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Написать
           </button>
+
+          <!-- Кнопка дружбы — текст и onclick зависят от friend_status -->
+          <button class="btn-friend" id="btnFriend" onclick="onFriendButtonClick()" style="display:none">
+            <svg id="btnFriendIcon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            <span id="btnFriendLabel">Добавить в друзья</span>
+          </button>
+
           <button class="btn-sec" onclick="showToast('Ссылка скопирована')">
             <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
             Поделиться
@@ -821,6 +858,92 @@ function applyTopbarUser(){
   ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role;});
 }
 
+// ── Кнопка дружбы ─────────────────────────────────────
+let _profileFriendStatus = 'none';
+let _profilePublicID = '';
+
+function applyFriendButton(profile){
+  _profilePublicID = profile.public_id || '';
+  _profileFriendStatus = profile.friend_status || 'none';
+  const btn = document.getElementById('btnFriend');
+  const label = document.getElementById('btnFriendLabel');
+  const icon = document.getElementById('btnFriendIcon');
+  if (!btn || !label) return;
+
+  // Не показываем анонимам и самому себе
+  if (!localStorage.getItem('token') || _profileFriendStatus === 'self' || profile.is_self) {
+    btn.style.display = 'none';
+    return;
+  }
+
+  btn.style.display = '';
+  btn.classList.remove('is-outgoing','is-incoming','is-friends');
+
+  switch (_profileFriendStatus) {
+    case 'friends':
+      label.textContent = 'В друзьях';
+      btn.classList.add('is-friends');
+      if (icon) icon.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+      break;
+    case 'outgoing':
+      label.textContent = 'Заявка отправлена';
+      btn.classList.add('is-outgoing');
+      if (icon) icon.innerHTML = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+      break;
+    case 'incoming':
+      label.textContent = 'Принять заявку';
+      btn.classList.add('is-incoming');
+      if (icon) icon.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
+      break;
+    default:
+      label.textContent = 'Добавить в друзья';
+      if (icon) icon.innerHTML = '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>';
+  }
+}
+
+async function onFriendButtonClick(){
+  if (!_profilePublicID || _profileFriendStatus === 'self') return;
+  const btn = document.getElementById('btnFriend');
+  if (btn) btn.disabled = true;
+
+  const tk = localStorage.getItem('token');
+  const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
+
+  try {
+    if (_profileFriendStatus === 'none') {
+      const r = await fetch('/api/friends/request/' + encodeURIComponent(_profilePublicID), { method: 'POST', headers });
+      if (!r.ok) throw new Error(await r.text());
+      _profileFriendStatus = 'outgoing';
+      showToast('Заявка отправлена');
+    } else if (_profileFriendStatus === 'outgoing') {
+      const r = await fetch('/api/friends/cancel/' + encodeURIComponent(_profilePublicID), { method: 'POST', headers });
+      if (!r.ok) throw new Error(await r.text());
+      _profileFriendStatus = 'none';
+      showToast('Заявка отменена');
+    } else if (_profileFriendStatus === 'incoming') {
+      const r = await fetch('/api/friends/accept/' + encodeURIComponent(_profilePublicID), { method: 'POST', headers });
+      if (!r.ok) throw new Error(await r.text());
+      _profileFriendStatus = 'friends';
+      showToast('Заявка принята');
+    } else if (_profileFriendStatus === 'friends') {
+      if (!confirm('Удалить из друзей?')) {
+        if (btn) btn.disabled = false;
+        return;
+      }
+      const r = await fetch('/api/friends/' + encodeURIComponent(_profilePublicID), { method: 'DELETE', headers });
+      if (!r.ok) throw new Error(await r.text());
+      _profileFriendStatus = 'none';
+      showToast('Удалено из друзей');
+    }
+    applyFriendButton({ public_id: _profilePublicID, friend_status: _profileFriendStatus });
+  } catch (err) {
+    console.error('friend btn error', err);
+    showToast('Не удалось выполнить действие');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function applyViewedUserProfile(u){
   const fullName=(u.full_name||`${u.first_name||''} ${u.last_name||''}`.trim()||'Пользователь').trim();
   const role=u.position||u.role||'Участник LASTOP';
@@ -857,6 +980,7 @@ function applyViewedUserProfile(u){
       btnWrite.style.display='';
     }
   }
+  applyFriendButton(u);
   if(u.is_private){
     document.querySelectorAll('.tab-content,.prof-stats,.prof-tabs-wrap,.right .card').forEach(el=>el.style.display='none');
     if(!document.getElementById('privateProfileBanner')){
