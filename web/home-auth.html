@@ -159,21 +159,52 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .wmore:hover{text-decoration:underline}
 .widget-body{flex:1;min-height:0;overflow:auto;padding-right:2px}
 
-.task-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr)}
-.task-item:last-of-type{border-bottom:none;padding-bottom:0}
-.tcheck{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--gb);flex-shrink:0;display:grid;place-items:center;margin-top:2px;cursor:pointer;transition:all .15s}
-.tcheck:hover{border-color:var(--g)}
+/* Виджет задач — карточный стиль (как .t-card на /tasks.html) */
+#tasksList{display:flex;flex-direction:column;gap:6px}
+.task-item{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:9px 11px;
+  background:var(--w);
+  border:1px solid var(--bdr);
+  border-radius:var(--rm);
+  cursor:pointer;
+  transition:border-color .15s,box-shadow .15s,transform .15s
+}
+.task-item:hover{
+  border-color:var(--gb);
+  box-shadow:0 2px 8px rgba(30,138,76,.08);
+  transform:translateY(-1px)
+}
+.task-item.done{opacity:.65}
+.tcheck{
+  width:15px;height:15px;border-radius:4px;
+  border:1.5px solid var(--gb);
+  flex-shrink:0;display:grid;place-items:center;
+  margin-top:1px;cursor:pointer;transition:all .15s
+}
+.tcheck:hover{border-color:var(--g);background:var(--gp)}
 .tcheck.done{background:var(--g);border-color:var(--g)}
 .tcheck.done .tck-ico{display:block}
-.tck-ico{display:none;width:8px;height:8px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+.tck-ico{display:none;width:9px;height:9px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
 .task-body{flex:1;min-width:0}
-.task-ttl{font-size:11px;font-weight:600;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.task-ttl.done-t{text-decoration:line-through;color:var(--gmt)}
-.task-due{font-size:10px;color:var(--gmt);margin-top:1px}
-.task-due.overdue{color:var(--red)}
-.task-pri{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.pri-hi{background:var(--red)}.pri-md{background:#EF9F27}.pri-lo{background:var(--g)}
-.add-task-btn{width:100%;padding:5px;border-radius:var(--rm);border:1.5px dashed var(--gb);background:transparent;color:var(--gmt);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:7px;transition:all .15s}
+.task-ttl{
+  font-size:12px;font-weight:600;color:var(--t);line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.task-ttl.done-t{text-decoration:line-through;color:var(--gmt);font-weight:500}
+.task-due{font-size:10px;color:var(--gmt);margin-top:2px;font-weight:500}
+.task-due.overdue{color:var(--red);font-weight:700}
+.task-pri{width:5px;height:30px;border-radius:3px;flex-shrink:0;margin-top:2px}
+.pri-hi{background:var(--red)}
+.pri-md{background:#EF9F27}
+.pri-lo{background:var(--g)}
+.add-task-btn{
+  width:100%;padding:8px;border-radius:var(--rm);
+  border:1.5px dashed var(--gb);
+  background:transparent;color:var(--gmt);
+  font-size:11px;font-weight:600;cursor:pointer;
+  font-family:inherit;margin-top:8px;transition:all .15s
+}
 .add-task-btn:hover{background:var(--gp);color:var(--g);border-color:var(--g)}
 
 .chat-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr);cursor:pointer}
@@ -706,6 +737,10 @@ let currentUser={};
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     currentUser=user;
+    // currentUser теперь известен — задачи могут быть в localStorage с правильным ключом
+    if (typeof loadTasks === 'function') {
+      try { loadTasks(); } catch {}
+    }
     localStorage.setItem('user',JSON.stringify(user));
   }catch{
     currentUser=JSON.parse(localStorage.getItem('user')||'{}');
@@ -861,8 +896,9 @@ const DEFAULT_TASKS=[
 ];
 let TASKS=[];
 function taskStorageKey(){
-  const uid=getPublicID(currentUser)||currentUser.id||currentUser.email||'guest';
-  return TASKS_STORAGE_PREFIX+uid;
+  const uid = getPublicID(currentUser) || currentUser.id || currentUser.email || '';
+  if (!uid) return null; // currentUser ещё не загрузился — сигнализируем что ключ невалидный
+  return TASKS_STORAGE_PREFIX + uid;
 }
 function normalizeTask(t,idx=0){
   return{
@@ -875,19 +911,25 @@ function normalizeTask(t,idx=0){
   };
 }
 function readTasksLocal(){
-  try{
-    const raw=localStorage.getItem(taskStorageKey());
-    if(!raw)return [];
-    const parsed=JSON.parse(raw);
-    if(!Array.isArray(parsed))return [];
-    return parsed.map((t,i)=>normalizeTask(t,i)).slice(0,30);
-  }catch{return [];}
+  const key = taskStorageKey();
+  if (!key) return []; // currentUser не загружен — нечего читать
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((t, i) => normalizeTask(t, i)).slice(0, 30);
+  } catch {
+    return [];
+  }
 }
 function writeTasksLocal(){
-  localStorage.setItem(taskStorageKey(),JSON.stringify(TASKS));
+  const key = taskStorageKey();
+  if (!key) return; // не пишем если currentUser не загружен — иначе создадим мусорный ключ
+  localStorage.setItem(key, JSON.stringify(TASKS));
   // Уведомляем других слушателей в этой же вкладке (например /tasks.html
   // если когда-то откроется в той же вкладке без полной перезагрузки).
-  try{ window.dispatchEvent(new CustomEvent('lastop:tasks-updated')); }catch{}
+  try { window.dispatchEvent(new CustomEvent('lastop:tasks-updated')); } catch {}
 }
 async function loadTasks(){
   const localTasks=readTasksLocal();
@@ -916,14 +958,20 @@ async function loadTasks(){
   renderTasks();
 }
 function renderTasks(){
-  document.getElementById('tasksList').innerHTML=TASKS.slice(0,4).map(t=>`
-    <div class="task-item">
-      <div class="tcheck ${t.done?'done':''}" onclick="toggleTask(${t.id})">
+  const list = document.getElementById('tasksList');
+  if (!list) return;
+  if (!TASKS.length) {
+    list.innerHTML = `<div style="padding:12px;text-align:center;font-size:11px;color:var(--gmt);font-style:italic">Задач нет — добавьте первую!</div>`;
+    return;
+  }
+  list.innerHTML = TASKS.slice(0, 4).map(t => `
+    <div class="task-item ${t.done ? 'done' : ''}" onclick="location.href='/tasks.html'">
+      <div class="tcheck ${t.done ? 'done' : ''}" onclick="event.stopPropagation();toggleTask(${t.id})">
         <svg class="tck-ico" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg>
       </div>
       <div class="task-body">
-        <div class="task-ttl ${t.done?'done-t':''}">${esc(t.title)}</div>
-        <div class="task-due ${t.overdue?'overdue':''}">${esc(t.due)}</div>
+        <div class="task-ttl ${t.done ? 'done-t' : ''}">${esc(t.title)}</div>
+        <div class="task-due ${t.overdue ? 'overdue' : ''}">${esc(t.due)}</div>
       </div>
       <div class="task-pri pri-${esc(t.pri)}"></div>
     </div>`).join('');
