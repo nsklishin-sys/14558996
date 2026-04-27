@@ -619,22 +619,11 @@ function getIcon(cat){return ICON_SETS[cat]||ICON_SETS['default'];}
 const STATUS={
   active:{cls:'s-active',label:'Активный'},
   planned:{cls:'s-planned',label:'Планируется'},
+  paused:{cls:'s-pause',label:'Приостановлен'},
   pause:{cls:'s-pause',label:'На паузе'},
   done:{cls:'s-done',label:'Завершён'},
 };
-
-const DEMO=[
-  {id:1,title:'Маршрут СНГ–ЕС · Q2 2026',cat:'Логистика',status:'active',desc:'Мультимодальные перевозки оборудования с таможенным сопровождением. Принимаем грузы от 5 тонн по конкурентным ставкам. Партнёры: NorthBridge, GlobalFreight.',tags:['Маршруты','Таможня'],members:[{n:'М',c:'#5AB080'},{n:'Н',c:'#1A8A6A'},{n:'А',c:'#3A90C0'},{n:'С',c:'#9060C0'},{n:'Д',c:'#C07030'}],deadline:'30 июня 2026',progress:62,isMy:true,views:842,joined:false},
-  {id:2,title:'TMS-интеграция с маркетплейсами',cat:'IT и автоматизация',status:'active',desc:'Подключение TMS-платформы к Ozon и Wildberries. Автоматизация заказов на доставку, отслеживание статусов и уведомления для клиентов.',tags:['TMS','API','Автоматизация'],members:[{n:'М',c:'#5AB080'},{n:'П',c:'#B05090'},{n:'К',c:'#208090'},{n:'Е',c:'#9060C0'}],deadline:'15 мая 2026',progress:38,isMy:true,views:521,joined:false},
-  {id:3,title:'Экспорт фармпродукции в ЕАЭС',cat:'ВЭД',status:'planned',desc:'Построение цепочки поставок с контролем холодовой цепи и сертификацией. Фокус — рынки Казахстана и Беларуси.',tags:['ВЭД','Фарма','ЕАЭС'],members:[{n:'В',c:'#185FA5'},{n:'Е',c:'#B05090'},{n:'К',c:'#208090'}],deadline:'1 августа 2026',progress:10,isMy:true,views:274,joined:false},
-  {id:4,title:'База таможенных брокеров СНГ',cat:'Таможня',status:'active',desc:'Формирование и верификация базы данных таможенных брокеров и декларантов по России и СНГ. Рейтинги и отзывы.',tags:['Таможня','База данных'],members:[{n:'А',c:'#3A90C0'},{n:'Н',c:'#1A8A6A'},{n:'С',c:'#9060C0'},{n:'Г',c:'#C07030'},{n:'Т',c:'#3B6D11'},{n:'П',c:'#B05090'}],deadline:'20 июля 2026',progress:55,isMy:false,views:713,joined:false},
-  {id:5,title:'Маркетплейс транспортных услуг',cat:'Логистика',status:'active',desc:'Открытая B2B-площадка для поиска перевозчиков и экспедиторов. Аукционная система тарификации и рейтинг надёжности.',tags:['Маршруты','Логистика'],members:[{n:'Д',c:'#C07030'},{n:'В',c:'#185FA5'},{n:'К',c:'#208090'}],deadline:'1 сентября 2026',progress:29,isMy:false,views:1040,joined:false},
-  {id:6,title:'EDI-стандарты для ВЭД в России',cat:'ВЭД',status:'active',desc:'Разработка и продвижение единых EDI-стандартов для участников ВЭД. Взаимодействие с ФТС и ФНС по вопросам электронного документооборота.',tags:['EDI','ВЭД','Стандарты'],members:[{n:'М',c:'#5AB080'},{n:'Н',c:'#1A8A6A'},{n:'А',c:'#3A90C0'},{n:'С',c:'#9060C0'}],deadline:null,progress:71,isMy:false,views:398,joined:false},
-  {id:7,title:'Умный склад: автоматизация WMS',cat:'Склад',status:'pause',desc:'Пилотный проект по внедрению WMS с роботизированными стеллажами на складе класса А. Оптимизация комплектации на 35%.',tags:['Склад','WMS','Автоматизация'],members:[{n:'П',c:'#B05090'},{n:'Е',c:'#9060C0'},{n:'К',c:'#208090'}],deadline:'15 октября 2026',progress:45,isMy:false,views:287,joined:false},
-  {id:8,title:'Аудит логистических издержек',cat:'Управление цепочками',status:'done',desc:'Завершённый проект по снижению логистических издержек для 12 компаний-партнёров. Экономия — в среднем 18% от бюджета.',tags:['Управление','Аналитика'],members:[{n:'М',c:'#5AB080'},{n:'А',c:'#3A90C0'}],deadline:'Завершён Q1 2026',progress:100,isMy:false,views:1860,joined:false},
-];
-
-let allProjects=[...DEMO];
+let allProjects=[];
 let currentTab='all';
 let currentView='grid';
 
@@ -653,7 +642,7 @@ function renderCard(p,i){
   const ico=getIcon(p.cat);
   const st=STATUS[p.status]||{cls:'s-planned',label:p.status};
   const deadlineHtml=p.deadline?`<span class="pc-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(p.deadline)}</span>`:'';
-  return`<div class="proj-card" style="animation-delay:${i*.05}s" onclick="openProject(${p.id})">
+  return`<div class="proj-card" style="animation-delay:${i*.05}s" onclick="openProject('${esc(p.id)}')">
     <div class="pc-top">
       <div class="pc-icon" style="background:${ico.bg};border:1px solid ${ico.bc}">
         <svg viewBox="0 0 24 24" style="stroke:${ico.stroke};fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round">${ico.path}</svg>
@@ -679,7 +668,7 @@ function renderRow(p,i){
   const ico=getIcon(p.cat);
   const st=STATUS[p.status]||{cls:'s-planned',label:p.status};
   const isSoon=p.deadline&&p.deadline.includes('мая');
-  return`<div class="proj-row" style="animation-delay:${i*.04}s" onclick="openProject(${p.id})">
+  return`<div class="proj-row" style="animation-delay:${i*.04}s" onclick="openProject('${esc(p.id)}')">
     <div class="pr-icon" style="background:${ico.bg};border:1px solid ${ico.bc}">
       <svg viewBox="0 0 24 24" style="stroke:${ico.stroke};fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round">${ico.path}</svg>
     </div>
@@ -696,7 +685,7 @@ function renderRow(p,i){
         <span class="pr-deadline${isSoon?' soon':''}">${p.deadline?esc(p.deadline):'Дедлайн не задан'}</span>
         <div class="pr-team">${renderTeamSmall(p.members)}</div>
       </div>
-      <button class="pr-btn" onclick="event.stopPropagation();openProject(${p.id})">Открыть</button>
+      <button class="pr-btn" onclick="event.stopPropagation();openProject('${esc(p.id)}')">Открыть</button>
     </div>
   </div>`;
 }
@@ -715,41 +704,111 @@ function renderFeed(projects){
 }
 
 /* ── ФИЛЬТРЫ ── */
+async function loadProjects(){
+  const params=new URLSearchParams();
+
+  if(currentTab==='my'){
+    params.set('owner_only','1');
+  } else if(currentTab==='active'){
+    params.set('status','active');
+  } else if(currentTab==='planned'){
+    params.set('status','planned');
+  } else if(currentTab==='done'){
+    params.set('status','done');
+  }
+
+  const q=(document.getElementById('searchInput')?.value||'').trim();
+  if(q)params.set('search',q);
+
+  const cat=document.getElementById('filterCat')?.value||'';
+  if(cat)params.set('category',cat);
+
+  const sort=document.getElementById('filterSort')?.value||'';
+  if(sort==='deadline'||sort==='members'){
+    params.set('sort',sort);
+  }
+
+  params.set('limit','50');
+
+  try{
+    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
+    const r=await fetch(API+'/projects?'+params.toString(),{headers});
+    if(!r.ok)throw new Error('Ошибка загрузки');
+    const data=await r.json();
+    allProjects=(data.projects||[]).map(mapProjectFromAPI);
+  }catch(err){
+    console.error('loadProjects error',err);
+    allProjects=[];
+  }
+
+  renderCurrentView();
+}
+
+function mapProjectFromAPI(p){
+  return{
+    id:p.public_id,
+    public_id:p.public_id,
+    title:p.title||'',
+    desc:p.description||'',
+    cat:p.category||'',
+    status:p.status||'planned',
+    tags:Array.isArray(p.tags)?p.tags:[],
+    deadline:p.deadline?formatDeadline(p.deadline):null,
+    deadlineISO:p.deadline||null,
+    progress:0,
+    views:0,
+    members:buildMembersForCard(p),
+    isMy:!!p.is_owner||!!p.is_member,
+    cover_color:p.cover_color||'#1E8A4C',
+    owner_name:p.owner_name||'',
+    owner_public_id:p.owner_public_id||''
+  };
+}
+
+function formatDeadline(iso){
+  try{
+    const d=new Date(iso);
+    if(Number.isNaN(d.getTime()))return null;
+    return d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  }catch{return null;}
+}
+
+function buildMembersForCard(p){
+  const arr=[];
+  if(p.owner_name){
+    arr.push({n:(p.owner_name||'?').charAt(0).toUpperCase(),c:avc(p.owner_name)});
+  }
+  const extras=Math.max(0,(p.members_count||1)-1);
+  for(let i=0;i<extras;i++){
+    arr.push({n:'·',c:'#B5C5BC'});
+  }
+  return arr;
+}
+
+function renderCurrentView(){
+  const count=allProjects.length;
+  const el=document.getElementById('resultsCount');
+  if(el)el.textContent=count+' проект'+(count===1?'':(count>=2&&count<=4?'а':'ов'));
+  renderFeed(allProjects);
+}
+
+let _filtersDebounce=null;
 function applyFilters(){
-  const q=(document.getElementById('searchInput').value||'').toLowerCase()+
-          (document.querySelector('.pf-search input')?.value||'').toLowerCase();
-  const cat=document.getElementById('filterCat').value;
-  const sort=document.getElementById('filterSort').value;
-
-  let items=[...allProjects];
-
-  if(currentTab==='my') items=items.filter(p=>p.isMy);
-  else if(currentTab==='active') items=items.filter(p=>p.status==='active');
-  else if(currentTab==='planned') items=items.filter(p=>p.status==='planned');
-  else if(currentTab==='done') items=items.filter(p=>p.status==='done');
-
-  if(cat) items=items.filter(p=>p.cat===cat);
-  if(q) items=items.filter(p=>p.title.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q)||p.tags.some(t=>t.toLowerCase().includes(q)));
-
-  if(sort==='popular') items.sort((a,b)=>b.views-a.views);
-  else if(sort==='members') items.sort((a,b)=>b.members.length-a.members.length);
-  else if(sort==='deadline') items.sort((a,b)=>{if(!a.deadline)return 1;if(!b.deadline)return -1;return a.deadline.localeCompare(b.deadline);});
-
-  document.getElementById('resultsCount').textContent=items.length+' проект'+(items.length===1?'':'ов');
-  renderFeed(items);
+  clearTimeout(_filtersDebounce);
+  _filtersDebounce=setTimeout(()=>{loadProjects();},300);
 }
 
 function setTab(tab,btn){
   currentTab=tab;
   document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  applyFilters();
+  loadProjects();
 }
 function setView(view,btn){
   currentView=view;
   document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  applyFilters();
+  renderCurrentView();
 }
 function openProject(id){location.href='/project-detail.html?id='+encodeURIComponent(id);}
 function joinProject(btn){
@@ -760,26 +819,67 @@ function joinProject(btn){
 /* ── МОДАЛКА ── */
 function openModal(){document.getElementById('modalBg').classList.add('open');}
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
-function submitProject(){
+async function submitProject(){
   const title=document.getElementById('mTitle').value.trim();
   const desc=document.getElementById('mDesc').value.trim();
-  const cat=document.getElementById('mCat').value||'Логистика';
+  const cat=document.getElementById('mCat').value||'';
   const status=document.getElementById('mStatus').value||'planned';
   const deadline=document.getElementById('mDeadline').value;
+
   if(!title){showToast('Введите название проекта');return;}
-  const tags=[...document.querySelectorAll('#mTagsWrap .mf-tag.selected')].map(t=>t.textContent.trim());
-  const newProj={
-    id:Date.now(),title,cat,status,desc:desc||'Описание не добавлено.',
-    tags,members:[{n:'Н',c:'#1A8A6A'}],
-    deadline:deadline?new Date(deadline).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}):null,
-    progress:0,isMy:true,views:0,joined:false
-  };
-  allProjects.unshift(newProj);
-  closeModal();
-  applyFilters();
-  showToast('Проект создан ✓','success');
-  /* API */
-  fetch(API+'/projects',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title,description:desc,category:cat,status})}).catch(()=>{});
+  if(title.length>200){showToast('Название слишком длинное (макс. 200 символов)');return;}
+  if(desc.length>5000){showToast('Описание слишком длинное (макс. 5000 символов)');return;}
+
+  const tags=[...document.querySelectorAll('#mTagsWrap .mf-tag.selected')]
+    .map(t=>t.textContent.trim())
+    .slice(0,10);
+
+  const body={title,description:desc,category:cat,status,tags,cover_color:'#1E8A4C'};
+  if(deadline){
+    body.deadline=new Date(deadline+'T00:00:00Z').toISOString();
+  }
+
+  const btn=document.querySelector('.btn-submit');
+  if(btn){btn.disabled=true;btn.textContent='Создание…';}
+
+  try{
+    const r=await fetch(API+'/projects',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify(body)
+    });
+    if(!r.ok){
+      const err=await r.json().catch(()=>({}));
+      throw new Error(err.error||('Ошибка '+r.status));
+    }
+    const data=await r.json();
+    const created=mapProjectFromAPI(data.project);
+
+    closeModal();
+    resetCreateForm();
+    showToast('Проект создан ✓','success');
+
+    allProjects.unshift(created);
+    renderCurrentView();
+  }catch(err){
+    console.error('createProject error',err);
+    showToast(err.message||'Не удалось создать проект');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Создать проект';}
+  }
+}
+
+function resetCreateForm(){
+  ['mTitle','mDesc','mCat','mStatus','mDeadline','mSeats'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(el.tagName==='SELECT'){
+      el.selectedIndex=0;
+    }else{
+      el.value='';
+    }
+  });
+  document.querySelectorAll('#mTagsWrap .mf-tag.selected').forEach(t=>t.classList.remove('selected'));
 }
 
 /* ── АВТОРИЗАЦИЯ ── */
@@ -800,23 +900,7 @@ function submitProject(){
     document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
   }catch{}
 
-  /* API проекты */
-  try{
-    const r=await fetch(API+'/projects?limit=50',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    const list=d.projects||d.items||[];
-    if(list.length){
-      allProjects=list.map(p=>({
-        id:p.id,title:p.title||'Проект',cat:p.category||'Логистика',
-        status:p.status||'active',desc:p.description||'',
-        tags:p.tags||[],members:(p.members||[]).map(m=>({n:letter(m.name||'?'),c:avc(m.name||'')})),
-        deadline:p.deadline||null,progress:p.progress||0,
-        isMy:p.is_mine||false,views:p.views_count||0,joined:p.is_joined||false
-      }));
-    }
-  }catch{}
-  applyFilters();
+  await loadProjects();
 })();
 </script>
 </body>
