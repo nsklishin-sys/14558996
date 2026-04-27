@@ -7,8 +7,6 @@
 <title>LASTOP GROUP — Уведомления</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/shell-layout.css">
-<script>document.documentElement.classList.add('lt-shell');</script>
 <link rel="stylesheet" href="/assets/hover-lift.css">
 <script>document.documentElement.classList.add('hl-on');</script>
 <script src="/assets/global-settings.js" defer></script>
@@ -17,29 +15,49 @@
 :root{
   --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
   --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
-  --red:#E04040;--blue:#3A90C0;--purple:#9060C0;--orange:#C07030;--amber:#D89A00;
-  --r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
-html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+html,body{height:100%;min-height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+html{height:-webkit-fill-available}
+body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 *{scrollbar-width:none;-ms-overflow-style:none}
 *::-webkit-scrollbar{width:0;height:0;display:none}
 
-/* ═══ LOGO / TOPBAR / NAV ═══ */
+/* ═══ SHELL — точно как на home-auth.html ═══ */
+.shell{
+  display:grid;
+  grid-template-columns:240px 1fr 300px;
+  grid-template-rows:56px 1fr;
+  grid-template-areas:"logo topbar topbar""nav main right";
+  height:100vh;
+  height:100dvh;
+  gap:10px;padding:10px
+}
+@supports (-webkit-touch-callout: none) and (not (height: 100dvh)){
+  html{height:-webkit-fill-available}
+  body{min-height:-webkit-fill-available}
+  .shell{height:-webkit-fill-available}
+}
+
+/* ═══ LOGO ═══ */
 .logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:10px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
 .logo-cell:hover{box-shadow:var(--shm)}
 .logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
-.logo-text{display:none}
+.logo-text{display:flex;flex-direction:column;line-height:1.2}
+.logo-text .lt1{font-size:14px;font-weight:800;color:var(--g);letter-spacing:.03em}
+.logo-text .lt2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase}
 
-.topbar{background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+/* ═══ TOPBAR ═══ */
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative;display:flex;align-items:center}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none;flex-shrink:0}
 .search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
 .search-wrap input:focus{border-color:var(--gm)}
 .search-wrap input::placeholder{color:var(--gmt)}
 
-.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 22px 6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 52px 6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
 .topbar-profile:hover{border-color:var(--gb);background:var(--gl)}
 .topbar-profile.open{border-color:var(--gb);background:var(--gl)}
 .topbar-profile.open .tp-arrow{transform:rotate(180deg)}
@@ -49,37 +67,55 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .tp-role{font-size:10px;color:var(--gmt)}
 .tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
 
+/* ═══ ДРОПДАУН ПРОФИЛЯ ═══ */
 .profile-dd-wrap{position:relative;flex:1;display:flex;justify-content:flex-end}
-.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd{
+  position:absolute;top:calc(100% + 8px);right:0;
+  width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);
+  box-shadow:0 12px 36px rgba(30,138,76,.15);
+  opacity:0;pointer-events:none;transform:translateY(-6px);
+  transition:opacity .2s,transform .2s;z-index:200;overflow:hidden
+}
 .profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
-.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
-.pdd-av{width:38px;height:38px;border-radius:9px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
-.pdd-info{display:flex;flex-direction:column;line-height:1.3}
-.pdd-name{font-size:13px;font-weight:700;color:var(--t)}
-.pdd-role{font-size:11px;color:var(--gmt)}
-.pdd-view{display:block;text-align:center;padding:11px;font-size:12px;font-weight:700;color:var(--g);text-decoration:none;border-bottom:1px solid var(--bdr);transition:background .15s}
-.pdd-view:hover{background:var(--gp)}
-.pdd-body{padding:6px 0}
-.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 14px;color:var(--t);text-decoration:none;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
-.pdd-item:hover{background:var(--gp)}
-.pdd-item svg{width:15px;height:15px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.pdd-head{padding:14px 14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .pdd-item-label{flex:1}
-.pdd-div{height:1px;background:var(--bdr);margin:6px 0}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px;flex-shrink:0}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
 .pdd-item.logout{color:var(--red)}
-.pdd-item.logout svg{stroke:var(--red)}
-.pdd-item.logout:hover{background:#FFE8E8}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
 
-.nav{background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);padding:14px 10px 10px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;min-height:0}
-.nav-group{font-size:9px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.12em;padding:10px 12px 5px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--rm);color:var(--tm);text-decoration:none;font-size:12px;font-weight:600;transition:all .15s;cursor:pointer}
+/* ═══ NAV ═══ */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-div{height:1px;background:var(--bdr);margin:6px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
 .nav-item:hover{background:var(--gp);color:var(--g)}
 .nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
-.nav-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
-.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr);position:sticky;bottom:0;background:var(--w);z-index:2}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
 
 /* ═══ MAIN ═══ */
-.main{grid-area:main;display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;padding-right:2px}
-.main::-webkit-scrollbar{display:none}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ═══ RIGHT ═══ */
+.right{grid-area:right;display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0}
+.right::-webkit-scrollbar{display:none}
+
+/* ═══ Уведомления — кастомные стили ═══ */
 
 /* Шапка раздела */
 .n-head{
@@ -87,177 +123,66 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   padding:18px 22px;box-shadow:var(--sh);flex-shrink:0;
   display:flex;align-items:center;gap:18px;flex-wrap:wrap
 }
-.n-head-icon{
-  width:46px;height:46px;border-radius:var(--rm);background:var(--gl);display:grid;place-items:center;flex-shrink:0
-}
+.n-head-icon{width:46px;height:46px;border-radius:var(--rm);background:var(--gl);display:grid;place-items:center;flex-shrink:0}
 .n-head-icon svg{width:22px;height:22px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .n-head-titles{display:flex;flex-direction:column;line-height:1.25}
 .n-head-title{font-size:20px;font-weight:900;color:var(--t);letter-spacing:-.01em}
 .n-head-sub{font-size:12px;color:var(--gmt)}
 .n-head-actions{margin-left:auto;display:flex;gap:8px;flex-shrink:0}
-.btn-mark-all{
-  padding:10px 18px;border-radius:99px;background:var(--g);border:none;
-  color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;
-  transition:all .15s;display:inline-flex;align-items:center;gap:7px;
-  box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap
-}
+.btn-mark-all{padding:10px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap}
 .btn-mark-all:hover{background:var(--gm);box-shadow:0 4px 12px rgba(30,138,76,.3)}
 .btn-mark-all:disabled{opacity:.5;cursor:default}
 
 /* Табы */
-.n-tabs{
-  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
-  padding:10px 14px;box-shadow:var(--sh);flex-shrink:0;
-  display:flex;align-items:center;gap:6px
-}
-.ntab{
-  padding:8px 16px;border-radius:99px;background:transparent;border:1.5px solid var(--bdr);
-  font-size:12px;font-weight:600;color:var(--tm);cursor:pointer;
-  font-family:inherit;transition:all .15s
-}
+.n-tabs{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 14px;box-shadow:var(--sh);flex-shrink:0;display:flex;align-items:center;gap:6px}
+.ntab{padding:8px 16px;border-radius:99px;background:transparent;border:1.5px solid var(--bdr);font-size:12px;font-weight:600;color:var(--tm);cursor:pointer;font-family:inherit;transition:all .15s}
 .ntab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
 .ntab.active{background:var(--g);color:#fff;border-color:var(--g)}
 
-/* ═══ ГРУППЫ ═══ */
+/* Группы */
 .n-groups{display:flex;flex-direction:column;gap:14px;flex-shrink:0}
-
-.n-group{
-  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
-  box-shadow:var(--sh);overflow:hidden
-}
-.n-group-head{
-  display:flex;align-items:center;gap:12px;
-  padding:14px 18px;
-  border-bottom:1px solid var(--bdr);
-  background:var(--gp)
-}
-.n-group-icon{
-  width:34px;height:34px;border-radius:10px;
-  display:grid;place-items:center;flex-shrink:0;
-  background:var(--w);border:1px solid var(--gb)
-}
+.n-group{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);overflow:hidden}
+.n-group-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--bdr);background:var(--gp)}
+.n-group-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;background:var(--w);border:1px solid var(--gb)}
 .n-group-icon svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.n-group-title{
-  font-size:14px;font-weight:800;color:var(--t);
-  letter-spacing:-.005em;flex:1;min-width:0
-}
-.n-group-counts{
-  display:flex;align-items:center;gap:8px;flex-shrink:0
-}
-.n-group-count{
-  font-size:11px;font-weight:600;
-  color:var(--gmt)
-}
-.n-group-unread{
-  font-size:10px;font-weight:800;
-  color:#fff;background:var(--g);
-  padding:3px 9px;border-radius:99px;
-  letter-spacing:.02em
-}
+.n-group-title{font-size:14px;font-weight:800;color:var(--t);letter-spacing:-.005em;flex:1;min-width:0}
+.n-group-counts{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.n-group-count{font-size:11px;font-weight:600;color:var(--gmt)}
+.n-group-unread{font-size:10px;font-weight:800;color:#fff;background:var(--g);padding:3px 9px;border-radius:99px;letter-spacing:.02em}
 
-/* ═══ Карточка уведомления ═══ */
-.n-item{
-  display:flex;gap:12px;
-  padding:14px 18px 14px 24px;
-  border-bottom:1px solid var(--bdr);
-  cursor:pointer;
-  transition:background .12s;
-  position:relative;
-  text-decoration:none;color:inherit
-}
+/* Карточка уведомления */
+.n-item{display:flex;gap:12px;padding:14px 18px 14px 24px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .12s;position:relative;text-decoration:none;color:inherit}
 .n-item:hover{background:var(--gp)}
 .n-item:last-child{border-bottom:none}
 .n-item.unread{background:rgba(30,138,76,.04)}
-.n-item.unread::before{
-  content:'';
-  position:absolute;left:9px;top:50%;
-  width:6px;height:6px;
-  border-radius:50%;
-  background:var(--g);
-  transform:translateY(-50%)
-}
-.n-av{
-  width:38px;height:38px;
-  border-radius:10px;
-  flex-shrink:0;
-  display:grid;place-items:center;
-  font-size:13px;font-weight:800;
-  color:#fff
-}
-.n-av-system{
-  background:var(--gl);
-  color:var(--g);
-  border:1px solid var(--gb)
-}
+.n-item.unread::before{content:'';position:absolute;left:9px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--g);transform:translateY(-50%)}
+.n-av{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff}
+.n-av-system{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
 .n-body{flex:1;min-width:0}
-.n-title{
-  font-size:13px;font-weight:600;
-  color:var(--t);
-  line-height:1.4;
-  margin-bottom:3px
-}
-.n-preview{
-  font-size:12px;
-  color:var(--gmt);
-  line-height:1.45;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-  margin-bottom:4px
-}
-.n-time{
-  font-size:11px;
-  color:var(--gmt);
-  font-weight:500
-}
+.n-title{font-size:13px;font-weight:600;color:var(--t);line-height:1.4;margin-bottom:3px}
+.n-preview{font-size:12px;color:var(--gmt);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px}
+.n-time{font-size:11px;color:var(--gmt);font-weight:500}
 
-/* ═══ Empty / Loader ═══ */
-.n-empty{
-  background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
-  box-shadow:var(--sh);
-  padding:60px 24px;
-  text-align:center
-}
-.n-empty .nei{
-  font-size:48px;
-  margin-bottom:12px;
-  display:block;
-  opacity:.5
-}
-.n-empty .net{
-  font-size:14px;font-weight:700;
-  color:var(--t);
-  margin-bottom:6px
-}
-.n-empty .nes{
-  font-size:12px;
-  color:var(--gmt);
-  max-width:340px;
-  margin:0 auto
-}
+/* Empty / Loader */
+.n-empty{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:60px 24px;text-align:center}
+.n-empty .nei{font-size:48px;margin-bottom:12px;display:block;opacity:.5}
+.n-empty .net{font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px}
+.n-empty .nes{font-size:12px;color:var(--gmt);max-width:340px;margin:0 auto}
 
-/* ═══ Загрузить ещё ═══ */
+/* Загрузить ещё */
 .load-more-wrap{padding:14px;text-align:center;flex-shrink:0}
-.load-more{
-  padding:8px 18px;border-radius:var(--rm);
-  background:transparent;border:1.5px solid var(--bdr);
-  color:var(--t);font-size:12px;font-weight:600;
-  cursor:pointer;font-family:inherit;
-  transition:all .15s
-}
+.load-more{padding:8px 18px;border-radius:var(--rm);background:transparent;border:1.5px solid var(--bdr);color:var(--t);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
 .load-more:hover{border-color:var(--gb);background:var(--gl);color:var(--g)}
 .load-more:disabled{opacity:.5;cursor:default}
 
-.toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:var(--t);color:#fff;
-  padding:10px 20px;border-radius:var(--rm);
-  font-size:13px;font-weight:600;
-  opacity:0;pointer-events:none;
-  transition:opacity .25s;z-index:400
-}
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--t);color:#fff;padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400}
 .toast.show{opacity:1}
+
+/* Адаптив */
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 280px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group,.logo-text{display:none}.nav-item{justify-content:center;padding:10px}}
 </style>
 </head>
 <body>
@@ -278,41 +203,119 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="profile-dd-wrap">
     <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
       <div class="tp-av" id="topbarAv">?</div>
-      <div class="tp-info"><span class="tp-name" id="topbarName">Загрузка...</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <div class="tp-info">
+        <span class="tp-name" id="topbarName">Загрузка…</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
       <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
+
     <div class="profile-dd" id="profileDD">
-      <div class="pdd-head"><div class="pdd-av" id="pddAv">?</div><div class="pdd-info"><div class="pdd-name" id="pddName">Загрузка...</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <div class="pdd-head">
+        <div class="pdd-av" id="pddAv">?</div>
+        <div class="pdd-info">
+          <div class="pdd-name" id="pddName">Загрузка…</div>
+          <div class="pdd-role" id="pddRole">Участник LASTOP</div>
+        </div>
+      </div>
       <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+
       <div class="pdd-body">
-        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span class="pdd-item-label">Друзья</span></a>
-        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/friends.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="pdd-item-label">Друзья</span>
+          <span class="pdd-count" id="pddFriends">24</span>
+        </a>
+        <a class="pdd-item" href="/saved.html">
+          <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          Сохранённое
+        </a>
+        <a href="/my-company.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span class="pdd-item-label">Моя компания</span>
+        </a>
+        <a href="/communities.html?filter=my" class="pdd-item">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="pdd-item-label">Мои сообщества</span>
+          <span class="pdd-count" id="pddComm">3</span>
+        </a>
+        <a href="/analytics.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="pdd-item-label">Аналитика</span>
+        </a>
+
         <div class="pdd-div"></div>
-        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="pdd-item-label">Выход</span>
+        </a>
       </div>
     </div>
   </div>
 </header>
 
-<!-- NAV -->
+<!-- NAV — точно как на home-auth.html -->
 <nav class="nav">
   <div class="nav-group">Навигация</div>
-  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
-  <a class="nav-item" href="/dashboard.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
-  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
-  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
-  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
-  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
-  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <a class="nav-item" href="/">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    <span>Главная</span>
+  </a>
+  <a class="nav-item" href="/dashboard.html">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    <span>Новости</span>
+  </a>
+  <a class="nav-item" href="/projects.html">
+    <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    <span>Проекты</span>
+  </a>
+  <a class="nav-item" href="/events.html">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Мероприятия</span>
+  </a>
+  <a class="nav-item" href="/exhibitions.html">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg>
+    <span>Выставки</span>
+  </a>
+  <a class="nav-item" href="/jobs.html">
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+    <span>Резюме</span>
+  </a>
+  <a class="nav-item" href="/catalog.html">
+    <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    <span>Товары и услуги</span>
+  </a>
+
   <div class="nav-group">Общение</div>
-  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
-  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/></svg><span>Компании</span></a>
-  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Сообщества</span></a>
+  <a class="nav-item" href="/forum.html">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Форум</span>
+  </a>
+  <a class="nav-item" href="/companies.html">
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+    <span>Компании</span>
+  </a>
+  <a class="nav-item" href="/communities.html">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Сообщества</span>
+  </a>
+
   <div class="nav-group">Профиль</div>
-  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
-  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <a class="nav-item" href="/chat.html">
+    <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+    <span>Чат</span>
+  </a>
+  <a class="nav-item" href="/profile.html">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Профиль</span>
+  </a>
+
   <div class="nav-bottom">
-    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Настройки</span>
+    </a>
   </div>
 </nav>
 
@@ -400,7 +403,6 @@ const GROUP_DEFS = [
   }
 ];
 
-// Маппинг source_type → ключ группы
 const SOURCE_TYPE_TO_GROUP = (() => {
   const map = {};
   GROUP_DEFS.forEach(g => g.sourceTypes.forEach(st => { map[st] = g.key; }));
@@ -488,7 +490,6 @@ async function loadMoreNotifs(){
 
 async function fetchNotifications(){
   const params=new URLSearchParams();
-  // Грузим по 50 за раз — больше потому что распределяются по группам
   params.set('limit','50');
   if(lastLoadedID>0)params.set('before_id',lastLoadedID);
   if(currentFilter==='unread')params.set('unread','1');
@@ -518,17 +519,14 @@ function pluralRu(n,forms){
   return forms[2];
 }
 
-// Группировка по source_type
 function groupItems(items){
   const buckets = {};
   GROUP_DEFS.forEach(g => { buckets[g.key] = []; });
   items.forEach(n => {
-    // Неизвестные source_type — в "система" как fallback
     const groupKey = SOURCE_TYPE_TO_GROUP[n.source_type] || 'system';
     if (!buckets[groupKey]) buckets[groupKey] = [];
     buckets[groupKey].push(n);
   });
-  // Внутри группы по дате DESC
   Object.keys(buckets).forEach(k => {
     buckets[k].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   });
@@ -549,7 +547,6 @@ function renderGroups(){
 
   const buckets = groupItems(allLoadedItems);
 
-  // Только непустые группы в порядке GROUP_DEFS
   const html = GROUP_DEFS
     .filter(g => buckets[g.key] && buckets[g.key].length > 0)
     .map(g => groupHTML(g, buckets[g.key]))
@@ -558,7 +555,6 @@ function renderGroups(){
   wrap.innerHTML = html;
   moreWrap.style.display = allLoadedItems.length >= 50 ? '' : 'none';
 
-  // Делегируем клик
   wrap.querySelectorAll('.n-item').forEach(el=>{
     el.addEventListener('click',async()=>{
       const id=el.getAttribute('data-id');
@@ -576,7 +572,6 @@ function renderGroups(){
   });
 }
 
-// Обновить счётчики в заголовках групп без полного перерендера
 function updateGroupCounts(){
   const buckets = groupItems(allLoadedItems);
   document.querySelectorAll('.n-group').forEach(groupEl => {
