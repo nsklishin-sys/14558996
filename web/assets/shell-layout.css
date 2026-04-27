@@ -435,3 +435,65 @@ html[data-msg-perm="contacts"] [data-action="write-message"],
 html[data-msg-perm="none"] [data-action="write-message"]{
   display: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   РЕКЛАМНАЯ ПЛАШКА — единый стиль для всех страниц
+   Появляется в правом сайдбаре через global-settings.js
+   ═══════════════════════════════════════════════════════════════ */
+.ad-block{
+  background:#F8F5FF;
+  border:1px solid #DDD0F0;
+  border-radius:var(--rxl, 14px);
+  padding:14px;
+  position:relative;
+  overflow:hidden;
+  margin-top:10px
+}
+.ad-label{
+  position:absolute;
+  top:10px;left:10px;
+  background:#EAE0FA;
+  color:#8060C0;
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:3px 8px;border-radius:6px
+}
+.ad-content{
+  margin-top:20px;
+  text-align:center
+}
+.ad-title{
+  font-size:13px;
+  font-weight:700;
+  color:#5040A0
+}
+.ad-sub{
+  font-size:11px;
+  color:#7060B0;
+  margin-top:3px
+}
+.ad-btn{
+  display:block;
+  margin:10px auto 0;
+  padding:7px 20px;
+  border-radius:var(--rm, 10px);
+  background:#7060B0;
+  color:#fff;
+  font-size:12px;font-weight:600;
+  border:none;cursor:pointer;
+  font-family:inherit;
+  transition:opacity .15s
+}
+.ad-btn:hover{opacity:.88}
+
+/* Тёмная тема — фиолетовый остаётся, фон чуть приглушаем */
+html[data-theme="dark"] .ad-block{
+  background:rgba(120,90,200,.08);
+  border-color:rgba(120,90,200,.22)
+}
+html[data-theme="dark"] .ad-label{
+  background:rgba(120,90,200,.22);
+  color:#C8B0F0
+}
+html[data-theme="dark"] .ad-title{color:#C8B0F0}
+html[data-theme="dark"] .ad-sub{color:#9080C0}
