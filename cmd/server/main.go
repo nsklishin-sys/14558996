@@ -19,6 +19,7 @@ import (
 	"net/mail"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -385,6 +386,10 @@ type chatMessage struct {
 	AuthorColor    string            `json:"author_color"`
 	AuthorAvatar   string            `json:"author_avatar,omitempty"`
 	Content        string            `json:"content"`
+	AttachmentURL  string            `json:"attachment_url,omitempty"`
+	AttachmentName string            `json:"attachment_name,omitempty"`
+	AttachmentType string            `json:"attachment_type,omitempty"`
+	AttachmentSize int64             `json:"attachment_size,omitempty"`
 	ReplyTo        *chatReplyPreview `json:"reply_to,omitempty"`
 	IsEdited       bool              `json:"is_edited"`
 	IsDeleted      bool              `json:"is_deleted"`
@@ -401,8 +406,12 @@ type createGroupConversationRequest struct {
 	MemberIDs []string `json:"member_public_ids"`
 }
 type sendMessageRequest struct {
-	Content   string `json:"content"`
-	ReplyToID *int64 `json:"reply_to_id,omitempty"`
+	Content        string `json:"content"`
+	ReplyToID      *int64 `json:"reply_to_id,omitempty"`
+	AttachmentURL  string `json:"attachment_url,omitempty"`
+	AttachmentName string `json:"attachment_name,omitempty"`
+	AttachmentType string `json:"attachment_type,omitempty"`
+	AttachmentSize int64  `json:"attachment_size,omitempty"`
 }
 type editMessageRequest struct {
 	Content string `json:"content"`
@@ -1600,6 +1609,102 @@ func main() {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
+	})
+
+	mux.HandleFunc("/api/upload", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		_, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+
+		// Лимит 25 МБ
+		const maxUploadSize = 25 * 1024 * 1024
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+		if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+			writeError(w, http.StatusBadRequest, "Файл слишком большой или повреждён")
+			return
+		}
+
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Файл не найден в запросе")
+			return
+		}
+		defer file.Close()
+
+		// Проверка расширения
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		blocked := map[string]bool{
+			".exe": true, ".bat": true, ".cmd": true, ".sh": true,
+			".html": true, ".htm": true, ".js": true, ".php": true,
+			".jsp": true, ".dll": true, ".scr": true, ".com": true,
+		}
+		if blocked[ext] {
+			writeError(w, http.StatusUnsupportedMediaType, "Тип файла не поддерживается")
+			return
+		}
+		if ext == "" {
+			ext = ".bin"
+		}
+		if len(ext) > 10 {
+			writeError(w, http.StatusBadRequest, "Слишком длинное расширение файла")
+			return
+		}
+
+		// Генерируем случайное имя
+		randBytes := make([]byte, 16)
+		if _, err := rand.Read(randBytes); err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка генерации имени")
+			return
+		}
+		randName := hex.EncodeToString(randBytes) + ext
+
+		// Структура: /data/uploads/YYYY/MM/<random>.<ext>
+		now := time.Now()
+		yearMonth := fmt.Sprintf("%04d/%02d", now.Year(), int(now.Month()))
+		dir := filepath.Join("/data/uploads", yearMonth)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			log.Printf("upload: mkdir %s failed: %v", dir, err)
+			writeError(w, http.StatusInternalServerError, "Не удалось создать директорию")
+			return
+		}
+		fullPath := filepath.Join(dir, randName)
+
+		out, err := os.Create(fullPath)
+		if err != nil {
+			log.Printf("upload: create %s failed: %v", fullPath, err)
+			writeError(w, http.StatusInternalServerError, "Не удалось создать файл")
+			return
+		}
+		defer out.Close()
+
+		written, err := io.Copy(out, file)
+		if err != nil {
+			log.Printf("upload: copy failed: %v", err)
+			_ = os.Remove(fullPath)
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить файл")
+			return
+		}
+
+		// Определяем MIME-type из заголовков формы (или fallback)
+		mimeType := header.Header.Get("Content-Type")
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+
+		// URL для клиента
+		url := fmt.Sprintf("/uploads/%s/%s", yearMonth, randName)
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"url":  url,
+			"name": header.Filename,
+			"size": written,
+			"type": mimeType,
+		})
 	})
 
 	chatPresence := newChatPresenceStore()
@@ -2856,6 +2961,9 @@ func main() {
 		mux.ServeHTTP(w, r)
 	})
 
+	// Раздача загруженных файлов
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/data/uploads"))))
+
 	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
 
 	addr := ":8080"
@@ -3369,6 +3477,18 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 CREATE INDEX IF NOT EXISTS chat_messages_conversation_idx
     ON chat_messages(conversation_id, id DESC) WHERE is_deleted = FALSE;
+
+-- Спринт 5: вложения в сообщениях чата.
+-- Разрешаем пустой content если есть attachment.
+ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_check;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_type TEXT NOT NULL DEFAULT '';
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_size BIGINT NOT NULL DEFAULT 0;
+-- Новый CHECK: либо есть текст, либо есть attachment.
+ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_or_attachment_check;
+ALTER TABLE chat_messages ADD CONSTRAINT chat_messages_content_or_attachment_check
+    CHECK (char_length(content) BETWEEN 0 AND 8000 AND (char_length(content) > 0 OR char_length(attachment_url) > 0));
 
 CREATE TABLE IF NOT EXISTS chat_typing (
     conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
@@ -7428,7 +7548,7 @@ func searchInConversation(db *sql.DB, userID int64, publicID, q string) ([]chatM
 		return []chatMessage{}, nil
 	}
 	pattern := "%" + chatEscapeILike(q) + "%"
-	rows, err := db.Query(`SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1 AND m.content ILIKE $2 ESCAPE '\' ORDER BY m.id DESC LIMIT 50`, cid, pattern)
+	rows, err := db.Query(`SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,''),m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1 AND m.content ILIKE $2 ESCAPE '\' ORDER BY m.id DESC LIMIT 50`, cid, pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -7436,7 +7556,7 @@ func searchInConversation(db *sql.DB, userID int64, publicID, q string) ([]chatM
 	out := []chatMessage{}
 	for rows.Next() {
 		var m chatMessage
-		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize); err != nil {
 			return nil, err
 		}
 		m.AuthorColor = stableColorForName(m.AuthorName)
@@ -7467,7 +7587,7 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	if limit > 200 {
 		limit = 200
 	}
-	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,'' ) FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1`
+	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,''),m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1`
 	args := []any{cid}
 	if beforeID > 0 {
 		q += ` AND m.id < $2`
@@ -7489,7 +7609,7 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	for rows.Next() {
 		var m chatMessage
 		var reply sql.NullInt64
-		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize); err != nil {
 			return nil, err
 		}
 		m.IsMine = m.AuthorPublicID == myPublicID
@@ -7508,18 +7628,55 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 		return chatMessage{}, err
 	}
 	content := strings.TrimSpace(req.Content)
-	if utf8.RuneCountInString(content) < 1 || utf8.RuneCountInString(content) > 8000 {
-		return chatMessage{}, fmt.Errorf("%w: длина сообщения 1..8000", errValidation)
+	contentLen := utf8.RuneCountInString(content)
+	hasAttachment := strings.TrimSpace(req.AttachmentURL) != ""
+
+	// Валидация: либо текст 1..8000, либо вложение, либо и то и другое
+	if !hasAttachment {
+		if contentLen < 1 || contentLen > 8000 {
+			return chatMessage{}, fmt.Errorf("%w: длина сообщения 1..8000", errValidation)
+		}
+	} else {
+		if contentLen > 8000 {
+			return chatMessage{}, fmt.Errorf("%w: длина сообщения до 8000", errValidation)
+		}
+		// Дополнительная защита — URL должен начинаться с /uploads/
+		if !strings.HasPrefix(req.AttachmentURL, "/uploads/") {
+			return chatMessage{}, fmt.Errorf("%w: некорректный attachment_url", errValidation)
+		}
 	}
+
+	// Нормализуем поля вложения
+	aURL := strings.TrimSpace(req.AttachmentURL)
+	aName := strings.TrimSpace(req.AttachmentName)
+	aType := strings.TrimSpace(req.AttachmentType)
+	if len(aName) > 255 {
+		aName = aName[:255]
+	}
+	if len(aType) > 100 {
+		aType = aType[:100]
+	}
+
 	var mid int64
-	err = db.QueryRow(`INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id) VALUES($1,$2,$3,$4) RETURNING id`, cid, userID, content, req.ReplyToID).Scan(&mid)
+	err = db.QueryRow(`
+		INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id,attachment_url,attachment_name,attachment_type,attachment_size)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+		cid, userID, content, req.ReplyToID, aURL, aName, aType, req.AttachmentSize).Scan(&mid)
 	if err != nil {
 		return chatMessage{}, err
 	}
 	_, _ = db.Exec(`UPDATE chat_conversations SET last_message_at=NOW() WHERE id=$1`, cid)
 	_, _ = db.Exec(`DELETE FROM chat_typing WHERE conversation_id=$1 AND user_id=$2`, cid, userID)
 	var m chatMessage
-	if err := db.QueryRow(`SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.id=$1`, mid).Scan(&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+	if err := db.QueryRow(`
+		SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,
+		       u.public_id,u.full_name,COALESCE(u.avatar_url,''),
+		       m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size
+		FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.id=$1`, mid).Scan(
+		&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt,
+		&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar,
+		&m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize,
+	); err != nil {
 		return chatMessage{}, err
 	}
 	m.IsMine = true
