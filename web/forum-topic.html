@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Тема форума</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+
+/* ═══ SHELL и его части ═══ */
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+
+/* TOPBAR */
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
+.search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 22px 6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.tp-info{display:flex;flex-direction:column;line-height:1.25}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex:1;display:flex;justify-content:flex-end}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px;flex-shrink:0}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
+
+/* NAV */
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-item span{overflow:hidden;text-overflow:ellipsis}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+/* MAIN и RIGHT */
+.main{grid-area:main;overflow-y:auto;overflow-x:hidden;min-width:0;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main > *{flex-shrink:0}
+.right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.right > *{flex-shrink:0}
+
+/* ═══ Хлебные крошки ═══ */
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);flex-wrap:wrap}
+.bc-item{font-size:12px;color:var(--gmt);text-decoration:none;cursor:pointer;transition:color .15s;white-space:nowrap}
+.bc-item:hover{color:var(--g)}
+.bc-item.cur{color:var(--t);font-weight:700;cursor:default}
+.bc-sep{color:var(--bdr);font-size:12px;flex-shrink:0}
+
+/* ═══ Шапка темы ═══ */
+.topic-header{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:18px 22px;display:flex;flex-direction:column;gap:10px;animation:fadeUp .25s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.th-top{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.th-cat-tag{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:99px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;color:#fff;flex-shrink:0;cursor:pointer;text-decoration:none}
+.th-title-block{flex:1;min-width:0}
+.th-title{font-size:21px;font-weight:900;color:var(--t);line-height:1.25;letter-spacing:-.01em;margin-bottom:6px;word-break:break-word}
+.th-meta-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--gmt)}
+.th-meta-item{display:flex;align-items:center;gap:4px}
+.th-meta-item svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.th-meta-author{font-weight:700;color:var(--tm);text-decoration:none;cursor:pointer}
+.th-meta-author:hover{color:var(--g)}
+.th-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;margin-left:auto}
+.th-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;background:#fff;border:1.5px solid var(--bdr);color:var(--t);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.th-btn:hover{border-color:var(--gb);background:var(--gp)}
+.th-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.th-btn.subscribed{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.th-btn.subscribed:hover{background:#fff;border-color:#FECACA;color:#DC2626}
+.th-btn.subscribed:hover .th-btn-text-on{display:none}
+.th-btn.subscribed:hover .th-btn-text-off{display:inline}
+.th-btn .th-btn-text-off{display:none}
+.th-btn.danger:hover{background:#FEF2F2;border-color:#FECACA;color:#DC2626}
+.th-pinned-icon, .th-closed-icon{display:inline-flex;align-items:center;color:var(--gmt)}
+.th-pinned-icon{color:var(--g)}
+.th-status-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
+.th-status-closed{background:var(--gp);color:var(--gmt);border:1px solid var(--bdr)}
+
+/* ═══ Сообщения ═══ */
+.messages-box{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:6px;display:flex;flex-direction:column;gap:0}
+.msg{padding:18px 18px;border-radius:var(--rl);transition:background .12s;display:flex;gap:14px;animation:fadeUp .2s ease both;scroll-margin-top:80px}
+.msg + .msg{border-top:1px solid var(--bdr);border-radius:0}
+.msg.flash{animation:flashHl 1.6s ease}
+@keyframes flashHl{0%,100%{background:transparent}25%{background:var(--gl)}}
+.msg-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800;flex-shrink:0;text-decoration:none;cursor:pointer}
+.msg-body{flex:1;min-width:0}
+.msg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.msg-author{font-size:13px;font-weight:800;color:var(--t);text-decoration:none;cursor:pointer}
+.msg-author:hover{color:var(--g)}
+.msg-date{font-size:11px;color:var(--gmt)}
+.msg-edited{font-size:11px;color:var(--gmt);font-style:italic}
+.msg-quote{display:block;background:var(--gp);border-left:3px solid var(--g);border-radius:8px;padding:8px 12px;margin-bottom:10px;cursor:pointer;font-size:12px;color:var(--tm);text-decoration:none;transition:background .12s}
+.msg-quote:hover{background:var(--gl)}
+.msg-quote-head{font-weight:700;color:var(--g);margin-bottom:2px;font-size:11px}
+.msg-quote-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4}
+.msg-content{font-size:14px;color:var(--t);line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg-content.deleted{color:var(--gmt);font-style:italic}
+.msg-actions{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.msg-action{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;background:transparent;border:1.5px solid var(--bdr);color:var(--gmt);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .12s}
+.msg-action:hover{background:var(--gp);color:var(--t)}
+.msg-action.liked{background:var(--gl);border-color:var(--gb);color:var(--g)}
+.msg-action.danger{color:var(--gmt)}
+.msg-action.danger:hover{background:#FEF2F2;border-color:#FECACA;color:#DC2626}
+.msg-action svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.msg-action.liked svg{fill:currentColor}
+
+.msg-edit-form{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.msg-edit-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--g);border-radius:var(--rm);font-family:inherit;font-size:13px;background:#fff;color:var(--t);outline:none;resize:vertical;min-height:80px}
+.msg-edit-actions{display:flex;gap:8px;justify-content:flex-end}
+
+.empty-state{padding:50px 20px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic}
+
+/* ═══ Форма ответа ═══ */
+.reply-form{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:14px 18px;display:flex;flex-direction:column;gap:10px;position:sticky;bottom:0;margin-top:0}
+.reply-form-title{font-size:13px;font-weight:800;color:var(--t)}
+.reply-quote-preview{display:flex;align-items:flex-start;gap:8px;background:var(--gp);border-left:3px solid var(--g);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--tm)}
+.reply-quote-preview-body{flex:1;min-width:0}
+.reply-quote-preview-head{font-weight:700;color:var(--g);margin-bottom:2px;font-size:11px}
+.reply-quote-preview-text{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4}
+.reply-quote-cancel{width:22px;height:22px;border-radius:50%;background:transparent;border:none;color:var(--gmt);cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:all .12s}
+.reply-quote-cancel:hover{background:#FEF2F2;color:#DC2626}
+.reply-quote-cancel svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round}
+.reply-textarea{width:100%;padding:11px 14px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:#fff;color:var(--t);outline:none;resize:vertical;min-height:80px;transition:border-color .12s}
+.reply-textarea:focus{border-color:var(--g)}
+.reply-bottom-row{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.reply-counter{font-size:10px;color:var(--gmt)}
+.reply-counter.over{color:var(--red);font-weight:700}
+.reply-submit{padding:9px 18px;border-radius:99px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .12s}
+.reply-submit:hover{background:var(--gm)}
+.reply-submit:disabled{opacity:.6;cursor:default}
+
+.reply-locked{background:var(--gp);border:1.5px dashed var(--bdr);border-radius:var(--rxl);padding:18px;text-align:center;color:var(--gmt);font-size:13px}
+.reply-locked svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;display:inline-block;vertical-align:-4px;margin-right:6px}
+.reply-login-prompt{background:var(--gl);border:1.5px solid var(--gb);border-radius:var(--rxl);padding:18px;text-align:center;color:var(--g);font-size:13px;font-weight:700}
+.reply-login-prompt a{color:var(--g);text-decoration:underline}
+
+/* ═══ Сайдбар ═══ */
+.card{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:14px}
+.block-title{font-size:11px;font-weight:800;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12px;color:var(--tm)}
+.info-row + .info-row{border-top:1px solid var(--bdr)}
+.info-row-label{color:var(--gmt)}
+.info-row-val{font-weight:700;color:var(--t)}
+.author-card{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--rm);background:var(--gp);text-decoration:none;color:var(--t);transition:background .12s}
+.author-card:hover{background:var(--gl)}
+.author-av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0}
+.author-name{font-size:13px;font-weight:700;color:var(--t)}
+.author-role{font-size:10px;color:var(--gmt)}
+
+/* ═══ TOAST + общие ═══ */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+
+.btn-cancel-sm{padding:6px 12px;border-radius:99px;background:transparent;color:var(--t);border:1.5px solid var(--bdr);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .12s}
+.btn-cancel-sm:hover{background:var(--gp)}
+.btn-save-sm{padding:6px 14px;border-radius:99px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:background .12s}
+.btn-save-sm:hover{background:var(--gm)}
+
+/* Адаптив */
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.th-actions{margin-left:0;width:100%}}
+@media(min-width:1921px) and (min-height:1081px){html{zoom:1.18}.shell{grid-template-columns:250px 1fr 340px;gap:12px;padding:12px;height:calc(100vh / 1.18)}}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input type="search" id="searchInput" placeholder="Поиск по платформе…" autocomplete="off"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div class="tp-info"><span class="tp-name" id="topbarName">Загрузка...</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div class="pdd-info"><div class="pdd-name" id="pddName">Загрузка...</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div class="pdd-div"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/dashboard.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item active" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+
+  <!-- Хлебные крошки -->
+  <nav class="breadcrumb">
+    <a class="bc-item" href="/">Главная</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="/forum.html">Форум</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#" id="bcCategory">Категория</a>
+    <span class="bc-sep">›</span>
+    <span class="bc-item cur" id="bcTopic">Тема</span>
+  </nav>
+
+  <!-- Шапка темы -->
+  <div id="topicHeaderWrap"></div>
+
+  <!-- Сообщения -->
+  <div id="messagesBox"></div>
+
+  <!-- Форма ответа -->
+  <div id="replyFormWrap"></div>
+
+</div>
+
+<!-- RIGHT -->
+<aside class="right">
+
+  <!-- Информация о теме -->
+  <div class="card">
+    <div class="block-title">О теме</div>
+    <div id="topicInfo">
+      <div style="padding:10px;text-align:center;color:var(--gmt);font-size:11px;font-style:italic">Загрузка…</div>
+    </div>
+  </div>
+
+  <!-- Автор темы -->
+  <div class="card" id="authorCard" style="display:none">
+    <div class="block-title">Автор темы</div>
+    <a class="author-card" id="authorCardLink" href="#">
+      <div class="author-av" id="authorAv" style="background:var(--g)">?</div>
+      <div>
+        <div class="author-name" id="authorName">—</div>
+        <div class="author-role" id="authorRole">Участник LASTOP</div>
+      </div>
+    </a>
+  </div>
+
+</aside>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="/assets/global-settings.js"></script>
+<script>
+const API = '/api';
+const tk = () => localStorage.getItem('token') || '';
+const TOPIC_PUBLIC_ID = new URLSearchParams(location.search).get('id') || '';
+
+let currentTopic = null;
+let currentMessages = [];
+let currentUserPublicID = '';
+let isAuthorOfTopic = false;
+let replyParentMsgID = ''; // public_id для цитирования
+let categoryColors = {};   // map category_key -> color
+
+// ─── Helpers ───
+function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function pluralRu(n, forms){
+  const a = [2,0,1,1,1,2];
+  return forms[(n%100>4 && n%100<20) ? 2 : a[Math.min(n%10, 5)]];
+}
+
+function formatRelative(iso){
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'только что';
+  if (diff < 3600) {
+    const m = Math.floor(diff/60);
+    return m + ' ' + pluralRu(m, ['минуту','минуты','минут']) + ' назад';
+  }
+  if (diff < 86400) {
+    const h = Math.floor(diff/3600);
+    return h + ' ' + pluralRu(h, ['час','часа','часов']) + ' назад';
+  }
+  if (diff < 86400*7) {
+    const days = Math.floor(diff/86400);
+    return days + ' ' + pluralRu(days, ['день','дня','дней']) + ' назад';
+  }
+  return d.toLocaleDateString('ru-RU', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function formatFull(iso){
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function stableColor(name){
+  let h = 0;
+  const s = String(name || '?');
+  for (let i = 0; i < s.length; i++) h = (h*31 + s.charCodeAt(i)) | 0;
+  const palette = ['#1E8A4C','#0891B2','#7C3AED','#DB2777','#EA580C','#65A30D','#475569','#2563EB'];
+  return palette[Math.abs(h) % palette.length];
+}
+
+function initials(name){
+  if (!name) return '?';
+  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function toast(msg, success){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (success ? ' success' : '');
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function logout(){ localStorage.removeItem('token'); location.href = '/login.html'; }
+
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('profileDD').classList.toggle('open');
+  document.getElementById('topbarProfile').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('profileDD');
+  const tp = document.getElementById('topbarProfile');
+  if (dd && tp && !tp.contains(e.target) && !dd.contains(e.target)) {
+    dd.classList.remove('open');
+    tp.classList.remove('open');
+  }
+});
+
+// ─── Профиль ───
+async function loadProfile(){
+  if (!tk()) return;
+  try {
+    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    if (!r.ok) {
+      if (r.status === 401) { /* не залогинен — но страница работает */ }
+      return;
+    }
+    const d = await r.json();
+    const u = d.user || d;
+    currentUserPublicID = u.public_id || '';
+    const name = u.full_name || u.handle || 'Пользователь';
+    const ini = initials(name);
+    document.getElementById('topbarAv').textContent = ini;
+    document.getElementById('topbarName').textContent = name;
+    document.getElementById('topbarRole').textContent = 'Участник LASTOP';
+    document.getElementById('pddAv').textContent = ini;
+    document.getElementById('pddName').textContent = name;
+    document.getElementById('pddRole').textContent = 'Участник LASTOP';
+  } catch (err) { console.error('loadProfile', err); }
+}
+
+// ─── Категории (для цветов) ───
+async function loadCategoryColors(){
+  try {
+    const r = await fetch(API + '/forum/categories');
+    if (!r.ok) return;
+    const d = await r.json();
+    (d.categories || []).forEach(c => { categoryColors[c.key] = c.color; });
+  } catch {}
+}
+
+// ─── Тема ───
+async function loadTopic(){
+  if (!TOPIC_PUBLIC_ID) {
+    document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не указана. <a href="/forum.html">К списку тем →</a></div>';
+    return;
+  }
+  try {
+    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
+    });
+    if (r.status === 404) {
+      document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не найдена или удалена. <a href="/forum.html">К списку тем →</a></div>';
+      return;
+    }
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    currentTopic = d.topic;
+    isAuthorOfTopic = currentUserPublicID && currentTopic.author_public_id === currentUserPublicID;
+    document.title = currentTopic.title + ' — Форум LASTOP';
+    renderTopicHeader();
+    renderTopicSidebar();
+    updateBreadcrumbs();
+    await loadIsSubscribed();
+  } catch (err) {
+    console.error('loadTopic', err);
+    document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Не удалось загрузить тему. <a href="/forum.html">К списку тем →</a></div>';
+  }
+}
+
+function updateBreadcrumbs(){
+  if (!currentTopic) return;
+  const bcCat = document.getElementById('bcCategory');
+  bcCat.textContent = currentTopic.category_label || 'Категория';
+  bcCat.href = '/forum.html?cat=' + encodeURIComponent(currentTopic.category_key);
+  document.getElementById('bcTopic').textContent = currentTopic.title.length > 60 ? currentTopic.title.substring(0, 60) + '…' : currentTopic.title;
+}
+
+function renderTopicHeader(){
+  const t = currentTopic;
+  const color = t.category_color || categoryColors[t.category_key] || '#5A8A6A';
+  const closedTag = t.is_closed
+    ? '<span class="th-status-tag th-status-closed"><svg style="width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Тема закрыта</span>'
+    : '';
+
+  const subscribeBtn = tk()
+    ? '<button class="th-btn" id="btnSubscribe" onclick="toggleSubscribe()">' +
+        '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+        '<span class="th-btn-text-on">Подписаться</span>' +
+      '</button>'
+    : '';
+
+  const ownerActions = isAuthorOfTopic
+    ? '<button class="th-btn" onclick="toggleClosedTopic()">' +
+        '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+        (t.is_closed ? 'Открыть тему' : 'Закрыть тему') +
+      '</button>' +
+      '<button class="th-btn danger" onclick="deleteTopic()">' +
+        '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+        'Удалить' +
+      '</button>'
+    : '';
+
+  document.getElementById('topicHeaderWrap').innerHTML =
+    '<div class="topic-header">' +
+      '<div class="th-top">' +
+        '<a class="th-cat-tag" style="background:' + esc(color) + '" href="/forum.html?cat=' + esc(t.category_key) + '">' + esc(t.category_label) + '</a>' +
+        (t.is_pinned ? '<span class="th-pinned-icon" title="Закреплено"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-3V5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v9z"/></svg></span>' : '') +
+        closedTag +
+        '<div class="th-actions">' +
+          subscribeBtn +
+          ownerActions +
+        '</div>' +
+      '</div>' +
+      '<div class="th-title-block">' +
+        '<div class="th-title">' + esc(t.title) + '</div>' +
+        '<div class="th-meta-row">' +
+          '<a class="th-meta-author" href="/profile_user.html?id=' + esc(t.author_public_id) + '">' + esc(t.author_name) + '</a>' +
+          '<span class="th-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' + formatFull(t.created_at) + '</span>' +
+          '<span class="th-meta-item"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + t.replies_count + ' ' + pluralRu(t.replies_count, ['ответ','ответа','ответов']) + '</span>' +
+          '<span class="th-meta-item"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' + t.views_count + ' ' + pluralRu(t.views_count, ['просмотр','просмотра','просмотров']) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function renderTopicSidebar(){
+  const t = currentTopic;
+  const wrap = document.getElementById('topicInfo');
+  wrap.innerHTML =
+    '<div class="info-row"><span class="info-row-label">Категория</span><span class="info-row-val" style="color:' + esc(t.category_color || '#1E8A4C') + '">' + esc(t.category_label) + '</span></div>' +
+    '<div class="info-row"><span class="info-row-label">Создана</span><span class="info-row-val">' + formatRelative(t.created_at) + '</span></div>' +
+    '<div class="info-row"><span class="info-row-label">Последний ответ</span><span class="info-row-val">' + formatRelative(t.last_reply_at) + '</span></div>' +
+    '<div class="info-row"><span class="info-row-label">Ответов</span><span class="info-row-val">' + t.replies_count + '</span></div>' +
+    '<div class="info-row"><span class="info-row-label">Просмотров</span><span class="info-row-val">' + t.views_count + '</span></div>' +
+    (t.is_closed ? '<div class="info-row"><span class="info-row-label">Статус</span><span class="info-row-val" style="color:var(--gmt)">Закрыта</span></div>' : '');
+
+  // Карточка автора
+  const aCard = document.getElementById('authorCard');
+  if (t.author_public_id) {
+    aCard.style.display = '';
+    document.getElementById('authorCardLink').href = '/profile_user.html?id=' + encodeURIComponent(t.author_public_id);
+    document.getElementById('authorAv').textContent = initials(t.author_name);
+    document.getElementById('authorAv').style.background = stableColor(t.author_name);
+    document.getElementById('authorName').textContent = t.author_name || 'Аноним';
+  }
+}
+
+// ─── Подписка ───
+async function loadIsSubscribed(){
+  if (!tk()) return;
+  try {
+    const r = await fetch(API + '/forum/subscriptions', {
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    const subscribed = (d.subscriptions || []).some(s => s.topic_public_id === TOPIC_PUBLIC_ID);
+    updateSubscribeBtn(subscribed);
+  } catch {}
+}
+
+function updateSubscribeBtn(subscribed){
+  const btn = document.getElementById('btnSubscribe');
+  if (!btn) return;
+  btn.classList.toggle('subscribed', subscribed);
+  btn.innerHTML = subscribed
+    ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '<span class="th-btn-text-on">Вы подписаны</span>' +
+      '<span class="th-btn-text-off">Отписаться</span>'
+    : '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+      '<span class="th-btn-text-on">Подписаться</span>';
+}
+
+async function toggleSubscribe(){
+  if (!tk()){ toast('Войдите чтобы подписаться'); return; }
+  try {
+    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/subscribe', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    updateSubscribeBtn(!!d.subscribed);
+    toast(d.subscribed ? 'Подписка оформлена' : 'Подписка отменена', true);
+  } catch (err) {
+    console.error('toggleSubscribe', err);
+    toast('Не удалось изменить подписку');
+  }
+}
+
+// ─── Закрытие/удаление темы ───
+async function toggleClosedTopic(){
+  if (!currentTopic) return;
+  const newClosed = !currentTopic.is_closed;
+  if (!confirm(newClosed ? 'Закрыть тему? Никто не сможет писать новые ответы.' : 'Открыть тему?')) return;
+  try {
+    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_closed: newClosed })
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    currentTopic = d.topic || Object.assign({}, currentTopic, { is_closed: newClosed });
+    renderTopicHeader();
+    renderTopicSidebar();
+    renderReplyForm();
+    toast(newClosed ? 'Тема закрыта' : 'Тема открыта', true);
+  } catch (err) {
+    console.error('toggleClosedTopic', err);
+    toast('Не удалось изменить статус темы');
+  }
+}
+
+async function deleteTopic(){
+  if (!confirm('Удалить тему «' + currentTopic.title + '»? Это действие нельзя отменить.')) return;
+  try {
+    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    toast('Тема удалена', true);
+    setTimeout(() => location.href = '/forum.html', 800);
+  } catch (err) {
+    console.error('deleteTopic', err);
+    toast('Не удалось удалить тему');
+  }
+}
+
+// ─── Сообщения ───
+async function loadMessages(){
+  try {
+    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
+      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    currentMessages = d.messages || [];
+    renderMessages();
+  } catch (err) {
+    console.error('loadMessages', err);
+    document.getElementById('messagesBox').innerHTML = '<div class="empty-state">Не удалось загрузить сообщения</div>';
+  }
+}
+
+function renderMessages(){
+  const box = document.getElementById('messagesBox');
+  if (!currentMessages.length) {
+    box.innerHTML = '<div class="messages-box"><div class="empty-state">В теме пока нет сообщений</div></div>';
+    return;
+  }
+  box.innerHTML = '<div class="messages-box">' +
+    currentMessages.map(m => renderMessage(m)).join('') +
+    '</div>';
+  renderReplyForm();
+}
+
+function renderMessage(m){
+  const color = stableColor(m.author_name || '?');
+  const editedTag = m.edited_at ? '<span class="msg-edited">· изменено</span>' : '';
+  const isMine = m.is_author;
+
+  const quoteBlock = (m.parent_id && m.parent_public_id)
+    ? '<a class="msg-quote" href="#msg-' + esc(m.parent_public_id) + '" onclick="scrollToMessage(\'' + escAttr(m.parent_public_id) + '\');return false">' +
+        '<div class="msg-quote-head">↳ ' + esc(m.parent_author || 'Автор') + '</div>' +
+        '<div class="msg-quote-text">' + esc(m.parent_snippet || '') + '</div>' +
+      '</a>'
+    : '';
+
+  const likeBtn = tk()
+    ? '<button class="msg-action' + (m.viewer_has_liked ? ' liked' : '') + '" onclick="toggleLike(\'' + escAttr(m.public_id) + '\')">' +
+        '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
+        (m.likes_count > 0 ? m.likes_count : 'Нравится') +
+      '</button>'
+    : '<span class="msg-action" style="cursor:default;opacity:.6">' +
+        '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
+        (m.likes_count > 0 ? m.likes_count : '0') +
+      '</span>';
+
+  const replyBtn = (tk() && !currentTopic.is_closed)
+    ? '<button class="msg-action" onclick="setReplyParent(\'' + escAttr(m.public_id) + '\', \'' + escAttr(m.author_name) + '\', \'' + escAttr((m.content || '').substring(0, 80)) + '\')">' +
+        '<svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>' +
+        'Ответить' +
+      '</button>'
+    : '';
+
+  const editBtn = isMine
+    ? '<button class="msg-action" onclick="startEditMessage(\'' + escAttr(m.public_id) + '\')">' +
+        '<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+        'Изменить' +
+      '</button>'
+    : '';
+
+  const delBtn = isMine
+    ? '<button class="msg-action danger" onclick="deleteMessage(\'' + escAttr(m.public_id) + '\')">' +
+        '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>' +
+        'Удалить' +
+      '</button>'
+    : '';
+
+  return '<div class="msg" id="msg-' + esc(m.public_id) + '">' +
+    '<a class="msg-av" style="background:' + esc(color) + '" href="/profile_user.html?id=' + esc(m.author_public_id) + '">' + esc(initials(m.author_name)) + '</a>' +
+    '<div class="msg-body">' +
+      '<div class="msg-head">' +
+        '<a class="msg-author" href="/profile_user.html?id=' + esc(m.author_public_id) + '">' + esc(m.author_name || 'Аноним') + '</a>' +
+        '<span class="msg-date" title="' + esc(formatFull(m.created_at)) + '">' + formatRelative(m.created_at) + '</span>' +
+        editedTag +
+      '</div>' +
+      quoteBlock +
+      '<div class="msg-content" id="msg-content-' + esc(m.public_id) + '">' + esc(m.content) + '</div>' +
+      '<div class="msg-actions">' +
+        likeBtn +
+        replyBtn +
+        editBtn +
+        delBtn +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function scrollToMessage(publicID){
+  const el = document.getElementById('msg-' + publicID);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
+// ─── Лайки ───
+async function toggleLike(msgPublicID){
+  if (!tk()){ toast('Войдите чтобы лайкать'); return; }
+  try {
+    const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID) + '/like', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    // Обновляем в локальном массиве
+    const m = currentMessages.find(x => x.public_id === msgPublicID);
+    if (m) {
+      m.likes_count = d.likes_count;
+      m.viewer_has_liked = d.viewer_has_liked;
+    }
+    renderMessages();
+  } catch (err) {
+    console.error('toggleLike', err);
+    toast('Не удалось');
+  }
+}
+
+// ─── Редактирование сообщения ───
+function startEditMessage(msgPublicID){
+  const m = currentMessages.find(x => x.public_id === msgPublicID);
+  if (!m) return;
+  const contentEl = document.getElementById('msg-content-' + msgPublicID);
+  if (!contentEl) return;
+  contentEl.outerHTML =
+    '<div class="msg-edit-form" id="msg-content-' + esc(msgPublicID) + '">' +
+      '<textarea class="msg-edit-textarea" id="edit-textarea-' + esc(msgPublicID) + '">' + esc(m.content) + '</textarea>' +
+      '<div class="msg-edit-actions">' +
+        '<button class="btn-cancel-sm" onclick="cancelEditMessage(\'' + escAttr(msgPublicID) + '\')">Отмена</button>' +
+        '<button class="btn-save-sm" onclick="saveEditMessage(\'' + escAttr(msgPublicID) + '\')">Сохранить</button>' +
+      '</div>' +
+    '</div>';
+  setTimeout(() => document.getElementById('edit-textarea-' + msgPublicID).focus(), 50);
+}
+
+function cancelEditMessage(msgPublicID){
+  loadMessages();
+}
+
+async function saveEditMessage(msgPublicID){
+  const ta = document.getElementById('edit-textarea-' + msgPublicID);
+  const newContent = ta.value.trim();
+  if (!newContent){ toast('Сообщение не может быть пустым'); return; }
+  if (newContent.length > 10000){ toast('Слишком длинное'); return; }
+  try {
+    const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: newContent })
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    toast('Сохранено', true);
+    await loadMessages();
+  } catch (err) {
+    console.error('saveEditMessage', err);
+    toast('Не удалось сохранить');
+  }
+}
+
+async function deleteMessage(msgPublicID){
+  if (!confirm('Удалить это сообщение?')) return;
+  try {
+    const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    toast('Удалено', true);
+    await loadMessages();
+    await loadTopic();
+  } catch (err) {
+    console.error('deleteMessage', err);
+    toast('Не удалось удалить');
+  }
+}
+
+// ─── Цитирование ───
+function setReplyParent(publicID, authorName, snippet){
+  replyParentMsgID = publicID;
+  renderReplyForm(authorName, snippet);
+  setTimeout(() => {
+    const ta = document.getElementById('replyTextarea');
+    if (ta) ta.focus();
+  }, 100);
+}
+
+function clearReplyParent(){
+  replyParentMsgID = '';
+  renderReplyForm();
+}
+
+// ─── Форма ответа ───
+function renderReplyForm(quoteAuthor, quoteText){
+  const wrap = document.getElementById('replyFormWrap');
+  if (!currentTopic) { wrap.innerHTML = ''; return; }
+
+  if (currentTopic.is_closed) {
+    wrap.innerHTML = '<div class="reply-locked">' +
+      '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+      'Тема закрыта для ответов' +
+    '</div>';
+    return;
+  }
+  if (!tk()) {
+    wrap.innerHTML = '<div class="reply-login-prompt">' +
+      '<a href="/login.html">Войдите</a> чтобы ответить в теме' +
+    '</div>';
+    return;
+  }
+
+  // Если был выбран parent — берём из аргументов или из существующего сообщения
+  let quotePreview = '';
+  if (replyParentMsgID) {
+    let auth = quoteAuthor || '';
+    let text = quoteText || '';
+    if (!auth || !text) {
+      const m = currentMessages.find(x => x.public_id === replyParentMsgID);
+      if (m) { auth = m.author_name; text = (m.content || '').substring(0, 80); }
+    }
+    quotePreview = '<div class="reply-quote-preview">' +
+      '<div class="reply-quote-preview-body">' +
+        '<div class="reply-quote-preview-head">↳ Ответ на: ' + esc(auth) + '</div>' +
+        '<div class="reply-quote-preview-text">' + esc(text) + '</div>' +
+      '</div>' +
+      '<button class="reply-quote-cancel" onclick="clearReplyParent()" title="Отменить цитату">' +
+        '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>' +
+    '</div>';
+  }
+
+  wrap.innerHTML = '<div class="reply-form">' +
+    '<div class="reply-form-title">' + (replyParentMsgID ? 'Ответ на сообщение' : 'Ответить в теме') + '</div>' +
+    quotePreview +
+    '<textarea class="reply-textarea" id="replyTextarea" placeholder="Напишите свой ответ…" maxlength="5000" oninput="updateReplyCounter()"></textarea>' +
+    '<div class="reply-bottom-row">' +
+      '<span class="reply-counter" id="replyCounter">0 / 5000</span>' +
+      '<button class="reply-submit" id="replySubmitBtn" onclick="submitReply()">Отправить</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function updateReplyCounter(){
+  const ta = document.getElementById('replyTextarea');
+  const c = document.getElementById('replyCounter');
+  if (!ta || !c) return;
+  const len = ta.value.length;
+  c.textContent = len + ' / 5000';
+  c.classList.toggle('over', len > 5000);
+}
+
+async function submitReply(){
+  const ta = document.getElementById('replyTextarea');
+  if (!ta) return;
+  const content = ta.value.trim();
+  if (!content){ toast('Напишите ответ'); ta.focus(); return; }
+  if (content.length > 5000){ toast('Слишком длинное'); return; }
+
+  const btn = document.getElementById('replySubmitBtn');
+  btn.disabled = true; btn.textContent = 'Отправка…';
+
+  try {
+    const body = { content };
+    if (replyParentMsgID) body.parent_public_id = replyParentMsgID;
+    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      throw new Error(err.error || ('http ' + r.status));
+    }
+    const d = await r.json();
+    replyParentMsgID = '';
+    toast('Ответ отправлен', true);
+    await loadMessages();
+    await loadTopic();
+    // Обновляем кнопку подписки (теперь подписан после первого ответа)
+    setTimeout(loadIsSubscribed, 200);
+    // Скроллим к новому сообщению
+    if (d.message?.public_id) {
+      setTimeout(() => scrollToMessage(d.message.public_id), 300);
+    }
+  } catch (err) {
+    console.error('submitReply', err);
+    toast('Ошибка: ' + (err.message || 'не удалось отправить'));
+    btn.disabled = false;
+    btn.textContent = 'Отправить';
+  }
+}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadProfile();
+  await loadCategoryColors();
+  await loadTopic();
+  await loadMessages();
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && replyParentMsgID) clearReplyParent();
+  });
+
+  // Если в URL есть #msg-xxx — скроллим
+  if (location.hash.startsWith('#msg-')) {
+    setTimeout(() => {
+      const id = location.hash.replace('#msg-', '');
+      scrollToMessage(id);
+    }, 500);
+  }
+});
+</script>
+</body>
+</html>
