@@ -3366,9 +3366,300 @@ func main() {
 				return
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"topics": topics})
+		case http.MethodPost:
+			actorID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				CategoryKey string `json:"category_key"`
+				Title       string `json:"title"`
+				Content     string `json:"content"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content)
+			if err != nil {
+				log.Printf("createForumTopic: %v", err)
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"topic": topic})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
+	})
+
+	mux.HandleFunc("/api/forum/topics/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/forum/topics/")
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" {
+			writeError(w, http.StatusBadRequest, "Не указан id темы")
+			return
+		}
+		topicPublicID := parts[0]
+		topicID, err := getTopicByPublicID(db, topicPublicID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "Тема не найдена")
+			return
+		}
+
+		// /api/forum/topics/{publicID}
+		if len(parts) == 1 {
+			switch r.Method {
+			case http.MethodGet:
+				viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+				if viewerID > 0 {
+					if _, err := recordForumTopicView(db, topicID, viewerID); err != nil {
+						log.Printf("recordForumTopicView: %v", err)
+					}
+				}
+				topic, err := getForumTopicByPublicID(db, topicPublicID, viewerID)
+				if err != nil {
+					writeError(w, http.StatusNotFound, "Тема не найдена")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"topic": topic})
+			case http.MethodPatch:
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var authorID int64
+				if err := db.QueryRow(
+					`SELECT author_id FROM forum_topics WHERE id = $1`,
+					topicID,
+				).Scan(&authorID); err != nil {
+					writeError(w, http.StatusNotFound, "Тема не найдена")
+					return
+				}
+				if authorID != actorID {
+					writeError(w, http.StatusForbidden, "Нет прав")
+					return
+				}
+				var req struct {
+					IsClosed *bool `json:"is_closed,omitempty"`
+					IsPinned *bool `json:"is_pinned,omitempty"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				updates := []string{}
+				args := []any{}
+				idx := 1
+				if req.IsClosed != nil {
+					updates = append(updates, fmt.Sprintf("is_closed = $%d", idx))
+					args = append(args, *req.IsClosed)
+					idx++
+				}
+				if req.IsPinned != nil {
+					updates = append(updates, fmt.Sprintf("is_pinned = $%d", idx))
+					args = append(args, *req.IsPinned)
+					idx++
+				}
+				if len(updates) == 0 {
+					writeError(w, http.StatusBadRequest, "Нет изменений")
+					return
+				}
+				args = append(args, topicID)
+				_, err := db.Exec(
+					"UPDATE forum_topics SET "+strings.Join(updates, ", ")+
+						fmt.Sprintf(" WHERE id = $%d", idx),
+					args...,
+				)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				topic, _ := getForumTopicByPublicID(db, topicPublicID, actorID)
+				writeJSON(w, http.StatusOK, map[string]any{"topic": topic})
+			case http.MethodDelete:
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var authorID int64
+				if err := db.QueryRow(
+					`SELECT author_id FROM forum_topics WHERE id = $1`,
+					topicID,
+				).Scan(&authorID); err != nil {
+					writeError(w, http.StatusNotFound, "Тема не найдена")
+					return
+				}
+				if authorID != actorID {
+					writeError(w, http.StatusForbidden, "Нет прав")
+					return
+				}
+				if _, err := db.Exec(
+					`UPDATE forum_topics SET deleted_at = NOW() WHERE id = $1`,
+					topicID,
+				); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+
+		// /api/forum/topics/{publicID}/messages
+		if len(parts) == 2 && parts[1] == "messages" {
+			switch r.Method {
+			case http.MethodGet:
+				viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+				messages, err := listForumMessages(db, topicID, viewerID)
+				if err != nil {
+					log.Printf("listForumMessages: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"messages": messages})
+			case http.MethodPost:
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var req struct {
+					Content        string `json:"content"`
+					ParentPublicID string `json:"parent_public_id,omitempty"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				msg, err := addForumMessage(db, topicID, actorID, req.Content, req.ParentPublicID)
+				if err != nil {
+					if err.Error() == "topic closed" {
+						writeError(w, http.StatusForbidden, "Тема закрыта для ответов")
+						return
+					}
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				writeJSON(w, http.StatusCreated, map[string]any{"message": msg})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+
+		writeError(w, http.StatusNotFound, "Ресурс не найден")
+	})
+
+	mux.HandleFunc("/api/forum/messages/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/forum/messages/")
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" {
+			writeError(w, http.StatusBadRequest, "Не указан id сообщения")
+			return
+		}
+		msgPublicID := parts[0]
+		messageID, err := getMessageByPublicID(db, msgPublicID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "Сообщение не найдено")
+			return
+		}
+
+		// /api/forum/messages/{publicID}
+		if len(parts) == 1 {
+			switch r.Method {
+			case http.MethodPatch:
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var authorID int64
+				if err := db.QueryRow(
+					`SELECT author_id FROM forum_messages WHERE id = $1`,
+					messageID,
+				).Scan(&authorID); err != nil {
+					writeError(w, http.StatusNotFound, "Сообщение не найдено")
+					return
+				}
+				if authorID != actorID {
+					writeError(w, http.StatusForbidden, "Нет прав")
+					return
+				}
+				var req struct {
+					Content string `json:"content"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				content := strings.TrimSpace(req.Content)
+				if content == "" || len(content) > 10000 {
+					writeError(w, http.StatusBadRequest, "Длина сообщения 1-10000 символов")
+					return
+				}
+				if _, err := db.Exec(
+					`UPDATE forum_messages SET content = $1, edited_at = NOW() WHERE id = $2`,
+					content, messageID,
+				); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			case http.MethodDelete:
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				var authorID int64
+				if err := db.QueryRow(
+					`SELECT author_id FROM forum_messages WHERE id = $1`,
+					messageID,
+				).Scan(&authorID); err != nil {
+					writeError(w, http.StatusNotFound, "Сообщение не найдено")
+					return
+				}
+				if authorID != actorID {
+					writeError(w, http.StatusForbidden, "Нет прав")
+					return
+				}
+				if _, err := db.Exec(
+					`UPDATE forum_messages SET deleted_at = NOW() WHERE id = $1`,
+					messageID,
+				); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+
+		// /api/forum/messages/{publicID}/like
+		if len(parts) == 2 && parts[1] == "like" {
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			actorID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			count, liked, err := toggleForumMessageLike(db, messageID, actorID)
+			if err != nil {
+				log.Printf("toggleForumMessageLike: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"likes_count":      count,
+				"viewer_has_liked": liked,
+			})
+			return
+		}
+
+		writeError(w, http.StatusNotFound, "Ресурс не найден")
 	})
 
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
@@ -5198,6 +5489,377 @@ func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offs
 		topics = append(topics, t)
 	}
 	return topics, rows.Err()
+}
+
+// ─── Сообщения форума ───
+
+type forumMessage struct {
+	ID             int64      `json:"id"`
+	PublicID       string     `json:"public_id"`
+	TopicID        int64      `json:"topic_id"`
+	AuthorID       int64      `json:"author_id"`
+	AuthorPublicID string     `json:"author_public_id"`
+	AuthorName     string     `json:"author_name"`
+	Content        string     `json:"content"`
+	ParentID       *int64     `json:"parent_id,omitempty"`
+	ParentPublicID string     `json:"parent_public_id,omitempty"`
+	ParentAuthor   string     `json:"parent_author,omitempty"`
+	ParentSnippet  string     `json:"parent_snippet,omitempty"`
+	LikesCount     int        `json:"likes_count"`
+	ViewerHasLiked bool       `json:"viewer_has_liked"`
+	CreatedAt      time.Time  `json:"created_at"`
+	EditedAt       *time.Time `json:"edited_at,omitempty"`
+	IsAuthor       bool       `json:"is_author"`
+}
+
+// listForumMessages — все сообщения темы (без пагинации, обычно тема <100 сообщений).
+func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessage, error) {
+	rows, err := db.Query(`
+		SELECT
+			m.id, m.public_id, m.topic_id, m.author_id,
+			COALESCE(au.public_id, ''), COALESCE(au.full_name, au.handle, ''),
+			m.content, m.parent_id, m.likes_count, m.created_at, m.edited_at,
+			pm.public_id, COALESCE(pu.full_name, pu.handle, ''), COALESCE(SUBSTRING(pm.content, 1, 200), '')
+		FROM forum_messages m
+		LEFT JOIN users au ON au.id = m.author_id
+		LEFT JOIN forum_messages pm ON pm.id = m.parent_id AND pm.deleted_at IS NULL
+		LEFT JOIN users pu ON pu.id = pm.author_id
+		WHERE m.topic_id = $1 AND m.deleted_at IS NULL
+		ORDER BY m.created_at ASC, m.id ASC
+	`, topicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	messages := make([]forumMessage, 0, 32)
+	ids := make([]int64, 0, 32)
+
+	for rows.Next() {
+		var m forumMessage
+		var parentPublicID, parentAuthor, parentSnippet sql.NullString
+		if err := rows.Scan(
+			&m.ID, &m.PublicID, &m.TopicID, &m.AuthorID,
+			&m.AuthorPublicID, &m.AuthorName,
+			&m.Content, &m.ParentID, &m.LikesCount, &m.CreatedAt, &m.EditedAt,
+			&parentPublicID, &parentAuthor, &parentSnippet,
+		); err != nil {
+			return nil, err
+		}
+		if m.ParentID != nil && parentPublicID.Valid {
+			m.ParentPublicID = parentPublicID.String
+			m.ParentAuthor = parentAuthor.String
+			m.ParentSnippet = parentSnippet.String
+		}
+		if viewerID > 0 && m.AuthorID == viewerID {
+			m.IsAuthor = true
+		}
+		messages = append(messages, m)
+		ids = append(ids, m.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Если пользователь залогинен — отметим какие сообщения он лайкнул
+	if viewerID > 0 && len(ids) > 0 {
+		likedRows, err := db.Query(
+			`SELECT message_id FROM forum_message_likes
+			 WHERE user_id = $1 AND message_id = ANY($2)`,
+			viewerID, ids,
+		)
+		if err == nil {
+			defer likedRows.Close()
+			liked := make(map[int64]bool)
+			for likedRows.Next() {
+				var mid int64
+				if err := likedRows.Scan(&mid); err == nil {
+					liked[mid] = true
+				}
+			}
+			for i := range messages {
+				if liked[messages[i].ID] {
+					messages[i].ViewerHasLiked = true
+				}
+			}
+		}
+	}
+
+	return messages, nil
+}
+
+// getForumTopicByPublicID — возвращает полный объект темы по public_id (с автором).
+func getForumTopicByPublicID(db *sql.DB, publicID string, viewerID int64) (forumTopic, error) {
+	_ = viewerID
+	var t forumTopic
+	err := db.QueryRow(`
+		SELECT t.id, t.public_id, t.category_key, t.title,
+		       t.author_id, COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+		       t.created_at, t.last_reply_at, t.views_count, t.replies_count,
+		       t.is_pinned, t.is_closed
+		FROM forum_topics t
+		LEFT JOIN users u ON u.id = t.author_id
+		WHERE t.public_id = $1 AND t.deleted_at IS NULL
+	`, publicID).Scan(
+		&t.ID, &t.PublicID, &t.CategoryKey, &t.Title,
+		&t.AuthorID, &t.AuthorPublicID, &t.AuthorName,
+		&t.CreatedAt, &t.LastReplyAt, &t.ViewsCount, &t.RepliesCount,
+		&t.IsPinned, &t.IsClosed,
+	)
+	if err != nil {
+		return t, err
+	}
+	for _, c := range forumCategories {
+		if c.Key == t.CategoryKey {
+			t.CategoryLabel = c.Label
+			t.CategoryColor = c.Color
+			break
+		}
+	}
+	return t, nil
+}
+
+// recordForumTopicView — записывает уникальный просмотр (если ещё нет от этого юзера).
+// Возвращает true если просмотр новый (тогда нужно инкрементировать views_count).
+func recordForumTopicView(db *sql.DB, topicID, viewerID int64) (bool, error) {
+	if viewerID <= 0 {
+		return false, nil
+	}
+	res, err := db.Exec(
+		`INSERT INTO forum_topic_views (topic_id, user_id) VALUES ($1, $2)
+		 ON CONFLICT (topic_id, user_id) DO NOTHING`,
+		topicID, viewerID,
+	)
+	if err != nil {
+		return false, err
+	}
+	rows, _ := res.RowsAffected()
+	if rows > 0 {
+		// Инкрементим счётчик
+		if _, err := db.Exec(
+			`UPDATE forum_topics SET views_count = views_count + 1 WHERE id = $1`,
+			topicID,
+		); err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// createForumTopic — создаёт тему + первое сообщение в одной транзакции.
+func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content string) (forumTopic, error) {
+	if !validateForumCategory(categoryKey) {
+		return forumTopic{}, fmt.Errorf("invalid category")
+	}
+	title = strings.TrimSpace(title)
+	content = strings.TrimSpace(content)
+	if title == "" || len(title) > 200 {
+		return forumTopic{}, fmt.Errorf("title length")
+	}
+	if content == "" || len(content) > 10000 {
+		return forumTopic{}, fmt.Errorf("content length")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return forumTopic{}, err
+	}
+	defer tx.Rollback()
+
+	topicPublicID, err := generateForumPublicID("f")
+	if err != nil {
+		return forumTopic{}, err
+	}
+	msgPublicID, err := generateForumPublicID("m")
+	if err != nil {
+		return forumTopic{}, err
+	}
+
+	var topicID int64
+	if err := tx.QueryRow(
+		`INSERT INTO forum_topics (public_id, category_key, title, author_id)
+		 VALUES ($1, $2, $3, $4) RETURNING id`,
+		topicPublicID, categoryKey, title, authorID,
+	).Scan(&topicID); err != nil {
+		return forumTopic{}, err
+	}
+
+	if _, err := tx.Exec(
+		`INSERT INTO forum_messages (public_id, topic_id, author_id, content)
+		 VALUES ($1, $2, $3, $4)`,
+		msgPublicID, topicID, authorID, content,
+	); err != nil {
+		return forumTopic{}, err
+	}
+
+	// Автор автоматически подписывается на свою тему (Спринт 7.1C это закрепит)
+	if _, err := tx.Exec(
+		`INSERT INTO forum_topic_subscriptions (topic_id, user_id) VALUES ($1, $2)
+		 ON CONFLICT DO NOTHING`,
+		topicID, authorID,
+	); err != nil {
+		return forumTopic{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return forumTopic{}, err
+	}
+
+	return getForumTopicByPublicID(db, topicPublicID, authorID)
+}
+
+// addForumMessage — добавляет ответ в существующую тему. Возвращает новое сообщение.
+// parentPublicID — пустая строка если без цитирования.
+func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicID string) (forumMessage, error) {
+	content = strings.TrimSpace(content)
+	if content == "" || len(content) > 5000 {
+		return forumMessage{}, fmt.Errorf("content length")
+	}
+
+	// Проверяем что тема не закрыта
+	var isClosed bool
+	if err := db.QueryRow(
+		`SELECT is_closed FROM forum_topics WHERE id = $1 AND deleted_at IS NULL`,
+		topicID,
+	).Scan(&isClosed); err != nil {
+		return forumMessage{}, fmt.Errorf("topic not found")
+	}
+	if isClosed {
+		return forumMessage{}, fmt.Errorf("topic closed")
+	}
+
+	var parentID sql.NullInt64
+	if parentPublicID != "" {
+		if pid, err := getMessageByPublicID(db, parentPublicID); err == nil {
+			parentID = sql.NullInt64{Int64: pid, Valid: true}
+		}
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return forumMessage{}, err
+	}
+	defer tx.Rollback()
+
+	msgPublicID, err := generateForumPublicID("m")
+	if err != nil {
+		return forumMessage{}, err
+	}
+
+	var msgID int64
+	if err := tx.QueryRow(
+		`INSERT INTO forum_messages (public_id, topic_id, author_id, content, parent_id)
+		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		msgPublicID, topicID, authorID, content, parentID,
+	).Scan(&msgID); err != nil {
+		return forumMessage{}, err
+	}
+
+	// Обновляем тему: replies_count + last_reply_at
+	if _, err := tx.Exec(
+		`UPDATE forum_topics
+		 SET replies_count = replies_count + 1, last_reply_at = NOW()
+		 WHERE id = $1`,
+		topicID,
+	); err != nil {
+		return forumMessage{}, err
+	}
+
+	// Автоматически подписываем автора ответа на тему
+	if _, err := tx.Exec(
+		`INSERT INTO forum_topic_subscriptions (topic_id, user_id) VALUES ($1, $2)
+		 ON CONFLICT DO NOTHING`,
+		topicID, authorID,
+	); err != nil {
+		return forumMessage{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return forumMessage{}, err
+	}
+
+	// Получаем созданное сообщение через listForumMessages-подобный запрос (одно сообщение)
+	msgs, err := listForumMessages(db, topicID, authorID)
+	if err != nil {
+		return forumMessage{}, err
+	}
+	for _, m := range msgs {
+		if m.ID == msgID {
+			return m, nil
+		}
+	}
+	return forumMessage{}, fmt.Errorf("not found after insert")
+}
+
+// toggleForumMessageLike — ставит или снимает лайк.
+// Возвращает новое значение likes_count и флаг "сейчас залайкано".
+func toggleForumMessageLike(db *sql.DB, messageID, userID int64) (int, bool, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, false, err
+	}
+	defer tx.Rollback()
+
+	// Проверка существования сообщения
+	var msgAuthorID int64
+	if err := tx.QueryRow(
+		`SELECT author_id FROM forum_messages WHERE id = $1 AND deleted_at IS NULL`,
+		messageID,
+	).Scan(&msgAuthorID); err != nil {
+		return 0, false, fmt.Errorf("message not found")
+	}
+
+	// Пытаемся вставить лайк
+	res, err := tx.Exec(
+		`INSERT INTO forum_message_likes (message_id, user_id) VALUES ($1, $2)
+		 ON CONFLICT DO NOTHING`,
+		messageID, userID,
+	)
+	if err != nil {
+		return 0, false, err
+	}
+	rows, _ := res.RowsAffected()
+
+	var liked bool
+	if rows > 0 {
+		// Был не залайкан — теперь залайкан
+		if _, err := tx.Exec(
+			`UPDATE forum_messages SET likes_count = likes_count + 1 WHERE id = $1`,
+			messageID,
+		); err != nil {
+			return 0, false, err
+		}
+		liked = true
+	} else {
+		// Уже был лайк — снимаем
+		if _, err := tx.Exec(
+			`DELETE FROM forum_message_likes WHERE message_id = $1 AND user_id = $2`,
+			messageID, userID,
+		); err != nil {
+			return 0, false, err
+		}
+		if _, err := tx.Exec(
+			`UPDATE forum_messages SET likes_count = GREATEST(likes_count - 1, 0) WHERE id = $1`,
+			messageID,
+		); err != nil {
+			return 0, false, err
+		}
+		liked = false
+	}
+
+	var newCount int
+	if err := tx.QueryRow(
+		`SELECT likes_count FROM forum_messages WHERE id = $1`,
+		messageID,
+	).Scan(&newCount); err != nil {
+		return 0, false, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, false, err
+	}
+	return newCount, liked, nil
 }
 
 func parseDateOrNil(s *string) (*time.Time, error) {
