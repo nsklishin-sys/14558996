@@ -1099,6 +1099,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script>
 const API='/api', tk=()=>localStorage.getItem('token');
 function esc(s){return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+function escAttr(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
@@ -1707,7 +1710,7 @@ async function loadStages(){
       const actions = viewerCanManage
         ? `<div class="item-actions">
             <button class="item-action" onclick='openStageModal(${JSON.stringify(s).replace(/'/g, "&apos;")})' title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button class="item-action danger" onclick="deleteStage(${s.id}, ${JSON.stringify(s.title)})" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            <button class="item-action danger" onclick="deleteStage(${s.id}, &quot;${escAttr(s.title)}&quot;)" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
           </div>`
         : '';
 
@@ -1782,18 +1785,18 @@ async function loadNeeds(){
             ? ''
             : (responded
                 ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
-                : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', ' + JSON.stringify(n.title) + ')">Откликнуться</button>'));
+                : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', &quot;' + escAttr(n.title) + '&quot;)">Откликнуться</button>'));
 
       const responsesInfo = n.responses_count > 0
         ? (viewerCanManage
-            ? '<button class="need-tag" style="background:var(--gl);color:var(--g);border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px" onclick="openResponsesModal(' + n.id + ', ' + JSON.stringify(n.title) + ')"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</button>'
+            ? '<button class="need-tag" style="background:var(--gl);color:var(--g);border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px" onclick="openResponsesModal(' + n.id + ', &quot;' + escAttr(n.title) + '&quot;)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</button>'
             : '<span class="need-tag" style="background:var(--gl);color:var(--g)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;display:inline-block;vertical-align:-2px;margin-right:3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</span>')
         : '';
 
       const manageActions = viewerCanManage
         ? `<div class="item-actions" style="margin-left:auto">
             <button class="item-action" onclick='openNeedModal(${JSON.stringify(n).replace(/'/g, "&apos;")})' title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button class="item-action danger" onclick="deleteNeed(${n.id}, ${JSON.stringify(n.title)})" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            <button class="item-action danger" onclick="deleteNeed(${n.id}, &quot;${escAttr(n.title)}&quot;)" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
           </div>`
         : '';
 
