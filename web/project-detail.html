@@ -457,7 +457,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="bc-sep">›</span>
     <a class="bc-item" href="/projects.html">Проекты</a>
     <span class="bc-sep">›</span>
-    <span class="bc-item cur">Маршрут Москва — Алматы через Оренбург</span>
+    <span class="bc-item cur" id="bcProjectTitle">Загрузка…</span>
   </nav>
 
   <!-- ── ШАПКА ── -->
@@ -517,18 +517,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           Сохранить
         </button>
-        <button class="btn-share" onclick="toast('Ссылка скопирована ✓',true)">
-          <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          Поделиться
-        </button>
         <button class="btn-share" id="btnDelete" onclick="confirmDeleteProject()" style="display:none;color:var(--red);border-color:#FABCBC">
           <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           Удалить
         </button>
         <div class="repost-wrap">
           <button class="btn-share" id="btnRepost" onclick="toggleRepost(event)">
-            <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Репост
+            <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Поделиться
           </button>
           <div class="repost-dd" id="repostDD">
             <div class="repost-dd-head">Поделиться в…</div>
@@ -580,10 +576,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
             </div>
           </div>
         </div>
-        <span class="proj-views">
-          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          1 248
-        </span>
       </div>
     </div>
   </div>
@@ -644,35 +636,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
   </div>
 
-  <!-- ── ДАТЫ И ЭТАПЫ ── -->
-  <div class="proj-section" style="animation-delay:.1s;display:none">
+  <!-- ── ЭТАПЫ ── -->
+  <div class="proj-section" style="animation-delay:.1s">
     <div class="sec-title">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      Сроки реализации
-    </div>
-    <div class="dates-grid">
-      <div class="date-card">
-        <div class="date-label">Дата начала</div>
-        <div class="date-value">1 марта 2026</div>
-        <div class="date-sub">Проект запущен</div>
-      </div>
-      <div class="date-card highlight">
-        <div class="date-label">Дедлайн</div>
-        <div class="date-value green">30 сентября 2026</div>
-        <div class="date-sub">Осталось 5 месяцев</div>
-      </div>
-      <div class="date-card">
-        <div class="date-label">Длительность</div>
-        <div class="date-value">7 месяцев</div>
-        <div class="date-sub">Прогресс 65%</div>
-      </div>
-    </div>
-
-    <div class="sec-divider"></div>
-
-    <div class="sec-title" style="margin-bottom:10px">
       <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      Этапы
+      Этапы реализации
     </div>
     <div class="stages" id="stagesList">
       <!-- Скелетон загрузки -->
@@ -697,7 +665,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 
   <!-- ── НУЖДЫ ── -->
-  <div class="proj-section" style="animation-delay:.2s;display:none">
+  <div class="proj-section" style="animation-delay:.2s">
     <div class="sec-title">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Чем можете помочь проекту
@@ -765,12 +733,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Краткая сводка -->
   <div class="card">
     <div class="block-title">О проекте</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Статус</span><span class="stat-val" style="color:var(--g)">Активный</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дедлайн</span><span class="stat-val">30 сент. 2026</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Участников</span><span class="stat-val">5</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Нужд</span><span class="stat-val">4</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Откликов</span><span class="stat-val" id="responsesCount">12</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val">1 248</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Статус</span><span class="stat-val" id="sideStatus" style="color:var(--g)">—</span></div>
+    <div class="stat-row" id="sideDeadlineRow"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дедлайн</span><span class="stat-val" id="sideDeadline">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Участников</span><span class="stat-val" id="sideMembers">—</span></div>
+    <div class="stat-row" id="sideNeedsRow" style="display:none"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Нужд</span><span class="stat-val" id="sideNeeds">0</span></div>
   </div>
 
   <!-- Автор -->
@@ -785,8 +751,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
   </div>
 
-  <!-- Похожие проекты -->
-  <div class="card">
+  <!-- Похожие проекты (скрыто до Спринта 7+, бэк ещё не готов) -->
+  <div class="card" style="display:none">
     <div class="block-title">Похожие проекты</div>
     <div class="sim-item" onclick="toast('Открываем проект…')">
       <div class="sim-icon" style="background:var(--gl)">🚂</div>
@@ -1116,6 +1082,8 @@ function renderProject(){
   const p = currentProject;
 
   document.getElementById('projTitle').textContent = p.title || 'Без названия';
+  const bc = document.getElementById('bcProjectTitle');
+  if (bc) bc.textContent = p.title || 'Проект';
   document.title = (p.title || 'Проект') + ' — LASTOP GROUP';
 
   const grad = COVER_GRADIENTS[p.status] || COVER_GRADIENTS.active;
@@ -1173,6 +1141,27 @@ function renderProject(){
   }
 
   const memCountEl = document.getElementById('projMembersCountLabel');
+  // Правый сайдбар — статус
+  const STATUS_LABELS_SIDE = { active: 'Активный', completed: 'Завершён', paused: 'На паузе', archived: 'Архив' };
+  const sideStatusEl = document.getElementById('sideStatus');
+  if (sideStatusEl) sideStatusEl.textContent = STATUS_LABELS_SIDE[p.status] || (p.status || '—');
+
+  // Правый сайдбар — дедлайн
+  const sideDeadlineRow = document.getElementById('sideDeadlineRow');
+  const sideDeadlineEl = document.getElementById('sideDeadline');
+  if (sideDeadlineRow && sideDeadlineEl) {
+    if (p.deadline) {
+      const d = new Date(p.deadline);
+      sideDeadlineEl.textContent = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+      sideDeadlineRow.style.display = '';
+    } else {
+      sideDeadlineRow.style.display = 'none';
+    }
+  }
+
+  // Правый сайдбар — участники
+  const sideMembersEl = document.getElementById('sideMembers');
+  if (sideMembersEl) sideMembersEl.textContent = String(p.members_count || 0);
   if (memCountEl) {
     const n = p.members_count || 0;
     memCountEl.textContent = n + ' ' + (n === 1 ? 'участник' : (n >= 2 && n <= 4 ? 'участника' : 'участников'));
@@ -1416,6 +1405,17 @@ async function loadNeeds(){
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
     const needs = (d.needs || []).filter(n => n.status === 'open'); // показываем только открытые
+    // Обновить счётчик в правом сайдбаре
+    const sideNeedsRow = document.getElementById('sideNeedsRow');
+    const sideNeedsEl = document.getElementById('sideNeeds');
+    if (sideNeedsRow && sideNeedsEl) {
+      if (needs.length > 0) {
+        sideNeedsEl.textContent = String(needs.length);
+        sideNeedsRow.style.display = '';
+      } else {
+        sideNeedsRow.style.display = 'none';
+      }
+    }
 
     if (needs.length === 0){
       list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic">Открытых потребностей пока нет</div>';
