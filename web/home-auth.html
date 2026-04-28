@@ -1180,34 +1180,36 @@ function formatTimeShort(iso){
 async function loadForumThreads(){
   document.getElementById('forumList').innerHTML=skels(3,38);
   try{
-    const r=await fetch(API+'/forum/topics/active?limit=5',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await fetch(API+'/forum/topics?limit=5');
     if(!r.ok)throw 0;
     const d=await r.json();
-    const items=d.topics||d.threads||[];
-    if(items.length){renderForum(items);return;}
-  }catch{}
-  renderForum(demoForum());
+    const items=d.topics||[];
+    renderForum(items);
+  }catch(err){
+    console.warn('loadForumThreads:',err);
+    document.getElementById('forumList').innerHTML='<div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px;font-style:italic">Не удалось загрузить</div>';
+  }
 }
 function renderForum(items){
+  if(!items.length){
+    document.getElementById('forumList').innerHTML='<div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px;font-style:italic">Тем пока нет — <a href="/forum.html" style="color:var(--g);text-decoration:none;font-weight:700">создай первую</a></div>';
+    return;
+  }
   document.getElementById('forumList').innerHTML=items.slice(0,5).map(t=>{
-    const cnt=t.messages_count||t.replies||0;
-    const nw=t.new_count||t.unread||0;
-    const id=t.id?'?topic='+t.id:'';
-    return`<div class="forum-item" onclick="location.href='/forum.html${id}'">
-      <div class="fi-dot ${nw?'hot':''}"></div>
+    const cnt=t.replies_count||0;
+    const url=t.public_id?'/forum-topic.html?id='+encodeURIComponent(t.public_id):'/forum.html';
+    return`<div class="forum-item" onclick="location.href='${url}'">
+      <div class="fi-dot" style="background:${esc(t.category_color||'#5A8A6A')}"></div>
       <div class="fi-body">
-        <div class="fi-title">${esc(t.title||t.name||'')}</div>
-        <div class="fi-meta"><span class="fi-cnt">${cnt} ответов</span>${nw?`<span class="fi-new">+${nw} новых</span>`:''}</div>
+        <div class="fi-title">${esc(t.title||'')}</div>
+        <div class="fi-meta"><span class="fi-cnt">${cnt} ${pluralRu(cnt,['ответ','ответа','ответов'])}</span></div>
       </div></div>`;
   }).join('');
 }
-function demoForum(){return[
-  {title:'Мультимодальные перевозки СНГ–ЕС',messages_count:37,new_count:4},
-  {title:'Как ускорить сертификацию продукции',messages_count:19,new_count:1},
-  {title:'TMS vs самописная система: 2026',messages_count:11,new_count:0},
-  {title:'Таможенные риски при экспорте в ЕС',messages_count:8,new_count:2},
-  {title:'Выбор брокера для импорта из Китая',messages_count:5,new_count:0},
-];}
+function pluralRu(n,forms){
+  const a=[2,0,1,1,1,2];
+  return forms[(n%100>4&&n%100<20)?2:a[Math.min(n%10,5)]];
+}
 
 /* ── МЕРОПРИЯТИЯ И КАЛЕНДАРЬ ── */
 let CAL_STATE={year:new Date().getFullYear(),month:new Date().getMonth(),events:[],selectedDay:null};
