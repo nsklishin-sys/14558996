@@ -3339,6 +3339,38 @@ func main() {
 		writeError(w, http.StatusNotFound, "Маршрут не найден")
 	})
 
+	// ─── ФОРУМ (Спринт 7.1A) ───
+	mux.HandleFunc("/api/forum/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"categories": forumCategories})
+	})
+
+	mux.HandleFunc("/api/forum/topics", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			category := strings.TrimSpace(r.URL.Query().Get("category"))
+			if category != "" && !validateForumCategory(category) {
+				writeError(w, http.StatusBadRequest, "Неизвестная категория")
+				return
+			}
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+			topics, err := listForumTopics(db, category, viewerID, limit, offset)
+			if err != nil {
+				log.Printf("listForumTopics: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"topics": topics})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -4341,6 +4373,86 @@ CREATE UNIQUE INDEX IF NOT EXISTS need_responses_uniq_idx
 
 CREATE INDEX IF NOT EXISTS need_responses_responder_idx
     ON need_responses (responder_id, created_at DESC);
+
+-- ── ФОРУМ (Спринт 7) ──
+
+-- Темы форума
+CREATE TABLE IF NOT EXISTS forum_topics (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    category_key TEXT NOT NULL,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_reply_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    views_count INTEGER NOT NULL DEFAULT 0,
+    replies_count INTEGER NOT NULL DEFAULT 0,
+    is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    is_closed BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS forum_topics_category_idx
+    ON forum_topics (category_key, last_reply_at DESC, id DESC)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS forum_topics_recent_idx
+    ON forum_topics (last_reply_at DESC, id DESC)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS forum_topics_author_idx
+    ON forum_topics (author_id);
+
+-- Сообщения форума
+CREATE TABLE IF NOT EXISTS forum_messages (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    topic_id BIGINT NOT NULL REFERENCES forum_topics(id) ON DELETE CASCADE,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 10000),
+    parent_id BIGINT REFERENCES forum_messages(id) ON DELETE SET NULL,
+    likes_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS forum_messages_topic_idx
+    ON forum_messages (topic_id, created_at, id)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS forum_messages_author_idx
+    ON forum_messages (author_id);
+
+-- Лайки сообщений
+CREATE TABLE IF NOT EXISTS forum_message_likes (
+    message_id BIGINT NOT NULL REFERENCES forum_messages(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (message_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS forum_message_likes_user_idx
+    ON forum_message_likes (user_id, message_id);
+
+-- Подписки на темы
+CREATE TABLE IF NOT EXISTS forum_topic_subscriptions (
+    topic_id BIGINT NOT NULL REFERENCES forum_topics(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (topic_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS forum_subscriptions_user_idx
+    ON forum_topic_subscriptions (user_id);
+
+-- Уникальные просмотры тем
+CREATE TABLE IF NOT EXISTS forum_topic_views (
+    topic_id BIGINT NOT NULL REFERENCES forum_topics(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (topic_id, user_id)
+);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -4930,6 +5042,162 @@ func validateNeedStatus(s string) error {
 func generateNeedPublicID() string {
 	n := time.Now().UnixNano()
 	return "n_" + strconv.FormatInt(n, 36)
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Спринт 7: ФОРУМ
+// ═══════════════════════════════════════════════════════════════
+
+type forumCategoryDef struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Color string `json:"color"`
+}
+
+// Категории форума. На MVP — захардкожены.
+// TODO Спринт админки: вынести в таблицу `categories` с типом 'forum'.
+var forumCategories = []forumCategoryDef{
+	{Key: "logistics_transport", Label: "Логистика и перевозки", Color: "#2563EB"},
+	{Key: "customs", Label: "ВЭД и таможня", Color: "#7C3AED"},
+	{Key: "it", Label: "IT и автоматизация", Color: "#0891B2"},
+	{Key: "hiring", Label: "Кадры и найм", Color: "#DB2777"},
+	{Key: "announcements", Label: "Объявления и анонсы", Color: "#EA580C"},
+	{Key: "ideas", Label: "Идеи и предложения", Color: "#65A30D"},
+	{Key: "freetalk", Label: "Свободная тема", Color: "#475569"},
+}
+
+// validateForumCategory проверяет что key существует среди категорий.
+func validateForumCategory(key string) bool {
+	for _, c := range forumCategories {
+		if c.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// generateForumPublicID генерирует уникальный public_id для темы (f_xxx) или сообщения (m_xxx).
+// prefix — "f" для темы, "m" для сообщения.
+func generateForumPublicID(prefix string) (string, error) {
+	for attempt := 0; attempt < 5; attempt++ {
+		buf := make([]byte, 6)
+		if _, err := rand.Read(buf); err != nil {
+			return "", err
+		}
+		// 12 hex символов — этого достаточно для уникальности
+		return fmt.Sprintf("%s_%x", prefix, buf), nil
+	}
+	return "", fmt.Errorf("could not generate forum public_id")
+}
+
+// forumTopic — структура темы для JSON-ответа
+type forumTopic struct {
+	ID             int64     `json:"id"`
+	PublicID       string    `json:"public_id"`
+	CategoryKey    string    `json:"category_key"`
+	CategoryLabel  string    `json:"category_label"`
+	CategoryColor  string    `json:"category_color"`
+	Title          string    `json:"title"`
+	AuthorID       int64     `json:"author_id"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author_name"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastReplyAt    time.Time `json:"last_reply_at"`
+	ViewsCount     int       `json:"views_count"`
+	RepliesCount   int       `json:"replies_count"`
+	IsPinned       bool      `json:"is_pinned"`
+	IsClosed       bool      `json:"is_closed"`
+	ViewerHasLiked bool      `json:"viewer_has_liked,omitempty"`
+}
+
+// getTopicByPublicID возвращает id темы по public_id.
+// Возвращает 0 и ошибку если не найдена или удалена.
+func getTopicByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(
+		`SELECT id FROM forum_topics WHERE public_id = $1 AND deleted_at IS NULL`,
+		publicID,
+	).Scan(&id)
+	return id, err
+}
+
+// getMessageByPublicID возвращает id сообщения по public_id.
+func getMessageByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(
+		`SELECT id FROM forum_messages WHERE public_id = $1 AND deleted_at IS NULL`,
+		publicID,
+	).Scan(&id)
+	return id, err
+}
+
+// listForumTopics возвращает список тем с пагинацией.
+// categoryKey: пустая строка → все категории.
+// limit + offset — пагинация.
+// viewerID — для будущих фич (например, viewer_has_liked).
+func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offset int) ([]forumTopic, error) {
+	_ = viewerID
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var (
+		rows *sql.Rows
+		err  error
+	)
+
+	baseQuery := `
+		SELECT t.id, t.public_id, t.category_key, t.title,
+		       t.author_id, u.public_id, COALESCE(u.full_name, u.handle, ''),
+		       t.created_at, t.last_reply_at, t.views_count, t.replies_count,
+		       t.is_pinned, t.is_closed
+		FROM forum_topics t
+		LEFT JOIN users u ON u.id = t.author_id
+		WHERE t.deleted_at IS NULL
+	`
+
+	if categoryKey != "" {
+		rows, err = db.Query(baseQuery+
+			` AND t.category_key = $1
+			  ORDER BY t.is_pinned DESC, t.last_reply_at DESC, t.id DESC
+			  LIMIT $2 OFFSET $3`,
+			categoryKey, limit, offset)
+	} else {
+		rows, err = db.Query(baseQuery+
+			` ORDER BY t.is_pinned DESC, t.last_reply_at DESC, t.id DESC
+			  LIMIT $1 OFFSET $2`,
+			limit, offset)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	topics := make([]forumTopic, 0, limit)
+	for rows.Next() {
+		var t forumTopic
+		if err := rows.Scan(
+			&t.ID, &t.PublicID, &t.CategoryKey, &t.Title,
+			&t.AuthorID, &t.AuthorPublicID, &t.AuthorName,
+			&t.CreatedAt, &t.LastReplyAt, &t.ViewsCount, &t.RepliesCount,
+			&t.IsPinned, &t.IsClosed,
+		); err != nil {
+			return nil, err
+		}
+		// Дополняем label и color из захардкоженного списка
+		for _, c := range forumCategories {
+			if c.Key == t.CategoryKey {
+				t.CategoryLabel = c.Label
+				t.CategoryColor = c.Color
+				break
+			}
+		}
+		topics = append(topics, t)
+	}
+	return topics, rows.Err()
 }
 
 func parseDateOrNil(s *string) (*time.Time, error) {
