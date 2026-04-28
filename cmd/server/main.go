@@ -5138,7 +5138,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     id BIGSERIAL PRIMARY KEY,
     public_id TEXT NOT NULL UNIQUE,
     author_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+    author_company_id BIGINT,
     title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
     description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 10000),
     category TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('logistics','customs','it','management','warehouse','other')),
@@ -6102,7 +6102,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		SELECT
 			j.id, j.public_id, j.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
-			COALESCE(j.author_company_id, 0), COALESCE(c.name, ''),
+			COALESCE(j.author_company_id, 0), '',
 			j.title, j.description, j.category, j.city, j.address, j.work_format,
 			j.salary_from, j.salary_to, j.salary_currency,
 			j.experience_min_years, j.employment_type, j.status,
@@ -6111,7 +6111,6 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 			` + viewerApplied + `, ` + viewerSaved + `
 		FROM jobs j
 		LEFT JOIN users u ON u.id = j.author_user_id
-		LEFT JOIN companies c ON c.id = j.author_company_id
 		WHERE ` + strings.Join(conds, " AND ") + `
 		ORDER BY ` + orderBy + `
 		LIMIT ` + limitArg
@@ -6171,7 +6170,7 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	}
 	q := `SELECT j.id, j.public_id, j.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
-		COALESCE(j.author_company_id, 0), COALESCE(c.name, ''),
+		COALESCE(j.author_company_id, 0), '',
 		j.title, j.description, j.category, j.city, j.address, j.work_format,
 		j.salary_from, j.salary_to, j.salary_currency,
 		j.experience_min_years, j.employment_type, j.status,
@@ -6180,7 +6179,6 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 		` + viewerApplied + `, ` + viewerSaved + `
 		FROM jobs j
 		LEFT JOIN users u ON u.id = j.author_user_id
-		LEFT JOIN companies c ON c.id = j.author_company_id
 		WHERE j.public_id = $1 AND j.deleted_at IS NULL`
 
 	err = db.QueryRow(q, args...).Scan(
