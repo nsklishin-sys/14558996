@@ -3843,6 +3843,50 @@ func main() {
 		parts := strings.Split(path, "/")
 		publicID := parts[0]
 
+		// /api/jobs/{publicID}/apply
+		if len(parts) == 2 && parts[1] == "apply" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			jobID, err := getJobByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var req struct {
+				Message string `json:"message"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			result, err := applyToJob(db, jobID, userID, req.Message)
+			if err != nil {
+				if errors.Is(err, errValidation) {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+					return
+				}
+				if errors.Is(err, errConflict) {
+					writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error()})
+					return
+				}
+				if errors.Is(err, errNotFound) {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				log.Printf("applyToJob: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, result)
+			return
+		}
+
 		// /api/jobs/{publicID}/save
 		if len(parts) == 2 && parts[1] == "save" {
 			if r.Method != http.MethodPost {
@@ -4047,6 +4091,306 @@ func main() {
 		}
 
 		http.Error(w, "not found", http.StatusNotFound)
+	})
+
+	// ═════ РЕЗЮМЕ (Спринт 8.1B) ═════
+
+	mux.HandleFunc("/api/resumes/me", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		items, err := listResumes(db, listResumesFilters{
+			AuthorUserID: userID,
+			ViewerID:     userID,
+			Limit:        100,
+		})
+		if err != nil {
+			log.Printf("listMyResumes: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"resumes": items})
+	})
+
+	mux.HandleFunc("/api/resumes", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			expMin, _ := strconv.Atoi(r.URL.Query().Get("experience_min"))
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			items, err := listResumes(db, listResumesFilters{
+				Category:      r.URL.Query().Get("category"),
+				City:          r.URL.Query().Get("city"),
+				WorkFormat:    r.URL.Query().Get("work_format"),
+				ExperienceMin: expMin,
+				Status:        r.URL.Query().Get("status"),
+				Search:        r.URL.Query().Get("search"),
+				Sort:          r.URL.Query().Get("sort"),
+				ViewerID:      viewerID,
+				Limit:         limit,
+			})
+			if err != nil {
+				log.Printf("listResumes: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"resumes": items})
+
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				Title           string   `json:"title"`
+				About           string   `json:"about"`
+				Category        string   `json:"category"`
+				City            string   `json:"city"`
+				WorkFormat      string   `json:"work_format"`
+				SalaryFrom      *int64   `json:"salary_from"`
+				SalaryCurrency  string   `json:"salary_currency"`
+				ExperienceYears int      `json:"experience_years"`
+				EmploymentType  string   `json:"employment_type"`
+				Status          string   `json:"status"`
+				Skills          []string `json:"skills"`
+				Education       string   `json:"education"`
+				Contacts        string   `json:"contacts"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			req.Title = strings.TrimSpace(req.Title)
+			if utf8.RuneCountInString(req.Title) < 1 || utf8.RuneCountInString(req.Title) > 200 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "заголовок 1..200 символов"})
+				return
+			}
+			if req.Category == "" {
+				req.Category = "other"
+			}
+			if !validateJobCategory(req.Category) {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверная категория"})
+				return
+			}
+			if req.WorkFormat == "" {
+				req.WorkFormat = "office"
+			}
+			if req.WorkFormat != "office" && req.WorkFormat != "remote" && req.WorkFormat != "hybrid" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверный формат работы"})
+				return
+			}
+			if req.EmploymentType == "" {
+				req.EmploymentType = "full"
+			}
+			if req.Status == "" {
+				req.Status = "open"
+			}
+			if req.SalaryCurrency == "" {
+				req.SalaryCurrency = "RUB"
+			}
+			if req.Skills == nil {
+				req.Skills = []string{}
+			}
+
+			publicID := generateResumePublicID()
+			var newID int64
+			err = db.QueryRow(`
+				INSERT INTO resumes (public_id, author_user_id, title, about, category, city, work_format, salary_from, salary_currency, experience_years, employment_type, status, skills, education, contacts)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+				RETURNING id
+			`, publicID, userID, req.Title, req.About, req.Category, req.City, req.WorkFormat,
+				req.SalaryFrom, req.SalaryCurrency, req.ExperienceYears, req.EmploymentType, req.Status,
+				pgtype.FlatArray[string](req.Skills), req.Education, req.Contacts,
+			).Scan(&newID)
+			if err != nil {
+				log.Printf("createResume: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			res, err := getResumeByPublicIDFull(db, publicID, userID)
+			if err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"resume": res})
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/api/resumes/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/resumes/")
+		if path == "" || strings.Contains(path, "/") {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		publicID := path
+
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+
+		switch r.Method {
+		case http.MethodGet:
+			res, err := getResumeByPublicIDFull(db, publicID, viewerID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			// Если статус hidden и не автор — 404
+			if res.Status == "hidden" && (viewerID == 0 || res.AuthorUserID != viewerID) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			// Инкремент просмотров (не для автора)
+			if viewerID != res.AuthorUserID {
+				_, _ = db.Exec(`UPDATE resumes SET views_count = views_count + 1 WHERE id = $1`, res.ID)
+				res.ViewsCount++
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"resume": res})
+
+		case http.MethodPatch:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			resID, err := getResumeByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT author_user_id FROM resumes WHERE id=$1`, resID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			var req map[string]json.RawMessage
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			updates := []string{}
+			args := []interface{}{}
+			addUpdate := func(field string, val interface{}) {
+				args = append(args, val)
+				updates = append(updates, fmt.Sprintf("%s=$%d", field, len(args)))
+			}
+			if v, ok := req["title"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("title", s)
+			}
+			if v, ok := req["about"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("about", s)
+			}
+			if v, ok := req["category"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				if validateJobCategory(s) {
+					addUpdate("category", s)
+				}
+			}
+			if v, ok := req["city"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("city", s)
+			}
+			if v, ok := req["work_format"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("work_format", s)
+			}
+			if v, ok := req["salary_from"]; ok {
+				var n *int64
+				_ = json.Unmarshal(v, &n)
+				addUpdate("salary_from", n)
+			}
+			if v, ok := req["experience_years"]; ok {
+				var n int
+				_ = json.Unmarshal(v, &n)
+				addUpdate("experience_years", n)
+			}
+			if v, ok := req["employment_type"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("employment_type", s)
+			}
+			if v, ok := req["status"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("status", s)
+			}
+			if v, ok := req["skills"]; ok {
+				var arr []string
+				_ = json.Unmarshal(v, &arr)
+				addUpdate("skills", pgtype.FlatArray[string](arr))
+			}
+			if v, ok := req["education"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("education", s)
+			}
+			if v, ok := req["contacts"]; ok {
+				var s string
+				_ = json.Unmarshal(v, &s)
+				addUpdate("contacts", s)
+			}
+			if len(updates) == 0 {
+				writeJSON(w, http.StatusOK, map[string]any{"updated": false})
+				return
+			}
+			args = append(args, resID)
+			q := fmt.Sprintf(`UPDATE resumes SET %s, updated_at=NOW() WHERE id=$%d`, strings.Join(updates, ","), len(args))
+			if _, err := db.Exec(q, args...); err != nil {
+				log.Printf("updateResume: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			res, err := getResumeByPublicIDFull(db, publicID, userID)
+			if err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"resume": res})
+
+		case http.MethodDelete:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			resID, err := getResumeByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT author_user_id FROM resumes WHERE id=$1`, resID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			if _, err := db.Exec(`UPDATE resumes SET deleted_at=NOW() WHERE id=$1`, resID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 	})
 
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
@@ -6205,6 +6549,282 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 		j.ViewerIsAuthor = true
 	}
 	return &j, nil
+}
+
+// ═════ РЕЗЮМЕ — Helpers (Спринт 8.1B) ═════
+
+// resumeItem — структура резюме для ответа API
+type resumeItem struct {
+	ID             int64     `json:"id"`
+	PublicID       string    `json:"public_id"`
+	AuthorUserID   int64     `json:"author_user_id"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author_name"`
+	Title          string    `json:"title"`
+	About          string    `json:"about"`
+	Category       string    `json:"category"`
+	CategoryLabel  string    `json:"category_label"`
+	CategoryColor  string    `json:"category_color"`
+	City           string    `json:"city"`
+	WorkFormat     string    `json:"work_format"`
+	SalaryFrom     *int64    `json:"salary_from"`
+	SalaryCurrency string    `json:"salary_currency"`
+	ExperienceYears int      `json:"experience_years"`
+	EmploymentType string    `json:"employment_type"`
+	Status         string    `json:"status"`
+	Skills         []string  `json:"skills"`
+	Education      string    `json:"education"`
+	Contacts       string    `json:"contacts"`
+	ViewsCount     int       `json:"views_count"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	ViewerIsAuthor bool      `json:"viewer_is_author,omitempty"`
+}
+
+// listResumesFilters — фильтры для выдачи резюме
+type listResumesFilters struct {
+	Category      string
+	City          string
+	WorkFormat    string
+	ExperienceMin int
+	Status        string
+	Search        string
+	AuthorUserID  int64 // если задан — только резюме этого автора (для /api/resumes/me)
+	Sort          string
+	ViewerID      int64
+	Limit         int
+}
+
+func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+	var conds []string
+	var args []interface{}
+	conds = append(conds, "r.deleted_at IS NULL")
+	// По умолчанию hidden не показываем (только своему автору в /me)
+	if f.AuthorUserID == 0 {
+		conds = append(conds, "r.status <> 'hidden'")
+	}
+
+	if f.Category != "" && validateJobCategory(f.Category) {
+		args = append(args, f.Category)
+		conds = append(conds, fmt.Sprintf("r.category = $%d", len(args)))
+	}
+	if f.City != "" {
+		args = append(args, f.City)
+		conds = append(conds, fmt.Sprintf("r.city = $%d", len(args)))
+	}
+	if f.WorkFormat != "" {
+		args = append(args, f.WorkFormat)
+		conds = append(conds, fmt.Sprintf("r.work_format = $%d", len(args)))
+	}
+	if f.ExperienceMin > 0 {
+		args = append(args, f.ExperienceMin)
+		conds = append(conds, fmt.Sprintf("r.experience_years >= $%d", len(args)))
+	}
+	if f.Status != "" {
+		args = append(args, f.Status)
+		conds = append(conds, fmt.Sprintf("r.status = $%d", len(args)))
+	}
+	if f.AuthorUserID > 0 {
+		args = append(args, f.AuthorUserID)
+		conds = append(conds, fmt.Sprintf("r.author_user_id = $%d", len(args)))
+	}
+	if f.Search != "" {
+		args = append(args, "%"+strings.ToLower(f.Search)+"%")
+		conds = append(conds, fmt.Sprintf("(LOWER(r.title) LIKE $%d OR LOWER(r.about) LIKE $%d)", len(args), len(args)))
+	}
+
+	orderBy := "r.created_at DESC"
+	switch f.Sort {
+	case "popular":
+		orderBy = "r.views_count DESC, r.created_at DESC"
+	case "experience":
+		orderBy = "r.experience_years DESC, r.created_at DESC"
+	}
+
+	args = append(args, f.Limit)
+	limitArg := fmt.Sprintf("$%d", len(args))
+
+	q := `
+		SELECT r.id, r.public_id, r.author_user_id,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+		       r.title, r.about, r.category, r.city, r.work_format,
+		       r.salary_from, r.salary_currency,
+		       r.experience_years, r.employment_type, r.status,
+		       r.skills, r.education, r.contacts,
+		       r.views_count, r.created_at, r.updated_at
+		FROM resumes r
+		LEFT JOIN users u ON u.id = r.author_user_id
+		WHERE ` + strings.Join(conds, " AND ") + `
+		ORDER BY ` + orderBy + `
+		LIMIT ` + limitArg
+
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []resumeItem
+	for rows.Next() {
+		var ri resumeItem
+		var skills pgtype.FlatArray[string]
+		if err := rows.Scan(
+			&ri.ID, &ri.PublicID, &ri.AuthorUserID,
+			&ri.AuthorPublicID, &ri.AuthorName,
+			&ri.Title, &ri.About, &ri.Category, &ri.City, &ri.WorkFormat,
+			&ri.SalaryFrom, &ri.SalaryCurrency,
+			&ri.ExperienceYears, &ri.EmploymentType, &ri.Status,
+			&skills, &ri.Education, &ri.Contacts,
+			&ri.ViewsCount, &ri.CreatedAt, &ri.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		ri.Skills = []string(skills)
+		ri.CategoryLabel = jobCategoryLabel(ri.Category)
+		ri.CategoryColor = jobCategoryColor(ri.Category)
+		if f.ViewerID > 0 && ri.AuthorUserID == f.ViewerID {
+			ri.ViewerIsAuthor = true
+		}
+		out = append(out, ri)
+	}
+	return out, rows.Err()
+}
+
+// getResumeByPublicIDFull — карточка одного резюме
+func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resumeItem, error) {
+	var ri resumeItem
+	var skills pgtype.FlatArray[string]
+	q := `SELECT r.id, r.public_id, r.author_user_id,
+	             COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+	             r.title, r.about, r.category, r.city, r.work_format,
+	             r.salary_from, r.salary_currency,
+	             r.experience_years, r.employment_type, r.status,
+	             r.skills, r.education, r.contacts,
+	             r.views_count, r.created_at, r.updated_at
+	      FROM resumes r
+	      LEFT JOIN users u ON u.id = r.author_user_id
+	      WHERE r.public_id = $1 AND r.deleted_at IS NULL`
+	err := db.QueryRow(q, publicID).Scan(
+		&ri.ID, &ri.PublicID, &ri.AuthorUserID,
+		&ri.AuthorPublicID, &ri.AuthorName,
+		&ri.Title, &ri.About, &ri.Category, &ri.City, &ri.WorkFormat,
+		&ri.SalaryFrom, &ri.SalaryCurrency,
+		&ri.ExperienceYears, &ri.EmploymentType, &ri.Status,
+		&skills, &ri.Education, &ri.Contacts,
+		&ri.ViewsCount, &ri.CreatedAt, &ri.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	ri.Skills = []string(skills)
+	ri.CategoryLabel = jobCategoryLabel(ri.Category)
+	ri.CategoryColor = jobCategoryColor(ri.Category)
+	if viewerID > 0 && ri.AuthorUserID == viewerID {
+		ri.ViewerIsAuthor = true
+	}
+	return &ri, nil
+}
+
+// applyToJob — отклик на вакансию (создаёт application + direct-чат с автором + уведомление)
+func applyToJob(db *sql.DB, jobID, applicantID int64, message string) (map[string]any, error) {
+	message = strings.TrimSpace(message)
+	if utf8.RuneCountInString(message) < 1 || utf8.RuneCountInString(message) > 2000 {
+		return nil, fmt.Errorf("%w: сообщение 1..2000 символов", errValidation)
+	}
+
+	var jobAuthorID int64
+	var jobTitle string
+	var jobStatus string
+	if err := db.QueryRow(
+		`SELECT author_user_id, title, status FROM jobs WHERE id = $1 AND deleted_at IS NULL`,
+		jobID,
+	).Scan(&jobAuthorID, &jobTitle, &jobStatus); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errNotFound
+		}
+		return nil, err
+	}
+	if jobStatus == "closed" || jobStatus == "paused" {
+		return nil, fmt.Errorf("%w: вакансия закрыта", errValidation)
+	}
+	if applicantID == jobAuthorID {
+		return nil, fmt.Errorf("%w: автор не может откликаться на свою вакансию", errValidation)
+	}
+
+	// Уже откликался?
+	var existing int64
+	err := db.QueryRow(
+		`SELECT id FROM job_applications WHERE job_id = $1 AND applicant_user_id = $2`,
+		jobID, applicantID,
+	).Scan(&existing)
+	if err == nil {
+		return nil, fmt.Errorf("%w: вы уже откликались на эту вакансию", errConflict)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	// Создаём direct-чат между applicant и job author
+	chatID, err := findOrCreateDirectChat(db, applicantID, jobAuthorID)
+	if err != nil {
+		return nil, fmt.Errorf("чат: %v", err)
+	}
+	var chatPublicID string
+	if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id = $1`, chatID).Scan(&chatPublicID); err != nil {
+		return nil, err
+	}
+
+	// Отправляем сообщение с маркером
+	fullMessage := "💼 Отклик на вакансию «" + jobTitle + "»\n\n" + message
+	if _, err := sendMessage(db, applicantID, chatPublicID, sendMessageRequest{Content: fullMessage}); err != nil {
+		return nil, fmt.Errorf("сообщение: %v", err)
+	}
+
+	// Создаём application
+	publicID := generateJobApplicationPublicID()
+	var appID int64
+	if err := db.QueryRow(`
+		INSERT INTO job_applications (public_id, job_id, applicant_user_id, message, chat_conversation_id)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`, publicID, jobID, applicantID, message, chatID).Scan(&appID); err != nil {
+		return nil, err
+	}
+
+	// Инкремент счётчика
+	_, _ = db.Exec(`UPDATE jobs SET applications_count = applications_count + 1 WHERE id = $1`, jobID)
+
+	// Уведомление автору вакансии
+	var jobPublicID string
+	_ = db.QueryRow(`SELECT public_id FROM jobs WHERE id = $1`, jobID).Scan(&jobPublicID)
+	if shouldCreateNotificationForType(db, jobAuthorID, "job_application") {
+		var applicantName string
+		_ = db.QueryRow(`SELECT COALESCE(full_name, handle, '') FROM users WHERE id = $1`, applicantID).Scan(&applicantName)
+		preview := message
+		if utf8.RuneCountInString(preview) > 200 {
+			runes := []rune(preview)
+			preview = string(runes[:200]) + "…"
+		}
+		_ = createNotification(db, createNotificationParams{
+			RecipientID:    jobAuthorID,
+			ActorID:        applicantID,
+			Type:           "job_application",
+			SourceType:     "job",
+			SourceID:       jobID,
+			SourcePublicID: jobPublicID,
+			Title:          applicantName + " откликнулся на вашу вакансию «" + jobTitle + "»",
+			Preview:        preview,
+		})
+	}
+
+	return map[string]any{
+		"application_id":     appID,
+		"application_public": publicID,
+		"chat_public_id":     chatPublicID,
+	}, nil
 }
 
 // listForumTopics возвращает список тем с пагинацией.
