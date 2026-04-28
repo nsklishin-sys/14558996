@@ -817,7 +817,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="proj-section" style="animation-delay:.15s">
     <div class="sec-title">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Участники · 5
+      <span>Участники · </span><span id="membersCountInline">…</span>
     </div>
     <div class="members-grid" id="projMembersGrid">
       <div style="grid-column:1/-1;text-align:center;color:var(--gmt);font-size:12px;padding:20px">Загрузка участников…</div>
@@ -1449,7 +1449,13 @@ function renderProject(){
 
   const memCountEl = document.getElementById('projMembersCountLabel');
   // Правый сайдбар — статус
-  const STATUS_LABELS_SIDE = { active: 'Активный', completed: 'Завершён', paused: 'На паузе', archived: 'Архив' };
+  const STATUS_LABELS_SIDE = {
+    active: 'Активный',
+    planned: 'Планируется',
+    completed: 'Завершён',
+    paused: 'На паузе',
+    archived: 'Архив'
+  };
   const sideStatusEl = document.getElementById('sideStatus');
   if (sideStatusEl) sideStatusEl.textContent = STATUS_LABELS_SIDE[p.status] || (p.status || '—');
 
@@ -1514,6 +1520,9 @@ function renderProject(){
 function renderProjectMembers(){
   const grid = document.getElementById('projMembersGrid');
   if (!grid) return;
+
+  const inline = document.getElementById('membersCountInline');
+  if (inline) inline.textContent = String(currentMembers.length || 0);
 
   if (!currentMembers.length) {
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gmt);font-size:12px;padding:20px">Пока только владелец</div>';
@@ -1769,14 +1778,16 @@ async function loadNeeds(){
 
       const respondBtnHTML = isClosed
         ? '<span class="need-tag" style="background:var(--gp);color:var(--gmt)">Закрыто</span>'
-        : (responded
-            ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
-            : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', ' + JSON.stringify(n.title) + ')">Откликнуться</button>');
+        : (viewerCanManage
+            ? ''
+            : (responded
+                ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
+                : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', ' + JSON.stringify(n.title) + ')">Откликнуться</button>'));
 
       const responsesInfo = n.responses_count > 0
         ? (viewerCanManage
-            ? `<button class="need-tag" style="background:var(--gl);color:var(--g);border:none;cursor:pointer;font-family:inherit" onclick="openResponsesModal(${n.id}, ${JSON.stringify(n.title)})">📋 ${n.responses_count} ${pluralRu(n.responses_count, ['отклик','отклика','откликов'])}</button>`
-            : `<span class="need-tag" style="background:var(--gl);color:var(--g)">📋 ${n.responses_count} ${pluralRu(n.responses_count, ['отклик','отклика','откликов'])}</span>`)
+            ? '<button class="need-tag" style="background:var(--gl);color:var(--g);border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px" onclick="openResponsesModal(' + n.id + ', ' + JSON.stringify(n.title) + ')"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</button>'
+            : '<span class="need-tag" style="background:var(--gl);color:var(--g)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;display:inline-block;vertical-align:-2px;margin-right:3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</span>')
         : '';
 
       const manageActions = viewerCanManage
