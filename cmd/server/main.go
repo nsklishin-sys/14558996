@@ -6450,7 +6450,10 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 			j.title, j.description, j.category, j.city, j.address, j.work_format,
 			j.salary_from, j.salary_to, j.salary_currency,
 			j.experience_min_years, j.employment_type, j.status,
-			j.responsibilities, j.requirements, j.conditions, j.tags,
+			COALESCE(array_to_json(j.responsibilities), '[]'::json),
+			COALESCE(array_to_json(j.requirements), '[]'::json),
+			COALESCE(array_to_json(j.conditions), '[]'::json),
+			COALESCE(array_to_json(j.tags), '[]'::json),
 			j.views_count, j.applications_count, j.created_at, j.updated_at,
 			` + viewerApplied + `, ` + viewerSaved + `
 		FROM jobs j
@@ -6468,7 +6471,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 	var out []jobItem
 	for rows.Next() {
 		var j jobItem
-		var resp, reqs, conds, tagsArr pgtype.FlatArray[string]
+		var respJSON, reqsJSON, condsJSON, tagsJSON []byte
 		if err := rows.Scan(
 			&j.ID, &j.PublicID, &j.AuthorUserID,
 			&j.AuthorPublicID, &j.AuthorName,
@@ -6476,16 +6479,20 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 			&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 			&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
 			&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
-			&resp, &reqs, &conds, &tagsArr,
+			&respJSON, &reqsJSON, &condsJSON, &tagsJSON,
 			&j.ViewsCount, &j.ApplicationsCount, &j.CreatedAt, &j.UpdatedAt,
 			&j.ViewerHasApplied, &j.ViewerHasSaved,
 		); err != nil {
 			return nil, err
 		}
-		j.Responsibilities = []string(resp)
-		j.Requirements = []string(reqs)
-		j.Conditions = []string(conds)
-		j.Tags = []string(tagsArr)
+		_ = json.Unmarshal(respJSON, &j.Responsibilities)
+		_ = json.Unmarshal(reqsJSON, &j.Requirements)
+		_ = json.Unmarshal(condsJSON, &j.Conditions)
+		_ = json.Unmarshal(tagsJSON, &j.Tags)
+		if j.Responsibilities == nil { j.Responsibilities = []string{} }
+		if j.Requirements == nil { j.Requirements = []string{} }
+		if j.Conditions == nil { j.Conditions = []string{} }
+		if j.Tags == nil { j.Tags = []string{} }
 		j.CategoryLabel = jobCategoryLabel(j.Category)
 		j.CategoryColor = jobCategoryColor(j.Category)
 		if f.ViewerID > 0 && j.AuthorUserID == f.ViewerID {
@@ -6502,7 +6509,7 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	_ = jobs
 	_ = err
 	var j jobItem
-	var resp, reqs, conds, tagsArr pgtype.FlatArray[string]
+	var respJSON, reqsJSON, condsJSON, tagsJSON []byte
 	viewerApplied := "FALSE"
 	viewerSaved := "FALSE"
 	args := []interface{}{publicID}
@@ -6518,7 +6525,10 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 		j.title, j.description, j.category, j.city, j.address, j.work_format,
 		j.salary_from, j.salary_to, j.salary_currency,
 		j.experience_min_years, j.employment_type, j.status,
-		j.responsibilities, j.requirements, j.conditions, j.tags,
+		COALESCE(array_to_json(j.responsibilities), '[]'::json),
+		COALESCE(array_to_json(j.requirements), '[]'::json),
+		COALESCE(array_to_json(j.conditions), '[]'::json),
+		COALESCE(array_to_json(j.tags), '[]'::json),
 		j.views_count, j.applications_count, j.created_at, j.updated_at,
 		` + viewerApplied + `, ` + viewerSaved + `
 		FROM jobs j
@@ -6532,17 +6542,21 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 		&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 		&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
 		&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
-		&resp, &reqs, &conds, &tagsArr,
+		&respJSON, &reqsJSON, &condsJSON, &tagsJSON,
 		&j.ViewsCount, &j.ApplicationsCount, &j.CreatedAt, &j.UpdatedAt,
 		&j.ViewerHasApplied, &j.ViewerHasSaved,
 	)
 	if err != nil {
 		return nil, err
 	}
-	j.Responsibilities = []string(resp)
-	j.Requirements = []string(reqs)
-	j.Conditions = []string(conds)
-	j.Tags = []string(tagsArr)
+	_ = json.Unmarshal(respJSON, &j.Responsibilities)
+	_ = json.Unmarshal(reqsJSON, &j.Requirements)
+	_ = json.Unmarshal(condsJSON, &j.Conditions)
+	_ = json.Unmarshal(tagsJSON, &j.Tags)
+	if j.Responsibilities == nil { j.Responsibilities = []string{} }
+	if j.Requirements == nil { j.Requirements = []string{} }
+	if j.Conditions == nil { j.Conditions = []string{} }
+	if j.Tags == nil { j.Tags = []string{} }
 	j.CategoryLabel = jobCategoryLabel(j.Category)
 	j.CategoryColor = jobCategoryColor(j.Category)
 	if viewerID > 0 && j.AuthorUserID == viewerID {
