@@ -388,6 +388,159 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* Unified hover effect for all card-like classes */
 [class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
 [class*="card"]:hover{box-shadow:var(--shm);transform:translateY(-3px)}
+
+
+/* === Спринт 6.4.3: управление этапами и нуждами === */
+
+/* Кнопки в шапке секции */
+.sec-add-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:99px;
+  background:var(--g);color:#fff;border:none;
+  font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 2px 8px rgba(30,138,76,.22);
+  white-space:nowrap;flex-shrink:0
+}
+.sec-add-btn:hover{background:var(--gm)}
+.sec-add-btn svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+.sec-title-row{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:14px}
+.sec-title-row .sec-title{margin-bottom:0;flex:1;min-width:0}
+
+/* Иконки управления на карточках (этап, нужда) */
+.item-actions{display:inline-flex;gap:4px;align-items:center;flex-shrink:0}
+.item-action{
+  width:28px;height:28px;border-radius:8px;
+  background:transparent;border:1px solid transparent;
+  display:grid;place-items:center;cursor:pointer;
+  color:var(--gmt);transition:all .12s
+}
+.item-action:hover{background:var(--gp);border-color:var(--bdr);color:var(--t)}
+.item-action.danger:hover{background:#FEF2F2;border-color:#FECACA;color:#DC2626}
+.item-action svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* Подзадачи: интерактивный чек-лист */
+.subtask-row{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 0;font-size:12px;color:var(--t);
+  cursor:pointer;transition:color .12s
+}
+.subtask-row:hover{color:var(--g)}
+.subtask-row.done{color:var(--gmt);text-decoration:line-through}
+.subtask-checkbox{
+  width:14px;height:14px;border-radius:4px;
+  border:1.5px solid var(--bdr);background:transparent;
+  display:inline-grid;place-items:center;flex-shrink:0;
+  transition:all .12s
+}
+.subtask-row.done .subtask-checkbox{background:var(--g);border-color:var(--g)}
+.subtask-checkbox svg{width:9px;height:9px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.subtask-text{flex:1;min-width:0}
+.subtask-delete{
+  width:20px;height:20px;border-radius:4px;
+  background:transparent;border:none;color:var(--gmt);
+  cursor:pointer;opacity:0;transition:opacity .12s;display:grid;place-items:center
+}
+.subtask-row:hover .subtask-delete{opacity:1}
+.subtask-delete:hover{color:#DC2626;background:#FEF2F2}
+.subtask-delete svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+
+.subtask-add-input{
+  width:100%;padding:6px 10px;
+  border:1.5px solid var(--bdr);border-radius:8px;
+  font-family:inherit;font-size:12px;
+  background:#fff;color:var(--t);outline:none;
+  transition:border-color .12s;margin-top:6px
+}
+.subtask-add-input:focus{border-color:var(--g)}
+
+/* Модалки stage и need */
+.mng-modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);
+  display:none;align-items:center;justify-content:center;
+  z-index:1000;padding:20px;
+  backdrop-filter:blur(2px)
+}
+.mng-modal-bg.open{display:flex}
+.mng-modal{
+  background:var(--w);border-radius:var(--rxl);
+  box-shadow:0 20px 50px rgba(0,0,0,.2);
+  max-width:560px;width:100%;max-height:90vh;
+  display:flex;flex-direction:column;animation:mngFadeIn .2s ease
+}
+@keyframes mngFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.mng-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;border-bottom:1px solid var(--bdr)
+}
+.mng-head .mng-title{font-size:16px;font-weight:800;color:var(--t)}
+.mng-close{
+  width:32px;height:32px;border-radius:8px;
+  background:transparent;border:none;color:var(--gmt);
+  cursor:pointer;display:grid;place-items:center;transition:all .12s
+}
+.mng-close:hover{background:var(--gp);color:var(--t)}
+.mng-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.mng-body{padding:20px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.mng-foot{
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;
+  padding:14px 22px;border-top:1px solid var(--bdr)
+}
+.mng-label{font-size:12px;font-weight:700;color:var(--tm);margin-bottom:6px;display:block}
+.mng-input,.mng-select,.mng-textarea{
+  width:100%;padding:10px 14px;
+  border:1.5px solid var(--bdr);border-radius:var(--rm);
+  font-family:inherit;font-size:13px;
+  background:#fff;color:var(--t);outline:none;
+  transition:border-color .12s
+}
+.mng-textarea{height:90px;resize:vertical;min-height:60px}
+.mng-input:focus,.mng-select:focus,.mng-textarea:focus{border-color:var(--g)}
+.mng-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mng-btn-primary{
+  padding:10px 18px;border-radius:99px;
+  background:var(--g);color:#fff;border:none;
+  font-family:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;transition:background .12s
+}
+.mng-btn-primary:hover{background:var(--gm)}
+.mng-btn-primary:disabled{opacity:.6;cursor:default}
+.mng-btn-secondary{
+  padding:10px 18px;border-radius:99px;
+  background:transparent;color:var(--t);border:1.5px solid var(--bdr);
+  font-family:inherit;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .12s
+}
+.mng-btn-secondary:hover{background:var(--gp)}
+
+/* Список откликов в модалке */
+.resp-item{
+  padding:14px;background:var(--gp);
+  border:1px solid var(--bdr);border-radius:var(--rm);
+  display:flex;flex-direction:column;gap:8px
+}
+.resp-head{display:flex;align-items:center;gap:10px}
+.resp-av{
+  width:34px;height:34px;border-radius:50%;
+  display:grid;place-items:center;color:#fff;
+  font-size:13px;font-weight:800;flex-shrink:0
+}
+.resp-name{font-size:13px;font-weight:700;color:var(--t)}
+.resp-date{font-size:11px;color:var(--gmt)}
+.resp-message{
+  font-size:12px;color:var(--tm);line-height:1.5;
+  white-space:pre-wrap;word-break:break-word
+}
+.resp-chat-link{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:99px;
+  background:var(--g);color:#fff;border:none;
+  font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;text-decoration:none;width:fit-content
+}
+.resp-chat-link svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+
 </style>
 </head>
 <body>
@@ -638,9 +791,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- ── ЭТАПЫ ── -->
   <div class="proj-section" style="animation-delay:.1s">
-    <div class="sec-title">
-      <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      Этапы реализации
+    <div class="sec-title-row">
+      <div class="sec-title">
+        <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Этапы реализации
+      </div>
+      <button class="sec-add-btn" id="btnAddStage" onclick="openStageModal(null)" style="display:none">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить этап
+      </button>
     </div>
     <div class="stages" id="stagesList">
       <!-- Скелетон загрузки -->
@@ -666,9 +825,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- ── НУЖДЫ ── -->
   <div class="proj-section" style="animation-delay:.2s">
-    <div class="sec-title">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Чем можете помочь проекту
+    <div class="sec-title-row">
+      <div class="sec-title">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Чем можете помочь проекту
+      </div>
+      <button class="sec-add-btn" id="btnAddNeed" onclick="openNeedModal(null)" style="display:none">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить потребность
+      </button>
     </div>
     <div class="needs-list" id="needsList">
       <div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic" id="needsSkel">
@@ -804,6 +969,117 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 </div>
 
+</div>
+
+
+<!-- ===== Модалка: создание/редактирование этапа ===== -->
+<div class="mng-modal-bg" id="stageModalBg" onclick="if(event.target===this)closeStageModal()">
+  <div class="mng-modal">
+    <div class="mng-head">
+      <span class="mng-title" id="stageModalTitle">Новый этап</span>
+      <button class="mng-close" onclick="closeStageModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="mng-body">
+      <div>
+        <label class="mng-label">Название этапа</label>
+        <input class="mng-input" id="stTitle" placeholder="Например: Подготовка маршрута" maxlength="200">
+      </div>
+      <div>
+        <label class="mng-label">Описание (необязательно)</label>
+        <textarea class="mng-textarea" id="stDescription" placeholder="Что именно делается на этом этапе…" maxlength="5000"></textarea>
+      </div>
+      <div class="mng-row-2">
+        <div>
+          <label class="mng-label">Статус</label>
+          <select class="mng-select" id="stStatus">
+            <option value="planned">Запланировано</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Завершён</option>
+          </select>
+        </div>
+        <div>
+          <label class="mng-label">Исполнитель</label>
+          <select class="mng-select" id="stAssignee">
+            <option value="">— не назначен —</option>
+          </select>
+        </div>
+      </div>
+      <div class="mng-row-2">
+        <div>
+          <label class="mng-label">Дата начала</label>
+          <input class="mng-input" type="date" id="stStartDate">
+        </div>
+        <div>
+          <label class="mng-label">Дата окончания</label>
+          <input class="mng-input" type="date" id="stEndDate">
+        </div>
+      </div>
+    </div>
+    <div class="mng-foot">
+      <button class="mng-btn-secondary" onclick="closeStageModal()">Отмена</button>
+      <button class="mng-btn-primary" id="stSubmitBtn" onclick="submitStage()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Модалка: создание/редактирование нужды ===== -->
+<div class="mng-modal-bg" id="needModalBg" onclick="if(event.target===this)closeNeedModal()">
+  <div class="mng-modal">
+    <div class="mng-head">
+      <span class="mng-title" id="needModalTitle">Новая потребность</span>
+      <button class="mng-close" onclick="closeNeedModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="mng-body">
+      <div>
+        <label class="mng-label">Заголовок</label>
+        <input class="mng-input" id="ndTitle" placeholder="Например: Нужен таможенный брокер" maxlength="200">
+      </div>
+      <div>
+        <label class="mng-label">Описание</label>
+        <textarea class="mng-textarea" id="ndDescription" placeholder="Опишите подробнее что ищете…" maxlength="5000"></textarea>
+      </div>
+      <div class="mng-row-2">
+        <div>
+          <label class="mng-label">Категория</label>
+          <select class="mng-select" id="ndCategory">
+            <option value="finance">Финансирование</option>
+            <option value="transport">Транспорт и логистика</option>
+            <option value="customs">Таможня и ВЭД</option>
+            <option value="it">IT и автоматизация</option>
+            <option value="marketing">Маркетинг и продажи</option>
+            <option value="legal">Юридическое</option>
+            <option value="consulting">Консалтинг</option>
+            <option value="manufacturing">Производство</option>
+            <option value="other" selected>Другое</option>
+          </select>
+        </div>
+        <div>
+          <label class="mng-label">Статус</label>
+          <select class="mng-select" id="ndStatus">
+            <option value="open">Открыто</option>
+            <option value="closed">Закрыто</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mng-foot">
+      <button class="mng-btn-secondary" onclick="closeNeedModal()">Отмена</button>
+      <button class="mng-btn-primary" id="ndSubmitBtn" onclick="submitNeed()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Модалка: список откликов на нужду ===== -->
+<div class="mng-modal-bg" id="responsesModalBg" onclick="if(event.target===this)closeResponsesModal()">
+  <div class="mng-modal" style="max-width:600px">
+    <div class="mng-head">
+      <span class="mng-title" id="responsesModalTitle">Отклики</span>
+      <button class="mng-close" onclick="closeResponsesModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="mng-body" id="responsesList" style="gap:10px">
+      <!-- Заполняется динамически -->
+    </div>
+  </div>
 </div>
 
 <!-- LIGHTBOX -->
@@ -1021,6 +1297,8 @@ async function submitRespond(){
 let currentProject = null;
 let currentMembers = [];
 let viewerIsOwner = false;
+let viewerCanManage = false; // owner или admin
+let viewerUserPublicID = ''; // public_id текущего юзера (для определения роли в проекте)
 
 const STATUS_MAP = {
   planned: { label: 'Планируется', cls: 'ps-planned', color: '#FAEEDA' },
@@ -1063,6 +1341,25 @@ async function loadProject(){
     currentProject = data.project;
     currentMembers = data.members || [];
     viewerIsOwner = !!currentProject.is_owner;
+
+    // Определяем роль текущего юзера в проекте
+    if (viewerIsOwner) {
+      viewerCanManage = true;
+    } else {
+      // Получаем public_id текущего юзера и ищем себя в members
+      try {
+        const meR = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+        if (meR.ok) {
+          const me = await meR.json();
+          viewerUserPublicID = (me.user && me.user.public_id) || '';
+          const myMember = currentMembers.find(m => m.user_public_id === viewerUserPublicID);
+          if (myMember && (myMember.role === 'owner' || myMember.role === 'admin')) {
+            viewerCanManage = true;
+          }
+        }
+      } catch {}
+    }
+
     renderProject();
   } catch (err) {
     console.error('loadProject', err);
@@ -1329,6 +1626,8 @@ async function loadStages(){
   const list = document.getElementById('stagesList');
   if (!list) return;
 
+  applyManageButtonsVisibility();
+
   try{
     const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/stages', {
       headers: { Authorization: 'Bearer ' + tk() }
@@ -1357,34 +1656,57 @@ async function loadStages(){
       const meta = (dates || assignee) ? '<div class="stage-meta">' + esc(dates) + assignee + '</div>' : '';
       const desc = s.description ? '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:6px">' + esc(s.description) + '</div>' : '';
 
-      const subtasks = (s.subtasks || []);
-      let subtasksHTML = '';
-      if (subtasks.length){
-        const doneCount = subtasks.filter(st => st.is_done).length;
-        const items = subtasks.map(st =>
-          '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:' + (st.is_done ? 'var(--gmt)' : 'var(--t)') + ';' + (st.is_done ? 'text-decoration:line-through' : '') + '">'
-          + '<span style="width:14px;height:14px;border-radius:4px;border:1.5px solid ' + (st.is_done ? 'var(--g)' : 'var(--bdr)') + ';background:' + (st.is_done ? 'var(--g)' : 'transparent') + ';display:inline-grid;place-items:center;flex-shrink:0">'
-          + (st.is_done ? '<svg viewBox="0 0 24 24" style="width:9px;height:9px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg>' : '')
-          + '</span>'
-          + '<span>' + esc(st.title) + '</span>'
-          + '</div>'
-        ).join('');
-        subtasksHTML = '<div style="margin-top:8px;padding:10px 12px;background:var(--gp);border-radius:8px">'
-          + '<div style="font-size:11px;font-weight:700;color:var(--tm);margin-bottom:4px;letter-spacing:.02em;text-transform:uppercase">Подзадачи · ' + doneCount + '/' + subtasks.length + '</div>'
-          + items
-          + '</div>';
-      }
+      // Подзадачи
+      const subtasks = s.subtasks || [];
+      const doneCount = subtasks.filter(st => st.is_done).length;
+      const subtasksItems = subtasks.map(st => {
+        const deleteBtn = viewerCanManage
+          ? `<button class="subtask-delete" onclick="event.stopPropagation();deleteSubtask(${st.id})" title="Удалить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`
+          : '';
+        const checkClickable = viewerCanManage
+          ? `onclick="toggleSubtask(${st.id}, ${!st.is_done})"`
+          : '';
+        return `<div class="subtask-row${st.is_done ? ' done' : ''}" ${checkClickable}>
+          <span class="subtask-checkbox">${st.is_done ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>
+          <span class="subtask-text">${esc(st.title)}</span>
+          ${deleteBtn}
+        </div>`;
+      }).join('');
 
-      return '<div class="stage">'
-        + '<div class="stage-dot ' + dotClass + '">' + dotInner + '</div>'
-        + '<div class="stage-body">'
-        +   '<div class="stage-name">' + esc(s.title) + '</div>'
-        +   meta
-        +   desc
-        +   subtasksHTML
-        +   '<span class="stage-status ' + statusClass + '" style="margin-top:8px">' + statusLabel + '</span>'
-        + '</div>'
-        + '</div>';
+      const addSubtaskInput = viewerCanManage
+        ? `<input class="subtask-add-input" placeholder="+ добавить подзадачу (Enter)" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask(${s.id}, this)}">`
+        : '';
+
+      const subtasksHTML = (subtasks.length || viewerCanManage)
+        ? `<div style="margin-top:10px;padding:10px 12px;background:var(--gp);border-radius:8px">
+            ${subtasks.length ? `<div style="font-size:11px;font-weight:700;color:var(--tm);margin-bottom:4px;letter-spacing:.02em;text-transform:uppercase">Подзадачи · ${doneCount}/${subtasks.length}</div>` : ''}
+            ${subtasksItems}
+            ${addSubtaskInput}
+          </div>`
+        : '';
+
+      const actions = viewerCanManage
+        ? `<div class="item-actions">
+            <button class="item-action" onclick='openStageModal(${JSON.stringify(s).replace(/'/g, "&apos;")})' title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="item-action danger" onclick="deleteStage(${s.id}, ${JSON.stringify(s.title)})" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>`
+        : '';
+
+      return `<div class="stage">
+        <div class="stage-dot ${dotClass}">${dotInner}</div>
+        <div class="stage-body">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div class="stage-name">${esc(s.title)}</div>
+              ${meta}
+              ${desc}
+            </div>
+            ${actions}
+          </div>
+          ${subtasksHTML}
+          <span class="stage-status ${statusClass}" style="margin-top:8px">${statusLabel}</span>
+        </div>
+      </div>`;
     }).join('');
   }catch(err){
     console.error('loadStages', err);
@@ -1398,19 +1720,25 @@ async function loadNeeds(){
   const list = document.getElementById('needsList');
   if (!list) return;
 
+  applyManageButtonsVisibility();
+
   try{
     const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs', {
       headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
-    const needs = (d.needs || []).filter(n => n.status === 'open'); // показываем только открытые
-    // Обновить счётчик в правом сайдбаре
+    const allNeeds = d.needs || [];
+    // Owner/admin видит ВСЕ нужды (включая closed), остальные — только open
+    const needs = viewerCanManage ? allNeeds : allNeeds.filter(n => n.status === 'open');
+
+    // Счётчик в правом сайдбаре — только открытые
     const sideNeedsRow = document.getElementById('sideNeedsRow');
     const sideNeedsEl = document.getElementById('sideNeeds');
+    const openCount = allNeeds.filter(n => n.status === 'open').length;
     if (sideNeedsRow && sideNeedsEl) {
-      if (needs.length > 0) {
-        sideNeedsEl.textContent = String(needs.length);
+      if (openCount > 0) {
+        sideNeedsEl.textContent = String(openCount);
         sideNeedsRow.style.display = '';
       } else {
         sideNeedsRow.style.display = 'none';
@@ -1418,7 +1746,7 @@ async function loadNeeds(){
     }
 
     if (needs.length === 0){
-      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic">Открытых потребностей пока нет</div>';
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic">' + (viewerCanManage ? 'Потребности пока не добавлены' : 'Открытых потребностей пока нет') + '</div>';
       return;
     }
 
@@ -1426,29 +1754,47 @@ async function loadNeeds(){
       const catLabel = NEED_CATEGORY_LABELS[n.category_role] || n.category_role;
       const catColor = NEED_CATEGORY_COLORS[n.category_role] || 'var(--gmt)';
       const iconClass = 'ni-' + (n.category_role || 'other');
+      const isClosed = n.status === 'closed';
       const responded = !!n.viewer_has_responded;
-      const respondBtnHTML = responded
-        ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
-        : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', ' + JSON.stringify(n.title) + ')">Откликнуться</button>';
 
-      const responsesInfo = (n.responses_count > 0)
-        ? '<span class="need-tag" style="background:var(--gl);color:var(--g)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;display:inline-block;vertical-align:-2px;margin-right:3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</span>'
+      const respondBtnHTML = isClosed
+        ? '<span class="need-tag" style="background:var(--gp);color:var(--gmt)">Закрыто</span>'
+        : (responded
+            ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
+            : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', ' + JSON.stringify(n.title) + ')">Откликнуться</button>');
+
+      const responsesInfo = n.responses_count > 0
+        ? (viewerCanManage
+            ? `<button class="need-tag" style="background:var(--gl);color:var(--g);border:none;cursor:pointer;font-family:inherit" onclick="openResponsesModal(${n.id}, ${JSON.stringify(n.title)})">📋 ${n.responses_count} ${pluralRu(n.responses_count, ['отклик','отклика','откликов'])}</button>`
+            : `<span class="need-tag" style="background:var(--gl);color:var(--g)">📋 ${n.responses_count} ${pluralRu(n.responses_count, ['отклик','отклика','откликов'])}</span>`)
         : '';
 
-      return '<div class="need-card">'
-        + '<div class="need-icon ' + iconClass + '">'
-        +   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-        + '</div>'
-        + '<div class="need-body">'
-        +   '<div class="need-type" style="color:' + catColor + '">' + esc(catLabel) + '</div>'
-        +   '<div class="need-title">' + esc(n.title) + '</div>'
-        +   (n.description ? '<div class="need-desc">' + esc(n.description) + '</div>' : '')
-        +   '<div class="need-footer">'
-        +     responsesInfo
-        +     respondBtnHTML
-        +   '</div>'
-        + '</div>'
-        + '</div>';
+      const manageActions = viewerCanManage
+        ? `<div class="item-actions" style="margin-left:auto">
+            <button class="item-action" onclick='openNeedModal(${JSON.stringify(n).replace(/'/g, "&apos;")})' title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="item-action danger" onclick="deleteNeed(${n.id}, ${JSON.stringify(n.title)})" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>`
+        : '';
+
+      return `<div class="need-card"${isClosed ? ' style="opacity:.6"' : ''}>
+        <div class="need-icon ${iconClass}">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="need-body">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div class="need-type" style="color:${catColor}">${esc(catLabel)}</div>
+              <div class="need-title">${esc(n.title)}</div>
+              ${n.description ? '<div class="need-desc">' + esc(n.description) + '</div>' : ''}
+            </div>
+            ${manageActions}
+          </div>
+          <div class="need-footer">
+            ${responsesInfo}
+            ${respondBtnHTML}
+          </div>
+        </div>
+      </div>`;
     }).join('');
   }catch(err){
     console.error('loadNeeds', err);
@@ -1488,6 +1834,297 @@ document.addEventListener('DOMContentLoaded', () => {
     const rn2=document.getElementById('repostUserName2');if(rn2)rn2.textContent=name;
   }catch{}
 })();
+
+
+// ═══════ Спринт 6.4.3: управление этапами и нуждами ═══════
+
+// ─── State модалок ───
+let _editingStageID = null;      // null = создание, число = редактирование
+let _editingNeedID = null;
+let _currentResponsesNeedID = null;
+
+// ─── Показать кнопки управления (если viewerCanManage) ───
+function applyManageButtonsVisibility(){
+  if (viewerCanManage) {
+    const addStage = document.getElementById('btnAddStage');
+    if (addStage) addStage.style.display = '';
+    const addNeed = document.getElementById('btnAddNeed');
+    if (addNeed) addNeed.style.display = '';
+  }
+}
+
+// ─── Модалка этапа ───
+function openStageModal(stage){
+  _editingStageID = stage ? stage.id : null;
+  document.getElementById('stageModalTitle').textContent = stage ? 'Редактировать этап' : 'Новый этап';
+  document.getElementById('stTitle').value = stage ? (stage.title || '') : '';
+  document.getElementById('stDescription').value = stage ? (stage.description || '') : '';
+  document.getElementById('stStatus').value = stage ? (stage.status || 'planned') : 'planned';
+  document.getElementById('stStartDate').value = stage ? (stage.start_date || '') : '';
+  document.getElementById('stEndDate').value = stage ? (stage.end_date || '') : '';
+
+  // Заполняем select исполнителя из участников проекта
+  const sel = document.getElementById('stAssignee');
+  sel.innerHTML = '<option value="">— не назначен —</option>';
+  (currentMembers || []).forEach(m => {
+    // у нас в members user_public_id и user_name; нужен user_id
+    // Внутри stage_request у нас assignee_id (число), значит шлём user_id из members
+    const opt = document.createElement('option');
+    opt.value = String(m.user_id || '');
+    opt.textContent = m.user_name || m.user_public_id || ('id:' + m.user_id);
+    if (stage && stage.assignee_id && Number(m.user_id) === Number(stage.assignee_id)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  document.getElementById('stageModalBg').classList.add('open');
+  setTimeout(() => document.getElementById('stTitle').focus(), 150);
+}
+
+function closeStageModal(){
+  document.getElementById('stageModalBg').classList.remove('open');
+  _editingStageID = null;
+}
+
+async function submitStage(){
+  const title = document.getElementById('stTitle').value.trim();
+  if (!title){ document.getElementById('stTitle').focus(); return; }
+
+  const body = {
+    title: title,
+    description: document.getElementById('stDescription').value.trim(),
+    status: document.getElementById('stStatus').value || 'planned',
+    start_date: document.getElementById('stStartDate').value || null,
+    end_date: document.getElementById('stEndDate').value || null,
+    assignee_id: Number(document.getElementById('stAssignee').value || 0)
+  };
+
+  // assignee_id=0 на создании = не назначен. На редактировании, если выбрано "не назначен" — шлём -1 (бэк трактует как "снять")
+  if (_editingStageID && body.assignee_id === 0) body.assignee_id = -1;
+
+  const projectPID = new URLSearchParams(location.search).get('id');
+  const url = _editingStageID
+    ? `${API}/projects/${encodeURIComponent(projectPID)}/stages/${_editingStageID}`
+    : `${API}/projects/${encodeURIComponent(projectPID)}/stages`;
+  const method = _editingStageID ? 'PATCH' : 'POST';
+
+  const btn = document.getElementById('stSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Сохранение…';
+  try {
+    const r = await fetch(url, {
+      method,
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok){
+      const err = await r.json().catch(()=>({}));
+      throw new Error(err.error || ('http ' + r.status));
+    }
+    closeStageModal();
+    toast(_editingStageID ? 'Этап обновлён' : 'Этап создан', true);
+    loadStages();
+  } catch (err){
+    console.error('submitStage', err);
+    toast('Ошибка: ' + (err.message || 'не удалось сохранить'));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
+}
+
+async function deleteStage(stageID, title){
+  if (!confirm(`Удалить этап «${title}»? Все его подзадачи также удалятся.`)) return;
+  const projectPID = new URLSearchParams(location.search).get('id');
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    toast('Этап удалён', true);
+    loadStages();
+  } catch (err){
+    console.error('deleteStage', err);
+    toast('Не удалось удалить этап');
+  }
+}
+
+// ─── Подзадачи ───
+async function addSubtask(stageID, inputEl){
+  const title = (inputEl.value || '').trim();
+  if (!title) return;
+  const projectPID = new URLSearchParams(location.search).get('id');
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}/subtasks`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    inputEl.value = '';
+    loadStages();
+  } catch (err){
+    console.error('addSubtask', err);
+    toast('Не удалось добавить подзадачу');
+  }
+}
+
+async function toggleSubtask(subtaskID, isDone){
+  const projectPID = new URLSearchParams(location.search).get('id');
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/subtasks/${subtaskID}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_done: isDone })
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    loadStages();
+  } catch (err){
+    console.error('toggleSubtask', err);
+    toast('Не удалось обновить подзадачу');
+  }
+}
+
+async function deleteSubtask(subtaskID){
+  const projectPID = new URLSearchParams(location.search).get('id');
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/subtasks/${subtaskID}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    loadStages();
+  } catch (err){
+    console.error('deleteSubtask', err);
+    toast('Не удалось удалить подзадачу');
+  }
+}
+
+// ─── Модалка нужды ───
+function openNeedModal(need){
+  _editingNeedID = need ? need.id : null;
+  document.getElementById('needModalTitle').textContent = need ? 'Редактировать потребность' : 'Новая потребность';
+  document.getElementById('ndTitle').value = need ? (need.title || '') : '';
+  document.getElementById('ndDescription').value = need ? (need.description || '') : '';
+  document.getElementById('ndCategory').value = need ? (need.category_role || 'other') : 'other';
+  document.getElementById('ndStatus').value = need ? (need.status || 'open') : 'open';
+  document.getElementById('needModalBg').classList.add('open');
+  setTimeout(() => document.getElementById('ndTitle').focus(), 150);
+}
+
+function closeNeedModal(){
+  document.getElementById('needModalBg').classList.remove('open');
+  _editingNeedID = null;
+}
+
+async function submitNeed(){
+  const title = document.getElementById('ndTitle').value.trim();
+  if (!title){ document.getElementById('ndTitle').focus(); return; }
+
+  const body = {
+    title: title,
+    description: document.getElementById('ndDescription').value.trim(),
+    category_role: document.getElementById('ndCategory').value || 'other',
+    status: document.getElementById('ndStatus').value || 'open'
+  };
+
+  const projectPID = new URLSearchParams(location.search).get('id');
+  const url = _editingNeedID
+    ? `${API}/projects/${encodeURIComponent(projectPID)}/needs/${_editingNeedID}`
+    : `${API}/projects/${encodeURIComponent(projectPID)}/needs`;
+  const method = _editingNeedID ? 'PATCH' : 'POST';
+
+  const btn = document.getElementById('ndSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Сохранение…';
+  try {
+    const r = await fetch(url, {
+      method,
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok){
+      const err = await r.json().catch(()=>({}));
+      throw new Error(err.error || ('http ' + r.status));
+    }
+    closeNeedModal();
+    toast(_editingNeedID ? 'Потребность обновлена' : 'Потребность создана', true);
+    loadNeeds();
+  } catch (err){
+    console.error('submitNeed', err);
+    toast('Ошибка: ' + (err.message || 'не удалось сохранить'));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
+}
+
+async function deleteNeed(needID, title){
+  if (!confirm(`Удалить потребность «${title}»? Это действие нельзя отменить.`)) return;
+  const projectPID = new URLSearchParams(location.search).get('id');
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    toast('Потребность удалена', true);
+    loadNeeds();
+  } catch (err){
+    console.error('deleteNeed', err);
+    toast('Не удалось удалить потребность');
+  }
+}
+
+// ─── Модалка откликов ───
+async function openResponsesModal(needID, needTitle){
+  _currentResponsesNeedID = needID;
+  document.getElementById('responsesModalTitle').textContent = `Отклики: ${needTitle}`;
+  const list = document.getElementById('responsesList');
+  list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--gmt);font-size:13px">Загрузка…</div>';
+  document.getElementById('responsesModalBg').classList.add('open');
+
+  const projectPID = new URLSearchParams(location.search).get('id');
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}/responses`, {
+      headers: { Authorization: 'Bearer ' + tk() }
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    const responses = d.responses || [];
+    if (!responses.length){
+      list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--gmt);font-size:13px">Откликов пока нет</div>';
+      return;
+    }
+    list.innerHTML = responses.map(rsp => {
+      const initial = (rsp.responder_name || '?').charAt(0).toUpperCase();
+      const color = stableProjColor(rsp.responder_name || '');
+      const date = formatRuDate(rsp.created_at);
+      const chatBtn = rsp.chat_conversation_id
+        ? `<a href="/chat.html" class="resp-chat-link"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Открыть чат</a>`
+        : '';
+      const profileLink = rsp.responder_public_id
+        ? `onclick="location.href='/profile_user.html?id=${esc(rsp.responder_public_id)}'" style="cursor:pointer"`
+        : '';
+      return `<div class="resp-item">
+        <div class="resp-head">
+          <div class="resp-av" style="background:${color}" ${profileLink}>${esc(initial)}</div>
+          <div style="flex:1;min-width:0">
+            <div class="resp-name" ${profileLink}>${esc(rsp.responder_name || 'Аноним')}</div>
+            <div class="resp-date">${esc(date)}</div>
+          </div>
+        </div>
+        <div class="resp-message">${esc(rsp.message || '').substring(0, 500)}${(rsp.message || '').length > 500 ? '…' : ''}</div>
+        ${chatBtn}
+      </div>`;
+    }).join('');
+  } catch (err){
+    console.error('openResponsesModal', err);
+    list.innerHTML = '<div style="padding:30px;text-align:center;color:#DC2626;font-size:13px">Не удалось загрузить отклики</div>';
+  }
+}
+
+function closeResponsesModal(){
+  document.getElementById('responsesModalBg').classList.remove('open');
+  _currentResponsesNeedID = null;
+}
+
 </script>
 </body>
 </html>
