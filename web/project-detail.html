@@ -1360,6 +1360,11 @@ async function loadProject(){
       } catch {}
     }
 
+    // Права определены — показываем кнопки управления и перерисовываем секции
+    applyManageButtonsVisibility();
+    loadStages();
+    loadNeeds();
+
     renderProject();
   } catch (err) {
     console.error('loadProject', err);
@@ -1808,12 +1813,6 @@ function pluralRu(n, forms){
   if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return forms[1];
   return forms[2];
 }
-
-// Запускаем загрузку этапов и нужд при инициализации страницы
-document.addEventListener('DOMContentLoaded', () => {
-  loadStages();
-  loadNeeds();
-});
 
 /* АВТОРИЗАЦИЯ */
 (async()=>{
