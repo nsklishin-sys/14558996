@@ -3701,6 +3701,354 @@ func main() {
 		writeError(w, http.StatusNotFound, "Ресурс не найден")
 	})
 
+	// ═════ ВАКАНСИИ (Спринт 8.1A) ═════
+
+	mux.HandleFunc("/api/jobs/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"categories": jobCategoriesList})
+	})
+
+	mux.HandleFunc("/api/jobs", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			expMax, _ := strconv.Atoi(r.URL.Query().Get("experience_max"))
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			items, err := listJobs(db, listJobsFilters{
+				Category:      r.URL.Query().Get("category"),
+				City:          r.URL.Query().Get("city"),
+				WorkFormat:    r.URL.Query().Get("work_format"),
+				ExperienceMax: expMax,
+				Status:        r.URL.Query().Get("status"),
+				Search:        r.URL.Query().Get("search"),
+				Tab:           r.URL.Query().Get("tab"),
+				Sort:          r.URL.Query().Get("sort"),
+				ViewerID:      viewerID,
+				Limit:         limit,
+			})
+			if err != nil {
+				log.Printf("listJobs: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"jobs": items})
+
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				Title              string   `json:"title"`
+				Description        string   `json:"description"`
+				Category           string   `json:"category"`
+				City               string   `json:"city"`
+				Address            string   `json:"address"`
+				WorkFormat         string   `json:"work_format"`
+				SalaryFrom         *int64   `json:"salary_from"`
+				SalaryTo           *int64   `json:"salary_to"`
+				SalaryCurrency     string   `json:"salary_currency"`
+				ExperienceMinYears int      `json:"experience_min_years"`
+				EmploymentType     string   `json:"employment_type"`
+				Status             string   `json:"status"`
+				Responsibilities   []string `json:"responsibilities"`
+				Requirements       []string `json:"requirements"`
+				Conditions         []string `json:"conditions"`
+				Tags               []string `json:"tags"`
+				CompanyID          *int64   `json:"company_id"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			req.Title = strings.TrimSpace(req.Title)
+			if utf8.RuneCountInString(req.Title) < 1 || utf8.RuneCountInString(req.Title) > 200 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "заголовок 1..200 символов"})
+				return
+			}
+			if req.Category == "" {
+				req.Category = "other"
+			}
+			if !validateJobCategory(req.Category) {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверная категория"})
+				return
+			}
+			if req.WorkFormat == "" {
+				req.WorkFormat = "office"
+			}
+			if req.WorkFormat != "office" && req.WorkFormat != "remote" && req.WorkFormat != "hybrid" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверный формат работы"})
+				return
+			}
+			if req.EmploymentType == "" {
+				req.EmploymentType = "full"
+			}
+			if req.Status == "" {
+				req.Status = "active"
+			}
+			if req.SalaryCurrency == "" {
+				req.SalaryCurrency = "RUB"
+			}
+			if req.Responsibilities == nil {
+				req.Responsibilities = []string{}
+			}
+			if req.Requirements == nil {
+				req.Requirements = []string{}
+			}
+			if req.Conditions == nil {
+				req.Conditions = []string{}
+			}
+			if req.Tags == nil {
+				req.Tags = []string{}
+			}
+
+			publicID := generateJobPublicID()
+			var newID int64
+			var err error
+			err = db.QueryRow(`
+				INSERT INTO jobs (public_id, author_user_id, author_company_id, title, description, category, city, address, work_format, salary_from, salary_to, salary_currency, experience_min_years, employment_type, status, responsibilities, requirements, conditions, tags)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+				RETURNING id
+			`, publicID, userID, req.CompanyID, req.Title, req.Description, req.Category, req.City, req.Address, req.WorkFormat,
+				req.SalaryFrom, req.SalaryTo, req.SalaryCurrency, req.ExperienceMinYears, req.EmploymentType, req.Status,
+				pgtype.FlatArray[string](req.Responsibilities), pgtype.FlatArray[string](req.Requirements), pgtype.FlatArray[string](req.Conditions), pgtype.FlatArray[string](req.Tags),
+			).Scan(&newID)
+			if err != nil {
+				log.Printf("createJob: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			job, err := getJobByPublicIDFull(db, publicID, userID)
+			if err != nil {
+				log.Printf("getJobAfterCreate: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"job": job})
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/api/jobs/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/jobs/")
+		if path == "" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		parts := strings.Split(path, "/")
+		publicID := parts[0]
+
+		// /api/jobs/{publicID}/save
+		if len(parts) == 2 && parts[1] == "save" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			jobID, err := getJobByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var existing int64
+			err = db.QueryRow(`SELECT 1 FROM saved_jobs WHERE user_id=$1 AND job_id=$2`, userID, jobID).Scan(&existing)
+			if err == sql.ErrNoRows {
+				if _, err := db.Exec(`INSERT INTO saved_jobs (user_id, job_id) VALUES ($1, $2)`, userID, jobID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"saved": true})
+				return
+			}
+			if _, err := db.Exec(`DELETE FROM saved_jobs WHERE user_id=$1 AND job_id=$2`, userID, jobID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"saved": false})
+			return
+		}
+
+		// /api/jobs/{publicID}
+		if len(parts) == 1 {
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			switch r.Method {
+			case http.MethodGet:
+				job, err := getJobByPublicIDFull(db, publicID, viewerID)
+				if err != nil {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				_, _ = db.Exec(`UPDATE jobs SET views_count = views_count + 1 WHERE id = $1`, job.ID)
+				job.ViewsCount++
+				writeJSON(w, http.StatusOK, map[string]any{"job": job})
+
+			case http.MethodPatch:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				jobID, err := getJobByPublicID(db, publicID)
+				if err != nil {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				var ownerID int64
+				if err := db.QueryRow(`SELECT author_user_id FROM jobs WHERE id=$1`, jobID).Scan(&ownerID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				if ownerID != userID {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+				var req map[string]json.RawMessage
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+					http.Error(w, "bad json", http.StatusBadRequest)
+					return
+				}
+				updates := []string{}
+				args := []interface{}{}
+				addUpdate := func(field string, val interface{}) {
+					args = append(args, val)
+					updates = append(updates, fmt.Sprintf("%s=$%d", field, len(args)))
+				}
+				if v, ok := req["title"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("title", s)
+				}
+				if v, ok := req["description"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("description", s)
+				}
+				if v, ok := req["status"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("status", s)
+				}
+				if v, ok := req["category"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					if validateJobCategory(s) {
+						addUpdate("category", s)
+					}
+				}
+				if v, ok := req["city"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("city", s)
+				}
+				if v, ok := req["address"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("address", s)
+				}
+				if v, ok := req["work_format"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("work_format", s)
+				}
+				if v, ok := req["salary_from"]; ok {
+					var n *int64
+					_ = json.Unmarshal(v, &n)
+					addUpdate("salary_from", n)
+				}
+				if v, ok := req["salary_to"]; ok {
+					var n *int64
+					_ = json.Unmarshal(v, &n)
+					addUpdate("salary_to", n)
+				}
+				if v, ok := req["experience_min_years"]; ok {
+					var n int
+					_ = json.Unmarshal(v, &n)
+					addUpdate("experience_min_years", n)
+				}
+				if v, ok := req["employment_type"]; ok {
+					var s string
+					_ = json.Unmarshal(v, &s)
+					addUpdate("employment_type", s)
+				}
+				if v, ok := req["responsibilities"]; ok {
+					var arr []string
+					_ = json.Unmarshal(v, &arr)
+					addUpdate("responsibilities", pgtype.FlatArray[string](arr))
+				}
+				if v, ok := req["requirements"]; ok {
+					var arr []string
+					_ = json.Unmarshal(v, &arr)
+					addUpdate("requirements", pgtype.FlatArray[string](arr))
+				}
+				if v, ok := req["conditions"]; ok {
+					var arr []string
+					_ = json.Unmarshal(v, &arr)
+					addUpdate("conditions", pgtype.FlatArray[string](arr))
+				}
+				if v, ok := req["tags"]; ok {
+					var arr []string
+					_ = json.Unmarshal(v, &arr)
+					addUpdate("tags", pgtype.FlatArray[string](arr))
+				}
+				if len(updates) == 0 {
+					writeJSON(w, http.StatusOK, map[string]any{"updated": false})
+					return
+				}
+				args = append(args, jobID)
+				q := fmt.Sprintf(`UPDATE jobs SET %s, updated_at=NOW() WHERE id=$%d`, strings.Join(updates, ","), len(args))
+				if _, err := db.Exec(q, args...); err != nil {
+					log.Printf("updateJob: %v", err)
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				job, err := getJobByPublicIDFull(db, publicID, userID)
+				if err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"job": job})
+
+			case http.MethodDelete:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				jobID, err := getJobByPublicID(db, publicID)
+				if err != nil {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				var ownerID int64
+				if err := db.QueryRow(`SELECT author_user_id FROM jobs WHERE id=$1`, jobID).Scan(&ownerID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				if ownerID != userID {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+				if _, err := db.Exec(`UPDATE jobs SET deleted_at=NOW() WHERE id=$1`, jobID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+
+			default:
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			}
+			return
+		}
+
+		http.Error(w, "not found", http.StatusNotFound)
+	})
+
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -4783,6 +5131,96 @@ CREATE TABLE IF NOT EXISTS forum_topic_views (
     viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (topic_id, user_id)
 );
+
+-- ═════ ВАКАНСИИ И РЕЗЮМЕ (Спринт 8) ═════
+
+CREATE TABLE IF NOT EXISTS jobs (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    author_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 10000),
+    category TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('logistics','customs','it','management','warehouse','other')),
+    city TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '' CHECK (char_length(address) <= 500),
+    work_format TEXT NOT NULL DEFAULT 'office' CHECK (work_format IN ('office','remote','hybrid')),
+    salary_from BIGINT,
+    salary_to BIGINT,
+    salary_currency TEXT NOT NULL DEFAULT 'RUB' CHECK (char_length(salary_currency) <= 8),
+    experience_min_years INT NOT NULL DEFAULT 0 CHECK (experience_min_years >= 0 AND experience_min_years <= 50),
+    employment_type TEXT NOT NULL DEFAULT 'full' CHECK (employment_type IN ('full','part','project','internship')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('hot','active','new','paused','closed')),
+    responsibilities TEXT[] NOT NULL DEFAULT '{}',
+    requirements TEXT[] NOT NULL DEFAULT '{}',
+    conditions TEXT[] NOT NULL DEFAULT '{}',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    views_count INT NOT NULL DEFAULT 0,
+    applications_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS jobs_created_idx ON jobs(created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS jobs_author_idx ON jobs(author_user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS jobs_category_idx ON jobs(category) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS jobs_status_idx ON jobs(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS jobs_tags_gin_idx ON jobs USING GIN(tags) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS resumes (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    author_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    about TEXT NOT NULL DEFAULT '' CHECK (char_length(about) <= 10000),
+    category TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('logistics','customs','it','management','warehouse','other')),
+    city TEXT NOT NULL DEFAULT '',
+    work_format TEXT NOT NULL DEFAULT 'office' CHECK (work_format IN ('office','remote','hybrid')),
+    salary_from BIGINT,
+    salary_currency TEXT NOT NULL DEFAULT 'RUB' CHECK (char_length(salary_currency) <= 8),
+    experience_years INT NOT NULL DEFAULT 0 CHECK (experience_years >= 0 AND experience_years <= 80),
+    employment_type TEXT NOT NULL DEFAULT 'full' CHECK (employment_type IN ('full','part','project','internship')),
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('active','open','passive','hidden')),
+    skills TEXT[] NOT NULL DEFAULT '{}',
+    education TEXT NOT NULL DEFAULT '' CHECK (char_length(education) <= 2000),
+    contacts TEXT NOT NULL DEFAULT '' CHECK (char_length(contacts) <= 1000),
+    views_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS resumes_created_idx ON resumes(created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS resumes_author_idx ON resumes(author_user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS resumes_category_idx ON resumes(category) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS resumes_status_idx ON resumes(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS resumes_skills_gin_idx ON resumes USING GIN(skills) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS job_applications (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    applicant_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL DEFAULT '' CHECK (char_length(message) <= 2000),
+    chat_conversation_id BIGINT REFERENCES chat_conversations(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent','viewed','accepted','rejected')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    viewed_at TIMESTAMPTZ,
+    UNIQUE(job_id, applicant_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS job_applications_job_idx ON job_applications(job_id);
+CREATE INDEX IF NOT EXISTS job_applications_user_idx ON job_applications(applicant_user_id);
+
+CREATE TABLE IF NOT EXISTS saved_jobs (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, job_id)
+);
+
+CREATE INDEX IF NOT EXISTS saved_jobs_user_idx ON saved_jobs(user_id, saved_at DESC);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -5273,6 +5711,8 @@ func shouldCreateNotificationForType(db *sql.DB, userID int64, notifType string)
 		col = "notif_reactions"
 	case "post_comment", "comment_reply", "forum_reply", "forum_quote", "forum_like":
 		col = "notif_reactions"
+	case "job_application":
+		col = "notif_chat_messages"
 	case "mention":
 		col = "notif_mentions"
 	case "friend_request", "friend_accepted":
@@ -5459,6 +5899,314 @@ func getMessageByPublicID(db *sql.DB, publicID string) (int64, error) {
 		publicID,
 	).Scan(&id)
 	return id, err
+}
+
+// ═════ ВАКАНСИИ — Helpers (Спринт 8) ═════
+
+// 6 категорий вакансий и резюме (захардкожены)
+type jobCategory struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Color string `json:"color"`
+}
+
+var jobCategoriesList = []jobCategory{
+	{Key: "logistics", Label: "Логистика и транспорт", Color: "#1E8A4C"},
+	{Key: "customs", Label: "ВЭД и таможня", Color: "#7C3AED"},
+	{Key: "it", Label: "IT в логистике", Color: "#0891B2"},
+	{Key: "management", Label: "Управление", Color: "#EA580C"},
+	{Key: "warehouse", Label: "Складская логистика", Color: "#65A30D"},
+	{Key: "other", Label: "Другое", Color: "#475569"},
+}
+
+func validateJobCategory(s string) bool {
+	for _, c := range jobCategoriesList {
+		if c.Key == s {
+			return true
+		}
+	}
+	return false
+}
+
+func jobCategoryLabel(s string) string {
+	for _, c := range jobCategoriesList {
+		if c.Key == s {
+			return c.Label
+		}
+	}
+	return ""
+}
+
+func jobCategoryColor(s string) string {
+	for _, c := range jobCategoriesList {
+		if c.Key == s {
+			return c.Color
+		}
+	}
+	return "#475569"
+}
+
+func generateJobPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "j_" + hex.EncodeToString(b)
+}
+
+func generateResumePublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "r_" + hex.EncodeToString(b)
+}
+
+func generateJobApplicationPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "jap_" + hex.EncodeToString(b)
+}
+
+// getJobByPublicID возвращает id вакансии по public_id.
+func getJobByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT id FROM jobs WHERE public_id = $1 AND deleted_at IS NULL`, publicID).Scan(&id)
+	return id, err
+}
+
+// getResumeByPublicID возвращает id резюме по public_id.
+func getResumeByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT id FROM resumes WHERE public_id = $1 AND deleted_at IS NULL`, publicID).Scan(&id)
+	return id, err
+}
+
+// jobItem — структура вакансии для ответа API
+type jobItem struct {
+	ID                 int64     `json:"id"`
+	PublicID           string    `json:"public_id"`
+	AuthorUserID       int64     `json:"author_user_id"`
+	AuthorPublicID     string    `json:"author_public_id"`
+	AuthorName         string    `json:"author_name"`
+	AuthorCompanyID    int64     `json:"author_company_id,omitempty"`
+	AuthorCompanyName  string    `json:"author_company_name,omitempty"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description"`
+	Category           string    `json:"category"`
+	CategoryLabel      string    `json:"category_label"`
+	CategoryColor      string    `json:"category_color"`
+	City               string    `json:"city"`
+	Address            string    `json:"address"`
+	WorkFormat         string    `json:"work_format"`
+	SalaryFrom         *int64    `json:"salary_from"`
+	SalaryTo           *int64    `json:"salary_to"`
+	SalaryCurrency     string    `json:"salary_currency"`
+	ExperienceMinYears int       `json:"experience_min_years"`
+	EmploymentType     string    `json:"employment_type"`
+	Status             string    `json:"status"`
+	Responsibilities   []string  `json:"responsibilities"`
+	Requirements       []string  `json:"requirements"`
+	Conditions         []string  `json:"conditions"`
+	Tags               []string  `json:"tags"`
+	ViewsCount         int       `json:"views_count"`
+	ApplicationsCount  int       `json:"applications_count"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	ViewerHasApplied   bool      `json:"viewer_has_applied,omitempty"`
+	ViewerHasSaved     bool      `json:"viewer_has_saved,omitempty"`
+	ViewerIsAuthor     bool      `json:"viewer_is_author,omitempty"`
+}
+
+// listJobs — выдача вакансий с фильтрами
+type listJobsFilters struct {
+	Category      string
+	City          string
+	WorkFormat    string
+	ExperienceMax int
+	Status        string
+	Search        string
+	Tab           string
+	Sort          string
+	ViewerID      int64
+	Limit         int
+}
+
+func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+
+	var conds []string
+	var args []interface{}
+	conds = append(conds, "j.deleted_at IS NULL")
+
+	if f.Category != "" && validateJobCategory(f.Category) {
+		args = append(args, f.Category)
+		conds = append(conds, fmt.Sprintf("j.category = $%d", len(args)))
+	}
+	if f.City != "" {
+		args = append(args, f.City)
+		conds = append(conds, fmt.Sprintf("j.city = $%d", len(args)))
+	}
+	if f.WorkFormat != "" {
+		args = append(args, f.WorkFormat)
+		conds = append(conds, fmt.Sprintf("j.work_format = $%d", len(args)))
+	}
+	if f.ExperienceMax > 0 {
+		args = append(args, f.ExperienceMax)
+		conds = append(conds, fmt.Sprintf("j.experience_min_years <= $%d", len(args)))
+	}
+	if f.Status != "" {
+		args = append(args, f.Status)
+		conds = append(conds, fmt.Sprintf("j.status = $%d", len(args)))
+	}
+	if f.Search != "" {
+		args = append(args, "%"+strings.ToLower(f.Search)+"%")
+		conds = append(conds, fmt.Sprintf("(LOWER(j.title) LIKE $%d OR LOWER(j.description) LIKE $%d)", len(args), len(args)))
+	}
+	switch f.Tab {
+	case "hot":
+		conds = append(conds, "j.status = 'hot'")
+	case "new":
+		conds = append(conds, "j.status = 'new'")
+	case "my":
+		if f.ViewerID > 0 {
+			args = append(args, f.ViewerID)
+			conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM job_applications ja WHERE ja.job_id = j.id AND ja.applicant_user_id = $%d)", len(args)))
+		}
+	case "saved":
+		if f.ViewerID > 0 {
+			args = append(args, f.ViewerID)
+			conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM saved_jobs sj WHERE sj.job_id = j.id AND sj.user_id = $%d)", len(args)))
+		}
+	}
+
+	orderBy := "j.created_at DESC"
+	switch f.Sort {
+	case "popular":
+		orderBy = "j.views_count DESC, j.created_at DESC"
+	case "salary":
+		orderBy = "COALESCE(j.salary_from, 0) DESC, j.created_at DESC"
+	}
+
+	args = append(args, f.Limit)
+	limitArg := fmt.Sprintf("$%d", len(args))
+
+	viewerApplied := "FALSE"
+	viewerSaved := "FALSE"
+	if f.ViewerID > 0 {
+		args = append(args, f.ViewerID)
+		viewerApplied = fmt.Sprintf("EXISTS (SELECT 1 FROM job_applications ja2 WHERE ja2.job_id = j.id AND ja2.applicant_user_id = $%d)", len(args))
+		args = append(args, f.ViewerID)
+		viewerSaved = fmt.Sprintf("EXISTS (SELECT 1 FROM saved_jobs sj2 WHERE sj2.job_id = j.id AND sj2.user_id = $%d)", len(args))
+	}
+
+	q := `
+		SELECT
+			j.id, j.public_id, j.author_user_id,
+			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+			COALESCE(j.author_company_id, 0), COALESCE(c.name, ''),
+			j.title, j.description, j.category, j.city, j.address, j.work_format,
+			j.salary_from, j.salary_to, j.salary_currency,
+			j.experience_min_years, j.employment_type, j.status,
+			j.responsibilities, j.requirements, j.conditions, j.tags,
+			j.views_count, j.applications_count, j.created_at, j.updated_at,
+			` + viewerApplied + `, ` + viewerSaved + `
+		FROM jobs j
+		LEFT JOIN users u ON u.id = j.author_user_id
+		LEFT JOIN companies c ON c.id = j.author_company_id
+		WHERE ` + strings.Join(conds, " AND ") + `
+		ORDER BY ` + orderBy + `
+		LIMIT ` + limitArg
+
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []jobItem
+	for rows.Next() {
+		var j jobItem
+		var resp, reqs, conds, tagsArr pgtype.FlatArray[string]
+		if err := rows.Scan(
+			&j.ID, &j.PublicID, &j.AuthorUserID,
+			&j.AuthorPublicID, &j.AuthorName,
+			&j.AuthorCompanyID, &j.AuthorCompanyName,
+			&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
+			&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
+			&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
+			&resp, &reqs, &conds, &tagsArr,
+			&j.ViewsCount, &j.ApplicationsCount, &j.CreatedAt, &j.UpdatedAt,
+			&j.ViewerHasApplied, &j.ViewerHasSaved,
+		); err != nil {
+			return nil, err
+		}
+		j.Responsibilities = []string(resp)
+		j.Requirements = []string(reqs)
+		j.Conditions = []string(conds)
+		j.Tags = []string(tagsArr)
+		j.CategoryLabel = jobCategoryLabel(j.Category)
+		j.CategoryColor = jobCategoryColor(j.Category)
+		if f.ViewerID > 0 && j.AuthorUserID == f.ViewerID {
+			j.ViewerIsAuthor = true
+		}
+		out = append(out, j)
+	}
+	return out, rows.Err()
+}
+
+// getJobByPublicIDFull — полная карточка вакансии (для GET /api/jobs/{id})
+func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem, error) {
+	jobs, err := listJobs(db, listJobsFilters{ViewerID: viewerID, Limit: 1})
+	_ = jobs
+	_ = err
+	var j jobItem
+	var resp, reqs, conds, tagsArr pgtype.FlatArray[string]
+	viewerApplied := "FALSE"
+	viewerSaved := "FALSE"
+	args := []interface{}{publicID}
+	if viewerID > 0 {
+		args = append(args, viewerID)
+		viewerApplied = fmt.Sprintf("EXISTS (SELECT 1 FROM job_applications ja WHERE ja.job_id = j.id AND ja.applicant_user_id = $%d)", len(args))
+		args = append(args, viewerID)
+		viewerSaved = fmt.Sprintf("EXISTS (SELECT 1 FROM saved_jobs sj WHERE sj.job_id = j.id AND sj.user_id = $%d)", len(args))
+	}
+	q := `SELECT j.id, j.public_id, j.author_user_id,
+		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
+		COALESCE(j.author_company_id, 0), COALESCE(c.name, ''),
+		j.title, j.description, j.category, j.city, j.address, j.work_format,
+		j.salary_from, j.salary_to, j.salary_currency,
+		j.experience_min_years, j.employment_type, j.status,
+		j.responsibilities, j.requirements, j.conditions, j.tags,
+		j.views_count, j.applications_count, j.created_at, j.updated_at,
+		` + viewerApplied + `, ` + viewerSaved + `
+		FROM jobs j
+		LEFT JOIN users u ON u.id = j.author_user_id
+		LEFT JOIN companies c ON c.id = j.author_company_id
+		WHERE j.public_id = $1 AND j.deleted_at IS NULL`
+
+	err = db.QueryRow(q, args...).Scan(
+		&j.ID, &j.PublicID, &j.AuthorUserID,
+		&j.AuthorPublicID, &j.AuthorName,
+		&j.AuthorCompanyID, &j.AuthorCompanyName,
+		&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
+		&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
+		&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
+		&resp, &reqs, &conds, &tagsArr,
+		&j.ViewsCount, &j.ApplicationsCount, &j.CreatedAt, &j.UpdatedAt,
+		&j.ViewerHasApplied, &j.ViewerHasSaved,
+	)
+	if err != nil {
+		return nil, err
+	}
+	j.Responsibilities = []string(resp)
+	j.Requirements = []string(reqs)
+	j.Conditions = []string(conds)
+	j.Tags = []string(tagsArr)
+	j.CategoryLabel = jobCategoryLabel(j.Category)
+	j.CategoryColor = jobCategoryColor(j.Category)
+	if viewerID > 0 && j.AuthorUserID == viewerID {
+		j.ViewerIsAuthor = true
+	}
+	return &j, nil
 }
 
 // listForumTopics возвращает список тем с пагинацией.
