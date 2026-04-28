@@ -1366,6 +1366,10 @@ async function loadProject(){
     loadNeeds();
 
     renderProject();
+    // Права определены — показываем кнопки и перерисовываем секции
+    applyManageButtonsVisibility();
+    loadStages();
+    loadNeeds();
   } catch (err) {
     console.error('loadProject', err);
     showProjectError('Ошибка соединения');
