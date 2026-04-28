@@ -2,6 +2,8 @@
 <html lang="ru">
 <head>
 <script src="/assets/dark-theme-init.js"></script>
+<script src="/assets/project-categories.js"></script>
+<script src="/assets/category-picker.js" defer></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LASTOP GROUP — Проекты</title>
@@ -396,14 +398,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <input type="search" placeholder="Поиск по названию или описанию…" oninput="applyFilters()">
     </div>
     <span class="pf-label">Категория</span>
-    <select class="pf-select" id="filterCat" onchange="applyFilters()">
+    <select class="pf-select" id="filterCat" data-category-picker onchange="applyFilters()">
       <option value="">Все категории</option>
-      <option>Логистика</option>
-      <option>ВЭД</option>
-      <option>IT и автоматизация</option>
-      <option>Управление цепочками</option>
-      <option>Таможня</option>
-      <option>Склад</option>
+      <!-- optgroup'ы заполнятся скриптом ниже -->
     </select>
     <span class="pf-label">Сортировка</span>
     <select class="pf-select" id="filterSort" onchange="applyFilters()">
@@ -470,24 +467,24 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Популярные категории -->
   <div class="card">
     <div class="block-title">Категории</div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='Логистика';applyFilters()">
-      <span class="cat-name">Логистика</span>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='Логистика и перевозки';applyFilters()">
+      <span class="cat-name">Логистика и перевозки</span>
       <div class="cat-bar"><div class="cat-fill" style="width:56px"></div><span class="cat-num">18</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='ВЭД';applyFilters()">
-      <span class="cat-name">ВЭД</span>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='ВЭД и таможня';applyFilters()">
+      <span class="cat-name">ВЭД и таможня</span>
       <div class="cat-bar"><div class="cat-fill" style="width:44px"></div><span class="cat-num">14</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='IT и автоматизация';applyFilters()">
-      <span class="cat-name">IT и автоматизация</span>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='IT и разработка ПО';applyFilters()">
+      <span class="cat-name">IT и разработка ПО</span>
       <div class="cat-bar"><div class="cat-fill" style="width:36px"></div><span class="cat-num">8</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='Таможня';applyFilters()">
-      <span class="cat-name">Таможня</span>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='Автоматизация и цифровизация';applyFilters()">
+      <span class="cat-name">Автоматизация и цифровизация</span>
       <div class="cat-bar"><div class="cat-fill" style="width:22px"></div><span class="cat-num">5</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='Склад';applyFilters()">
-      <span class="cat-name">Склад</span>
+    <div class="cat-item" onclick="document.getElementById('filterCat').value='Складская логистика';applyFilters()">
+      <span class="cat-name">Складская логистика</span>
       <div class="cat-bar"><div class="cat-fill" style="width:14px"></div><span class="cat-num">3</span></div>
     </div>
   </div>
@@ -529,14 +526,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-row">
         <div>
           <label class="mf-label">Категория</label>
-          <select class="mf-select" id="mCat">
+          <select class="mf-select" id="mCat" data-category-picker>
             <option value="">Выберите категорию</option>
-            <option>Логистика</option>
-            <option>ВЭД</option>
-            <option>IT и автоматизация</option>
-            <option>Управление цепочками</option>
-            <option>Таможня</option>
-            <option>Склад</option>
+            <!-- Заполняется через renderProjectCategoriesInto при открытии модалки -->
           </select>
         </div>
         <div>
@@ -557,18 +549,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <input class="mf-input" id="mSeats" type="number" min="1" max="100" placeholder="5" style="margin-bottom:0">
         </div>
       </div>
-      <label class="mf-label">Теги</label>
-      <div class="mf-tags" id="mTagsWrap">
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">Логистика</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">ВЭД</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">TMS</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">Таможня</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">Маршруты</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">Автоматизация</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">EDI</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">Склад</span>
-        <span class="mf-tag" onclick="this.classList.toggle('selected')">API</span>
-      </div>
+      <label class="mf-label">Теги (через запятую)</label>
+      <input class="mf-input" id="mTags" placeholder="ТМС, маркетплейсы, автоматизация…" style="margin-bottom:0">
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -626,6 +608,26 @@ const STATUS={
 let allProjects=[];
 let currentTab='all';
 let currentView='grid';
+
+// Заполняем категории в фильтре + перестраиваем кастомный picker
+function fillFilterCategories(){
+  const sel = document.getElementById('filterCat');
+  if (sel && window.renderProjectCategoriesInto) {
+    window.renderProjectCategoriesInto(sel, 'Все категории');
+    // Поскольку picker уже мог инициализироваться на пустом <select>,
+    // удаляем старый wrapper если есть, и инициализируем заново
+    if (sel.dataset.cpReady === '1') {
+      const wrap = sel.closest('.cp-wrap');
+      if (wrap) {
+        wrap.parentNode.insertBefore(sel, wrap);
+        wrap.remove();
+      }
+      sel.dataset.cpReady = '';
+      sel.style.display = '';
+    }
+    if (window.initCategoryPickers) window.initCategoryPickers();
+  }
+}
 
 function renderTeam(members){
   const max=4;const rest=members.length-max;
@@ -817,7 +819,24 @@ function joinProject(btn){
 }
 
 /* ── МОДАЛКА ── */
-function openModal(){document.getElementById('modalBg').classList.add('open');}
+function openModal(){
+  const mCat = document.getElementById('mCat');
+  if (mCat && window.renderProjectCategoriesInto) {
+    window.renderProjectCategoriesInto(mCat, 'Выберите категорию');
+    // Перестраиваем picker (если был) — для свежего списка
+    if (mCat.dataset.cpReady === '1') {
+      const wrap = mCat.closest('.cp-wrap');
+      if (wrap) {
+        wrap.parentNode.insertBefore(mCat, wrap);
+        wrap.remove();
+      }
+      mCat.dataset.cpReady = '';
+      mCat.style.display = '';
+    }
+    if (window.initCategoryPickers) window.initCategoryPickers();
+  }
+  document.getElementById('modalBg').classList.add('open');
+}
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
 async function submitProject(){
   const title=document.getElementById('mTitle').value.trim();
@@ -830,8 +849,10 @@ async function submitProject(){
   if(title.length>200){showToast('Название слишком длинное (макс. 200 символов)');return;}
   if(desc.length>5000){showToast('Описание слишком длинное (макс. 5000 символов)');return;}
 
-  const tags=[...document.querySelectorAll('#mTagsWrap .mf-tag.selected')]
-    .map(t=>t.textContent.trim())
+  const tags = document.getElementById('mTags').value
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
     .slice(0,10);
 
   const body={title,description:desc,category:cat,status,tags,cover_color:'#1E8A4C'};
@@ -870,7 +891,7 @@ async function submitProject(){
 }
 
 function resetCreateForm(){
-  ['mTitle','mDesc','mCat','mStatus','mDeadline','mSeats'].forEach(id=>{
+  ['mTitle','mDesc','mCat','mStatus','mDeadline','mSeats','mTags'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
     if(el.tagName==='SELECT'){
@@ -879,7 +900,6 @@ function resetCreateForm(){
       el.value='';
     }
   });
-  document.querySelectorAll('#mTagsWrap .mf-tag.selected').forEach(t=>t.classList.remove('selected'));
 }
 
 /* ── АВТОРИЗАЦИЯ ── */
@@ -900,6 +920,7 @@ function resetCreateForm(){
     document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
   }catch{}
 
+  fillFilterCategories();
   await loadProjects();
 })();
 </script>
