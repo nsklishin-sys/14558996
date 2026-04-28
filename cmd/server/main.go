@@ -3392,6 +3392,25 @@ func main() {
 		}
 	})
 
+	// /api/forum/subscriptions — мои подписки (Спринт 7.1C)
+	mux.HandleFunc("/api/forum/subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		actorID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		items, err := listForumSubscriptionsForUser(db, actorID)
+		if err != nil {
+			log.Printf("listForumSubscriptionsForUser: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"subscriptions": items})
+	})
+
 	mux.HandleFunc("/api/forum/topics/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/forum/topics/")
 		parts := strings.Split(strings.Trim(path, "/"), "/")
@@ -3504,6 +3523,26 @@ func main() {
 			default:
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			}
+			return
+		}
+
+		// /api/forum/topics/{publicID}/subscribe
+		if len(parts) == 2 && parts[1] == "subscribe" {
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			actorID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			subscribed, err := toggleForumTopicSubscription(db, topicID, actorID)
+			if err != nil {
+				log.Printf("toggleForumTopicSubscription: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"subscribed": subscribed})
 			return
 		}
 
@@ -5232,7 +5271,7 @@ func shouldCreateNotificationForType(db *sql.DB, userID int64, notifType string)
 	switch notifType {
 	case "post_like", "comment_like":
 		col = "notif_reactions"
-	case "post_comment", "comment_reply", "forum_reply":
+	case "post_comment", "comment_reply", "forum_reply", "forum_quote", "forum_like":
 		col = "notif_reactions"
 	case "mention":
 		col = "notif_mentions"
@@ -5779,6 +5818,22 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 		return forumMessage{}, err
 	}
 
+	// Триггер уведомлений (Спринт 7.1C)
+	{
+		var topicTitle string
+		_ = db.QueryRow(`SELECT title FROM forum_topics WHERE id = $1`, topicID).Scan(&topicTitle)
+		snippet := content
+		if utf8.RuneCountInString(snippet) > 150 {
+			runes := []rune(snippet)
+			snippet = string(runes[:150]) + "…"
+		}
+		var parentAuthorID int64
+		if parentID.Valid {
+			_ = db.QueryRow(`SELECT author_id FROM forum_messages WHERE id = $1`, parentID.Int64).Scan(&parentAuthorID)
+		}
+		notifyForumReply(db, topicID, msgID, authorID, topicTitle, snippet, parentAuthorID)
+	}
+
 	// Получаем созданное сообщение через listForumMessages-подобный запрос (одно сообщение)
 	msgs, err := listForumMessages(db, topicID, authorID)
 	if err != nil {
@@ -5859,7 +5914,189 @@ func toggleForumMessageLike(db *sql.DB, messageID, userID int64) (int, bool, err
 	if err := tx.Commit(); err != nil {
 		return 0, false, err
 	}
+
+	// Триггер уведомления автору сообщения (только при постановке лайка, не снятии)
+	if liked {
+		notifyForumLike(db, messageID, userID)
+	}
 	return newCount, liked, nil
+}
+
+// ─── Подписки на темы форума (Спринт 7.1C) ───
+
+type forumSubscriptionItem struct {
+	TopicID       int64     `json:"topic_id"`
+	TopicPublicID string    `json:"topic_public_id"`
+	TopicTitle    string    `json:"topic_title"`
+	CategoryKey   string    `json:"category_key"`
+	CategoryLabel string    `json:"category_label"`
+	LastReplyAt   time.Time `json:"last_reply_at"`
+	RepliesCount  int       `json:"replies_count"`
+}
+
+// toggleForumTopicSubscription — переключает подписку юзера на тему.
+// Возвращает true если сейчас подписан, false если отписан.
+func toggleForumTopicSubscription(db *sql.DB, topicID, userID int64) (bool, error) {
+	res, err := db.Exec(
+		`INSERT INTO forum_topic_subscriptions (topic_id, user_id) VALUES ($1, $2)
+		 ON CONFLICT DO NOTHING`,
+		topicID, userID,
+	)
+	if err != nil {
+		return false, err
+	}
+	rows, _ := res.RowsAffected()
+	if rows > 0 {
+		return true, nil
+	}
+	if _, err := db.Exec(
+		`DELETE FROM forum_topic_subscriptions WHERE topic_id = $1 AND user_id = $2`,
+		topicID, userID,
+	); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+// listForumSubscriptionsForUser — темы, на которые подписан юзер.
+func listForumSubscriptionsForUser(db *sql.DB, userID int64) ([]forumSubscriptionItem, error) {
+	rows, err := db.Query(`
+		SELECT t.id, t.public_id, t.title, t.category_key,
+		       t.last_reply_at, t.replies_count
+		FROM forum_topic_subscriptions s
+		JOIN forum_topics t ON t.id = s.topic_id
+		WHERE s.user_id = $1 AND t.deleted_at IS NULL
+		ORDER BY t.last_reply_at DESC, t.id DESC
+		LIMIT 200
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]forumSubscriptionItem, 0, 32)
+	for rows.Next() {
+		var it forumSubscriptionItem
+		if err := rows.Scan(&it.TopicID, &it.TopicPublicID, &it.TopicTitle, &it.CategoryKey,
+			&it.LastReplyAt, &it.RepliesCount); err != nil {
+			return nil, err
+		}
+		for _, c := range forumCategories {
+			if c.Key == it.CategoryKey {
+				it.CategoryLabel = c.Label
+				break
+			}
+		}
+		items = append(items, it)
+	}
+	return items, rows.Err()
+}
+
+// listForumTopicSubscribers — id всех подписчиков темы (кроме указанного).
+func listForumTopicSubscribers(db *sql.DB, topicID, excludeUserID int64) ([]int64, error) {
+	rows, err := db.Query(
+		`SELECT user_id FROM forum_topic_subscriptions
+		 WHERE topic_id = $1 AND user_id != $2`,
+		topicID, excludeUserID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := make([]int64, 0, 8)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
+}
+
+// topicPublicIDByID — public_id темы по её id (для url в уведомлениях).
+func topicPublicIDByID(db *sql.DB, topicID int64) string {
+	var pid string
+	_ = db.QueryRow(`SELECT public_id FROM forum_topics WHERE id = $1`, topicID).Scan(&pid)
+	return pid
+}
+
+// notifyForumReply — отправить уведомления подписчикам и автору цитируемого.
+// authorID — кто ответил. parentAuthorID — кто автор цитируемого (0 если без цитаты).
+func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle, contentSnippet string, parentAuthorID int64) {
+	authorName := getUserDisplayName(db, authorID)
+
+	// 1. Цитирование — отдельное уведомление автору цитируемого
+	notifiedQuoteAuthor := int64(0)
+	if parentAuthorID > 0 && parentAuthorID != authorID {
+		title := authorName + " ответил на ваше сообщение"
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    parentAuthorID,
+			ActorID:        authorID,
+			Type:           "forum_quote",
+			SourceType:     "forum_message",
+			SourceID:       messageID,
+			SourcePublicID: topicPublicIDByID(db, topicID),
+			Title:          title,
+			Preview:        contentSnippet,
+		}); err != nil {
+			log.Printf("notif forum_quote: %v", err)
+		}
+		notifiedQuoteAuthor = parentAuthorID
+	}
+
+	// 2. forum_reply всем подписчикам (кроме автора ответа и того, кому уже отправили forum_quote)
+	subs, err := listForumTopicSubscribers(db, topicID, authorID)
+	if err != nil {
+		log.Printf("listForumTopicSubscribers: %v", err)
+		return
+	}
+	topicPID := topicPublicIDByID(db, topicID)
+	titleReply := authorName + " ответил в теме «" + topicTitle + "»"
+	for _, uid := range subs {
+		if uid == notifiedQuoteAuthor {
+			continue
+		}
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    uid,
+			ActorID:        authorID,
+			Type:           "forum_reply",
+			SourceType:     "forum_topic",
+			SourceID:       topicID,
+			SourcePublicID: topicPID,
+			Title:          titleReply,
+			Preview:        contentSnippet,
+		}); err != nil {
+			log.Printf("notif forum_reply: %v", err)
+		}
+	}
+}
+
+// notifyForumLike — уведомить автора сообщения о новом лайке.
+func notifyForumLike(db *sql.DB, messageID, likerID int64) {
+	var authorID int64
+	var topicID int64
+	var contentSnippet string
+	err := db.QueryRow(`
+		SELECT m.author_id, m.topic_id, COALESCE(SUBSTRING(m.content, 1, 120), '')
+		FROM forum_messages m WHERE m.id = $1
+	`, messageID).Scan(&authorID, &topicID, &contentSnippet)
+	if err != nil || authorID == likerID {
+		return
+	}
+	likerName := getUserDisplayName(db, likerID)
+	title := likerName + " лайкнул ваш ответ"
+	if err := createNotification(db, createNotificationParams{
+		RecipientID:    authorID,
+		ActorID:        likerID,
+		Type:           "forum_like",
+		SourceType:     "forum_message",
+		SourceID:       messageID,
+		SourcePublicID: topicPublicIDByID(db, topicID),
+		Title:          title,
+		Preview:        contentSnippet,
+	}); err != nil {
+		log.Printf("notif forum_like: %v", err)
+	}
 }
 
 func parseDateOrNil(s *string) (*time.Time, error) {
