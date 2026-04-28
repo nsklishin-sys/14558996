@@ -3920,6 +3920,70 @@ func main() {
 			return
 		}
 
+		// /api/jobs/{publicID}/applications — список откликов (только автору)
+		if len(parts) == 2 && parts[1] == "applications" {
+			if r.Method != http.MethodGet {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			jobID, err := getJobByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT author_user_id FROM jobs WHERE id=$1`, jobID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			rows, err := db.Query(`
+				SELECT ja.public_id, ja.applicant_user_id, COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
+				       ja.message, ja.status, ja.created_at, ja.viewed_at,
+				       COALESCE(cc.public_id, '')
+				FROM job_applications ja
+				LEFT JOIN users u ON u.id = ja.applicant_user_id
+				LEFT JOIN chat_conversations cc ON cc.id = ja.chat_conversation_id
+				WHERE ja.job_id = $1
+				ORDER BY ja.created_at DESC
+			`, jobID)
+			if err != nil {
+				log.Printf("listApplications: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			defer rows.Close()
+			type appItem struct {
+				PublicID        string     `json:"public_id"`
+				ApplicantUserID int64      `json:"applicant_user_id"`
+				ApplicantPublic string     `json:"applicant_public_id"`
+				ApplicantName   string     `json:"applicant_name"`
+				Message         string     `json:"message"`
+				Status          string     `json:"status"`
+				CreatedAt       time.Time  `json:"created_at"`
+				ViewedAt        *time.Time `json:"viewed_at"`
+				ChatPublicID    string     `json:"chat_public_id"`
+			}
+			var out []appItem
+			for rows.Next() {
+				var a appItem
+				if err := rows.Scan(&a.PublicID, &a.ApplicantUserID, &a.ApplicantPublic, &a.ApplicantName, &a.Message, &a.Status, &a.CreatedAt, &a.ViewedAt, &a.ChatPublicID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				out = append(out, a)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"applications": out})
+			return
+		}
+
 		// /api/jobs/{publicID}
 		if len(parts) == 1 {
 			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
@@ -4226,11 +4290,104 @@ func main() {
 
 	mux.HandleFunc("/api/resumes/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/resumes/")
-		if path == "" || strings.Contains(path, "/") {
+		if path == "" {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		publicID := path
+		parts := strings.Split(path, "/")
+		publicID := parts[0]
+
+		// /api/resumes/{publicID}/save
+		if len(parts) == 2 && parts[1] == "save" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			resID, err := getResumeByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var existing int64
+			err = db.QueryRow(`SELECT 1 FROM saved_resumes WHERE user_id=$1 AND resume_id=$2`, userID, resID).Scan(&existing)
+			if err == sql.ErrNoRows {
+				if _, err := db.Exec(`INSERT INTO saved_resumes (user_id, resume_id) VALUES ($1, $2)`, userID, resID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"saved": true})
+				return
+			}
+			if _, err := db.Exec(`DELETE FROM saved_resumes WHERE user_id=$1 AND resume_id=$2`, userID, resID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"saved": false})
+			return
+		}
+
+		// /api/resumes/{publicID}/contact - связаться с автором резюме
+		if len(parts) == 2 && parts[1] == "contact" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				Message string `json:"message"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			req.Message = strings.TrimSpace(req.Message)
+			if utf8.RuneCountInString(req.Message) < 1 || utf8.RuneCountInString(req.Message) > 2000 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "сообщение 1..2000 символов"})
+				return
+			}
+			var resAuthorID int64
+			var resTitle string
+			if err := db.QueryRow(`SELECT author_user_id, title FROM resumes WHERE public_id = $1 AND deleted_at IS NULL`, publicID).Scan(&resAuthorID, &resTitle); err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			if userID == resAuthorID {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нельзя писать самому себе"})
+				return
+			}
+			chatID, err := findOrCreateDirectChat(db, userID, resAuthorID)
+			if err != nil {
+				log.Printf("contact resume chat: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			var chatPublicID string
+			if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id = $1`, chatID).Scan(&chatPublicID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			fullMessage := "👤 Интерес к вашему резюме «" + resTitle + "»\n\n" + req.Message
+			if _, err := sendMessage(db, userID, chatPublicID, sendMessageRequest{Content: fullMessage}); err != nil {
+				log.Printf("contact resume sendMessage: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"chat_public_id": chatPublicID})
+			return
+		}
+
+		// /api/resumes/{publicID} — обычные методы
+		if len(parts) > 1 {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
 
 		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
 
@@ -5565,6 +5722,15 @@ CREATE TABLE IF NOT EXISTS saved_jobs (
 );
 
 CREATE INDEX IF NOT EXISTS saved_jobs_user_idx ON saved_jobs(user_id, saved_at DESC);
+
+CREATE TABLE IF NOT EXISTS saved_resumes (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    resume_id BIGINT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, resume_id)
+);
+
+CREATE INDEX IF NOT EXISTS saved_resumes_user_idx ON saved_resumes(user_id, saved_at DESC);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -6489,10 +6655,18 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		_ = json.Unmarshal(reqsJSON, &j.Requirements)
 		_ = json.Unmarshal(condsJSON, &j.Conditions)
 		_ = json.Unmarshal(tagsJSON, &j.Tags)
-		if j.Responsibilities == nil { j.Responsibilities = []string{} }
-		if j.Requirements == nil { j.Requirements = []string{} }
-		if j.Conditions == nil { j.Conditions = []string{} }
-		if j.Tags == nil { j.Tags = []string{} }
+		if j.Responsibilities == nil {
+			j.Responsibilities = []string{}
+		}
+		if j.Requirements == nil {
+			j.Requirements = []string{}
+		}
+		if j.Conditions == nil {
+			j.Conditions = []string{}
+		}
+		if j.Tags == nil {
+			j.Tags = []string{}
+		}
 		j.CategoryLabel = jobCategoryLabel(j.Category)
 		j.CategoryColor = jobCategoryColor(j.Category)
 		if f.ViewerID > 0 && j.AuthorUserID == f.ViewerID {
@@ -6553,10 +6727,18 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	_ = json.Unmarshal(reqsJSON, &j.Requirements)
 	_ = json.Unmarshal(condsJSON, &j.Conditions)
 	_ = json.Unmarshal(tagsJSON, &j.Tags)
-	if j.Responsibilities == nil { j.Responsibilities = []string{} }
-	if j.Requirements == nil { j.Requirements = []string{} }
-	if j.Conditions == nil { j.Conditions = []string{} }
-	if j.Tags == nil { j.Tags = []string{} }
+	if j.Responsibilities == nil {
+		j.Responsibilities = []string{}
+	}
+	if j.Requirements == nil {
+		j.Requirements = []string{}
+	}
+	if j.Conditions == nil {
+		j.Conditions = []string{}
+	}
+	if j.Tags == nil {
+		j.Tags = []string{}
+	}
 	j.CategoryLabel = jobCategoryLabel(j.Category)
 	j.CategoryColor = jobCategoryColor(j.Category)
 	if viewerID > 0 && j.AuthorUserID == viewerID {
@@ -6569,30 +6751,31 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 
 // resumeItem — структура резюме для ответа API
 type resumeItem struct {
-	ID             int64     `json:"id"`
-	PublicID       string    `json:"public_id"`
-	AuthorUserID   int64     `json:"author_user_id"`
-	AuthorPublicID string    `json:"author_public_id"`
-	AuthorName     string    `json:"author_name"`
-	Title          string    `json:"title"`
-	About          string    `json:"about"`
-	Category       string    `json:"category"`
-	CategoryLabel  string    `json:"category_label"`
-	CategoryColor  string    `json:"category_color"`
-	City           string    `json:"city"`
-	WorkFormat     string    `json:"work_format"`
-	SalaryFrom     *int64    `json:"salary_from"`
-	SalaryCurrency string    `json:"salary_currency"`
-	ExperienceYears int      `json:"experience_years"`
-	EmploymentType string    `json:"employment_type"`
-	Status         string    `json:"status"`
-	Skills         []string  `json:"skills"`
-	Education      string    `json:"education"`
-	Contacts       string    `json:"contacts"`
-	ViewsCount     int       `json:"views_count"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	ViewerIsAuthor bool      `json:"viewer_is_author,omitempty"`
+	ID              int64     `json:"id"`
+	PublicID        string    `json:"public_id"`
+	AuthorUserID    int64     `json:"author_user_id"`
+	AuthorPublicID  string    `json:"author_public_id"`
+	AuthorName      string    `json:"author_name"`
+	Title           string    `json:"title"`
+	About           string    `json:"about"`
+	Category        string    `json:"category"`
+	CategoryLabel   string    `json:"category_label"`
+	CategoryColor   string    `json:"category_color"`
+	City            string    `json:"city"`
+	WorkFormat      string    `json:"work_format"`
+	SalaryFrom      *int64    `json:"salary_from"`
+	SalaryCurrency  string    `json:"salary_currency"`
+	ExperienceYears int       `json:"experience_years"`
+	EmploymentType  string    `json:"employment_type"`
+	Status          string    `json:"status"`
+	Skills          []string  `json:"skills"`
+	Education       string    `json:"education"`
+	Contacts        string    `json:"contacts"`
+	ViewsCount      int       `json:"views_count"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	ViewerIsAuthor  bool      `json:"viewer_is_author,omitempty"`
+	ViewerHasSaved  bool      `json:"viewer_has_saved,omitempty"`
 }
 
 // listResumesFilters — фильтры для выдачи резюме
@@ -6658,6 +6841,12 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 		orderBy = "r.experience_years DESC, r.created_at DESC"
 	}
 
+	viewerSaved := "FALSE"
+	if f.ViewerID > 0 {
+		args = append(args, f.ViewerID)
+		viewerSaved = fmt.Sprintf("EXISTS (SELECT 1 FROM saved_resumes sr WHERE sr.resume_id = r.id AND sr.user_id = $%d)", len(args))
+	}
+
 	args = append(args, f.Limit)
 	limitArg := fmt.Sprintf("$%d", len(args))
 
@@ -6668,7 +6857,8 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 		       r.salary_from, r.salary_currency,
 		       r.experience_years, r.employment_type, r.status,
 		       r.skills, r.education, r.contacts,
-		       r.views_count, r.created_at, r.updated_at
+		       r.views_count, r.created_at, r.updated_at,
+		       ` + viewerSaved + `
 		FROM resumes r
 		LEFT JOIN users u ON u.id = r.author_user_id
 		WHERE ` + strings.Join(conds, " AND ") + `
@@ -6693,6 +6883,7 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 			&ri.ExperienceYears, &ri.EmploymentType, &ri.Status,
 			&skills, &ri.Education, &ri.Contacts,
 			&ri.ViewsCount, &ri.CreatedAt, &ri.UpdatedAt,
+			&ri.ViewerHasSaved,
 		); err != nil {
 			return nil, err
 		}
@@ -6711,17 +6902,24 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resumeItem, error) {
 	var ri resumeItem
 	var skills pgtype.FlatArray[string]
+	viewerSavedResume := "FALSE"
+	args := []interface{}{publicID}
+	if viewerID > 0 {
+		args = append(args, viewerID)
+		viewerSavedResume = fmt.Sprintf("EXISTS (SELECT 1 FROM saved_resumes sr WHERE sr.resume_id = r.id AND sr.user_id = $%d)", len(args))
+	}
 	q := `SELECT r.id, r.public_id, r.author_user_id,
 	             COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
 	             r.title, r.about, r.category, r.city, r.work_format,
 	             r.salary_from, r.salary_currency,
 	             r.experience_years, r.employment_type, r.status,
-	             r.skills, r.education, r.contacts,
-	             r.views_count, r.created_at, r.updated_at
+	             COALESCE(array_to_json(r.skills), '[]'::json), r.education, r.contacts,
+	             r.views_count, r.created_at, r.updated_at,
+	             ` + viewerSavedResume + `
 	      FROM resumes r
 	      LEFT JOIN users u ON u.id = r.author_user_id
 	      WHERE r.public_id = $1 AND r.deleted_at IS NULL`
-	err := db.QueryRow(q, publicID).Scan(
+	err := db.QueryRow(q, args...).Scan(
 		&ri.ID, &ri.PublicID, &ri.AuthorUserID,
 		&ri.AuthorPublicID, &ri.AuthorName,
 		&ri.Title, &ri.About, &ri.Category, &ri.City, &ri.WorkFormat,
@@ -6729,6 +6927,7 @@ func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resu
 		&ri.ExperienceYears, &ri.EmploymentType, &ri.Status,
 		&skills, &ri.Education, &ri.Contacts,
 		&ri.ViewsCount, &ri.CreatedAt, &ri.UpdatedAt,
+		&ri.ViewerHasSaved,
 	)
 	if err != nil {
 		return nil, err
