@@ -10,6 +10,8 @@
 <script>document.documentElement.classList.add('lt-shell');</script>
 <link rel="stylesheet" href="/assets/hover-lift.css">
 <script>document.documentElement.classList.add('hl-on');</script>
+<script src="/assets/project-categories.js"></script>
+<script src="/assets/category-picker.js" defer></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -671,6 +673,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           Сохранить
         </button>
+        <button id="btnEditProject" class="btn-share" onclick="openProjectEditModal()" style="display:none">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Редактировать
+        </button>
         <button class="btn-share" id="btnDelete" onclick="confirmDeleteProject()" style="display:none;color:var(--red);border-color:#FABCBC">
           <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           Удалить
@@ -1083,6 +1089,57 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 </div>
 
+<!-- ===== Модалка: редактирование проекта ===== -->
+<div class="mng-modal-bg" id="projectEditModalBg" onclick="if(event.target===this)closeProjectEditModal()">
+  <div class="mng-modal" style="max-width:600px">
+    <div class="mng-head">
+      <span class="mng-title">Редактировать проект</span>
+      <button class="mng-close" onclick="closeProjectEditModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="mng-body">
+      <div>
+        <label class="mng-label">Название проекта *</label>
+        <input class="mng-input" id="peTitle" placeholder="Например: TMS-интеграция с маркетплейсами" maxlength="200">
+      </div>
+      <div>
+        <label class="mng-label">Описание</label>
+        <textarea class="mng-textarea" id="peDescription" placeholder="Опишите цель, задачи и ожидаемый результат проекта…" maxlength="5000" style="height:110px"></textarea>
+      </div>
+      <div class="mng-row-2">
+        <div>
+          <label class="mng-label">Категория</label>
+          <select class="mng-select" id="peCategory" data-category-picker>
+            <option value="">Выберите категорию</option>
+            <!-- Заполняется через renderProjectCategoriesInto -->
+          </select>
+        </div>
+        <div>
+          <label class="mng-label">Статус</label>
+          <select class="mng-select" id="peStatus">
+            <option value="planned">Планируется</option>
+            <option value="active">Активный</option>
+            <option value="paused">На паузе</option>
+            <option value="completed">Завершён</option>
+            <option value="archived">Архив</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="mng-label">Дедлайн</label>
+        <input class="mng-input" type="date" id="peDeadline">
+      </div>
+      <div>
+        <label class="mng-label">Теги (через запятую)</label>
+        <input class="mng-input" id="peTags" placeholder="ТМС, маркетплейсы, автоматизация…">
+      </div>
+    </div>
+    <div class="mng-foot">
+      <button class="mng-btn-secondary" onclick="closeProjectEditModal()">Отмена</button>
+      <button class="mng-btn-primary" id="peSubmitBtn" onclick="submitProjectEdit()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
   <div class="lightbox-inner">
@@ -1372,6 +1429,7 @@ async function loadProject(){
     renderProject();
     // Права определены — показываем кнопки и перерисовываем секции
     applyManageButtonsVisibility();
+    applyEditButtonVisibility();
     loadStages();
     loadNeeds();
   } catch (err) {
@@ -2141,6 +2199,114 @@ async function openResponsesModal(needID, needTitle){
 function closeResponsesModal(){
   document.getElementById('responsesModalBg').classList.remove('open');
   _currentResponsesNeedID = null;
+}
+
+// ═══════ Спринт 6.4.4: модалка редактирования проекта ═══════
+
+// Показ кнопки "Редактировать" только для owner
+function applyEditButtonVisibility(){
+  const btn = document.getElementById('btnEditProject');
+  if (btn) btn.style.display = viewerCanManage ? '' : 'none';
+}
+
+function openProjectEditModal(){
+  if (!currentProject) return;
+
+  const cat = document.getElementById('peCategory');
+  // Заполняем категории через хелпер из project-categories.js
+  if (cat && window.renderProjectCategoriesInto) {
+    window.renderProjectCategoriesInto(cat, 'Выберите категорию');
+    // Перестраиваем picker на свежем списке
+    if (cat.dataset.cpReady === '1') {
+      const wrap = cat.closest('.cp-wrap');
+      if (wrap) {
+        wrap.parentNode.insertBefore(cat, wrap);
+        wrap.remove();
+      }
+      cat.dataset.cpReady = '';
+      cat.style.display = '';
+    }
+  }
+
+  // Заполняем поля текущими значениями
+  document.getElementById('peTitle').value = currentProject.title || '';
+  document.getElementById('peDescription').value = currentProject.description || '';
+  if (cat) cat.value = currentProject.category || '';
+  document.getElementById('peStatus').value = currentProject.status || 'planned';
+  document.getElementById('peDeadline').value = currentProject.deadline_date
+    ? String(currentProject.deadline_date).slice(0, 10)
+    : '';
+  document.getElementById('peTags').value = Array.isArray(currentProject.tags)
+    ? currentProject.tags.join(', ')
+    : '';
+
+  // Инициализируем picker для категории
+  if (window.initCategoryPickers) window.initCategoryPickers();
+
+  document.getElementById('projectEditModalBg').classList.add('open');
+  setTimeout(() => document.getElementById('peTitle').focus(), 150);
+}
+
+function closeProjectEditModal(){
+  document.getElementById('projectEditModalBg').classList.remove('open');
+}
+
+async function submitProjectEdit(){
+  const title = document.getElementById('peTitle').value.trim();
+  if (!title){
+    document.getElementById('peTitle').focus();
+    return;
+  }
+
+  const tagsRaw = document.getElementById('peTags').value;
+  const tags = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+  const body = {
+    title: title,
+    description: document.getElementById('peDescription').value.trim(),
+    category: document.getElementById('peCategory').value || '',
+    status: document.getElementById('peStatus').value || 'planned',
+    deadline_date: document.getElementById('peDeadline').value || null,
+    tags: tags
+  };
+
+  const projectPID = new URLSearchParams(location.search).get('id');
+  const btn = document.getElementById('peSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Сохранение…';
+
+  try {
+    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID), {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + tk(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok){
+      const err = await r.json().catch(()=>({}));
+      throw new Error(err.error || ('http ' + r.status));
+    }
+    const d = await r.json();
+    // Бэк может вернуть {project: {...}} или просто проект — учтём оба варианта
+    const updated = d.project || d;
+    if (updated && updated.public_id) {
+      currentProject = Object.assign({}, currentProject, updated);
+    } else {
+      // На всякий — перезагрузим проект целиком
+      await loadProject();
+    }
+    closeProjectEditModal();
+    toast('Проект обновлён', true);
+    renderProject();
+  } catch (err){
+    console.error('submitProjectEdit', err);
+    toast('Ошибка: ' + (err.message || 'не удалось сохранить'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Сохранить';
+  }
 }
 
 </script>
