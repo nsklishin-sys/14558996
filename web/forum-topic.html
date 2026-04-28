@@ -917,6 +917,126 @@ async function submitReply(){
   }
 }
 
+// ─── Polling — автообновление темы ───
+const POLL_INTERVAL_MS = 5000;
+const IDLE_THRESHOLD_MS = 30000; // если вкладка не активна 30+ сек — стопаем
+let pollTimer = null;
+let lastActivityTs = Date.now();
+let isPolling = false;
+
+function markActive(){ lastActivityTs = Date.now(); }
+['mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(ev => {
+  document.addEventListener(ev, markActive, { passive: true });
+});
+
+async function pollTopicUpdates(){
+  if (isPolling) return;
+  // Если вкладка скрыта или давно нет активности — пропускаем
+  if (document.hidden) return;
+  if (Date.now() - lastActivityTs > IDLE_THRESHOLD_MS) return;
+  // Если открыто редактирование сообщения — не трогаем DOM
+  if (document.querySelector('.msg-edit-form')) return;
+  // Если пользователь печатает ответ с непустым текстом — не перерисовываем целиком (но обновим счётчики темы)
+  const ta = document.getElementById('replyTextarea');
+  const userTyping = ta && ta.value.trim().length > 0;
+
+  isPolling = true;
+  try {
+    // Получаем текущее состояние темы и сообщений параллельно
+    const [tRes, mRes] = await Promise.all([
+      fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+        headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
+      }),
+      fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
+        headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
+      })
+    ]);
+
+    if (!tRes.ok || !mRes.ok) return;
+
+    const tData = await tRes.json();
+    const mData = await mRes.json();
+    const newTopic = tData.topic;
+    const newMessages = mData.messages || [];
+
+    // Обновляем тему (счётчики, статус закрытия) — это безопасно перерисовать
+    const topicChanged = !currentTopic
+      || currentTopic.replies_count !== newTopic.replies_count
+      || currentTopic.views_count !== newTopic.views_count
+      || currentTopic.is_closed !== newTopic.is_closed
+      || currentTopic.last_reply_at !== newTopic.last_reply_at;
+    if (topicChanged) {
+      currentTopic = newTopic;
+      isAuthorOfTopic = currentUserPublicID && currentTopic.author_public_id === currentUserPublicID;
+      renderTopicHeader();
+      renderTopicSidebar();
+      // обновляем кнопку подписки
+      loadIsSubscribed();
+    }
+
+    // Сравниваем сообщения по public_id и likes_count
+    const oldIds = currentMessages.map(m => m.public_id).join('|');
+    const newIds = newMessages.map(m => m.public_id).join('|');
+    const messagesListChanged = oldIds !== newIds;
+    let likesChanged = false;
+    if (!messagesListChanged) {
+      for (let i = 0; i < currentMessages.length; i++) {
+        if (currentMessages[i].likes_count !== newMessages[i].likes_count
+            || currentMessages[i].viewer_has_liked !== newMessages[i].viewer_has_liked
+            || currentMessages[i].edited_at !== newMessages[i].edited_at
+            || currentMessages[i].content !== newMessages[i].content) {
+          likesChanged = true; break;
+        }
+      }
+    }
+
+    if (messagesListChanged || likesChanged) {
+      // Запоминаем позицию скролла относительно низа (если пользователь у нижнего края — оставим)
+      const main = document.querySelector('.main');
+      const wasNearBottom = main && (main.scrollHeight - main.scrollTop - main.clientHeight < 200);
+      // Запоминаем длину текста в форме ответа (если была)
+      const taValue = ta ? ta.value : '';
+
+      currentMessages = newMessages;
+      // Если юзер набирает текст — не сбиваем форму. renderMessages() её перерисует, поэтому восстановим вручную.
+      renderMessages();
+
+      // Восстанавливаем форму ответа
+      if (userTyping || taValue) {
+        const newTa = document.getElementById('replyTextarea');
+        if (newTa) {
+          newTa.value = taValue;
+          updateReplyCounter();
+        }
+      }
+
+      // Если был у нижнего края — скроллим к низу чтобы увидеть новое сообщение
+      if (messagesListChanged && wasNearBottom && main) {
+        setTimeout(() => { main.scrollTop = main.scrollHeight; }, 50);
+      }
+    }
+  } catch (err) {
+    console.warn('pollTopicUpdates:', err);
+  } finally {
+    isPolling = false;
+  }
+}
+
+function startPolling(){
+  if (pollTimer) return;
+  pollTimer = setInterval(pollTopicUpdates, POLL_INTERVAL_MS);
+}
+function stopPolling(){
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+// Когда вкладка снова активна — обновляем сразу и запускаем polling
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    markActive();
+    pollTopicUpdates();
+  }
+});
+
 // ─── Init ───
 document.addEventListener('DOMContentLoaded', async () => {
   await loadProfile();
@@ -935,6 +1055,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       scrollToMessage(id);
     }, 500);
   }
+
+  // Запускаем автообновление темы
+  startPolling();
 });
 </script>
 </body>
