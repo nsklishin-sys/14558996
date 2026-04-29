@@ -125,6 +125,33 @@
       }
     });
 
+    // Fallback: если у select.value стоит категория, которой нет
+    // в собранных группах (старая категория, которую удалили
+    // или переименовали в актуальном списке) — добавляем
+    // «фантомную» опцию с пометкой. Это позволяет сохранить
+    // текущее значение в DOM и показать юзеру понятную метку
+    // вместо пустоты.
+    const currentValue = select.value;
+    if (currentValue) {
+      let foundInGroups = false;
+      groups.forEach(g => g.items.forEach(it => {
+        if (it.value === currentValue) foundInGroups = true;
+      }));
+      if (!foundInGroups) {
+        const ghostText = currentValue + ' (удалена из списка)';
+        // 1. Добавляем option в сам <select>, чтобы браузер не
+        //    сбросил value на первое доступное значение
+        const ghostOpt = document.createElement('option');
+        ghostOpt.value = currentValue;
+        ghostOpt.textContent = ghostText;
+        select.appendChild(ghostOpt);
+        select.value = currentValue;
+        // 2. Добавляем псевдо-группу в picker, чтобы юзер видел
+        //    опцию в UI
+        groups.push({ label: 'Удалённые категории', items: [{ value: currentValue, text: ghostText }] });
+      }
+    }
+
     // Создаём wrapper и UI
     const wrap = document.createElement('div');
     wrap.className = 'cp-wrap';
