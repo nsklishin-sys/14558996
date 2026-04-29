@@ -5208,6 +5208,74 @@ func main() {
 		http.Error(w, "not found", http.StatusNotFound)
 	})
 
+	// ═════ КОМПАНИИ — Read-only эндпоинты (Mini-B) ═════
+
+	mux.HandleFunc("/api/companies", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		items, err := listCompanies(db, listCompaniesFilters{
+			Category: r.URL.Query().Get("category"),
+			Region:   r.URL.Query().Get("region"),
+			City:     r.URL.Query().Get("city"),
+			Search:   r.URL.Query().Get("search"),
+			Tab:      r.URL.Query().Get("tab"),
+			ViewerID: viewerID,
+			Limit:    limit,
+		})
+		if err != nil {
+			log.Printf("listCompanies: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if items == nil {
+			items = []companyItem{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	})
+
+	mux.HandleFunc("/api/companies/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/companies/")
+		if path == "" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		parts := strings.Split(path, "/")
+		identifier := parts[0]
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+
+		// /api/companies/{slug-or-publicID} — деталка
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			// Сначала пробуем как slug, потом как public_id
+			item, err := getCompanyBySlugFull(db, identifier, viewerID)
+			if err == sql.ErrNoRows {
+				item, err = getCompanyByPublicIDFull(db, identifier, viewerID)
+			}
+			if err == sql.ErrNoRows {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			if err != nil {
+				log.Printf("getCompanyFull: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if item.Status != "active" && (viewerID == 0 || !item.ViewerIsMember) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"item": item})
+			return
+		}
+
+		// Заглушка для других action-эндпоинтов (POST/PATCH/DELETE/invites/members) —
+		// добавим в B-2b и B-3.
+		http.Error(w, "not found", http.StatusNotFound)
+	})
+
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -15208,4 +15276,206 @@ func userIsCompanyMember(db *sql.DB, userID, companyID int64) (bool, string, err
 		return false, "", err
 	}
 	return true, role, nil
+}
+
+// companyItem — структура компании для ответа API.
+type companyItem struct {
+	ID             int64     `json:"id"`
+	PublicID       string    `json:"public_id"`
+	Slug           string    `json:"slug"`
+	OwnerUserID    int64     `json:"owner_user_id"`
+	OwnerName      string    `json:"owner_name,omitempty"`
+	Name           string    `json:"name"`
+	INN            string    `json:"inn,omitempty"`
+	Description    string    `json:"description"`
+	Region         string    `json:"region,omitempty"`
+	City           string    `json:"city,omitempty"`
+	Website        string    `json:"website,omitempty"`
+	Email          string    `json:"email,omitempty"`
+	Phone          string    `json:"phone,omitempty"`
+	LogoImage      string    `json:"logo_image,omitempty"`
+	AccentColor    string    `json:"accent_color"`
+	Category       string    `json:"category,omitempty"`
+	CategoryLabel  string    `json:"category_label,omitempty"`
+	CategoryGroup  string    `json:"category_group,omitempty"`
+	Tags           []string  `json:"tags"`
+	IsVerified     bool      `json:"is_verified"`
+	Status         string    `json:"status"`
+	MembersCount   int       `json:"members_count"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	ViewerIsOwner  bool      `json:"viewer_is_owner,omitempty"`
+	ViewerIsMember bool      `json:"viewer_is_member,omitempty"`
+	ViewerRole     string    `json:"viewer_role,omitempty"`
+}
+
+// listCompaniesFilters — параметры фильтрации.
+type listCompaniesFilters struct {
+	Category string
+	Region   string
+	City     string
+	Search   string
+	Tab      string // all / verified / my (где my — компании, в которых юзер состоит)
+	Verified bool   // если true — только подтверждённые
+	ViewerID int64
+	Limit    int
+}
+
+// listCompanies возвращает компании с фильтрацией.
+// LogoImage не возвращаем (тяжёлый base64) — только в детали.
+func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+	var conds []string
+	var args []interface{}
+	conds = append(conds, "c.deleted_at IS NULL")
+	conds = append(conds, "c.status = 'active'")
+
+	if f.Category != "" {
+		args = append(args, f.Category)
+		conds = append(conds, fmt.Sprintf("c.category = $%d", len(args)))
+	}
+	if f.Region != "" {
+		args = append(args, f.Region)
+		conds = append(conds, fmt.Sprintf("c.region = $%d", len(args)))
+	}
+	if f.City != "" {
+		args = append(args, f.City)
+		conds = append(conds, fmt.Sprintf("c.city = $%d", len(args)))
+	}
+	if f.Search != "" {
+		args = append(args, "%"+strings.ToLower(f.Search)+"%")
+		conds = append(conds, fmt.Sprintf("(LOWER(c.name) LIKE $%d OR LOWER(c.description) LIKE $%d)", len(args), len(args)))
+	}
+	if f.Verified || f.Tab == "verified" {
+		conds = append(conds, "c.is_verified = TRUE")
+	}
+	if f.Tab == "my" && f.ViewerID > 0 {
+		args = append(args, f.ViewerID)
+		conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM company_members cm WHERE cm.company_id = c.id AND cm.user_id = $%d)", len(args)))
+	}
+
+	args = append(args, f.Limit)
+	limitArg := fmt.Sprintf("$%d", len(args))
+
+	q := `
+		SELECT c.id, c.public_id, c.slug, c.owner_user_id,
+			COALESCE(u.full_name, u.handle, ''),
+			c.name, c.description, c.region, c.city,
+			c.website, c.email, c.phone,
+			c.accent_color, c.category,
+			COALESCE(array_to_json(c.tags), '[]'::json),
+			c.is_verified, c.status,
+			(SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id),
+			c.created_at, c.updated_at
+		FROM companies c
+		LEFT JOIN users u ON u.id = c.owner_user_id
+		WHERE ` + strings.Join(conds, " AND ") + `
+		ORDER BY c.is_verified DESC, c.created_at DESC
+		LIMIT ` + limitArg
+
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []companyItem
+	for rows.Next() {
+		var c companyItem
+		var tagsJSON []byte
+		if err := rows.Scan(
+			&c.ID, &c.PublicID, &c.Slug, &c.OwnerUserID, &c.OwnerName,
+			&c.Name, &c.Description, &c.Region, &c.City,
+			&c.Website, &c.Email, &c.Phone,
+			&c.AccentColor, &c.Category, &tagsJSON,
+			&c.IsVerified, &c.Status, &c.MembersCount,
+			&c.CreatedAt, &c.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &c.Tags)
+		if c.Tags == nil {
+			c.Tags = []string{}
+		}
+		// CategoryLabel/Group — переиспользуем catalog справочник
+		c.CategoryLabel = catalogCategoryLabel(c.Category)
+		c.CategoryGroup = catalogCategoryGroupLabel(c.Category)
+		if f.ViewerID > 0 {
+			if c.OwnerUserID == f.ViewerID {
+				c.ViewerIsOwner = true
+				c.ViewerIsMember = true
+				c.ViewerRole = "owner"
+			} else {
+				isM, role, _ := userIsCompanyMember(db, f.ViewerID, c.ID)
+				if isM {
+					c.ViewerIsMember = true
+					c.ViewerRole = role
+				}
+			}
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// getCompanyByPublicIDFull — полная карточка по public_id (с logo_image).
+func getCompanyByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*companyItem, error) {
+	return getCompanyFull(db, "public_id", publicID, viewerID)
+}
+
+// getCompanyBySlugFull — полная карточка по slug.
+func getCompanyBySlugFull(db *sql.DB, slug string, viewerID int64) (*companyItem, error) {
+	return getCompanyFull(db, "slug", slug, viewerID)
+}
+
+func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*companyItem, error) {
+	if byField != "public_id" && byField != "slug" {
+		return nil, fmt.Errorf("invalid byField")
+	}
+	var c companyItem
+	var tagsJSON []byte
+	q := `SELECT c.id, c.public_id, c.slug, c.owner_user_id,
+		COALESCE(u.full_name, u.handle, ''),
+		c.name, c.inn, c.description, c.region, c.city,
+		c.website, c.email, c.phone, c.logo_image,
+		c.accent_color, c.category,
+		COALESCE(array_to_json(c.tags), '[]'::json),
+		c.is_verified, c.status,
+		(SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id),
+		c.created_at, c.updated_at
+		FROM companies c
+		LEFT JOIN users u ON u.id = c.owner_user_id
+		WHERE c.` + byField + ` = $1 AND c.deleted_at IS NULL`
+	if err := db.QueryRow(q, value).Scan(
+		&c.ID, &c.PublicID, &c.Slug, &c.OwnerUserID, &c.OwnerName,
+		&c.Name, &c.INN, &c.Description, &c.Region, &c.City,
+		&c.Website, &c.Email, &c.Phone, &c.LogoImage,
+		&c.AccentColor, &c.Category, &tagsJSON,
+		&c.IsVerified, &c.Status, &c.MembersCount,
+		&c.CreatedAt, &c.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(tagsJSON, &c.Tags)
+	if c.Tags == nil {
+		c.Tags = []string{}
+	}
+	c.CategoryLabel = catalogCategoryLabel(c.Category)
+	c.CategoryGroup = catalogCategoryGroupLabel(c.Category)
+	if viewerID > 0 {
+		if c.OwnerUserID == viewerID {
+			c.ViewerIsOwner = true
+			c.ViewerIsMember = true
+			c.ViewerRole = "owner"
+		} else {
+			isM, role, _ := userIsCompanyMember(db, viewerID, c.ID)
+			if isM {
+				c.ViewerIsMember = true
+				c.ViewerRole = role
+			}
+		}
+	}
+	return &c, nil
 }
