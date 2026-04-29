@@ -14609,6 +14609,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 			COALESCE(ci.author_company_id, 0), '',
 			ci.type, ci.category, ci.title, ci.description,
 			ci.price, ci.currency, ci.in_stock, ci.status,
+			ci.cover_image,
 			COALESCE(array_to_json(ci.tags), '[]'::json),
 			ci.city, ci.views_count, ci.orders_count, ci.created_at, ci.updated_at,
 			` + viewerSaved + `, ` + viewerOrdered + `
@@ -14634,6 +14635,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 			&ci.AuthorCompanyID, &ci.AuthorCompanyName,
 			&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 			&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
+			&ci.CoverImage,
 			&tagsJSON,
 			&ci.City, &ci.ViewsCount, &ci.OrdersCount, &ci.CreatedAt, &ci.UpdatedAt,
 			&ci.ViewerHasSaved, &ci.ViewerHasOrdered,
