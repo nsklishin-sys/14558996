@@ -1330,13 +1330,92 @@ func main() {
 		if !hasAuth {
 			return
 		}
+		tab := r.URL.Query().Get("tab")
 		limit := parseLimit(r.URL.Query().Get("limit"), 30, 100)
-		posts, err := listSavedPosts(db, userID, limit)
-		if err != nil {
-			handlePostActionError(w, err)
+
+		switch tab {
+		case "posts":
+			posts, err := listSavedPosts(db, userID, limit)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"posts": posts})
+			return
+		case "projects":
+			items, err := listSavedProjects(db, userID, limit)
+			if err != nil {
+				log.Printf("listSavedProjects: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"projects": items})
+			return
+		case "jobs":
+			items, err := listJobs(db, listJobsFilters{Tab: "saved", ViewerID: userID, Limit: limit})
+			if err != nil {
+				log.Printf("listSavedJobs: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"jobs": items})
+			return
+		case "resumes":
+			items, err := listSavedResumes(db, userID, limit)
+			if err != nil {
+				log.Printf("listSavedResumes: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"resumes": items})
+			return
+		case "catalog":
+			items, err := listCatalogItems(db, listCatalogFilters{Tab: "saved", ViewerID: userID, Limit: limit})
+			if err != nil {
+				log.Printf("listSavedCatalog: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if items == nil {
+				items = []catalogItem{}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"catalog": items})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"posts": posts})
+
+		const previewLimit = 5
+
+		var cPosts, cProjects, cJobs, cResumes, cCatalog int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_posts WHERE user_id=$1`, userID).Scan(&cPosts)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_projects WHERE user_id=$1`, userID).Scan(&cProjects)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_jobs WHERE user_id=$1`, userID).Scan(&cJobs)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_resumes WHERE user_id=$1`, userID).Scan(&cResumes)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_catalog_items WHERE user_id=$1`, userID).Scan(&cCatalog)
+
+		posts, _ := listSavedPosts(db, userID, previewLimit)
+		projects, _ := listSavedProjects(db, userID, previewLimit)
+		jobs, _ := listJobs(db, listJobsFilters{Tab: "saved", ViewerID: userID, Limit: previewLimit})
+		resumes, _ := listSavedResumes(db, userID, previewLimit)
+		catalog, _ := listCatalogItems(db, listCatalogFilters{Tab: "saved", ViewerID: userID, Limit: previewLimit})
+		if catalog == nil {
+			catalog = []catalogItem{}
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"counts": map[string]int{
+				"posts":    cPosts,
+				"projects": cProjects,
+				"jobs":     cJobs,
+				"resumes":  cResumes,
+				"catalog":  cCatalog,
+				"total":    cPosts + cProjects + cJobs + cResumes + cCatalog,
+			},
+			"posts":    posts,
+			"projects": projects,
+			"jobs":     jobs,
+			"resumes":  resumes,
+			"catalog":  catalog,
+		})
 	})
 
 	mux.HandleFunc("/api/profile", func(w http.ResponseWriter, r *http.Request) {
@@ -11567,6 +11646,102 @@ func listSavedPosts(db *sql.DB, userID int64, limit int) ([]post, error) {
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+// listSavedProjects возвращает проекты, сохранённые юзером (Mini-D).
+// Простая обёртка по образцу listSavedPosts.
+func listSavedProjects(db *sql.DB, userID int64, limit int) ([]project, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	q := `
+		SELECT p.id, p.public_id, p.owner_id, p.title, p.description, p.category, p.status,
+		       p.deadline, p.budget, p.cover_color, COALESCE(array_to_json(p.tags), '[]'::json),
+		       p.created_at, p.updated_at,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
+		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
+		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member
+		FROM saved_projects sp
+		JOIN projects p ON p.id = sp.project_id
+		LEFT JOIN users u ON u.id = p.owner_id
+		WHERE sp.user_id = $1 AND p.is_deleted = FALSE
+		ORDER BY sp.saved_at DESC
+		LIMIT $2`
+	rows, err := db.Query(q, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []project{}
+	for rows.Next() {
+		var p project
+		var tagsJSON []byte
+		if err := rows.Scan(
+			&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
+			&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
+			&p.CreatedAt, &p.UpdatedAt,
+			&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
+			&p.MembersCount, &p.IsMember,
+		); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &p.Tags)
+		if p.Tags == nil {
+			p.Tags = []string{}
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// listSavedResumes возвращает резюме, сохранённые юзером (Mini-D).
+func listSavedResumes(db *sql.DB, userID int64, limit int) ([]resumeItem, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	q := `
+		SELECT r.id, r.public_id, r.author_user_id,
+		       COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+		       r.title, r.about, r.category, r.city, r.work_format,
+		       r.salary_from, r.salary_currency,
+		       r.experience_years, r.employment_type, r.status,
+		       COALESCE(array_to_json(r.skills), '[]'::json),
+		       r.views_count, r.created_at, r.updated_at
+		FROM saved_resumes sr
+		JOIN resumes r ON r.id = sr.resume_id
+		LEFT JOIN users u ON u.id = r.author_user_id
+		WHERE sr.user_id = $1 AND r.deleted_at IS NULL
+		ORDER BY sr.saved_at DESC
+		LIMIT $2`
+	rows, err := db.Query(q, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []resumeItem{}
+	for rows.Next() {
+		var r resumeItem
+		var skillsJSON []byte
+		if err := rows.Scan(
+			&r.ID, &r.PublicID, &r.AuthorUserID,
+			&r.AuthorPublicID, &r.AuthorName,
+			&r.Title, &r.About, &r.Category, &r.City, &r.WorkFormat,
+			&r.SalaryFrom, &r.SalaryCurrency,
+			&r.ExperienceYears, &r.EmploymentType, &r.Status,
+			&skillsJSON,
+			&r.ViewsCount, &r.CreatedAt, &r.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(skillsJSON, &r.Skills)
+		if r.Skills == nil {
+			r.Skills = []string{}
+		}
+		r.CategoryLabel = jobCategoryLabel(r.Category)
+		r.CategoryColor = jobCategoryColor(r.Category)
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
