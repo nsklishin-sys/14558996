@@ -373,7 +373,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="proj-title">Проекты</span>
     <div class="proj-tabs" id="projTabs">
       <button class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">48</span></button>
-      <button class="ptab" onclick="setTab('saved',this)">Сохранённые<span class="ptab-count" id="tc-saved">0</span></button>
       <button class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">3</span></button>
       <button class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">31</span></button>
       <button class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">9</span></button>
@@ -697,10 +696,7 @@ function renderRow(p,i){
 function renderFeed(projects){
   const feed=document.getElementById('projFeed');
   if(!projects.length){
-    const emptyMsg=currentTab==='saved'
-      ? 'У вас пока нет сохранённых проектов. Сохраняйте интересные на их странице.'
-      : 'Попробуйте изменить фильтры или <button onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создать новый проект</button>';
-    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Проекты не найдены</div><div style="font-size:12px;color:var(--gmt)">'+emptyMsg+'</div></div>';
+    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Проекты не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте изменить фильтры или <button onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создать новый проект</button></div></div>';
     return;
   }
   if(currentView==='grid'){
@@ -739,14 +735,10 @@ async function loadProjects(){
 
   try{
     const headers=tk()?{Authorization:'Bearer '+tk()}:{};
-    const url=currentTab==='saved'
-      ? API+'/me/saved?tab=projects&limit=100'
-      : API+'/projects?'+params.toString();
-    const r=await fetch(url,{headers});
+    const r=await fetch(API+'/projects?'+params.toString(),{headers});
     if(!r.ok)throw new Error('Ошибка загрузки');
     const data=await r.json();
-    const items=currentTab==='saved'?(data.projects||[]):(data.projects||[]);
-    allProjects=items.map(mapProjectFromAPI);
+    allProjects=(data.projects||[]).map(mapProjectFromAPI);
   }catch(err){
     console.error('loadProjects error',err);
     allProjects=[];
