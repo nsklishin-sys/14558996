@@ -5731,6 +5731,59 @@ CREATE TABLE IF NOT EXISTS saved_resumes (
 );
 
 CREATE INDEX IF NOT EXISTS saved_resumes_user_idx ON saved_resumes(user_id, saved_at DESC);
+
+CREATE TABLE IF NOT EXISTS catalog_items (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    author_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    author_company_id BIGINT,
+    type TEXT NOT NULL CHECK (type IN ('product', 'service')),
+    category TEXT NOT NULL,
+    title TEXT NOT NULL CHECK (length(title) >= 1 AND length(title) <= 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (length(description) <= 10000),
+    price BIGINT,
+    currency TEXT NOT NULL DEFAULT 'RUB' CHECK (currency IN ('RUB', 'USD', 'EUR', 'CNY')),
+    in_stock BOOLEAN NOT NULL DEFAULT TRUE,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'hidden')),
+    cover_image TEXT NOT NULL DEFAULT '',
+    photos JSONB NOT NULL DEFAULT '[]'::jsonb,
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    city TEXT NOT NULL DEFAULT '',
+    views_count INT NOT NULL DEFAULT 0,
+    orders_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS catalog_items_status_idx ON catalog_items(status, created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS catalog_items_author_idx ON catalog_items(author_user_id, created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS catalog_items_type_category_idx ON catalog_items(type, category) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS catalog_orders (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    item_id BIGINT NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
+    buyer_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL DEFAULT '' CHECK (length(message) <= 2000),
+    chat_conversation_id BIGINT,
+    status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'viewed', 'accepted', 'rejected', 'completed')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    viewed_at TIMESTAMPTZ,
+    UNIQUE (item_id, buyer_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS catalog_orders_item_idx ON catalog_orders(item_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS catalog_orders_buyer_idx ON catalog_orders(buyer_user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS saved_catalog_items (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id BIGINT NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS saved_catalog_items_user_idx ON saved_catalog_items(user_id, saved_at DESC);
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -13709,4 +13762,174 @@ func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, te
 		}
 	}
 	return rows.Err()
+}
+
+// ═════ КАТАЛОГ — Helpers (Спринт 9) ═════
+
+// catalogCategory — одна подкатегория каталога.
+type catalogCategory struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+}
+
+// catalogCategoryGroup — группа категорий верхнего уровня.
+type catalogCategoryGroup struct {
+	Key   string            `json:"key"`
+	Label string            `json:"label"`
+	Items []catalogCategory `json:"items"`
+}
+
+// catalogCategoriesList — 11 групп × 4-6 подкатегорий = 62 подкатегории.
+// Применяется и к товарам, и к услугам (поле type — отдельно).
+var catalogCategoriesList = []catalogCategoryGroup{
+	{Key: "industry", Label: "Промышленность и производство", Items: []catalogCategory{
+		{Key: "industry_metalwork", Label: "Металлообработка и станки"},
+		{Key: "industry_casting", Label: "Литьё, ковка, сварка"},
+		{Key: "industry_chemicals", Label: "Промышленная химия"},
+		{Key: "industry_packaging", Label: "Упаковка и тара"},
+		{Key: "industry_textile", Label: "Текстиль и швейное производство"},
+		{Key: "industry_other", Label: "Прочее производство"},
+	}},
+	{Key: "agro", Label: "Сельское хозяйство и АПК", Items: []catalogCategory{
+		{Key: "agro_machinery", Label: "Сельхозтехника и спецтехника"},
+		{Key: "agro_fertilizers", Label: "Удобрения и агрохимия"},
+		{Key: "agro_seeds", Label: "Семена, корма, племенной материал"},
+		{Key: "agro_processing", Label: "Переработка и хранение"},
+		{Key: "agro_services", Label: "Агрономические услуги"},
+		{Key: "agro_other", Label: "Прочее в АПК"},
+	}},
+	{Key: "logistics", Label: "Транспорт и логистика", Items: []catalogCategory{
+		{Key: "logistics_freight", Label: "Грузоперевозки (авто, ж/д, авиа, море)"},
+		{Key: "logistics_customs", Label: "ВЭД и таможенное оформление"},
+		{Key: "logistics_warehouse", Label: "Складские услуги"},
+		{Key: "logistics_intl", Label: "Международная логистика"},
+		{Key: "logistics_courier", Label: "Курьерская доставка"},
+		{Key: "logistics_equipment", Label: "Транспортное оборудование"},
+	}},
+	{Key: "construction", Label: "Строительство и спецтехника", Items: []catalogCategory{
+		{Key: "construction_materials", Label: "Стройматериалы"},
+		{Key: "construction_heavy", Label: "Краны, погрузчики, экскаваторы"},
+		{Key: "construction_engineering", Label: "Инженерные системы (ОВК, сантехника, электрика)"},
+		{Key: "construction_finishing", Label: "Отделочные материалы и работы"},
+		{Key: "construction_services", Label: "Строительно-монтажные работы"},
+		{Key: "construction_other", Label: "Прочее в строительстве"},
+	}},
+	{Key: "auto", Label: "Автомобили и комплектующие", Items: []catalogCategory{
+		{Key: "auto_parts", Label: "Запчасти и расходники"},
+		{Key: "auto_tires", Label: "Шины, диски, аккумуляторы"},
+		{Key: "auto_accessories", Label: "Аксессуары и тюнинг"},
+		{Key: "auto_oil", Label: "Масла, ГСМ, технические жидкости"},
+		{Key: "auto_service", Label: "Авторемонт и обслуживание"},
+		{Key: "auto_other", Label: "Прочее в автомобильной сфере"},
+	}},
+	{Key: "it", Label: "IT и программное обеспечение", Items: []catalogCategory{
+		{Key: "it_software", Label: "Разработка ПО на заказ"},
+		{Key: "it_saas", Label: "SaaS-решения и подписки"},
+		{Key: "it_cloud", Label: "Облачные услуги, хостинг, дата-центры"},
+		{Key: "it_automation", Label: "Автоматизация бизнес-процессов"},
+		{Key: "it_hardware", Label: "Оборудование и сетевые решения"},
+		{Key: "it_consulting", Label: "IT-консалтинг и интеграция"},
+	}},
+	{Key: "prof_services", Label: "Профессиональные услуги", Items: []catalogCategory{
+		{Key: "prof_legal", Label: "Юридическое сопровождение"},
+		{Key: "prof_accounting", Label: "Бухгалтерия и налоги"},
+		{Key: "prof_consulting", Label: "Бизнес-консалтинг"},
+		{Key: "prof_hr", Label: "HR и подбор персонала"},
+		{Key: "prof_marketing", Label: "Маркетинг, реклама, PR"},
+		{Key: "prof_finance", Label: "Финансовый консалтинг, аудит"},
+	}},
+	{Key: "energy", Label: "Энергетика и коммунальное", Items: []catalogCategory{
+		{Key: "energy_electrical", Label: "Электрооборудование"},
+		{Key: "energy_lighting", Label: "Освещение"},
+		{Key: "energy_generation", Label: "Энергогенерация и резервное питание"},
+		{Key: "energy_renewable", Label: "Возобновляемые источники"},
+		{Key: "energy_services", Label: "Энергетические услуги (монтаж, обслуживание)"},
+	}},
+	{Key: "security", Label: "Безопасность", Items: []catalogCategory{
+		{Key: "security_access", Label: "Системы доступа и видеонаблюдения"},
+		{Key: "security_alarm", Label: "Сигнализация и пожарная безопасность"},
+		{Key: "security_services", Label: "Охранные услуги"},
+		{Key: "security_cyber", Label: "Кибербезопасность"},
+		{Key: "security_other", Label: "Прочее в безопасности"},
+	}},
+	{Key: "trade", Label: "Торговля и дистрибуция", Items: []catalogCategory{
+		{Key: "trade_wholesale", Label: "Оптовая торговля"},
+		{Key: "trade_retail_equip", Label: "Торговое оборудование"},
+		{Key: "trade_b2b_platforms", Label: "B2B-площадки и сервисы"},
+		{Key: "trade_export", Label: "Экспорт-импорт товаров"},
+		{Key: "trade_other", Label: "Прочее в торговле"},
+	}},
+	{Key: "other", Label: "Прочее", Items: []catalogCategory{
+		{Key: "other_education", Label: "Обучение и сертификация"},
+		{Key: "other_medical", Label: "Медицинское оборудование и материалы"},
+		{Key: "other_horeca", Label: "HoReCa: оборудование и услуги"},
+		{Key: "other_eco", Label: "Экология и переработка отходов"},
+		{Key: "other_misc", Label: "Другое"},
+	}},
+}
+
+// validateCatalogCategory проверяет, что переданный ключ существует
+// среди всех подкатегорий каталога.
+func validateCatalogCategory(s string) bool {
+	for _, g := range catalogCategoriesList {
+		for _, c := range g.Items {
+			if c.Key == s {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// catalogCategoryLabel возвращает label подкатегории по её ключу.
+// Если ключ неизвестен — возвращает пустую строку.
+func catalogCategoryLabel(s string) string {
+	for _, g := range catalogCategoriesList {
+		for _, c := range g.Items {
+			if c.Key == s {
+				return c.Label
+			}
+		}
+	}
+	return ""
+}
+
+// catalogCategoryGroupLabel возвращает label группы, в которой
+// находится подкатегория с переданным ключом.
+func catalogCategoryGroupLabel(s string) string {
+	for _, g := range catalogCategoriesList {
+		for _, c := range g.Items {
+			if c.Key == s {
+				return g.Label
+			}
+		}
+	}
+	return ""
+}
+
+// generateCatalogPublicID возвращает новый public_id вида cat_xxxxx
+// (12 hex-символов).
+func generateCatalogPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "cat_" + hex.EncodeToString(b)
+}
+
+// generateCatalogOrderPublicID возвращает новый public_id заявки
+// вида catord_xxxxx (12 hex-символов).
+func generateCatalogOrderPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "catord_" + hex.EncodeToString(b)
+}
+
+// getCatalogItemByPublicID возвращает id товара/услуги по public_id.
+// Возвращает sql.ErrNoRows если не найден или удалён.
+func getCatalogItemByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(
+		`SELECT id FROM catalog_items WHERE public_id = $1 AND deleted_at IS NULL`,
+		publicID,
+	).Scan(&id)
+	return id, err
 }
