@@ -6888,7 +6888,9 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 			return nil, err
 		}
 		_ = json.Unmarshal(skillsJSON, &ri.Skills)
-		if ri.Skills == nil { ri.Skills = []string{} }
+		if ri.Skills == nil {
+			ri.Skills = []string{}
+		}
 		ri.CategoryLabel = jobCategoryLabel(ri.Category)
 		ri.CategoryColor = jobCategoryColor(ri.Category)
 		if f.ViewerID > 0 && ri.AuthorUserID == f.ViewerID {
@@ -6934,7 +6936,9 @@ func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resu
 		return nil, err
 	}
 	_ = json.Unmarshal(skillsJSON, &ri.Skills)
-	if ri.Skills == nil { ri.Skills = []string{} }
+	if ri.Skills == nil {
+		ri.Skills = []string{}
+	}
 	ri.CategoryLabel = jobCategoryLabel(ri.Category)
 	ri.CategoryColor = jobCategoryColor(ri.Category)
 	if viewerID > 0 && ri.AuthorUserID == viewerID {
