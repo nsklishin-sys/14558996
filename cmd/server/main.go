@@ -5495,7 +5495,135 @@ func main() {
 			return
 		}
 
-		// Заглушка для invites/members — добавим в B-3.
+		// /api/companies/{publicID}/invites — список или создание (только owner)
+		if len(parts) == 2 && parts[1] == "invites" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			companyID, err := getCompanyByPublicID(db, identifier)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			switch r.Method {
+			case http.MethodGet:
+				rows, err := db.Query(`
+					SELECT id, code, created_at, expires_at, max_uses, used_count, is_active
+					FROM company_invites
+					WHERE company_id = $1
+					ORDER BY created_at DESC
+				`, companyID)
+				if err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				defer rows.Close()
+				type inv struct {
+					ID        int64      `json:"id"`
+					Code      string     `json:"code"`
+					CreatedAt time.Time  `json:"created_at"`
+					ExpiresAt *time.Time `json:"expires_at"`
+					MaxUses   int        `json:"max_uses"`
+					UsedCount int        `json:"used_count"`
+					IsActive  bool       `json:"is_active"`
+				}
+				out := []inv{}
+				for rows.Next() {
+					var x inv
+					if err := rows.Scan(&x.ID, &x.Code, &x.CreatedAt, &x.ExpiresAt, &x.MaxUses, &x.UsedCount, &x.IsActive); err != nil {
+						http.Error(w, "internal", http.StatusInternalServerError)
+						return
+					}
+					out = append(out, x)
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"invites": out})
+				return
+
+			case http.MethodPost:
+				var req struct {
+					ExpiresInDays int `json:"expires_in_days"` // 0 = бессрочно
+					MaxUses       int `json:"max_uses"`        // 0 = безлимит
+				}
+				_ = json.NewDecoder(r.Body).Decode(&req)
+				if req.MaxUses < 0 || req.MaxUses > 1000 {
+					req.MaxUses = 1
+				}
+				code := generateCompanyInviteCode()
+				var expiresAt sql.NullTime
+				if req.ExpiresInDays > 0 && req.ExpiresInDays <= 365 {
+					expiresAt.Time = time.Now().AddDate(0, 0, req.ExpiresInDays)
+					expiresAt.Valid = true
+				}
+				var newID int64
+				var createdAt time.Time
+				if err := db.QueryRow(`
+					INSERT INTO company_invites (company_id, code, created_by_user_id, expires_at, max_uses)
+					VALUES ($1, $2, $3, $4, $5)
+					RETURNING id, created_at
+				`, companyID, code, userID, expiresAt, req.MaxUses).Scan(&newID, &createdAt); err != nil {
+					log.Printf("createInvite: %v", err)
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{
+					"id":         newID,
+					"code":       code,
+					"created_at": createdAt,
+					"max_uses":   req.MaxUses,
+					"expires_at": expiresAt.Time,
+				})
+				return
+
+			default:
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+		}
+
+		// /api/companies/{publicID}/invites/{id} — деактивировать (DELETE, только owner)
+		if len(parts) == 3 && parts[1] == "invites" && r.Method == http.MethodDelete {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			companyID, err := getCompanyByPublicID(db, identifier)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			inviteID, err := strconv.ParseInt(parts[2], 10, 64)
+			if err != nil {
+				http.Error(w, "bad id", http.StatusBadRequest)
+				return
+			}
+			if _, err := db.Exec(`UPDATE company_invites SET is_active=FALSE WHERE id=$1 AND company_id=$2`, inviteID, companyID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"deactivated": true})
+			return
+		}
+
 		http.Error(w, "not found", http.StatusNotFound)
 	})
 
@@ -5543,6 +5671,105 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"verified": req.Verified})
+	})
+
+	// POST /api/invites/accept — принять приглашение по коду
+	// (юзер уже залогинен; добавляется в company_members)
+	mux.HandleFunc("/api/invites/accept", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			Code string `json:"code"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		req.Code = strings.TrimSpace(req.Code)
+		if req.Code == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "не указан код приглашения"})
+			return
+		}
+
+		var inviteID, companyID int64
+		var maxUses, usedCount int
+		var isActive bool
+		var expiresAt sql.NullTime
+		err := db.QueryRow(`
+			SELECT id, company_id, max_uses, used_count, is_active, expires_at
+			FROM company_invites
+			WHERE code = $1
+		`, req.Code).Scan(&inviteID, &companyID, &maxUses, &usedCount, &isActive, &expiresAt)
+		if err == sql.ErrNoRows {
+			writeJSON(w, http.StatusNotFound, map[string]any{"error": "приглашение не найдено"})
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if !isActive {
+			writeJSON(w, http.StatusGone, map[string]any{"error": "приглашение деактивировано"})
+			return
+		}
+		if expiresAt.Valid && expiresAt.Time.Before(time.Now()) {
+			writeJSON(w, http.StatusGone, map[string]any{"error": "срок действия приглашения истёк"})
+			return
+		}
+		if maxUses > 0 && usedCount >= maxUses {
+			writeJSON(w, http.StatusGone, map[string]any{"error": "лимит использований приглашения исчерпан"})
+			return
+		}
+
+		// Уже состоит?
+		isM, _, err := userIsCompanyMember(db, userID, companyID)
+		if err != nil {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if isM {
+			writeJSON(w, http.StatusConflict, map[string]any{"error": "вы уже состоите в этой компании"})
+			return
+		}
+
+		tx, err := db.Begin()
+		if err != nil {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback()
+
+		if _, err := tx.Exec(`
+			INSERT INTO company_members (company_id, user_id, role, joined_via_invite_id)
+			VALUES ($1, $2, 'member', $3)
+		`, companyID, userID, inviteID); err != nil {
+			log.Printf("acceptInvite insert member: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if _, err := tx.Exec(`UPDATE company_invites SET used_count = used_count + 1 WHERE id = $1`, inviteID); err != nil {
+			log.Printf("acceptInvite update count: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+
+		var pubID, slug, name string
+		_ = db.QueryRow(`SELECT public_id, slug, name FROM companies WHERE id=$1`, companyID).Scan(&pubID, &slug, &name)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"company_public_id": pubID,
+			"company_slug":      slug,
+			"company_name":      name,
+		})
 	})
 
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
