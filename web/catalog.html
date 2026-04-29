@@ -20,15 +20,16 @@
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
 html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
-
-/* Hide scrollbars visually, keep scrolling functional */
 *{scrollbar-width:none;-ms-overflow-style:none}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
 
 /* SHELL */
 .shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
 .logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
 .logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+
+/* TOPBAR */
 .topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative;display:flex;align-items:center}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
@@ -59,7 +60,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .pdd-item:hover{background:var(--gp);color:var(--g)}
 .pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .pdd-item-label{flex:1}
-.pdd-count{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:1px 7px;flex-shrink:0}
 .pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
 .pdd-item.logout{color:var(--red)}
 .pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
@@ -73,205 +73,137 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .nav-item:hover{background:var(--gp);color:var(--g)}
 .nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
 .nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-item span{overflow:hidden;text-overflow:ellipsis}
 .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
 
-/* MAIN */
-.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
-.main::-webkit-scrollbar{width:4px}
-.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+/* MAIN / RIGHT */
+.main{grid-area:main;overflow-y:auto;overflow-x:hidden;min-width:0;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main > *{flex-shrink:0}
+.right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.right > *{flex-shrink:0}
 
 /* ── ТУЛБАР ── */
-.cat-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 14px;box-shadow:var(--sh);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.cat-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 14px;box-shadow:var(--sh);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cat-title{font-size:16px;font-weight:900;color:var(--t);white-space:nowrap}
+.cat-subtitle{font-size:12px;color:var(--gmt);margin-right:auto}
 .mode-switch{display:flex;background:var(--gp);border:1.5px solid var(--bdr);border-radius:99px;padding:3px;gap:2px;flex-shrink:0}
 .mode-btn{padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;color:var(--gmt);background:transparent;transition:all .15s;white-space:nowrap}
 .mode-btn.active{background:var(--g);color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.2)}
-.cat-tabs{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
-.cat-tabs::-webkit-scrollbar{display:none}
-.ctab{padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0}
-.ctab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
-.ctab.active{background:var(--g);color:#fff;border-color:var(--g)}
-.toolbar-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.view-btn{width:32px;height:32px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
-.view-btn:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
-.view-btn.active{background:var(--gl);border-color:var(--gb);color:var(--g)}
-.view-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
-.btn-add{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap}
-.btn-add:hover{background:var(--gm)}
-.btn-add svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+.btn-create{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);white-space:nowrap;flex-shrink:0}
+.btn-create:hover{background:var(--gm)}
+.btn-create svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* ── ТАБЫ ── */
+.tabs-row{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 14px;box-shadow:var(--sh);display:flex;gap:6px;flex-wrap:wrap}
+.jtab{padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap}
+.jtab:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.jtab.active{background:var(--g);color:#fff;border-color:var(--g)}
 
 /* ── ФИЛЬТРЫ ── */
-.cat-filter{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:8px 14px;box-shadow:var(--sh);flex-shrink:0;display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:none}
-.cat-filter::-webkit-scrollbar{display:none}
-.pf-div{width:1px;height:16px;background:var(--bdr);flex-shrink:0}
-.pf-group{display:flex;align-items:center;gap:5px;flex-shrink:0}
-.pf-label{font-size:10px;font-weight:700;color:var(--gmt);white-space:nowrap}
-.pf-select{height:28px;padding:0 7px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:11px;color:var(--tm);outline:none;cursor:pointer;transition:border-color .2s}
-.pf-select:hover,.pf-select:focus{border-color:var(--gb)}
-.pf-select.active{border-color:var(--g);background:var(--gl);color:var(--g);font-weight:700}
-.pf-count{font-size:11px;color:var(--gmt);white-space:nowrap;margin-left:auto;flex-shrink:0}
-.pf-reset{height:28px;padding:0 10px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--gp);font-family:inherit;font-size:11px;font-weight:600;color:var(--gmt);cursor:pointer;transition:all .15s;white-space:nowrap;display:none;align-items:center;gap:4px;flex-shrink:0}
-.pf-reset.visible{display:inline-flex}
-.pf-reset:hover{border-color:#FABCBC;color:var(--red);background:#FFF5F5}
-.pf-reset svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.filter-row{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 14px;box-shadow:var(--sh);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pf-search{flex:1;min-width:220px;position:relative;display:flex;align-items:center}
+.pf-search svg{position:absolute;left:11px;width:13px;height:13px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
+.pf-search input{width:100%;height:32px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:12px;color:var(--t);outline:none;transition:border-color .15s}
+.pf-search input:focus{border-color:var(--gm)}
+.pf-select{height:32px;padding:0 26px 0 12px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polyline points='6 9 12 15 18 9' stroke='%235A8A6A' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") right 8px center/12px no-repeat;font-family:inherit;font-size:12px;color:var(--t);cursor:pointer;outline:none;-webkit-appearance:none;-moz-appearance:none;appearance:none;transition:border-color .15s}
+.pf-select:focus{border-color:var(--gm)}
+.pf-input{height:32px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:12px;color:var(--t);outline:none;transition:border-color .15s;width:120px}
+.pf-input:focus{border-color:var(--gm)}
+.pf-count{font-size:11px;font-weight:700;color:var(--gmt);margin-left:auto}
 
-/* ── GRID / LIST ── */
-.cat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.cat-list-wrap{display:flex;flex-direction:column;gap:8px}
-
-/* ── КАРТОЧКА ТОВАРА с изображением справа ── */
-.item-card.product-card{flex-direction:row;align-items:stretch;gap:0;padding:0;overflow:hidden}
-.item-card.product-card .pc-content{flex:1;min-width:0;padding:16px;display:flex;flex-direction:column;gap:7px}
-.item-card.product-card .pc-img{
-  width:150px;flex-shrink:0;
-  background:linear-gradient(145deg,var(--gp) 0%,var(--gl) 100%);
-  border-left:1px solid var(--bdr);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;gap:8px
-}
-.item-card.product-card .pc-img svg{width:44px;height:44px;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:.28}
-.item-card.product-card .pc-img-label{font-size:9px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;opacity:.5}
-
-/* ── КАРТОЧКА УСЛУГИ (оригинальная вертикальная, без изменений) ── */
-.item-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .18s,transform .15s,border-color .15s;animation:fadeUp .3s ease both;display:flex;flex-direction:column;gap:8px}
-.item-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
+/* ── КАРТОЧКА КАТАЛОГА ── */
+.feed{display:flex;flex-direction:column;gap:10px}
+.cat-card{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:16px 18px;cursor:pointer;display:flex;gap:14px;align-items:flex-start;transition:all .2s;animation:fadeUp .25s ease both}
+.cat-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.ic-top{display:flex;align-items:flex-start;gap:10px}
-.ic-thumb{
-  width:52px;height:52px;border-radius:12px;flex-shrink:0;
-  display:grid;place-items:center;overflow:hidden
-}
-.ic-thumb svg{width:22px;height:22px;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.ic-meta{flex:1;min-width:0}
-.ic-badge-row{display:flex;align-items:center;gap:5px;margin-bottom:4px;flex-wrap:wrap}
-.ic-type{padding:2px 8px;border-radius:99px;font-size:9px;font-weight:700}
-.type-product{background:#E6F1FB;color:#185FA5;border:1px solid #C9DDEF}
-.type-service{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
-.ic-cat{padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;background:var(--gp);border:1px solid var(--bdr);color:var(--gmt)}
-.ic-new{padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#FEF3C7;color:#B45309;border:1px solid #FCD34D}
-.ic-top-badge{padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;background:#FEE2E2;color:var(--red);border:1px solid #FBCFB0}
-.ic-company{font-size:11px;font-weight:700;color:var(--gmt)}
-.ic-title{font-size:14px;font-weight:800;color:var(--t);line-height:1.3;letter-spacing:-.005em}
-.ic-price{font-size:15px;font-weight:900;color:var(--g)}
-.ic-desc{font-size:11px;color:var(--gmt);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ic-stars{display:flex;align-items:center;gap:4px}
-.ic-star{color:#F59E0B;font-size:12px;line-height:1}
-.ic-rating{font-size:11px;font-weight:700;color:var(--t)}
-.ic-reviews{font-size:10px;color:var(--gmt)}
-.ic-foot{display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--bdr);margin-top:auto}
-.btn-kp{padding:7px 16px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(30,138,76,.18);white-space:nowrap}
-.btn-kp:hover{background:var(--gm)}
-.btn-fav{width:32px;height:32px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
-.btn-fav:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
-.btn-fav.saved{color:var(--red);border-color:#FABCBC;background:#FFF5F5}
-.btn-fav svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
-.btn-detail{padding:7px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
-.btn-detail:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.cat-cover{width:96px;height:96px;border-radius:var(--rm);background:var(--gp);overflow:hidden;flex-shrink:0;display:grid;place-items:center;color:var(--gmt)}
+.cat-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cat-cover-empty svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:1.5}
+.cat-stripe{width:4px;align-self:stretch;border-radius:99px;flex-shrink:0;min-height:60px}
+.cat-body{flex:1;min-width:0}
+.cat-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.cat-cat-tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;color:#fff;flex-shrink:0}
+.cat-status-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;flex-shrink:0;border:1px solid}
+.cat-status-out{background:#FFF1F0;color:#E04040;border-color:#FFD5D2}
+.cat-status-paused{background:#F1F5F4;color:#5A8A6A;border-color:#DDE8E2}
+.cat-status-hidden{background:#F1F5F4;color:#5A8A6A;border-color:#DDE8E2}
+.cat-type-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:var(--gl);color:var(--g);border:1px solid var(--gb);flex-shrink:0}
+.cat-card-title{font-size:15px;font-weight:800;color:var(--t);line-height:1.3;letter-spacing:-.01em;margin-bottom:6px}
+.cat-card:hover .cat-card-title{color:var(--g)}
+.cat-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--gmt);margin-bottom:6px}
+.cat-meta-item{display:flex;align-items:center;gap:4px}
+.cat-meta-item svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
+.cat-author{font-weight:700;color:var(--tm)}
+.cat-price{font-size:14px;font-weight:800;color:var(--g)}
+.cat-price-empty{font-size:12px;font-weight:700;color:var(--gmt);font-style:italic}
+.cat-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.cat-tag{padding:2px 8px;background:var(--gp);color:var(--tm);border-radius:99px;font-size:10px;font-weight:600;border:1px solid var(--bdr)}
 
-/* ── КАРТОЧКА (список) ── */
-.item-row{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .15s,border-color .15s;display:flex;align-items:center;gap:14px;animation:fadeUp .25s ease both}
-.item-row:hover{box-shadow:var(--shm);border-color:var(--gb)}
-.ir-thumb{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;overflow:hidden}
-.ir-thumb svg{width:18px;height:18px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.ir-body{flex:1;min-width:0}
-.ir-top{display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap}
-.ir-title{font-size:13px;font-weight:800;color:var(--t)}
-.ir-company{font-size:11px;color:var(--gmt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ir-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.ir-price{font-size:13px;font-weight:900;color:var(--g);white-space:nowrap}
-.ir-stars{display:flex;align-items:center;gap:3px;font-size:11px}
-.ir-star{color:#F59E0B;font-size:11px}
+/* ── EMPTY ── */
+.empty-state{padding:50px 20px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic}
 
-/* ── МОДАЛКА ДОБАВЛЕНИЯ ── */
-.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.4);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-bg.open{opacity:1;pointer-events:all}
-.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
-.modal-bg.open .modal{transform:translateY(0)}
-.modal::-webkit-scrollbar{display:none}
-.modal-head{padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--w);z-index:1}
-.modal-title{font-size:15px;font-weight:800;color:var(--t)}
-.modal-close{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
-.modal-close:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
-.modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
-.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
-.mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
-.mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
-.mf-input:focus{border-color:var(--gm);background:var(--w)}
-.mf-input::placeholder{color:var(--gmt)}
-.mf-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s}
-.mf-textarea:focus{border-color:var(--gm);background:var(--w)}
-.mf-textarea::placeholder{color:var(--gmt)}
-.mf-select{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--tm);outline:none;cursor:pointer}
-.mf-select:focus{border-color:var(--gm)}
-.mf-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-/* Выбор типа */
-.type-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
-.type-card{padding:12px 10px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;text-align:center;transition:all .15s}
-.type-card:hover{border-color:var(--gb)}
-.type-card.selected{border-color:var(--g);background:var(--gl)}
-.type-card svg{width:20px;height:20px;stroke:var(--gmt);fill:none;stroke-width:1.6;stroke-linecap:round;margin:0 auto 6px;display:block}
-.type-card.selected svg{stroke:var(--g)}
-.type-card-t{font-size:12px;font-weight:700;color:var(--tm)}
-.type-card.selected .type-card-t{color:var(--g)}
-.type-card-s{font-size:10px;color:var(--gmt);margin-top:2px}
-.modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
-.btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
-.btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
-.btn-submit{padding:9px 22px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;box-shadow:0 2px 8px rgba(30,138,76,.22)}
-.btn-submit:hover{background:var(--gm)}
-
-/* RIGHT */
-.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
-.right::-webkit-scrollbar{display:none}
-.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
-.card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
-.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
-.stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
-.stat-row:last-child{border-bottom:none;padding-bottom:0}
-.stat-lbl{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:6px}
-.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
-.stat-val{font-size:13px;font-weight:800;color:var(--t)}
-
-/* Топ предложения */
-.top-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
-.top-item:hover{background:var(--gp)}
-.top-ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
-.top-ico svg{width:14px;height:14px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.top-body{flex:1;min-width:0}
-.top-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.top-meta{font-size:10px;color:var(--gmt);margin-top:1px}
-.top-price{font-size:11px;font-weight:700;color:var(--g);flex-shrink:0;white-space:nowrap}
-
-/* Категории */
-.cat-row{display:flex;align-items:center;justify-content:space-between;padding:6px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
+/* ── САЙДБАР ── */
+.card{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:14px}
+.block-title{font-size:11px;font-weight:800;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.cat-list{display:flex;flex-direction:column;gap:4px}
+.cat-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r);cursor:pointer;transition:background .12s;color:var(--t);text-decoration:none;font-size:12px}
 .cat-row:hover{background:var(--gp)}
-.cat-row-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.cat-row-name{font-size:12px;font-weight:600;color:var(--t);flex:1;margin-left:7px}
-.cat-row-num{font-size:11px;color:var(--gmt)}
+.cat-row.active{background:var(--gl);color:var(--g);font-weight:700}
+.cat-row-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--g)}
+.tip-card{background:linear-gradient(135deg,var(--gl),var(--gp));border:1px solid var(--gb);border-radius:var(--rxl);padding:14px}
+.tip-title{font-size:12px;font-weight:800;color:var(--g);margin-bottom:6px}
+.tip-text{font-size:11px;color:var(--tm);line-height:1.5}
 
-/* Поставщики */
-.prov-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s}
-.prov-item:hover{background:var(--gp)}
-.prov-av{width:32px;height:32px;border-radius:9px;font-size:11px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
-.prov-name{font-size:12px;font-weight:700;color:var(--t)}
-.prov-cnt{font-size:10px;color:var(--gmt);margin-top:1px}
+/* ── МОДАЛКА ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(2px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--w);border-radius:var(--rxl);box-shadow:0 20px 50px rgba(0,0,0,.2);max-width:680px;width:100%;max-height:92vh;display:flex;flex-direction:column;animation:fadeUp .2s ease}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--bdr)}
+.modal-title{font-size:16px;font-weight:800;color:var(--t)}
+.modal-close{width:32px;height:32px;border-radius:8px;background:transparent;border:none;color:var(--gmt);cursor:pointer;display:grid;place-items:center;transition:all .12s}
+.modal-close:hover{background:var(--gp);color:var(--t)}
+.modal-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.modal-body{padding:18px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.modal-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--bdr)}
+.mf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mf-row > div{min-width:0}
+.mf-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.mf-row3 > div{min-width:0}
+.mf-label{font-size:12px;font-weight:700;color:var(--tm);margin-bottom:5px;display:block}
+.mf-input,.mf-textarea,.mf-select{width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:#fff;color:var(--t);outline:none;transition:border-color .12s}
+.mf-textarea{height:90px;resize:vertical;min-height:60px}
+.mf-input:focus,.mf-textarea:focus,.mf-select:focus{border-color:var(--g)}
+.mf-counter{font-size:10px;color:var(--gmt);text-align:right;margin-top:2px}
+.mf-checkbox{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.mf-checkbox input{width:16px;height:16px;accent-color:var(--g)}
+.mf-checkbox span{font-size:12px;color:var(--tm);font-weight:600}
+.btn-cancel{padding:9px 16px;border-radius:99px;background:transparent;color:var(--t);border:1.5px solid var(--bdr);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
+.btn-cancel:hover{background:var(--gp)}
+.btn-submit{padding:9px 16px;border-radius:99px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .12s}
+.btn-submit:hover{background:var(--gm)}
+.btn-submit:disabled{opacity:.6;cursor:default}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+/* ── PHOTO PICKER ── */
+.photo-picker{display:flex;flex-wrap:wrap;gap:8px}
+.photo-thumb{width:78px;height:78px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);position:relative;overflow:hidden;flex-shrink:0;cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:all .15s}
+.photo-thumb:hover{border-color:var(--g);color:var(--g)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8}
+.photo-thumb .photo-remove{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;display:grid;place-items:center;font-size:10px;font-weight:700;padding:0;opacity:0;transition:opacity .15s}
+.photo-thumb:hover .photo-remove{opacity:1}
+.photo-thumb.cover-mark::before{content:'★';position:absolute;top:4px;left:4px;width:18px;height:18px;border-radius:4px;background:var(--g);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}
+.photo-add{border-style:dashed;cursor:pointer}
+.photo-hint{font-size:10px;color:var(--gmt);margin-top:6px;font-style:italic}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{background:var(--g)}
 
-@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}.cat-grid{grid-template-columns:1fr}}
-@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}.search-wrap{max-width:100%}}
-@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}}
-@media (min-width: 1921px) and (min-height: 1081px){
-  html{zoom:1.18}
-  .shell{grid-template-columns:250px 1fr 340px;gap:12px;padding:12px;height:calc(100vh / 1.18)}
-  .nav{padding:14px 12px 12px}
-}
-
-/* Unified hover effect for all card-like classes */
-[class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
-[class*="card"]:hover{box-shadow:var(--shm);transform:translateY(-3px)}
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.mf-row,.mf-row3{grid-template-columns:1fr}}
+@media(min-width:1921px) and (min-height:1081px){html{zoom:1.18}.shell{grid-template-columns:250px 1fr 340px;gap:12px;padding:12px;height:calc(100vh / 1.18)}}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -279,11 +211,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="shell">
 
 <!-- LOGO -->
-<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="" onerror="this.style.display='none'"></a>
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
 
 <!-- TOPBAR -->
 <header class="topbar">
-  <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input type="search" id="searchInput" placeholder="Товар, услуга, поставщик…" oninput="applyFilters()"></div>
+  <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input type="search" id="searchInput" placeholder="Поиск по платформе…" autocomplete="off"></div>
   <div class="profile-dd-wrap">
     <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
       <div class="tp-av" id="topbarAv">НК</div>
@@ -294,9 +226,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div class="pdd-info"><div class="pdd-name" id="pddName">Загрузка...</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
       <a href="/profile.html" class="pdd-view">Открыть профиль</a>
       <div class="pdd-body">
-        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span><span class="pdd-count">24</span></a>
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span></a>
         <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
-        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span><span class="pdd-count">3</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span></a>
         <a href="/saved.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span class="pdd-item-label">Сохранённое</span></a>
         <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
         <div class="pdd-div"></div>
@@ -334,476 +266,554 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Тулбар -->
   <div class="cat-toolbar">
     <span class="cat-title">Товары и услуги</span>
+    <span class="cat-subtitle">B2B-маркет: предложения от компаний и специалистов</span>
     <div class="mode-switch">
-      <button class="mode-btn active" id="modeProd" onclick="setMode('product',this)">Товары</button>
-      <button class="mode-btn" id="modeSvc" onclick="setMode('service',this)">Услуги</button>
+      <button class="mode-btn active" id="modeProducts" onclick="setMode('product')">Товары</button>
+      <button class="mode-btn" id="modeServices" onclick="setMode('service')">Услуги</button>
     </div>
-    <div class="cat-tabs" id="catTabs">
-      <button class="ctab active" onclick="setCat('',this)">Все категории</button>
-      <button class="ctab" onclick="setCat('Доставка',this)">Доставка</button>
-      <button class="ctab" onclick="setCat('Таможня',this)">Таможня</button>
-      <button class="ctab" onclick="setCat('Оборудование',this)">Оборудование</button>
-      <button class="ctab" onclick="setCat('Аутсорсинг',this)">Аутсорсинг</button>
-      <button class="ctab" onclick="setCat('Склад',this)">Склад</button>
-      <button class="ctab" onclick="setCat('Консалтинг',this)">Консалтинг</button>
-      <button class="ctab" onclick="setCat('ПО и IT',this)">ПО и IT</button>
-    </div>
-    <div class="toolbar-right">
-      <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      </button>
-      <button class="view-btn" id="viewList" onclick="setView('list',this)" title="Список">
-        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>
-      </button>
-      <button class="btn-add" onclick="openModal()">
-        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Добавить
-      </button>
-    </div>
+    <button class="btn-create" onclick="openCreateModal()">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span id="createBtnLabel">Создать товар</span>
+    </button>
   </div>
 
+  <!-- Табы -->
+  <div class="tabs-row" id="tabsRow"></div>
+
   <!-- Фильтры -->
-  <div class="cat-filter">
-    <div class="pf-group"><span class="pf-label">Поставщик</span>
-      <select class="pf-select" id="filterProv" onchange="applyFilters()">
-        <option value="">Все</option>
-        <option>NorthBridge Logistics</option>
-        <option>GlobalFreight</option>
-        <option>LASTOP Digital</option>
-        <option>WarehouseTech</option>
-        <option>LogiExpert</option>
-        <option>Volga Industrial</option>
-      </select></div>
-    <div class="pf-div"></div>
-    <div class="pf-group"><span class="pf-label">Рейтинг</span>
-      <select class="pf-select" id="filterRating" onchange="applyFilters()">
-        <option value="">Любой</option>
-        <option value="4.5">от 4.5 ⭐</option>
-        <option value="4.0">от 4.0 ⭐</option>
-        <option value="3.5">от 3.5 ⭐</option>
-      </select></div>
-    <div class="pf-div"></div>
-    <div class="pf-group"><span class="pf-label">Наличие</span>
-      <select class="pf-select" id="filterStock" onchange="applyFilters()">
-        <option value="">Всё</option>
-        <option value="instock">В наличии</option>
-        <option value="order">Под заказ</option>
-      </select></div>
-    <div class="pf-div"></div>
-    <div class="pf-group"><span class="pf-label">Сортировка</span>
-      <select class="pf-select" id="filterSort" onchange="applyFilters()">
-        <option value="new">Новые</option>
-        <option value="rating">По рейтингу</option>
-        <option value="reviews">По отзывам</option>
-        <option value="alpha">А–Я</option>
-      </select></div>
-    <button class="pf-reset" id="filterReset" onclick="resetFilters()">
-      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Сбросить
-    </button>
-    <span class="pf-count" id="resultsCount">12 позиций</span>
+  <div class="filter-row">
+    <div class="pf-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="searchInput2" placeholder="Поиск…" oninput="applyFilters()">
+    </div>
+    <select class="pf-select" id="filterCity" onchange="loadList()">
+      <option value="">Все города</option>
+      <option>Москва</option><option>Санкт-Петербург</option><option>Самара</option>
+      <option>Екатеринбург</option><option>Новосибирск</option><option>Казань</option>
+      <option>Краснодар</option><option>Ростов-на-Дону</option><option>Владивосток</option>
+    </select>
+    <input type="number" class="pf-input" id="filterPriceMax" placeholder="Цена до" min="0" onchange="loadList()">
+    <select class="pf-select" id="filterCurrency" onchange="loadList()">
+      <option value="">Все валюты</option>
+      <option value="RUB">₽ RUB</option>
+      <option value="USD">$ USD</option>
+      <option value="EUR">€ EUR</option>
+      <option value="CNY">¥ CNY</option>
+    </select>
+    <select class="pf-select" id="filterSort" onchange="loadList()">
+      <option value="newest">Сначала новые</option>
+      <option value="popular">Популярные</option>
+      <option value="price_asc">Дешевле сначала</option>
+      <option value="price_desc">Дороже сначала</option>
+    </select>
+    <span class="pf-count" id="resultsCount">0</span>
   </div>
 
   <!-- Лента -->
-  <div id="catFeed"></div>
+  <div id="feed" class="feed"></div>
 
 </div>
 
 <!-- RIGHT -->
 <aside class="right">
-
-  <!-- Статистика -->
-  <div class="card">
-    <div class="block-title">Статистика</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>Товаров</span><span class="stat-val">87</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Услуг</span><span class="stat-val">54</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Поставщиков</span><span class="stat-val">38</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>Новых за месяц</span><span class="stat-val" style="color:var(--g)">+14</span></div>
-  </div>
-
-  <!-- ТОП предложения -->
-  <div class="card">
-    <div class="block-title">⭐ Топ предложения</div>
-    <div class="top-item" onclick="showToast('Открываем предложение…')">
-      <div class="top-ico" style="background:var(--gl);border:1px solid var(--gb)"><svg viewBox="0 0 24 24" style="stroke:var(--g)"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
-      <div class="top-body"><div class="top-name">Экспресс-доставка 24/7</div><div class="top-meta">NorthBridge · 4.9 ⭐</div></div>
-      <span class="top-price">от 1 200 ₽</span>
-    </div>
-    <div class="top-item" onclick="showToast('Открываем предложение…')">
-      <div class="top-ico" style="background:#E6F1FB;border:1px solid #C9DDEF"><svg viewBox="0 0 24 24" style="stroke:#185FA5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-      <div class="top-body"><div class="top-name">Аутсорсинг таможни</div><div class="top-meta">GlobalFreight · 4.9 ⭐</div></div>
-      <span class="top-price">от 8 500 ₽</span>
-    </div>
-    <div class="top-item" onclick="showToast('Открываем предложение…')">
-      <div class="top-ico" style="background:#EDE8FA;border:1px solid #C8B8EF"><svg viewBox="0 0 24 24" style="stroke:#6040A0"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></div>
-      <div class="top-body"><div class="top-name">TMS для малого бизнеса</div><div class="top-meta">LASTOP Digital · 4.8 ⭐</div></div>
-      <span class="top-price">2 900 ₽/мес</span>
-    </div>
-    <div class="top-item" onclick="showToast('Открываем предложение…')">
-      <div class="top-ico" style="background:#FEF3C7;border:1px solid #FCD34D"><svg viewBox="0 0 24 24" style="stroke:#B45309"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg></div>
-      <div class="top-body"><div class="top-name">Складской консалтинг</div><div class="top-meta">LogiExpert · 4.8 ⭐</div></div>
-      <span class="top-price">от 120к ₽</span>
-    </div>
-  </div>
-
-  <!-- Категории -->
   <div class="card">
     <div class="block-title">Категории</div>
-    <div class="cat-row" onclick="setCat('Доставка')"><div class="cat-row-dot" style="background:var(--g)"></div><span class="cat-row-name">Доставка</span><span class="cat-row-num">24</span></div>
-    <div class="cat-row" onclick="setCat('Таможня')"><div class="cat-row-dot" style="background:#185FA5"></div><span class="cat-row-name">Таможня</span><span class="cat-row-num">18</span></div>
-    <div class="cat-row" onclick="setCat('Оборудование')"><div class="cat-row-dot" style="background:#6040A0"></div><span class="cat-row-name">Оборудование</span><span class="cat-row-num">15</span></div>
-    <div class="cat-row" onclick="setCat('Склад')"><div class="cat-row-dot" style="background:#C07030"></div><span class="cat-row-name">Склад</span><span class="cat-row-num">14</span></div>
-    <div class="cat-row" onclick="setCat('Консалтинг')"><div class="cat-row-dot" style="background:#B05090"></div><span class="cat-row-name">Консалтинг</span><span class="cat-row-num">11</span></div>
-    <div class="cat-row" onclick="setCat('ПО и IT')"><div class="cat-row-dot" style="background:#208090"></div><span class="cat-row-name">ПО и IT</span><span class="cat-row-num">9</span></div>
-    <div class="cat-row" onclick="setCat('Аутсорсинг')"><div class="cat-row-dot" style="background:#3B6D11"></div><span class="cat-row-name">Аутсорсинг</span><span class="cat-row-num">6</span></div>
+    <div class="cat-list" id="catList">
+      <div style="padding:6px;color:var(--gmt);font-size:11px;font-style:italic">Загрузка…</div>
+    </div>
   </div>
 
-  <!-- Активные поставщики -->
-  <div class="card">
-    <div class="block-title">Активные поставщики</div>
-    <div class="prov-item" onclick="showToast('Открываем профиль поставщика…')"><div class="prov-av" style="background:#1E8A4C">N</div><div><div class="prov-name">NorthBridge Logistics</div><div class="prov-cnt">12 предложений</div></div></div>
-    <div class="prov-item" onclick="showToast('Открываем профиль поставщика…')"><div class="prov-av" style="background:#3A90C0">G</div><div><div class="prov-name">GlobalFreight</div><div class="prov-cnt">8 предложений</div></div></div>
-    <div class="prov-item" onclick="showToast('Открываем профиль поставщика…')"><div class="prov-av" style="background:#9060C0">L</div><div><div class="prov-name">LASTOP Digital</div><div class="prov-cnt">7 предложений</div></div></div>
-    <div class="prov-item" onclick="showToast('Открываем профиль поставщика…')"><div class="prov-av" style="background:#C07030">W</div><div><div class="prov-name">WarehouseTech</div><div class="prov-cnt">5 предложений</div></div></div>
+  <div class="tip-card">
+    <div class="tip-title">💡 Совет</div>
+    <div class="tip-text" id="tipText">Хорошее фото и точное описание увеличивают количество заявок в разы.</div>
   </div>
-
 </aside>
 
-<!-- МОДАЛКА ДОБАВЛЕНИЯ -->
-<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+</div>
+
+<!-- ===== Модалка: Создание товара/услуги ===== -->
+<div class="modal-bg" id="modalCreate" onclick="if(event.target===this)closeCreateModal()">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">Добавить в каталог</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <span class="modal-title" id="modalTitle">Создать товар</span>
+      <button class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
+      <div class="mf-row">
+        <div>
+          <label class="mf-label">Тип публикации *</label>
+          <select class="mf-select" id="ciType" onchange="onTypeChange()">
+            <option value="product">Товар</option>
+            <option value="service">Услуга</option>
+          </select>
+        </div>
+        <div>
+          <label class="mf-label">Категория *</label>
+          <select class="mf-select" id="ciCategory"></select>
+        </div>
+      </div>
       <div>
-        <label class="mf-label">Тип</label>
-        <div class="type-pick" id="typePick">
-          <div class="type-card selected" onclick="selectType('product',this)">
-            <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            <div class="type-card-t">Товар</div>
-            <div class="type-card-s">Физический продукт</div>
-          </div>
-          <div class="type-card" onclick="selectType('service',this)">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <div class="type-card-t">Услуга</div>
-            <div class="type-card-s">Сервис или работа</div>
-          </div>
+        <label class="mf-label">Название *</label>
+        <input class="mf-input" id="ciTitle" placeholder="Например: Запчасти для тягача DAF XF" maxlength="200">
+      </div>
+      <div>
+        <label class="mf-label">Описание</label>
+        <textarea class="mf-textarea" id="ciDesc" placeholder="Подробное описание, характеристики, условия" maxlength="10000"></textarea>
+      </div>
+      <div class="mf-row3">
+        <div>
+          <label class="mf-label">Цена</label>
+          <input class="mf-input" id="ciPrice" type="number" min="0" placeholder="—">
+        </div>
+        <div>
+          <label class="mf-label">Валюта</label>
+          <select class="mf-select" id="ciCurrency">
+            <option value="RUB">₽ RUB</option>
+            <option value="USD">$ USD</option>
+            <option value="EUR">€ EUR</option>
+            <option value="CNY">¥ CNY</option>
+          </select>
+        </div>
+        <div>
+          <label class="mf-label">Город</label>
+          <input class="mf-input" id="ciCity" placeholder="Москва">
         </div>
       </div>
-      <div><label class="mf-label">Название *</label><input class="mf-input" id="mName" placeholder="Экспресс-доставка сборных грузов…"></div>
-      <div class="mf-row2">
-        <div><label class="mf-label">Категория</label>
-          <select class="mf-select" id="mCat"><option value="">Выбрать…</option><option>Доставка</option><option>Таможня</option><option>Оборудование</option><option>Аутсорсинг</option><option>Склад</option><option>Консалтинг</option><option>ПО и IT</option></select>
+      <div id="ciInStockRow" class="mf-row">
+        <div>
+          <label class="mf-checkbox"><input type="checkbox" id="ciInStock" checked><span>В наличии</span></label>
         </div>
-        <div><label class="mf-label">Компания/поставщик</label><input class="mf-input" id="mCompany" placeholder="Название компании"></div>
+        <div>
+          <label class="mf-label">Статус</label>
+          <select class="mf-select" id="ciStatus">
+            <option value="active">Активно</option>
+            <option value="paused">На паузе</option>
+            <option value="hidden">Скрыто</option>
+          </select>
+        </div>
       </div>
-      <div><label class="mf-label">Цена</label><input class="mf-input" id="mPrice" placeholder="от 1 500 ₽ или договорная"></div>
-      <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Подробное описание товара или услуги, условия, особенности…"></textarea></div>
-      <div class="mf-row2">
-        <div><label class="mf-label">Наличие</label>
-          <select class="mf-select" id="mStock"><option value="instock">В наличии</option><option value="order">Под заказ</option></select>
-        </div>
-        <div><label class="mf-label">Контакт для связи</label><input class="mf-input" id="mContact" placeholder="+7 или email"></div>
+      <div>
+        <label class="mf-label">Теги (через запятую, до 10)</label>
+        <input class="mf-input" id="ciTags" placeholder="запчасти, daf, оптом" maxlength="500">
+      </div>
+      <div>
+        <label class="mf-label">Фотографии (до 6)</label>
+        <div class="photo-picker" id="photoPicker"></div>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="onPhotoSelected(event)">
+        <div class="photo-hint">Первая фотография станет обложкой. Поддерживаются JPG, PNG, WebP. Максимум 6 фото.</div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-submit" onclick="submitItem()">Добавить в каталог</button>
+      <button class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
+      <button class="btn-submit" id="ciSubmitBtn" onclick="submitItem()">Опубликовать</button>
     </div>
   </div>
 </div>
 
-</div><!-- /shell -->
-<div class="toast" id="toast"></div>
+<div id="toast" class="toast"></div>
 
 <script>
-const API='/api';
-const tk=()=>localStorage.getItem('token');
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function letter(s){return((s||'?')[0]).toUpperCase();}
-function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
-function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2500);}
+const API = '/api';
+const tk = () => localStorage.getItem('token');
 
-/* DROPDOWN */
-function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
-document.addEventListener('click',e=>{const dd=document.getElementById('profileDD'),btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+// ─── State ───
+let CATEGORY_GROUPS = []; // [{key, label, items:[{key, label}]}]
+let currentMode = 'product';        // product / service
+let currentCategoryGroup = '';      // ключ группы из сайдбара (industry / agro / ...)
+let currentTab = 'all';
+let allItems = [];
+let photos = []; // base64 strings; index 0 = cover
 
-/* ── ИКОНКИ/ЦВЕТА ПО КАТЕГОРИИ ── */
-const CAT_STYLE={
-  'Доставка':{bg:'#E8F5EE',bc:'var(--gb)',stroke:'var(--g)',path:'<path d="M5 12h14M12 5l7 7-7 7"/>'},
-  'Таможня':{bg:'#E6F1FB',bc:'#C9DDEF',stroke:'#185FA5',path:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'},
-  'Оборудование':{bg:'#EDE8FA',bc:'#C8B8EF',stroke:'#6040A0',path:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>'},
-  'Аутсорсинг':{bg:'#EAF3DE',bc:'#C4DDA0',stroke:'#3B6D11',path:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>'},
-  'Склад':{bg:'#FEF3C7',bc:'#FCD34D',stroke:'#B45309',path:'<path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/>'},
-  'Консалтинг':{bg:'#F0EBF8',bc:'#C8B8EF',stroke:'#B05090',path:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'},
-  'ПО и IT':{bg:'#E8F7FF',bc:'#B8DFEF',stroke:'#208090',path:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'},
-  'default':{bg:'var(--gp)',bc:'var(--bdr)',stroke:'var(--gmt)',path:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>'},
-};
-function getStyle(cat){return CAT_STYLE[cat]||CAT_STYLE['default'];}
-
-function stars(r){const n=Math.round(r*2)/2;return'★'.repeat(Math.floor(n))+(n%1?'½':'')+'☆'.repeat(5-Math.ceil(n));}
-
-/* ── ДАННЫЕ ── */
-const ITEMS=[
-  {id:1,type:'service',cat:'Доставка',name:'Экспресс-доставка сборных грузов 24/7',company:'NorthBridge Logistics',price:'от 1 200 ₽/место',desc:'Срочная доставка с контролем температурного режима и онлайн-трекингом в одном окне. Гарантированные сроки до 24 часов по Москве и МО.',rating:4.9,reviews:124,stock:'instock',isTop:true,isNew:false,ts:new Date(Date.now()-86400000).toISOString()},
-  {id:2,type:'product',cat:'ПО и IT',name:'TMS для малого и среднего бизнеса',company:'LASTOP Digital',price:'2 900 ₽/мес',desc:'Облачная TMS с управлением заказами, маршрутизацией и аналитикой. Быстрое подключение без IT-специалиста.',rating:4.8,reviews:67,stock:'instock',isTop:true,isNew:false,ts:new Date(Date.now()-172800000).toISOString()},
-  {id:3,type:'product',cat:'Оборудование',name:'Сканер Zebra TC22 (промышленный)',company:'WarehouseTech',price:'от 74 000 ₽',desc:'Промышленный мобильный терминал с защитой IP65 для работы на складе и в зоне комплектации.',rating:4.7,reviews:17,stock:'order',isTop:false,isNew:false,ts:new Date(Date.now()-259200000).toISOString()},
-  {id:4,type:'service',cat:'Таможня',name:'Аутсорсинг таможенного оформления',company:'GlobalFreight',price:'от 8 500 ₽/ДТ',desc:'Полное сопровождение: от классификации товара до получения разрешительных документов. Любые таможенные процедуры.',rating:4.9,reviews:87,stock:'instock',isTop:true,isNew:false,ts:new Date(Date.now()-345600000).toISOString()},
-  {id:5,type:'service',cat:'Консалтинг',name:'Аудит складской логистики',company:'LogiExpert',price:'от 120 000 ₽',desc:'Аудит складских операций, оптимизация маршрутов комплектации и внедрение KPI-комплекта для операционной команды.',rating:4.5,reviews:12,stock:'instock',isTop:false,isNew:false,ts:new Date(Date.now()-432000000).toISOString()},
-  {id:6,type:'service',cat:'Аутсорсинг',name:'Комплексная складская обработка',company:'NorthBridge Logistics',price:'договорная',desc:'Приёмка, маркировка, кросс-докинг и отгрузка по SLA с детальной отчётностью и онлайн-доступом к остаткам.',rating:4.7,reviews:43,stock:'instock',isTop:false,isNew:true,ts:new Date(Date.now()-43200000).toISOString()},
-  {id:7,type:'product',cat:'Оборудование',name:'Штриховой принтер Zebra ZD421',company:'WarehouseTech',price:'28 500 ₽',desc:'Настольный термотрансферный принтер этикеток 300 dpi. Bluetooth и USB. Для маркировки продукции и складских ячеек.',rating:4.6,reviews:21,stock:'instock',isTop:false,isNew:false,ts:new Date(Date.now()-518400000).toISOString()},
-  {id:8,type:'service',cat:'ПО и IT',name:'EDI-интеграция с торговыми партнёрами',company:'LASTOP Digital',price:'от 35 000 ₽',desc:'Подключение EDI с сетями и маркетплейсами: Wildberries, Ozon, X5. Поддержка форматов EANCOM, XML, CSV.',rating:4.8,reviews:29,stock:'instock',isTop:false,isNew:true,ts:new Date(Date.now()-21600000).toISOString()},
-  {id:9,type:'service',cat:'Доставка',name:'Международные мультимодальные перевозки',company:'GlobalFreight',price:'по запросу',desc:'Организация мультимодальных перевозок по маршрутам СНГ–ЕС, Китай–Россия. Ж/д, авиа, авто, морской фрахт.',rating:4.8,reviews:54,stock:'instock',isTop:false,isNew:false,ts:new Date(Date.now()-604800000).toISOString()},
-  {id:10,type:'product',cat:'Склад',name:'Паллетный стеллаж (комплект 3 яруса)',company:'Volga Industrial',price:'от 18 000 ₽/секция',desc:'Металлический паллетный стеллаж высотой до 6 м с нагрузкой до 3 тонн на ярус. Монтаж включён.',rating:4.4,reviews:8,stock:'order',isTop:false,isNew:false,ts:new Date(Date.now()-691200000).toISOString()},
-  {id:11,type:'service',cat:'Консалтинг',name:'Внедрение WMS: под ключ',company:'LogiExpert',price:'от 350 000 ₽',desc:'Обследование процессов, выбор WMS, проектирование, внедрение, обучение персонала и поддержка после запуска.',rating:4.9,reviews:6,stock:'instock',isTop:false,isNew:true,ts:new Date(Date.now()-7200000).toISOString()},
-  {id:12,type:'service',cat:'Таможня',name:'Сертификация продукции для ЕАЭС',company:'GlobalFreight',price:'от 45 000 ₽',desc:'Сертификация, декларирование соответствия и регистрация в ФГИС «Аршин» для ввоза на рынок ЕАЭС.',rating:4.6,reviews:31,stock:'instock',isTop:false,isNew:false,ts:new Date(Date.now()-777600000).toISOString()},
+const TABS = [
+  {key:'all', label:'Все'},
+  {key:'saved', label:'Сохранённые'},
+  {key:'my', label:'Мои'},
 ];
 
-let currentMode='product';
-let currentCat='';
-let currentView='grid';
-const favSet=new Set();
-
-/* ── РЕНДЕР КАРТОЧКИ ── */
-function renderCard(item,i){
-  const st=getStyle(item.cat);
-  const isSaved=favSet.has(item.id);
-  const badges=`
-    <span class="ic-type ${item.type==='product'?'type-product':'type-service'}">${item.type==='product'?'Товар':'Услуга'}</span>
-    <span class="ic-cat">${esc(item.cat)}</span>
-    ${item.isTop?'<span class="ic-top-badge">ТОП</span>':''}
-    ${item.isNew?'<span class="ic-new">Новое</span>':''}`;
-  const foot=`
-    <button class="btn-fav${isSaved?' saved':''}" onclick="toggleFav(event,${item.id},this)">
-      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isSaved?'fill="var(--red)"':''}></path></svg>
-    </button>
-    <button class="btn-detail" onclick="openItemDetail(event,${item.id},true)">Подробнее</button>
-    <button class="btn-kp" onclick="requestKP(event)">Запросить КП</button>`;
-
-  /* ── ТОВАР: горизонтальная карточка, картинка справа ── */
-  if(item.type==='product'){
-    return`<div class="item-card product-card" style="animation-delay:${i*.05}s" onclick="openItemDetail(event,${item.id})">
-      <div class="pc-content">
-        <div class="ic-badge-row">${badges}</div>
-        <div class="ic-company">${esc(item.company)}</div>
-        <div class="ic-title">${esc(item.name)}</div>
-        <div class="ic-price">${esc(item.price)}</div>
-        <div class="ic-desc">${esc(item.desc)}</div>
-        <div class="ic-stars">
-          <span style="color:#F59E0B;font-size:12px">${'★'.repeat(Math.floor(item.rating))}${item.rating%1>=0.5?'½':''}</span>
-          <span class="ic-rating">${item.rating.toFixed(1)}</span>
-          <span class="ic-reviews">(${item.reviews})</span>
-          <span style="margin-left:auto;font-size:10px;color:${item.stock==='instock'?'var(--g)':'var(--gmt)'};font-weight:600">${item.stock==='instock'?'В наличии':'Под заказ'}</span>
-        </div>
-        <div class="ic-foot">${foot}</div>
-      </div>
-      <div class="pc-img">
-        <svg viewBox="0 0 24 24" style="stroke:${st.stroke}">${st.path}</svg>
-        <span class="pc-img-label">Фото товара</span>
-      </div>
-    </div>`;
+// ─── Helpers ───
+function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escAttr(s){ return esc(s); }
+function pluralRu(n, forms){const a=[2,0,1,1,1,2];return forms[(n%100>4&&n%100<20)?2:a[Math.min(n%10,5)]];}
+function fmtNumber(n){ return Number(n).toLocaleString('ru-RU'); }
+function fmtPrice(price, currency){
+  if (price == null || price === undefined) return null;
+  const sym = {RUB:'₽', USD:'$', EUR:'€', CNY:'¥'}[currency] || currency || '';
+  return fmtNumber(price) + ' ' + sym;
+}
+function formatRelative(dateStr){
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'только что';
+  if (diff < 3600) return Math.floor(diff/60) + ' ' + pluralRu(Math.floor(diff/60),['минута','минуты','минут']) + ' назад';
+  if (diff < 86400) return Math.floor(diff/3600) + ' ' + pluralRu(Math.floor(diff/3600),['час','часа','часов']) + ' назад';
+  if (diff < 86400*30) return Math.floor(diff/86400) + ' ' + pluralRu(Math.floor(diff/86400),['день','дня','дней']) + ' назад';
+  return d.toLocaleDateString('ru-RU');
+}
+function stableColor(name){
+  let h = 0; const s = String(name||'?');
+  for (let i = 0; i < s.length; i++) h = (h*31 + s.charCodeAt(i)) | 0;
+  const palette = ['#1E8A4C','#0891B2','#7C3AED','#DB2777','#EA580C','#65A30D','#475569','#2563EB','#9333EA','#0EA5E9','#F59E0B'];
+  return palette[Math.abs(h) % palette.length];
+}
+function initials(name){
+  if (!name) return '?';
+  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase();
+}
+function toast(msg, success){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (success ? ' success' : '');
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function logout(){ localStorage.removeItem('token'); location.href = '/login.html'; }
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('profileDD').classList.toggle('open');
+  document.getElementById('topbarProfile').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('profileDD');
+  const tp = document.getElementById('topbarProfile');
+  if (dd && tp && !tp.contains(e.target) && !dd.contains(e.target)) {
+    dd.classList.remove('open'); tp.classList.remove('open');
   }
+});
 
-  /* ── УСЛУГА: вертикальная карточка (без изменений) ── */
-  return`<div class="item-card" style="animation-delay:${i*.05}s" onclick="openItemDetail(event,${item.id})">
-    <div class="ic-top">
-      <div class="ic-thumb" style="background:${st.bg};border:1px solid ${st.bc}">
-        <svg viewBox="0 0 24 24" style="stroke:${st.stroke};fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round">${st.path}</svg>
-      </div>
-      <div class="ic-meta">
-        <div class="ic-badge-row">${badges}</div>
-        <div class="ic-company">${esc(item.company)}</div>
-      </div>
-    </div>
-    <div class="ic-title">${esc(item.name)}</div>
-    <div class="ic-price">${esc(item.price)}</div>
-    <div class="ic-desc">${esc(item.desc)}</div>
-    <div class="ic-stars">
-      <span style="color:#F59E0B;font-size:12px">${'★'.repeat(Math.floor(item.rating))}${item.rating%1>=0.5?'½':''}</span>
-      <span class="ic-rating">${item.rating.toFixed(1)}</span>
-      <span class="ic-reviews">(${item.reviews})</span>
-      <span style="margin-left:auto;font-size:10px;color:${item.stock==='instock'?'var(--g)':'var(--gmt)'};font-weight:600">${item.stock==='instock'?'В наличии':'Под заказ'}</span>
-    </div>
-    <div class="ic-foot">${foot}</div>
-  </div>`;
+// ─── Profile ───
+async function loadProfile(){
+  if (!tk()) return;
+  try {
+    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    if (!r.ok) return;
+    const d = await r.json();
+    const u = d.user || d;
+    const name = u.full_name || u.handle || 'Пользователь';
+    const ini = initials(name);
+    document.getElementById('topbarAv').textContent = ini;
+    document.getElementById('topbarName').textContent = name;
+    document.getElementById('pddAv').textContent = ini;
+    document.getElementById('pddName').textContent = name;
+  } catch {}
 }
 
-/* ── РЕНДЕР СТРОКИ ── */
-function renderRow(item,i){
-  const st=getStyle(item.cat);
-  return`<div class="item-row" style="animation-delay:${i*.04}s" onclick="openItemDetail(event,${item.id})">
-    <div class="ir-thumb" style="background:${st.bg};border:1px solid ${st.bc}">
-      <svg viewBox="0 0 24 24" style="stroke:${st.stroke};fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round">${st.path}</svg>
-    </div>
-    <div class="ir-body">
-      <div class="ir-top">
-        <span class="ic-type ${item.type==='product'?'type-product':'type-service'}" style="padding:2px 7px;font-size:9px">${item.type==='product'?'Товар':'Услуга'}</span>
-        <span class="ir-title">${esc(item.name)}</span>
-        ${item.isTop?'<span class="ic-top-badge">ТОП</span>':''}
-        ${item.isNew?'<span class="ic-new">Новое</span>':''}
-      </div>
-      <div class="ir-company">${esc(item.company)} · ${esc(item.cat)}</div>
-    </div>
-    <div class="ir-right">
-      <div class="ir-stars"><span class="ir-star">★</span><span style="font-size:11px;font-weight:700;color:var(--t)">${item.rating.toFixed(1)}</span><span style="font-size:10px;color:var(--gmt);margin-left:2px">(${item.reviews})</span></div>
-      <span class="ir-price">${esc(item.price)}</span>
-      <button class="btn-kp" style="font-size:11px;padding:6px 12px" onclick="requestKP(event)">Запросить КП</button>
-    </div>
-  </div>`;
+// ─── Categories ───
+async function loadCategories(){
+  try {
+    const r = await fetch(API + '/catalog/categories');
+    const d = await r.json();
+    CATEGORY_GROUPS = d.groups || [];
+    renderCategorySidebar();
+    fillCategorySelects();
+  } catch (err) { console.error('loadCategories', err); }
+}
+function renderCategorySidebar(){
+  const wrap = document.getElementById('catList');
+  wrap.innerHTML =
+    '<a class="cat-row' + (currentCategoryGroup === '' ? ' active' : '') + '" onclick="setCategoryGroup(\'\')">' +
+      '<span class="cat-row-dot"></span>Все категории</a>' +
+    CATEGORY_GROUPS.map(g =>
+      '<a class="cat-row' + (currentCategoryGroup === g.key ? ' active' : '') + '" onclick="setCategoryGroup(\'' + escAttr(g.key) + '\')">' +
+        '<span class="cat-row-dot" style="background:' + esc(stableColor(g.key)) + '"></span>' + esc(g.label) + '</a>'
+    ).join('');
+}
+function fillCategorySelects(){
+  const sel = document.getElementById('ciCategory');
+  if (!sel) return;
+  sel.innerHTML = CATEGORY_GROUPS.map(g =>
+    '<optgroup label="' + escAttr(g.label) + '">' +
+    g.items.map(c => '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>').join('') +
+    '</optgroup>'
+  ).join('');
+}
+function setCategoryGroup(key){ currentCategoryGroup = key; renderCategorySidebar(); loadList(); }
+
+// ─── Mode + Tabs ───
+function setMode(mode){
+  currentMode = mode;
+  currentTab = 'all';
+  document.getElementById('modeProducts').classList.toggle('active', mode === 'product');
+  document.getElementById('modeServices').classList.toggle('active', mode === 'service');
+  document.getElementById('createBtnLabel').textContent = mode === 'product' ? 'Создать товар' : 'Создать услугу';
+  document.getElementById('tipText').textContent = mode === 'product'
+    ? 'Хорошее фото и точное описание увеличивают количество заявок в разы.'
+    : 'Опишите ясно, что входит в услугу и сроки выполнения — клиенты ценят прозрачность.';
+  renderTabs();
+  loadList();
+}
+function renderTabs(){
+  document.getElementById('tabsRow').innerHTML = TABS.map(t =>
+    '<button class="jtab' + (t.key === currentTab ? ' active' : '') + '" onclick="setTab(\'' + escAttr(t.key) + '\')">' + esc(t.label) + '</button>'
+  ).join('');
+}
+function setTab(key){
+  currentTab = key;
+  renderTabs();
+  loadList();
 }
 
-function renderFeed(items){
-  const feed=document.getElementById('catFeed');
-  if(!items.length){
-    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Ничего не найдено</div><div style="font-size:12px;color:var(--gmt)">Попробуйте изменить фильтры или <button onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;font-size:12px">добавить предложение</button></div></div>';
-    return;
-  }
-  if(currentView==='grid'){
-    feed.innerHTML=`<div class="cat-grid">${items.map((x,i)=>renderCard(x,i)).join('')}</div>`;
-  } else {
-    feed.innerHTML=`<div class="cat-list-wrap">${items.map((x,i)=>renderRow(x,i)).join('')}</div>`;
+// ─── Data ───
+async function loadList(){
+  const feed = document.getElementById('feed');
+  feed.innerHTML = '<div class="empty-state">Загрузка…</div>';
+  const params = new URLSearchParams();
+  params.set('type', currentMode);
+
+  // Если выбрана группа категорий — фильтруем по списку подкатегорий внутри неё.
+  // Бэк принимает один category=ключ, поэтому если выбрана группа — будем фильтровать на фронте после загрузки.
+  // Это ок для MVP-объёмов; при росте каталога перенесём в бэк-фильтр.
+
+  const city = document.getElementById('filterCity').value;
+  if (city) params.set('city', city);
+  const priceMax = document.getElementById('filterPriceMax').value;
+  if (priceMax) params.set('price_max', priceMax);
+  const cur = document.getElementById('filterCurrency').value;
+  if (cur) params.set('currency', cur);
+  const sort = document.getElementById('filterSort').value;
+  if (sort) params.set('sort', sort);
+  if (currentTab && currentTab !== 'all') params.set('tab', currentTab);
+
+  try {
+    const r = await fetch(API + '/catalog?' + params.toString(), {
+      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const d = await r.json();
+    allItems = d.items || [];
+    applyFilters();
+  } catch (err) {
+    console.error('loadCatalog', err);
+    feed.innerHTML = '<div class="empty-state">Не удалось загрузить ленту</div>';
   }
 }
 
-/* ── ФИЛЬТРЫ ── */
 function applyFilters(){
-  const q=(document.getElementById('searchInput').value||'').toLowerCase();
-  const prov=document.getElementById('filterProv').value;
-  const rating=+document.getElementById('filterRating').value||0;
-  const stock=document.getElementById('filterStock').value;
-  const sort=document.getElementById('filterSort').value;
-
-  const hasActive=prov||rating||stock;
-  document.getElementById('filterReset').classList.toggle('visible',!!(hasActive||q));
-  ['filterProv','filterRating','filterStock'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('active',el.value!=='');});
-
-  let items=[...ITEMS];
-  if(currentMode==='product') items=items.filter(x=>x.type==='product');
-  else if(currentMode==='service') items=items.filter(x=>x.type==='service');
-  if(currentCat) items=items.filter(x=>x.cat===currentCat);
-  if(prov) items=items.filter(x=>x.company===prov);
-  if(rating) items=items.filter(x=>x.rating>=rating);
-  if(stock) items=items.filter(x=>x.stock===stock);
-  if(q) items=items.filter(x=>x.name.toLowerCase().includes(q)||x.company.toLowerCase().includes(q)||x.desc.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q));
-  if(sort==='rating') items.sort((a,b)=>b.rating-a.rating);
-  else if(sort==='reviews') items.sort((a,b)=>b.reviews-a.reviews);
-  else if(sort==='alpha') items.sort((a,b)=>a.name.localeCompare(b.name,'ru'));
-  else items.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  // ТОП всегда первыми при сортировке «Новые»
-  if(sort==='new') items.sort((a,b)=>(b.isTop?1:0)-(a.isTop?1:0)||new Date(b.ts)-new Date(a.ts));
-
-  const n=items.length;
-  document.getElementById('resultsCount').textContent=n+' позиц'+(n===1?'ия':n<5?'ии':'ий');
+  const q = (document.getElementById('searchInput2').value || '').trim().toLowerCase();
+  let items = allItems.slice();
+  // Фильтр по группе категорий (фронтовый)
+  if (currentCategoryGroup) {
+    const groupItems = (CATEGORY_GROUPS.find(g => g.key === currentCategoryGroup) || {}).items || [];
+    const allowedKeys = new Set(groupItems.map(c => c.key));
+    items = items.filter(it => allowedKeys.has(it.category));
+  }
+  if (q) {
+    items = items.filter(it => {
+      const t = ((it.title || '') + ' ' + (it.description || '') + ' ' + (it.author_name || '') + ' ' + (it.tags||[]).join(' ')).toLowerCase();
+      return t.includes(q);
+    });
+  }
+  const noun = currentMode === 'product'
+    ? pluralRu(items.length, ['товар','товара','товаров'])
+    : pluralRu(items.length, ['услуга','услуги','услуг']);
+  document.getElementById('resultsCount').textContent = items.length + ' ' + noun;
   renderFeed(items);
 }
 
-function setMode(mode,btn){
-  currentMode=mode;
-  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilters();
-}
-function setCat(cat,btn){
-  currentCat=cat;
-  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
-  if(btn){btn.classList.add('active');}
-  else{
-    const found=[...document.querySelectorAll('.ctab')].find(b=>b.textContent.trim()===cat||b.onclick?.toString().includes(`'${cat}'`));
-    if(found)found.classList.add('active');
-    else document.querySelector('.ctab')?.classList.add('active');
+function renderFeed(items){
+  const feed = document.getElementById('feed');
+  if (!items.length) {
+    feed.innerHTML = '<div class="empty-state">' +
+      (currentMode === 'product'
+        ? (currentTab === 'saved' ? 'У тебя пока нет сохранённых товаров.' :
+           currentTab === 'my' ? 'Ты ещё не публиковал товары — нажми «Создать товар».' :
+           'Товаров пока нет — создай первый!')
+        : (currentTab === 'saved' ? 'У тебя пока нет сохранённых услуг.' :
+           currentTab === 'my' ? 'Ты ещё не публиковал услуги — нажми «Создать услугу».' :
+           'Услуг пока нет — создай первую!'))
+      + '</div>';
+    return;
   }
-  applyFilters();
-}
-function setView(view,btn){
-  currentView=view;
-  document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilters();
-}
-function resetFilters(){
-  ['filterProv','filterRating','filterStock'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('searchInput').value='';
-  document.querySelectorAll('.pf-select').forEach(el=>el.classList.remove('active'));
-  document.getElementById('filterReset').classList.remove('visible');
-  applyFilters();
+  feed.innerHTML = items.map(it => renderCard(it)).join('');
 }
 
-function openItemDetail(e,id,force=false){
-  if(e){
-    e.stopPropagation();
-    if(!force && e.target?.closest('button')) return;
+function renderCard(it){
+  const isProduct = it.type === 'product';
+  const detailUrl = isProduct ? '/product-detail.html?id=' : '/service-detail.html?id=';
+  const cover = (isProduct && it.cover_image) ? it.cover_image : '';
+  const stripeColor = stableColor(it.category || it.title || '?');
+  const priceHtml = it.price != null
+    ? '<span class="cat-price">' + esc(fmtPrice(it.price, it.currency)) + '</span>'
+    : '<span class="cat-price-empty">По запросу</span>';
+
+  // Бейджи статуса
+  const badges = [];
+  if (isProduct && !it.in_stock) badges.push('<span class="cat-status-tag cat-status-out">Под заказ</span>');
+  if (it.status === 'paused') badges.push('<span class="cat-status-tag cat-status-paused">На паузе</span>');
+  if (it.status === 'hidden') badges.push('<span class="cat-status-tag cat-status-hidden">Скрыто</span>');
+
+  const groupLabel = it.category_group || '';
+  const catLabel = it.category_label || '';
+  const catTag = groupLabel
+    ? '<span class="cat-cat-tag" style="background:' + esc(stableColor(it.category||'?')) + '">' + esc(groupLabel) + '</span>'
+    : '';
+  const typeTag = '<span class="cat-type-tag">' + (isProduct ? 'Товар' : 'Услуга') + '</span>';
+
+  const tags = (it.tags || []).slice(0, 5).map(t => '<span class="cat-tag">' + esc(t) + '</span>').join('');
+
+  const coverHtml = isProduct
+    ? (cover
+        ? '<div class="cat-cover"><img src="' + escAttr(cover) + '" alt="" loading="lazy"></div>'
+        : '<div class="cat-cover cat-cover-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg></div>')
+    : '';
+
+  return '<a class="cat-card" href="' + detailUrl + escAttr(it.public_id) + '">' +
+    coverHtml +
+    '<div class="cat-stripe" style="background:' + esc(stripeColor) + '"></div>' +
+    '<div class="cat-body">' +
+      '<div class="cat-head">' +
+        catTag + typeTag + badges.join('') +
+      '</div>' +
+      '<div class="cat-card-title">' + esc(it.title) + '</div>' +
+      '<div class="cat-meta">' +
+        (catLabel ? '<span class="cat-meta-item">' + esc(catLabel) + '</span>' : '') +
+        (it.city ? '<span class="cat-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(it.city) + '</span>' : '') +
+        '<span class="cat-meta-item cat-author">' + esc(it.author_name || '—') + '</span>' +
+        '<span class="cat-meta-item">' + esc(formatRelative(it.created_at)) + '</span>' +
+      '</div>' +
+      '<div class="cat-meta">' +
+        priceHtml +
+      '</div>' +
+      (tags ? '<div class="cat-tags">' + tags + '</div>' : '') +
+    '</div></a>';
+}
+
+// ─── Modal: Create ───
+function openCreateModal(){
+  if (!tk()) { toast('Войдите, чтобы создать публикацию'); return; }
+  // Сбросим форму
+  document.getElementById('ciType').value = currentMode;
+  document.getElementById('ciTitle').value = '';
+  document.getElementById('ciDesc').value = '';
+  document.getElementById('ciPrice').value = '';
+  document.getElementById('ciCurrency').value = 'RUB';
+  document.getElementById('ciCity').value = '';
+  document.getElementById('ciInStock').checked = true;
+  document.getElementById('ciStatus').value = 'active';
+  document.getElementById('ciTags').value = '';
+  photos = [];
+  renderPhotos();
+  onTypeChange();
+  document.getElementById('modalCreate').classList.add('open');
+  setTimeout(() => document.getElementById('ciTitle').focus(), 150);
+}
+function closeCreateModal(){
+  document.getElementById('modalCreate').classList.remove('open');
+}
+function onTypeChange(){
+  const t = document.getElementById('ciType').value;
+  document.getElementById('modalTitle').textContent = t === 'product' ? 'Создать товар' : 'Создать услугу';
+  document.getElementById('ciInStockRow').style.display = t === 'product' ? '' : 'none';
+}
+
+// ─── Photo picker ───
+function renderPhotos(){
+  const wrap = document.getElementById('photoPicker');
+  let html = '';
+  photos.forEach((p, i) => {
+    html += '<div class="photo-thumb' + (i === 0 ? ' cover-mark' : '') + '">' +
+      '<img src="' + escAttr(p) + '" alt="">' +
+      '<button class="photo-remove" type="button" onclick="removePhoto(' + i + ')" title="Удалить">×</button>' +
+    '</div>';
+  });
+  if (photos.length < 6) {
+    html += '<div class="photo-thumb photo-add" onclick="document.getElementById(\'photoInput\').click()">' +
+      '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+    '</div>';
   }
-  const item=ITEMS.find(x=>x.id===id);
-  if(item?.type==='service'){location.href='/service-detail.html';return;}
-  if(item?.type==='product'){location.href='/product-detail.html';return;}
-  showToast('Не удалось открыть карточку');
+  wrap.innerHTML = html;
+}
+function onPhotoSelected(e){
+  const files = Array.from(e.target.files || []);
+  e.target.value = ''; // сбросить input
+  files.forEach(file => {
+    if (photos.length >= 6) return;
+    if (!file.type.startsWith('image/')) { toast('Только изображения'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      photos.push(reader.result);
+      renderPhotos();
+    };
+    reader.onerror = () => toast('Не удалось прочитать файл');
+    reader.readAsDataURL(file);
+  });
+}
+function removePhoto(i){
+  photos.splice(i, 1);
+  renderPhotos();
 }
 
-function toggleFav(e,id,btn){
-  if(e){e.stopPropagation();}
-  if(favSet.has(id)){favSet.delete(id);btn.classList.remove('saved');btn.querySelector('svg path')?.removeAttribute('fill');showToast('Удалено из избранного');}
-  else{favSet.add(id);btn.classList.add('saved');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');showToast('Добавлено в избранное ✓','success');}
+// ─── Submit ───
+async function submitItem(){
+  const btn = document.getElementById('ciSubmitBtn');
+  const type = document.getElementById('ciType').value;
+  const category = document.getElementById('ciCategory').value;
+  const title = document.getElementById('ciTitle').value.trim();
+  const desc = document.getElementById('ciDesc').value.trim();
+  const priceRaw = document.getElementById('ciPrice').value.trim();
+  const price = priceRaw ? parseInt(priceRaw, 10) : null;
+  const currency = document.getElementById('ciCurrency').value;
+  const city = document.getElementById('ciCity').value.trim();
+  const inStock = document.getElementById('ciInStock').checked;
+  const status = document.getElementById('ciStatus').value;
+  const tagsRaw = document.getElementById('ciTags').value.trim();
+  const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean).slice(0, 10) : [];
+
+  if (!title) { toast('Введите название'); document.getElementById('ciTitle').focus(); return; }
+  if (title.length > 200) { toast('Слишком длинное название'); return; }
+
+  const cover = photos[0] || '';
+  const rest = photos.slice(1);
+
+  btn.disabled = true; btn.textContent = 'Публикация…';
+  try {
+    const r = await fetch(API + '/catalog', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type, category, title,
+        description: desc,
+        price, currency,
+        in_stock: inStock,
+        status,
+        cover_image: cover,
+        photos: rest,
+        tags, city
+      })
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.error || 'не удалось');
+    }
+    const d = await r.json();
+    closeCreateModal();
+    toast(type === 'product' ? 'Товар опубликован' : 'Услуга опубликована', true);
+    if (d.item && d.item.public_id) {
+      const url = (type === 'product' ? '/product-detail.html?id=' : '/service-detail.html?id=') + d.item.public_id;
+      setTimeout(() => location.href = url, 600);
+    } else {
+      loadList();
+    }
+  } catch (err) {
+    console.error('submitItem', err);
+    toast('Ошибка: ' + (err.message || 'не удалось'));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Опубликовать';
+  }
 }
 
-function requestKP(e){
-  if(e){e.stopPropagation();}
-  showToast('Запрос на КП отправлен ✓','success');
-}
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadProfile();
+  await loadCategories();
+  renderTabs();
+  loadList();
 
-/* ── МОДАЛКА ── */
-let selectedType='product';
-function selectType(type,card){
-  selectedType=type;
-  document.querySelectorAll('.type-card').forEach(c=>c.classList.remove('selected'));
-  card.classList.add('selected');
-}
-function openModal(){document.getElementById('modalBg').classList.add('open');}
-function closeModal(){document.getElementById('modalBg').classList.remove('open');}
-function submitItem(){
-  const name=document.getElementById('mName').value.trim();
-  if(!name){showToast('Введите название');return;}
-  const newItem={
-    id:Date.now(),type:selectedType,
-    cat:document.getElementById('mCat').value||'Доставка',
-    name,company:document.getElementById('mCompany').value||'Моя компания',
-    price:document.getElementById('mPrice').value||'По запросу',
-    desc:document.getElementById('mDesc').value||'',
-    rating:5.0,reviews:0,
-    stock:document.getElementById('mStock').value||'instock',
-    isTop:false,isNew:true,ts:new Date().toISOString()
-  };
-  ITEMS.unshift(newItem);
-  closeModal();applyFilters();
-  showToast('Добавлено в каталог ✓','success');
-  fetch(API+'/catalog',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({type:newItem.type,category:newItem.cat,name:newItem.name,company:newItem.company,price:newItem.price,description:newItem.desc})}).catch(()=>{});
-}
-
-/* ── АВТОРИЗАЦИЯ ── */
-(async()=>{
-  if(!tk()){location.href='/login.html';return;}
-  try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok)throw 0;
-    const{user={}}=await r.json();
-    const name=user.full_name||user.name||'Пользователь';
-    const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
-    const color=C[name.charCodeAt(0)%C.length];const ltr=letter(name);
-    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
-    document.getElementById('topbarName').textContent=name;
-    document.getElementById('topbarRole').textContent=user.role||user.position||'Участник LASTOP';
-    document.getElementById('pddName').textContent=name;
-    document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
-  }catch{}
-
-  try{
-    const r=await fetch(API+'/catalog?limit=100',{headers:{Authorization:'Bearer '+tk()}});
-    if(r.ok){const d=await r.json();if(d.items?.length){d.items.forEach(i=>{if(!ITEMS.find(x=>x.id===i.id))ITEMS.push({...i,type:i.type||'product',cat:i.category||'Доставка',name:i.name||'',company:i.company||'',price:i.price||'',desc:i.description||'',rating:i.rating||4.5,reviews:i.reviews||0,stock:'instock',isTop:false,isNew:false,ts:i.created_at||new Date().toISOString()});});}}
-  }catch{}
-  applyFilters();
-})();
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCreateModal();
+  });
+});
 </script>
 </body>
 </html>
