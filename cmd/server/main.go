@@ -7351,9 +7351,11 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 
 	var parentID sql.NullInt64
 	if parentPublicID != "" {
-		if pid, err := getMessageByPublicID(db, parentPublicID); err == nil {
-			parentID = sql.NullInt64{Int64: pid, Valid: true}
+		pid, err := getMessageByPublicID(db, parentPublicID)
+		if err != nil {
+			return forumMessage{}, fmt.Errorf("parent message not found: %s", parentPublicID)
 		}
+		parentID = sql.NullInt64{Int64: pid, Valid: true}
 	}
 
 	tx, err := db.Begin()
