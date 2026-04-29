@@ -883,6 +883,7 @@ async function submitApply(){
   } catch (err){
     console.error(err);
     toast('Ошибка: ' + (err.message || 'не удалось'));
+  } finally {
     btn.disabled = false; btn.textContent = 'Отправить отклик';
   }
 }
@@ -994,6 +995,7 @@ async function submitDelete(){
   } catch (err){
     console.error(err);
     toast('Ошибка: ' + (err.message || 'не удалось'));
+  } finally {
     btn.disabled = false; btn.textContent = 'Удалить';
   }
 }
