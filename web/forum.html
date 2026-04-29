@@ -659,6 +659,7 @@ async function submitNewTopic(){
   } catch (err) {
     console.error('submitNewTopic', err);
     toast('Ошибка: ' + (err.message || 'не удалось создать'));
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Создать тему';
   }

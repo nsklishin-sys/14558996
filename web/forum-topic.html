@@ -913,6 +913,7 @@ async function submitReply(){
   } catch (err) {
     console.error('submitReply', err);
     toast('Ошибка: ' + (err.message || 'не удалось отправить'));
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Отправить';
   }
