@@ -6856,7 +6856,7 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 		       r.title, r.about, r.category, r.city, r.work_format,
 		       r.salary_from, r.salary_currency,
 		       r.experience_years, r.employment_type, r.status,
-		       r.skills, r.education, r.contacts,
+		       COALESCE(array_to_json(r.skills), '[]'::json), r.education, r.contacts,
 		       r.views_count, r.created_at, r.updated_at,
 		       ` + viewerSaved + `
 		FROM resumes r
@@ -6874,20 +6874,21 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 	var out []resumeItem
 	for rows.Next() {
 		var ri resumeItem
-		var skills pgtype.FlatArray[string]
+		var skillsJSON []byte
 		if err := rows.Scan(
 			&ri.ID, &ri.PublicID, &ri.AuthorUserID,
 			&ri.AuthorPublicID, &ri.AuthorName,
 			&ri.Title, &ri.About, &ri.Category, &ri.City, &ri.WorkFormat,
 			&ri.SalaryFrom, &ri.SalaryCurrency,
 			&ri.ExperienceYears, &ri.EmploymentType, &ri.Status,
-			&skills, &ri.Education, &ri.Contacts,
+			&skillsJSON, &ri.Education, &ri.Contacts,
 			&ri.ViewsCount, &ri.CreatedAt, &ri.UpdatedAt,
 			&ri.ViewerHasSaved,
 		); err != nil {
 			return nil, err
 		}
-		ri.Skills = []string(skills)
+		_ = json.Unmarshal(skillsJSON, &ri.Skills)
+		if ri.Skills == nil { ri.Skills = []string{} }
 		ri.CategoryLabel = jobCategoryLabel(ri.Category)
 		ri.CategoryColor = jobCategoryColor(ri.Category)
 		if f.ViewerID > 0 && ri.AuthorUserID == f.ViewerID {
@@ -6901,7 +6902,7 @@ func listResumes(db *sql.DB, f listResumesFilters) ([]resumeItem, error) {
 // getResumeByPublicIDFull — карточка одного резюме
 func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resumeItem, error) {
 	var ri resumeItem
-	var skills pgtype.FlatArray[string]
+	var skillsJSON []byte
 	viewerSavedResume := "FALSE"
 	args := []interface{}{publicID}
 	if viewerID > 0 {
@@ -6925,14 +6926,15 @@ func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resu
 		&ri.Title, &ri.About, &ri.Category, &ri.City, &ri.WorkFormat,
 		&ri.SalaryFrom, &ri.SalaryCurrency,
 		&ri.ExperienceYears, &ri.EmploymentType, &ri.Status,
-		&skills, &ri.Education, &ri.Contacts,
+		&skillsJSON, &ri.Education, &ri.Contacts,
 		&ri.ViewsCount, &ri.CreatedAt, &ri.UpdatedAt,
 		&ri.ViewerHasSaved,
 	)
 	if err != nil {
 		return nil, err
 	}
-	ri.Skills = []string(skills)
+	_ = json.Unmarshal(skillsJSON, &ri.Skills)
+	if ri.Skills == nil { ri.Skills = []string{} }
 	ri.CategoryLabel = jobCategoryLabel(ri.Category)
 	ri.CategoryColor = jobCategoryColor(ri.Category)
 	if viewerID > 0 && ri.AuthorUserID == viewerID {
