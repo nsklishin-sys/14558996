@@ -2951,6 +2951,39 @@ func main() {
 		}
 		publicID := parts[0]
 
+		// /api/projects/{publicID}/save — toggle закладки (Mini-D)
+		if len(parts) == 2 && parts[1] == "save" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			projectID, err := getProjectIDByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var existing int64
+			err = db.QueryRow(`SELECT 1 FROM saved_projects WHERE user_id=$1 AND project_id=$2`, userID, projectID).Scan(&existing)
+			if err == sql.ErrNoRows {
+				if _, err := db.Exec(`INSERT INTO saved_projects (user_id, project_id) VALUES ($1, $2)`, userID, projectID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"saved": true})
+				return
+			}
+			if _, err := db.Exec(`DELETE FROM saved_projects WHERE user_id=$1 AND project_id=$2`, userID, projectID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"saved": false})
+			return
+		}
+
 		if len(parts) >= 2 && parts[1] == "stages" {
 			projectID, err := getProjectIDByPublicID(db, publicID)
 			if err != nil {
@@ -6276,6 +6309,15 @@ CREATE TABLE IF NOT EXISTS saved_resumes (
 );
 
 CREATE INDEX IF NOT EXISTS saved_resumes_user_idx ON saved_resumes(user_id, saved_at DESC);
+
+CREATE TABLE IF NOT EXISTS saved_projects (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, project_id)
+);
+
+CREATE INDEX IF NOT EXISTS saved_projects_user_idx ON saved_projects(user_id, saved_at DESC);
 
 CREATE TABLE IF NOT EXISTS catalog_items (
     id BIGSERIAL PRIMARY KEY,
