@@ -4550,6 +4550,354 @@ func main() {
 		}
 	})
 
+	// ═════ КАТАЛОГ — Эндпоинты (Спринт 9) ═════
+
+	mux.HandleFunc("/api/catalog/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"groups": catalogCategoriesList})
+	})
+
+	mux.HandleFunc("/api/catalog", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			priceMax, _ := strconv.ParseInt(r.URL.Query().Get("price_max"), 10, 64)
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			items, err := listCatalogItems(db, listCatalogFilters{
+				Type:     r.URL.Query().Get("type"),
+				Category: r.URL.Query().Get("category"),
+				City:     r.URL.Query().Get("city"),
+				PriceMax: priceMax,
+				Currency: r.URL.Query().Get("currency"),
+				Search:   r.URL.Query().Get("search"),
+				Tab:      r.URL.Query().Get("tab"),
+				Sort:     r.URL.Query().Get("sort"),
+				ViewerID: viewerID,
+				Limit:    limit,
+			})
+			if err != nil {
+				log.Printf("listCatalogItems: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if items == nil {
+				items = []catalogItem{}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"items": items})
+
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				Type        string   `json:"type"`
+				Category    string   `json:"category"`
+				Title       string   `json:"title"`
+				Description string   `json:"description"`
+				Price       *int64   `json:"price"`
+				Currency    string   `json:"currency"`
+				InStock     *bool    `json:"in_stock"`
+				Status      string   `json:"status"`
+				CoverImage  string   `json:"cover_image"`
+				Photos      []string `json:"photos"`
+				Tags        []string `json:"tags"`
+				City        string   `json:"city"`
+				CompanyID   *int64   `json:"company_id"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			req.Title = strings.TrimSpace(req.Title)
+			if utf8.RuneCountInString(req.Title) < 1 || utf8.RuneCountInString(req.Title) > 200 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "заголовок 1..200 символов"})
+				return
+			}
+			if req.Type != "product" && req.Type != "service" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "type должен быть product или service"})
+				return
+			}
+			if !validateCatalogCategory(req.Category) {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверная категория"})
+				return
+			}
+			if req.Currency == "" {
+				req.Currency = "RUB"
+			}
+			if req.Currency != "RUB" && req.Currency != "USD" && req.Currency != "EUR" && req.Currency != "CNY" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверная валюта"})
+				return
+			}
+			if req.Status == "" {
+				req.Status = "active"
+			}
+			if req.Status != "active" && req.Status != "paused" && req.Status != "hidden" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверный статус"})
+				return
+			}
+			inStock := true
+			if req.InStock != nil {
+				inStock = *req.InStock
+			}
+			if req.Tags == nil {
+				req.Tags = []string{}
+			}
+			if req.Photos == nil {
+				req.Photos = []string{}
+			}
+			photosJSON, _ := json.Marshal(req.Photos)
+
+			publicID := generateCatalogPublicID()
+			var newID int64
+			if err := db.QueryRow(`
+				INSERT INTO catalog_items (public_id, author_user_id, author_company_id, type, category, title, description, price, currency, in_stock, status, cover_image, photos, tags, city)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15)
+				RETURNING id
+			`, publicID, userID, req.CompanyID, req.Type, req.Category, req.Title, req.Description,
+				req.Price, req.Currency, inStock, req.Status, req.CoverImage, string(photosJSON),
+				pgtype.FlatArray[string](req.Tags), req.City,
+			).Scan(&newID); err != nil {
+				log.Printf("createCatalogItem: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			item, err := getCatalogItemByPublicIDFull(db, publicID, userID)
+			if err != nil {
+				log.Printf("getCatalogAfterCreate: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"item": item})
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/api/catalog/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/catalog/")
+		if path == "" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		parts := strings.Split(path, "/")
+		publicID := parts[0]
+
+		// /api/catalog/{publicID} — деталка / PATCH / DELETE
+		if len(parts) == 1 {
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+
+			switch r.Method {
+			case http.MethodGet:
+				item, err := getCatalogItemByPublicIDFull(db, publicID, viewerID)
+				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						http.Error(w, "not found", http.StatusNotFound)
+						return
+					}
+					log.Printf("getCatalogFull: %v", err)
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				// Скрытые видны только автору
+				if item.Status == "hidden" && (viewerID == 0 || item.AuthorUserID != viewerID) {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				// Инкремент views (не для автора)
+				if viewerID > 0 && viewerID != item.AuthorUserID {
+					_, _ = db.Exec(`UPDATE catalog_items SET views_count = views_count + 1 WHERE id = $1`, item.ID)
+					item.ViewsCount++
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"item": item})
+				return
+
+			case http.MethodPatch:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				itemID, err := getCatalogItemByPublicID(db, publicID)
+				if err != nil {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				var ownerID int64
+				if err := db.QueryRow(`SELECT author_user_id FROM catalog_items WHERE id=$1`, itemID).Scan(&ownerID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				if ownerID != userID {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+
+				var req map[string]json.RawMessage
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+					http.Error(w, "bad json", http.StatusBadRequest)
+					return
+				}
+
+				var sets []string
+				var args []interface{}
+				addSet := func(col string, val interface{}) {
+					args = append(args, val)
+					sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
+				}
+
+				if raw, ok := req["title"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						s = strings.TrimSpace(s)
+						if utf8.RuneCountInString(s) < 1 || utf8.RuneCountInString(s) > 200 {
+							writeJSON(w, http.StatusBadRequest, map[string]any{"error": "заголовок 1..200 символов"})
+							return
+						}
+						addSet("title", s)
+					}
+				}
+				if raw, ok := req["description"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						addSet("description", s)
+					}
+				}
+				if raw, ok := req["category"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						if !validateCatalogCategory(s) {
+							writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверная категория"})
+							return
+						}
+						addSet("category", s)
+					}
+				}
+				if raw, ok := req["price"]; ok {
+					var p *int64
+					if err := json.Unmarshal(raw, &p); err == nil {
+						addSet("price", p)
+					}
+				}
+				if raw, ok := req["currency"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						if s != "RUB" && s != "USD" && s != "EUR" && s != "CNY" {
+							writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверная валюта"})
+							return
+						}
+						addSet("currency", s)
+					}
+				}
+				if raw, ok := req["in_stock"]; ok {
+					var b bool
+					if err := json.Unmarshal(raw, &b); err == nil {
+						addSet("in_stock", b)
+					}
+				}
+				if raw, ok := req["status"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						if s != "active" && s != "paused" && s != "hidden" {
+							writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверный статус"})
+							return
+						}
+						addSet("status", s)
+					}
+				}
+				if raw, ok := req["cover_image"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						addSet("cover_image", s)
+					}
+				}
+				if raw, ok := req["photos"]; ok {
+					var arr []string
+					if err := json.Unmarshal(raw, &arr); err == nil {
+						if arr == nil {
+							arr = []string{}
+						}
+						photosJSON, _ := json.Marshal(arr)
+						args = append(args, string(photosJSON))
+						sets = append(sets, fmt.Sprintf("photos = $%d::jsonb", len(args)))
+					}
+				}
+				if raw, ok := req["tags"]; ok {
+					var arr []string
+					if err := json.Unmarshal(raw, &arr); err == nil {
+						if arr == nil {
+							arr = []string{}
+						}
+						addSet("tags", pgtype.FlatArray[string](arr))
+					}
+				}
+				if raw, ok := req["city"]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						addSet("city", s)
+					}
+				}
+
+				if len(sets) == 0 {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нет полей для обновления"})
+					return
+				}
+				sets = append(sets, "updated_at = NOW()")
+				args = append(args, itemID)
+				q := "UPDATE catalog_items SET " + strings.Join(sets, ", ") + fmt.Sprintf(" WHERE id = $%d", len(args))
+				if _, err := db.Exec(q, args...); err != nil {
+					log.Printf("patchCatalog: %v", err)
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				item, err := getCatalogItemByPublicIDFull(db, publicID, userID)
+				if err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"item": item})
+				return
+
+			case http.MethodDelete:
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				itemID, err := getCatalogItemByPublicID(db, publicID)
+				if err != nil {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				var ownerID int64
+				if err := db.QueryRow(`SELECT author_user_id FROM catalog_items WHERE id=$1`, itemID).Scan(&ownerID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				if ownerID != userID {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+				if _, err := db.Exec(`UPDATE catalog_items SET deleted_at=NOW() WHERE id=$1`, itemID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+				return
+
+			default:
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+		}
+
+		// Заглушка для action-эндпоинтов (save, order, contact, orders) —
+		// их добавим в этапе 9.1B-2.
+		http.Error(w, "not found", http.StatusNotFound)
+	})
+
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -13932,4 +14280,237 @@ func getCatalogItemByPublicID(db *sql.DB, publicID string) (int64, error) {
 		publicID,
 	).Scan(&id)
 	return id, err
+}
+
+// catalogItem — структура товара/услуги для ответа API.
+// CoverImage и Photos могут быть очень большими (base64) — в listing
+// они НЕ заполняются, только на деталке.
+type catalogItem struct {
+	ID                int64     `json:"id"`
+	PublicID          string    `json:"public_id"`
+	AuthorUserID      int64     `json:"author_user_id"`
+	AuthorPublicID    string    `json:"author_public_id"`
+	AuthorName        string    `json:"author_name"`
+	AuthorCompanyID   int64     `json:"author_company_id,omitempty"`
+	AuthorCompanyName string    `json:"author_company_name,omitempty"`
+	Type              string    `json:"type"`
+	Category          string    `json:"category"`
+	CategoryLabel     string    `json:"category_label"`
+	CategoryGroup     string    `json:"category_group"`
+	Title             string    `json:"title"`
+	Description       string    `json:"description"`
+	Price             *int64    `json:"price"`
+	Currency          string    `json:"currency"`
+	InStock           bool      `json:"in_stock"`
+	Status            string    `json:"status"`
+	CoverImage        string    `json:"cover_image"`
+	Photos            []string  `json:"photos"`
+	Tags              []string  `json:"tags"`
+	City              string    `json:"city"`
+	ViewsCount        int       `json:"views_count"`
+	OrdersCount       int       `json:"orders_count"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	ViewerHasSaved    bool      `json:"viewer_has_saved,omitempty"`
+	ViewerHasOrdered  bool      `json:"viewer_has_ordered,omitempty"`
+	ViewerIsAuthor    bool      `json:"viewer_is_author,omitempty"`
+}
+
+// listCatalogFilters — параметры фильтрации для listing.
+type listCatalogFilters struct {
+	Type     string // product / service / "" (оба)
+	Category string
+	City     string
+	PriceMax int64
+	Currency string
+	Search   string
+	Tab      string // all / saved / my
+	Sort     string // newest / popular / price_asc / price_desc
+	ViewerID int64
+	Limit    int
+}
+
+// listCatalogItems — выдача каталога с фильтрами.
+// БЕЗ cover_image и photos (они тяжёлые — только на деталке).
+func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+
+	var conds []string
+	var args []interface{}
+	conds = append(conds, "ci.deleted_at IS NULL")
+
+	if f.Type == "product" || f.Type == "service" {
+		args = append(args, f.Type)
+		conds = append(conds, fmt.Sprintf("ci.type = $%d", len(args)))
+	}
+	if f.Category != "" && validateCatalogCategory(f.Category) {
+		args = append(args, f.Category)
+		conds = append(conds, fmt.Sprintf("ci.category = $%d", len(args)))
+	}
+	if f.City != "" {
+		args = append(args, f.City)
+		conds = append(conds, fmt.Sprintf("ci.city = $%d", len(args)))
+	}
+	if f.PriceMax > 0 {
+		args = append(args, f.PriceMax)
+		conds = append(conds, fmt.Sprintf("(ci.price IS NULL OR ci.price <= $%d)", len(args)))
+	}
+	if f.Currency == "RUB" || f.Currency == "USD" || f.Currency == "EUR" || f.Currency == "CNY" {
+		args = append(args, f.Currency)
+		conds = append(conds, fmt.Sprintf("ci.currency = $%d", len(args)))
+	}
+	if f.Search != "" {
+		args = append(args, "%"+strings.ToLower(f.Search)+"%")
+		conds = append(conds, fmt.Sprintf("(LOWER(ci.title) LIKE $%d OR LOWER(ci.description) LIKE $%d)", len(args), len(args)))
+	}
+	switch f.Tab {
+	case "my":
+		if f.ViewerID > 0 {
+			args = append(args, f.ViewerID)
+			conds = append(conds, fmt.Sprintf("ci.author_user_id = $%d", len(args)))
+		}
+	case "saved":
+		if f.ViewerID > 0 {
+			args = append(args, f.ViewerID)
+			conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM saved_catalog_items sci WHERE sci.item_id = ci.id AND sci.user_id = $%d)", len(args)))
+		}
+	default:
+		// all — фильтруем только активные/в наличии (hidden и paused показываем только автору в табе my)
+		conds = append(conds, "ci.status = 'active'")
+	}
+
+	orderBy := "ci.created_at DESC"
+	switch f.Sort {
+	case "popular":
+		orderBy = "ci.views_count DESC, ci.created_at DESC"
+	case "price_asc":
+		orderBy = "COALESCE(ci.price, 9999999999) ASC, ci.created_at DESC"
+	case "price_desc":
+		orderBy = "COALESCE(ci.price, 0) DESC, ci.created_at DESC"
+	}
+
+	args = append(args, f.Limit)
+	limitArg := fmt.Sprintf("$%d", len(args))
+
+	viewerSaved := "FALSE"
+	viewerOrdered := "FALSE"
+	if f.ViewerID > 0 {
+		args = append(args, f.ViewerID)
+		viewerSaved = fmt.Sprintf("EXISTS (SELECT 1 FROM saved_catalog_items sci2 WHERE sci2.item_id = ci.id AND sci2.user_id = $%d)", len(args))
+		args = append(args, f.ViewerID)
+		viewerOrdered = fmt.Sprintf("EXISTS (SELECT 1 FROM catalog_orders co WHERE co.item_id = ci.id AND co.buyer_user_id = $%d)", len(args))
+	}
+
+	q := `
+		SELECT
+			ci.id, ci.public_id, ci.author_user_id,
+			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+			COALESCE(ci.author_company_id, 0), '',
+			ci.type, ci.category, ci.title, ci.description,
+			ci.price, ci.currency, ci.in_stock, ci.status,
+			COALESCE(array_to_json(ci.tags), '[]'::json),
+			ci.city, ci.views_count, ci.orders_count, ci.created_at, ci.updated_at,
+			` + viewerSaved + `, ` + viewerOrdered + `
+		FROM catalog_items ci
+		LEFT JOIN users u ON u.id = ci.author_user_id
+		WHERE ` + strings.Join(conds, " AND ") + `
+		ORDER BY ` + orderBy + `
+		LIMIT ` + limitArg
+
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []catalogItem
+	for rows.Next() {
+		var ci catalogItem
+		var tagsJSON []byte
+		if err := rows.Scan(
+			&ci.ID, &ci.PublicID, &ci.AuthorUserID,
+			&ci.AuthorPublicID, &ci.AuthorName,
+			&ci.AuthorCompanyID, &ci.AuthorCompanyName,
+			&ci.Type, &ci.Category, &ci.Title, &ci.Description,
+			&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
+			&tagsJSON,
+			&ci.City, &ci.ViewsCount, &ci.OrdersCount, &ci.CreatedAt, &ci.UpdatedAt,
+			&ci.ViewerHasSaved, &ci.ViewerHasOrdered,
+		); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal(tagsJSON, &ci.Tags)
+		if ci.Tags == nil {
+			ci.Tags = []string{}
+		}
+		ci.Photos = []string{} // не возвращаем в listing
+		ci.CategoryLabel = catalogCategoryLabel(ci.Category)
+		ci.CategoryGroup = catalogCategoryGroupLabel(ci.Category)
+		if f.ViewerID > 0 && ci.AuthorUserID == f.ViewerID {
+			ci.ViewerIsAuthor = true
+		}
+		out = append(out, ci)
+	}
+	return out, rows.Err()
+}
+
+// getCatalogItemByPublicIDFull — полная карточка товара/услуги
+// (для GET /api/catalog/{id}). Возвращает cover_image и photos.
+func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*catalogItem, error) {
+	var ci catalogItem
+	var tagsJSON, photosJSON []byte
+	viewerSaved := "FALSE"
+	viewerOrdered := "FALSE"
+	args := []interface{}{publicID}
+	if viewerID > 0 {
+		args = append(args, viewerID)
+		viewerSaved = fmt.Sprintf("EXISTS (SELECT 1 FROM saved_catalog_items sci WHERE sci.item_id = ci.id AND sci.user_id = $%d)", len(args))
+		args = append(args, viewerID)
+		viewerOrdered = fmt.Sprintf("EXISTS (SELECT 1 FROM catalog_orders co WHERE co.item_id = ci.id AND co.buyer_user_id = $%d)", len(args))
+	}
+	q := `SELECT ci.id, ci.public_id, ci.author_user_id,
+		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
+		COALESCE(ci.author_company_id, 0), '',
+		ci.type, ci.category, ci.title, ci.description,
+		ci.price, ci.currency, ci.in_stock, ci.status,
+		ci.cover_image,
+		COALESCE(ci.photos::text, '[]'),
+		COALESCE(array_to_json(ci.tags), '[]'::json),
+		ci.city, ci.views_count, ci.orders_count, ci.created_at, ci.updated_at,
+		` + viewerSaved + `, ` + viewerOrdered + `
+		FROM catalog_items ci
+		LEFT JOIN users u ON u.id = ci.author_user_id
+		WHERE ci.public_id = $1 AND ci.deleted_at IS NULL`
+
+	err := db.QueryRow(q, args...).Scan(
+		&ci.ID, &ci.PublicID, &ci.AuthorUserID,
+		&ci.AuthorPublicID, &ci.AuthorName,
+		&ci.AuthorCompanyID, &ci.AuthorCompanyName,
+		&ci.Type, &ci.Category, &ci.Title, &ci.Description,
+		&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
+		&ci.CoverImage,
+		&photosJSON,
+		&tagsJSON,
+		&ci.City, &ci.ViewsCount, &ci.OrdersCount, &ci.CreatedAt, &ci.UpdatedAt,
+		&ci.ViewerHasSaved, &ci.ViewerHasOrdered,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(tagsJSON, &ci.Tags)
+	_ = json.Unmarshal(photosJSON, &ci.Photos)
+	if ci.Tags == nil {
+		ci.Tags = []string{}
+	}
+	if ci.Photos == nil {
+		ci.Photos = []string{}
+	}
+	ci.CategoryLabel = catalogCategoryLabel(ci.Category)
+	ci.CategoryGroup = catalogCategoryGroupLabel(ci.Category)
+	if viewerID > 0 && ci.AuthorUserID == viewerID {
+		ci.ViewerIsAuthor = true
+	}
+	return &ci, nil
 }
