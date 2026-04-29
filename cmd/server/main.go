@@ -545,25 +545,26 @@ type createPostRequest struct {
 }
 
 type project struct {
-	ID            int64      `json:"id"`
-	PublicID      string     `json:"public_id"`
-	OwnerID       int64      `json:"-"`
-	Title         string     `json:"title"`
-	Description   string     `json:"description"`
-	Category      string     `json:"category,omitempty"`
-	Status        string     `json:"status"`
-	Deadline      *time.Time `json:"deadline,omitempty"`
-	Budget        *int64     `json:"budget,omitempty"`
-	CoverColor    string     `json:"cover_color"`
-	Tags          []string   `json:"tags"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	OwnerPublicID string     `json:"owner_public_id,omitempty"`
-	OwnerName     string     `json:"owner_name,omitempty"`
-	OwnerAvatar   string     `json:"owner_avatar,omitempty"`
-	MembersCount  int        `json:"members_count"`
-	IsMember      bool       `json:"is_member"`
-	IsOwner       bool       `json:"is_owner"`
+	ID             int64      `json:"id"`
+	PublicID       string     `json:"public_id"`
+	OwnerID        int64      `json:"-"`
+	Title          string     `json:"title"`
+	Description    string     `json:"description"`
+	Category       string     `json:"category,omitempty"`
+	Status         string     `json:"status"`
+	Deadline       *time.Time `json:"deadline,omitempty"`
+	Budget         *int64     `json:"budget,omitempty"`
+	CoverColor     string     `json:"cover_color"`
+	Tags           []string   `json:"tags"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	OwnerPublicID  string     `json:"owner_public_id,omitempty"`
+	OwnerName      string     `json:"owner_name,omitempty"`
+	OwnerAvatar    string     `json:"owner_avatar,omitempty"`
+	MembersCount   int        `json:"members_count"`
+	IsMember       bool       `json:"is_member"`
+	IsOwner        bool       `json:"is_owner"`
+	ViewerHasSaved bool       `json:"viewer_has_saved,omitempty"`
 }
 
 type projectMember struct {
@@ -10318,7 +10319,8 @@ func listProjects(db *sql.DB, viewerID int64, filters map[string]string) ([]proj
 		       p.created_at, p.updated_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
 		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
-		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member
+		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member,
+		       EXISTS(SELECT 1 FROM saved_projects WHERE project_id = p.id AND user_id = $1) AS viewer_has_saved
 		FROM projects p
 		LEFT JOIN users u ON u.id = p.owner_id
 		WHERE %s
@@ -10337,11 +10339,12 @@ func listProjects(db *sql.DB, viewerID int64, filters map[string]string) ([]proj
 		var tagsJSON []byte
 		var membersCount int
 		var isMember bool
+		var viewerHasSaved bool
 		if err := rows.Scan(&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
 			&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
 			&p.CreatedAt, &p.UpdatedAt,
 			&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
-			&membersCount, &isMember); err != nil {
+			&membersCount, &isMember, &viewerHasSaved); err != nil {
 			return nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &p.Tags)
@@ -10351,6 +10354,7 @@ func listProjects(db *sql.DB, viewerID int64, filters map[string]string) ([]proj
 		p.MembersCount = membersCount
 		p.IsMember = isMember
 		p.IsOwner = p.OwnerID == viewerID
+		p.ViewerHasSaved = viewerHasSaved
 		items = append(items, p)
 	}
 	if err := rows.Err(); err != nil {
@@ -10372,7 +10376,8 @@ func getProject(db *sql.DB, viewerID int64, publicID string) (project, error) {
 		       p.created_at, p.updated_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
 		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
-		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member
+		       EXISTS(SELECT 1 FROM project_members WHERE project_id = p.id AND user_id = $1) AS is_member,
+		       EXISTS(SELECT 1 FROM saved_projects WHERE project_id = p.id AND user_id = $1) AS viewer_has_saved
 		FROM projects p
 		LEFT JOIN users u ON u.id = p.owner_id
 		WHERE p.public_id = $2 AND p.is_deleted = FALSE`, viewerID, publicID).Scan(
@@ -10380,7 +10385,7 @@ func getProject(db *sql.DB, viewerID int64, publicID string) (project, error) {
 		&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
 		&p.CreatedAt, &p.UpdatedAt,
 		&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
-		&p.MembersCount, &p.IsMember,
+		&p.MembersCount, &p.IsMember, &p.ViewerHasSaved,
 	)
 	if err != nil {
 		return p, err
@@ -15018,19 +15023,19 @@ func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[
 		}
 		_ = createNotification(db, createNotificationParams{
 			RecipientID:    authorID,
-			ActorID:         buyerID,
-			Type:            "catalog_order",
-			SourceType:      "catalog_item",
-			SourceID:        itemID,
-			SourcePublicID:  itemPublicID,
-			Title:           buyerName + " подал заявку на «" + itemTitle + "»",
-			Preview:         preview,
+			ActorID:        buyerID,
+			Type:           "catalog_order",
+			SourceType:     "catalog_item",
+			SourceID:       itemID,
+			SourcePublicID: itemPublicID,
+			Title:          buyerName + " подал заявку на «" + itemTitle + "»",
+			Preview:        preview,
 		})
 	}
 
 	return map[string]any{
-		"order_id":         orderID,
-		"order_public_id":  publicID,
-		"chat_public_id":   chatPublicID,
+		"order_id":        orderID,
+		"order_public_id": publicID,
+		"chat_public_id":  chatPublicID,
 	}, nil
 }
