@@ -6451,6 +6451,62 @@ CREATE TABLE IF NOT EXISTS saved_catalog_items (
 );
 
 CREATE INDEX IF NOT EXISTS saved_catalog_items_user_idx ON saved_catalog_items(user_id, saved_at DESC);
+
+CREATE TABLE IF NOT EXISTS companies (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    owner_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (length(name) >= 1 AND length(name) <= 200),
+    inn TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '' CHECK (length(description) <= 10000),
+    region TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '',
+    website TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    logo_image TEXT NOT NULL DEFAULT '',
+    accent_color TEXT NOT NULL DEFAULT '#1E8A4C',
+    category TEXT NOT NULL DEFAULT '',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'draft', 'archived')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS companies_owner_idx ON companies(owner_user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at DESC) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS company_members (
+    id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),
+    position TEXT NOT NULL DEFAULT '',
+    joined_via_invite_id BIGINT,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (company_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS company_members_company_idx ON company_members(company_id);
+CREATE INDEX IF NOT EXISTS company_members_user_idx ON company_members(user_id);
+
+CREATE TABLE IF NOT EXISTS company_invites (
+    id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    code TEXT UNIQUE NOT NULL,
+    created_by_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    max_uses INT NOT NULL DEFAULT 1,
+    used_count INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS company_invites_company_idx ON company_invites(company_id);
+CREATE INDEX IF NOT EXISTS company_invites_code_idx ON company_invites(code) WHERE is_active = TRUE;
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -15038,4 +15094,118 @@ func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[
 		"order_public_id": publicID,
 		"chat_public_id":  chatPublicID,
 	}, nil
+}
+
+// ═════ КОМПАНИИ — Helpers (Mini-B) ═════
+
+// generateCompanyPublicID — public_id вида comp_xxxxx (12 hex).
+func generateCompanyPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "comp_" + hex.EncodeToString(b)
+}
+
+// generateCompanyInviteCode — код приглашения вида ci_xxxxx (16 hex).
+// Используется в URL /register?invite=ci_...
+func generateCompanyInviteCode() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return "ci_" + hex.EncodeToString(b)
+}
+
+// slugifyCompanyName — превращает название компании в slug
+// для URL /company/{slug}. Транслитерирует кириллицу, оставляет
+// только a-z 0-9 и дефисы. Если результат пустой — добавляет
+// случайный суффикс. Если slug уже занят — добавляет суффикс.
+func slugifyCompanyName(name string) string {
+	tr := map[rune]string{
+		'а': "a", 'б': "b", 'в': "v", 'г': "g", 'д': "d", 'е': "e", 'ё': "e",
+		'ж': "zh", 'з': "z", 'и': "i", 'й': "i", 'к': "k", 'л': "l", 'м': "m",
+		'н': "n", 'о': "o", 'п': "p", 'р': "r", 'с': "s", 'т': "t", 'у': "u",
+		'ф': "f", 'х': "h", 'ц': "ts", 'ч': "ch", 'ш': "sh", 'щ': "sch",
+		'ъ': "", 'ы': "y", 'ь': "", 'э': "e", 'ю': "yu", 'я': "ya",
+	}
+	var sb strings.Builder
+	for _, r := range strings.ToLower(name) {
+		if v, ok := tr[r]; ok {
+			sb.WriteString(v)
+		} else if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			sb.WriteRune(r)
+		} else if r == ' ' || r == '-' || r == '_' {
+			sb.WriteRune('-')
+		}
+	}
+	s := sb.String()
+	// схлопываем подряд идущие дефисы
+	for strings.Contains(s, "--") {
+		s = strings.ReplaceAll(s, "--", "-")
+	}
+	s = strings.Trim(s, "-")
+	if s == "" {
+		// fallback на случайный
+		b := make([]byte, 4)
+		_, _ = rand.Read(b)
+		s = "company-" + hex.EncodeToString(b)
+	}
+	if len(s) > 60 {
+		s = s[:60]
+	}
+	return s
+}
+
+// ensureUniqueCompanySlug добавляет суффикс если slug занят.
+// Возвращает свободный slug.
+func ensureUniqueCompanySlug(db *sql.DB, base string) (string, error) {
+	candidate := base
+	for i := 0; i < 50; i++ {
+		var existing int64
+		err := db.QueryRow(`SELECT id FROM companies WHERE slug = $1`, candidate).Scan(&existing)
+		if err == sql.ErrNoRows {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		// занят, пробуем с суффиксом
+		b := make([]byte, 2)
+		_, _ = rand.Read(b)
+		candidate = base + "-" + hex.EncodeToString(b)
+	}
+	return "", fmt.Errorf("could not find unique slug for %q after 50 attempts", base)
+}
+
+// getCompanyByPublicID — id компании по public_id.
+func getCompanyByPublicID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(
+		`SELECT id FROM companies WHERE public_id = $1 AND deleted_at IS NULL`,
+		publicID,
+	).Scan(&id)
+	return id, err
+}
+
+// getCompanyBySlug — id компании по slug.
+func getCompanyBySlug(db *sql.DB, slug string) (int64, error) {
+	var id int64
+	err := db.QueryRow(
+		`SELECT id FROM companies WHERE slug = $1 AND deleted_at IS NULL`,
+		slug,
+	).Scan(&id)
+	return id, err
+}
+
+// userIsCompanyMember — true если user состоит в company.
+func userIsCompanyMember(db *sql.DB, userID, companyID int64) (bool, string, error) {
+	var role string
+	err := db.QueryRow(
+		`SELECT role FROM company_members WHERE company_id = $1 AND user_id = $2`,
+		companyID, userID,
+	).Scan(&role)
+	if err == sql.ErrNoRows {
+		return false, "", nil
+	}
+	if err != nil {
+		return false, "", err
+	}
+	return true, role, nil
 }
