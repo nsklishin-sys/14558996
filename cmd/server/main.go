@@ -4893,8 +4893,205 @@ func main() {
 			}
 		}
 
-		// Заглушка для action-эндпоинтов (save, order, contact, orders) —
-		// их добавим в этапе 9.1B-2.
+		// /api/catalog/{publicID}/save — toggle закладки
+		if len(parts) == 2 && parts[1] == "save" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			itemID, err := getCatalogItemByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var existing int64
+			err = db.QueryRow(`SELECT 1 FROM saved_catalog_items WHERE user_id=$1 AND item_id=$2`, userID, itemID).Scan(&existing)
+			if err == sql.ErrNoRows {
+				if _, err := db.Exec(`INSERT INTO saved_catalog_items (user_id, item_id) VALUES ($1, $2)`, userID, itemID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"saved": true})
+				return
+			}
+			if _, err := db.Exec(`DELETE FROM saved_catalog_items WHERE user_id=$1 AND item_id=$2`, userID, itemID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"saved": false})
+			return
+		}
+
+		// /api/catalog/{publicID}/order — заявка на товар/услугу
+		if len(parts) == 2 && parts[1] == "order" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			itemID, err := getCatalogItemByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var req struct {
+				Message string `json:"message"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			result, err := applyToCatalogItem(db, itemID, userID, req.Message)
+			if err != nil {
+				if errors.Is(err, errValidation) {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+					return
+				}
+				if errors.Is(err, errConflict) {
+					writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error()})
+					return
+				}
+				if errors.Is(err, errNotFound) {
+					http.Error(w, "not found", http.StatusNotFound)
+					return
+				}
+				log.Printf("applyToCatalogItem: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, result)
+			return
+		}
+
+		// /api/catalog/{publicID}/contact — просто написать продавцу
+		// (обычный direct-чат без маркера и без записи в catalog_orders)
+		if len(parts) == 2 && parts[1] == "contact" {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			itemID, err := getCatalogItemByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var authorID int64
+			if err := db.QueryRow(`SELECT author_user_id FROM catalog_items WHERE id=$1`, itemID).Scan(&authorID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if userID == authorID {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нельзя писать самому себе"})
+				return
+			}
+			var req struct {
+				Message string `json:"message"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			req.Message = strings.TrimSpace(req.Message)
+			if utf8.RuneCountInString(req.Message) < 1 || utf8.RuneCountInString(req.Message) > 2000 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "сообщение 1..2000 символов"})
+				return
+			}
+			chatID, err := findOrCreateDirectChat(db, userID, authorID)
+			if err != nil {
+				log.Printf("contact chat: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			var chatPublicID string
+			if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id = $1`, chatID).Scan(&chatPublicID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if _, err := sendMessage(db, userID, chatPublicID, sendMessageRequest{Content: req.Message}); err != nil {
+				log.Printf("contact sendMessage: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"chat_public_id": chatPublicID})
+			return
+		}
+
+		// /api/catalog/{publicID}/orders — список заявок (только автору)
+		if len(parts) == 2 && parts[1] == "orders" {
+			if r.Method != http.MethodGet {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			itemID, err := getCatalogItemByPublicID(db, publicID)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT author_user_id FROM catalog_items WHERE id=$1`, itemID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			rows, err := db.Query(`
+				SELECT co.public_id, co.buyer_user_id, COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
+				       co.message, co.status, co.created_at, co.viewed_at,
+				       COALESCE(cc.public_id, '')
+				FROM catalog_orders co
+				LEFT JOIN users u ON u.id = co.buyer_user_id
+				LEFT JOIN chat_conversations cc ON cc.id = co.chat_conversation_id
+				WHERE co.item_id = $1
+				ORDER BY co.created_at DESC
+			`, itemID)
+			if err != nil {
+				log.Printf("listCatalogOrders: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			defer rows.Close()
+			type ordItem struct {
+				PublicID     string     `json:"public_id"`
+				BuyerUserID  int64      `json:"buyer_user_id"`
+				BuyerPublic  string     `json:"buyer_public_id"`
+				BuyerName    string     `json:"buyer_name"`
+				Message      string     `json:"message"`
+				Status       string     `json:"status"`
+				CreatedAt    time.Time  `json:"created_at"`
+				ViewedAt     *time.Time `json:"viewed_at"`
+				ChatPublicID string     `json:"chat_public_id"`
+			}
+			out := []ordItem{}
+			for rows.Next() {
+				var o ordItem
+				if err := rows.Scan(&o.PublicID, &o.BuyerUserID, &o.BuyerPublic, &o.BuyerName,
+					&o.Message, &o.Status, &o.CreatedAt, &o.ViewedAt, &o.ChatPublicID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				out = append(out, o)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"orders": out})
+			return
+		}
+
 		http.Error(w, "not found", http.StatusNotFound)
 	})
 
@@ -6623,6 +6820,8 @@ func shouldCreateNotificationForType(db *sql.DB, userID int64, notifType string)
 	case "post_comment", "comment_reply", "forum_reply", "forum_quote", "forum_like":
 		col = "notif_reactions"
 	case "job_application":
+		col = "notif_chat_messages"
+	case "catalog_order":
 		col = "notif_chat_messages"
 	case "mention":
 		col = "notif_mentions"
@@ -14513,4 +14712,106 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 		ci.ViewerIsAuthor = true
 	}
 	return &ci, nil
+}
+
+// applyToCatalogItem — заявка на товар/услугу. Создаёт запись в
+// catalog_orders + direct-чат с маркером «🛒 Заявка на «X»» +
+// уведомление автору.
+//
+// Возвращает map с order_public_id и chat_public_id.
+// Может вернуть errValidation / errConflict / errNotFound.
+func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[string]any, error) {
+	message = strings.TrimSpace(message)
+	if utf8.RuneCountInString(message) < 1 || utf8.RuneCountInString(message) > 2000 {
+		return nil, fmt.Errorf("%w: сообщение 1..2000 символов", errValidation)
+	}
+
+	var authorID int64
+	var itemTitle, itemStatus, itemType string
+	if err := db.QueryRow(
+		`SELECT author_user_id, title, status, type FROM catalog_items WHERE id = $1 AND deleted_at IS NULL`,
+		itemID,
+	).Scan(&authorID, &itemTitle, &itemStatus, &itemType); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errNotFound
+		}
+		return nil, err
+	}
+	if itemStatus == "paused" || itemStatus == "hidden" {
+		return nil, fmt.Errorf("%w: позиция недоступна", errValidation)
+	}
+	if buyerID == authorID {
+		return nil, fmt.Errorf("%w: автор не может подавать заявку на свою позицию", errValidation)
+	}
+
+	// Уже подавал заявку?
+	var existing int64
+	err := db.QueryRow(
+		`SELECT id FROM catalog_orders WHERE item_id = $1 AND buyer_user_id = $2`,
+		itemID, buyerID,
+	).Scan(&existing)
+	if err == nil {
+		return nil, fmt.Errorf("%w: вы уже подавали заявку на эту позицию", errConflict)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	// Создаём direct-чат между buyer и author
+	chatID, err := findOrCreateDirectChat(db, buyerID, authorID)
+	if err != nil {
+		return nil, fmt.Errorf("чат: %v", err)
+	}
+	var chatPublicID string
+	if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id = $1`, chatID).Scan(&chatPublicID); err != nil {
+		return nil, err
+	}
+
+	// Отправляем сообщение с маркером
+	fullMessage := "🛒 Заявка на «" + itemTitle + "»\n\n" + message
+	if _, err := sendMessage(db, buyerID, chatPublicID, sendMessageRequest{Content: fullMessage}); err != nil {
+		return nil, fmt.Errorf("сообщение: %v", err)
+	}
+
+	// Создаём catalog_order
+	publicID := generateCatalogOrderPublicID()
+	var orderID int64
+	if err := db.QueryRow(`
+		INSERT INTO catalog_orders (public_id, item_id, buyer_user_id, message, chat_conversation_id)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`, publicID, itemID, buyerID, message, chatID).Scan(&orderID); err != nil {
+		return nil, err
+	}
+
+	// Инкремент счётчика заявок
+	_, _ = db.Exec(`UPDATE catalog_items SET orders_count = orders_count + 1 WHERE id = $1`, itemID)
+
+	// Уведомление автору товара/услуги
+	var itemPublicID string
+	_ = db.QueryRow(`SELECT public_id FROM catalog_items WHERE id = $1`, itemID).Scan(&itemPublicID)
+	if shouldCreateNotificationForType(db, authorID, "catalog_order") {
+		buyerName := getUserDisplayName(db, buyerID)
+		preview := message
+		if utf8.RuneCountInString(preview) > 200 {
+			runes := []rune(preview)
+			preview = string(runes[:200]) + "…"
+		}
+		_ = createNotification(db, createNotificationParams{
+			RecipientID:    authorID,
+			ActorID:         buyerID,
+			Type:            "catalog_order",
+			SourceType:      "catalog_item",
+			SourceID:        itemID,
+			SourcePublicID:  itemPublicID,
+			Title:           buyerName + " подал заявку на «" + itemTitle + "»",
+			Preview:         preview,
+		})
+	}
+
+	return map[string]any{
+		"order_id":         orderID,
+		"order_public_id":  publicID,
+		"chat_public_id":   chatPublicID,
+	}, nil
 }
