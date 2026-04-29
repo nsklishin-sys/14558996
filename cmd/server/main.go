@@ -5211,30 +5211,131 @@ func main() {
 	// ═════ КОМПАНИИ — Read-only эндпоинты (Mini-B) ═════
 
 	mux.HandleFunc("/api/companies", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+		switch r.Method {
+		case http.MethodGet:
+			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+			items, err := listCompanies(db, listCompaniesFilters{
+				Category: r.URL.Query().Get("category"),
+				Region:   r.URL.Query().Get("region"),
+				City:     r.URL.Query().Get("city"),
+				Search:   r.URL.Query().Get("search"),
+				Tab:      r.URL.Query().Get("tab"),
+				ViewerID: viewerID,
+				Limit:    limit,
+			})
+			if err != nil {
+				log.Printf("listCompanies: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if items == nil {
+				items = []companyItem{}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"items": items})
+
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				Name        string   `json:"name"`
+				INN         string   `json:"inn"`
+				Description string   `json:"description"`
+				Region      string   `json:"region"`
+				City        string   `json:"city"`
+				Website     string   `json:"website"`
+				Email       string   `json:"email"`
+				Phone       string   `json:"phone"`
+				LogoImage   string   `json:"logo_image"`
+				AccentColor string   `json:"accent_color"`
+				Category    string   `json:"category"`
+				Tags        []string `json:"tags"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			req.Name = strings.TrimSpace(req.Name)
+			if utf8.RuneCountInString(req.Name) < 1 || utf8.RuneCountInString(req.Name) > 200 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 1..200 символов"})
+				return
+			}
+			req.INN = strings.TrimSpace(req.INN)
+			if req.INN != "" {
+				digits := true
+				for _, ch := range req.INN {
+					if ch < '0' || ch > '9' {
+						digits = false
+						break
+					}
+				}
+				if !digits || (len(req.INN) != 10 && len(req.INN) != 12) {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "ИНН должен быть 10 или 12 цифр"})
+					return
+				}
+			}
+			if req.AccentColor == "" {
+				req.AccentColor = "#1E8A4C"
+			}
+			if req.Tags == nil {
+				req.Tags = []string{}
+			}
+			// Slug
+			baseSlug := slugifyCompanyName(req.Name)
+			slug, err := ensureUniqueCompanySlug(db, baseSlug)
+			if err != nil {
+				log.Printf("ensureUniqueCompanySlug: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			publicID := generateCompanyPublicID()
+
+			tx, err := db.Begin()
+			if err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			defer tx.Rollback()
+
+			var newID int64
+			if err := tx.QueryRow(`
+				INSERT INTO companies (public_id, slug, owner_user_id, name, inn, description, region, city, website, email, phone, logo_image, accent_color, category, tags)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+				RETURNING id
+			`, publicID, slug, userID, req.Name, req.INN, req.Description, req.Region, req.City,
+				req.Website, req.Email, req.Phone, req.LogoImage, req.AccentColor, req.Category,
+				pgtype.FlatArray[string](req.Tags),
+			).Scan(&newID); err != nil {
+				log.Printf("createCompany: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			// Owner автоматически добавляется в company_members
+			if _, err := tx.Exec(`
+				INSERT INTO company_members (company_id, user_id, role)
+				VALUES ($1, $2, 'owner')
+			`, newID, userID); err != nil {
+				log.Printf("addCompanyOwnerMember: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if err := tx.Commit(); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			item, err := getCompanyByPublicIDFull(db, publicID, userID)
+			if err != nil {
+				log.Printf("getCompanyAfterCreate: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"item": item})
+
+		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
 		}
-		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
-		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		items, err := listCompanies(db, listCompaniesFilters{
-			Category: r.URL.Query().Get("category"),
-			Region:   r.URL.Query().Get("region"),
-			City:     r.URL.Query().Get("city"),
-			Search:   r.URL.Query().Get("search"),
-			Tab:      r.URL.Query().Get("tab"),
-			ViewerID: viewerID,
-			Limit:    limit,
-		})
-		if err != nil {
-			log.Printf("listCompanies: %v", err)
-			http.Error(w, "internal", http.StatusInternalServerError)
-			return
-		}
-		if items == nil {
-			items = []companyItem{}
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	})
 
 	mux.HandleFunc("/api/companies/", func(w http.ResponseWriter, r *http.Request) {
@@ -5271,9 +5372,177 @@ func main() {
 			return
 		}
 
-		// Заглушка для других action-эндпоинтов (POST/PATCH/DELETE/invites/members) —
-		// добавим в B-2b и B-3.
+		// PATCH/DELETE /api/companies/{publicID} — только владелец
+		if len(parts) == 1 && (r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			companyID, err := getCompanyByPublicID(db, identifier)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != userID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			if r.Method == http.MethodDelete {
+				if _, err := db.Exec(`UPDATE companies SET deleted_at=NOW() WHERE id=$1`, companyID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
+				return
+			}
+
+			// PATCH
+			var req map[string]json.RawMessage
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			var sets []string
+			var args []interface{}
+			addSet := func(col string, val interface{}) {
+				args = append(args, val)
+				sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
+			}
+
+			if raw, ok := req["name"]; ok {
+				var s string
+				if err := json.Unmarshal(raw, &s); err == nil {
+					s = strings.TrimSpace(s)
+					if utf8.RuneCountInString(s) < 1 || utf8.RuneCountInString(s) > 200 {
+						writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 1..200 символов"})
+						return
+					}
+					addSet("name", s)
+				}
+			}
+			for _, fld := range []string{"description", "region", "city", "website", "email", "phone", "logo_image", "accent_color", "category"} {
+				if raw, ok := req[fld]; ok {
+					var s string
+					if err := json.Unmarshal(raw, &s); err == nil {
+						addSet(fld, s)
+					}
+				}
+			}
+			if raw, ok := req["inn"]; ok {
+				var s string
+				if err := json.Unmarshal(raw, &s); err == nil {
+					s = strings.TrimSpace(s)
+					if s != "" {
+						digits := true
+						for _, ch := range s {
+							if ch < '0' || ch > '9' {
+								digits = false
+								break
+							}
+						}
+						if !digits || (len(s) != 10 && len(s) != 12) {
+							writeJSON(w, http.StatusBadRequest, map[string]any{"error": "ИНН должен быть 10 или 12 цифр"})
+							return
+						}
+					}
+					addSet("inn", s)
+				}
+			}
+			if raw, ok := req["tags"]; ok {
+				var arr []string
+				if err := json.Unmarshal(raw, &arr); err == nil {
+					if arr == nil {
+						arr = []string{}
+					}
+					addSet("tags", pgtype.FlatArray[string](arr))
+				}
+			}
+			if raw, ok := req["status"]; ok {
+				var s string
+				if err := json.Unmarshal(raw, &s); err == nil {
+					if s != "active" && s != "draft" && s != "archived" {
+						writeJSON(w, http.StatusBadRequest, map[string]any{"error": "неверный статус"})
+						return
+					}
+					addSet("status", s)
+				}
+			}
+
+			if len(sets) == 0 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нет полей для обновления"})
+				return
+			}
+			sets = append(sets, "updated_at = NOW()")
+			args = append(args, companyID)
+			q := "UPDATE companies SET " + strings.Join(sets, ", ") + fmt.Sprintf(" WHERE id = $%d", len(args))
+			if _, err := db.Exec(q, args...); err != nil {
+				log.Printf("patchCompany: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			item, err := getCompanyByPublicIDFull(db, identifier, userID)
+			if err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"item": item})
+			return
+		}
+
+		// Заглушка для invites/members — добавим в B-3.
 		http.Error(w, "not found", http.StatusNotFound)
+	})
+
+	// Admin: подтверждение компании
+	// PATCH /api/admin/companies/{publicID}/verify
+	// Доступно только если у юзера users.is_admin = TRUE.
+	mux.HandleFunc("/api/admin/companies/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/admin/companies/")
+		parts := strings.Split(path, "/")
+		if len(parts) != 2 || parts[1] != "verify" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if r.Method != http.MethodPatch {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var isAdmin bool
+		if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&isAdmin); err != nil {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if !isAdmin {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		var req struct {
+			Verified bool `json:"verified"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		companyID, err := getCompanyByPublicID(db, parts[0])
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if _, err := db.Exec(`UPDATE companies SET is_verified=$1, updated_at=NOW() WHERE id=$2`, req.Verified, companyID); err != nil {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"verified": req.Verified})
 	})
 
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
