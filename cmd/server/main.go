@@ -5624,6 +5624,111 @@ func main() {
 			return
 		}
 
+		// GET /api/companies/{publicID}/members — список сотрудников
+		if len(parts) == 2 && parts[1] == "members" && r.Method == http.MethodGet {
+			companyID, err := getCompanyByPublicID(db, identifier)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			rows, err := db.Query(`
+				SELECT cm.user_id, cm.role, cm.position, cm.joined_at,
+					COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+					COALESCE(u.avatar_url, '')
+				FROM company_members cm
+				LEFT JOIN users u ON u.id = cm.user_id
+				WHERE cm.company_id = $1
+				ORDER BY (CASE WHEN cm.role = 'owner' THEN 0 ELSE 1 END), cm.joined_at ASC
+			`, companyID)
+			if err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			defer rows.Close()
+			type memberOut struct {
+				UserID       int64     `json:"user_id"`
+				Role         string    `json:"role"`
+				Position     string    `json:"position"`
+				JoinedAt     time.Time `json:"joined_at"`
+				UserPublicID string    `json:"user_public_id"`
+				UserName     string    `json:"user_name"`
+				UserAvatar   string    `json:"user_avatar,omitempty"`
+			}
+			out := []memberOut{}
+			for rows.Next() {
+				var m memberOut
+				if err := rows.Scan(&m.UserID, &m.Role, &m.Position, &m.JoinedAt,
+					&m.UserPublicID, &m.UserName, &m.UserAvatar); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				out = append(out, m)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"members": out})
+			return
+		}
+
+		// PATCH /api/companies/{publicID}/members/{user_id} — изменить должность (owner)
+		// DELETE /api/companies/{publicID}/members/{user_id} — удалить (owner; не себя)
+		if len(parts) == 3 && parts[1] == "members" && (r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
+			actorID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			companyID, err := getCompanyByPublicID(db, identifier)
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if ownerID != actorID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			targetUserID, err := strconv.ParseInt(parts[2], 10, 64)
+			if err != nil {
+				http.Error(w, "bad id", http.StatusBadRequest)
+				return
+			}
+
+			if r.Method == http.MethodDelete {
+				if targetUserID == ownerID {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нельзя удалить владельца"})
+					return
+				}
+				if _, err := db.Exec(`DELETE FROM company_members WHERE company_id=$1 AND user_id=$2`, companyID, targetUserID); err != nil {
+					http.Error(w, "internal", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"removed": true})
+				return
+			}
+
+			// PATCH
+			var req struct {
+				Position string `json:"position"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			if utf8.RuneCountInString(req.Position) > 100 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "должность не более 100 символов"})
+				return
+			}
+			if _, err := db.Exec(`UPDATE company_members SET position=$1 WHERE company_id=$2 AND user_id=$3`,
+				req.Position, companyID, targetUserID); err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"position": req.Position})
+			return
+		}
+
 		http.Error(w, "not found", http.StatusNotFound)
 	})
 
