@@ -7978,6 +7978,7 @@ type jobItem struct {
 	AuthorName         string    `json:"author_name"`
 	AuthorCompanyID    int64     `json:"author_company_id,omitempty"`
 	AuthorCompanyName  string    `json:"author_company_name,omitempty"`
+	AuthorCompanySlug  string    `json:"author_company_slug,omitempty"`
 	Title              string    `json:"title"`
 	Description        string    `json:"description"`
 	Category           string    `json:"category"`
@@ -8093,7 +8094,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		SELECT
 			j.id, j.public_id, j.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
-			COALESCE(j.author_company_id, 0), '',
+			COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
 			j.title, j.description, j.category, j.city, j.address, j.work_format,
 			j.salary_from, j.salary_to, j.salary_currency,
 			j.experience_min_years, j.employment_type, j.status,
@@ -8105,6 +8106,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 			` + viewerApplied + `, ` + viewerSaved + `
 		FROM jobs j
 		LEFT JOIN users u ON u.id = j.author_user_id
+		LEFT JOIN companies comp ON comp.id = j.author_company_id AND comp.deleted_at IS NULL
 		WHERE ` + strings.Join(conds, " AND ") + `
 		ORDER BY ` + orderBy + `
 		LIMIT ` + limitArg
@@ -8122,7 +8124,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		if err := rows.Scan(
 			&j.ID, &j.PublicID, &j.AuthorUserID,
 			&j.AuthorPublicID, &j.AuthorName,
-			&j.AuthorCompanyID, &j.AuthorCompanyName,
+			&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug,
 			&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 			&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
 			&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
@@ -8176,7 +8178,7 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	}
 	q := `SELECT j.id, j.public_id, j.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
-		COALESCE(j.author_company_id, 0), '',
+		COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
 		j.title, j.description, j.category, j.city, j.address, j.work_format,
 		j.salary_from, j.salary_to, j.salary_currency,
 		j.experience_min_years, j.employment_type, j.status,
@@ -8188,12 +8190,13 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 		` + viewerApplied + `, ` + viewerSaved + `
 		FROM jobs j
 		LEFT JOIN users u ON u.id = j.author_user_id
+		LEFT JOIN companies comp ON comp.id = j.author_company_id AND comp.deleted_at IS NULL
 		WHERE j.public_id = $1 AND j.deleted_at IS NULL`
 
 	err = db.QueryRow(q, args...).Scan(
 		&j.ID, &j.PublicID, &j.AuthorUserID,
 		&j.AuthorPublicID, &j.AuthorName,
-		&j.AuthorCompanyID, &j.AuthorCompanyName,
+		&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug,
 		&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 		&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
 		&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
@@ -15473,6 +15476,7 @@ type catalogItem struct {
 	AuthorName        string    `json:"author_name"`
 	AuthorCompanyID   int64     `json:"author_company_id,omitempty"`
 	AuthorCompanyName string    `json:"author_company_name,omitempty"`
+	AuthorCompanySlug string    `json:"author_company_slug,omitempty"`
 	Type              string    `json:"type"`
 	Category          string    `json:"category"`
 	CategoryLabel     string    `json:"category_label"`
@@ -15587,7 +15591,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 		SELECT
 			ci.id, ci.public_id, ci.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
-			COALESCE(ci.author_company_id, 0), '',
+			COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
 			ci.type, ci.category, ci.title, ci.description,
 			ci.price, ci.currency, ci.in_stock, ci.status,
 			ci.cover_image,
@@ -15596,6 +15600,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 			` + viewerSaved + `, ` + viewerOrdered + `
 		FROM catalog_items ci
 		LEFT JOIN users u ON u.id = ci.author_user_id
+		LEFT JOIN companies comp ON comp.id = ci.author_company_id AND comp.deleted_at IS NULL
 		WHERE ` + strings.Join(conds, " AND ") + `
 		ORDER BY ` + orderBy + `
 		LIMIT ` + limitArg
@@ -15613,7 +15618,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 		if err := rows.Scan(
 			&ci.ID, &ci.PublicID, &ci.AuthorUserID,
 			&ci.AuthorPublicID, &ci.AuthorName,
-			&ci.AuthorCompanyID, &ci.AuthorCompanyName,
+			&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug,
 			&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 			&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
 			&ci.CoverImage,
@@ -15654,7 +15659,7 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 	}
 	q := `SELECT ci.id, ci.public_id, ci.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
-		COALESCE(ci.author_company_id, 0), '',
+		COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
 		ci.type, ci.category, ci.title, ci.description,
 		ci.price, ci.currency, ci.in_stock, ci.status,
 		ci.cover_image,
@@ -15664,12 +15669,13 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 		` + viewerSaved + `, ` + viewerOrdered + `
 		FROM catalog_items ci
 		LEFT JOIN users u ON u.id = ci.author_user_id
+		LEFT JOIN companies comp ON comp.id = ci.author_company_id AND comp.deleted_at IS NULL
 		WHERE ci.public_id = $1 AND ci.deleted_at IS NULL`
 
 	err := db.QueryRow(q, args...).Scan(
 		&ci.ID, &ci.PublicID, &ci.AuthorUserID,
 		&ci.AuthorPublicID, &ci.AuthorName,
-		&ci.AuthorCompanyID, &ci.AuthorCompanyName,
+		&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug,
 		&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 		&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
 		&ci.CoverImage,
