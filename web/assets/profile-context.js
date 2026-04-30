@@ -50,7 +50,7 @@
   function styles() {
     if (document.getElementById('pcx-styles')) return;
     var css =
-      '.pcx-section{padding:6px;margin-top:10px;border-bottom:1px solid var(--bdr);background:#fafdfb}' +
+      '.pcx-section{padding:6px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);background:#fafdfb}' +
       '.pcx-label{font-size:9px;font-weight:800;color:var(--gmt);letter-spacing:.08em;text-transform:uppercase;padding:6px 10px 4px}' +
       '.pcx-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--tm);font-size:12px;transition:background .12s}' +
       '.pcx-row:hover{background:var(--gp);color:var(--g)}' +
@@ -113,23 +113,32 @@
       '</div>';
   }
 
-  function updateMyCompanyMenuItem(activeID) {
+  function updateMyCompanyMenuItem(activeID, hasCompanies) {
     // Меняем текст пункта "Моя компания" → "Управление компанией"
-    // если активен корпоративный контекст.
+    // если активен корпоративный контекст. Скрываем пункт если у юзера
+    // нет компаний (и контекст по умолчанию — личный).
     var anchors = document.querySelectorAll('.pdd-item[href="/my-company.html"]');
     for (var i = 0; i < anchors.length; i++) {
       var label = anchors[i].querySelector('.pdd-item-label');
       if (label) {
         label.textContent = activeID == null ? 'Моя компания' : 'Управление компанией';
       }
+      // Если у юзера нет компаний и сейчас личный контекст — скрыть пункт.
+      // (При корпоративном контексте hasCompanies всегда true, иначе мы бы
+      // упали в фолбэк сброса в личный.)
+      if (!hasCompanies && activeID == null) {
+        anchors[i].style.display = 'none';
+      } else {
+        anchors[i].style.display = '';
+      }
     }
   }
 
   window.__pcxSwitch = function (companyID) {
     setActiveCompanyID(companyID);
-    updateMyCompanyMenuItem(companyID);
-    // Перерисуем выпадашку без перезагрузки страницы
     var cached = window.__pcxCompaniesCache || [];
+    updateMyCompanyMenuItem(companyID, cached.length > 0);
+    // Перерисуем выпадашку без перезагрузки страницы
     render(cached, companyID);
     // Закрыть выпадашку
     var dd = document.getElementById('profileDD');
@@ -163,7 +172,7 @@
         activeID = null;
       }
       render(items, activeID);
-      updateMyCompanyMenuItem(activeID);
+      updateMyCompanyMenuItem(activeID, items.length > 0);
     } catch (err) {
       console.error('profile-context load:', err);
       render([], getActiveCompanyID());
