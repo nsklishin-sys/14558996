@@ -173,7 +173,7 @@
     popup.innerHTML = `
       <div class="cp-search">
         <span class="cp-search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg></span>
-        <input type="text" placeholder="Найти категорию…" autocomplete="off">
+        <input type="text" placeholder="Поиск…" autocomplete="off">
       </div>
       <div class="cp-list"></div>
     `;
