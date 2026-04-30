@@ -554,7 +554,7 @@ async function loadMembers(){
     wrap.innerHTML=members.map(m=>{
       const name=m.full_name||'Участник';
       const role=m.role||'member';
-      const isMe=m.public_id===myPublicID;
+      const isMe=(m.user_public_id||m.public_id)===myPublicID;
       const roleBadge=role==='owner'?'<span class="member-role-badge owner">Владелец</span>'
         :role==='admin'?'<span class="member-role-badge admin">Админ</span>'
         :role==='moderator'?'<span class="member-role-badge moderator">Модератор</span>'
@@ -562,10 +562,11 @@ async function loadMembers(){
       // Кнопки управления — только owner и только для не-owner-ов и не себя
       let actions='';
       if(isOwner && role!=='owner' && !isMe){
+        const upid=esc(m.user_public_id||'');
         if(role==='moderator'){
-          actions=`<button onclick="changeMemberRole(${m.user_id},'member','${esc(name)}')">Снять модератора</button>`;
+          actions=`<button onclick="changeMemberRole('${upid}','member','${esc(name)}')">Снять модератора</button>`;
         }else{
-          actions=`<button onclick="changeMemberRole(${m.user_id},'moderator','${esc(name)}')">Назначить модератором</button>`;
+          actions=`<button onclick="changeMemberRole('${upid}','moderator','${esc(name)}')">Назначить модератором</button>`;
         }
       }
       return `<div class="member-row">
@@ -583,12 +584,12 @@ async function loadMembers(){
   }catch{wrap.innerHTML='<div class="comments-empty">Ошибка загрузки</div>';}
 }
 
-async function changeMemberRole(userID,newRole,name){
+async function changeMemberRole(userPublicID,newRole,name){
   const verb=newRole==='moderator'?'назначить модератором':'снять с модераторства';
   if(!confirm(verb.charAt(0).toUpperCase()+verb.slice(1)+' пользователя '+name+'?'))return;
   try{
-    const r=await fetch(API+'/communities/'+currentCommunityID+'/members/'+userID,{
-      method:'PATCH',
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/members/'+encodeURIComponent(userPublicID)+'/role',{
+      method:'PUT',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({role:newRole})
     });
