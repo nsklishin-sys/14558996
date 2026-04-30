@@ -543,7 +543,10 @@ async function renderPubs(wrap){
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  identifier = new URLSearchParams(location.search).get('id');
+  const params = new URLSearchParams(location.search);
+  identifier = params.get('id');
+  const inviteCode = params.get('invite');
+
   if (!identifier) {
     document.getElementById('mainContent').innerHTML = '<div class="placeholder">Не указан id компании. <a href="/companies.html" style="color:var(--g)">← К списку</a></div>';
     document.getElementById('crumbCurrent').textContent = 'Ошибка';
@@ -551,7 +554,86 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   await loadProfile();
   await loadCompany();
+
+  // Обработка приглашения
+  if (inviteCode) {
+    handleInvite(inviteCode);
+  }
 });
+
+async function handleInvite(code){
+  // Если не залогинен — редирект на login с возвратом сюда
+  if (!tk()) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    location.href = '/login.html?next=' + next;
+    return;
+  }
+  // Если уже состоит — тихо убрать ?invite= из URL
+  if (company && company.viewer_is_member) {
+    cleanInviteParam();
+    return;
+  }
+  // Иначе — показать баннер
+  showInviteBanner(code);
+}
+
+function cleanInviteParam(){
+  const u = new URL(location.href);
+  u.searchParams.delete('invite');
+  history.replaceState({}, '', u.toString());
+}
+
+function showInviteBanner(code){
+  const c = company;
+  const accent = c && c.accent_color ? c.accent_color : '#1E8A4C';
+  const bn = document.createElement('div');
+  bn.id = 'inviteBanner';
+  bn.style.cssText = 'background:linear-gradient(135deg,'+accent+',#22A05A);color:#fff;border-radius:var(--rxl);padding:18px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:var(--shm);animation:fadeUp .25s ease both';
+  bn.innerHTML =
+    '<div style="flex:1;min-width:200px">'+
+      '<div style="font-size:15px;font-weight:800">Вас пригласили в '+esc(c ? c.name : 'компанию')+'</div>'+
+      '<div style="font-size:12px;opacity:.85;margin-top:3px">Принимая приглашение, вы становитесь сотрудником этой компании.</div>'+
+    '</div>'+
+    '<button class="btn" id="inviteRejectBtn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4)" onclick="rejectInvite()">Отклонить</button>'+
+    '<button class="btn" id="inviteAcceptBtn" style="background:#fff;color:'+accent+'" onclick="acceptInvite('+JSON.stringify(code).replace(/"/g,'&quot;')+')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2"><polyline points="20 6 9 17 4 12"/></svg>Принять</button>';
+  // вставляем в начало main, перед хлебными крошками
+  const main = document.querySelector('.main');
+  main.insertBefore(bn, main.firstChild);
+}
+
+async function acceptInvite(code){
+  const acceptBtn = document.getElementById('inviteAcceptBtn');
+  const rejectBtn = document.getElementById('inviteRejectBtn');
+  if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Принимаем…'; }
+  if (rejectBtn) rejectBtn.disabled = true;
+  try {
+    const r = await fetch(API + '/invites/accept', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      alert(d.error || 'Не удалось принять приглашение');
+      if (acceptBtn) { acceptBtn.disabled = false; acceptBtn.textContent = 'Принять'; }
+      if (rejectBtn) rejectBtn.disabled = false;
+      return;
+    }
+    // Успех — убираем ?invite= и перезагружаем чтобы подтянуть новый статус
+    cleanInviteParam();
+    location.reload();
+  } catch (err) {
+    alert('Ошибка: ' + err.message);
+    if (acceptBtn) { acceptBtn.disabled = false; acceptBtn.textContent = 'Принять'; }
+    if (rejectBtn) rejectBtn.disabled = false;
+  }
+}
+
+function rejectInvite(){
+  cleanInviteParam();
+  const bn = document.getElementById('inviteBanner');
+  if (bn) bn.remove();
+}
 </script>
 <script src="/assets/profile-context.js" defer></script>
 </body>
