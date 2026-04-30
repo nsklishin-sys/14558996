@@ -770,7 +770,7 @@ async function submitItem(){
   try {
     const r = await fetch(API + '/catalog', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
+      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify({
         type, category, title,
         description: desc,
