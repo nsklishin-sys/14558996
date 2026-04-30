@@ -467,7 +467,10 @@ async function renderSidebar(){
   try {
     const r = await fetch(API+'/companies/'+encodeURIComponent(c.public_id)+'/members');
     const d = await r.json();
-    const members = d.members || [];
+    const allMembers = d.members || [];
+    // На публичной странице показываем только members с is_public !== false (по умолчанию true).
+    // Owner-а показываем всегда.
+    const members = allMembers.filter(m => m.role === 'owner' || m.is_public !== false);
     const teamWrap = document.getElementById('sbTeam');
     if (!teamWrap) return;
     if (!members.length) { teamWrap.textContent = 'Сотрудников пока нет'; return; }
