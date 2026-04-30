@@ -389,7 +389,7 @@ function renderCard(c){
   const meta=[];
   if(c.category_label)meta.push(esc(c.category_label));
   if(c.city)meta.push(esc(c.city));
-  return '<a class="co-card" href="/company.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
+  return '<a class="co-card" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
     '<div class="co-banner" style="background:linear-gradient(135deg,'+esc(accent)+','+esc(accent)+')">'+
       '<div class="co-logo" style="background:'+esc(accent)+';color:#fff">'+logoHtml+'</div>'+
     '</div>'+
@@ -422,7 +422,7 @@ function renderMyList(){
   }
   wrap.innerHTML=myCompanies.slice(0,5).map(c=>{
     const av=c.logo_image?'<img src="'+escAttr(c.logo_image)+'" alt="">':esc(initials(c.name));
-    return '<a class="recom-row" href="/company.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
+    return '<a class="recom-row" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
       '<div class="recom-av" style="background:'+esc(c.accent_color||'#1E8A4C')+'">'+av+'</div>'+
       '<div class="recom-info">'+
         '<div class="recom-name">'+esc(c.name)+'</div>'+
@@ -445,7 +445,7 @@ function renderRecom(){
   }
   wrap.innerHTML=list.map(c=>{
     const av=c.logo_image?'<img src="'+escAttr(c.logo_image)+'" alt="">':esc(initials(c.name));
-    return '<a class="recom-row" href="/company.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
+    return '<a class="recom-row" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
       '<div class="recom-av" style="background:'+esc(c.accent_color||'#1E8A4C')+'">'+av+'</div>'+
       '<div class="recom-info">'+
         '<div class="recom-name">'+esc(c.name)+'</div>'+

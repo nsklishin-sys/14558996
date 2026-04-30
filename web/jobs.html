@@ -732,7 +732,7 @@ function renderJobCard(j){
       '</div>' +
       '<div class="jc-title">' + esc(j.title) + '</div>' +
       '<div class="jc-meta">' +
-        '<span class="jc-meta-item jc-author">' + (j.author_company_name ? '<a href="/company.html?id=' + encodeURIComponent(j.author_company_slug || j.author_company_id) + '" style="color:inherit;text-decoration:none;font-weight:700" onclick="event.stopPropagation()">' + esc(author) + '</a>' : esc(author)) + '</span>' +
+        '<span class="jc-meta-item jc-author">' + (j.author_company_name ? '<a href="/company-detail.html?id=' + encodeURIComponent(j.author_company_slug || j.author_company_id) + '" style="color:inherit;text-decoration:none;font-weight:700" onclick="event.stopPropagation()">' + esc(author) + '</a>' : esc(author)) + '</span>' +
         (j.city ? '<span class="jc-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(j.city) + '</span>' : '') +
         '<span class="jc-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>от ' + j.experience_min_years + ' ' + pluralRu(j.experience_min_years, ['года','лет','лет']) + '</span>' +
         '<span class="jc-meta-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>' + esc(fmtEmployment(j.employment_type)) + '</span>' +
