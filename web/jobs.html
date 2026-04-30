@@ -700,6 +700,34 @@ function applyFilters(){
   renderFeed(items);
 }
 
+function pickAuthor(item){
+  if (item.author_community_id && item.author_community_name) {
+    return {
+      name: item.author_community_name,
+      href: '/community-detail.html?id=' + item.author_community_id,
+      avatar: item.author_community_avatar || '',
+      color: item.author_community_color || '#5AB080',
+      kind: 'community'
+    };
+  }
+  if (item.author_company_id && item.author_company_name) {
+    return {
+      name: item.author_company_name,
+      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      avatar: item.author_company_logo || '',
+      color: '#1E8A4C',
+      kind: 'company'
+    };
+  }
+  return {
+    name: item.author_name || item.author || 'Участник',
+    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    avatar: item.author_avatar || '',
+    color: '#5A8A6A',
+    kind: 'user'
+  };
+}
+
 function renderFeed(items){
   const feed = document.getElementById('feed');
   if (!items.length) {
@@ -719,7 +747,7 @@ function renderJobCard(j){
       '</span>'
     : '';
   const tagsHtml = (j.tags || []).slice(0, 6).map(t => '<span class="jc-tag">' + esc(t) + '</span>').join('');
-  const author = j.author_company_name || j.author_name || 'Аноним';
+  const author = pickAuthor(j);
   return '<div class="job-card" onclick="location.href=\'/job-detail.html?id=' + esc(j.public_id) + '\'">' +
     '<div class="jc-stripe" style="background:' + esc(color) + '"></div>' +
     '<div class="jc-body">' +
@@ -730,7 +758,7 @@ function renderJobCard(j){
       '</div>' +
       '<div class="jc-title">' + esc(j.title) + '</div>' +
       '<div class="jc-meta">' +
-        '<span class="jc-meta-item jc-author">' + (j.author_company_name ? '<a href="/company-detail.html?id=' + encodeURIComponent(j.author_company_slug || j.author_company_id) + '" style="color:inherit;text-decoration:none;font-weight:700" onclick="event.stopPropagation()">' + esc(author) + '</a>' : esc(author)) + '</span>' +
+        '<span class="jc-meta-item jc-author">' + (author.href !== '#' ? '<a href="' + escAttr(author.href) + '" style="color:inherit;text-decoration:none;font-weight:700" onclick="event.stopPropagation()">' + esc(author.name) + '</a>' : esc(author.name)) + '</span>' +
         (j.city ? '<span class="jc-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(j.city) + '</span>' : '') +
         '<span class="jc-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>от ' + j.experience_min_years + ' ' + pluralRu(j.experience_min_years, ['года','лет','лет']) + '</span>' +
         '<span class="jc-meta-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>' + esc(fmtEmployment(j.employment_type)) + '</span>' +

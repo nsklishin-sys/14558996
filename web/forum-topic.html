@@ -375,6 +375,25 @@ function initials(name){
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase();
 }
 
+function pickTopicAuthor(topic){
+  if (topic.author_community_id && topic.author_community_name) {
+    return {
+      name: topic.author_community_name,
+      href: '/community-detail.html?id=' + encodeURIComponent(topic.author_community_id),
+      avatar: topic.author_community_avatar || '',
+      color: topic.author_community_color || '#5AB080',
+      kind: 'community'
+    };
+  }
+  return {
+    name: topic.author_name || 'Аноним',
+    href: topic.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(topic.author_public_id) : '#',
+    avatar: topic.author_avatar || '',
+    color: stableColor(topic.author_name || 'Аноним'),
+    kind: 'user'
+  };
+}
+
 function toast(msg, success){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -493,6 +512,8 @@ function renderTopicHeader(){
       '</button>'
     : '';
 
+  const author = pickTopicAuthor(t);
+
   document.getElementById('topicHeaderWrap').innerHTML =
     '<div class="topic-header">' +
       '<div class="th-top">' +
@@ -507,7 +528,7 @@ function renderTopicHeader(){
       '<div class="th-title-block">' +
         '<div class="th-title">' + esc(t.title) + '</div>' +
         '<div class="th-meta-row">' +
-          '<a class="th-meta-author" href="/profile_user.html?id=' + esc(t.author_public_id) + '">' + esc(t.author_name) + '</a>' +
+          '<a class="th-meta-author" href="' + esc(author.href) + '">' + esc(author.name) + '</a>' +
           '<span class="th-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' + formatFull(t.created_at) + '</span>' +
           '<span class="th-meta-item"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + t.replies_count + ' ' + pluralRu(t.replies_count, ['ответ','ответа','ответов']) + '</span>' +
           '<span class="th-meta-item"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' + t.views_count + ' ' + pluralRu(t.views_count, ['просмотр','просмотра','просмотров']) + '</span>' +
@@ -529,13 +550,12 @@ function renderTopicSidebar(){
 
   // Карточка автора
   const aCard = document.getElementById('authorCard');
-  if (t.author_public_id) {
-    aCard.style.display = '';
-    document.getElementById('authorCardLink').href = '/profile_user.html?id=' + encodeURIComponent(t.author_public_id);
-    document.getElementById('authorAv').textContent = initials(t.author_name);
-    document.getElementById('authorAv').style.background = stableColor(t.author_name);
-    document.getElementById('authorName').textContent = t.author_name || 'Аноним';
-  }
+  const author = pickTopicAuthor(t);
+  aCard.style.display = '';
+  document.getElementById('authorCardLink').href = author.href;
+  document.getElementById('authorAv').textContent = initials(author.name);
+  document.getElementById('authorAv').style.background = author.color;
+  document.getElementById('authorName').textContent = author.name;
 }
 
 // ─── Подписка ───
