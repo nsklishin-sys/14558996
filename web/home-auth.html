@@ -1391,20 +1391,42 @@ function renderFeedFiltered(type){
   }
 
   feed.innerHTML = posts.map((p, i) => {
-    const name = p.author || p.author_name || 'Участник';
+    // Приоритет автора: community > company > user.
+    // Имя автора-юзера НЕ показывается совсем для community/company.
+    const fromCommunity = !!(p.community_id && p.community_name);
+    const fromCompany = !fromCommunity && !!(p.author_company_id && p.author_company_name);
+    let displayName, displayHref, displayBg, displayLogo, displayRole;
+    if (fromCommunity) {
+      displayName = p.community_name;
+      displayHref = '/community-detail.html?id=' + p.community_id;
+      displayBg = p.community_color || avc(p.community_name);
+      displayLogo = p.community_avatar || '';
+      displayRole = 'Сообщество';
+    } else if (fromCompany) {
+      displayName = p.author_company_name;
+      displayHref = '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || '');
+      displayBg = avc(p.author_company_name);
+      displayLogo = p.author_company_logo || '';
+      displayRole = 'Компания';
+    } else {
+      displayName = p.author || p.author_name || 'Участник';
+      displayHref = profileHref({name: displayName, user_id: p.user_id, public_id: p.author_public_id});
+      displayBg = avc(displayName);
+      displayLogo = p.author_avatar || '';
+      displayRole = p.role || p.author_role || '';
+    }
     const tag = TAG[p.type] || 't-news', lbl = LBL[p.type] || 'Публикация';
     const time = p.created_at ? ago(p.created_at) : (p.ago || '');
     const href = p.type === 'news' ? '/news-detail.html' : (p.type === 'forum' ? '/forum.html' : '/dashboard.html');
     const pid = p.public_id || p.id || '';
     const id = pid ? ('?id=' + encodeURIComponent(pid)) : '';
-    const authorHref = profileHref({name, user_id: p.user_id, public_id: p.author_public_id});
-    const communityBadge = (p.community_id && p.community_name)
-      ? `<div style="font-size:11px;color:var(--g);margin-top:2px">из сообщества: ${esc(p.community_name)}</div>`
-      : '';
+    const avInner = displayLogo
+      ? `<img src="${esc(displayLogo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`
+      : letter(displayName);
     return `<div class="post-card" style="animation-delay:${i*.05}s" onclick="location.href='${href}${id}'">
       <div class="pc-head">
-        <div class="pc-av" style="background:${avc(name)}" onclick="event.stopPropagation();location.href='${authorHref}'">${letter(name)}</div>
-        <div><div class="pc-name"><a href="${authorHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(name)}</a></div><div class="pc-meta">${esc(p.role || p.author_role || '')}${(p.role || p.author_role) ? ' · ' : ''}${esc(time)}</div>${communityBadge}</div>
+        <div class="pc-av" style="background:${displayBg};overflow:hidden" onclick="event.stopPropagation();location.href='${displayHref}'">${avInner}</div>
+        <div><div class="pc-name"><a href="${displayHref}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${esc(displayName)}</a></div><div class="pc-meta">${esc(displayRole)}${displayRole ? ' · ' : ''}${esc(time)}</div></div>
         <span class="pc-tag ${tag}">${lbl}</span>
       </div>
       ${p.title ? `<div class="pc-title">${esc(p.title)}</div>` : ''}

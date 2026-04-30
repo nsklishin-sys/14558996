@@ -734,7 +734,7 @@ function pickPostAuthor(p){
       href: '/community-detail.html?id=' + p.community_id,
       avatar: p.community_avatar || '',
       bgColor: p.community_color || (typeof avc==='function' ? avc(p.community_name) : '#5AB080'),
-      subline: p.author ? 'опубликовал ' + p.author : '',
+      subline: 'Сообщество',
       fromCommunity: true,
       fromCompany: false,
     };
@@ -745,7 +745,7 @@ function pickPostAuthor(p){
       href: '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || ''),
       avatar: p.author_company_logo || '',
       bgColor: typeof avc==='function' ? avc(p.author_company_name) : '#5AB080',
-      subline: p.author ? 'опубликовал ' + p.author : '',
+      subline: 'Компания',
       fromCommunity: false,
       fromCompany: true,
     };
@@ -784,9 +784,10 @@ function renderCard(n,idx){
   const authorHtml=headerHref
     ? `<a class="nc-author" href="${escAttr(headerHref)}" onclick="event.stopPropagation()">${esc(headerName)}</a>`
     : `<div class="nc-author">${esc(headerName)}</div>`;
-  const infoHtml=(fromCommunity||fromCompany)
-    ? `<div class="nc-info">${esc(n.role)}<span class="nc-dot"></span>${ago(n.ts)}<span class="nc-dot"></span>${esc(subline)}</div>`
-    : `<div class="nc-info">${esc(n.role)}<span class="nc-dot"></span>${ago(n.ts)}</div>`;
+  const roleText = (fromCommunity||fromCompany) ? subline : (n.role || '');
+  const infoHtml = roleText
+    ? `<div class="nc-info">${esc(roleText)}<span class="nc-dot"></span>${ago(n.ts)}</div>`
+    : `<div class="nc-info">${ago(n.ts)}</div>`;
 
   return`<div class="news-card" style="animation-delay:${idx*.06}s" id="nc-${escAttr(postKey)}" onclick="openNewsDetail('${escAttr(n.public_id||'')}',event)">
     <div class="nc-head">
