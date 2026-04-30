@@ -5307,6 +5307,16 @@ func main() {
 			if req.Tags == nil {
 				req.Tags = []string{}
 			}
+			// Защита от дубликатов: одна компания с одинаковым name у одного owner
+			var dupID int64
+			if err := db.QueryRow(
+				`SELECT id FROM companies WHERE owner_user_id=$1 AND LOWER(name)=LOWER($2) AND deleted_at IS NULL LIMIT 1`,
+				userID, req.Name,
+			).Scan(&dupID); err == nil {
+				writeJSON(w, http.StatusConflict, map[string]any{"error": "у вас уже есть компания с таким названием"})
+				return
+			}
+
 			// Slug
 			baseSlug := slugifyCompanyName(req.Name)
 			slug, err := ensureUniqueCompanySlug(db, baseSlug)
