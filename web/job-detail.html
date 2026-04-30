@@ -747,10 +747,13 @@ function renderRight(){
   const right = document.getElementById('rightWrap');
   if (!JOB){ right.innerHTML = ''; return; }
   const j = JOB;
-  const auName = j.author_name || 'Автор';
-  const auCompany = j.author_company_name || 'Участник LASTOP';
+  const isCompanyAuthor = !!j.author_company_name;
+  const auName = isCompanyAuthor ? j.author_company_name : (j.author_name || 'Автор');
+  const auCompany = isCompanyAuthor ? 'Компания' : 'Участник LASTOP';
   const auColor = stableColor(auName);
-  const auLink = j.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(j.author_public_id) : 'javascript:void(0)';
+  const auLink = isCompanyAuthor
+    ? '/company.html?id=' + encodeURIComponent(j.author_company_slug || j.author_company_id)
+    : (j.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(j.author_public_id) : 'javascript:void(0)');
 
   const tagsHtml = (Array.isArray(j.tags) && j.tags.length)
     ? '<div class="tag-list" style="margin-top:8px">' + j.tags.map(t => '<span class="tag-pill">' + esc(t) + '</span>').join('') + '</div>'

@@ -706,10 +706,13 @@ function renderSections(){
 
 // ─── Render: Right sidebar ───
 function renderRight(){
-  const sellerName = item.author_name || 'Без имени';
-  const sellerColor = stableColor(sellerName);
+  const isCompanyAuthor = !!item.author_company_name;
+  const sellerName = isCompanyAuthor ? item.author_company_name : (item.author_name || 'Без имени');
+  const sellerColor = isCompanyAuthor ? (item.accent_color || '#1E8A4C') : stableColor(sellerName);
   const sellerInit = initials(sellerName);
-  const sellerHref = item.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(item.author_public_id) : '#';
+  const sellerHref = isCompanyAuthor
+    ? '/company.html?id=' + encodeURIComponent(item.author_company_slug || item.author_company_id)
+    : (item.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(item.author_public_id) : '#');
 
   const html =
     '<div class="card">' +
@@ -718,7 +721,7 @@ function renderRight(){
         '<div class="seller-av" style="background:' + esc(sellerColor) + '">' + esc(sellerInit) + '</div>' +
         '<div class="seller-info">' +
           '<div class="seller-name">' + esc(sellerName) + '</div>' +
-          '<div class="seller-role">' + (item.author_company_name ? esc(item.author_company_name) : 'Участник LASTOP') + '</div>' +
+          '<div class="seller-role">' + (isCompanyAuthor ? 'Компания' : 'Участник LASTOP') + '</div>' +
         '</div>' +
       '</a>' +
     '</div>' +
