@@ -252,7 +252,7 @@ html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);colo
       </a>
 
       <h1 class="auth-title">С возвращением 👋</h1>
-      <p class="auth-sub">Войдите в аккаунт, чтобы продолжить. Впервые на LASTOP? <a href="/register.html">Создать аккаунт</a></p>
+      <p class="auth-sub">Войдите в аккаунт, чтобы продолжить. Впервые на LASTOP? <a href="/register.html" id="registerLink">Создать аккаунт</a></p>
 
       <form id="loginForm" onsubmit="handleLogin(event)">
 
@@ -475,7 +475,8 @@ async function handleLogin(e){
     localStorage.setItem('token',d.token);
     localStorage.setItem('user',JSON.stringify(u));
     showToast('Добро пожаловать!','success');
-    setTimeout(()=>location.href='/',900);
+    const nextUrl = new URLSearchParams(location.search).get('next');
+    setTimeout(()=>location.href=nextUrl || '/',900);
   }catch{
     showToast('Ошибка соединения с сервером','error');
     btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
@@ -483,6 +484,15 @@ async function handleLogin(e){
 }
 
 function socialLogin(p){showToast('Вход через '+(p==='yandex'?'Яндекс ID':'VK ID')+' скоро появится','success');}
+
+// Если открыли login со ссылкой ?next=..., пробрасываем её на ссылку «Создать аккаунт»
+(function(){
+  const nx = new URLSearchParams(location.search).get('next');
+  if (nx) {
+    const a = document.getElementById('registerLink');
+    if (a) a.href = '/register.html?next=' + encodeURIComponent(nx);
+  }
+})();
 
 window.addEventListener('DOMContentLoaded',newCaptcha);
 </script>
