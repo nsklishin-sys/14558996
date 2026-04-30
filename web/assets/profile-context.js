@@ -109,7 +109,9 @@
       '.pcx-row-check svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:block}' +
       '.pcx-verified{display:inline-flex;align-items:center;width:12px;height:12px;color:var(--g);flex-shrink:0;margin-left:4px}' +
       '.pcx-verified svg{width:12px;height:12px;fill:currentColor;display:block}' +
-      '.pcx-create{color:var(--gmt);font-style:italic}';
+      '.pcx-create{color:var(--gmt);font-style:italic}' +
+      /* Глобальная защита: ограничиваем высоту выпадашки профиля и включаем скролл */
+      '.profile-dd{max-height:calc(100vh - 100px);overflow-y:auto}';
     var el = document.createElement('style');
     el.id = 'pcx-styles';
     el.textContent = css;
