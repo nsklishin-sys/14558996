@@ -504,7 +504,7 @@ async function renderSidebar(){
             '<div class="block-title">Связаться с компанией</div>'+
             '<div style="display:flex;flex-direction:column;gap:6px">'+
               chatters.map(m => {
-                const profileHref = m.user_public_id ? '/profile_user.html?id='+encodeURIComponent(m.user_public_id) : '#';
+                const profileHref = m.user_public_id ? '/chat.html?to='+encodeURIComponent(m.user_public_id) : '#';
                 const av = m.user_avatar
                   ? '<img src="'+escAttr(m.user_avatar)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
                   : esc(initials(m.user_name));
