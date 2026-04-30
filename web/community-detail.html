@@ -587,12 +587,19 @@ function renderPostCard(p){
   const isLiked=!!p.is_liked;
   const likesCount=p.likes_count||0;
   const commentsCount=p.comments_count||0;
+  // Шапка от лица сообщества (а не юзера-автора)
+  const communityName = p.community_name || communityTitle || 'Сообщество';
+  const communityColor = p.community_color || avc(communityName);
+  const communityAvHtml = p.community_avatar
+    ? `<img src="${esc(p.community_avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+    : ltr(communityName);
+  const authorLine = p.author ? `опубликовал ${esc(p.author)}` : '';
   return `<div class="post-card" id="post-${esc(p.public_id)}">
     <div class="post-head">
-      <div class="post-av" style="background:${avc(p.author||'U')}">${ltr(p.author||'U')}</div>
+      <div class="post-av" style="background:${communityColor};border-radius:8px;overflow:hidden">${communityAvHtml}</div>
       <div>
-        <div class="post-author">${esc(p.author||'')}</div>
-        <div class="post-time">${new Date(p.created_at).toLocaleString('ru-RU')}</div>
+        <div class="post-author">${esc(communityName)}</div>
+        <div class="post-time">${new Date(p.created_at).toLocaleString('ru-RU')}${authorLine ? ' · <span style="color:var(--gmt)">'+authorLine+'</span>' : ''}</div>
       </div>
     </div>
     <a href="/news-detail.html?id=${encodeURIComponent(p.public_id)}" class="post-link" style="text-decoration:none;color:inherit;display:block">

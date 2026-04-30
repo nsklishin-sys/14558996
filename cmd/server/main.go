@@ -482,33 +482,35 @@ func chatEscapeILike(q string) string {
 }
 
 type post struct {
-	ID             int64     `json:"id"`
-	PublicID       string    `json:"public_id"`
-	Type           string    `json:"type"`
-	Title          string    `json:"title"`
-	Content        string    `json:"content"`
-	Text           string    `json:"text"`
-	CoverURL       string    `json:"cover_url,omitempty"`
-	Tags           []string  `json:"tags"`
-	PrivacyLevel   string    `json:"privacy_level"`
-	LikesCount     int       `json:"likes_count"`
-	CommentsCount  int       `json:"comments_count"`
-	ViewsCount     int       `json:"views_count"`
-	SavesCount     int       `json:"saves_count"`
-	RepostsCount   int       `json:"reposts_count"`
-	IsLiked        bool      `json:"is_liked"`
-	IsSaved        bool      `json:"is_saved"`
-	IsReposted     bool      `json:"is_reposted"`
-	RepostedFromID int64     `json:"reposted_from_id,omitempty"`
-	Repost         *post     `json:"repost,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	AuthorID       int64     `json:"-"`
-	AuthorPublicID string    `json:"author_public_id"`
-	AuthorName     string    `json:"author"`
-	AuthorRole     string    `json:"author_role"`
-	AuthorAvatar   string    `json:"author_avatar,omitempty"`
-	CommunityID    int64     `json:"community_id,omitempty"`
-	CommunityName  string    `json:"community_name,omitempty"`
+	ID              int64     `json:"id"`
+	PublicID        string    `json:"public_id"`
+	Type            string    `json:"type"`
+	Title           string    `json:"title"`
+	Content         string    `json:"content"`
+	Text            string    `json:"text"`
+	CoverURL        string    `json:"cover_url,omitempty"`
+	Tags            []string  `json:"tags"`
+	PrivacyLevel    string    `json:"privacy_level"`
+	LikesCount      int       `json:"likes_count"`
+	CommentsCount   int       `json:"comments_count"`
+	ViewsCount      int       `json:"views_count"`
+	SavesCount      int       `json:"saves_count"`
+	RepostsCount    int       `json:"reposts_count"`
+	IsLiked         bool      `json:"is_liked"`
+	IsSaved         bool      `json:"is_saved"`
+	IsReposted      bool      `json:"is_reposted"`
+	RepostedFromID  int64     `json:"reposted_from_id,omitempty"`
+	Repost          *post     `json:"repost,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	AuthorID        int64     `json:"-"`
+	AuthorPublicID  string    `json:"author_public_id"`
+	AuthorName      string    `json:"author"`
+	AuthorRole      string    `json:"author_role"`
+	AuthorAvatar    string    `json:"author_avatar,omitempty"`
+	CommunityID     int64     `json:"community_id,omitempty"`
+	CommunityName   string    `json:"community_name,omitempty"`
+	CommunityAvatar string    `json:"community_avatar,omitempty"`
+	CommunityColor  string    `json:"community_color,omitempty"`
 }
 
 type notification struct {
@@ -10736,7 +10738,7 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		       FALSE,
 		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM post_saves ps WHERE ps.post_id = p.id AND ps.user_id = $3::bigint)), FALSE),
 		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $3::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN communities c ON c.id = p.community_id
@@ -10757,7 +10759,7 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
@@ -11067,7 +11069,7 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
 		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
@@ -11095,7 +11097,7 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
@@ -12295,7 +12297,7 @@ func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, lim
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
 		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
@@ -12356,7 +12358,7 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
 		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0)
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
@@ -12387,7 +12389,7 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
