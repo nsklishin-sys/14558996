@@ -550,7 +550,18 @@ function renderTopics(topics){
         '</div>' +
         '<div class="topic-title">' + esc(t.title) + '</div>' +
         '<div class="topic-meta-row">' +
-          '<span class="topic-meta-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="topic-meta-author">' + esc(t.author_name || 'Аноним') + '</span></span>' +
+          (function(){
+            // Приоритет автора: community > user (компании в форум-темах нет)
+            var authorName, authorIcon;
+            if (t.author_community_id && t.author_community_name) {
+              authorName = t.author_community_name;
+              authorIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+            } else {
+              authorName = t.author_name || 'Аноним';
+              authorIcon = '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+            }
+            return '<span class="topic-meta-item">' + authorIcon + '<span class="topic-meta-author">' + esc(authorName) + '</span></span>';
+          })() +
           '<span class="topic-meta-item"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + t.replies_count + ' ' + pluralRu(t.replies_count, ['ответ','ответа','ответов']) + '</span>' +
           '<span class="topic-meta-item"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' + t.views_count + ' ' + pluralRu(t.views_count, ['просмотр','просмотра','просмотров']) + '</span>' +
           '<span class="topic-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' + formatRelative(t.last_reply_at) + '</span>' +

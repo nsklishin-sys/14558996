@@ -599,6 +599,34 @@ async function loadApplications(){
 }
 
 // ─── Renderers ───
+function pickAuthor(item){
+  if (item.author_community_id && item.author_community_name) {
+    return {
+      name: item.author_community_name,
+      href: '/community-detail.html?id=' + item.author_community_id,
+      avatar: item.author_community_avatar || '',
+      color: item.author_community_color || '#5AB080',
+      kind: 'community'
+    };
+  }
+  if (item.author_company_id && item.author_company_name) {
+    return {
+      name: item.author_company_name,
+      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      avatar: item.author_company_logo || '',
+      color: '#1E8A4C',
+      kind: 'company'
+    };
+  }
+  return {
+    name: item.author_name || item.author || 'Участник',
+    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    avatar: item.author_avatar || '',
+    color: '#5A8A6A',
+    kind: 'user'
+  };
+}
+
 function renderAll(){
   document.getElementById('bcTitle').textContent = JOB.title || '';
   document.title = 'LASTOP GROUP — ' + (JOB.title || 'Вакансия');
@@ -611,10 +639,11 @@ function renderHero(){
   const cat = categoryByKey(j.category);
   const catColor = j.category_color || (cat && cat.color) || '#1E8A4C';
   const catLabel = j.category_label || (cat && cat.label) || j.category || '';
-  const auName = j.author_name || 'Автор';
-  const auCompany = j.author_company_name || '';
-  const auColor = stableColor(auName);
-  const auLink = j.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(j.author_public_id) : 'javascript:void(0)';
+  const author = pickAuthor(j);
+  const auName = author.name;
+  const auCompany = author.kind === 'company' ? 'Компания' : (author.kind === 'community' ? 'Сообщество' : 'Участник LASTOP');
+  const auColor = author.color || stableColor(auName);
+  const auLink = author.href || 'javascript:void(0)';
 
   const badges = [];
   if (catLabel){
@@ -745,13 +774,11 @@ function renderRight(){
   const right = document.getElementById('rightWrap');
   if (!JOB){ right.innerHTML = ''; return; }
   const j = JOB;
-  const isCompanyAuthor = !!j.author_company_name;
-  const auName = isCompanyAuthor ? j.author_company_name : (j.author_name || 'Автор');
-  const auCompany = isCompanyAuthor ? 'Компания' : 'Участник LASTOP';
-  const auColor = stableColor(auName);
-  const auLink = isCompanyAuthor
-    ? '/company-detail.html?id=' + encodeURIComponent(j.author_company_slug || j.author_company_id)
-    : (j.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(j.author_public_id) : 'javascript:void(0)');
+  const author = pickAuthor(j);
+  const auName = author.name;
+  const auCompany = author.kind === 'company' ? 'Компания' : (author.kind === 'community' ? 'Сообщество' : 'Участник LASTOP');
+  const auColor = author.color || stableColor(auName);
+  const auLink = author.href || 'javascript:void(0)';
 
   const tagsHtml = (Array.isArray(j.tags) && j.tags.length)
     ? '<div class="tag-list" style="margin-top:8px">' + j.tags.map(t => '<span class="tag-pill">' + esc(t) + '</span>').join('') + '</div>'

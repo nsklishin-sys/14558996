@@ -606,6 +606,34 @@ async function loadItem(){
 }
 
 // ─── Render: Hero ───
+function pickAuthor(item){
+  if (item.author_community_id && item.author_community_name) {
+    return {
+      name: item.author_community_name,
+      href: '/community-detail.html?id=' + item.author_community_id,
+      avatar: item.author_community_avatar || '',
+      color: item.author_community_color || '#5AB080',
+      kind: 'community'
+    };
+  }
+  if (item.author_company_id && item.author_company_name) {
+    return {
+      name: item.author_company_name,
+      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      avatar: item.author_company_logo || '',
+      color: '#1E8A4C',
+      kind: 'company'
+    };
+  }
+  return {
+    name: item.author_name || item.author || 'Участник',
+    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    avatar: item.author_avatar || '',
+    color: '#5A8A6A',
+    kind: 'user'
+  };
+}
+
 function renderHero(){
   const isAuthor = !!item.viewer_is_author;
   const isLogged = !!tk();
@@ -765,13 +793,11 @@ function renderSections(){
 
 // ─── Render: Right sidebar ───
 function renderRight(){
-  const isCompanyAuthor = !!item.author_company_name;
-  const sellerName = isCompanyAuthor ? item.author_company_name : (item.author_name || 'Без имени');
-  const sellerColor = isCompanyAuthor ? (item.accent_color || '#1E8A4C') : stableColor(sellerName);
+  const author = pickAuthor(item);
+  const sellerName = author.name || 'Без имени';
+  const sellerColor = author.color || stableColor(sellerName);
   const sellerInit = initials(sellerName);
-  const sellerHref = isCompanyAuthor
-    ? '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || item.author_company_id)
-    : (item.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(item.author_public_id) : '#');
+  const sellerHref = author.href || '#';
 
   const html =
     '<div class="card">' +
@@ -780,7 +806,7 @@ function renderRight(){
         '<div class="seller-av" style="background:' + esc(sellerColor) + '">' + esc(sellerInit) + '</div>' +
         '<div class="seller-info">' +
           '<div class="seller-name">' + esc(sellerName) + '</div>' +
-          '<div class="seller-role">' + (isCompanyAuthor ? 'Компания' : 'Участник LASTOP') + '</div>' +
+          '<div class="seller-role">' + (author.kind === 'company' ? 'Компания' : (author.kind === 'community' ? 'Сообщество' : 'Участник LASTOP')) + '</div>' +
         '</div>' +
       '</a>' +
     '</div>' +
