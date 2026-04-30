@@ -726,17 +726,51 @@ const CAT_ICONS={
   'Публикации':'<path d="M4 6h16M4 12h16M4 18h10"/>',
 };
 
+
+function pickPostAuthor(p){
+  if (p.community_id && p.community_name) {
+    return {
+      name: p.community_name,
+      href: '/community-detail.html?id=' + p.community_id,
+      avatar: p.community_avatar || '',
+      bgColor: p.community_color || (typeof avc==='function' ? avc(p.community_name) : '#5AB080'),
+      subline: p.author ? 'опубликовал ' + p.author : '',
+      fromCommunity: true,
+      fromCompany: false,
+    };
+  }
+  if (p.author_company_id && p.author_company_name) {
+    return {
+      name: p.author_company_name,
+      href: '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || ''),
+      avatar: p.author_company_logo || '',
+      bgColor: typeof avc==='function' ? avc(p.author_company_name) : '#5AB080',
+      subline: p.author ? 'опубликовал ' + p.author : '',
+      fromCommunity: false,
+      fromCompany: true,
+    };
+  }
+  return {
+    name: p.author || '',
+    href: p.author_public_id ? '/profile_user.html?id=' + p.author_public_id : '#',
+    avatar: p.author_avatar || '',
+    bgColor: typeof avc==='function' ? avc(p.author || '') : '#5AB080',
+    subline: p.author_role || '',
+    fromCommunity: false,
+    fromCompany: false,
+  };
+}
+
 function renderCard(n,idx){
   const postKey=n.public_id||String(n.id||'');
-  const fromCommunity=Boolean(n.community_id&&n.community_name);
-  const fromCompany=!fromCommunity&&Boolean(n.author_company_id&&n.author_company_name);
-  const headerName=fromCommunity?n.community_name:(fromCompany?n.author_company_name:n.author);
-  const headerAvatar=fromCommunity?(n.community_avatar||''):(fromCompany?(n.author_company_logo||''):n.author_avatar);
-  const headerBg=fromCommunity?(n.community_color||avc(headerName)):avc(headerName);
-  const headerHref=fromCommunity
-    ?('/community-detail.html?id='+encodeURIComponent(n.community_id))
-    :(fromCompany&&n.author_company_slug?('/company-detail.html?id='+encodeURIComponent(n.author_company_slug)):'');
-  const subline=fromCommunity?`опубликовал ${n.author||''}`:(fromCompany?`опубликовал ${n.author||''}`:'');
+  const authorMeta=pickPostAuthor(n);
+  const fromCommunity=authorMeta.fromCommunity;
+  const fromCompany=authorMeta.fromCompany;
+  const headerName=authorMeta.name;
+  const headerAvatar=authorMeta.avatar;
+  const headerBg=authorMeta.bgColor;
+  const headerHref=authorMeta.href;
+  const subline=authorMeta.subline;
   const badgeCls=BADGE[n.cat]||'badge-news';
   const isLiked=likedSet.has(postKey);
   const gradient=CAT_GRADIENTS[n.cat]||'linear-gradient(135deg,var(--g),var(--gm))';
