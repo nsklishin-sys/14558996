@@ -7359,6 +7359,14 @@ CREATE INDEX IF NOT EXISTS posts_author_company_idx ON posts(author_company_id) 
 CREATE INDEX IF NOT EXISTS projects_author_company_idx ON projects(author_company_id) WHERE author_company_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS jobs_author_company_idx ON jobs(author_company_id) WHERE author_company_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS catalog_items_author_company_idx ON catalog_items(author_company_id) WHERE author_company_id IS NOT NULL;
+
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
+ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
+ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
+
+CREATE INDEX IF NOT EXISTS jobs_author_community_idx ON jobs(author_community_id) WHERE author_community_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS catalog_items_author_community_idx ON catalog_items(author_community_id) WHERE author_community_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS forum_topics_author_community_idx ON forum_topics(author_community_id) WHERE author_community_id IS NOT NULL;
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -16371,6 +16379,29 @@ func resolveActiveCompanyID(db *sql.DB, r *http.Request, userID, requestedID int
 		if !canPublish {
 			return 0, fmt.Errorf("user %d cannot publish for company %d", userID, cid)
 		}
+	}
+	return cid, nil
+}
+
+func resolveActiveCommunityID(db *sql.DB, r *http.Request, userID, requestedID int64) (int64, error) {
+	cid := requestedID
+	if cid == 0 {
+		if h := r.Header.Get("X-Active-Community-Id"); h != "" {
+			parsed, err := strconv.ParseInt(h, 10, 64)
+			if err == nil && parsed > 0 {
+				cid = parsed
+			}
+		}
+	}
+	if cid == 0 {
+		return 0, nil
+	}
+	role, err := getUserCommunityRole(db, cid, userID)
+	if err != nil {
+		return 0, err
+	}
+	if role != "owner" && role != "moderator" && role != "admin" {
+		return 0, fmt.Errorf("user %d cannot publish for community %d (role=%s)", userID, cid, role)
 	}
 	return cid, nil
 }
