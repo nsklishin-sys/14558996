@@ -92,6 +92,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .flt-input:focus{border-color:var(--g)}
 .flt-counter{font-size:11px;color:var(--gmt);font-weight:700;flex-shrink:0}
 
+/* CATEGORY BAR */
+.cat-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 12px;box-shadow:var(--sh);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cat-chip{padding:6px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bdr);background:#fff;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap}
+.cat-chip:hover{background:var(--gp);border-color:var(--gb);color:var(--g)}
+.cat-chip.active{background:var(--g);color:#fff;border-color:var(--g)}
+
 /* GRID */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
 
@@ -215,6 +221,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="flt-counter" id="counter">0 компаний</span>
   </div>
 
+  <div class="cat-bar" id="catBar"></div>
+
   <div id="feed">
     <div class="placeholder">Загрузка…</div>
   </div>
@@ -250,7 +258,9 @@ const tk = () => localStorage.getItem('token');
 
 let allCompanies = [];
 let myCompanies = [];
+let categoryGroups = []; // [{key, label}]
 let mode = 'all';
+let activeGroup = '';
 let searchQuery = '';
 let viewerID = null;
 
@@ -288,12 +298,15 @@ async function loadProfile(){
 
 async function loadAll(){
   try{
-    const [allR,myR]=await Promise.all([
+    const [allR,myR,catR]=await Promise.all([
       fetch(API+'/companies?limit=100',{headers:authHeaders()}).then(r=>r.json()),
-      tk()?fetch(API+'/companies?tab=my&limit=50',{headers:authHeaders()}).then(r=>r.json()):Promise.resolve({items:[]})
+      tk()?fetch(API+'/companies?tab=my&limit=50',{headers:authHeaders()}).then(r=>r.json()):Promise.resolve({items:[]}),
+      fetch(API+'/catalog/categories').then(r=>r.json()).catch(()=>({groups:[]}))
     ]);
     allCompanies=allR.items||[];
     myCompanies=myR.items||[];
+    categoryGroups=(catR.groups||[]).map(g=>({key:g.key,label:g.label}));
+    renderCatBar();
     renderStats();
     renderMyList();
     renderRecom();
@@ -302,6 +315,24 @@ async function loadAll(){
     console.error('loadAll',err);
     document.getElementById('feed').innerHTML='<div class="placeholder">Не удалось загрузить компании.</div>';
   }
+}
+
+function renderCatBar(){
+  const bar=document.getElementById('catBar');
+  if(!categoryGroups.length){bar.style.display='none';return;}
+  const chips=[
+    '<button class="cat-chip'+(activeGroup===''?' active':'')+'" onclick="setGroup(\'\')">Все отрасли</button>',
+    ...categoryGroups.map(g=>
+      '<button class="cat-chip'+(activeGroup===g.label?' active':'')+'" onclick="setGroup('+JSON.stringify(g.label).replace(/"/g,'&quot;')+')">'+esc(g.label)+'</button>'
+    )
+  ];
+  bar.innerHTML=chips.join('');
+}
+
+function setGroup(label){
+  activeGroup=label;
+  renderCatBar();
+  renderFeed();
 }
 
 function setMode(m){
@@ -321,6 +352,9 @@ function getFilteredList(){
     list=list.filter(c=>myIDs.has(c.id));
   }else if(mode==='verified'){
     list=list.filter(c=>c.is_verified);
+  }
+  if(activeGroup){
+    list=list.filter(c=>c.category_group===activeGroup);
   }
   if(searchQuery){
     const q=searchQuery.toLowerCase();
