@@ -342,6 +342,94 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 </div>
 
+<div class="modal-bg" id="modalPosition" onclick="if(event.target===this)closePosition()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head">
+      <span class="modal-title" id="pTitle">Должность</span>
+      <button class="modal-close" onclick="closePosition()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="fld">
+        <label class="fld-label">Выберите из списка</label>
+        <select class="fld-select" id="pPreset" onchange="onPresetChange()">
+          <option value="">— Не указана —</option>
+          <optgroup label="Руководство">
+            <option>Генеральный директор</option>
+            <option>Заместитель генерального директора</option>
+            <option>Исполнительный директор</option>
+            <option>Финансовый директор</option>
+            <option>Коммерческий директор</option>
+            <option>Технический директор</option>
+            <option>Операционный директор</option>
+            <option>Директор по развитию</option>
+          </optgroup>
+          <optgroup label="Финансы и учёт">
+            <option>Главный бухгалтер</option>
+            <option>Бухгалтер</option>
+            <option>Финансовый аналитик</option>
+            <option>Экономист</option>
+          </optgroup>
+          <optgroup label="Продажи и закупки">
+            <option>Руководитель отдела продаж</option>
+            <option>Менеджер по продажам</option>
+            <option>Менеджер по работе с клиентами</option>
+            <option>Менеджер по закупкам</option>
+            <option>Категорийный менеджер</option>
+          </optgroup>
+          <optgroup label="Логистика">
+            <option>Руководитель отдела логистики</option>
+            <option>Логист</option>
+            <option>Менеджер по транспорту</option>
+            <option>Менеджер ВЭД</option>
+            <option>Таможенный декларант</option>
+            <option>Кладовщик</option>
+            <option>Диспетчер</option>
+          </optgroup>
+          <optgroup label="Производство">
+            <option>Руководитель производства</option>
+            <option>Технолог</option>
+            <option>Инженер</option>
+            <option>Главный инженер</option>
+            <option>Контролёр качества</option>
+          </optgroup>
+          <optgroup label="ИТ">
+            <option>Руководитель ИТ-отдела</option>
+            <option>Системный администратор</option>
+            <option>Разработчик</option>
+            <option>DevOps-инженер</option>
+            <option>Аналитик данных</option>
+          </optgroup>
+          <optgroup label="HR и маркетинг">
+            <option>HR-директор</option>
+            <option>HR-менеджер</option>
+            <option>Рекрутер</option>
+            <option>Маркетолог</option>
+            <option>PR-менеджер</option>
+            <option>SMM-менеджер</option>
+          </optgroup>
+          <optgroup label="Юристы и поддержка">
+            <option>Юрист</option>
+            <option>Юрисконсульт</option>
+            <option>Секретарь</option>
+            <option>Офис-менеджер</option>
+            <option>Ассистент руководителя</option>
+          </optgroup>
+          <option value="__custom__">Своё значение…</option>
+        </select>
+      </div>
+      <div class="fld" id="pCustomWrap" style="display:none">
+        <label class="fld-label">Введите должность</label>
+        <input class="fld-input" id="pCustom" maxlength="100" placeholder="Например: Руководитель проекта">
+        <span class="fld-hint">Максимум 100 символов</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closePosition()">Отмена</button>
+      <button class="btn btn-primary" id="pSubmit" onclick="submitPosition()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -780,18 +868,73 @@ async function renderMembers(wrap){
 }
 
 async function editPosition(userID, oldPosition, name){
-  const newPos = prompt('Должность для ' + name + ':', oldPosition || '');
-  if (newPos === null) return;
+  window.__pEditing = { userID, name };
+  document.getElementById('pTitle').textContent = 'Должность для ' + name;
+  const sel = document.getElementById('pPreset');
+  const customWrap = document.getElementById('pCustomWrap');
+  const customInp = document.getElementById('pCustom');
+  // Проверим есть ли oldPosition в списке шаблонов
+  let matched = false;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === '__custom__') continue;
+    if (sel.options[i].text === (oldPosition || '')) { sel.selectedIndex = i; matched = true; break; }
+  }
+  if (!matched && oldPosition) {
+    sel.value = '__custom__';
+    customWrap.style.display = '';
+    customInp.value = oldPosition;
+  } else {
+    customWrap.style.display = 'none';
+    customInp.value = '';
+    if (!matched) sel.selectedIndex = 0;
+  }
+  document.getElementById('modalPosition').classList.add('open');
+  setTimeout(() => sel.focus(), 100);
+}
+
+function closePosition(){
+  document.getElementById('modalPosition').classList.remove('open');
+  window.__pEditing = null;
+}
+
+function onPresetChange(){
+  const sel = document.getElementById('pPreset');
+  const customWrap = document.getElementById('pCustomWrap');
+  if (sel.value === '__custom__') {
+    customWrap.style.display = '';
+    setTimeout(() => document.getElementById('pCustom').focus(), 50);
+  } else {
+    customWrap.style.display = 'none';
+  }
+}
+
+async function submitPosition(){
+  const ed = window.__pEditing;
+  if (!ed) return;
+  const sel = document.getElementById('pPreset');
+  let newPos = '';
+  if (sel.value === '__custom__') {
+    newPos = document.getElementById('pCustom').value.trim();
+  } else if (sel.value !== '') {
+    newPos = sel.options[sel.selectedIndex].text;
+  }
+  const btn = document.getElementById('pSubmit');
+  btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + userID, {
+    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + ed.userID, {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ position: newPos.trim() })
+      body: JSON.stringify({ position: newPos })
     });
     if (!r.ok) { toast('Не удалось'); return; }
     toast('Должность обновлена', true);
+    closePosition();
     renderTab();
-  } catch (err) { toast('Ошибка: ' + err.message); }
+  } catch (err) {
+    toast('Ошибка: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
 }
 
 async function togglePublic(userID, isPublic){
@@ -1010,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeCreate(); closeAccept(); closeInvite();
+      closeCreate(); closeAccept(); closeInvite(); closePosition();
     }
   });
 });
