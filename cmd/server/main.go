@@ -16024,7 +16024,7 @@ func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
 		SELECT c.id, c.public_id, c.slug, c.owner_user_id,
 			COALESCE(u.full_name, u.handle, ''),
 			c.name, c.description, c.region, c.city,
-			c.website, c.email, c.phone,
+			c.website, c.email, c.phone, c.logo_image,
 			c.accent_color, c.category,
 			COALESCE(array_to_json(c.tags), '[]'::json),
 			c.is_verified, c.status,
@@ -16049,7 +16049,7 @@ func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
 		if err := rows.Scan(
 			&c.ID, &c.PublicID, &c.Slug, &c.OwnerUserID, &c.OwnerName,
 			&c.Name, &c.Description, &c.Region, &c.City,
-			&c.Website, &c.Email, &c.Phone,
+			&c.Website, &c.Email, &c.Phone, &c.LogoImage,
 			&c.AccentColor, &c.Category, &tagsJSON,
 			&c.IsVerified, &c.Status, &c.MembersCount,
 			&c.CreatedAt, &c.UpdatedAt,
