@@ -826,7 +826,7 @@ async function renderInvites(wrap){
     const d = await r.json();
     const invites = d.invites || [];
     const rows = invites.map(inv => {
-      const url = location.origin + '/register.html?invite=' + encodeURIComponent(inv.code);
+      const url = location.origin + '/company-detail.html?id=' + encodeURIComponent(currentCompany.slug) + '&invite=' + encodeURIComponent(inv.code);
       const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
       const usedUp = inv.max_uses > 0 && inv.used_count >= inv.max_uses;
       const inactive = !inv.is_active || expired || usedUp;
