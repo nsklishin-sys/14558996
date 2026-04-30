@@ -5668,6 +5668,7 @@ func main() {
 			}
 			rows, err := db.Query(`
 				SELECT cm.user_id, cm.role, cm.position, cm.joined_at, cm.is_public,
+					cm.can_edit_profile, cm.can_manage_members, cm.can_publish, cm.can_chat,
 					COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
 					COALESCE(u.avatar_url, '')
 				FROM company_members cm
@@ -5681,22 +5682,34 @@ func main() {
 			}
 			defer rows.Close()
 			type memberOut struct {
-				UserID       int64     `json:"user_id"`
-				Role         string    `json:"role"`
-				Position     string    `json:"position"`
-				JoinedAt     time.Time `json:"joined_at"`
-				IsPublic     bool      `json:"is_public"`
-				UserPublicID string    `json:"user_public_id"`
-				UserName     string    `json:"user_name"`
-				UserAvatar   string    `json:"user_avatar,omitempty"`
+				UserID           int64     `json:"user_id"`
+				Role             string    `json:"role"`
+				Position         string    `json:"position"`
+				JoinedAt         time.Time `json:"joined_at"`
+				IsPublic         bool      `json:"is_public"`
+				CanEditProfile   bool      `json:"can_edit_profile"`
+				CanManageMembers bool      `json:"can_manage_members"`
+				CanPublish       bool      `json:"can_publish"`
+				CanChat          bool      `json:"can_chat"`
+				UserPublicID     string    `json:"user_public_id"`
+				UserName         string    `json:"user_name"`
+				UserAvatar       string    `json:"user_avatar,omitempty"`
 			}
 			out := []memberOut{}
 			for rows.Next() {
 				var m memberOut
 				if err := rows.Scan(&m.UserID, &m.Role, &m.Position, &m.JoinedAt, &m.IsPublic,
+					&m.CanEditProfile, &m.CanManageMembers, &m.CanPublish, &m.CanChat,
 					&m.UserPublicID, &m.UserName, &m.UserAvatar); err != nil {
 					http.Error(w, "internal", http.StatusInternalServerError)
 					return
+				}
+				// Owner всегда имеет все права (даже если в БД иначе)
+				if m.Role == "owner" {
+					m.CanEditProfile = true
+					m.CanManageMembers = true
+					m.CanPublish = true
+					m.CanChat = true
 				}
 				out = append(out, m)
 			}
@@ -5746,8 +5759,12 @@ func main() {
 
 			// PATCH
 			var req struct {
-				Position *string `json:"position"`
-				IsPublic *bool   `json:"is_public"`
+				Position         *string `json:"position"`
+				IsPublic         *bool   `json:"is_public"`
+				CanEditProfile   *bool   `json:"can_edit_profile"`
+				CanManageMembers *bool   `json:"can_manage_members"`
+				CanPublish       *bool   `json:"can_publish"`
+				CanChat          *bool   `json:"can_chat"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "bad json", http.StatusBadRequest)
@@ -5757,8 +5774,19 @@ func main() {
 				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "должность не более 100 символов"})
 				return
 			}
-			if req.Position == nil && req.IsPublic == nil {
+			if req.Position == nil && req.IsPublic == nil &&
+				req.CanEditProfile == nil && req.CanManageMembers == nil &&
+				req.CanPublish == nil && req.CanChat == nil {
 				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нет полей для обновления"})
+				return
+			}
+			// Запрещаем менять права owner-у — у него всегда полный набор
+			var targetRole string
+			if err := db.QueryRow(`SELECT role FROM company_members WHERE company_id=$1 AND user_id=$2`,
+				companyID, targetUserID).Scan(&targetRole); err == nil && targetRole == "owner" &&
+				(req.CanEditProfile != nil || req.CanManageMembers != nil ||
+					req.CanPublish != nil || req.CanChat != nil) {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "права владельца изменить нельзя"})
 				return
 			}
 			var sets []string
@@ -5770,6 +5798,22 @@ func main() {
 			if req.IsPublic != nil {
 				args = append(args, *req.IsPublic)
 				sets = append(sets, fmt.Sprintf("is_public = $%d", len(args)))
+			}
+			if req.CanEditProfile != nil {
+				args = append(args, *req.CanEditProfile)
+				sets = append(sets, fmt.Sprintf("can_edit_profile = $%d", len(args)))
+			}
+			if req.CanManageMembers != nil {
+				args = append(args, *req.CanManageMembers)
+				sets = append(sets, fmt.Sprintf("can_manage_members = $%d", len(args)))
+			}
+			if req.CanPublish != nil {
+				args = append(args, *req.CanPublish)
+				sets = append(sets, fmt.Sprintf("can_publish = $%d", len(args)))
+			}
+			if req.CanChat != nil {
+				args = append(args, *req.CanChat)
+				sets = append(sets, fmt.Sprintf("can_chat = $%d", len(args)))
 			}
 			args = append(args, companyID, targetUserID)
 			q := "UPDATE company_members SET " + strings.Join(sets, ", ") +
@@ -7235,6 +7279,10 @@ ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES c
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS responsible_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE company_members ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE company_members ADD COLUMN IF NOT EXISTS can_edit_profile BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE company_members ADD COLUMN IF NOT EXISTS can_manage_members BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE company_members ADD COLUMN IF NOT EXISTS can_publish BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE company_members ADD COLUMN IF NOT EXISTS can_chat BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS posts_author_company_idx ON posts(author_company_id) WHERE author_company_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS projects_author_company_idx ON projects(author_company_id) WHERE author_company_id IS NOT NULL;
@@ -16162,7 +16210,8 @@ func derefInt64(v *int64) int64 {
 // публикуется контент. Сначала смотрит body-параметр requestedID,
 // затем header X-Active-Company-Id. Возвращает 0 если ни один не
 // задан (личный контекст), либо id компании после валидации
-// что юзер в ней состоит. Если юзер не состоит — возвращает ошибку.
+// что юзер в ней состоит и может публиковать (owner всегда может).
+// Если юзер не состоит или не может публиковать — возвращает ошибку.
 func resolveActiveCompanyID(db *sql.DB, r *http.Request, userID, requestedID int64) (int64, error) {
 	cid := requestedID
 	if cid == 0 {
@@ -16176,12 +16225,21 @@ func resolveActiveCompanyID(db *sql.DB, r *http.Request, userID, requestedID int
 	if cid == 0 {
 		return 0, nil
 	}
-	isM, _, err := userIsCompanyMember(db, userID, cid)
+	isM, role, err := userIsCompanyMember(db, userID, cid)
 	if err != nil {
 		return 0, err
 	}
 	if !isM {
 		return 0, fmt.Errorf("user %d is not a member of company %d", userID, cid)
+	}
+	if role != "owner" {
+		var canPublish bool
+		if err := db.QueryRow(`SELECT can_publish FROM company_members WHERE company_id=$1 AND user_id=$2`, cid, userID).Scan(&canPublish); err != nil {
+			return 0, err
+		}
+		if !canPublish {
+			return 0, fmt.Errorf("user %d cannot publish for company %d", userID, cid)
+		}
 	}
 	return cid, nil
 }
