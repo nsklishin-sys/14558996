@@ -871,6 +871,10 @@ async function switchCompany(publicID){
 document.addEventListener('DOMContentLoaded', async () => {
   await loadProfile();
   await loadCompanies();
+  // Если пришли с ?create=1 (например, из /companies.html) — сразу открыть модалку
+  if (new URLSearchParams(location.search).get('create') === '1') {
+    setTimeout(() => openCreate(), 200);
+  }
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeCreate(); closeAccept(); closeInvite();
@@ -878,5 +882,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 </script>
+<script src="/assets/profile-context.js" defer></script>
 </body>
 </html>
