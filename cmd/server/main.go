@@ -203,24 +203,27 @@ type friendCandidateDTO struct {
 }
 
 type community struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	Category    string    `json:"category"`
-	Description string    `json:"description"`
-	Region      string    `json:"region"`
-	Website     string    `json:"website"`
-	Email       string    `json:"email"`
-	Phone       string    `json:"phone"`
-	AvatarURL   string    `json:"avatar_url"`
-	CoverURL    string    `json:"cover_url"`
-	Color       string    `json:"color"`
-	Tags        []string  `json:"tags"`
-	Privacy     string    `json:"privacy_level"`
-	IsMember    bool      `json:"is_member"`
-	MyRole      string    `json:"my_role,omitempty"`
-	Members     int       `json:"members_count"`
-	CreatorID   string    `json:"creator_id,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                   int64     `json:"id"`
+	Name                 string    `json:"name"`
+	Category             string    `json:"category"`
+	Description          string    `json:"description"`
+	Region               string    `json:"region"`
+	Website              string    `json:"website"`
+	Email                string    `json:"email"`
+	Phone                string    `json:"phone"`
+	AvatarURL            string    `json:"avatar_url"`
+	CoverURL             string    `json:"cover_url"`
+	Color                string    `json:"color"`
+	Tags                 []string  `json:"tags"`
+	Privacy              string    `json:"privacy_level"`
+	IsMember             bool      `json:"is_member"`
+	MyRole               string    `json:"my_role,omitempty"`
+	Members              int       `json:"members_count"`
+	CreatorID            string    `json:"creator_id,omitempty"`
+	CreatedAt            time.Time `json:"created_at"`
+	ContactUserPublicID  string    `json:"contact_user_public_id,omitempty"`
+	ContactUserName      string    `json:"contact_user_name,omitempty"`
+	ContactUserAvatarURL string    `json:"contact_user_avatar,omitempty"`
 }
 
 type createCommunityRequest struct {
@@ -238,18 +241,19 @@ type createCommunityRequest struct {
 }
 
 type updateCommunityRequest struct {
-	Name         *string   `json:"name,omitempty"`
-	Category     *string   `json:"category,omitempty"`
-	Description  *string   `json:"description,omitempty"`
-	Region       *string   `json:"region,omitempty"`
-	Website      *string   `json:"website,omitempty"`
-	Email        *string   `json:"email,omitempty"`
-	Phone        *string   `json:"phone,omitempty"`
-	Tags         *[]string `json:"tags,omitempty"`
-	PrivacyLevel *string   `json:"privacy_level,omitempty"`
-	AvatarURL    *string   `json:"avatar_url,omitempty"`
-	CoverURL     *string   `json:"cover_url,omitempty"`
-	Color        *string   `json:"color,omitempty"`
+	Name                *string   `json:"name,omitempty"`
+	Category            *string   `json:"category,omitempty"`
+	Description         *string   `json:"description,omitempty"`
+	Region              *string   `json:"region,omitempty"`
+	Website             *string   `json:"website,omitempty"`
+	Email               *string   `json:"email,omitempty"`
+	Phone               *string   `json:"phone,omitempty"`
+	Tags                *[]string `json:"tags,omitempty"`
+	PrivacyLevel        *string   `json:"privacy_level,omitempty"`
+	AvatarURL           *string   `json:"avatar_url,omitempty"`
+	CoverURL            *string   `json:"cover_url,omitempty"`
+	Color               *string   `json:"color,omitempty"`
+	ContactUserPublicID *string   `json:"contact_user_public_id,omitempty"`
 }
 
 type communityMemberDTO struct {
@@ -6543,7 +6547,8 @@ ALTER TABLE communities
     ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS contact_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS communities_created_at_idx
 ON communities(created_at DESC);
@@ -9956,9 +9961,13 @@ func getCommunityByID(db *sql.DB, communityID, authUserID int64, hasAuth bool) (
 		       ) AS is_member,
 		       COALESCE(cm_user.role, ''),
 		       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = c.id) AS members_count,
-		       c.created_at
+		       c.created_at,
+		       COALESCE(cu.public_id, ''),
+		       COALESCE(cu.full_name, cu.handle, ''),
+		       COALESCE(cu.avatar_url, '')
 		FROM communities c
 		LEFT JOIN users u ON u.id = c.creator_id
+		LEFT JOIN users cu ON cu.id = c.contact_user_id
 		LEFT JOIN community_members cm_user
 		       ON cm_user.community_id = c.id
 		      AND cm_user.user_id = $2::bigint
@@ -9982,6 +9991,9 @@ func getCommunityByID(db *sql.DB, communityID, authUserID int64, hasAuth bool) (
 		&item.MyRole,
 		&item.Members,
 		&item.CreatedAt,
+		&item.ContactUserPublicID,
+		&item.ContactUserName,
+		&item.ContactUserAvatarURL,
 	)
 	if err != nil {
 		return community{}, err
@@ -10392,6 +10404,40 @@ func updateCommunity(db *sql.DB, communityID, userID int64, req updateCommunityR
 		sets = append(sets, fmt.Sprintf("color=$%d", i))
 		args = append(args, v)
 		i++
+	}
+	if req.ContactUserPublicID != nil {
+		if role != "owner" {
+			return community{}, fmt.Errorf("%w: назначить контактное лицо может только владелец", errForbidden)
+		}
+		trimmed := strings.TrimSpace(*req.ContactUserPublicID)
+		if trimmed == "" {
+			sets = append(sets, fmt.Sprintf("contact_user_id=$%d", i))
+			args = append(args, sql.NullInt64{})
+			i++
+		} else {
+			var contactID int64
+			if err := db.QueryRow(`SELECT id FROM users WHERE public_id=$1`, trimmed).Scan(&contactID); err != nil {
+				if err == sql.ErrNoRows {
+					return community{}, fmt.Errorf("%w: контактное лицо не найдено", errValidation)
+				}
+				return community{}, err
+			}
+
+			var memberRole string
+			err := db.QueryRow(
+				`SELECT role FROM community_members WHERE community_id=$1 AND user_id=$2`,
+				communityID, contactID,
+			).Scan(&memberRole)
+			if err == sql.ErrNoRows {
+				return community{}, fmt.Errorf("%w: контактным лицом может быть только участник сообщества", errValidation)
+			}
+			if err != nil {
+				return community{}, err
+			}
+			sets = append(sets, fmt.Sprintf("contact_user_id=$%d", i))
+			args = append(args, contactID)
+			i++
+		}
 	}
 	if req.Tags != nil {
 		v, err := validateTags(*req.Tags)
