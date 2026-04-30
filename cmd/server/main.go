@@ -8046,22 +8046,26 @@ func generateForumPublicID(prefix string) (string, error) {
 
 // forumTopic — структура темы для JSON-ответа
 type forumTopic struct {
-	ID             int64     `json:"id"`
-	PublicID       string    `json:"public_id"`
-	CategoryKey    string    `json:"category_key"`
-	CategoryLabel  string    `json:"category_label"`
-	CategoryColor  string    `json:"category_color"`
-	Title          string    `json:"title"`
-	AuthorID       int64     `json:"author_id"`
-	AuthorPublicID string    `json:"author_public_id"`
-	AuthorName     string    `json:"author_name"`
-	CreatedAt      time.Time `json:"created_at"`
-	LastReplyAt    time.Time `json:"last_reply_at"`
-	ViewsCount     int       `json:"views_count"`
-	RepliesCount   int       `json:"replies_count"`
-	IsPinned       bool      `json:"is_pinned"`
-	IsClosed       bool      `json:"is_closed"`
-	ViewerHasLiked bool      `json:"viewer_has_liked,omitempty"`
+	ID                    int64     `json:"id"`
+	PublicID              string    `json:"public_id"`
+	CategoryKey           string    `json:"category_key"`
+	CategoryLabel         string    `json:"category_label"`
+	CategoryColor         string    `json:"category_color"`
+	Title                 string    `json:"title"`
+	AuthorID              int64     `json:"author_id"`
+	AuthorPublicID        string    `json:"author_public_id"`
+	AuthorName            string    `json:"author_name"`
+	AuthorCommunityID     int64     `json:"author_community_id,omitempty"`
+	AuthorCommunityName   string    `json:"author_community_name,omitempty"`
+	AuthorCommunityAvatar string    `json:"author_community_avatar,omitempty"`
+	AuthorCommunityColor  string    `json:"author_community_color,omitempty"`
+	CreatedAt             time.Time `json:"created_at"`
+	LastReplyAt           time.Time `json:"last_reply_at"`
+	ViewsCount            int       `json:"views_count"`
+	RepliesCount          int       `json:"replies_count"`
+	IsPinned              bool      `json:"is_pinned"`
+	IsClosed              bool      `json:"is_closed"`
+	ViewerHasLiked        bool      `json:"viewer_has_liked,omitempty"`
 }
 
 // getTopicByPublicID возвращает id темы по public_id.
@@ -8164,39 +8168,43 @@ func getResumeByPublicID(db *sql.DB, publicID string) (int64, error) {
 
 // jobItem — структура вакансии для ответа API
 type jobItem struct {
-	ID                 int64     `json:"id"`
-	PublicID           string    `json:"public_id"`
-	AuthorUserID       int64     `json:"author_user_id"`
-	AuthorPublicID     string    `json:"author_public_id"`
-	AuthorName         string    `json:"author_name"`
-	AuthorCompanyID    int64     `json:"author_company_id,omitempty"`
-	AuthorCompanyName  string    `json:"author_company_name,omitempty"`
-	AuthorCompanySlug  string    `json:"author_company_slug,omitempty"`
-	Title              string    `json:"title"`
-	Description        string    `json:"description"`
-	Category           string    `json:"category"`
-	CategoryLabel      string    `json:"category_label"`
-	CategoryColor      string    `json:"category_color"`
-	City               string    `json:"city"`
-	Address            string    `json:"address"`
-	WorkFormat         string    `json:"work_format"`
-	SalaryFrom         *int64    `json:"salary_from"`
-	SalaryTo           *int64    `json:"salary_to"`
-	SalaryCurrency     string    `json:"salary_currency"`
-	ExperienceMinYears int       `json:"experience_min_years"`
-	EmploymentType     string    `json:"employment_type"`
-	Status             string    `json:"status"`
-	Responsibilities   []string  `json:"responsibilities"`
-	Requirements       []string  `json:"requirements"`
-	Conditions         []string  `json:"conditions"`
-	Tags               []string  `json:"tags"`
-	ViewsCount         int       `json:"views_count"`
-	ApplicationsCount  int       `json:"applications_count"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
-	ViewerHasApplied   bool      `json:"viewer_has_applied,omitempty"`
-	ViewerHasSaved     bool      `json:"viewer_has_saved,omitempty"`
-	ViewerIsAuthor     bool      `json:"viewer_is_author,omitempty"`
+	ID                    int64     `json:"id"`
+	PublicID              string    `json:"public_id"`
+	AuthorUserID          int64     `json:"author_user_id"`
+	AuthorPublicID        string    `json:"author_public_id"`
+	AuthorName            string    `json:"author_name"`
+	AuthorCompanyID       int64     `json:"author_company_id,omitempty"`
+	AuthorCompanyName     string    `json:"author_company_name,omitempty"`
+	AuthorCompanySlug     string    `json:"author_company_slug,omitempty"`
+	AuthorCommunityID     int64     `json:"author_community_id,omitempty"`
+	AuthorCommunityName   string    `json:"author_community_name,omitempty"`
+	AuthorCommunityAvatar string    `json:"author_community_avatar,omitempty"`
+	AuthorCommunityColor  string    `json:"author_community_color,omitempty"`
+	Title                 string    `json:"title"`
+	Description           string    `json:"description"`
+	Category              string    `json:"category"`
+	CategoryLabel         string    `json:"category_label"`
+	CategoryColor         string    `json:"category_color"`
+	City                  string    `json:"city"`
+	Address               string    `json:"address"`
+	WorkFormat            string    `json:"work_format"`
+	SalaryFrom            *int64    `json:"salary_from"`
+	SalaryTo              *int64    `json:"salary_to"`
+	SalaryCurrency        string    `json:"salary_currency"`
+	ExperienceMinYears    int       `json:"experience_min_years"`
+	EmploymentType        string    `json:"employment_type"`
+	Status                string    `json:"status"`
+	Responsibilities      []string  `json:"responsibilities"`
+	Requirements          []string  `json:"requirements"`
+	Conditions            []string  `json:"conditions"`
+	Tags                  []string  `json:"tags"`
+	ViewsCount            int       `json:"views_count"`
+	ApplicationsCount     int       `json:"applications_count"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
+	ViewerHasApplied      bool      `json:"viewer_has_applied,omitempty"`
+	ViewerHasSaved        bool      `json:"viewer_has_saved,omitempty"`
+	ViewerIsAuthor        bool      `json:"viewer_is_author,omitempty"`
 }
 
 // listJobs — выдача вакансий с фильтрами
@@ -8288,6 +8296,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 			j.id, j.public_id, j.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
 			COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+			COALESCE(j.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 			j.title, j.description, j.category, j.city, j.address, j.work_format,
 			j.salary_from, j.salary_to, j.salary_currency,
 			j.experience_min_years, j.employment_type, j.status,
@@ -8300,6 +8309,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		FROM jobs j
 		LEFT JOIN users u ON u.id = j.author_user_id
 		LEFT JOIN companies comp ON comp.id = j.author_company_id AND comp.deleted_at IS NULL
+		LEFT JOIN communities ac_com ON ac_com.id = j.author_community_id
 		WHERE ` + strings.Join(conds, " AND ") + `
 		ORDER BY ` + orderBy + `
 		LIMIT ` + limitArg
@@ -8318,6 +8328,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 			&j.ID, &j.PublicID, &j.AuthorUserID,
 			&j.AuthorPublicID, &j.AuthorName,
 			&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug,
+			&j.AuthorCommunityID, &j.AuthorCommunityName, &j.AuthorCommunityAvatar, &j.AuthorCommunityColor,
 			&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 			&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
 			&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
@@ -8372,6 +8383,7 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	q := `SELECT j.id, j.public_id, j.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
 		COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+		COALESCE(j.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		j.title, j.description, j.category, j.city, j.address, j.work_format,
 		j.salary_from, j.salary_to, j.salary_currency,
 		j.experience_min_years, j.employment_type, j.status,
@@ -8384,12 +8396,14 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 		FROM jobs j
 		LEFT JOIN users u ON u.id = j.author_user_id
 		LEFT JOIN companies comp ON comp.id = j.author_company_id AND comp.deleted_at IS NULL
+		LEFT JOIN communities ac_com ON ac_com.id = j.author_community_id
 		WHERE j.public_id = $1 AND j.deleted_at IS NULL`
 
 	err = db.QueryRow(q, args...).Scan(
 		&j.ID, &j.PublicID, &j.AuthorUserID,
 		&j.AuthorPublicID, &j.AuthorName,
 		&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug,
+		&j.AuthorCommunityID, &j.AuthorCommunityName, &j.AuthorCommunityAvatar, &j.AuthorCommunityColor,
 		&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 		&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
 		&j.ExperienceMinYears, &j.EmploymentType, &j.Status,
@@ -8744,10 +8758,12 @@ func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offs
 	baseQuery := `
 		SELECT t.id, t.public_id, t.category_key, t.title,
 		       t.author_id, u.public_id, COALESCE(u.full_name, u.handle, ''),
+		       COALESCE(t.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		       t.created_at, t.last_reply_at, t.views_count, t.replies_count,
 		       t.is_pinned, t.is_closed
 		FROM forum_topics t
 		LEFT JOIN users u ON u.id = t.author_id
+		LEFT JOIN communities ac_com ON ac_com.id = t.author_community_id
 		WHERE t.deleted_at IS NULL
 	`
 
@@ -8774,6 +8790,7 @@ func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offs
 		if err := rows.Scan(
 			&t.ID, &t.PublicID, &t.CategoryKey, &t.Title,
 			&t.AuthorID, &t.AuthorPublicID, &t.AuthorName,
+			&t.AuthorCommunityID, &t.AuthorCommunityName, &t.AuthorCommunityAvatar, &t.AuthorCommunityColor,
 			&t.CreatedAt, &t.LastReplyAt, &t.ViewsCount, &t.RepliesCount,
 			&t.IsPinned, &t.IsClosed,
 		); err != nil {
@@ -8896,14 +8913,17 @@ func getForumTopicByPublicID(db *sql.DB, publicID string, viewerID int64) (forum
 	err := db.QueryRow(`
 		SELECT t.id, t.public_id, t.category_key, t.title,
 		       t.author_id, COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+		       COALESCE(t.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		       t.created_at, t.last_reply_at, t.views_count, t.replies_count,
 		       t.is_pinned, t.is_closed
 		FROM forum_topics t
 		LEFT JOIN users u ON u.id = t.author_id
+		LEFT JOIN communities ac_com ON ac_com.id = t.author_community_id
 		WHERE t.public_id = $1 AND t.deleted_at IS NULL
 	`, publicID).Scan(
 		&t.ID, &t.PublicID, &t.CategoryKey, &t.Title,
 		&t.AuthorID, &t.AuthorPublicID, &t.AuthorName,
+		&t.AuthorCommunityID, &t.AuthorCommunityName, &t.AuthorCommunityAvatar, &t.AuthorCommunityColor,
 		&t.CreatedAt, &t.LastReplyAt, &t.ViewsCount, &t.RepliesCount,
 		&t.IsPinned, &t.IsClosed,
 	)
@@ -15722,35 +15742,39 @@ func getCatalogItemByPublicID(db *sql.DB, publicID string) (int64, error) {
 // CoverImage и Photos могут быть очень большими (base64) — в listing
 // они НЕ заполняются, только на деталке.
 type catalogItem struct {
-	ID                int64     `json:"id"`
-	PublicID          string    `json:"public_id"`
-	AuthorUserID      int64     `json:"author_user_id"`
-	AuthorPublicID    string    `json:"author_public_id"`
-	AuthorName        string    `json:"author_name"`
-	AuthorCompanyID   int64     `json:"author_company_id,omitempty"`
-	AuthorCompanyName string    `json:"author_company_name,omitempty"`
-	AuthorCompanySlug string    `json:"author_company_slug,omitempty"`
-	Type              string    `json:"type"`
-	Category          string    `json:"category"`
-	CategoryLabel     string    `json:"category_label"`
-	CategoryGroup     string    `json:"category_group"`
-	Title             string    `json:"title"`
-	Description       string    `json:"description"`
-	Price             *int64    `json:"price"`
-	Currency          string    `json:"currency"`
-	InStock           bool      `json:"in_stock"`
-	Status            string    `json:"status"`
-	CoverImage        string    `json:"cover_image"`
-	Photos            []string  `json:"photos"`
-	Tags              []string  `json:"tags"`
-	City              string    `json:"city"`
-	ViewsCount        int       `json:"views_count"`
-	OrdersCount       int       `json:"orders_count"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
-	ViewerHasSaved    bool      `json:"viewer_has_saved,omitempty"`
-	ViewerHasOrdered  bool      `json:"viewer_has_ordered,omitempty"`
-	ViewerIsAuthor    bool      `json:"viewer_is_author,omitempty"`
+	ID                    int64     `json:"id"`
+	PublicID              string    `json:"public_id"`
+	AuthorUserID          int64     `json:"author_user_id"`
+	AuthorPublicID        string    `json:"author_public_id"`
+	AuthorName            string    `json:"author_name"`
+	AuthorCompanyID       int64     `json:"author_company_id,omitempty"`
+	AuthorCompanyName     string    `json:"author_company_name,omitempty"`
+	AuthorCompanySlug     string    `json:"author_company_slug,omitempty"`
+	AuthorCommunityID     int64     `json:"author_community_id,omitempty"`
+	AuthorCommunityName   string    `json:"author_community_name,omitempty"`
+	AuthorCommunityAvatar string    `json:"author_community_avatar,omitempty"`
+	AuthorCommunityColor  string    `json:"author_community_color,omitempty"`
+	Type                  string    `json:"type"`
+	Category              string    `json:"category"`
+	CategoryLabel         string    `json:"category_label"`
+	CategoryGroup         string    `json:"category_group"`
+	Title                 string    `json:"title"`
+	Description           string    `json:"description"`
+	Price                 *int64    `json:"price"`
+	Currency              string    `json:"currency"`
+	InStock               bool      `json:"in_stock"`
+	Status                string    `json:"status"`
+	CoverImage            string    `json:"cover_image"`
+	Photos                []string  `json:"photos"`
+	Tags                  []string  `json:"tags"`
+	City                  string    `json:"city"`
+	ViewsCount            int       `json:"views_count"`
+	OrdersCount           int       `json:"orders_count"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
+	ViewerHasSaved        bool      `json:"viewer_has_saved,omitempty"`
+	ViewerHasOrdered      bool      `json:"viewer_has_ordered,omitempty"`
+	ViewerIsAuthor        bool      `json:"viewer_is_author,omitempty"`
 }
 
 // listCatalogFilters — параметры фильтрации для listing.
@@ -15845,6 +15869,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 			ci.id, ci.public_id, ci.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
 			COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+			COALESCE(ci.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 			ci.type, ci.category, ci.title, ci.description,
 			ci.price, ci.currency, ci.in_stock, ci.status,
 			ci.cover_image,
@@ -15854,6 +15879,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 		FROM catalog_items ci
 		LEFT JOIN users u ON u.id = ci.author_user_id
 		LEFT JOIN companies comp ON comp.id = ci.author_company_id AND comp.deleted_at IS NULL
+		LEFT JOIN communities ac_com ON ac_com.id = ci.author_community_id
 		WHERE ` + strings.Join(conds, " AND ") + `
 		ORDER BY ` + orderBy + `
 		LIMIT ` + limitArg
@@ -15872,6 +15898,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 			&ci.ID, &ci.PublicID, &ci.AuthorUserID,
 			&ci.AuthorPublicID, &ci.AuthorName,
 			&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug,
+			&ci.AuthorCommunityID, &ci.AuthorCommunityName, &ci.AuthorCommunityAvatar, &ci.AuthorCommunityColor,
 			&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 			&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
 			&ci.CoverImage,
@@ -15913,6 +15940,7 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 	q := `SELECT ci.id, ci.public_id, ci.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
 		COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+		COALESCE(ci.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		ci.type, ci.category, ci.title, ci.description,
 		ci.price, ci.currency, ci.in_stock, ci.status,
 		ci.cover_image,
@@ -15923,12 +15951,14 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 		FROM catalog_items ci
 		LEFT JOIN users u ON u.id = ci.author_user_id
 		LEFT JOIN companies comp ON comp.id = ci.author_company_id AND comp.deleted_at IS NULL
+		LEFT JOIN communities ac_com ON ac_com.id = ci.author_community_id
 		WHERE ci.public_id = $1 AND ci.deleted_at IS NULL`
 
 	err := db.QueryRow(q, args...).Scan(
 		&ci.ID, &ci.PublicID, &ci.AuthorUserID,
 		&ci.AuthorPublicID, &ci.AuthorName,
 		&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug,
+		&ci.AuthorCommunityID, &ci.AuthorCommunityName, &ci.AuthorCommunityAvatar, &ci.AuthorCommunityColor,
 		&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 		&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
 		&ci.CoverImage,
