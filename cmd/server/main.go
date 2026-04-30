@@ -5657,7 +5657,7 @@ func main() {
 				return
 			}
 			rows, err := db.Query(`
-				SELECT cm.user_id, cm.role, cm.position, cm.joined_at,
+				SELECT cm.user_id, cm.role, cm.position, cm.joined_at, cm.is_public,
 					COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
 					COALESCE(u.avatar_url, '')
 				FROM company_members cm
@@ -5675,6 +5675,7 @@ func main() {
 				Role         string    `json:"role"`
 				Position     string    `json:"position"`
 				JoinedAt     time.Time `json:"joined_at"`
+				IsPublic     bool      `json:"is_public"`
 				UserPublicID string    `json:"user_public_id"`
 				UserName     string    `json:"user_name"`
 				UserAvatar   string    `json:"user_avatar,omitempty"`
@@ -5682,7 +5683,7 @@ func main() {
 			out := []memberOut{}
 			for rows.Next() {
 				var m memberOut
-				if err := rows.Scan(&m.UserID, &m.Role, &m.Position, &m.JoinedAt,
+				if err := rows.Scan(&m.UserID, &m.Role, &m.Position, &m.JoinedAt, &m.IsPublic,
 					&m.UserPublicID, &m.UserName, &m.UserAvatar); err != nil {
 					http.Error(w, "internal", http.StatusInternalServerError)
 					return
@@ -5735,22 +5736,40 @@ func main() {
 
 			// PATCH
 			var req struct {
-				Position string `json:"position"`
+				Position *string `json:"position"`
+				IsPublic *bool   `json:"is_public"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "bad json", http.StatusBadRequest)
 				return
 			}
-			if utf8.RuneCountInString(req.Position) > 100 {
+			if req.Position != nil && utf8.RuneCountInString(*req.Position) > 100 {
 				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "должность не более 100 символов"})
 				return
 			}
-			if _, err := db.Exec(`UPDATE company_members SET position=$1 WHERE company_id=$2 AND user_id=$3`,
-				req.Position, companyID, targetUserID); err != nil {
+			if req.Position == nil && req.IsPublic == nil {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нет полей для обновления"})
+				return
+			}
+			var sets []string
+			var args []interface{}
+			if req.Position != nil {
+				args = append(args, *req.Position)
+				sets = append(sets, fmt.Sprintf("position = $%d", len(args)))
+			}
+			if req.IsPublic != nil {
+				args = append(args, *req.IsPublic)
+				sets = append(sets, fmt.Sprintf("is_public = $%d", len(args)))
+			}
+			args = append(args, companyID, targetUserID)
+			q := "UPDATE company_members SET " + strings.Join(sets, ", ") +
+				fmt.Sprintf(" WHERE company_id=$%d AND user_id=$%d", len(args)-1, len(args))
+			if _, err := db.Exec(q, args...); err != nil {
+				log.Printf("patchMember: %v", err)
 				http.Error(w, "internal", http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"position": req.Position})
+			writeJSON(w, http.StatusOK, map[string]any{"updated": true})
 			return
 		}
 
@@ -7205,6 +7224,7 @@ CREATE INDEX IF NOT EXISTS company_invites_code_idx ON company_invites(code) WHE
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS responsible_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE company_members ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS posts_author_company_idx ON posts(author_company_id) WHERE author_company_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS projects_author_company_idx ON projects(author_company_id) WHERE author_company_id IS NOT NULL;
