@@ -153,6 +153,26 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .card{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:14px}
 .block-title{font-size:11px;font-weight:800;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
 
+/* SIDEBAR ROWS */
+.sb-rows{display:flex;flex-direction:column;gap:8px}
+.sb-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--t)}
+.sb-icon{width:26px;height:26px;border-radius:7px;background:var(--gp);color:var(--g);display:grid;place-items:center;flex-shrink:0}
+.sb-icon svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sb-val{flex:1;min-width:0;word-break:break-word;font-weight:600}
+.sb-val a{color:var(--g);text-decoration:none}
+.sb-val a:hover{text-decoration:underline}
+
+.sb-kv{display:flex;flex-direction:column;gap:8px}
+.sb-kv-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:12px;line-height:1.4}
+.sb-kv-k{color:var(--gmt);flex-shrink:0;font-weight:600}
+.sb-kv-v{color:var(--t);font-weight:700;text-align:right;word-break:break-word}
+
+.sb-team{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sb-team-av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:800;flex-shrink:0;text-decoration:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--bdr);overflow:hidden;transition:transform .15s}
+.sb-team-av:hover{transform:scale(1.1);z-index:1}
+.sb-team-av img{width:100%;height:100%;object-fit:cover;display:block}
+.sb-team-more{font-size:11px;font-weight:700;color:var(--gmt);padding:4px 8px;background:var(--gp);border-radius:99px;border:1px solid var(--bdr)}
+
 .placeholder{padding:40px 20px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic}
 
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
@@ -353,32 +373,14 @@ function render(){
     '</div>';
 
   const tabs = [
-    { key:'about',    label:'Описание' },
-    { key:'members',  label:'Сотрудники' },
-    { key:'pubs',     label:'Публикации' },
-    { key:'contacts', label:'Контакты' },
+    { key:'about', label:'О компании' },
+    { key:'pubs',  label:'Публикации' },
   ];
   const tabsHtml = '<div class="co-tabs">'+tabs.map(t=>'<button class="co-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+'</div>';
 
   document.getElementById('mainContent').innerHTML = heroHtml + tabsHtml + '<div id="tabContent"></div>';
 
-  // sidebar
-  const tagsHtml = (c.tags && c.tags.length)
-    ? '<div class="tag-list">'+c.tags.map(t=>'<span class="tag-chip">'+esc(t)+'</span>').join('')+'</div>'
-    : '<div style="font-size:11px;color:var(--gmt);font-style:italic">Тегов нет</div>';
-  document.getElementById('rightArea').innerHTML =
-    '<div class="card">'+
-      '<div class="block-title">Краткая информация</div>'+
-      (c.region ? '<div style="font-size:12px;color:var(--gmt);margin-bottom:6px">Регион</div><div style="font-size:13px;color:var(--t);font-weight:600;margin-bottom:10px">'+esc(c.region)+'</div>' : '')+
-      (c.is_verified
-        ? '<div style="font-size:11px;color:var(--g);font-weight:700;display:flex;align-items:center;gap:5px"><svg style="width:13px;height:13px;fill:currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg>Подтверждена администрацией</div>'
-        : '<div style="font-size:11px;color:var(--gmt)">Компания на модерации</div>')+
-    '</div>'+
-    '<div class="card">'+
-      '<div class="block-title">Теги</div>'+
-      tagsHtml+
-    '</div>';
-
+  renderSidebar();
   renderTab();
 }
 
@@ -388,50 +390,122 @@ async function renderTab(){
   const wrap = document.getElementById('tabContent');
   if (!wrap) return;
   if (currentTab === 'about') return renderAbout(wrap);
-  if (currentTab === 'members') return renderMembers(wrap);
   if (currentTab === 'pubs') return renderPubs(wrap);
-  if (currentTab === 'contacts') return renderContacts(wrap);
+}
+
+async function renderSidebar(){
+  const c = company;
+  const right = document.getElementById('rightArea');
+  const sections = [];
+
+  // 1. КОНТАКТЫ
+  const contactRows = [];
+  if (c.website) contactRows.push({
+    icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    val:'<a href="'+escAttr(c.website.startsWith('http')?c.website:'https://'+c.website)+'" target="_blank" rel="noopener noreferrer">'+esc(c.website.replace(/^https?:\/\//,''))+'</a>'
+  });
+  if (c.email) contactRows.push({
+    icon:'<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>',
+    val:'<a href="mailto:'+escAttr(c.email)+'">'+esc(c.email)+'</a>'
+  });
+  if (c.phone) contactRows.push({
+    icon:'<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    val:'<a href="tel:'+escAttr(c.phone.replace(/[^\d+]/g,''))+'">'+esc(c.phone)+'</a>'
+  });
+  if (contactRows.length) {
+    sections.push(
+      '<div class="card">'+
+        '<div class="block-title">Контакты</div>'+
+        '<div class="sb-rows">'+contactRows.map(r=>'<div class="sb-row"><div class="sb-icon">'+r.icon+'</div><div class="sb-val">'+r.val+'</div></div>').join('')+'</div>'+
+      '</div>'
+    );
+  }
+
+  // 2. РЕКВИЗИТЫ
+  const detailRows = [];
+  if (c.inn) detailRows.push({ key:'ИНН', val:esc(c.inn) });
+  const address = [c.region, c.city].filter(Boolean).join(', ');
+  if (address) detailRows.push({ key:'Адрес', val:esc(address) });
+  if (c.category_label) detailRows.push({ key:'Отрасль', val:esc(c.category_label) });
+  if (detailRows.length) {
+    sections.push(
+      '<div class="card">'+
+        '<div class="block-title">Реквизиты</div>'+
+        '<div class="sb-kv">'+detailRows.map(r=>'<div class="sb-kv-row"><span class="sb-kv-k">'+r.key+'</span><span class="sb-kv-v">'+r.val+'</span></div>').join('')+'</div>'+
+      '</div>'
+    );
+  }
+
+  // 3. О КОМПАНИИ (статус)
+  sections.push(
+    '<div class="card">'+
+      '<div class="block-title">О компании</div>'+
+      '<div class="sb-kv">'+
+        '<div class="sb-kv-row"><span class="sb-kv-k">Статус</span><span class="sb-kv-v">'+
+          (c.is_verified
+            ? '<span style="color:var(--g);font-weight:700;display:inline-flex;align-items:center;gap:4px"><svg style="width:11px;height:11px;fill:currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg>Подтверждена</span>'
+            : 'На модерации')+
+        '</span></div>'+
+        '<div class="sb-kv-row"><span class="sb-kv-k">Создана</span><span class="sb-kv-v">'+esc(fmtDateAbs(c.created_at))+'</span></div>'+
+        '<div class="sb-kv-row"><span class="sb-kv-k">Сотрудников</span><span class="sb-kv-v">'+(c.members_count||0)+'</span></div>'+
+      '</div>'+
+    '</div>'
+  );
+
+  // 4. КОМАНДА (компактно: до 6 аватарок + счётчик)
+  // подгружаем асинхронно, рендерим в плейсхолдер
+  sections.push(
+    '<div class="card">'+
+      '<div class="block-title">Команда</div>'+
+      '<div id="sbTeam" style="font-size:11px;color:var(--gmt);font-style:italic">Загрузка…</div>'+
+    '</div>'
+  );
+
+  right.innerHTML = sections.join('');
+
+  // Подгружаем команду
+  try {
+    const r = await fetch(API+'/companies/'+encodeURIComponent(c.public_id)+'/members');
+    const d = await r.json();
+    const members = d.members || [];
+    const teamWrap = document.getElementById('sbTeam');
+    if (!teamWrap) return;
+    if (!members.length) { teamWrap.textContent = 'Сотрудников пока нет'; return; }
+    const visible = members.slice(0, 6);
+    const extra = members.length - visible.length;
+    teamWrap.style.fontStyle = 'normal';
+    teamWrap.style.color = 'var(--t)';
+    teamWrap.innerHTML =
+      '<div class="sb-team">'+
+        visible.map(m => {
+          const profileHref = m.user_public_id ? '/profile_user.html?id='+encodeURIComponent(m.user_public_id) : '#';
+          const av = m.user_avatar
+            ? '<img src="'+escAttr(m.user_avatar)+'" alt="">'
+            : esc(initials(m.user_name));
+          const title = m.user_name + (m.position ? ' · ' + m.position : '');
+          return '<a class="sb-team-av" href="'+escAttr(profileHref)+'" title="'+escAttr(title)+'" style="background:'+esc(stableColor(m.user_name))+'">'+av+'</a>';
+        }).join('')+
+        (extra > 0 ? '<div class="sb-team-more">+'+extra+'</div>' : '')+
+      '</div>';
+  } catch (err) {
+    const teamWrap = document.getElementById('sbTeam');
+    if (teamWrap) teamWrap.textContent = 'Ошибка загрузки команды';
+  }
 }
 
 function renderAbout(wrap){
   const c = company;
+  const tagsHtml = (c.tags && c.tags.length)
+    ? '<div class="tag-list">'+c.tags.map(t=>'<span class="tag-chip">'+esc(t)+'</span>').join('')+'</div>'
+    : '';
   wrap.innerHTML =
     '<div class="panel">'+
       '<h3><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>О компании</h3>'+
       (c.description
         ? '<div class="panel-text">'+esc(c.description)+'</div>'
         : '<div class="panel-text-empty">Описание не указано.</div>')+
+      tagsHtml+
     '</div>';
-}
-
-async function renderMembers(wrap){
-  wrap.innerHTML = '<div class="panel"><h3>Сотрудники</h3><div class="placeholder">Загрузка…</div></div>';
-  try {
-    const r = await fetch(API+'/companies/'+encodeURIComponent(company.public_id)+'/members');
-    const d = await r.json();
-    const members = d.members || [];
-    const cards = members.map(m => {
-      const profileHref = m.user_public_id ? '/profile_user.html?id='+encodeURIComponent(m.user_public_id) : '#';
-      const av = m.user_avatar
-        ? '<img src="'+escAttr(m.user_avatar)+'" alt="">'
-        : '<span style="background:'+esc(stableColor(m.user_name))+';width:100%;height:100%;display:grid;place-items:center">'+esc(initials(m.user_name))+'</span>';
-      return '<a class="member-card" href="'+escAttr(profileHref)+'">'+
-        '<div class="m-av">'+av+'</div>'+
-        '<div class="m-info">'+
-          '<div class="m-name">'+esc(m.user_name)+'</div>'+
-          '<div class="m-pos">'+esc(m.position || (m.role==='owner'?'Владелец':'Участник'))+'</div>'+
-        '</div>'+
-        (m.role==='owner'?'<span class="m-role">Owner</span>':'')+
-      '</a>';
-    }).join('');
-    wrap.innerHTML =
-      '<div class="panel">'+
-        '<h3><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Сотрудники ('+members.length+')</h3>'+
-        (cards ? '<div class="members-grid">'+cards+'</div>' : '<div class="placeholder">Сотрудников пока нет</div>')+
-      '</div>';
-  } catch (err) {
-    wrap.innerHTML = '<div class="panel"><div class="placeholder">Ошибка загрузки</div></div>';
-  }
 }
 
 async function renderPubs(wrap){
@@ -463,43 +537,6 @@ async function renderPubs(wrap){
   } catch (err) {
     wrap.innerHTML = '<div class="panel"><div class="placeholder">Ошибка загрузки</div></div>';
   }
-}
-
-function renderContacts(wrap){
-  const c = company;
-  const rows = [];
-  if (c.website) rows.push({
-    icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
-    key:'Сайт',
-    val:'<a href="'+escAttr(c.website)+'" target="_blank" rel="noopener noreferrer">'+esc(c.website)+'</a>'
-  });
-  if (c.email) rows.push({
-    icon:'<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>',
-    key:'Email',
-    val:'<a href="mailto:'+escAttr(c.email)+'">'+esc(c.email)+'</a>'
-  });
-  if (c.phone) rows.push({
-    icon:'<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
-    key:'Телефон',
-    val:'<a href="tel:'+escAttr(c.phone.replace(/[^\d+]/g,''))+'">'+esc(c.phone)+'</a>'
-  });
-  if (c.region || c.city) rows.push({
-    icon:'<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-    key:'Адрес',
-    val:esc([c.region, c.city].filter(Boolean).join(', '))
-  });
-  if (c.inn) rows.push({
-    icon:'<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
-    key:'ИНН',
-    val:esc(c.inn)
-  });
-  wrap.innerHTML =
-    '<div class="panel">'+
-      '<h3><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Контакты</h3>'+
-      (rows.length
-        ? '<div class="kv">'+rows.map(r=>'<div class="kv-row"><div class="kv-icon">'+r.icon+'</div><div class="kv-body"><div class="kv-key">'+esc(r.key)+'</div><div class="kv-val">'+r.val+'</div></div></div>').join('')+'</div>'
-        : '<div class="placeholder">Контакты не указаны.</div>')+
-    '</div>';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
