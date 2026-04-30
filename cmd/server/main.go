@@ -542,6 +542,7 @@ type createPostRequest struct {
 	Tags         []string `json:"tags"`
 	CoverURL     string   `json:"cover_url"`
 	PrivacyLevel string   `json:"privacy_level"`
+	CompanyID    int64    `json:"company_id"`
 }
 
 type project struct {
@@ -585,6 +586,7 @@ type createProjectRequest struct {
 	Budget      *int64     `json:"budget,omitempty"`
 	CoverColor  string     `json:"cover_color"`
 	Tags        []string   `json:"tags"`
+	CompanyID   int64      `json:"company_id"`
 }
 
 type updateProjectRequest struct {
@@ -2748,6 +2750,12 @@ func main() {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
+			resolvedCompanyID, err := resolveActiveCompanyID(db, r, userID, req.CompanyID)
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
+				return
+			}
+			req.CompanyID = resolvedCompanyID
 			created, err := createPost(db, userID, req)
 			if err != nil {
 				handlePostActionError(w, err)
@@ -3005,6 +3013,12 @@ func main() {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
+			resolvedCompanyID, err := resolveActiveCompanyID(db, r, userID, req.CompanyID)
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
+				return
+			}
+			req.CompanyID = resolvedCompanyID
 			p, err := createProject(db, userID, req)
 			if err != nil {
 				if errors.Is(err, errValidation) {
@@ -3872,6 +3886,7 @@ func main() {
 				Conditions         []string `json:"conditions"`
 				Tags               []string `json:"tags"`
 				CompanyID          *int64   `json:"company_id"`
+				ResponsibleUserID  int64    `json:"responsible_user_id"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "bad json", http.StatusBadRequest)
@@ -3919,15 +3934,20 @@ func main() {
 			}
 
 			publicID := generateJobPublicID()
+			resolvedCompanyID, err := resolveActiveCompanyID(db, r, userID, derefInt64(req.CompanyID))
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
+				return
+			}
 			var newID int64
-			var err error
 			err = db.QueryRow(`
-				INSERT INTO jobs (public_id, author_user_id, author_company_id, title, description, category, city, address, work_format, salary_from, salary_to, salary_currency, experience_min_years, employment_type, status, responsibilities, requirements, conditions, tags)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+				INSERT INTO jobs (public_id, author_user_id, author_company_id, title, description, category, city, address, work_format, salary_from, salary_to, salary_currency, experience_min_years, employment_type, status, responsibilities, requirements, conditions, tags, responsible_user_id)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 				RETURNING id
-			`, publicID, userID, req.CompanyID, req.Title, req.Description, req.Category, req.City, req.Address, req.WorkFormat,
+			`, publicID, userID, resolvedCompanyID, req.Title, req.Description, req.Category, req.City, req.Address, req.WorkFormat,
 				req.SalaryFrom, req.SalaryTo, req.SalaryCurrency, req.ExperienceMinYears, req.EmploymentType, req.Status,
 				pgtype.FlatArray[string](req.Responsibilities), pgtype.FlatArray[string](req.Requirements), pgtype.FlatArray[string](req.Conditions), pgtype.FlatArray[string](req.Tags),
+				req.ResponsibleUserID,
 			).Scan(&newID)
 			if err != nil {
 				log.Printf("createJob: %v", err)
@@ -4765,12 +4785,17 @@ func main() {
 			photosJSON, _ := json.Marshal(req.Photos)
 
 			publicID := generateCatalogPublicID()
+			resolvedCompanyID, err := resolveActiveCompanyID(db, r, userID, derefInt64(req.CompanyID))
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
+				return
+			}
 			var newID int64
 			if err := db.QueryRow(`
 				INSERT INTO catalog_items (public_id, author_user_id, author_company_id, type, category, title, description, price, currency, in_stock, status, cover_image, photos, tags, city)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15)
 				RETURNING id
-			`, publicID, userID, req.CompanyID, req.Type, req.Category, req.Title, req.Description,
+			`, publicID, userID, resolvedCompanyID, req.Type, req.Category, req.Title, req.Description,
 				req.Price, req.Currency, inStock, req.Status, req.CoverImage, string(photosJSON),
 				pgtype.FlatArray[string](req.Tags), req.City,
 			).Scan(&newID); err != nil {
@@ -7176,6 +7201,15 @@ CREATE TABLE IF NOT EXISTS company_invites (
 
 CREATE INDEX IF NOT EXISTS company_invites_company_idx ON company_invites(company_id);
 CREATE INDEX IF NOT EXISTS company_invites_code_idx ON company_invites(code) WHERE is_active = TRUE;
+
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS responsible_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS posts_author_company_idx ON posts(author_company_id) WHERE author_company_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS projects_author_company_idx ON projects(author_company_id) WHERE author_company_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS jobs_author_company_idx ON jobs(author_company_id) WHERE author_company_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS catalog_items_author_company_idx ON catalog_items(author_company_id) WHERE author_company_id IS NOT NULL;
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -10746,11 +10780,11 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 			return post{}, err
 		}
 		created, err := scanPost(db.QueryRow(`
-			INSERT INTO posts (public_id, author_id, type, title, content, cover_url, tags, privacy_level)
-			VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7::text[], $8)
+			INSERT INTO posts (public_id, author_id, author_company_id, type, title, content, cover_url, tags, privacy_level)
+			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8::text[], $9)
 			RETURNING id, public_id, type, title, content, COALESCE(cover_url, ''), COALESCE(array_to_json(tags), '[]'::json),
 					  privacy_level, likes_count, comments_count, views_count, saves_count, reposts_count, COALESCE(reposted_from_id, 0), created_at, author_id
-		`, publicID, authorID, postType, title, content, coverURL, pgTags, privacy))
+		`, publicID, authorID, req.CompanyID, postType, title, content, coverURL, pgTags, privacy))
 		if err == nil {
 			_ = saveMentions(db, "post", created.ID, authorID, content, content)
 			return hydratePostAuthor(db, created)
@@ -11190,10 +11224,10 @@ func createProject(db *sql.DB, ownerID int64, req createProjectRequest) (project
 	publicID := generateProjectPublicID()
 	var pid int64
 	err := db.QueryRow(`
-		INSERT INTO projects (public_id, owner_id, title, description, category, status, deadline, budget, cover_color, tags)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO projects (public_id, owner_id, author_company_id, title, description, category, status, deadline, budget, cover_color, tags)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id`,
-		publicID, ownerID, title, description, strings.TrimSpace(req.Category), status,
+		publicID, ownerID, req.CompanyID, title, description, strings.TrimSpace(req.Category), status,
 		req.Deadline, req.Budget, coverColor, tags,
 	).Scan(&pid)
 	if err != nil {
@@ -16079,4 +16113,39 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		}
 	}
 	return &c, nil
+}
+
+func derefInt64(v *int64) int64 {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+// resolveActiveCompanyID определяет id компании, от лица которой
+// публикуется контент. Сначала смотрит body-параметр requestedID,
+// затем header X-Active-Company-Id. Возвращает 0 если ни один не
+// задан (личный контекст), либо id компании после валидации
+// что юзер в ней состоит. Если юзер не состоит — возвращает ошибку.
+func resolveActiveCompanyID(db *sql.DB, r *http.Request, userID, requestedID int64) (int64, error) {
+	cid := requestedID
+	if cid == 0 {
+		if h := r.Header.Get("X-Active-Company-Id"); h != "" {
+			parsed, err := strconv.ParseInt(h, 10, 64)
+			if err == nil && parsed > 0 {
+				cid = parsed
+			}
+		}
+	}
+	if cid == 0 {
+		return 0, nil
+	}
+	isM, _, err := userIsCompanyMember(db, userID, cid)
+	if err != nil {
+		return 0, err
+	}
+	if !isM {
+		return 0, fmt.Errorf("user %d is not a member of company %d", userID, cid)
+	}
+	return cid, nil
 }
