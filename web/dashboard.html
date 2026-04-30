@@ -989,7 +989,7 @@ async function submitPost(){
   const btn=document.querySelector('.c-submit');
   if(btn)btn.disabled=true;
   try{
-    const r=await fetch(API+'/posts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags})});
+    const r=await fetch(API+'/posts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.post){showToast(d.error||'Не удалось опубликовать');return;}
     const p=d.post;

@@ -868,7 +868,7 @@ async function submitProject(){
   try{
     const r=await fetch(API+'/projects',{
       method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},
       body:JSON.stringify(body)
     });
     if(!r.ok){

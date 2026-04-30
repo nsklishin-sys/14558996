@@ -824,7 +824,7 @@ async function submitJob(){
   try {
     const r = await fetch(API + '/jobs', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify(body)
     });
     if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.error || ('http ' + r.status)); }
