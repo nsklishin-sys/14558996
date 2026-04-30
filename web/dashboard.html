@@ -1186,23 +1186,41 @@ function toggleFollow(btn){
     if(!r.ok)throw 0;
     const d=await r.json();
     if(d.posts&&d.posts.length){
-      allNews=d.posts.map(n=>({
-        id:n.id||Math.random(),public_id:n.public_id,cat:'Публикации',
-        author:n.author||'LASTOP',role:n.author_role||'',
-        author_avatar:n.author_avatar||'',
-        community_id:n.community_id||0,
-        community_name:n.community_name||'',
-        community_avatar:n.community_avatar||'',
-        community_color:n.community_color||'',
-        author_company_id:n.author_company_id||0,
-        author_company_name:n.author_company_name||'',
-        author_company_slug:n.author_company_slug||'',
-        author_company_logo:n.author_company_logo||'',
-        title:n.title||'',text:n.text||n.content||'',
-        views:n.views_count||0,likes:n.likes_count||0,
-        comments:n.comments_count||0,shares:0,
-        ts:n.created_at||new Date().toISOString(),src:'LASTOP',type:n.type||'news'
-      }));
+      allNews=d.posts.map(n=>{
+        // Приоритет автора: community > company > user.
+        // Если пост от лица сообщества или компании — имя автора-юзера
+        // НЕ показывается совсем.
+        const fromCommunity = !!(n.community_id && n.community_name);
+        const fromCompany = !fromCommunity && !!(n.author_company_id && n.author_company_name);
+        let displayAuthor;
+        let displayRole;
+        if (fromCommunity) {
+          displayAuthor = n.community_name;
+          displayRole = 'Сообщество';
+        } else if (fromCompany) {
+          displayAuthor = n.author_company_name;
+          displayRole = 'Компания';
+        } else {
+          displayAuthor = n.author || 'LASTOP';
+          displayRole = n.author_role || '';
+        }
+        return {
+          id: n.id || Math.random(),
+          public_id: n.public_id,
+          cat: 'Публикации',
+          author: displayAuthor,
+          role: displayRole,
+          title: n.title || '',
+          text: n.text || n.content || '',
+          views: n.views_count || 0,
+          likes: n.likes_count || 0,
+          comments: n.comments_count || 0,
+          shares: 0,
+          ts: n.created_at || new Date().toISOString(),
+          src: 'LASTOP',
+          type: n.type || 'news'
+        };
+      });
     }else{
       allNews=[...DEMO_NEWS];
     }

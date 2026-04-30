@@ -994,7 +994,7 @@ function pickPostAuthor(p){
       href: '/community-detail.html?id=' + p.community_id,
       avatar: p.community_avatar || '',
       bgColor: p.community_color || (typeof avc==='function' ? avc(p.community_name) : '#5AB080'),
-      subline: p.author ? 'опубликовал ' + p.author : '',
+      subline: 'Сообщество',
       fromCommunity: true,
       fromCompany: false,
     };
@@ -1005,14 +1005,14 @@ function pickPostAuthor(p){
       href: '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || ''),
       avatar: p.author_company_logo || '',
       bgColor: typeof avc==='function' ? avc(p.author_company_name) : '#5AB080',
-      subline: p.author ? 'опубликовал ' + p.author : '',
+      subline: 'Компания',
       fromCommunity: false,
       fromCompany: true,
     };
   }
   return {
     name: p.author || '',
-    href: p.author_public_id ? '/profile_user.html?id=' + p.author_public_id : '#',
+    href: p.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(p.author_public_id) : '#',
     avatar: p.author_avatar || '',
     bgColor: typeof avc==='function' ? avc(p.author || '') : '#5AB080',
     subline: p.author_role || '',
