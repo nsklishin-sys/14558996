@@ -697,7 +697,7 @@ function renderCard(it){
       '<div class="cat-meta">' +
         (catLabel ? '<span class="cat-meta-item">' + esc(catLabel) + '</span>' : '') +
         (it.city ? '<span class="cat-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' + esc(it.city) + '</span>' : '') +
-        '<span class="cat-meta-item cat-author">' + (function(){ var a = pickAuthor(it); return a.href !== '#' ? '<a href="' + escAttr(a.href) + '" style="color:inherit;text-decoration:none;font-weight:700">' + esc(a.name) + '</a>' : esc(a.name); })() + '</span>' +
+        '<span class="cat-meta-item cat-author">' + (function(){ var a = pickAuthor(it); return a.href !== '#' ? '<span onclick="event.preventDefault();event.stopPropagation();window.location.href=\'' + escAttr(a.href) + '\'" style="cursor:pointer;font-weight:700">' + esc(a.name) + '</span>' : esc(a.name); })() + '</span>' +
         '<span class="cat-meta-item">' + esc(formatRelative(it.created_at)) + '</span>' +
       '</div>' +
       '<div class="cat-meta">' +
