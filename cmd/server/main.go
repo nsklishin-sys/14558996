@@ -2454,6 +2454,66 @@ func main() {
 			}
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		case "members":
+			// PATCH /api/communities/{id}/members/{user_id} — смена role
+			if len(parts) == 3 && r.Method == http.MethodPatch {
+				targetUserID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil || targetUserID <= 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный user_id")
+					return
+				}
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				// Только owner может менять role
+				myRole, err := getUserCommunityRole(db, communityID, userID)
+				if err != nil || myRole != "owner" {
+					writeError(w, http.StatusForbidden, "Только владелец сообщества может менять роли")
+					return
+				}
+				// Owner не может менять свою role
+				if targetUserID == userID {
+					writeError(w, http.StatusBadRequest, "Нельзя изменить собственную роль")
+					return
+				}
+				var req struct {
+					Role string `json:"role"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if req.Role != "member" && req.Role != "moderator" {
+					writeError(w, http.StatusBadRequest, "Допустимые роли: member, moderator")
+					return
+				}
+				// Проверим что target уже состоит в сообществе и не owner
+				var targetCurrentRole string
+				if err := db.QueryRow(
+					`SELECT role FROM community_members WHERE community_id=$1 AND user_id=$2`,
+					communityID, targetUserID,
+				).Scan(&targetCurrentRole); err != nil {
+					if err == sql.ErrNoRows {
+						writeError(w, http.StatusNotFound, "Пользователь не состоит в сообществе")
+					} else {
+						writeError(w, http.StatusInternalServerError, "Ошибка БД")
+					}
+					return
+				}
+				if targetCurrentRole == "owner" {
+					writeError(w, http.StatusBadRequest, "Нельзя изменить роль владельца")
+					return
+				}
+				if _, err := db.Exec(
+					`UPDATE community_members SET role=$1 WHERE community_id=$2 AND user_id=$3`,
+					req.Role, communityID, targetUserID,
+				); err != nil {
+					writeError(w, http.StatusInternalServerError, "Не удалось обновить роль")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"role": req.Role})
+				return
+			}
 			if len(parts) == 2 && r.Method == http.MethodGet {
 				limit := parseLimit(r.URL.Query().Get("limit"), 50, 200)
 				offset := parseLimit(r.URL.Query().Get("offset"), 0, 100000)
@@ -10727,7 +10787,7 @@ func deleteCommunityPost(db *sql.DB, communityID int64, postPublicID string, use
 		if err != nil {
 			return err
 		}
-		if !canModerateCommunity(role) {
+		if role != "owner" && role != "moderator" {
 			return errForbidden
 		}
 	}
