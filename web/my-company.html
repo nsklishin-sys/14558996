@@ -162,6 +162,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .pub-title{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--t)}
 .pub-meta{font-size:10px;color:var(--gmt)}
 
+/* RIGHTS */
+.rights-row{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp);cursor:pointer;transition:all .12s}
+.rights-row:hover{border-color:var(--gb);background:var(--gl)}
+.rights-row input[type="checkbox"]{width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;accent-color:var(--g)}
+.rights-row .rights-name{font-size:13px;font-weight:700;color:var(--t);line-height:1.25}
+.rights-row .rights-desc{font-size:11px;color:var(--gmt);margin-top:2px;line-height:1.35}
+
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -426,6 +433,51 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closePosition()">Отмена</button>
       <button class="btn btn-primary" id="pSubmit" onclick="submitPosition()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка: Права сотрудника -->
+<div class="modal-bg" id="modalRights" onclick="if(event.target===this)closeRights()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <span class="modal-title" id="rTitle">Права сотрудника</span>
+      <button class="modal-close" onclick="closeRights()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--gmt);margin-bottom:4px">Выберите, что сотрудник может делать от лица компании. Владелец имеет все права автоматически.</p>
+      <label class="rights-row">
+        <input type="checkbox" id="rEdit">
+        <div>
+          <div class="rights-name">Редактировать профиль</div>
+          <div class="rights-desc">Менять описание, контакты, логотип, цвет, теги</div>
+        </div>
+      </label>
+      <label class="rights-row">
+        <input type="checkbox" id="rManage">
+        <div>
+          <div class="rights-name">Управлять сотрудниками</div>
+          <div class="rights-desc">Приглашать, удалять, менять должности и права</div>
+        </div>
+      </label>
+      <label class="rights-row">
+        <input type="checkbox" id="rPublish">
+        <div>
+          <div class="rights-name">Публиковать от лица компании</div>
+          <div class="rights-desc">Создавать товары, вакансии, новости, темы и сообщения форума</div>
+        </div>
+      </label>
+      <label class="rights-row">
+        <input type="checkbox" id="rChat">
+        <div>
+          <div class="rights-name">Общаться от лица компании</div>
+          <div class="rights-desc">Отвечать на сообщения в чате. На публичной странице компании появится бейдж «Связаться» с этим сотрудником</div>
+        </div>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeRights()">Отмена</button>
+      <button class="btn btn-primary" id="rSubmit" onclick="submitRights()">Сохранить</button>
     </div>
   </div>
 </div>
@@ -869,6 +921,7 @@ async function renderMembers(wrap){
           : '') +
         (isOwner && m.role !== 'owner'
           ? '<div class="member-actions">' +
+              '<button class="btn btn-ghost" onclick="editRights(' + m.user_id + ', ' + JSON.stringify(m.user_name).replace(/"/g, '&quot;') + ', ' + JSON.stringify({edit:!!m.can_edit_profile,manage:!!m.can_manage_members,publish:!!m.can_publish,chat:!!m.can_chat}).replace(/"/g, '&quot;') + ')">Права</button>' +
               '<button class="btn btn-ghost" onclick="editPosition(' + m.user_id + ', ' + JSON.stringify(m.position || '').replace(/"/g, '&quot;') + ', ' + JSON.stringify(m.user_name).replace(/"/g, '&quot;') + ')">Должность</button>' +
               '<button class="btn btn-ghost" onclick="removeMember(' + m.user_id + ', ' + JSON.stringify(m.user_name).replace(/"/g, '&quot;') + ')" style="color:var(--red)">Удалить</button>' +
             '</div>'
@@ -967,6 +1020,47 @@ async function togglePublic(userID, isPublic){
     if (!r.ok) { toast('Не удалось'); return; }
     toast(isPublic ? 'Сотрудник виден на публичной' : 'Скрыт с публичной', true);
   } catch (err) { toast('Ошибка: ' + err.message); }
+}
+
+function editRights(userID, name, current){
+  window.__rEditing = { userID, name };
+  document.getElementById('rTitle').textContent = 'Права для ' + name;
+  document.getElementById('rEdit').checked = !!current.edit;
+  document.getElementById('rManage').checked = !!current.manage;
+  document.getElementById('rPublish').checked = !!current.publish;
+  document.getElementById('rChat').checked = !!current.chat;
+  document.getElementById('modalRights').classList.add('open');
+}
+function closeRights(){
+  document.getElementById('modalRights').classList.remove('open');
+  window.__rEditing = null;
+}
+async function submitRights(){
+  const ed = window.__rEditing;
+  if (!ed) return;
+  const btn = document.getElementById('rSubmit');
+  btn.disabled = true; btn.textContent = 'Сохранение…';
+  try {
+    const body = {
+      can_edit_profile:   document.getElementById('rEdit').checked,
+      can_manage_members: document.getElementById('rManage').checked,
+      can_publish:        document.getElementById('rPublish').checked,
+      can_chat:           document.getElementById('rChat').checked,
+    };
+    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + ed.userID, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { toast('Не удалось'); return; }
+    toast('Права обновлены', true);
+    closeRights();
+    renderTab();
+  } catch (err) {
+    toast('Ошибка: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
 }
 
 async function removeMember(userID, name){
@@ -1177,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeCreate(); closeAccept(); closeInvite(); closePosition();
+      closeCreate(); closeAccept(); closeInvite(); closePosition(); closeRights();
     }
   });
 });

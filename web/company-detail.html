@@ -421,6 +421,9 @@ async function renderSidebar(){
     );
   }
 
+  // Заглушка под блок "Связаться" — заполнится из members ниже
+  sections.push('<div id="sbChatSlot"></div>');
+
   // 2. РЕКВИЗИТЫ
   const detailRows = [];
   if (c.inn) detailRows.push({ key:'ИНН', val:esc(c.inn) });
@@ -490,6 +493,36 @@ async function renderSidebar(){
         }).join('')+
         (extra > 0 ? '<div class="sb-team-more">+'+extra+'</div>' : '')+
       '</div>';
+
+    // Блок "Связаться с компанией" — сотрудники с can_chat=true
+    const chatSlot = document.getElementById('sbChatSlot');
+    if (chatSlot) {
+      const chatters = members.filter(m => m.can_chat === true && m.is_public !== false);
+      if (chatters.length) {
+        chatSlot.outerHTML =
+          '<div class="card">'+
+            '<div class="block-title">Связаться с компанией</div>'+
+            '<div style="display:flex;flex-direction:column;gap:6px">'+
+              chatters.map(m => {
+                const profileHref = m.user_public_id ? '/profile_user.html?id='+encodeURIComponent(m.user_public_id) : '#';
+                const av = m.user_avatar
+                  ? '<img src="'+escAttr(m.user_avatar)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
+                  : esc(initials(m.user_name));
+                return '<a href="'+escAttr(profileHref)+'" style="display:flex;align-items:center;gap:9px;padding:8px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp);text-decoration:none;color:inherit;transition:all .12s" onmouseover="this.style.borderColor=\'var(--gb)\';this.style.background=\'var(--gl)\'" onmouseout="this.style.borderColor=\'var(--bdr)\';this.style.background=\'var(--gp)\'">'+
+                  '<div style="width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;flex-shrink:0;overflow:hidden;background:'+esc(stableColor(m.user_name))+'">'+av+'</div>'+
+                  '<div style="flex:1;min-width:0">'+
+                    '<div style="font-size:12px;font-weight:700;color:var(--t);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.user_name)+'</div>'+
+                    (m.position ? '<div style="font-size:10px;color:var(--gmt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.position)+'</div>' : '')+
+                  '</div>'+
+                  '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:2;flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'+
+                '</a>';
+              }).join('')+
+            '</div>'+
+          '</div>';
+      } else {
+        chatSlot.remove();
+      }
+    }
   } catch (err) {
     const teamWrap = document.getElementById('sbTeam');
     if (teamWrap) teamWrap.textContent = 'Ошибка загрузки команды';
