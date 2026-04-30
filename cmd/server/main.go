@@ -553,6 +553,7 @@ type createPostRequest struct {
 	CoverURL     string   `json:"cover_url"`
 	PrivacyLevel string   `json:"privacy_level"`
 	CompanyID    int64    `json:"company_id"`
+	CommunityID  int64    `json:"community_id,omitempty"`
 }
 
 type project struct {
@@ -2826,6 +2827,17 @@ func main() {
 				return
 			}
 			req.CompanyID = resolvedCompanyID
+			// Если компания не активна — пробуем резолвить сообщество
+			if resolvedCompanyID == 0 {
+				resolvedCommunityID, err := resolveActiveCommunityID(db, r, userID, req.CommunityID)
+				if err != nil {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+					return
+				}
+				req.CommunityID = resolvedCommunityID
+			} else {
+				req.CommunityID = 0
+			}
 			created, err := createPost(db, userID, req)
 			if err != nil {
 				handlePostActionError(w, err)
@@ -3572,12 +3584,18 @@ func main() {
 				CategoryKey string `json:"category_key"`
 				Title       string `json:"title"`
 				Content     string `json:"content"`
+				CommunityID int64  `json:"community_id"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
-			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content)
+			resolvedCommunityID, err := resolveActiveCommunityID(db, r, actorID, req.CommunityID)
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+				return
+			}
+			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content, resolvedCommunityID)
 			if err != nil {
 				log.Printf("createForumTopic: %v", err)
 				writeError(w, http.StatusBadRequest, err.Error())
@@ -3956,6 +3974,7 @@ func main() {
 				Conditions         []string `json:"conditions"`
 				Tags               []string `json:"tags"`
 				CompanyID          *int64   `json:"company_id"`
+				CommunityID        *int64   `json:"community_id"`
 				ResponsibleUserID  int64    `json:"responsible_user_id"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -4009,12 +4028,20 @@ func main() {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
 				return
 			}
+			resolvedCommunityID := int64(0)
+			if resolvedCompanyID == 0 {
+				resolvedCommunityID, err = resolveActiveCommunityID(db, r, userID, derefInt64(req.CommunityID))
+				if err != nil {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+					return
+				}
+			}
 			var newID int64
 			err = db.QueryRow(`
-				INSERT INTO jobs (public_id, author_user_id, author_company_id, title, description, category, city, address, work_format, salary_from, salary_to, salary_currency, experience_min_years, employment_type, status, responsibilities, requirements, conditions, tags, responsible_user_id)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+				INSERT INTO jobs (public_id, author_user_id, author_company_id, author_community_id, title, description, category, city, address, work_format, salary_from, salary_to, salary_currency, experience_min_years, employment_type, status, responsibilities, requirements, conditions, tags, responsible_user_id)
+				VALUES ($1,$2,NULLIF($3,0),NULLIF($4,0),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
 				RETURNING id
-			`, publicID, userID, resolvedCompanyID, req.Title, req.Description, req.Category, req.City, req.Address, req.WorkFormat,
+			`, publicID, userID, resolvedCompanyID, resolvedCommunityID, req.Title, req.Description, req.Category, req.City, req.Address, req.WorkFormat,
 				req.SalaryFrom, req.SalaryTo, req.SalaryCurrency, req.ExperienceMinYears, req.EmploymentType, req.Status,
 				pgtype.FlatArray[string](req.Responsibilities), pgtype.FlatArray[string](req.Requirements), pgtype.FlatArray[string](req.Conditions), pgtype.FlatArray[string](req.Tags),
 				req.ResponsibleUserID,
@@ -4810,6 +4837,7 @@ func main() {
 				Tags        []string `json:"tags"`
 				City        string   `json:"city"`
 				CompanyID   *int64   `json:"company_id"`
+				CommunityID *int64   `json:"community_id"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "bad json", http.StatusBadRequest)
@@ -4860,12 +4888,20 @@ func main() {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
 				return
 			}
+			resolvedCommunityID := int64(0)
+			if resolvedCompanyID == 0 {
+				resolvedCommunityID, err = resolveActiveCommunityID(db, r, userID, derefInt64(req.CommunityID))
+				if err != nil {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+					return
+				}
+			}
 			var newID int64
 			if err := db.QueryRow(`
-				INSERT INTO catalog_items (public_id, author_user_id, author_company_id, type, category, title, description, price, currency, in_stock, status, cover_image, photos, tags, city)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15)
+				INSERT INTO catalog_items (public_id, author_user_id, author_company_id, author_community_id, type, category, title, description, price, currency, in_stock, status, cover_image, photos, tags, city)
+				VALUES ($1,$2,NULLIF($3,0),NULLIF($4,0),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16)
 				RETURNING id
-			`, publicID, userID, resolvedCompanyID, req.Type, req.Category, req.Title, req.Description,
+			`, publicID, userID, resolvedCompanyID, resolvedCommunityID, req.Type, req.Category, req.Title, req.Description,
 				req.Price, req.Currency, inStock, req.Status, req.CoverImage, string(photosJSON),
 				pgtype.FlatArray[string](req.Tags), req.City,
 			).Scan(&newID); err != nil {
@@ -8913,7 +8949,7 @@ func recordForumTopicView(db *sql.DB, topicID, viewerID int64) (bool, error) {
 }
 
 // createForumTopic — создаёт тему + первое сообщение в одной транзакции.
-func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content string) (forumTopic, error) {
+func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content string, authorCommunityID int64) (forumTopic, error) {
 	if !validateForumCategory(categoryKey) {
 		return forumTopic{}, fmt.Errorf("invalid category")
 	}
@@ -8943,9 +8979,9 @@ func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content st
 
 	var topicID int64
 	if err := tx.QueryRow(
-		`INSERT INTO forum_topics (public_id, category_key, title, author_id)
-		 VALUES ($1, $2, $3, $4) RETURNING id`,
-		topicPublicID, categoryKey, title, authorID,
+		`INSERT INTO forum_topics (public_id, category_key, title, author_id, author_community_id)
+		 VALUES ($1, $2, $3, $4, NULLIF($5, 0)) RETURNING id`,
+		topicPublicID, categoryKey, title, authorID, authorCommunityID,
 	).Scan(&topicID); err != nil {
 		return forumTopic{}, err
 	}
@@ -10984,11 +11020,11 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 			return post{}, err
 		}
 		created, err := scanPost(db.QueryRow(`
-			INSERT INTO posts (public_id, author_id, author_company_id, type, title, content, cover_url, tags, privacy_level)
-			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8::text[], $9)
+			INSERT INTO posts (public_id, author_id, author_company_id, community_id, type, title, content, cover_url, tags, privacy_level)
+			VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), $5, $6, $7, NULLIF($8, ''), $9::text[], $10)
 			RETURNING id, public_id, type, title, content, COALESCE(cover_url, ''), COALESCE(array_to_json(tags), '[]'::json),
 					  privacy_level, likes_count, comments_count, views_count, saves_count, reposts_count, COALESCE(reposted_from_id, 0), created_at, author_id
-		`, publicID, authorID, req.CompanyID, postType, title, content, coverURL, pgTags, privacy))
+		`, publicID, authorID, req.CompanyID, req.CommunityID, postType, title, content, coverURL, pgTags, privacy))
 		if err == nil {
 			_ = saveMentions(db, "post", created.ID, authorID, content, content)
 			return hydratePostAuthor(db, created)
