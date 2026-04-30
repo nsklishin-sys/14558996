@@ -437,9 +437,107 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="block-title">Контакты</div>
     <div id="contactsList"></div>
   </div>
+  <div class="card" id="contactPersonCard" style="display:none">
+    <div class="block-title">Связаться с сообществом</div>
+    <div id="contactPersonBody"></div>
+  </div>
 </aside>
 </div>
 <div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="modalContactPicker" onclick="if(event.target===this)closeContactPicker()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:var(--rxl);max-width:480px;width:92%;box-shadow:var(--shm);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bdr)">
+      <span style="font-size:14px;font-weight:800">Контактное лицо</span>
+      <button onclick="closeContactPicker()" style="background:none;border:none;color:var(--gmt);cursor:pointer;padding:4px;display:grid;place-items:center"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div style="padding:16px 20px">
+      <div style="font-size:11px;color:var(--gmt);margin-bottom:10px;line-height:1.5">Выберите участника сообщества — он будет указан как контактное лицо для связи. Только он получит сообщения через кнопку «Написать».</div>
+      <div id="contactPickerList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:space-between;align-items:center">
+      <button onclick="clearContactPerson()" id="cpClearBtn" style="padding:8px 14px;font-size:12px;font-weight:600;background:none;border:1.5px solid var(--bdr);color:var(--red);border-radius:99px;cursor:pointer;font-family:inherit">Убрать контакт</button>
+      <button onclick="closeContactPicker()" style="padding:8px 14px;font-size:12px;font-weight:700;background:none;border:1.5px solid var(--bdr);color:var(--tm);border-radius:99px;cursor:pointer;font-family:inherit">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function openContactPicker(){
+  const modal=document.getElementById('modalContactPicker');
+  const list=document.getElementById('contactPickerList');
+  if(!modal||!list)return;
+  modal.style.display='flex';
+  list.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">Загрузка участников…</div>';
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/members?limit=200',{headers:{Authorization:'Bearer '+tk()}});
+    const d=await r.json();
+    const members=(d&&d.members)||[];
+    if(!members.length){list.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">В сообществе нет участников</div>';return;}
+    const currentContactPID=currentCommunity?.contact_user_public_id||'';
+    list.innerHTML=members.map(m=>{
+      const name=m.full_name||'Участник';
+      const upid=m.user_public_id||'';
+      const isCurrent=upid===currentContactPID;
+      const av=m.avatar_url?`<img src="${esc(m.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`:ltr(name);
+      return `<button onclick="setContactPerson('${esc(upid)}','${esc(name)}')" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid ${isCurrent?'var(--g)':'var(--bdr)'};background:${isCurrent?'var(--gl)':'#fff'};border-radius:var(--rm);cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .12s" onmouseover="if(!this.dataset.current)this.style.borderColor='var(--gb)'" onmouseout="if(!this.dataset.current)this.style.borderColor='var(--bdr)'" ${isCurrent?'data-current="1"':''}>
+        <div style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;flex-shrink:0;overflow:hidden;background:${avc(name)}">${av}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:var(--t)">${esc(name)}</div>
+          ${m.role&&m.role!=='member'?`<div style="font-size:10px;color:var(--gmt);text-transform:capitalize">${esc(m.role==='owner'?'Владелец':m.role==='moderator'?'Модератор':m.role)}</div>`:''}
+        </div>
+        ${isCurrent?'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:2.5;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>':''}
+      </button>`;
+    }).join('');
+  }catch(err){
+    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--red);font-size:12px">Ошибка загрузки</div>';
+  }
+}
+function closeContactPicker(){
+  const modal=document.getElementById('modalContactPicker');
+  if(modal)modal.style.display='none';
+}
+async function setContactPerson(userPublicID,name){
+  if(!confirm('Назначить '+name+' контактным лицом сообщества?'))return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({contact_user_public_id:userPublicID})
+    });
+    if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось');return;}
+    const updated=await r.json();
+    if(updated&&updated.community){
+      currentCommunity=updated.community;
+      renderContactPerson(updated.community);
+    }
+    toast('Контактное лицо назначено',true);
+    closeContactPicker();
+  }catch(err){
+    toast('Ошибка: '+(err.message||'неизвестно'));
+  }
+}
+async function clearContactPerson(){
+  if(!confirm('Убрать контактное лицо?'))return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({contact_user_public_id:''})
+    });
+    if(!r.ok){toast('Не удалось');return;}
+    const updated=await r.json();
+    if(updated&&updated.community){
+      currentCommunity=updated.community;
+      renderContactPerson(updated.community);
+    }
+    toast('Контакт убран',true);
+    closeContactPicker();
+  }catch(err){
+    toast('Ошибка: '+(err.message||'неизвестно'));
+  }
+}
+</script>
 
 <script>
 const API='/api',tk=()=>localStorage.getItem('token');
@@ -615,6 +713,40 @@ async function decideReq(id,action){
   if(!r.ok){toast('Не удалось обработать заявку');return;}
   loadRequests();loadMembers();
 }
+function renderContactPerson(c){
+  const card=document.getElementById('contactPersonCard');
+  const body=document.getElementById('contactPersonBody');
+  if(!card||!body)return;
+  const isOwner=myRole==='owner';
+  const hasContact=!!(c.contact_user_public_id&&c.contact_user_name);
+  if(!hasContact && !isOwner){card.style.display='none';return;}
+  card.style.display='';
+  if(hasContact){
+    const name=c.contact_user_name||'Контакт';
+    const upid=c.contact_user_public_id||'';
+    const av=c.contact_user_avatar
+      ? `<img src="${esc(c.contact_user_avatar)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+      : ltr(name);
+    body.innerHTML=`
+      <a href="/chat.html?to=${esc(upid)}" style="display:flex;align-items:center;gap:9px;padding:8px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp);text-decoration:none;color:inherit;transition:all .12s" onmouseover="this.style.borderColor='var(--gb)';this.style.background='var(--gl)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.background='var(--gp)'">
+        <div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800;flex-shrink:0;overflow:hidden;background:${avc(name)}">${av}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:var(--t);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
+          <div style="font-size:10px;color:var(--gmt)">Контактное лицо</div>
+        </div>
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:2;flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </a>
+      ${isOwner?`<button onclick="openContactPicker()" style="margin-top:8px;width:100%;padding:6px 10px;font-size:11px;font-weight:600;background:none;border:1.5px dashed var(--bdr);color:var(--gmt);border-radius:var(--rm);cursor:pointer;font-family:inherit;transition:all .12s" onmouseover="this.style.borderColor='var(--g)';this.style.color='var(--g)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--gmt)'">Изменить</button>`:''}
+    `;
+  }else{
+    // owner, но контакт не назначен
+    body.innerHTML=`
+      <div style="font-size:11px;color:var(--gmt);margin-bottom:8px;line-height:1.45">Назначьте ответственного за связь с сообществом из списка участников.</div>
+      <button onclick="openContactPicker()" style="width:100%;padding:8px 12px;font-size:12px;font-weight:700;background:var(--g);color:#fff;border:none;border-radius:var(--rm);cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='var(--gm)'" onmouseout="this.style.background='var(--g)'">Назначить контактное лицо</button>
+    `;
+  }
+}
+
 let joined=false;
 let communityTitle='Сообщество';
 let currentCommunityID=null;
@@ -866,6 +998,7 @@ function renderCommunityProfile(c){
   if(createdAt){createdAt.textContent=c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}):'—'}
   const typeNode=document.getElementById('communityType');if(typeNode)typeNode.textContent=c.privacy_level==='closed'?'Закрытое':'Открытое';
   renderContacts(c);
+  renderContactPerson(c);
 }
 function readCachedCommunity(id){
   if(!id)return null;
