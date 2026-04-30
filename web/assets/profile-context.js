@@ -96,7 +96,7 @@
   function styles() {
     if (document.getElementById('pcx-styles')) return;
     var css =
-      '.pcx-section{padding:6px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);background:#fafdfb}' +
+      '.pcx-section{padding:6px;border-bottom:1px solid var(--bdr);background:#fafdfb}' +
       '.pcx-label{font-size:9px;font-weight:800;color:var(--gmt);letter-spacing:.08em;text-transform:uppercase;padding:6px 10px 4px}' +
       '.pcx-label + .pcx-label{padding-top:8px;border-top:1px solid var(--bdr);margin-top:4px}' +
       '.pcx-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--tm);font-size:12px;transition:background .12s}' +
