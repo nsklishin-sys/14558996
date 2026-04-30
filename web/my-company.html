@@ -515,10 +515,24 @@ async function loadCompanies(){
       renderEmpty();
       return;
     }
-    // Если в localStorage есть active_company_id и она в списке — выбираем её
-    const activeID = window.getActiveCompanyID ? window.getActiveCompanyID() : null;
-    const found = myCompanies.find(c => c.id === activeID);
-    currentCompany = found || myCompanies[0];
+    // Приоритет выбора компании на странице управления:
+    // 1. Если в URL есть ?id=<slug> — открыть её (если юзер в ней состоит)
+    // 2. Иначе — первая компания где юзер owner
+    // 3. Иначе — первая в списке (где он только member)
+    // Активный контекст из свитчера НЕ влияет на /my-company.html —
+    // свитчер управляет публикациями, а не админкой.
+    const urlSlug = new URLSearchParams(location.search).get('id');
+    let chosen = null;
+    if (urlSlug) {
+      chosen = myCompanies.find(c => c.slug === urlSlug || c.public_id === urlSlug);
+    }
+    if (!chosen) {
+      chosen = myCompanies.find(c => c.viewer_is_owner === true);
+    }
+    if (!chosen) {
+      chosen = myCompanies[0];
+    }
+    currentCompany = chosen;
     await loadCurrentCompanyFull();
     render();
   } catch (err) {
