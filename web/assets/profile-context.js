@@ -117,19 +117,27 @@
     // Меняем текст пункта "Моя компания" → "Управление компанией"
     // если активен корпоративный контекст. Скрываем пункт если у юзера
     // нет компаний (и контекст по умолчанию — личный).
-    var anchors = document.querySelectorAll('.pdd-item[href="/my-company.html"]');
+    // Также добавляем ?id=<slug> в href чтобы /my-company.html сразу
+    // открыл нужную компанию.
+    var anchors = document.querySelectorAll('.pdd-item[href^="/my-company.html"]');
+    var cached = window.__pcxCompaniesCache || [];
+    var activeCompany = activeID != null ? cached.find(function(c){ return c.id === activeID; }) : null;
     for (var i = 0; i < anchors.length; i++) {
       var label = anchors[i].querySelector('.pdd-item-label');
       if (label) {
         label.textContent = activeID == null ? 'Моя компания' : 'Управление компанией';
       }
       // Если у юзера нет компаний и сейчас личный контекст — скрыть пункт.
-      // (При корпоративном контексте hasCompanies всегда true, иначе мы бы
-      // упали в фолбэк сброса в личный.)
       if (!hasCompanies && activeID == null) {
         anchors[i].style.display = 'none';
       } else {
         anchors[i].style.display = '';
+      }
+      // href с явным slug
+      if (activeCompany && activeCompany.slug) {
+        anchors[i].setAttribute('href', '/my-company.html?id=' + encodeURIComponent(activeCompany.slug));
+      } else {
+        anchors[i].setAttribute('href', '/my-company.html');
       }
     }
   }
