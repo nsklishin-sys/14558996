@@ -165,6 +165,25 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .post-act.liked{color:var(--red)}
 .post-act svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 .post-act.liked svg{fill:var(--red);stroke:var(--red)}
+
+/* Блок комментариев под постом */
+.comments-wrap{margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr);display:none}
+.comments-wrap.open{display:block}
+.comment-item{display:flex;gap:9px;padding:8px 0;align-items:flex-start}
+.comment-item + .comment-item{border-top:1px solid var(--bdr)}
+.comment-av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.comment-body{flex:1;min-width:0}
+.comment-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.comment-author{font-size:12px;font-weight:700;color:var(--t)}
+.comment-time{font-size:10px;color:var(--gmt)}
+.comment-text{font-size:12px;color:var(--tm);line-height:1.5;word-wrap:break-word}
+.comment-form{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding-top:10px;border-top:1px dashed var(--bdr)}
+.comment-form textarea{flex:1;min-height:36px;max-height:120px;padding:8px 10px;font-size:12px;font-family:inherit;border:1.5px solid var(--bdr);border-radius:var(--rm);resize:vertical;color:var(--t);background:#fff;outline:none}
+.comment-form textarea:focus{border-color:var(--gb)}
+.comment-form button{padding:8px 14px;font-size:12px;font-weight:700;background:var(--g);color:#fff;border:none;border-radius:var(--rm);cursor:pointer;font-family:inherit;flex-shrink:0;transition:background .15s}
+.comment-form button:hover{background:var(--gm)}
+.comment-form button:disabled{opacity:.6;cursor:not-allowed}
+.comments-empty{font-size:11px;color:var(--gmt);font-style:italic;text-align:center;padding:8px 0}
 .post-views{margin-left:auto;font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:3px}
 .post-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 
@@ -420,8 +439,40 @@ function renderContacts(c){
   wrap.innerHTML=rows.length?rows.join(''):'<div>Контакты не заполнены.</div>';
 }
 function renderPostCard(p){
-  const canDelete=(p.author_public_id===JSON.parse(localStorage.getItem('user')||'{}').public_id)||['owner','admin','moderator'].includes(myRole);
-  return `<div class="post-card" id="post-${esc(p.public_id)}"><div class="post-head"><div class="post-av" style="background:${avc(p.author||'U')}">${ltr(p.author||'U')}</div><div><div class="post-author">${esc(p.author||'')}</div><div class="post-time">${new Date(p.created_at).toLocaleString('ru-RU')}</div></div></div><div class="post-title">${esc(p.title||'')}</div><div class="post-body">${esc(p.content||'')}</div>${canDelete?`<div class="post-footer"><button class="post-act" onclick="deleteCommunityPost('${esc(p.public_id)}')">🗑 Удалить</button></div>`:''}</div>`;
+  const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||'';
+  const canDelete=(p.author_public_id===myPublicID)||['owner','admin','moderator'].includes(myRole);
+  const isLiked=!!p.is_liked;
+  const likesCount=p.likes_count||0;
+  const commentsCount=p.comments_count||0;
+  return `<div class="post-card" id="post-${esc(p.public_id)}">
+    <div class="post-head">
+      <div class="post-av" style="background:${avc(p.author||'U')}">${ltr(p.author||'U')}</div>
+      <div>
+        <div class="post-author">${esc(p.author||'')}</div>
+        <div class="post-time">${new Date(p.created_at).toLocaleString('ru-RU')}</div>
+      </div>
+    </div>
+    <div class="post-title">${esc(p.title||'')}</div>
+    <div class="post-body">${esc(p.content||'')}</div>
+    <div class="post-footer">
+      <button class="post-act${isLiked?' liked':''}" onclick="togglePostLike('${esc(p.public_id)}',this)">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span>${likesCount}</span>
+      </button>
+      <button class="post-act" onclick="toggleComments('${esc(p.public_id)}')">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>${commentsCount}</span>
+      </button>
+      ${canDelete?`<button class="post-act" onclick="deleteCommunityPost('${esc(p.public_id)}')" style="margin-left:auto;color:var(--gmt)">🗑 Удалить</button>`:''}
+    </div>
+    <div class="comments-wrap" id="comments-${esc(p.public_id)}">
+      <div class="comments-list" id="comments-list-${esc(p.public_id)}"></div>
+      <div class="comment-form">
+        <textarea id="comment-input-${esc(p.public_id)}" placeholder="Написать комментарий…" rows="1"></textarea>
+        <button onclick="submitComment('${esc(p.public_id)}',this)">Отправить</button>
+      </div>
+    </div>
+  </div>`;
 }
 async function loadPosts(){
   if(!currentCommunityID)return;
@@ -565,7 +616,102 @@ async function toggleJoin(){
     toast('Не удалось выйти из сообщества');
   }
 }
-function likePost(btn){const liked=btn.classList.contains('liked');const span=btn.querySelector('span');const n=parseInt(span?.textContent||'0',10);if(liked){btn.classList.remove('liked');if(span)span.textContent=n-1;}else{btn.classList.add('liked');if(span)span.textContent=n+1;btn.style.animation='heartPop .3s ease';setTimeout(()=>btn.style.animation='',300);}}
+async function togglePostLike(publicID,btn){
+  if(!tk()){toast('Войдите чтобы лайкать');return;}
+  const wasLiked=btn.classList.contains('liked');
+  // Оптимистично меняем UI
+  const span=btn.querySelector('span');
+  const oldCount=parseInt(span?.textContent||'0',10);
+  btn.classList.toggle('liked');
+  if(span)span.textContent=String(oldCount+(wasLiked?-1:1));
+  if(!wasLiked){btn.style.animation='heartPop .3s ease';setTimeout(()=>btn.style.animation='',300);}
+  try{
+    const r=await fetch(API+'/posts/'+encodeURIComponent(publicID)+'/like',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){throw new Error('Не удалось');}
+    const d=await r.json();
+    // Синхронизируем со сервером (на случай рассинхрона)
+    if(d.is_liked!==undefined){
+      btn.classList.toggle('liked',d.is_liked);
+      if(span)span.textContent=String(d.likes_count||0);
+    }
+  }catch(err){
+    // Откатываем UI
+    btn.classList.toggle('liked');
+    if(span)span.textContent=String(oldCount);
+    toast('Не удалось поставить лайк');
+  }
+}
+
+function toggleComments(publicID){
+  const wrap=document.getElementById('comments-'+publicID);
+  if(!wrap)return;
+  if(wrap.classList.contains('open')){
+    wrap.classList.remove('open');
+    return;
+  }
+  wrap.classList.add('open');
+  loadComments(publicID);
+}
+
+async function loadComments(publicID){
+  const list=document.getElementById('comments-list-'+publicID);
+  if(!list)return;
+  list.innerHTML='<div class="comments-empty">Загрузка…</div>';
+  try{
+    const r=await fetch(API+'/posts/'+encodeURIComponent(publicID)+'/comments?limit=50',{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    if(!r.ok){list.innerHTML='<div class="comments-empty">Не удалось загрузить</div>';return;}
+    const d=await r.json();
+    const comments=d.comments||[];
+    if(!comments.length){list.innerHTML='<div class="comments-empty">Комментариев пока нет</div>';return;}
+    list.innerHTML=comments.map(c=>{
+      const name=c.author_name||'Участник';
+      return `<div class="comment-item">
+        <div class="comment-av" style="background:${avc(name)}">${ltr(name)}</div>
+        <div class="comment-body">
+          <div class="comment-head">
+            <span class="comment-author">${esc(name)}</span>
+            <span class="comment-time">${new Date(c.created_at).toLocaleString('ru-RU')}</span>
+          </div>
+          <div class="comment-text">${esc(c.content||'')}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch{
+    list.innerHTML='<div class="comments-empty">Ошибка загрузки</div>';
+  }
+}
+
+async function submitComment(publicID,btn){
+  if(!tk()){toast('Войдите чтобы комментировать');return;}
+  const input=document.getElementById('comment-input-'+publicID);
+  if(!input)return;
+  const content=input.value.trim();
+  if(!content){toast('Введите текст');return;}
+  btn.disabled=true;
+  try{
+    const r=await fetch(API+'/posts/'+encodeURIComponent(publicID)+'/comments',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({content})
+    });
+    if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось отправить');return;}
+    input.value='';
+    // Обновим список комментариев
+    loadComments(publicID);
+    // И увеличим счётчик в кнопке-комментариях
+    const card=document.getElementById('post-'+publicID);
+    if(card){
+      const cBtn=card.querySelectorAll('.post-act')[1];
+      const span=cBtn?.querySelector('span');
+      if(span){span.textContent=String((parseInt(span.textContent||'0',10))+1);}
+    }
+  }catch(err){
+    toast('Ошибка: '+(err.message||'неизвестно'));
+  }finally{
+    btn.disabled=false;
+  }
+}
+
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function queryCommunityID(){const id=new URLSearchParams(location.search).get('id');const n=Number(id);return Number.isFinite(n)&&n>0?n:null}
 function buildCommunityPersona(c){
