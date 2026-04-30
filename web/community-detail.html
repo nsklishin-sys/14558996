@@ -184,6 +184,23 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .comment-form button:hover{background:var(--gm)}
 .comment-form button:disabled{opacity:.6;cursor:not-allowed}
 .comments-empty{font-size:11px;color:var(--gmt);font-style:italic;text-align:center;padding:8px 0}
+
+/* Карточка участника */
+.member-row{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:var(--rm);transition:background .12s}
+.member-row + .member-row{border-top:1px solid var(--bdr)}
+.member-row:hover{background:var(--gp)}
+.member-av-sm{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.member-info{flex:1;min-width:0}
+.member-name-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.member-fullname{font-size:13px;font-weight:700;color:var(--t)}
+.member-role-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em}
+.member-role-badge.owner{background:#FFE9C2;color:#8A5A00}
+.member-role-badge.moderator{background:#E0E8F8;color:#1F4FA0}
+.member-role-badge.admin{background:#F5E0FF;color:#6040A0}
+.member-joined{font-size:11px;color:var(--gmt);margin-top:1px}
+.member-actions{display:flex;gap:6px;flex-shrink:0}
+.member-actions button{padding:5px 10px;font-size:11px;font-weight:700;border:1.5px solid var(--bdr);background:#fff;color:var(--tm);border-radius:99px;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap}
+.member-actions button:hover{border-color:var(--g);color:var(--g)}
 .post-views{margin-left:auto;font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:3px}
 .post-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 
@@ -502,12 +519,61 @@ async function deleteCommunityPost(publicID){
 }
 async function loadMembers(){
   const wrap=document.getElementById('membersList');if(!wrap)return;
+  wrap.innerHTML='<div class="comments-empty">Загрузка…</div>';
   try{
     const r=await fetch(API+'/communities/'+currentCommunityID+'/members?limit=100',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok){wrap.innerHTML='Нет доступа';return;}
+    if(!r.ok){wrap.innerHTML='<div class="comments-empty">Нет доступа</div>';return;}
     const d=await r.json();const members=d?.members||[];
-    wrap.innerHTML=members.map(m=>`<div style="padding:6px 0;border-bottom:1px solid var(--bdr)">${esc(m.full_name)} — <b>${esc(m.role)}</b></div>`).join('')||'Список пуст';
-  }catch{wrap.innerHTML='Ошибка загрузки';}
+    if(!members.length){wrap.innerHTML='<div class="comments-empty">Список пуст</div>';return;}
+    const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||'';
+    const isOwner=myRole==='owner';
+    wrap.innerHTML=members.map(m=>{
+      const name=m.full_name||'Участник';
+      const role=m.role||'member';
+      const isMe=m.public_id===myPublicID;
+      const roleBadge=role==='owner'?'<span class="member-role-badge owner">Владелец</span>'
+        :role==='admin'?'<span class="member-role-badge admin">Админ</span>'
+        :role==='moderator'?'<span class="member-role-badge moderator">Модератор</span>'
+        :'';
+      // Кнопки управления — только owner и только для не-owner-ов и не себя
+      let actions='';
+      if(isOwner && role!=='owner' && !isMe){
+        if(role==='moderator'){
+          actions=`<button onclick="changeMemberRole(${m.user_id},'member','${esc(name)}')">Снять модератора</button>`;
+        }else{
+          actions=`<button onclick="changeMemberRole(${m.user_id},'moderator','${esc(name)}')">Назначить модератором</button>`;
+        }
+      }
+      return `<div class="member-row">
+        <div class="member-av-sm" style="background:${avc(name)}">${ltr(name)}</div>
+        <div class="member-info">
+          <div class="member-name-row">
+            <span class="member-fullname">${esc(name)}</span>
+            ${roleBadge}
+          </div>
+          ${m.joined_at?`<div class="member-joined">в сообществе с ${new Date(m.joined_at).toLocaleDateString('ru-RU')}</div>`:''}
+        </div>
+        ${actions?`<div class="member-actions">${actions}</div>`:''}
+      </div>`;
+    }).join('');
+  }catch{wrap.innerHTML='<div class="comments-empty">Ошибка загрузки</div>';}
+}
+
+async function changeMemberRole(userID,newRole,name){
+  const verb=newRole==='moderator'?'назначить модератором':'снять с модераторства';
+  if(!confirm(verb.charAt(0).toUpperCase()+verb.slice(1)+' пользователя '+name+'?'))return;
+  try{
+    const r=await fetch(API+'/communities/'+currentCommunityID+'/members/'+userID,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({role:newRole})
+    });
+    if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось');return;}
+    toast(newRole==='moderator'?'Назначен модератором':'Модераторство снято',true);
+    loadMembers();
+  }catch(err){
+    toast('Ошибка: '+(err.message||'неизвестно'));
+  }
 }
 async function loadRequests(){
   const wrap=document.getElementById('requestsList');if(!wrap)return;
@@ -762,6 +828,13 @@ function renderCommunityProfile(c){
   const compose=document.getElementById('composeBox');if(compose)compose.style.display=joined?'flex':'none';
   const chatBtn=document.getElementById('btnCommunityChat');if(chatBtn)chatBtn.style.display=joined?'inline-flex':'none';
   const requestsTab=document.getElementById('requestsTabBtn');if(requestsTab)requestsTab.style.display=(myRole==='owner'||myRole==='admin'||myRole==='moderator')?'inline-flex':'none';
+  // Таб "Участники" — только для тех, кто состоит в сообществе (для closed)
+  const membersTabBtn=document.querySelector('.tab-btn[onclick*=\"\'members\'\"]');
+  if(membersTabBtn){
+    const isParticipant=!!myRole;
+    const privacy=(currentCommunity&&currentCommunity.privacy_level)||'open';
+    membersTabBtn.style.display=(privacy==='open'||isParticipant)?'inline-flex':'none';
+  }
   const createdAt=document.getElementById('communityCreatedAt');
   if(createdAt){createdAt.textContent=c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}):'—'}
   const typeNode=document.getElementById('communityType');if(typeNode)typeNode.textContent=c.privacy_level==='closed'?'Закрытое':'Открытое';
