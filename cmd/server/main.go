@@ -3584,18 +3584,27 @@ func main() {
 				CategoryKey string `json:"category_key"`
 				Title       string `json:"title"`
 				Content     string `json:"content"`
+				CompanyID   int64  `json:"company_id"`
 				CommunityID int64  `json:"community_id"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
-			resolvedCommunityID, err := resolveActiveCommunityID(db, r, actorID, req.CommunityID)
+			resolvedCompanyID, err := resolveActiveCompanyID(db, r, actorID, req.CompanyID)
 			if err != nil {
-				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этой компании"})
 				return
 			}
-			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content, resolvedCommunityID)
+			var resolvedCommunityID int64
+			if resolvedCompanyID == 0 {
+				resolvedCommunityID, err = resolveActiveCommunityID(db, r, actorID, req.CommunityID)
+				if err != nil {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+					return
+				}
+			}
+			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content, resolvedCompanyID, resolvedCommunityID)
 			if err != nil {
 				log.Printf("createForumTopic: %v", err)
 				writeError(w, http.StatusBadRequest, err.Error())
@@ -7399,10 +7408,12 @@ CREATE INDEX IF NOT EXISTS catalog_items_author_company_idx ON catalog_items(aut
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
 ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
 ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
+ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_company_id BIGINT;
 
 CREATE INDEX IF NOT EXISTS jobs_author_community_idx ON jobs(author_community_id) WHERE author_community_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS catalog_items_author_community_idx ON catalog_items(author_community_id) WHERE author_community_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS forum_topics_author_community_idx ON forum_topics(author_community_id) WHERE author_community_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS forum_topics_author_company_idx ON forum_topics(author_company_id) WHERE author_company_id IS NOT NULL;
 `
 
 	if _, err := db.Exec(schema); err != nil {
@@ -8055,6 +8066,10 @@ type forumTopic struct {
 	AuthorID              int64     `json:"author_id"`
 	AuthorPublicID        string    `json:"author_public_id"`
 	AuthorName            string    `json:"author_name"`
+	AuthorCompanyID       int64     `json:"author_company_id,omitempty"`
+	AuthorCompanyName     string    `json:"author_company_name,omitempty"`
+	AuthorCompanySlug     string    `json:"author_company_slug,omitempty"`
+	AuthorCompanyLogo     string    `json:"author_company_logo,omitempty"`
 	AuthorCommunityID     int64     `json:"author_community_id,omitempty"`
 	AuthorCommunityName   string    `json:"author_community_name,omitempty"`
 	AuthorCommunityAvatar string    `json:"author_community_avatar,omitempty"`
@@ -8176,6 +8191,7 @@ type jobItem struct {
 	AuthorCompanyID       int64     `json:"author_company_id,omitempty"`
 	AuthorCompanyName     string    `json:"author_company_name,omitempty"`
 	AuthorCompanySlug     string    `json:"author_company_slug,omitempty"`
+	AuthorCompanyLogo     string    `json:"author_company_logo,omitempty"`
 	AuthorCommunityID     int64     `json:"author_community_id,omitempty"`
 	AuthorCommunityName   string    `json:"author_community_name,omitempty"`
 	AuthorCommunityAvatar string    `json:"author_community_avatar,omitempty"`
@@ -8295,7 +8311,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		SELECT
 			j.id, j.public_id, j.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
-			COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+			COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''), COALESCE(comp.logo_image, ''),
 			COALESCE(j.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 			j.title, j.description, j.category, j.city, j.address, j.work_format,
 			j.salary_from, j.salary_to, j.salary_currency,
@@ -8327,7 +8343,7 @@ func listJobs(db *sql.DB, f listJobsFilters) ([]jobItem, error) {
 		if err := rows.Scan(
 			&j.ID, &j.PublicID, &j.AuthorUserID,
 			&j.AuthorPublicID, &j.AuthorName,
-			&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug,
+			&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug, &j.AuthorCompanyLogo,
 			&j.AuthorCommunityID, &j.AuthorCommunityName, &j.AuthorCommunityAvatar, &j.AuthorCommunityColor,
 			&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 			&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
@@ -8382,7 +8398,7 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	}
 	q := `SELECT j.id, j.public_id, j.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
-		COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+		COALESCE(j.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''), COALESCE(comp.logo_image, ''),
 		COALESCE(j.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		j.title, j.description, j.category, j.city, j.address, j.work_format,
 		j.salary_from, j.salary_to, j.salary_currency,
@@ -8402,7 +8418,7 @@ func getJobByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*jobItem
 	err = db.QueryRow(q, args...).Scan(
 		&j.ID, &j.PublicID, &j.AuthorUserID,
 		&j.AuthorPublicID, &j.AuthorName,
-		&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug,
+		&j.AuthorCompanyID, &j.AuthorCompanyName, &j.AuthorCompanySlug, &j.AuthorCompanyLogo,
 		&j.AuthorCommunityID, &j.AuthorCommunityName, &j.AuthorCommunityAvatar, &j.AuthorCommunityColor,
 		&j.Title, &j.Description, &j.Category, &j.City, &j.Address, &j.WorkFormat,
 		&j.SalaryFrom, &j.SalaryTo, &j.SalaryCurrency,
@@ -8758,11 +8774,13 @@ func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offs
 	baseQuery := `
 		SELECT t.id, t.public_id, t.category_key, t.title,
 		       t.author_id, u.public_id, COALESCE(u.full_name, u.handle, ''),
+		       COALESCE(t.author_company_id, 0), COALESCE(cmp_a.name, ''), COALESCE(cmp_a.slug, ''), COALESCE(cmp_a.logo_image, ''),
 		       COALESCE(t.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		       t.created_at, t.last_reply_at, t.views_count, t.replies_count,
 		       t.is_pinned, t.is_closed
 		FROM forum_topics t
 		LEFT JOIN users u ON u.id = t.author_id
+		LEFT JOIN companies cmp_a ON cmp_a.id = t.author_company_id
 		LEFT JOIN communities ac_com ON ac_com.id = t.author_community_id
 		WHERE t.deleted_at IS NULL
 	`
@@ -8790,6 +8808,7 @@ func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offs
 		if err := rows.Scan(
 			&t.ID, &t.PublicID, &t.CategoryKey, &t.Title,
 			&t.AuthorID, &t.AuthorPublicID, &t.AuthorName,
+			&t.AuthorCompanyID, &t.AuthorCompanyName, &t.AuthorCompanySlug, &t.AuthorCompanyLogo,
 			&t.AuthorCommunityID, &t.AuthorCommunityName, &t.AuthorCommunityAvatar, &t.AuthorCommunityColor,
 			&t.CreatedAt, &t.LastReplyAt, &t.ViewsCount, &t.RepliesCount,
 			&t.IsPinned, &t.IsClosed,
@@ -8913,16 +8932,19 @@ func getForumTopicByPublicID(db *sql.DB, publicID string, viewerID int64) (forum
 	err := db.QueryRow(`
 		SELECT t.id, t.public_id, t.category_key, t.title,
 		       t.author_id, COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
+		       COALESCE(t.author_company_id, 0), COALESCE(cmp_a.name, ''), COALESCE(cmp_a.slug, ''), COALESCE(cmp_a.logo_image, ''),
 		       COALESCE(t.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		       t.created_at, t.last_reply_at, t.views_count, t.replies_count,
 		       t.is_pinned, t.is_closed
 		FROM forum_topics t
 		LEFT JOIN users u ON u.id = t.author_id
+		LEFT JOIN companies cmp_a ON cmp_a.id = t.author_company_id
 		LEFT JOIN communities ac_com ON ac_com.id = t.author_community_id
 		WHERE t.public_id = $1 AND t.deleted_at IS NULL
 	`, publicID).Scan(
 		&t.ID, &t.PublicID, &t.CategoryKey, &t.Title,
 		&t.AuthorID, &t.AuthorPublicID, &t.AuthorName,
+		&t.AuthorCompanyID, &t.AuthorCompanyName, &t.AuthorCompanySlug, &t.AuthorCompanyLogo,
 		&t.AuthorCommunityID, &t.AuthorCommunityName, &t.AuthorCommunityAvatar, &t.AuthorCommunityColor,
 		&t.CreatedAt, &t.LastReplyAt, &t.ViewsCount, &t.RepliesCount,
 		&t.IsPinned, &t.IsClosed,
@@ -8969,7 +8991,7 @@ func recordForumTopicView(db *sql.DB, topicID, viewerID int64) (bool, error) {
 }
 
 // createForumTopic — создаёт тему + первое сообщение в одной транзакции.
-func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content string, authorCommunityID int64) (forumTopic, error) {
+func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content string, authorCompanyID, authorCommunityID int64) (forumTopic, error) {
 	if !validateForumCategory(categoryKey) {
 		return forumTopic{}, fmt.Errorf("invalid category")
 	}
@@ -8999,9 +9021,9 @@ func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content st
 
 	var topicID int64
 	if err := tx.QueryRow(
-		`INSERT INTO forum_topics (public_id, category_key, title, author_id, author_community_id)
-		 VALUES ($1, $2, $3, $4, NULLIF($5, 0)) RETURNING id`,
-		topicPublicID, categoryKey, title, authorID, authorCommunityID,
+		`INSERT INTO forum_topics (public_id, category_key, title, author_id, author_company_id, author_community_id)
+		 VALUES ($1, $2, $3, $4, NULLIF($5, 0), NULLIF($6, 0)) RETURNING id`,
+		topicPublicID, categoryKey, title, authorID, authorCompanyID, authorCommunityID,
 	).Scan(&topicID); err != nil {
 		return forumTopic{}, err
 	}
@@ -15750,6 +15772,7 @@ type catalogItem struct {
 	AuthorCompanyID       int64     `json:"author_company_id,omitempty"`
 	AuthorCompanyName     string    `json:"author_company_name,omitempty"`
 	AuthorCompanySlug     string    `json:"author_company_slug,omitempty"`
+	AuthorCompanyLogo     string    `json:"author_company_logo,omitempty"`
 	AuthorCommunityID     int64     `json:"author_community_id,omitempty"`
 	AuthorCommunityName   string    `json:"author_community_name,omitempty"`
 	AuthorCommunityAvatar string    `json:"author_community_avatar,omitempty"`
@@ -15868,7 +15891,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 		SELECT
 			ci.id, ci.public_id, ci.author_user_id,
 			COALESCE(u.public_id, ''), COALESCE(u.full_name, u.handle, ''),
-			COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+			COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''), COALESCE(comp.logo_image, ''),
 			COALESCE(ci.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 			ci.type, ci.category, ci.title, ci.description,
 			ci.price, ci.currency, ci.in_stock, ci.status,
@@ -15897,7 +15920,7 @@ func listCatalogItems(db *sql.DB, f listCatalogFilters) ([]catalogItem, error) {
 		if err := rows.Scan(
 			&ci.ID, &ci.PublicID, &ci.AuthorUserID,
 			&ci.AuthorPublicID, &ci.AuthorName,
-			&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug,
+			&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug, &ci.AuthorCompanyLogo,
 			&ci.AuthorCommunityID, &ci.AuthorCommunityName, &ci.AuthorCommunityAvatar, &ci.AuthorCommunityColor,
 			&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 			&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
@@ -15939,7 +15962,7 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 	}
 	q := `SELECT ci.id, ci.public_id, ci.author_user_id,
 		COALESCE(u.public_id,''), COALESCE(u.full_name, u.handle, ''),
-		COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''),
+		COALESCE(ci.author_company_id, 0), COALESCE(comp.name, ''), COALESCE(comp.slug, ''), COALESCE(comp.logo_image, ''),
 		COALESCE(ci.author_community_id, 0), COALESCE(ac_com.name, ''), COALESCE(ac_com.avatar_url, ''), COALESCE(ac_com.color, ''),
 		ci.type, ci.category, ci.title, ci.description,
 		ci.price, ci.currency, ci.in_stock, ci.status,
@@ -15957,7 +15980,7 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 	err := db.QueryRow(q, args...).Scan(
 		&ci.ID, &ci.PublicID, &ci.AuthorUserID,
 		&ci.AuthorPublicID, &ci.AuthorName,
-		&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug,
+		&ci.AuthorCompanyID, &ci.AuthorCompanyName, &ci.AuthorCompanySlug, &ci.AuthorCompanyLogo,
 		&ci.AuthorCommunityID, &ci.AuthorCommunityName, &ci.AuthorCommunityAvatar, &ci.AuthorCommunityColor,
 		&ci.Type, &ci.Category, &ci.Title, &ci.Description,
 		&ci.Price, &ci.Currency, &ci.InStock, &ci.Status,
