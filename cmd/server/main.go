@@ -11022,11 +11022,13 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
 		       COALESCE(($2::bigint IS NOT NULL AND EXISTS (
 		           SELECT 1 FROM posts rp WHERE rp.author_id = $2::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE
-		       )), FALSE)
+		       )), FALSE),
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
 		FROM posts p
 		LEFT JOIN companies ac ON ac.id = p.author_company_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $2::bigint
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $2::bigint
+		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.public_id = $1 AND p.is_deleted = FALSE
 		LIMIT 1
 	`, publicID, currentUser).Scan(
@@ -11034,6 +11036,7 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID, &item.AuthorCompanyID,
 		&item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo, &item.IsLiked,
 		&item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.IsSaved, &item.IsReposted,
+		&item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -1005,17 +1005,26 @@ function renderPost(p){
 
   const isRepost = !!(p.repost && p.repost.public_id);
   const author = p;
-  const authorName = author.author || 'Участник';
-  const authorRole = author.author_role || 'Участник LASTOP';
-  const authorPublicID = author.author_public_id || '';
-  const authorColor = avc(authorName);
+  const fromCommunity = Boolean(author.community_id && author.community_name);
+  const fromCompany = !fromCommunity && Boolean(author.author_company_id && author.author_company_name);
+  const authorName = fromCommunity
+    ? (author.community_name || 'Сообщество')
+    : (fromCompany ? (author.author_company_name || 'Компания') : (author.author || 'Участник'));
+  const authorRole = fromCommunity
+    ? `опубликовал ${author.author || 'участник'}`
+    : (fromCompany ? `опубликовал ${author.author || 'участник'}` : (author.author_role || 'Участник LASTOP'));
+  const authorPublicID = (!fromCommunity && !fromCompany) ? (author.author_public_id || '') : '';
+  const authorAvatar = fromCommunity
+    ? (author.community_avatar || '')
+    : (fromCompany ? (author.author_company_logo || '') : (author.author_avatar || ''));
+  const authorColor = fromCommunity ? (author.community_color || avc(authorName)) : avc(authorName);
 
   set('newsAuthorName', authorName);
   set('newsAuthorRole', authorRole);
   const newsAuthorAv = document.getElementById('newsAuthorAv');
   if (newsAuthorAv) {
-    if (author.author_avatar) {
-      newsAuthorAv.innerHTML = `<img src="${esc(author.author_avatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
+    if (authorAvatar) {
+      newsAuthorAv.innerHTML = `<img src="${esc(authorAvatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
     } else {
       newsAuthorAv.textContent = ltr(authorName);
       newsAuthorAv.style.background = authorColor;
@@ -1062,14 +1071,25 @@ function renderPost(p){
   }
 
   const sidebarBlock = document.getElementById('sidebarAuthorBlock');
-  if (sidebarBlock && authorPublicID) {
-    sidebarBlock.style.cursor = 'pointer';
-    sidebarBlock.onclick = () => location.href = '/profile_user.html?id=' + encodeURIComponent(authorPublicID);
+  if (sidebarBlock) {
+    if (fromCommunity && author.community_id) {
+      sidebarBlock.style.cursor = 'pointer';
+      sidebarBlock.onclick = () => location.href = '/community-detail.html?id=' + encodeURIComponent(author.community_id);
+    } else if (fromCompany && author.author_company_slug) {
+      sidebarBlock.style.cursor = 'pointer';
+      sidebarBlock.onclick = () => location.href = '/company-detail.html?id=' + encodeURIComponent(author.author_company_slug);
+    } else if (authorPublicID) {
+      sidebarBlock.style.cursor = 'pointer';
+      sidebarBlock.onclick = () => location.href = '/profile_user.html?id=' + encodeURIComponent(authorPublicID);
+    } else {
+      sidebarBlock.style.cursor = 'default';
+      sidebarBlock.onclick = null;
+    }
   }
   const sidebarAv = document.getElementById('sidebarAuthorAv');
   if (sidebarAv) {
-    if (author.author_avatar) {
-      sidebarAv.innerHTML = `<img src="${esc(author.author_avatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
+    if (authorAvatar) {
+      sidebarAv.innerHTML = `<img src="${esc(authorAvatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
     } else {
       sidebarAv.textContent = ltr(authorName);
       sidebarAv.style.background = authorColor;

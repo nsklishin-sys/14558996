@@ -728,11 +728,15 @@ const CAT_ICONS={
 
 function renderCard(n,idx){
   const postKey=n.public_id||String(n.id||'');
-  const fromCompany=Boolean(n.author_company_id&&n.author_company_name);
-  const headerName=fromCompany?n.author_company_name:n.author;
-  const headerAvatar=fromCompany?(n.author_company_logo||''):n.author_avatar;
-  const headerHref=fromCompany&&n.author_company_slug?('/company-detail.html?id='+encodeURIComponent(n.author_company_slug)):'';
-  const subline=fromCompany?`опубликовал ${n.author||''}`:'';
+  const fromCommunity=Boolean(n.community_id&&n.community_name);
+  const fromCompany=!fromCommunity&&Boolean(n.author_company_id&&n.author_company_name);
+  const headerName=fromCommunity?n.community_name:(fromCompany?n.author_company_name:n.author);
+  const headerAvatar=fromCommunity?(n.community_avatar||''):(fromCompany?(n.author_company_logo||''):n.author_avatar);
+  const headerBg=fromCommunity?(n.community_color||avc(headerName)):avc(headerName);
+  const headerHref=fromCommunity
+    ?('/community-detail.html?id='+encodeURIComponent(n.community_id))
+    :(fromCompany&&n.author_company_slug?('/company-detail.html?id='+encodeURIComponent(n.author_company_slug)):'');
+  const subline=fromCommunity?`опубликовал ${n.author||''}`:(fromCompany?`опубликовал ${n.author||''}`:'');
   const badgeCls=BADGE[n.cat]||'badge-news';
   const isLiked=likedSet.has(postKey);
   const gradient=CAT_GRADIENTS[n.cat]||'linear-gradient(135deg,var(--g),var(--gm))';
@@ -742,11 +746,11 @@ function renderCard(n,idx){
     :`<div class="nc-img-placeholder" style="background:${gradient}"><svg viewBox="0 0 24 24" style="width:28px;height:28px;stroke:rgba(255,255,255,.7);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">${icon}</svg></div>`;
   const avatarHtml=headerAvatar
     ? `<img class="nc-av" src="${esc(headerAvatar)}" alt="" loading="lazy" style="object-fit:cover;background:#fff">`
-    : `<div class="nc-av" style="background:${avc(headerName)}">${letter(headerName)}</div>`;
+    : `<div class="nc-av" style="background:${headerBg}">${letter(headerName)}</div>`;
   const authorHtml=headerHref
     ? `<a class="nc-author" href="${escAttr(headerHref)}" onclick="event.stopPropagation()">${esc(headerName)}</a>`
     : `<div class="nc-author">${esc(headerName)}</div>`;
-  const infoHtml=fromCompany
+  const infoHtml=(fromCommunity||fromCompany)
     ? `<div class="nc-info">${esc(n.role)}<span class="nc-dot"></span>${ago(n.ts)}<span class="nc-dot"></span>${esc(subline)}</div>`
     : `<div class="nc-info">${esc(n.role)}<span class="nc-dot"></span>${ago(n.ts)}</div>`;
 
@@ -1152,6 +1156,10 @@ function toggleFollow(btn){
         id:n.id||Math.random(),public_id:n.public_id,cat:'Публикации',
         author:n.author||'LASTOP',role:n.author_role||'',
         author_avatar:n.author_avatar||'',
+        community_id:n.community_id||0,
+        community_name:n.community_name||'',
+        community_avatar:n.community_avatar||'',
+        community_color:n.community_color||'',
         author_company_id:n.author_company_id||0,
         author_company_name:n.author_company_name||'',
         author_company_slug:n.author_company_slug||'',
