@@ -986,6 +986,41 @@ async function loadPostAndComments(){
   }
 }
 
+
+function pickPostAuthor(p){
+  if (p.community_id && p.community_name) {
+    return {
+      name: p.community_name,
+      href: '/community-detail.html?id=' + p.community_id,
+      avatar: p.community_avatar || '',
+      bgColor: p.community_color || (typeof avc==='function' ? avc(p.community_name) : '#5AB080'),
+      subline: p.author ? 'опубликовал ' + p.author : '',
+      fromCommunity: true,
+      fromCompany: false,
+    };
+  }
+  if (p.author_company_id && p.author_company_name) {
+    return {
+      name: p.author_company_name,
+      href: '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || ''),
+      avatar: p.author_company_logo || '',
+      bgColor: typeof avc==='function' ? avc(p.author_company_name) : '#5AB080',
+      subline: p.author ? 'опубликовал ' + p.author : '',
+      fromCommunity: false,
+      fromCompany: true,
+    };
+  }
+  return {
+    name: p.author || '',
+    href: p.author_public_id ? '/profile_user.html?id=' + p.author_public_id : '#',
+    avatar: p.author_avatar || '',
+    bgColor: typeof avc==='function' ? avc(p.author || '') : '#5AB080',
+    subline: p.author_role || '',
+    fromCommunity: false,
+    fromCompany: false,
+  };
+}
+
 function renderPost(p){
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? ''; };
   const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? ''; };
@@ -1005,19 +1040,14 @@ function renderPost(p){
 
   const isRepost = !!(p.repost && p.repost.public_id);
   const author = p;
-  const fromCommunity = Boolean(author.community_id && author.community_name);
-  const fromCompany = !fromCommunity && Boolean(author.author_company_id && author.author_company_name);
-  const authorName = fromCommunity
-    ? (author.community_name || 'Сообщество')
-    : (fromCompany ? (author.author_company_name || 'Компания') : (author.author || 'Участник'));
-  const authorRole = fromCommunity
-    ? `опубликовал ${author.author || 'участник'}`
-    : (fromCompany ? `опубликовал ${author.author || 'участник'}` : (author.author_role || 'Участник LASTOP'));
+  const pickedAuthor = pickPostAuthor(author);
+  const fromCommunity = pickedAuthor.fromCommunity;
+  const fromCompany = pickedAuthor.fromCompany;
+  const authorName = pickedAuthor.name || 'Участник';
+  const authorRole = pickedAuthor.subline || 'Участник LASTOP';
   const authorPublicID = (!fromCommunity && !fromCompany) ? (author.author_public_id || '') : '';
-  const authorAvatar = fromCommunity
-    ? (author.community_avatar || '')
-    : (fromCompany ? (author.author_company_logo || '') : (author.author_avatar || ''));
-  const authorColor = fromCommunity ? (author.community_color || avc(authorName)) : avc(authorName);
+  const authorAvatar = pickedAuthor.avatar;
+  const authorColor = pickedAuthor.bgColor;
 
   set('newsAuthorName', authorName);
   set('newsAuthorRole', authorRole);
