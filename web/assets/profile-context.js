@@ -111,7 +111,7 @@
       '.pcx-verified svg{width:12px;height:12px;fill:currentColor;display:block}' +
       '.pcx-create{color:var(--gmt);font-style:italic}' +
       /* Глобальная защита: ограничиваем высоту выпадашки профиля и включаем скролл */
-      '.profile-dd{max-height:calc(100vh - 100px);overflow-y:auto}';
+      '.profile-dd{max-height:calc(100vh - 100px) !important;overflow-y:auto !important;overflow-x:hidden}';
     var el = document.createElement('style');
     el.id = 'pcx-styles';
     el.textContent = css;
