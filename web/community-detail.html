@@ -201,6 +201,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .member-actions{display:flex;gap:6px;flex-shrink:0}
 .member-actions button{padding:5px 10px;font-size:11px;font-weight:700;border:1.5px solid var(--bdr);background:#fff;color:var(--tm);border-radius:99px;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap}
 .member-actions button:hover{border-color:var(--g);color:var(--g)}
+
+/* Контактная карточка в правом сайдбаре */
+.contact-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;font-size:12px}
+.contact-row + .contact-row{border-top:1px solid var(--bdr)}
+.contact-key{flex-shrink:0;color:var(--gmt);font-weight:600;min-width:70px}
+.contact-val{flex:1;min-width:0;color:var(--t);font-weight:600;word-break:break-word;text-decoration:none}
+.contact-val:hover{color:var(--g);text-decoration:underline}
 .post-views{margin-left:auto;font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:3px}
 .post-views svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 
@@ -402,9 +409,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <button class="tab-btn" onclick="switchTab('projects',this)">Проекты</button>
     <button class="tab-btn" onclick="switchTab('events',this)">Мероприятия</button>
     <button class="tab-btn" onclick="switchTab('resumes',this)">Резюме</button>
-    <button class="tab-btn" onclick="switchTab('members',this)">Участники</button>
+    <button class="tab-btn" id="membersTabBtn" onclick="switchTab('members',this)">Участники</button>
     <button class="tab-btn" id="requestsTabBtn" style="display:none" onclick="switchTab('requests',this)">Заявки</button>
-    <button class="tab-btn" onclick="switchTab('contacts',this)">Контакты</button>
   </div>
 
   <div class="tab-panel active" id="tab-news">
@@ -417,10 +423,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="tab-panel" id="tab-resumes"><div class="section-card"><div class="sec-title">Резюме сообщества</div><div>Скоро</div></div></div>
   <div class="tab-panel" id="tab-members"><div class="section-card"><div class="sec-title">Участники</div><div id="membersList"></div></div></div>
   <div class="tab-panel" id="tab-requests"><div class="section-card"><div class="sec-title">Заявки</div><div id="requestsList"></div></div></div>
-  <div class="tab-panel" id="tab-contacts"><div class="section-card"><div class="sec-title">Контакты для связи</div><div id="contactsList"></div></div></div>
 </div>
 
-<aside class="right"><div class="card"><div class="block-title">О сообществе</div><div class="stat-row"><span class="stat-lbl">Публикаций</span><span class="stat-val">184</span></div><div class="stat-row"><span class="stat-lbl">Дата создания</span><span class="stat-val" id="communityCreatedAt">—</span></div><div class="stat-row"><span class="stat-lbl">Тип</span><span class="stat-val" id="communityType">Открытое</span></div></div></aside>
+<aside class="right">
+  <div class="card">
+    <div class="block-title">О сообществе</div>
+    <div class="stat-row"><span class="stat-lbl">Публикаций</span><span class="stat-val" id="communityPostsCount">—</span></div>
+    <div class="stat-row"><span class="stat-lbl">Участников</span><span class="stat-val" id="communityMembersCount">—</span></div>
+    <div class="stat-row"><span class="stat-lbl">Дата создания</span><span class="stat-val" id="communityCreatedAt">—</span></div>
+    <div class="stat-row"><span class="stat-lbl">Тип</span><span class="stat-val" id="communityType">Открытое</span></div>
+  </div>
+  <div class="card" id="contactsCard" style="display:none">
+    <div class="block-title">Контакты</div>
+    <div id="contactsList"></div>
+  </div>
+</aside>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -438,22 +455,29 @@ function openCommunityChat(){const id=queryCommunityID();if(!id)return;location.
 function switchTab(id, btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');
+  const panel=document.getElementById('tab-'+id);
+  if(panel)panel.classList.add('active');
+  if(btn)btn.classList.add('active');
   if(id==='members')loadMembers();
   if(id==='requests')loadRequests();
 }
 function renderContacts(c){
-  const wrap=document.getElementById('contactsList');if(!wrap)return;
+  const card=document.getElementById('contactsCard');
+  const wrap=document.getElementById('contactsList');
+  if(!wrap||!card)return;
   const rows=[];
   const website=(c.website||'').trim();
   const email=(c.email||'').trim();
   const phone=(c.phone||'').trim();
-  const region=(c.region||'').trim();
-  if(website && /^https?:\/\//i.test(website) && !/^javascript:/i.test(website))rows.push(`<div><b>Сайт:</b> <a href="${esc(website)}" target="_blank" rel="noopener noreferrer">${esc(website)}</a></div>`);
-  if(email)rows.push(`<div><b>Email:</b> <a href="mailto:${esc(email)}">${esc(email)}</a></div>`);
-  if(phone)rows.push(`<div><b>Телефон:</b> <a href="tel:${esc(phone)}">${esc(phone)}</a></div>`);
-  if(region)rows.push(`<div><b>Регион:</b> ${esc(region)}</div>`);
-  wrap.innerHTML=rows.length?rows.join(''):'<div>Контакты не заполнены.</div>';
+  if(website && /^https?:\/\//i.test(website) && !/^javascript:/i.test(website))rows.push(`<div class="contact-row"><span class="contact-key">Сайт</span><a class="contact-val" href="${esc(website)}" target="_blank" rel="noopener noreferrer">${esc(website.replace(/^https?:\/\//,''))}</a></div>`);
+  if(email)rows.push(`<div class="contact-row"><span class="contact-key">Email</span><a class="contact-val" href="mailto:${esc(email)}">${esc(email)}</a></div>`);
+  if(phone)rows.push(`<div class="contact-row"><span class="contact-key">Телефон</span><a class="contact-val" href="tel:${esc(phone)}">${esc(phone)}</a></div>`);
+  if(rows.length){
+    card.style.display='';
+    wrap.innerHTML=rows.join('');
+  }else{
+    card.style.display='none';
+  }
 }
 function renderPostCard(p){
   const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||'';
@@ -827,9 +851,11 @@ function renderCommunityProfile(c){
   setJoinButtonState(joined);
   const compose=document.getElementById('composeBox');if(compose)compose.style.display=joined?'flex':'none';
   const chatBtn=document.getElementById('btnCommunityChat');if(chatBtn)chatBtn.style.display=joined?'inline-flex':'none';
-  const requestsTab=document.getElementById('requestsTabBtn');if(requestsTab)requestsTab.style.display=(myRole==='owner'||myRole==='admin'||myRole==='moderator')?'inline-flex':'none';
+  // Таб "Заявки" — только owner/admin/moderator
+  const requestsTab=document.getElementById('requestsTabBtn');
+  if(requestsTab)requestsTab.style.display=(myRole==='owner'||myRole==='admin'||myRole==='moderator')?'inline-flex':'none';
   // Таб "Участники" — только для тех, кто состоит в сообществе (для closed)
-  const membersTabBtn=document.querySelector('.tab-btn[onclick*=\"\'members\'\"]');
+  const membersTabBtn=document.getElementById('membersTabBtn');
   if(membersTabBtn){
     const isParticipant=!!myRole;
     const privacy=(currentCommunity&&currentCommunity.privacy_level)||'open';
