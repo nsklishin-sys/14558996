@@ -694,40 +694,48 @@ type respondToNeedRequest struct {
 }
 
 type event struct {
-	ID              int64     `json:"id"`
-	PublicID        string    `json:"public_id"`
-	OrganizerID     int64     `json:"-"`
-	OrganizerPublic string    `json:"organizer_public_id"`
-	OrganizerName   string    `json:"organizer_name"`
-	CommunityID     *int64    `json:"community_id,omitempty"`
-	CommunityName   string    `json:"community_name,omitempty"`
-	Title           string    `json:"title"`
-	Description     string    `json:"description"`
-	Type            string    `json:"type"`
-	Format          string    `json:"format"`
-	Category        string    `json:"category"`
-	City            string    `json:"city"`
-	Address         string    `json:"address"`
-	Venue           string    `json:"venue"`
-	OnlineURL       string    `json:"online_url,omitempty"`
-	StartsAt        time.Time `json:"starts_at"`
-	EndsAt          time.Time `json:"ends_at"`
-	Timezone        string    `json:"timezone"`
-	CoverURL        string    `json:"cover_url,omitempty"`
-	BannerColor     string    `json:"banner_color,omitempty"`
-	FeeCents        int       `json:"fee_cents"`
-	Currency        string    `json:"currency"`
-	SeatsTotal      int       `json:"seats_total"`
-	RegisteredCount int       `json:"registered_count"`
-	SavedCount      int       `json:"saved_count"`
-	ViewsCount      int       `json:"views_count"`
-	Tags            []string  `json:"tags"`
-	Status          string    `json:"status"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	IsRegistered    bool      `json:"is_registered"`
-	IsSaved         bool      `json:"is_saved"`
-	IsMine          bool      `json:"is_mine"`
+	ID                int64     `json:"id"`
+	PublicID          string    `json:"public_id"`
+	OrganizerID       int64     `json:"-"`
+	OrganizerPublic   string    `json:"organizer_public_id"`
+	OrganizerName     string    `json:"organizer_name"`
+	CommunityID       *int64    `json:"community_id,omitempty"`
+	CommunityName     string    `json:"community_name,omitempty"`
+	CommunityAvatar   string    `json:"community_avatar,omitempty"`
+	CommunityColor    string    `json:"community_color,omitempty"`
+	AuthorCompanyID   int64     `json:"author_company_id,omitempty"`
+	AuthorCompanyName string    `json:"author_company_name,omitempty"`
+	AuthorCompanySlug string    `json:"author_company_slug,omitempty"`
+	AuthorCompanyLogo string    `json:"author_company_logo,omitempty"`
+	Latitude          float64   `json:"latitude,omitempty"`
+	Longitude         float64   `json:"longitude,omitempty"`
+	Title             string    `json:"title"`
+	Description       string    `json:"description"`
+	Type              string    `json:"type"`
+	Format            string    `json:"format"`
+	Category          string    `json:"category"`
+	City              string    `json:"city"`
+	Address           string    `json:"address"`
+	Venue             string    `json:"venue"`
+	OnlineURL         string    `json:"online_url,omitempty"`
+	StartsAt          time.Time `json:"starts_at"`
+	EndsAt            time.Time `json:"ends_at"`
+	Timezone          string    `json:"timezone"`
+	CoverURL          string    `json:"cover_url,omitempty"`
+	BannerColor       string    `json:"banner_color,omitempty"`
+	FeeCents          int       `json:"fee_cents"`
+	Currency          string    `json:"currency"`
+	SeatsTotal        int       `json:"seats_total"`
+	RegisteredCount   int       `json:"registered_count"`
+	SavedCount        int       `json:"saved_count"`
+	ViewsCount        int       `json:"views_count"`
+	Tags              []string  `json:"tags"`
+	Status            string    `json:"status"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	IsRegistered      bool      `json:"is_registered"`
+	IsSaved           bool      `json:"is_saved"`
+	IsMine            bool      `json:"is_mine"`
 }
 
 type createEventRequest struct {
@@ -750,6 +758,9 @@ type createEventRequest struct {
 	SeatsTotal  int      `json:"seats_total"`
 	Tags        []string `json:"tags"`
 	CommunityID *int64   `json:"community_id,omitempty"`
+	CompanyID   *int64   `json:"company_id,omitempty"`
+	Latitude    float64  `json:"latitude,omitempty"`
+	Longitude   float64  `json:"longitude,omitempty"`
 }
 
 type updateEventRequest struct {
@@ -2633,6 +2644,31 @@ func main() {
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
+			}
+			resolvedCompanyID, err := resolveActiveCompanyID(db, r, userID, derefInt64(req.CompanyID))
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этой компании"})
+				return
+			}
+			var resolvedCommunityID int64
+			if resolvedCompanyID == 0 {
+				reqCommID := int64(0)
+				if req.CommunityID != nil {
+					reqCommID = *req.CommunityID
+				}
+				resolvedCommunityID, err = resolveActiveCommunityID(db, r, userID, reqCommID)
+				if err != nil {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
+					return
+				}
+			}
+			req.CompanyID = nil
+			if resolvedCompanyID > 0 {
+				req.CompanyID = &resolvedCompanyID
+			}
+			req.CommunityID = nil
+			if resolvedCommunityID > 0 {
+				req.CommunityID = &resolvedCommunityID
 			}
 			item, err := createEvent(db, userID, req)
 			if err != nil {
@@ -6821,6 +6857,12 @@ CREATE INDEX IF NOT EXISTS events_community_idx
     ON events (community_id, starts_at DESC) WHERE community_id IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX IF NOT EXISTS events_type_idx
     ON events (type, starts_at DESC) WHERE is_deleted = FALSE AND status = 'published';
+
+ALTER TABLE events ADD COLUMN IF NOT EXISTS author_company_id BIGINT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
+CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id) WHERE author_company_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS event_registrations (
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -13750,6 +13792,8 @@ func scanEventRow(row scanner) (event, error) {
 	var item event
 	var tagsJSON []byte
 	var communityName sql.NullString
+	var communityAvatar sql.NullString
+	var communityColor sql.NullString
 	var communityID sql.NullInt64
 	err := row.Scan(
 		&item.ID, &item.PublicID, &item.OrganizerID, &item.OrganizerPublic, &item.OrganizerName,
@@ -13757,6 +13801,8 @@ func scanEventRow(row scanner) (event, error) {
 		&item.City, &item.Address, &item.Venue, &item.OnlineURL, &item.StartsAt, &item.EndsAt, &item.Timezone,
 		&item.CoverURL, &item.BannerColor, &item.FeeCents, &item.Currency, &item.SeatsTotal, &item.RegisteredCount,
 		&item.SavedCount, &item.ViewsCount, &tagsJSON, &item.Status, &item.CreatedAt, &item.UpdatedAt,
+		&item.AuthorCompanyID, &item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo,
+		&communityAvatar, &communityColor, &item.Latitude, &item.Longitude,
 	)
 	if err != nil {
 		return event{}, err
@@ -13767,6 +13813,12 @@ func scanEventRow(row scanner) (event, error) {
 	}
 	if communityName.Valid {
 		item.CommunityName = communityName.String
+	}
+	if communityAvatar.Valid {
+		item.CommunityAvatar = communityAvatar.String
+	}
+	if communityColor.Valid {
+		item.CommunityColor = communityColor.String
 	}
 	_ = json.Unmarshal(tagsJSON, &item.Tags)
 	return item, nil
@@ -13785,17 +13837,24 @@ func createEvent(db *sql.DB, organizerID int64, req createEventRequest) (event, 
 		if err != nil {
 			return event{}, err
 		}
+		authorCompanyID := int64(0)
+		if req.CompanyID != nil {
+			authorCompanyID = *req.CompanyID
+		}
 		row := db.QueryRow(`
-			INSERT INTO events (public_id, organizer_id, community_id, title, description, type, format, category, city, address, venue, online_url, starts_at, ends_at, timezone, cover_url, banner_color, fee_cents, currency, seats_total, tags, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'published')
+			INSERT INTO events (public_id, organizer_id, community_id, author_company_id, latitude, longitude, title, description, type, format, category, city, address, venue, online_url, starts_at, ends_at, timezone, cover_url, banner_color, fee_cents, currency, seats_total, tags, status)
+			VALUES ($1,$2,$3,NULLIF($4,0),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,'published')
 			RETURNING id, public_id, organizer_id,
 			  (SELECT public_id FROM users WHERE id=organizer_id),
 			  (SELECT full_name FROM users WHERE id=organizer_id),
 			  community_id, (SELECT name FROM communities WHERE id=community_id),
 			  title, description, type, format, category, city, address, venue, online_url, starts_at, ends_at, timezone,
 			  cover_url, banner_color, fee_cents, currency, seats_total, registered_count, saved_count, views_count,
-			  COALESCE(array_to_json(tags), '[]'::json), status, created_at, updated_at
-		`, pid, organizerID, req.CommunityID, req.Title, req.Description, req.Type, req.Format, req.Category, req.City, req.Address, req.Venue, req.OnlineURL, startsAt, endsAt, req.Timezone, req.CoverURL, req.BannerColor, req.FeeCents, req.Currency, req.SeatsTotal, pgTags)
+			  COALESCE(array_to_json(tags), '[]'::json), status, created_at, updated_at,
+			  COALESCE(author_company_id, 0), COALESCE((SELECT name FROM companies WHERE id=author_company_id), ''), COALESCE((SELECT slug FROM companies WHERE id=author_company_id), ''), COALESCE((SELECT logo_image FROM companies WHERE id=author_company_id), ''),
+			  COALESCE((SELECT avatar_url FROM communities WHERE id=community_id), ''), COALESCE((SELECT color FROM communities WHERE id=community_id), ''),
+			  COALESCE(latitude, 0), COALESCE(longitude, 0)
+		`, pid, organizerID, req.CommunityID, authorCompanyID, req.Latitude, req.Longitude, req.Title, req.Description, req.Type, req.Format, req.Category, req.City, req.Address, req.Venue, req.OnlineURL, startsAt, endsAt, req.Timezone, req.CoverURL, req.BannerColor, req.FeeCents, req.Currency, req.SeatsTotal, pgTags)
 		item, err := scanEventRow(row)
 		if err == nil {
 			item.IsMine = true
@@ -13822,13 +13881,16 @@ func getEvent(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (event,
 
 func getEventNoView(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (event, error) {
 	row := db.QueryRow(`
-		SELECT e.id, e.public_id, e.organizer_id, u.public_id, u.full_name, e.community_id, COALESCE(c.name,''),
+		SELECT e.id, e.public_id, e.organizer_id, u.public_id, u.full_name, e.community_id, COALESCE(c2.name,''),
 		 e.title, e.description, e.type, e.format, e.category, e.city, e.address, e.venue, e.online_url,
 		 e.starts_at, e.ends_at, e.timezone, e.cover_url, e.banner_color, e.fee_cents, e.currency, e.seats_total,
-		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at
+		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at,
+		 COALESCE(e.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		 COALESCE(c2.avatar_url, ''), COALESCE(c2.color, ''), COALESCE(e.latitude, 0), COALESCE(e.longitude, 0)
 		FROM events e
 		JOIN users u ON u.id=e.organizer_id
-		LEFT JOIN communities c ON c.id=e.community_id
+		LEFT JOIN companies ac ON ac.id = e.author_company_id
+		LEFT JOIN communities c2 ON c2.id=e.community_id
 		WHERE e.public_id=$1 AND e.is_deleted=FALSE AND (e.status='published' OR e.organizer_id=$2)
 	`, publicID, viewerID)
 	item, err := scanEventRow(row)
@@ -13881,13 +13943,16 @@ func listEvents(db *sql.DB, viewerID int64, hasAuth bool, f listEventsFilter) ([
 	}
 	args = append(args, f.Limit)
 	rows, err := db.Query(`
-		SELECT e.id, e.public_id, e.organizer_id, u.public_id, u.full_name, e.community_id, COALESCE(c.name,''),
+		SELECT e.id, e.public_id, e.organizer_id, u.public_id, u.full_name, e.community_id, COALESCE(c2.name,''),
 		 e.title, e.description, e.type, e.format, e.category, e.city, e.address, e.venue, e.online_url,
 		 e.starts_at, e.ends_at, e.timezone, e.cover_url, e.banner_color, e.fee_cents, e.currency, e.seats_total,
-		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at
+		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at,
+		 COALESCE(e.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		 COALESCE(c2.avatar_url, ''), COALESCE(c2.color, ''), COALESCE(e.latitude, 0), COALESCE(e.longitude, 0)
 		FROM events e
 		JOIN users u ON u.id=e.organizer_id
-		LEFT JOIN communities c ON c.id=e.community_id
+		LEFT JOIN companies ac ON ac.id = e.author_company_id
+		LEFT JOIN communities c2 ON c2.id=e.community_id
 		WHERE `+strings.Join(where, " AND ")+`
 		ORDER BY e.starts_at ASC, e.id DESC
 		LIMIT $`+strconv.Itoa(len(args)), args...)
