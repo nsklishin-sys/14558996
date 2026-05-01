@@ -221,7 +221,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .mf-select:focus{border-color:var(--gm)}
 .mf-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mf-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.mf-section{font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--gl);margin-top:4px}
+.mf-section{font-size:11px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;padding-top:10px;border-top:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mf-section-add{font-size:11px;font-weight:700;color:var(--g);background:var(--gp);border:1px solid var(--gb);border-radius:99px;padding:4px 12px;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0;display:inline-flex;align-items:center;gap:5px;transition:all .12s}
+.mf-section-add:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.mf-section-add svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2}
+.mf-list{display:flex;flex-direction:column;gap:10px}
+.mf-list-item{position:relative;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:12px 12px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.mf-list-item.featured{border-color:var(--g);background:var(--gl)}
+.mf-list-remove{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:6px;background:transparent;border:none;color:var(--gmt);cursor:pointer;display:grid;place-items:center;font-family:inherit;transition:all .15s}
+.mf-list-remove:hover{background:#FFF1F0;color:var(--red)}
+.mf-list-remove svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.mf-list-empty{font-size:12px;color:var(--gmt);font-style:italic;padding:14px 12px;text-align:center;background:var(--gp);border:1px dashed var(--bdr);border-radius:var(--rm)}
+.mf-list-item-header{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em}
+.mf-list-item-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:var(--g);color:#fff;font-size:11px;font-weight:800}
+.mf-checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t);cursor:pointer;user-select:none}
+.mf-checkbox-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--g);cursor:pointer}
 .modal-foot{padding:14px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px}
 .btn-cancel{padding:9px 18px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
 .btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
@@ -459,7 +473,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-row3">
         <div><label class="mf-label">Начало</label><input class="mf-input" id="mTimeStart" type="time" value="10:00"></div>
         <div><label class="mf-label">Конец</label><input class="mf-input" id="mTimeEnd" type="time" value="12:00"></div>
-        <div><label class="mf-label">Стоимость (₽)</label><input class="mf-input" id="mFee" type="number" min="0" placeholder="0"></div>
+        <div><label class="mf-label">Базовая стоимость (₽)</label><input class="mf-input" id="mFee" type="number" min="0" placeholder="0"><div style="font-size:10px;color:var(--gmt);margin-top:3px">Используется только если билеты не заданы ниже</div></div>
       </div>
       <div class="mf-row2">
         <div><label class="mf-label">Ссылка онлайн</label><input class="mf-input" id="mOnlineURL" placeholder="https://..."></div>
@@ -467,11 +481,24 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
       <div><label class="mf-label">Категория</label><select class="mf-select" id="mCat"><option value="">Выбрать…</option><option>ВЭД и таможня</option></select></div>
       <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Подробно о программе, спикерах и целевой аудитории…"></textarea></div>
-      <div class="mf-section">Спикер (опционально)</div>
-      <div class="mf-row2">
-        <div><label class="mf-label">Имя спикера</label><input class="mf-input" id="mSpName" placeholder="Иван Иванов"></div>
-        <div><label class="mf-label">Роль / должность</label><input class="mf-input" id="mSpRole" placeholder="Таможенный брокер"></div>
+      <div class="mf-section">
+        <span>Спикеры</span>
+        <button type="button" class="mf-section-add" onclick="addSpeaker()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить спикера</button>
       </div>
+      <div class="mf-list" id="speakersList"></div>
+
+      <div class="mf-section">
+        <span>Программа</span>
+        <button type="button" class="mf-section-add" onclick="addProgramItem()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить пункт</button>
+      </div>
+      <div class="mf-list" id="programList"></div>
+
+      <div class="mf-section">
+        <span>Билеты</span>
+        <button type="button" class="mf-section-add" onclick="addTicket()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить тариф</button>
+      </div>
+      <div class="mf-list" id="ticketsList"></div>
+
       <div><label class="mf-label">Теги через запятую</label><input class="mf-input" id="mTags" placeholder="таможня, вэд, еаэс…"></div>
     </div>
     <div class="modal-foot">
