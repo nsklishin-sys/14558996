@@ -6,6 +6,8 @@
 <title>LASTOP GROUP — Мероприятие</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <link rel="stylesheet" href="/assets/shell-layout.css">
 <script>document.documentElement.classList.add('lt-shell');</script>
 <link rel="stylesheet" href="/assets/hover-lift.css">
@@ -818,23 +820,35 @@ async function toggleSave(){
 }
 let mapLoaded=false;
 
-async function loadMap(){
+function loadMap(){
   if(mapLoaded)return;
   const ev=state.currentEvent;
   if(!ev)return;
   const lat=parseFloat(ev.latitude||0);
   const lon=parseFloat(ev.longitude||0);
   if(!lat || !lon)return;
+  if(typeof L==='undefined'){console.error('Leaflet не загружен');return;}
   mapLoaded=true;
   const ph=document.getElementById('mapPlaceholder');
   const mc=document.getElementById('mapContainer');
   if(ph)ph.style.display='none';
-  const iframe=document.createElement('iframe');
-  iframe.src='https://yandex.ru/map-widget/v1/?ll='+lon+','+lat+'&z=16&l=map&pt='+lon+','+lat+',pm2rdm';
-  iframe.allowFullscreen=true;
-  iframe.loading='lazy';
-  iframe.style.cssText='width:100%;height:280px;border:none;display:block;border-radius:var(--rm)';
-  mc.appendChild(iframe);
+  const mapEl=document.createElement('div');
+  mapEl.style.cssText='width:100%;height:280px;border-radius:var(--rm);z-index:1';
+  mc.appendChild(mapEl);
+  const map=L.map(mapEl,{scrollWheelZoom:false}).setView([lat,lon],16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',
+    maxZoom:19
+  }).addTo(map);
+  const greenIcon=L.divIcon({
+    className:'lastop-marker',
+    html:'<div style="width:24px;height:24px;background:#1E8A4C;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>',
+    iconSize:[24,24],
+    iconAnchor:[12,12]
+  });
+  L.marker([lat,lon],{icon:greenIcon}).addTo(map);
+  // Принудительно обновить размеры через 100ms (если контейнер изначально был скрыт)
+  setTimeout(()=>map.invalidateSize(),100);
 }
 function openMapExternal(){const ev=state.currentEvent||{};const q=encodeURIComponent([ev.city,ev.address].filter(Boolean).join(' '));window.open('https://yandex.ru/maps/?text='+q,'_blank');}
 let currentTicket={name:'standard',price:0};
