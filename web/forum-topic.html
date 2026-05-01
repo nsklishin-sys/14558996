@@ -385,6 +385,15 @@ function pickTopicAuthor(topic){
       kind: 'community'
     };
   }
+  if (topic.author_company_id && topic.author_company_name) {
+    return {
+      name: topic.author_company_name,
+      href: '/company-detail.html?id=' + encodeURIComponent(topic.author_company_slug || ''),
+      avatar: topic.author_company_logo || '',
+      color: stableColor(topic.author_company_name),
+      kind: 'company'
+    };
+  }
   return {
     name: topic.author_name || 'Аноним',
     href: topic.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(topic.author_public_id) : '#',
