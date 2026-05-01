@@ -275,6 +275,43 @@
         setTopbar(orig.name, orig.role, orig.avHTML || esc(orig.avText), orig.avBg || '');
       }
     }
+    applyContextToMenu(kind);
+  }
+
+  function applyContextToMenu(kind) {
+    // Скрываем/показываем пункты меню в зависимости от контекста
+    var friendsItem = document.querySelector('.profile-dd .pdd-item[href="/friends.html"]');
+    var companyItem = document.querySelector('.profile-dd .pdd-item[href^="/my-company.html"]');
+    var communityItem = document.querySelector('.profile-dd .pdd-item[href^="/communities.html"]');
+    var viewBtn = document.querySelector('.profile-dd .pdd-view');
+
+    if (kind === 'company') {
+      if (friendsItem) friendsItem.style.display = 'none';
+      if (communityItem) communityItem.style.display = 'none';
+      if (companyItem) companyItem.style.display = '';
+      if (viewBtn) {
+        var co = (window.__pcxCompaniesCache || []).find(function(c){ return c.id === getActiveCompanyID(); });
+        viewBtn.textContent = 'Профиль компании';
+        viewBtn.setAttribute('href', co && co.slug ? '/company-detail.html?id=' + encodeURIComponent(co.slug) : '/company-detail.html');
+      }
+    } else if (kind === 'community') {
+      if (friendsItem) friendsItem.style.display = 'none';
+      if (companyItem) companyItem.style.display = 'none';
+      if (communityItem) communityItem.style.display = '';
+      if (viewBtn) {
+        viewBtn.textContent = 'Профиль сообщества';
+        viewBtn.setAttribute('href', '/community-detail.html?id=' + getActiveCommunityID());
+      }
+    } else {
+      // Личный — восстановить всё
+      if (friendsItem) friendsItem.style.display = '';
+      if (companyItem) companyItem.style.display = '';
+      if (communityItem) communityItem.style.display = '';
+      if (viewBtn) {
+        viewBtn.textContent = 'Открыть профиль';
+        viewBtn.setAttribute('href', '/profile.html');
+      }
+    }
   }
 
   function applySwitch() {
