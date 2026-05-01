@@ -218,6 +218,65 @@
     }
   }
 
+  function applyContextToTopbar() {
+    var kind = getActiveContextKind();
+    var avEl = document.getElementById('topbarAv');
+    var nameEl = document.getElementById('topbarName');
+    var roleEl = document.getElementById('topbarRole');
+    var pddAvEl = document.getElementById('pddAv');
+    var pddNameEl = document.getElementById('pddName');
+    var pddRoleEl = document.getElementById('pddRole');
+
+    // Сохранить оригинал (личный) при первом вызове
+    if (!window.__pcxPersonalOrig && nameEl) {
+      window.__pcxPersonalOrig = {
+        avText: avEl ? avEl.textContent : '',
+        avBg: avEl ? avEl.style.background : '',
+        avHTML: avEl ? avEl.innerHTML : '',
+        name: nameEl.textContent,
+        role: roleEl ? roleEl.textContent : ''
+      };
+    }
+
+    function setTopbar(name, role, avInner, bgColor) {
+      if (avEl) {
+        avEl.innerHTML = avInner;
+        if (bgColor) avEl.style.background = bgColor;
+      }
+      if (nameEl) nameEl.textContent = name;
+      if (roleEl) roleEl.textContent = role;
+      if (pddAvEl) { pddAvEl.innerHTML = avInner; if (bgColor) pddAvEl.style.background = bgColor; }
+      if (pddNameEl) pddNameEl.textContent = name;
+      if (pddRoleEl) pddRoleEl.textContent = role;
+    }
+
+    if (kind === 'company') {
+      var cid = getActiveCompanyID();
+      var co = (window.__pcxCompaniesCache || []).find(function(c){ return c.id === cid; });
+      if (co) {
+        var av = co.logo_url
+          ? '<img src="' + escAttr(co.logo_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">'
+          : esc(initials(co.name));
+        setTopbar(co.name, 'Компания', av, co.accent_color || '#1E8A4C');
+      }
+    } else if (kind === 'community') {
+      var commid = getActiveCommunityID();
+      var cm = (window.__pcxCommunitiesCache || []).find(function(c){ return c.id === commid; });
+      if (cm) {
+        var av2 = cm.avatar_url
+          ? '<img src="' + escAttr(cm.avatar_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">'
+          : esc(initials(cm.name));
+        setTopbar(cm.name, 'Сообщество', av2, cm.color || '#5AB080');
+      }
+    } else {
+      // Восстановить личный
+      var orig = window.__pcxPersonalOrig;
+      if (orig) {
+        setTopbar(orig.name, orig.role, orig.avHTML || esc(orig.avText), orig.avBg || '');
+      }
+    }
+  }
+
   function applySwitch() {
     var kind = getActiveContextKind();
     var activeID = (kind === 'company') ? getActiveCompanyID()
@@ -227,6 +286,7 @@
     var communities = window.__pcxCommunitiesCache || [];
     render(companies, communities, kind, activeID);
     updateMyCompanyMenuItem(kind, activeID);
+    applyContextToTopbar();
     var dd = document.getElementById('profileDD');
     var tp = document.getElementById('topbarProfile');
     if (dd) dd.classList.remove('open');
@@ -317,6 +377,8 @@
                    : null;
       render(companies, communities, kind, activeID);
       updateMyCompanyMenuItem(kind, activeID);
+      // Подождать чтобы loadProfile в html закончил, иначе перетрёт
+      setTimeout(applyContextToTopbar, 100);
     } catch (err) {
       console.error('profile-context load:', err);
       render([], [], 'personal', null);
