@@ -169,13 +169,7 @@
       sections.push('<div class="pcx-label">Мои компании</div>' + companyRows);
     }
 
-    // Создать компанию
-    sections.push(
-      '<a class="pcx-row pcx-create" href="/my-company.html?create=1" style="text-decoration:none">' +
-        '<div class="pcx-row-av" style="background:#C0DECA;color:#1E8A4C">+</div>' +
-        '<div class="pcx-row-name">Создать компанию</div>' +
-      '</a>'
-    );
+    // (Кнопка "Создать компанию" убрана — компании создаются на /companies.html)
 
     // МОИ СООБЩЕСТВА
     if (communities && communities.length) {
