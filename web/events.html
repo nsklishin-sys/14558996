@@ -480,7 +480,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </div>
 <div class="toast" id="toast"></div>
 <script>
-const API='/api', tk=()=>localStorage.getItem('token');
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
@@ -498,13 +497,63 @@ const FORMAT_BADGE={online:'b-online',offline:'b-offline',hybrid:'b-hybrid'};
 const FORMAT_LABEL={online:'Онлайн',offline:'Офлайн',hybrid:'Гибрид'};
 const BANNER={webinar:'linear-gradient(90deg,#185FA5,#3A90C0)',conference:'linear-gradient(90deg,#6040A0,#9060C0)',workshop:'linear-gradient(90deg,#B45309,#E09030)',networking:'linear-gradient(90deg,#1E8A4C,#22A05A)',roundtable:'linear-gradient(90deg,#B05090,#9060C0)',default:'linear-gradient(90deg,var(--g),var(--gm))'};
 const NOW=new Date();
-const D=(offset,h,m)=>{const d=new Date(NOW);d.setDate(d.getDate()+offset);d.setHours(h,m||0,0,0);return d};
-const EVENTS=[
-  {id:1,title:'Новое таможенное регулирование ЕАЭС в 2026',type:'webinar',format:'online',category:'ВЭД и таможня',city:'',date:D(0,10,0),timeStart:'10:00',timeEnd:'11:30',fee:0,seats:0,registered:428,views:1240,desc:'Разбираем изменения в таможенном законодательстве ЕАЭС.',speakers:[{name:'Марина Захарова',role:'Специалист ВЭД'}],tags:['еаэс'],isRegistered:true,isSaved:false},
-  {id:2,title:'Воркшоп: внедрение TMS за 90 дней',type:'workshop',format:'online',category:'IT в логистике',city:'',date:D(0,14,0),timeStart:'14:00',timeEnd:'17:00',fee:4900,seats:80,registered:68,views:640,desc:'Пошаговый план внедрения TMS.',speakers:[{name:'Дмитрий Козлов',role:'Product Manager'}],tags:['tms'],isRegistered:false,isSaved:true}
-];
-const registeredSet=new Set(EVENTS.filter(e=>e.isRegistered).map(e=>e.id));
-const savedSet=new Set(EVENTS.filter(e=>e.isSaved).map(e=>e.id));
+const API='/api';
+function tk(){return localStorage.getItem('token')||''}
+let EVENTS=[];
+const registeredSet=new Set();
+const savedSet=new Set();
+
+// Маппинг API-объекта в формат renderCard
+function mapApiEvent(e){
+  const startDate = e.starts_at ? new Date(e.starts_at) : new Date();
+  const endDate = e.ends_at ? new Date(e.ends_at) : startDate;
+  const pad = n => String(n).padStart(2,'0');
+  return {
+    id: e.id,
+    public_id: e.public_id,
+    title: e.title || '',
+    type: e.type || 'webinar',
+    format: e.format || 'online',
+    category: e.category || '',
+    city: e.city || '',
+    address: e.address || '',
+    date: startDate,
+    timeStart: pad(startDate.getHours())+':'+pad(startDate.getMinutes()),
+    timeEnd: pad(endDate.getHours())+':'+pad(endDate.getMinutes()),
+    fee: Math.round((e.fee_cents||0)/100),
+    seats: e.seats_total||0,
+    registered: e.registered_count||0,
+    views: e.views_count||0,
+    desc: e.description || '',
+    speakers: [],
+    tags: e.tags || [],
+    isRegistered: !!e.is_registered,
+    isSaved: !!e.is_saved,
+    cover_url: e.cover_url || '',
+    latitude: e.latitude||0,
+    longitude: e.longitude||0,
+    organizer_name: e.organizer_name || '',
+    community_id: e.community_id || null,
+    community_name: e.community_name || '',
+    community_avatar: e.community_avatar || '',
+    community_color: e.community_color || '',
+    author_company_id: e.author_company_id || 0,
+    author_company_name: e.author_company_name || '',
+    author_company_slug: e.author_company_slug || '',
+    author_company_logo: e.author_company_logo || ''
+  };
+}
+
+async function loadEvents(){
+  try{
+    const r = await fetch(API+'/events?limit=200', { headers: { Authorization:'Bearer '+tk() }});
+    if(!r.ok)return;
+    const d = await r.json();
+    EVENTS = (d.events||[]).map(mapApiEvent);
+    EVENTS.forEach(e=>{ if(e.isRegistered)registeredSet.add(e.id); if(e.isSaved)savedSet.add(e.id); });
+    applyFilters();
+  }catch(err){console.error('loadEvents',err)}
+}
 let currentType=''; let currentMode='all'; let calYear=NOW.getFullYear(); let calMonth=NOW.getMonth(); let selectedDay=null;
 function renderCard(ev,i){
   const d=ev.date instanceof Date?ev.date:new Date(ev.date); const day=d.getDate();
@@ -597,6 +646,7 @@ function applyCurrentUser(user){
     }
   }catch{}
   applyFilters();
+  loadEvents();
   renderSidebarCalendar();
 })();
 </script>
