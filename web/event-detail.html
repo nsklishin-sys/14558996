@@ -391,7 +391,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="bc-sep">›</span>
     <a class="bc-item" href="/events.html">Мероприятия</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" id="bcCategory" href="/events.html?cat=logistics">Логистика и транспорт</a>
+    <a class="bc-item" id="bcCategory" href="/events.html">Логистика и транспорт</a>
     <span class="bc-sep">›</span>
     <span class="bc-item cur" id="bcCurrent">LogisticsPro Digital Q2 2026</span>
   </nav>
@@ -404,8 +404,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
       <div class="ev-cover-overlay"></div>
       <div class="ev-cover-badges">
-        <span class="ev-cbadge b-type" style="color:#6040A0">Конференция</span>
-        <span class="ev-cbadge b-format-hybrid">Гибрид</span>
+        <span class="ev-cbadge b-type" id="evBadgeType" style="color:#6040A0">Конференция</span>
+        <span class="ev-cbadge" id="evBadgeFormat">Гибрид</span>
       </div>
       <div class="ev-cover-date">
         <div class="ev-big-date">
@@ -476,16 +476,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 
   <!-- ── ОПИСАНИЕ ── -->
-  <div class="ev-section" style="animation-delay:.05s">
-    <div class="sec-title">
-      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      О мероприятии
-    </div>
-    <div class="ev-desc">
-      <p>LogisticsPro Digital Q2 2026 — ключевая конференция второго квартала для специалистов в области логистики, ВЭД и цепочек поставок. Гибридный формат позволяет участвовать как очно в Москве, так и онлайн из любой точки мира.</p>
-      <p><strong>В программе:</strong> 18 докладов от ведущих экспертов отрасли, панельные дискуссии, воркшопы и нетворкинг-сессии. Темы охватывают цифровую трансформацию логистики, новые требования ЕАЭС, автоматизацию складов и ИИ в управлении цепочками поставок.</p>
-      <p>Мероприятие аккредитовано ТПП РФ. Участники получат сертификат о повышении квалификации (16 академических часов).</p>
-    </div>
+<div class="ev-section" style="animation-delay:.05s">
+  <div class="sec-title">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    О мероприятии
+  </div>
+  <div id="evDescription" style="font-size:14px;line-height:1.6;color:var(--t);white-space:pre-wrap"></div>
 
     <div class="sec-divider"></div>
 
@@ -694,16 +690,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       Метки
     </div>
-    <div class="ev-tags">
-      <a class="ev-tag" href="/events.html?type=conference"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Конференция</a>
-      <a class="ev-tag" href="/events.html?format=hybrid"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Гибрид</a>
-      <a class="ev-tag" href="/events.html?cat=logistics"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Логистика</a>
-      <a class="ev-tag" href="/events.html?tag=еаэс"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>ЕАЭС</a>
-      <a class="ev-tag" href="/events.html?tag=цифровизация"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Цифровизация</a>
-      <a class="ev-tag" href="/events.html?tag=нетворкинг"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Нетворкинг</a>
-      <a class="ev-tag" href="/events.html?tag=сертификат"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Сертификат</a>
-      <a class="ev-tag" href="/events.html?city=moscow"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Москва</a>
-    </div>
+    <div id="evTags" style="display:flex;flex-wrap:wrap;gap:8px"></div>
   </div>
 
 </div><!-- /main -->
@@ -714,12 +701,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Быстрые факты -->
   <div class="card">
     <div class="block-title">Информация</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дата</span><span class="stat-val">28 апреля 2026</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Время</span><span class="stat-val">10:00 – 18:00</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Формат</span><span class="stat-val">Гибрид</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Зарегистрировано</span><span class="stat-val" style="color:var(--g)" id="rightRegCount">1 840</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>Билеты от</span><span class="stat-val">Бесплатно</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val">5 200</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дата</span><span class="info-val" id="infoDate">28 апреля 2026</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Время</span><span class="info-val" id="infoTime">10:00 – 18:00</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Формат</span><span class="info-val" id="infoFormat">Гибрид</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Зарегистрировано</span><span class="info-val" style="color:var(--g)" id="infoRegistered">1 840</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>Билеты от</span><span class="info-val" id="infoPriceFrom">Бесплатно</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="info-val" id="infoViews">5 200</span></div>
   </div>
 
   <!-- Организатор -->
@@ -873,6 +860,43 @@ function applyEvent(ev){
   if(btnReg){btnReg.textContent=ev.is_registered?'✓ Вы записаны':'Записаться';btnReg.classList.toggle('registered',!!ev.is_registered);btnReg.setAttribute('onclick','clickReg()');}
   const btnSave=document.getElementById('btnSave');
   if(btnSave)btnSave.classList.toggle('saved',!!ev.is_saved);
+
+  // Описание
+  const descEl=document.getElementById('evDescription');
+  if(descEl)descEl.textContent=ev.description||'Описание не добавлено';
+
+  // Бейджи типа и формата
+  const TYPE_LABEL={webinar:'Вебинар',conference:'Конференция',workshop:'Воркшоп',meetup:'Митап',networking:'Нетворкинг'};
+  const FORMAT_LABEL={online:'Онлайн',offline:'Офлайн',hybrid:'Гибрид'};
+  const typeBadge=document.getElementById('evBadgeType');
+  if(typeBadge)typeBadge.textContent=TYPE_LABEL[ev.type]||ev.type||'';
+  const fmtBadge=document.getElementById('evBadgeFormat');
+  if(fmtBadge)fmtBadge.textContent=FORMAT_LABEL[ev.format]||ev.format||'';
+
+  // Категория в breadcrumb
+  const bcCat=document.getElementById('bcCategory');
+  if(bcCat)bcCat.textContent=ev.category||'Мероприятия';
+
+  // Метки
+  const tagsEl=document.getElementById('evTags');
+  if(tagsEl){
+    const tags=ev.tags||[];
+    if(tags.length){
+      tagsEl.innerHTML=tags.map(t=>'<a href="/events.html?tag='+encodeURIComponent(t)+'" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);color:var(--g);text-decoration:none;font-size:11px;font-weight:600"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg>'+(t.replace(/[<>]/g,''))+'</a>').join('');
+    }else{
+      tagsEl.innerHTML='<span style="font-size:12px;color:var(--gmt);font-style:italic">Метки не добавлены</span>';
+    }
+  }
+
+  // Информация в правом сайдбаре
+  const dt2=new Date(ev.starts_at);
+  const setInfo=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||'—'};
+  setInfo('infoDate',dt2.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}));
+  setInfo('infoTime',`${dt2.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})} – ${new Date(ev.ends_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`);
+  setInfo('infoFormat',FORMAT_LABEL[ev.format]||ev.format||'');
+  setInfo('infoRegistered',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
+  setInfo('infoPriceFrom',(ev.fee_cents||0)===0?'Бесплатно':new Intl.NumberFormat('ru-RU').format((ev.fee_cents||0)/100)+' ₽');
+  setInfo('infoViews',new Intl.NumberFormat('ru-RU').format(ev.views_count||0));
 
   // Карта и адрес
   const mapSection=document.querySelector('.map-section');
