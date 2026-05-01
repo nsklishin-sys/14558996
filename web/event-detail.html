@@ -488,30 +488,30 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </div>
 
 <div class="ev-section" id="evProgramSection" style="animation-delay:.07s;display:none">
-  <div class="sec-title">
-    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    Программа
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Программа
+    </div>
+    <div id="evProgramList" class="program-list"></div>
   </div>
-  <div id="evProgramList" class="program-list"></div>
-</div>
 
   <!-- ── СПИКЕРЫ ── -->
 <div class="ev-section" id="evSpeakersSection" style="animation-delay:.1s;display:none">
-  <div class="sec-title">
-    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span id="evSpeakersTitle">Спикеры</span>
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <span id="evSpeakersTitle">Спикеры</span>
+    </div>
+    <div id="evSpeakersGrid" class="speakers-grid"></div>
   </div>
-  <div id="evSpeakersGrid" class="speakers-grid"></div>
-</div>
 
   <!-- ── БИЛЕТЫ ── -->
 <div class="ev-section" id="evTicketsSection" style="animation-delay:.15s;display:none">
-  <div class="sec-title">
-    <svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
-    Билеты
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
+      Билеты
+    </div>
+    <div id="evTicketsGrid" class="tickets-grid"></div>
   </div>
-  <div id="evTicketsGrid" class="tickets-grid"></div>
-</div>
 
   <!-- ── КАРТА ── -->
   <div class="ev-section map-section" style="animation-delay:.2s">
@@ -707,55 +707,35 @@ function applyEvent(ev){
   const btnSave=document.getElementById('btnSave');
   if(btnSave)btnSave.classList.toggle('saved',!!ev.is_saved);
 
-  // Описание
+  // === ОПИСАНИЕ ===
   const descEl=document.getElementById('evDescription');
   if(descEl)descEl.textContent=ev.description||'Описание не добавлено';
 
-  // Бейджи типа и формата
-  const TYPE_LABEL={webinar:'Вебинар',conference:'Конференция',workshop:'Воркшоп',meetup:'Митап',networking:'Нетворкинг'};
-  const FORMAT_LABEL={online:'Онлайн',offline:'Офлайн',hybrid:'Гибрид'};
-  const typeBadge=document.getElementById('evBadgeType');
-  if(typeBadge)typeBadge.textContent=TYPE_LABEL[ev.type]||ev.type||'';
-  const fmtBadge=document.getElementById('evBadgeFormat');
-  if(fmtBadge)fmtBadge.textContent=FORMAT_LABEL[ev.format]||ev.format||'';
-
-  // Категория в breadcrumb
-  const bcCat=document.getElementById('bcCategory');
-  if(bcCat)bcCat.textContent=ev.category||'Мероприятия';
-
-  // Метки
+  // === МЕТКИ ===
   const tagsEl=document.getElementById('evTags');
   if(tagsEl){
-    const tags=ev.tags||[];
+    const tags=Array.isArray(ev.tags)?ev.tags:[];
     if(tags.length){
-      tagsEl.innerHTML=tags.map(t=>'<a href="/events.html?tag='+encodeURIComponent(t)+'" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);color:var(--g);text-decoration:none;font-size:11px;font-weight:600"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg>'+(t.replace(/[<>]/g,''))+'</a>').join('');
+      tagsEl.innerHTML=tags.map(function(t){
+        return '<a href="/events.html?tag='+encodeURIComponent(t)+'" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);color:var(--g);text-decoration:none;font-size:11px;font-weight:600">'+esc(t)+'</a>';
+      }).join('');
     }else{
       tagsEl.innerHTML='<span style="font-size:12px;color:var(--gmt);font-style:italic">Метки не добавлены</span>';
     }
   }
 
-  // Информация в правом сайдбаре
-  const dt2=new Date(ev.starts_at);
-  const setInfo=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||'—'};
-  setInfo('infoDate',dt2.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}));
-  setInfo('infoTime',`${dt2.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})} – ${new Date(ev.ends_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`);
-  setInfo('infoFormat',FORMAT_LABEL[ev.format]||ev.format||'');
-  setInfo('infoRegistered',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
-  setInfo('infoPriceFrom',(ev.fee_cents||0)===0?'Бесплатно':new Intl.NumberFormat('ru-RU').format((ev.fee_cents||0)/100)+' ₽');
-  setInfo('infoViews',new Intl.NumberFormat('ru-RU').format(ev.views_count||0));
-
-  // Программа
-  const programArr=Array.isArray(ev.program)?ev.program:(typeof ev.program==='string'?(()=>{try{return JSON.parse(ev.program)}catch{return[]}})():[]);
+  // === ПРОГРАММА ===
+  const programArr=Array.isArray(ev.program)?ev.program:[];
   const programSec=document.getElementById('evProgramSection');
   const programList=document.getElementById('evProgramList');
   if(programSec && programList){
     if(programArr.length){
       programSec.style.display='';
-      programList.innerHTML=programArr.map(p=>{
+      programList.innerHTML=programArr.map(function(p){
         const time=esc(p.time||'');
         const title=esc(p.title||'');
         const desc=p.description?'<div class="program-desc">'+esc(p.description)+'</div>':'';
-        const speaker=p.speaker?'<div class="program-speaker"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'+esc(p.speaker)+'</div>':'';
+        const speaker=p.speaker?'<div class="program-speaker">'+esc(p.speaker)+'</div>':'';
         return '<div class="program-item"><div class="program-time">'+time+'</div><div class="program-body"><div class="program-name">'+title+'</div>'+desc+speaker+'</div></div>';
       }).join('');
     }else{
@@ -763,8 +743,8 @@ function applyEvent(ev){
     }
   }
 
-  // Спикеры
-  const speakersArr=Array.isArray(ev.speakers)?ev.speakers:(typeof ev.speakers==='string'?(()=>{try{return JSON.parse(ev.speakers)}catch{return[]}})():[]);
+  // === СПИКЕРЫ ===
+  const speakersArr=Array.isArray(ev.speakers)?ev.speakers:[];
   const speakersSec=document.getElementById('evSpeakersSection');
   const speakersGrid=document.getElementById('evSpeakersGrid');
   const speakersTitle=document.getElementById('evSpeakersTitle');
@@ -772,11 +752,12 @@ function applyEvent(ev){
     if(speakersArr.length){
       speakersSec.style.display='';
       if(speakersTitle)speakersTitle.textContent='Спикеры · '+speakersArr.length;
-      speakersGrid.innerHTML=speakersArr.map(s=>{
+      speakersGrid.innerHTML=speakersArr.map(function(s){
         const name=esc(s.name||'Спикер');
         const role=esc(s.role||'');
         const company=esc(s.company||'');
-        const initials=(s.name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+        const initialsSrc=(s.name||'?').trim().split(/\s+/);
+        const initials=initialsSrc.map(function(w){return w[0]||''}).slice(0,2).join('').toUpperCase();
         const color=avc(s.name||'');
         return '<div class="speaker-card"><div class="speaker-av" style="background:'+color+'">'+esc(initials)+'</div><div><div class="speaker-name">'+name+'</div>'+(role?'<div class="speaker-role">'+role+'</div>':'')+(company?'<div class="speaker-company">'+company+'</div>':'')+'</div></div>';
       }).join('');
@@ -785,31 +766,40 @@ function applyEvent(ev){
     }
   }
 
-  // Билеты
-  const ticketsArr=Array.isArray(ev.tickets)?ev.tickets:(typeof ev.tickets==='string'?(()=>{try{return JSON.parse(ev.tickets)}catch{return[]}})():[]);
+  // === БИЛЕТЫ === (без onclick — обработчик вешаем через addEventListener ниже)
+  const ticketsArr=Array.isArray(ev.tickets)?ev.tickets:[];
   const ticketsSec=document.getElementById('evTicketsSection');
   const ticketsGrid=document.getElementById('evTicketsGrid');
   if(ticketsSec && ticketsGrid){
     if(ticketsArr.length){
       ticketsSec.style.display='';
-      ticketsGrid.innerHTML=ticketsArr.map((t,i)=>{
+      ticketsGrid.innerHTML=ticketsArr.map(function(t,i){
         const name=esc(t.name||'Билет');
         const priceVal=parseInt(t.price||0,10);
         const priceStr=priceVal>0?new Intl.NumberFormat('ru-RU').format(priceVal)+' ₽':'Бесплатно';
         const desc=t.description?'<div class="ticket-desc">'+esc(t.description)+'</div>':'';
         const perksArr=Array.isArray(t.perks)?t.perks:[];
-        const perks=perksArr.length?'<ul class="ticket-perks">'+perksArr.map(p=>'<li>'+esc(p)+'</li>').join('')+'</ul>':'';
+        const perks=perksArr.length?'<ul class="ticket-perks">'+perksArr.map(function(p){return '<li>'+esc(p)+'</li>'}).join('')+'</ul>':'';
         const featured=t.featured?' featured':'';
         const limit=t.limit?'<div class="ticket-limit">'+(t.sold||0)+' / '+t.limit+' мест</div>':'';
         const btnLabel=priceVal>0?'Купить билет':'Зарегистрироваться';
-        return '<div class="ticket-card'+featured+'"><div class="ticket-body"><div class="ticket-name">'+name+'</div><div class="ticket-price">'+priceStr+'</div>'+desc+perks+limit+'</div><div class="ticket-foot"><button class="btn-ticket" onclick="openTicketModal('\''+esc(name)+'\','+priceVal+')">'+btnLabel+'</button></div></div>';
+        return '<div class="ticket-card'+featured+'" data-ticket-name="'+esc(name)+'" data-ticket-price="'+priceVal+'"><div class="ticket-body"><div class="ticket-name">'+name+'</div><div class="ticket-price">'+priceStr+'</div>'+desc+perks+limit+'</div><div class="ticket-foot"><button class="btn-ticket" type="button">'+btnLabel+'</button></div></div>';
       }).join('');
+      // Делегированный обработчик — без escape
+      ticketsGrid.querySelectorAll('.btn-ticket').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          const card=btn.closest('.ticket-card');
+          if(!card)return;
+          const tName=card.getAttribute('data-ticket-name')||'Билет';
+          const tPrice=parseInt(card.getAttribute('data-ticket-price')||'0',10);
+          openTicketModal(tName,tPrice);
+        });
+      });
     }else{
       ticketsSec.style.display='none';
     }
   }
 
-  // Карта и адрес
   const mapSection=document.querySelector('.map-section');
   const isOnline=ev.format==='online';
   const hasCoords=!!(parseFloat(ev.latitude||0) && parseFloat(ev.longitude||0));
