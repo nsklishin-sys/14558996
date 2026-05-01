@@ -320,7 +320,6 @@ function render(){
   if (c.privacy_level === 'closed'){
     tabs.push({key:'requests', label:'Заявки'});
   }
-  tabs.push({key:'danger', label:'Опасная зона'});
 
   const tabsHtml = '<div class="mc-tabs">'+
     tabs.map(t => '<button class="mc-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+
@@ -339,7 +338,6 @@ async function renderTab(){
   if (currentTab === 'about') return renderAbout(wrap);
   if (currentTab === 'members') return renderMembers(wrap);
   if (currentTab === 'requests') return renderRequests(wrap);
-  if (currentTab === 'danger') return renderDanger(wrap);
 }
 
 function renderAbout(wrap){
@@ -374,7 +372,13 @@ function renderAbout(wrap){
       '</div>'+
       '<div class="fld"><label class="fld-label">Теги (через запятую)</label><input class="fld-input" id="fTags" value="'+esc(tagsValue)+'" placeholder="логистика, перевозки, склад"></div>'+
       '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-primary" onclick="saveAbout()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Сохранить изменения</button></div>'+
-    '</div>';
+    '</div>'+
+    (c.my_role === 'owner' ?
+      '<div class="panel" style="border:1.5px solid #FFD5D2;background:#FFFAFA;margin-top:10px">'+
+        '<div class="panel-title" style="color:var(--red)"><svg viewBox="0 0 24 24" style="stroke:var(--red)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Удаление сообщества</div>'+
+        '<p style="font-size:12px;color:var(--tm);line-height:1.5">Удаление сообщества — необратимое действие. Все посты, обсуждения и связанные данные будут удалены навсегда. Восстановить сообщество после удаления невозможно.</p>'+
+        '<div><button class="btn btn-danger" onclick="deleteCommunity()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Удалить сообщество</button></div>'+
+      '</div>' : '');
 }
 
 async function saveAbout(){
@@ -526,18 +530,6 @@ async function answerRequest(id, action){
     toast(action==='approve'?'Принято':'Отклонено', true);
     renderTab();
   } catch(err){ toast('Сеть: '+err.message); }
-}
-
-function renderDanger(wrap){
-  if (currentCommunity.my_role !== 'owner'){
-    wrap.innerHTML = '<div class="panel"><div class="placeholder">Только владелец сообщества может удалить его</div></div>';
-    return;
-  }
-  wrap.innerHTML = '<div class="panel" style="border:1.5px solid #FFD5D2;background:#FFFAFA">'+
-    '<div class="panel-title" style="color:var(--red)"><svg viewBox="0 0 24 24" style="stroke:var(--red)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Опасная зона</div>'+
-    '<p style="font-size:13px;color:var(--tm);line-height:1.5">Удаление сообщества — необратимое действие. Все посты, обсуждения и связанные данные будут удалены навсегда.</p>'+
-    '<div><button class="btn btn-danger" onclick="deleteCommunity()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Удалить сообщество</button></div>'+
-  '</div>';
 }
 
 async function deleteCommunity(){
