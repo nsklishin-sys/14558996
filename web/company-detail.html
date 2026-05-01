@@ -126,6 +126,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* PUB CARDS */
 .pub-card{padding:12px 14px;border:1px solid var(--bdr);border-radius:var(--rm);text-decoration:none;color:inherit;display:flex;gap:12px;align-items:center;transition:all .15s;margin-bottom:8px}
+.pub-filters{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.pub-filter{padding:6px 12px;border:1px solid var(--bdr);background:var(--w);color:var(--tm);border-radius:99px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .12s}
+.pub-filter:hover{border-color:var(--g);color:var(--g)}
+.pub-filter.active{background:var(--g);border-color:var(--g);color:#fff}
+.pub-filter-cnt{font-size:10px;opacity:.75}
 .pub-card:hover{border-color:var(--gb);background:var(--gp);transform:translateY(-1px)}
 .pub-type{padding:3px 10px;border-radius:99px;font-size:9px;font-weight:800;text-transform:uppercase;background:var(--gl);color:var(--g);border:1px solid var(--gb);flex-shrink:0}
 .pub-title{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--t)}
@@ -548,34 +553,62 @@ async function renderPubs(wrap){
     const tk = localStorage.getItem('token');
     const authH = tk ? { Authorization: 'Bearer ' + tk } : {};
     const [jobsR, catR, feedR, topicsR] = await Promise.all([
-      fetch(API+'/jobs?limit=100').then(r=>r.json()),
-      fetch(API+'/catalog?limit=100').then(r=>r.json()),
+      fetch(API+'/jobs?limit=100').then(r=>r.json()).catch(()=>({jobs:[]})),
+      fetch(API+'/catalog?limit=100').then(r=>r.json()).catch(()=>({items:[]})),
       fetch(API+'/feed?type=news&limit=100', { headers: authH }).then(r=>r.ok?r.json():{posts:[]}).catch(()=>({posts:[]})),
       fetch(API+'/forum/topics?limit=100', { headers: authH }).then(r=>r.ok?r.json():{topics:[]}).catch(()=>({topics:[]})),
     ]);
     const cid = company.id;
-    const jobs = (jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid);
-    const cats = (catR.items || []).filter(c => c.author_company_id === cid);
-    const posts = (feedR.posts || []).filter(p => p.author_company_id === cid);
-    const topics = (topicsR.topics || []).filter(t => t.author_company_id === cid);
-    const all = [
-      ...jobs.map(j => ({ kind:'Вакансия', title:j.title, href:'/job-detail.html?id='+encodeURIComponent(j.public_id), at:j.created_at })),
-      ...cats.map(c => ({ kind:c.type==='product'?'Товар':'Услуга', title:c.title, href:(c.type==='product'?'/product-detail.html?id=':'/service-detail.html?id=')+encodeURIComponent(c.public_id), at:c.created_at })),
-      ...posts.map(p => ({ kind:'Пост', title:p.title || (p.content||'').substring(0,80), href:'/news-detail.html?id='+encodeURIComponent(p.public_id), at:p.created_at })),
-      ...topics.map(t => ({ kind:'Форум', title:t.title, href:'/forum-topic.html?id='+encodeURIComponent(t.public_id), at:t.created_at })),
+    const items = [
+      ...(jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid).map(j => ({ type:'job', kind:'Вакансия', title:j.title, href:'/job-detail.html?id='+encodeURIComponent(j.public_id), at:j.created_at })),
+      ...(catR.items || []).filter(c => c.author_company_id === cid).map(c => ({ type:c.type==='product'?'product':'service', kind:c.type==='product'?'Товар':'Услуга', title:c.title, href:(c.type==='product'?'/product-detail.html?id=':'/service-detail.html?id=')+encodeURIComponent(c.public_id), at:c.created_at })),
+      ...(feedR.posts || []).filter(p => p.author_company_id === cid).map(p => ({ type:'post', kind:'Пост', title:p.title || (p.content||'').substring(0,80), href:'/news-detail.html?id='+encodeURIComponent(p.public_id), at:p.created_at })),
+      ...(topicsR.topics || []).filter(t => t.author_company_id === cid).map(t => ({ type:'forum', kind:'Форум', title:t.title, href:'/forum-topic.html?id='+encodeURIComponent(t.public_id), at:t.created_at })),
     ].sort((a,b)=>new Date(b.at)-new Date(a.at));
-    const rows = all.map(p =>
+
+    const counts = {
+      all: items.length,
+      post: items.filter(i=>i.type==='post').length,
+      job: items.filter(i=>i.type==='job').length,
+      product: items.filter(i=>i.type==='product').length,
+      service: items.filter(i=>i.type==='service').length,
+      forum: items.filter(i=>i.type==='forum').length,
+    };
+    const filterDefs = [
+      ['all','Все', counts.all],
+      ['post','Посты', counts.post],
+      ['job','Вакансии', counts.job],
+      ['product','Товары', counts.product],
+      ['service','Услуги', counts.service],
+      ['forum','Форум', counts.forum],
+    ];
+    const activeFilter = window.__pubsFilter || 'all';
+    const filterTabs = '<div class="pub-filters">' + filterDefs.map(([k,label,n]) =>
+      '<button class="pub-filter'+(activeFilter===k?' active':'')+'" data-filter="'+k+'">'+esc(label)+' <span class="pub-filter-cnt">'+n+'</span></button>'
+    ).join('') + '</div>';
+
+    const filtered = activeFilter === 'all' ? items : items.filter(i => i.type === activeFilter);
+    const rows = filtered.map(p =>
       '<a class="pub-card" href="'+escAttr(p.href)+'">'+
         '<span class="pub-type">'+esc(p.kind)+'</span>'+
         '<div class="pub-title">'+esc(p.title)+'</div>'+
         '<span class="pub-meta">'+esc(formatRel(p.at))+'</span>'+
       '</a>'
     ).join('');
+
     wrap.innerHTML =
       '<div class="panel">'+
-        '<h3><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>Публикации ('+all.length+')</h3>'+
+        '<h3><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>Публикации ('+items.length+')</h3>'+
+        filterTabs +
         (rows || '<div class="placeholder">Публикаций нет.</div>')+
       '</div>';
+
+    wrap.querySelectorAll('.pub-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.__pubsFilter = btn.dataset.filter;
+        renderPubs(wrap);
+      });
+    });
   } catch (err) {
     wrap.innerHTML = '<div class="panel"><div class="placeholder">Ошибка загрузки</div></div>';
   }
