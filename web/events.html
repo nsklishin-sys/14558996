@@ -453,6 +453,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div><label class="mf-label">Дата *</label><input class="mf-input" id="mDate" type="date"></div>
         <div><label class="mf-label">Город (для офлайн)</label><input class="mf-input" id="mCity" placeholder="Москва"></div>
       </div>
+      <div class="mf-row" style="grid-template-columns:1fr">
+        <div><label class="mf-label">Адрес (для офлайн)</label><input class="mf-input" id="mAddress" placeholder="ул. Тверская, 5"><div style="font-size:10px;color:var(--gmt);margin-top:3px">Адрес используется для отображения на карте на странице события</div></div>
+      </div>
       <div class="mf-row3">
         <div><label class="mf-label">Начало</label><input class="mf-input" id="mTimeStart" type="time" value="10:00"></div>
         <div><label class="mf-label">Конец</label><input class="mf-input" id="mTimeEnd" type="time" value="12:00"></div>
@@ -620,7 +623,92 @@ function toggleSave(id,btn){if(savedSet.has(id)){savedSet.delete(id);btn.classLi
 function openEvent(id){const ev=EVENTS.find(e=>e.id===id);if(!ev)return;location.href='/event-detail.html?id='+encodeURIComponent(String(id))}
 function openModal(){document.getElementById('mDate').value=NOW.toISOString().slice(0,10);document.getElementById('modalBg').classList.add('open')}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
-function submitEvent(){const title=(document.getElementById('mTitle').value||'').trim();if(!title){toast('Введите название');return}EVENTS.unshift({id:Date.now(),title,type:document.getElementById('mType').value,format:document.getElementById('mFormat').value,category:'',city:document.getElementById('mCity').value,date:new Date(),timeStart:'10:00',timeEnd:'11:00',fee:0,seats:0,registered:0,views:0,desc:document.getElementById('mDesc').value,speakers:[],tags:[],isRegistered:false,isSaved:false});closeModal();applyFilters();toast('Мероприятие создано ✓',true)}
+const YANDEX_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
+
+async function geocodeAddress(addr){
+  if(!addr || !addr.trim()) return null;
+  try{
+    const url='https://geocode-maps.yandex.ru/v1/?apikey='+YANDEX_KEY+'&geocode='+encodeURIComponent(addr)+'&format=json&results=1';
+    const r=await fetch(url);
+    if(!r.ok) return null;
+    const d=await r.json();
+    const member=d?.response?.GeoObjectCollection?.featureMember?.[0];
+    if(!member) return null;
+    const pos=member.GeoObject?.Point?.pos;
+    if(!pos) return null;
+    const parts=pos.split(' ');
+    return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
+  }catch(err){
+    console.error('geocode',err);
+    return null;
+  }
+}
+
+async function submitEvent(){
+  const title=(document.getElementById('mTitle').value||'').trim();
+  if(!title){toast('Введите название');return}
+  const date=document.getElementById('mDate').value;
+  if(!date){toast('Укажите дату');return}
+  const timeStart=document.getElementById('mTimeStart').value||'10:00';
+  const timeEnd=document.getElementById('mTimeEnd').value||'12:00';
+  const format=document.getElementById('mFormat').value;
+  const address=(document.getElementById('mAddress')?.value||'').trim();
+  const city=(document.getElementById('mCity').value||'').trim();
+  const fee=parseInt(document.getElementById('mFee').value||'0',10);
+  const seats=parseInt(document.getElementById('mSeats').value||'0',10);
+  const tagsRaw=(document.getElementById('mTags').value||'').trim();
+  const tags=tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):[];
+
+  const startsAt=new Date(date+'T'+timeStart+':00').toISOString();
+  const endsAt=new Date(date+'T'+timeEnd+':00').toISOString();
+
+  const body={
+    title,
+    description: (document.getElementById('mDesc').value||'').trim(),
+    type: document.getElementById('mType').value,
+    format,
+    category: document.getElementById('mCat').value||'',
+    city,
+    address,
+    venue: '',
+    online_url: (document.getElementById('mOnlineURL').value||'').trim(),
+    starts_at: startsAt,
+    ends_at: endsAt,
+    timezone: 'Europe/Moscow',
+    fee_cents: fee*100,
+    currency: 'RUB',
+    seats_total: seats,
+    tags
+  };
+
+  // Геокодирование адреса для офлайн/гибрид
+  if(format!=='online' && address){
+    toast('Определяем координаты…');
+    const geo=await geocodeAddress(address+(city?', '+city:''));
+    if(geo){
+      body.latitude=geo.latitude;
+      body.longitude=geo.longitude;
+    }
+  }
+
+  // Заголовки с активным контекстом (компания/сообщество)
+  const baseH={'Content-Type':'application/json',Authorization:'Bearer '+tk()};
+  const headers=(typeof window.withActiveContextHeaders==='function')?window.withActiveContextHeaders(baseH):baseH;
+
+  try{
+    const r=await fetch(API+'/events',{method:'POST',headers,body:JSON.stringify(body)});
+    if(!r.ok){
+      const d=await r.json().catch(()=>null);
+      toast('Ошибка: '+(d?.error||r.status));
+      return;
+    }
+    closeModal();
+    toast('Мероприятие создано ✓',true);
+    await loadEvents();
+  }catch(err){
+    toast('Сеть: '+err.message);
+  }
+}
 function applyCurrentUser(user){
   const name=user.full_name||user.name||'Пользователь';
   const role=user.role||user.position||'Участник LASTOP';
