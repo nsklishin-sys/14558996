@@ -648,9 +648,148 @@ function applyFilters(){const q=(document.getElementById('searchInput').value||'
 function toggleReg(id,btn){if(registeredSet.has(id)){registeredSet.delete(id);btn.classList.remove('registered');btn.textContent='Записаться'}else{registeredSet.add(id);btn.classList.add('registered');btn.textContent='✓ Вы записаны'}renderSidebar()}
 function toggleSave(id,btn){if(savedSet.has(id)){savedSet.delete(id);btn.classList.remove('saved')}else{savedSet.add(id);btn.classList.add('saved')}}
 function openEvent(publicID){if(!publicID)return;location.href='/event-detail.html?id='+encodeURIComponent(publicID)}
-function openModal(){document.getElementById('mDate').value=NOW.toISOString().slice(0,10);document.getElementById('modalBg').classList.add('open')}
+function openModal(){resetEventModal();document.getElementById('mDate').value=NOW.toISOString().slice(0,10);document.getElementById('modalBg').classList.add('open')}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
 const YANDEX_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
+
+// ═══ ДИНАМИЧЕСКИЕ СПИСКИ В МОДАЛКЕ ═══
+
+let speakerCounter=0;
+let programCounter=0;
+let ticketCounter=0;
+
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function buildRemoveBtn(onclickName,id){
+  return '<button type="button" class="mf-list-remove" onclick="'+onclickName+'(\''+id+'\')" title="Удалить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+}
+
+function addSpeaker(prefill){
+  speakerCounter++;
+  const id='sp'+speakerCounter;
+  const wrap=document.getElementById('speakersList');
+  if(!wrap)return;
+  const data=prefill||{};
+  const item=document.createElement('div');
+  item.className='mf-list-item';
+  item.id=id;
+  item.dataset.kind='speaker';
+  item.innerHTML=
+    '<div class="mf-list-item-header"><span class="mf-list-item-num">'+speakerCounter+'</span><span>Спикер</span></div>'+
+    buildRemoveBtn('removeSpeaker',id)+
+    '<div class="mf-row3">'+
+      '<div><label class="mf-label">Имя</label><input class="mf-input" data-field="name" placeholder="Иван Иванов" value="'+escAttr(data.name||'')+'"></div>'+
+      '<div><label class="mf-label">Должность</label><input class="mf-input" data-field="role" placeholder="CEO" value="'+escAttr(data.role||'')+'"></div>'+
+      '<div><label class="mf-label">Компания</label><input class="mf-input" data-field="company" placeholder="ООО Лого" value="'+escAttr(data.company||'')+'"></div>'+
+    '</div>';
+  wrap.appendChild(item);
+}
+
+function removeSpeaker(id){
+  const el=document.getElementById(id);
+  if(el)el.remove();
+}
+
+function addProgramItem(prefill){
+  programCounter++;
+  const id='prg'+programCounter;
+  const wrap=document.getElementById('programList');
+  if(!wrap)return;
+  const data=prefill||{};
+  const item=document.createElement('div');
+  item.className='mf-list-item';
+  item.id=id;
+  item.dataset.kind='program';
+  item.innerHTML=
+    '<div class="mf-list-item-header"><span class="mf-list-item-num">'+programCounter+'</span><span>Пункт программы</span></div>'+
+    buildRemoveBtn('removeProgramItem',id)+
+    '<div class="mf-row2">'+
+      '<div><label class="mf-label">Время</label><input class="mf-input" data-field="time" placeholder="10:00" value="'+escAttr(data.time||'')+'"></div>'+
+      '<div><label class="mf-label">Спикер (имя)</label><input class="mf-input" data-field="speaker" placeholder="Иван Иванов" value="'+escAttr(data.speaker||'')+'"></div>'+
+    '</div>'+
+    '<div><label class="mf-label">Название</label><input class="mf-input" data-field="title" placeholder="Открытие. Тренды отрасли 2026" value="'+escAttr(data.title||'')+'"></div>'+
+    '<div><label class="mf-label">Описание (опционально)</label><textarea class="mf-textarea" data-field="description" style="height:60px" placeholder="Кейсы внедрения, обзор рынка...">'+escAttr(data.description||'')+'</textarea></div>';
+  wrap.appendChild(item);
+}
+
+function removeProgramItem(id){
+  const el=document.getElementById(id);
+  if(el)el.remove();
+}
+
+function addTicket(prefill){
+  ticketCounter++;
+  const id='tk'+ticketCounter;
+  const wrap=document.getElementById('ticketsList');
+  if(!wrap)return;
+  const data=prefill||{};
+  const checkedFeatured=data.featured?' checked':'';
+  const item=document.createElement('div');
+  item.className='mf-list-item'+(data.featured?' featured':'');
+  item.id=id;
+  item.dataset.kind='ticket';
+  item.innerHTML=
+    '<div class="mf-list-item-header"><span class="mf-list-item-num">'+ticketCounter+'</span><span>Тариф</span></div>'+
+    buildRemoveBtn('removeTicket',id)+
+    '<div class="mf-row2">'+
+      '<div><label class="mf-label">Название</label><input class="mf-input" data-field="name" placeholder="Стандарт" value="'+escAttr(data.name||'')+'"></div>'+
+      '<div><label class="mf-label">Цена (₽)</label><input class="mf-input" data-field="price" type="number" min="0" placeholder="0" value="'+escAttr(String(data.price||''))+'"></div>'+
+    '</div>'+
+    '<div><label class="mf-label">Краткое описание</label><input class="mf-input" data-field="description" placeholder="Очное участие со всеми бонусами" value="'+escAttr(data.description||'')+'"></div>'+
+    '<div><label class="mf-label">Лимит мест</label><input class="mf-input" data-field="limit" type="number" min="0" placeholder="0 (без лимита)" value="'+escAttr(String(data.limit||''))+'"></div>'+
+    '<div><label class="mf-label">Преимущества (по строкам)</label><textarea class="mf-textarea" data-field="perks" style="height:80px" placeholder="Очное участие\nОбед и кофе-брейки\nСертификат\nНетворкинг-сессия">'+escAttr((data.perks||[]).join('\n'))+'</textarea></div>'+
+    '<label class="mf-checkbox-row"><input type="checkbox" data-field="featured"'+checkedFeatured+' onchange="this.closest(\'.mf-list-item\').classList.toggle(\'featured\',this.checked)">Отметить как «Популярный» (выделить визуально)</label>';
+  wrap.appendChild(item);
+}
+
+function removeTicket(id){
+  const el=document.getElementById(id);
+  if(el)el.remove();
+}
+
+// Сборка данных из всех элементов списка
+function collectListData(listId){
+  const wrap=document.getElementById(listId);
+  if(!wrap)return [];
+  const items=Array.from(wrap.querySelectorAll('.mf-list-item'));
+  return items.map(function(item){
+    const obj={};
+    item.querySelectorAll('[data-field]').forEach(function(input){
+      const field=input.dataset.field;
+      if(input.type==='checkbox'){
+        obj[field]=input.checked;
+      }else if(input.type==='number'){
+        const v=parseInt(input.value||'0',10);
+        obj[field]=isNaN(v)?0:v;
+      }else{
+        obj[field]=(input.value||'').trim();
+      }
+    });
+    // Преимущества — массив строк
+    if(typeof obj.perks==='string'){
+      obj.perks=obj.perks.split(/\n+/).map(function(s){return s.trim()}).filter(Boolean);
+    }
+    return obj;
+  }).filter(function(obj){
+    // Фильтр пустых: для спикера обязателен name; для программы — title; для билета — name
+    if(obj.name!==undefined && !obj.name && obj.title===undefined && obj.time===undefined)return false;
+    if(obj.title!==undefined && !obj.title)return false;
+    if(obj.name!==undefined && obj.title===undefined && obj.time===undefined && !obj.name)return false;
+    return true;
+  });
+}
+
+// Очистка списков (для повторного открытия модалки)
+function resetEventModal(){
+  ['speakersList','programList','ticketsList'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el)el.innerHTML='';
+  });
+  speakerCounter=0;
+  programCounter=0;
+  ticketCounter=0;
+}
+
 
 async function geocodeAddress(addr){
   if(!addr || !addr.trim()) return null;
@@ -689,6 +828,10 @@ async function submitEvent(){
   const startsAt=new Date(date+'T'+timeStart+':00').toISOString();
   const endsAt=new Date(date+'T'+timeEnd+':00').toISOString();
 
+  const speakers=collectListData('speakersList');
+  const program=collectListData('programList');
+  const tickets=collectListData('ticketsList');
+
   const body={
     title,
     description: (document.getElementById('mDesc').value||'').trim(),
@@ -705,7 +848,10 @@ async function submitEvent(){
     fee_cents: fee*100,
     currency: 'RUB',
     seats_total: seats,
-    tags
+    tags,
+    speakers: JSON.stringify(speakers),
+    program: JSON.stringify(program),
+    tickets: JSON.stringify(tickets)
   };
 
   // Геокодирование адреса для офлайн/гибрид
