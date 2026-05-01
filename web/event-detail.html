@@ -847,8 +847,12 @@ function loadMap(){
     iconAnchor:[12,12]
   });
   L.marker([lat,lon],{icon:greenIcon}).addTo(map);
-  // Принудительно обновить размеры через 100ms (если контейнер изначально был скрыт)
+  // Принудительно обновить размеры — несколько раз чтобы поймать момент 
+  // когда браузер отрисовал контейнер
+  setTimeout(()=>map.invalidateSize(),0);
   setTimeout(()=>map.invalidateSize(),100);
+  setTimeout(()=>map.invalidateSize(),300);
+  setTimeout(()=>map.invalidateSize(),700);
 }
 function openMapExternal(){const ev=state.currentEvent||{};const q=encodeURIComponent([ev.city,ev.address].filter(Boolean).join(' '));window.open('https://yandex.ru/maps/?text='+q,'_blank');}
 let currentTicket={name:'standard',price:0};
@@ -896,7 +900,8 @@ function applyEvent(ev){
       if(addrSub)addrSub.textContent=ev.venue||'';
       // Если координаты есть — автоматически загрузить карту (placeholder убираем)
       if(hasCoords){
-        loadMap();
+        // requestAnimationFrame — ждём пока браузер отрисует layout
+        requestAnimationFrame(()=>requestAnimationFrame(loadMap));
       }else{
         const ph=document.getElementById('mapPlaceholder');
         if(ph){
