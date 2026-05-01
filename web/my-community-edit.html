@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Управление сообществом</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none}
+.search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:#fff;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--gm)}
+.search-wrap input::placeholder{color:var(--gmt)}
+.topbar-profile{display:flex;align-items:center;gap:10px;padding:6px 22px 6px 12px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;flex-shrink:0;user-select:none}
+.topbar-profile:hover,.topbar-profile.open{border-color:var(--gb);background:var(--gl)}
+.topbar-profile.open .tp-arrow{transform:rotate(180deg)}
+.tp-av{width:30px;height:30px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.tp-info{display:flex;flex-direction:column;line-height:1.25}
+.tp-name{font-size:12px;font-weight:700;color:var(--t)}
+.tp-role{font-size:10px;color:var(--gmt)}
+.tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
+.profile-dd-wrap{position:relative;flex:1;display:flex;justify-content:flex-end}
+.profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
+.profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
+.pdd-av{width:40px;height:40px;border-radius:10px;background:var(--g);display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.pdd-info{min-width:0;flex:1}
+.pdd-name{font-size:13px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdd-view{display:block;margin:10px 14px 0;padding:6px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:all .15s}
+.pdd-view:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.pdd-body{padding:6px}
+.pdd-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s}
+.pdd-item:hover{background:var(--gp);color:var(--g)}
+.pdd-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.pdd-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.pdd-item-label{flex:1}
+.pdd-div{height:1px;background:var(--bdr);margin:4px 6px}
+.pdd-item.logout{color:var(--red)}
+.pdd-item.logout:hover{background:#FFF5F5;color:var(--red)}
+
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav-group{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 5px;margin-top:2px}
+.nav-group:first-child{padding-top:2px;margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;text-decoration:none;color:var(--tm);font-size:13px;font-weight:500;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item:hover{background:var(--gp);color:var(--g)}
+.nav-item.active{background:var(--gl);color:var(--g);font-weight:700}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-item span{overflow:hidden;text-overflow:ellipsis}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid var(--bdr)}
+
+.main{grid-area:main;overflow-y:auto;overflow-x:hidden;min-width:0;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main > *{flex-shrink:0}
+.right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.right > *{flex-shrink:0}
+
+.mc-header{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mc-logo{width:60px;height:60px;border-radius:var(--rl);background:var(--gl);display:grid;place-items:center;font-size:18px;font-weight:900;color:var(--g);overflow:hidden;flex-shrink:0;border:1px solid var(--gb)}
+.mc-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.mc-info{flex:1;min-width:200px}
+.mc-name{font-size:18px;font-weight:900;color:var(--t)}
+.mc-meta{font-size:11px;color:var(--gmt);margin-top:3px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mc-select{height:36px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:99px;font-family:inherit;font-size:12px;background:#fff;color:var(--t);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;padding-right:32px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polyline points='6 9 12 15 18 9' stroke='%235A8A6A' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 10px center;background-size:12px;font-weight:600}
+.mc-select:focus{border-color:var(--g)}
+
+.mc-tabs{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:8px;display:flex;gap:4px;flex-wrap:wrap}
+.mc-tab{padding:8px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--tm);font-family:inherit;transition:all .15s}
+.mc-tab:hover{background:var(--gp);color:var(--g)}
+.mc-tab.active{background:var(--g);color:#fff}
+
+.panel{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px;display:flex;flex-direction:column;gap:14px}
+.panel-title{font-size:14px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.panel-title svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:2;flex-shrink:0}
+
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld-label{font-size:11px;font-weight:700;color:var(--tm)}
+.fld-input,.fld-textarea,.fld-select{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:#fff;color:var(--t);outline:none;transition:border-color .12s;line-height:1}
+.fld-textarea{height:90px;padding:9px 12px;resize:vertical;min-height:60px;line-height:1.4}
+.fld-input:focus,.fld-textarea:focus,.fld-select:focus{border-color:var(--g)}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fld-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.fld-hint{font-size:10px;color:var(--gmt);margin-top:2px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 18px;border-radius:99px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .15s;white-space:nowrap;text-decoration:none}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round}
+.btn-primary{background:var(--g);color:#fff;box-shadow:0 2px 8px rgba(30,138,76,.22)}
+.btn-primary:hover{background:var(--gm)}
+.btn-secondary{background:transparent;color:var(--t);border-color:var(--bdr)}
+.btn-secondary:hover{background:var(--gp);border-color:var(--gb);color:var(--g)}
+.btn-danger{background:transparent;color:var(--red);border-color:#FFD5D2}
+.btn-danger:hover{background:#FFF5F5}
+.btn-ghost{background:transparent;color:var(--gmt);border-color:var(--bdr);height:32px;padding:0 12px;font-size:12px}
+.btn-ghost:hover{color:var(--g);border-color:var(--gb)}
+.btn:disabled{opacity:.6;cursor:default}
+
+.member-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp);transition:all .12s}
+.member-row:hover{border-color:var(--gb);background:var(--gl)}
+.member-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;text-decoration:none;overflow:hidden}
+.member-av img{width:100%;height:100%;object-fit:cover}
+.member-info{flex:1;min-width:0}
+.member-name{font-size:13px;font-weight:800;color:var(--t)}
+.member-name a{color:inherit;text-decoration:none}
+.member-name a:hover{color:var(--g)}
+.member-role-line{font-size:11px;color:var(--gmt);margin-top:2px}
+.member-role-badge{font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--gl);color:var(--g);border:1px solid var(--gb);text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
+.member-role-badge.owner{background:#FFF7E6;color:#B7791F;border-color:#FFD78A}
+.member-role-badge.moderator{background:#E8F0FF;color:#2D5BB7;border-color:#B8CDF5}
+.member-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+
+.req-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp);transition:all .12s}
+.req-row:hover{border-color:var(--gb);background:var(--gl)}
+.req-message{flex:1;min-width:0;font-size:11px;color:var(--gmt);font-style:italic;margin-top:2px}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--w);border-radius:var(--rxl);box-shadow:0 20px 50px rgba(0,0,0,.2);max-width:480px;width:100%;max-height:92vh;display:flex;flex-direction:column}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--bdr)}
+.modal-title{font-size:16px;font-weight:800;color:var(--t)}
+.modal-close{width:32px;height:32px;border-radius:8px;background:transparent;border:none;color:var(--gmt);cursor:pointer;display:grid;place-items:center}
+.modal-close:hover{background:var(--gp);color:var(--t)}
+.modal-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.modal-body{padding:18px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.modal-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--bdr)}
+
+.placeholder{padding:40px 20px;text-align:center;color:var(--gmt);font-size:13px;font-style:italic}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.fld-row,.fld-row3{grid-template-columns:1fr}}
+@media(min-width:1921px) and (min-height:1081px){html{zoom:1.18}.shell{grid-template-columns:250px 1fr 340px;gap:12px;padding:12px;height:calc(100vh / 1.18)}}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="shell">
+
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+
+<header class="topbar">
+  <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span><input type="search" placeholder="Поиск по платформе…" autocomplete="off"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">НК</div>
+      <div class="tp-info"><span class="tp-name" id="topbarName">…</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">НК</div><div class="pdd-info"><div class="pdd-name" id="pddName">…</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg><span class="pdd-item-label">Мои сообщества</span></a>
+        <a href="/saved.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span class="pdd-item-label">Сохранённое</span></a>
+        <a href="/analytics.html" class="pdd-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div id="profileContextSlot"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/dashboard.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item active" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<div class="main" id="mainArea">
+  <div class="placeholder">Загрузка…</div>
+</div>
+
+<aside class="right" id="rightArea"></aside>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/assets/profile-context.js" defer></script>
+<script>
+const API = '/api';
+function tk(){ return localStorage.getItem('token'); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function ltr(name){ if(!name)return '?'; return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase(); }
+function avc(s){ const palette=['#1E8A4C','#2D5BB7','#7C3AED','#EA580C','#0891B2','#BE185D','#15803D','#9333EA','#DC2626','#0284C7','#65A30D','#7E22CE']; let h=0; const str=String(s||'?'); for(let i=0;i<str.length;i++)h=str.charCodeAt(i)+((h<<5)-h); return palette[Math.abs(h)%palette.length]; }
+function toast(msg, ok){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(ok?' success':''); requestAnimationFrame(()=>t.classList.add('show')); setTimeout(()=>t.classList.remove('show'),2500); }
+function logout(){ localStorage.removeItem('token'); location.href='/login.html'; }
+
+function toggleProfileDD(e){
+  e.stopPropagation();
+  document.getElementById('profileDD').classList.toggle('open');
+  document.getElementById('topbarProfile').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const dd=document.getElementById('profileDD');
+  const tp=document.getElementById('topbarProfile');
+  if(dd && tp && !tp.contains(e.target) && !dd.contains(e.target)){
+    dd.classList.remove('open');
+    tp.classList.remove('open');
+  }
+});
+
+let myCommunities = [];
+let currentCommunity = null;
+let currentTab = 'about';
+
+const COMMUNITY_CATEGORIES = ['Логистика','ВЭД','IT','Регионы','Карьера','Другое'];
+const PRIVACY_LABEL = { open: 'Открытое (любой может вступить)', closed: 'Закрытое (вступление по заявке)' };
+
+async function loadProfile(){
+  try {
+    const r = await fetch(API+'/me', { headers: { Authorization: 'Bearer '+tk() }});
+    if(!r.ok){ location.href='/login.html'; return; }
+    const u = await r.json();
+    const name = u.full_name || u.handle || 'Пользователь';
+    document.getElementById('topbarName').textContent = name;
+    document.getElementById('topbarAv').textContent = ltr(name);
+    document.getElementById('topbarAv').style.background = avc(name);
+    document.getElementById('pddName').textContent = name;
+    document.getElementById('pddAv').textContent = ltr(name);
+    document.getElementById('pddAv').style.background = avc(name);
+  } catch(err){ console.error('loadProfile', err); }
+}
+
+async function loadMyCommunities(){
+  const r = await fetch(API+'/communities?limit=200', { headers: { Authorization: 'Bearer '+tk() }});
+  if(!r.ok){ throw new Error('communities '+r.status); }
+  const d = await r.json();
+  const all = d.communities || d.items || [];
+  // Только где юзер owner или admin (модератор не управляет — он только модерирует посты)
+  myCommunities = all.filter(c => c.my_role === 'owner' || c.my_role === 'admin');
+}
+
+async function loadCurrentCommunity(){
+  if (!currentCommunity) return;
+  const r = await fetch(API+'/communities/'+currentCommunity.id, { headers: { Authorization: 'Bearer '+tk() }});
+  if (r.ok){
+    const d = await r.json();
+    currentCommunity = d.community || d;
+  }
+}
+
+function renderEmpty(){
+  document.getElementById('mainArea').innerHTML =
+    '<div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Нет сообществ для управления</div>'+
+    '<p style="font-size:13px;color:var(--tm);line-height:1.5">Вы не являетесь владельцем ни одного сообщества. Создайте новое сообщество, чтобы получить возможность им управлять.</p>'+
+    '<a class="btn btn-primary" href="/communities.html?create=1" style="align-self:flex-start"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать сообщество</a></div>';
+  document.getElementById('rightArea').innerHTML = '';
+}
+
+function render(){
+  if (!currentCommunity){ renderEmpty(); return; }
+  const c = currentCommunity;
+  const switcher = myCommunities.length > 1
+    ? '<select class="mc-select" onchange="switchCommunity(parseInt(this.value))">'
+      + myCommunities.map(co => '<option value="'+co.id+'"'+(co.id===c.id?' selected':'')+'>'+esc(co.name)+'</option>').join('')
+      + '</select>'
+    : '';
+  const avatarHtml = c.avatar_url
+    ? '<img src="'+esc(c.avatar_url)+'" alt="">'
+    : esc(ltr(c.name));
+  const headerHtml =
+    '<div class="mc-header">'+
+      '<div class="mc-logo" style="background:'+esc(c.color || avc(c.name))+';color:#fff">'+avatarHtml+'</div>'+
+      '<div class="mc-info">'+
+        '<div class="mc-name">'+esc(c.name)+'</div>'+
+        '<div class="mc-meta"><span>'+esc(c.category || 'Категория не задана')+'</span><span>·</span><span>'+esc(c.privacy_level === 'closed' ? 'Закрытое' : 'Открытое')+'</span><span>·</span><span>'+(c.members_count || 0)+' участников</span></div>'+
+      '</div>'+
+      switcher+
+      '<a class="btn btn-secondary" href="/community-detail.html?id='+c.id+'"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Перейти к сообществу</a>'+
+    '</div>';
+
+  const tabs = [
+    {key:'about', label:'О сообществе'},
+    {key:'members', label:'Участники'},
+  ];
+  if (c.privacy_level === 'closed'){
+    tabs.push({key:'requests', label:'Заявки'});
+  }
+  tabs.push({key:'danger', label:'Опасная зона'});
+
+  const tabsHtml = '<div class="mc-tabs">'+
+    tabs.map(t => '<button class="mc-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+
+    '</div>';
+
+  document.getElementById('mainArea').innerHTML = headerHtml + tabsHtml + '<div id="tabContent"></div>';
+  renderSidebar();
+  renderTab();
+}
+
+function setTab(key){ currentTab = key; render(); }
+
+async function renderTab(){
+  const wrap = document.getElementById('tabContent');
+  if (!wrap) return;
+  if (currentTab === 'about') return renderAbout(wrap);
+  if (currentTab === 'members') return renderMembers(wrap);
+  if (currentTab === 'requests') return renderRequests(wrap);
+  if (currentTab === 'danger') return renderDanger(wrap);
+}
+
+function renderAbout(wrap){
+  const c = currentCommunity;
+  const tagsValue = (c.tags || []).join(', ');
+  wrap.innerHTML =
+    '<div class="panel">'+
+      '<div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>О сообществе</div>'+
+      '<div class="fld"><label class="fld-label">Название *</label><input class="fld-input" id="fName" value="'+esc(c.name||'')+'" maxlength="120"></div>'+
+      '<div class="fld-row">'+
+        '<div class="fld"><label class="fld-label">Категория</label><select class="fld-select" id="fCategory">'+
+          COMMUNITY_CATEGORIES.map(cat => '<option value="'+esc(cat)+'"'+(c.category===cat?' selected':'')+'>'+esc(cat)+'</option>').join('')+
+        '</select></div>'+
+        '<div class="fld"><label class="fld-label">Тип</label><select class="fld-select" id="fPrivacy">'+
+          '<option value="open"'+(c.privacy_level==='open'?' selected':'')+'>Открытое</option>'+
+          '<option value="closed"'+(c.privacy_level==='closed'?' selected':'')+'>Закрытое</option>'+
+        '</select></div>'+
+      '</div>'+
+      '<div class="fld"><label class="fld-label">Описание</label><textarea class="fld-textarea" id="fDescription" maxlength="2000">'+esc(c.description||'')+'</textarea></div>'+
+      '<div class="fld-row">'+
+        '<div class="fld"><label class="fld-label">Регион</label><input class="fld-input" id="fRegion" value="'+esc(c.region||'')+'" maxlength="100"></div>'+
+        '<div class="fld"><label class="fld-label">Цвет (HEX)</label><input class="fld-input" id="fColor" value="'+esc(c.color||'')+'" placeholder="#5AB080" maxlength="9"></div>'+
+      '</div>'+
+      '<div class="fld-row">'+
+        '<div class="fld"><label class="fld-label">URL аватара</label><input class="fld-input" id="fAvatar" value="'+esc(c.avatar_url||'')+'" placeholder="https://..."></div>'+
+        '<div class="fld"><label class="fld-label">URL обложки</label><input class="fld-input" id="fCover" value="'+esc(c.cover_url||'')+'" placeholder="https://..."></div>'+
+      '</div>'+
+      '<div class="fld-row3">'+
+        '<div class="fld"><label class="fld-label">Сайт</label><input class="fld-input" id="fWebsite" value="'+esc(c.website||'')+'" placeholder="https://..."></div>'+
+        '<div class="fld"><label class="fld-label">Email</label><input class="fld-input" id="fEmail" value="'+esc(c.email||'')+'" type="email"></div>'+
+        '<div class="fld"><label class="fld-label">Телефон</label><input class="fld-input" id="fPhone" value="'+esc(c.phone||'')+'"></div>'+
+      '</div>'+
+      '<div class="fld"><label class="fld-label">Теги (через запятую)</label><input class="fld-input" id="fTags" value="'+esc(tagsValue)+'" placeholder="логистика, перевозки, склад"></div>'+
+      '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-primary" onclick="saveAbout()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Сохранить изменения</button></div>'+
+    '</div>';
+}
+
+async function saveAbout(){
+  const tagsRaw = document.getElementById('fTags').value || '';
+  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  const body = {
+    name: document.getElementById('fName').value.trim(),
+    category: document.getElementById('fCategory').value,
+    privacy_level: document.getElementById('fPrivacy').value,
+    description: document.getElementById('fDescription').value.trim(),
+    region: document.getElementById('fRegion').value.trim(),
+    color: document.getElementById('fColor').value.trim(),
+    avatar_url: document.getElementById('fAvatar').value.trim(),
+    cover_url: document.getElementById('fCover').value.trim(),
+    website: document.getElementById('fWebsite').value.trim(),
+    email: document.getElementById('fEmail').value.trim(),
+    phone: document.getElementById('fPhone').value.trim(),
+    tags: tags
+  };
+  if (!body.name){ toast('Название обязательно'); return; }
+  try {
+    const r = await fetch(API+'/communities/'+currentCommunity.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+tk() },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok){
+      const d = await r.json().catch(()=>null);
+      toast(d?.error || ('Ошибка '+r.status));
+      return;
+    }
+    const d = await r.json();
+    currentCommunity = d.community || d;
+    toast('Сохранено', true);
+    render();
+  } catch(err){ toast('Сеть: '+err.message); }
+}
+
+async function renderMembers(wrap){
+  wrap.innerHTML = '<div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Участники</div><div class="placeholder">Загрузка…</div></div>';
+  try {
+    const r = await fetch(API+'/communities/'+currentCommunity.id+'/members?limit=200', { headers: { Authorization: 'Bearer '+tk() }});
+    const d = await r.json();
+    const members = (d.members || []);
+    const myRole = currentCommunity.my_role;
+    const isOwner = myRole === 'owner';
+    const rows = members.map(m => {
+      const role = m.role || 'member';
+      const roleLabel = role === 'owner' ? 'Владелец' : role === 'admin' ? 'Администратор' : role === 'moderator' ? 'Модератор' : 'Участник';
+      const badge = role !== 'member' ? '<span class="member-role-badge '+role+'">'+esc(roleLabel)+'</span>' : '';
+      const avSrc = m.avatar_url ? '<img src="'+esc(m.avatar_url)+'" alt="">' : esc(ltr(m.full_name));
+      let actions = '';
+      if (isOwner && role !== 'owner'){
+        const isMod = role === 'moderator';
+        actions += '<button class="btn btn-ghost" onclick="toggleModerator(\''+esc(m.user_public_id)+'\','+(!isMod)+',\''+esc(m.full_name||'')+'\')">'+(isMod?'Снять модератора':'Назначить модератором')+'</button>';
+        actions += '<button class="btn btn-ghost" onclick="kickMember(\''+esc(m.user_public_id)+'\',\''+esc(m.full_name||'')+'\')" style="color:var(--red);border-color:#FFD5D2">Исключить</button>';
+      }
+      return '<div class="member-row">'+
+        '<a class="member-av" href="/profile_user.html?id='+encodeURIComponent(m.user_public_id||'')+'" style="background:'+esc(avc(m.full_name))+'">'+avSrc+'</a>'+
+        '<div class="member-info">'+
+          '<div class="member-name"><a href="/profile_user.html?id='+encodeURIComponent(m.user_public_id||'')+'">'+esc(m.full_name||'Участник')+'</a></div>'+
+          '<div class="member-role-line">'+esc(roleLabel)+(m.position ? ' · '+esc(m.position) : '')+'</div>'+
+        '</div>'+
+        badge+
+        '<div class="member-actions">'+actions+'</div>'+
+      '</div>';
+    }).join('');
+    wrap.innerHTML = '<div class="panel">'+
+      '<div class="panel-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Участники ('+members.length+')</div>'+
+      (rows || '<div class="placeholder">Пока нет участников</div>')+
+    '</div>';
+  } catch(err){
+    wrap.innerHTML = '<div class="panel"><div class="placeholder">Ошибка загрузки участников</div></div>';
+  }
+}
+
+async function toggleModerator(userPublicID, makeMod, name){
+  const newRole = makeMod ? 'moderator' : 'member';
+  const verb = makeMod ? 'назначить '+name+' модератором' : 'снять модератора с '+name;
+  if (!confirm('Вы уверены что хотите '+verb+'?')) return;
+  try {
+    const r = await fetch(API+'/communities/'+currentCommunity.id+'/members/'+userPublicID+'/role', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+tk() },
+      body: JSON.stringify({ role: newRole })
+    });
+    if (!r.ok){ toast('Ошибка '+r.status); return; }
+    toast('Готово', true);
+    renderTab();
+  } catch(err){ toast('Сеть: '+err.message); }
+}
+
+async function kickMember(userPublicID, name){
+  if (!confirm('Исключить '+name+' из сообщества?')) return;
+  try {
+    const r = await fetch(API+'/communities/'+currentCommunity.id+'/members/'+userPublicID, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer '+tk() }
+    });
+    if (!r.ok){ toast('Ошибка '+r.status); return; }
+    toast('Участник исключён', true);
+    renderTab();
+  } catch(err){ toast('Сеть: '+err.message); }
+}
+
+async function renderRequests(wrap){
+  wrap.innerHTML = '<div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Заявки на вступление</div><div class="placeholder">Загрузка…</div></div>';
+  try {
+    const r = await fetch(API+'/communities/'+currentCommunity.id+'/join-requests', { headers: { Authorization: 'Bearer '+tk() }});
+    const d = await r.json();
+    const reqs = (d.requests || d.items || []).filter(rq => rq.status === 'pending' || !rq.status);
+    if (!reqs.length){
+      wrap.innerHTML = '<div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/></svg>Заявки на вступление</div><div class="placeholder">Нет открытых заявок</div></div>';
+      return;
+    }
+    const rows = reqs.map(rq => {
+      const userName = rq.user_name || rq.full_name || 'Пользователь';
+      const upid = rq.user_public_id || '';
+      const msg = rq.message || '';
+      const avSrc = rq.user_avatar ? '<img src="'+esc(rq.user_avatar)+'" alt="">' : esc(ltr(userName));
+      return '<div class="req-row">'+
+        '<a class="member-av" href="/profile_user.html?id='+encodeURIComponent(upid)+'" style="background:'+esc(avc(userName))+'">'+avSrc+'</a>'+
+        '<div class="member-info">'+
+          '<div class="member-name"><a href="/profile_user.html?id='+encodeURIComponent(upid)+'">'+esc(userName)+'</a></div>'+
+          (msg ? '<div class="req-message">«'+esc(msg)+'»</div>' : '<div class="member-role-line">Без сообщения</div>')+
+        '</div>'+
+        '<div class="member-actions">'+
+          '<button class="btn btn-ghost" onclick="answerRequest('+rq.id+',\'approve\')" style="color:var(--g);border-color:var(--gb)">Принять</button>'+
+          '<button class="btn btn-ghost" onclick="answerRequest('+rq.id+',\'reject\')" style="color:var(--red);border-color:#FFD5D2">Отклонить</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    wrap.innerHTML = '<div class="panel">'+
+      '<div class="panel-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/></svg>Заявки на вступление ('+reqs.length+')</div>'+
+      rows+
+    '</div>';
+  } catch(err){
+    wrap.innerHTML = '<div class="panel"><div class="placeholder">Ошибка загрузки заявок</div></div>';
+  }
+}
+
+async function answerRequest(id, action){
+  try {
+    const r = await fetch(API+'/communities/'+currentCommunity.id+'/join-requests/'+id+'/'+action, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer '+tk() }
+    });
+    if (!r.ok){ toast('Ошибка '+r.status); return; }
+    toast(action==='approve'?'Принято':'Отклонено', true);
+    renderTab();
+  } catch(err){ toast('Сеть: '+err.message); }
+}
+
+function renderDanger(wrap){
+  if (currentCommunity.my_role !== 'owner'){
+    wrap.innerHTML = '<div class="panel"><div class="placeholder">Только владелец сообщества может удалить его</div></div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="panel" style="border:1.5px solid #FFD5D2;background:#FFFAFA">'+
+    '<div class="panel-title" style="color:var(--red)"><svg viewBox="0 0 24 24" style="stroke:var(--red)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Опасная зона</div>'+
+    '<p style="font-size:13px;color:var(--tm);line-height:1.5">Удаление сообщества — необратимое действие. Все посты, обсуждения и связанные данные будут удалены навсегда.</p>'+
+    '<div><button class="btn btn-danger" onclick="deleteCommunity()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Удалить сообщество</button></div>'+
+  '</div>';
+}
+
+async function deleteCommunity(){
+  const c = currentCommunity;
+  const expected = c.name;
+  const typed = prompt('Чтобы удалить сообщество, введите его название точно как оно указано:\n\n'+expected);
+  if (typed === null) return;
+  if (typed.trim() !== expected){
+    toast('Название не совпадает');
+    return;
+  }
+  if (!confirm('Точно удалить сообщество "'+expected+'"? Это действие необратимо.')) return;
+  try {
+    const r = await fetch(API+'/communities/'+c.id, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer '+tk() }
+    });
+    if (!r.ok){ toast('Ошибка '+r.status); return; }
+    toast('Сообщество удалено', true);
+    setTimeout(() => { location.href = '/communities.html'; }, 800);
+  } catch(err){ toast('Сеть: '+err.message); }
+}
+
+function renderSidebar(){
+  const c = currentCommunity;
+  if (!c){ document.getElementById('rightArea').innerHTML = ''; return; }
+  document.getElementById('rightArea').innerHTML =
+    '<div class="panel">'+
+      '<div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg>Статистика</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px;font-size:12px">'+
+        '<div style="display:flex;justify-content:space-between"><span style="color:var(--gmt)">Участников</span><span style="font-weight:700">'+(c.members_count||0)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between"><span style="color:var(--gmt)">Постов</span><span style="font-weight:700">'+(c.posts_count||0)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between"><span style="color:var(--gmt)">Создано</span><span style="font-weight:700">'+(c.created_at?new Date(c.created_at).toLocaleDateString('ru-RU'):'—')+'</span></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="panel">'+
+      '<div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83"/></svg>Подсказки</div>'+
+      '<div style="font-size:11px;color:var(--gmt);line-height:1.5">'+
+        'Назначайте модераторов из активных участников — они помогут поддерживать порядок в обсуждениях. Закрытое сообщество требует одобрения каждой заявки.'+
+      '</div>'+
+    '</div>';
+}
+
+async function switchCommunity(id){
+  const c = myCommunities.find(co => co.id === id);
+  if (!c) return;
+  currentCommunity = c;
+  await loadCurrentCommunity();
+  history.replaceState({}, '', '/my-community-edit.html?id='+id);
+  render();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!tk()){ location.href='/login.html'; return; }
+  await loadProfile();
+  try {
+    await loadMyCommunities();
+  } catch(err){
+    document.getElementById('mainArea').innerHTML = '<div class="panel"><div class="placeholder">Не удалось загрузить сообщества</div></div>';
+    return;
+  }
+  if (!myCommunities.length){ renderEmpty(); return; }
+  const params = new URLSearchParams(location.search);
+  const idParam = parseInt(params.get('id'), 10);
+  currentCommunity = myCommunities.find(c => c.id === idParam) || myCommunities[0];
+  await loadCurrentCommunity();
+  render();
+});
+</script>
+</body>
+</html>
