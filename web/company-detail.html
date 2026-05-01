@@ -545,16 +545,24 @@ function renderAbout(wrap){
 async function renderPubs(wrap){
   wrap.innerHTML = '<div class="panel"><h3>Публикации</h3><div class="placeholder">Загрузка…</div></div>';
   try {
-    const [jobsR, catR] = await Promise.all([
+    const tk = localStorage.getItem('token');
+    const authH = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const [jobsR, catR, feedR, topicsR] = await Promise.all([
       fetch(API+'/jobs?limit=100').then(r=>r.json()),
       fetch(API+'/catalog?limit=100').then(r=>r.json()),
+      fetch(API+'/feed?type=news&limit=100', { headers: authH }).then(r=>r.ok?r.json():{posts:[]}).catch(()=>({posts:[]})),
+      fetch(API+'/forum/topics?limit=100', { headers: authH }).then(r=>r.ok?r.json():{topics:[]}).catch(()=>({topics:[]})),
     ]);
     const cid = company.id;
     const jobs = (jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid);
     const cats = (catR.items || []).filter(c => c.author_company_id === cid);
+    const posts = (feedR.posts || []).filter(p => p.author_company_id === cid);
+    const topics = (topicsR.topics || []).filter(t => t.author_company_id === cid);
     const all = [
       ...jobs.map(j => ({ kind:'Вакансия', title:j.title, href:'/job-detail.html?id='+encodeURIComponent(j.public_id), at:j.created_at })),
       ...cats.map(c => ({ kind:c.type==='product'?'Товар':'Услуга', title:c.title, href:(c.type==='product'?'/product-detail.html?id=':'/service-detail.html?id=')+encodeURIComponent(c.public_id), at:c.created_at })),
+      ...posts.map(p => ({ kind:'Пост', title:p.title || (p.content||'').substring(0,80), href:'/news-detail.html?id='+encodeURIComponent(p.public_id), at:p.created_at })),
+      ...topics.map(t => ({ kind:'Форум', title:t.title, href:'/forum-topic.html?id='+encodeURIComponent(t.public_id), at:t.created_at })),
     ].sort((a,b)=>new Date(b.at)-new Date(a.at));
     const rows = all.map(p =>
       '<a class="pub-card" href="'+escAttr(p.href)+'">'+
