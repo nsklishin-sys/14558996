@@ -707,8 +707,8 @@ type event struct {
 	AuthorCompanyName string    `json:"author_company_name,omitempty"`
 	AuthorCompanySlug string    `json:"author_company_slug,omitempty"`
 	AuthorCompanyLogo string    `json:"author_company_logo,omitempty"`
-	Latitude          float64   `json:"latitude,omitempty"`
-	Longitude         float64   `json:"longitude,omitempty"`
+	Latitude          float64   `json:"latitude"`
+	Longitude         float64   `json:"longitude"`
 	Title             string    `json:"title"`
 	Description       string    `json:"description"`
 	Type              string    `json:"type"`
@@ -10866,7 +10866,7 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
 		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
-		       COALESCE(p.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		       COALESCE(p.author_company_id, 0), COALESCE(ac_e.name, ''), COALESCE(ac_e.slug, ''), COALESCE(ac_e.logo_image, ''),
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
 		       FALSE,
 		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM post_saves ps WHERE ps.post_id = p.id AND ps.user_id = $3::bigint)), FALSE),
@@ -11144,7 +11144,7 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count,
 		       p.comments_count, p.views_count, p.created_at, p.author_id, COALESCE(p.author_company_id, 0),
-		       COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		       COALESCE(ac_e.name, ''), COALESCE(ac_e.slug, ''), COALESCE(ac_e.logo_image, ''),
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
@@ -11206,7 +11206,7 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
 		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
-		       COALESCE(p.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		       COALESCE(p.author_company_id, 0), COALESCE(ac_e.name, ''), COALESCE(ac_e.slug, ''), COALESCE(ac_e.logo_image, ''),
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
@@ -13885,11 +13885,11 @@ func getEventNoView(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (
 		 e.title, e.description, e.type, e.format, e.category, e.city, e.address, e.venue, e.online_url,
 		 e.starts_at, e.ends_at, e.timezone, e.cover_url, e.banner_color, e.fee_cents, e.currency, e.seats_total,
 		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at,
-		 COALESCE(e.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		 COALESCE(e.author_company_id, 0), COALESCE(ac_e.name, ''), COALESCE(ac_e.slug, ''), COALESCE(ac_e.logo_image, ''),
 		 COALESCE(c2.avatar_url, ''), COALESCE(c2.color, ''), COALESCE(e.latitude, 0), COALESCE(e.longitude, 0)
 		FROM events e
 		JOIN users u ON u.id=e.organizer_id
-		LEFT JOIN companies ac ON ac.id = e.author_company_id
+		LEFT JOIN companies ac_e ON ac_e.id = e.author_company_id
 		LEFT JOIN communities c2 ON c2.id=e.community_id
 		WHERE e.public_id=$1 AND e.is_deleted=FALSE AND (e.status='published' OR e.organizer_id=$2)
 	`, publicID, viewerID)
@@ -13947,11 +13947,11 @@ func listEvents(db *sql.DB, viewerID int64, hasAuth bool, f listEventsFilter) ([
 		 e.title, e.description, e.type, e.format, e.category, e.city, e.address, e.venue, e.online_url,
 		 e.starts_at, e.ends_at, e.timezone, e.cover_url, e.banner_color, e.fee_cents, e.currency, e.seats_total,
 		 e.registered_count, e.saved_count, e.views_count, COALESCE(array_to_json(e.tags), '[]'::json), e.status, e.created_at, e.updated_at,
-		 COALESCE(e.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
+		 COALESCE(e.author_company_id, 0), COALESCE(ac_e.name, ''), COALESCE(ac_e.slug, ''), COALESCE(ac_e.logo_image, ''),
 		 COALESCE(c2.avatar_url, ''), COALESCE(c2.color, ''), COALESCE(e.latitude, 0), COALESCE(e.longitude, 0)
 		FROM events e
 		JOIN users u ON u.id=e.organizer_id
-		LEFT JOIN companies ac ON ac.id = e.author_company_id
+		LEFT JOIN companies ac_e ON ac_e.id = e.author_company_id
 		LEFT JOIN communities c2 ON c2.id=e.community_id
 		WHERE `+strings.Join(where, " AND ")+`
 		ORDER BY e.starts_at ASC, e.id DESC
