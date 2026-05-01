@@ -258,7 +258,7 @@ const tk = () => localStorage.getItem('token');
 let allCompanies = [];
 let myCompanies = [];
 let categoryGroups = []; // [{key, label}]
-let mode = 'all';
+let mode = (new URLSearchParams(location.search).get('filter') === 'my') ? 'my' : 'all';
 let activeGroup = '';
 let searchQuery = '';
 let viewerID = null;
@@ -309,6 +309,7 @@ async function loadAll(){
     renderStats();
     renderMyList();
     renderRecom();
+    applyInitialMode();
     renderFeed();
   }catch(err){
     console.error('loadAll',err);
@@ -332,6 +333,18 @@ function setGroup(label){
   activeGroup=label;
   renderCatBar();
   renderFeed();
+}
+
+
+function applyInitialMode(){
+  if (mode === 'my'){
+    var myBtn = document.getElementById('mMy');
+    var allBtn = document.getElementById('mAll');
+    if (myBtn && allBtn){
+      allBtn.classList.remove('active');
+      myBtn.classList.add('active');
+    }
+  }
 }
 
 function setMode(m){

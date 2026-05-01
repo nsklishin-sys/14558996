@@ -520,7 +520,7 @@ const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135d
 
 const COMMUNITIES=[];
 const joinedSet=new Set();
-let currentMode='all';
+let currentMode = (new URLSearchParams(location.search).get('filter') === 'my') ? 'my' : 'all';
 let currentTab='';
 let currentType='all'; /* second toggle: all | user | corp */
 let currentView='grid';
@@ -614,6 +614,18 @@ function applyFilters(){
   if(q) items=items.filter(c=>c.name.toLowerCase().includes(q)||c.desc.toLowerCase().includes(q)||c.tags.some(t=>t.toLowerCase().includes(q)));
   items.sort((a,b)=>b.members-a.members);
   renderFeed(items);
+}
+
+
+function applyInitialMode(){
+  if (currentMode === 'my'){
+    var myBtn = document.getElementById('modeMy');
+    var allBtn = document.getElementById('modeAll');
+    if (myBtn && allBtn){
+      allBtn.classList.remove('active');
+      myBtn.classList.add('active');
+    }
+  }
 }
 
 function setMode(mode,btn){
@@ -928,6 +940,7 @@ async function fetchCommunitiesByRegion(region){
     }
   }catch{}
   syncSidebar();
+  applyInitialMode();
   applyFilters();
 })();
 </script>
