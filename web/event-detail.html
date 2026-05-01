@@ -816,8 +816,51 @@ async function toggleSave(){
   if(btn)btn.classList.toggle('saved',state.currentEvent.is_saved);
   toast(state.currentEvent.is_saved?'Сохранено ✓':'Убрано из сохранённых',state.currentEvent.is_saved);
 }
+const YANDEX_MAPS_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 let mapLoaded=false;
-function loadMap(){if(mapLoaded)return;mapLoaded=true;const ph=document.getElementById('mapPlaceholder');const mc=document.getElementById('mapContainer');const iframe=document.createElement('iframe');iframe.src='https://yandex.ru/map-widget/v1/?ll=37.539&z=15&l=map&pt=37.539,55.748,pm2rdm';iframe.allowFullscreen=true;iframe.loading='lazy';iframe.style.cssText='width:100%;height:280px;border:none;display:block;border-radius:var(--rm)';if(ph)ph.style.display='none';mc.appendChild(iframe);}
+
+async function loadYmapsScript(){
+  if(window.ymaps3)return window.ymaps3;
+  await new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://api-maps.yandex.ru/3.0/?apikey='+YANDEX_MAPS_KEY+'&lang=ru_RU';
+    s.onload=resolve;
+    s.onerror=reject;
+    document.head.appendChild(s);
+  });
+  await window.ymaps3.ready;
+  return window.ymaps3;
+}
+
+async function loadMap(){
+  if(mapLoaded)return;
+  const ev=state.currentEvent;
+  if(!ev)return;
+  const lat=parseFloat(ev.latitude||0);
+  const lon=parseFloat(ev.longitude||0);
+  if(!lat || !lon)return;
+  mapLoaded=true;
+  const ph=document.getElementById('mapPlaceholder');
+  const mc=document.getElementById('mapContainer');
+  if(ph)ph.style.display='none';
+  // Контейнер для карты
+  const mapEl=document.createElement('div');
+  mapEl.style.cssText='width:100%;height:280px;border-radius:var(--rm)';
+  mc.appendChild(mapEl);
+  try{
+    const ymaps3=await loadYmapsScript();
+    const {YMap,YMapDefaultSchemeLayer,YMapDefaultFeaturesLayer,YMapMarker}=ymaps3;
+    const map=new YMap(mapEl,{location:{center:[lon,lat],zoom:15}});
+    map.addChild(new YMapDefaultSchemeLayer());
+    map.addChild(new YMapDefaultFeaturesLayer());
+    const pin=document.createElement('div');
+    pin.style.cssText='width:24px;height:24px;background:#1E8A4C;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3);transform:translate(-50%,-50%)';
+    map.addChild(new YMapMarker({coordinates:[lon,lat]},pin));
+  }catch(err){
+    console.error('ymaps3',err);
+    if(ph){ph.style.display='';ph.textContent='Не удалось загрузить карту';}
+  }
+}
 function openMapExternal(){const ev=state.currentEvent||{};const q=encodeURIComponent([ev.city,ev.address].filter(Boolean).join(' '));window.open('https://yandex.ru/maps/?text='+q,'_blank');}
 let currentTicket={name:'standard',price:0};
 function openTicketModal(name='standard',price=0){currentTicket={name,price};document.getElementById('oTicketType').textContent=name;document.getElementById('oTotal').textContent=price>0?new Intl.NumberFormat('ru-RU').format(price)+' ₽':'Бесплатно';document.getElementById('btnPayLabel').textContent=price>0?'Оплатить '+new Intl.NumberFormat('ru-RU').format(price)+' ₽':'Подтвердить регистрацию';document.getElementById('modalBg').classList.add('open');}
@@ -829,7 +872,52 @@ async function loadSimilar(){if(!state.currentEvent)return;try{const r=await fet
 function openSimilar(el){const pid=el?.dataset?.pid;if(pid)location.href='/event-detail.html?id='+encodeURIComponent(pid)}
 async function messageOrganizer(){if(!state.currentEvent)return;const r=await fetch(`${API}/chat/conversations/direct`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({user_public_id:state.currentEvent.organizer_public_id})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось открыть чат');return;}const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';location.href='/chat.html?conv='+encodeURIComponent(conv);}
 async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await fetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
-function applyEvent(ev){state.currentEvent=ev;document.title=ev.title+' · LASTOP';const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};set('bcCurrent',ev.title);set('evTitle',ev.title);const dt=new Date(ev.starts_at);set('evDay',String(dt.getDate()));set('evMonth',dt.toLocaleString('ru-RU',{month:'long'}));set('evYear',String(dt.getFullYear()));set('evTimeRange',`${dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})} – ${new Date(ev.ends_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`);set('evLocation',ev.format==='online'?'Онлайн':(ev.city||'Офлайн'));set('evOrganizer',ev.organizer_name||'');set('regCount',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));set('rightRegCount',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));const btnReg=document.getElementById('btnReg');if(btnReg){btnReg.textContent=ev.is_registered?'✓ Вы записаны':'Записаться';btnReg.classList.toggle('registered',!!ev.is_registered);btnReg.setAttribute('onclick','clickReg()');}const btnSave=document.getElementById('btnSave');if(btnSave)btnSave.classList.toggle('saved',!!ev.is_saved);}
+function applyEvent(ev){
+  state.currentEvent=ev;
+  document.title=ev.title+' · LASTOP';
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
+  set('bcCurrent',ev.title);
+  set('evTitle',ev.title);
+  const dt=new Date(ev.starts_at);
+  set('evDay',String(dt.getDate()));
+  set('evMonth',dt.toLocaleString('ru-RU',{month:'long'}));
+  set('evYear',String(dt.getFullYear()));
+  set('evTimeRange',`${dt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})} – ${new Date(ev.ends_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`);
+  set('evLocation',ev.format==='online'?'Онлайн':(ev.city||'Офлайн'));
+  set('evOrganizer',ev.organizer_name||'');
+  set('regCount',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
+  set('rightRegCount',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
+  const btnReg=document.getElementById('btnReg');
+  if(btnReg){btnReg.textContent=ev.is_registered?'✓ Вы записаны':'Записаться';btnReg.classList.toggle('registered',!!ev.is_registered);btnReg.setAttribute('onclick','clickReg()');}
+  const btnSave=document.getElementById('btnSave');
+  if(btnSave)btnSave.classList.toggle('saved',!!ev.is_saved);
+
+  // Карта и адрес
+  const mapSection=document.querySelector('.map-section');
+  const isOnline=ev.format==='online';
+  const hasCoords=!!(parseFloat(ev.latitude||0) && parseFloat(ev.longitude||0));
+  if(mapSection){
+    if(isOnline){
+      mapSection.style.display='none';
+    }else{
+      mapSection.style.display='';
+      const addrMain=document.querySelector('.map-addr-main');
+      const addrSub=document.querySelector('.map-addr-sub');
+      if(addrMain)addrMain.textContent=[ev.city,ev.address].filter(Boolean).join(', ')||'Адрес не указан';
+      if(addrSub)addrSub.textContent=ev.venue||'';
+      // Если координаты есть — автоматически загрузить карту (placeholder убираем)
+      if(hasCoords){
+        loadMap();
+      }else{
+        const ph=document.getElementById('mapPlaceholder');
+        if(ph){
+          ph.innerHTML='<svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:var(--gmt);fill:none;stroke-width:1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><div class="map-placeholder-text">Координаты не указаны</div><div class="map-placeholder-sub">Адрес: '+(ev.city||'')+(ev.address?', '+ev.address:'')+'</div>';
+          ph.onclick=null;
+        }
+      }
+    }
+  }
+}
 /* АВТОРИЗАЦИЯ */
 
 
