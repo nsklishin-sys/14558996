@@ -438,7 +438,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <span class="ev-meta-sep"></span>
         <span class="ev-meta-item">
           <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          5 200 просмотров
+          <span id="evViewsTop">0</span> просмотров
         </span>
       </div>
       <!-- Участники -->
@@ -469,7 +469,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </button>
         <span class="ev-views">
           <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          5 200
+          <span id="evViewsBottom">0</span>
         </span>
       </div>
     </div>
@@ -557,12 +557,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Быстрые факты -->
   <div class="card">
     <div class="block-title">Информация</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дата</span><span class="info-val" id="infoDate">28 апреля 2026</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Время</span><span class="info-val" id="infoTime">10:00 – 18:00</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Формат</span><span class="info-val" id="infoFormat">Гибрид</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Зарегистрировано</span><span class="info-val" style="color:var(--g)" id="infoRegistered">1 840</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>Билеты от</span><span class="info-val" id="infoPriceFrom">Бесплатно</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="info-val" id="infoViews">5 200</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дата</span><span class="stat-val" id="infoDate">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Время</span><span class="stat-val" id="infoTime">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Формат</span><span class="stat-val" id="infoFormat">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Зарегистрировано</span><span class="stat-val" style="color:var(--g)" id="rightRegCount">0</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>Билеты от</span><span class="stat-val" id="infoPriceFrom">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Просмотров</span><span class="stat-val" id="infoViews">0</span></div>
   </div>
 
   <!-- Организатор -->
@@ -723,6 +723,51 @@ function applyEvent(ev){
       tagsEl.innerHTML='<span style="font-size:12px;color:var(--gmt);font-style:italic">Метки не добавлены</span>';
     }
   }
+
+  // === ПРАВЫЙ САЙДБАР ИНФОРМАЦИЯ ===
+  const FORMAT_LABEL_RU={online:'Онлайн',offline:'Офлайн',hybrid:'Гибрид'};
+  const setInfo=function(id,val){const el=document.getElementById(id);if(el)el.textContent=val||'—'};
+  const dt2=new Date(ev.starts_at);
+  const dtEnd=new Date(ev.ends_at);
+  setInfo('infoDate',dt2.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}));
+  const pad2=function(n){return String(n).padStart(2,'0')};
+  setInfo('infoTime',pad2(dt2.getHours())+':'+pad2(dt2.getMinutes())+' – '+pad2(dtEnd.getHours())+':'+pad2(dtEnd.getMinutes()));
+  setInfo('infoFormat',FORMAT_LABEL_RU[ev.format]||ev.format||'—');
+  setInfo('infoRegistered',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
+  // Минимальная цена среди билетов (из tickets JSONB)
+  let minPrice=null;
+  const ticketsForPrice=Array.isArray(ev.tickets)?ev.tickets:[];
+  ticketsForPrice.forEach(function(t){
+    const p=parseInt(t.price||0,10);
+    if(minPrice===null||p<minPrice)minPrice=p;
+  });
+  if(minPrice===null||minPrice===0){
+    setInfo('infoPriceFrom','Бесплатно');
+  }else{
+    setInfo('infoPriceFrom',new Intl.NumberFormat('ru-RU').format(minPrice)+' ₽');
+  }
+  setInfo('infoViews',new Intl.NumberFormat('ru-RU').format(ev.views_count||0));
+
+  // === ПРОСМОТРЫ В ШАПКЕ ===
+  setInfo('evViewsTop',new Intl.NumberFormat('ru-RU').format(ev.views_count||0));
+  setInfo('evViewsBottom',new Intl.NumberFormat('ru-RU').format(ev.views_count||0));
+
+  // === МЕСТА — оставшиеся ===
+  const seatsTotal=ticketsForPrice.reduce(function(a,t){return a+(parseInt(t.limit||0,10)||0)},0);
+  const seatsSold=ev.registered_count||0;
+  const seatsLeft=Math.max(0,seatsTotal-seatsSold);
+  const seatsLeftEl=document.getElementById('seatsLeft');
+  if(seatsLeftEl){
+    if(seatsTotal>0){
+      seatsLeftEl.textContent=seatsLeft;
+      seatsLeftEl.parentElement.style.display='';
+    }else{
+      // Если лимита нет — скрыть "осталось N мест"
+      if(seatsLeftEl.parentElement)seatsLeftEl.parentElement.style.display='none';
+    }
+  }
+  const regCountEl=document.getElementById('regCount');
+  if(regCountEl)regCountEl.textContent=new Intl.NumberFormat('ru-RU').format(ev.registered_count||0);
 
   // === ПРОГРАММА ===
   const programArr=Array.isArray(ev.program)?ev.program:[];
