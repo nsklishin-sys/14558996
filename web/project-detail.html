@@ -324,10 +324,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 .repost-dd{
   position:absolute;bottom:calc(100% + 8px);left:0;
-  width:230px;background:var(--w);border:1px solid var(--bdr);
+  width:280px;max-height:60vh;background:var(--w);border:1px solid var(--bdr);
   border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);
   opacity:0;pointer-events:none;transform:translateY(6px);
-  transition:opacity .18s,transform .18s;z-index:100;overflow:hidden
+  transition:opacity .18s,transform .18s;z-index:100;overflow-y:auto
 }
 .repost-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .repost-dd-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bdr)}
@@ -685,51 +685,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <div class="repost-dd" id="repostDD">
             <div class="repost-dd-head">Поделиться в…</div>
             <div class="repost-item" onclick="doRepost('page')">
-              <div class="repost-item-av" style="background:#1E8A4C" id="repostUserAv">НК</div>
+              <div class="repost-item-av" style="background:#1E8A4C" id="repostUserAv">Я</div>
               <div class="repost-item-body">
                 <div class="repost-item-name" id="repostUserName">Моя страница</div>
-                <div class="repost-item-sub">Личный профиль</div>
-              </div>
-            </div>
-            <div class="repost-div"></div>
-            <div class="repost-dd-head" style="padding-top:8px">Мои сообщества</div>
-            <div class="repost-item" onclick="doRepost('comm1')">
-              <div class="repost-item-av" style="background:#1E8A4C">🚛</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">Логистика СНГ</div>
-                <div class="repost-item-sub">2 400 участников</div>
-              </div>
-            </div>
-            <div class="repost-item" onclick="doRepost('comm2')">
-              <div class="repost-item-av" style="background:#6040A0">💻</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">LogTech Россия</div>
-                <div class="repost-item-sub">834 участника</div>
-              </div>
-            </div>
-            <div class="repost-item" onclick="doRepost('comm3')">
-              <div class="repost-item-av" style="background:#B45309">💼</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">HR в логистике</div>
-                <div class="repost-item-sub">412 участников</div>
+                <div class="repost-item-sub">Опубликовать в ленте</div>
               </div>
             </div>
             <div class="repost-div"></div>
             <div class="repost-dd-head" style="padding-top:8px">Отправить в чат</div>
-            <div class="repost-item" onclick="doRepost('chat1')">
-              <div class="repost-item-av" style="background:#3A90C0">МЗ</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">Марина Захарова</div>
-                <div class="repost-item-sub">Онлайн</div>
-              </div>
+            <div id="repostFriendsList">
+              <div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Загрузка друзей…</div>
             </div>
-            <div class="repost-item" onclick="doRepost('chat2')">
-              <div class="repost-item-av" style="background:#9060C0">АП</div>
-              <div class="repost-item-body">
-                <div class="repost-item-name">Алексей Петров</div>
-                <div class="repost-item-sub">5 мин назад</div>
-              </div>
-            </div>
+            <!-- Старые хардкод-блоки сообществ удалены -->
           </div>
         </div>
       </div>
@@ -1174,18 +1141,114 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
 
 /* РЕПОСТ */
-function toggleRepost(e,src){
+let _repostFriendsLoaded = false;
+async function toggleRepost(e,src){
   e.stopPropagation();
   const ddId=src==='bottom'?'repostDDBottom':'repostDD';
   const otherId=src==='bottom'?'repostDD':'repostDDBottom';
   document.getElementById(otherId)?.classList.remove('open');
   document.getElementById(ddId).classList.toggle('open');
+  if(!_repostFriendsLoaded)await loadRepostFriends();
 }
-function doRepost(target){
+
+async function loadRepostFriends(){
+  const list = document.getElementById('repostFriendsList');
+  if(!list) return;
+  try{
+    const r = await fetch('/api/friends', {headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    if(!r.ok) throw 0;
+    const d = await r.json();
+    const friends = d.friends || [];
+    if(!friends.length){
+      list.innerHTML = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">У вас пока нет друзей</div>';
+      _repostFriendsLoaded = true;
+      return;
+    }
+    list.innerHTML = friends.slice(0, 20).map(f => {
+      const pid = f.public_id || '';
+      const name = f.full_name || 'Друг';
+      const sub = f.position || f.company_name || '';
+      const initials = (name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase())||'?';
+      return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(name)}')">
+        <div class="repost-item-av" style="background:#3A90C0">${esc(initials)}</div>
+        <div class="repost-item-body">
+          <div class="repost-item-name">${esc(name)}</div>
+          ${sub ? `<div class="repost-item-sub">${esc(sub)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    _repostFriendsLoaded = true;
+  }catch{
+    list.innerHTML = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Не удалось загрузить друзей</div>';
+  }
+}
+
+async function doRepost(target){
   document.getElementById('repostDD')?.classList.remove('open');
   document.getElementById('repostDDBottom')?.classList.remove('open');
-  const names={page:'вашей странице',comm1:'«Логистика СНГ»',comm2:'«LogTech Россия»',comm3:'«HR в логистике»',chat1:'Марине Захаровой',chat2:'Алексею Петрову'};
-  toast('Поделились в '+(names[target]||target)+' ✓',true);
+  if(target === 'page'){
+    // Создаём пост на своей стене со ссылкой на проект
+    const project = state.project || window.currentProject || null;
+    const title = (project && project.title) || document.getElementById('projTitle')?.textContent || 'Проект';
+    const url = location.href;
+    try{
+      const r = await fetch('/api/posts', {
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
+        body: JSON.stringify({
+          title: 'Делюсь проектом: ' + title,
+          content: 'Посмотрите этот проект: ' + url,
+          type: 'project',
+          tags: []
+        })
+      });
+      if(!r.ok){
+        const err = await r.json().catch(()=>({}));
+        toast(err.error || 'Не удалось опубликовать');
+        return;
+      }
+      toast('Опубликовано в вашей ленте ✓',true);
+    }catch{
+      toast('Ошибка сети');
+    }
+  }
+}
+
+async function doRepostToFriend(friendPublicID, friendName){
+  document.getElementById('repostDD')?.classList.remove('open');
+  document.getElementById('repostDDBottom')?.classList.remove('open');
+  if(!friendPublicID){toast('Не удалось определить получателя');return;}
+  const project = state.project || window.currentProject || null;
+  const title = (project && project.title) || document.getElementById('projTitle')?.textContent || 'Проект';
+  const url = location.href;
+  const message = `📎 Делюсь проектом: ${title}
+${url}`;
+  try{
+    // Получаем/создаём direct-чат
+    const dc = await fetch('/api/chat/conversations/direct', {
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
+      body: JSON.stringify({user_public_id: friendPublicID})
+    });
+    if(!dc.ok){toast('Не удалось открыть чат');return;}
+    const dd = await dc.json();
+    const convPID = dd.conversation && dd.conversation.public_id;
+    if(!convPID){toast('Не удалось открыть чат');return;}
+    // Шлём сообщение
+    const r = await fetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
+      body: JSON.stringify({content: message})
+    });
+    if(!r.ok){
+      const err = await r.json().catch(()=>({}));
+      toast(err.error || 'Не удалось отправить');
+      return;
+    }
+    toast('Отправлено '+friendName+' ✓',true);
+  }catch{
+    toast('Ошибка сети');
+  }
 }
 
 /* МЕДИАГАЛЕРЕЯ */
