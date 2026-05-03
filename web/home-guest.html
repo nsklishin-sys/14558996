@@ -362,8 +362,19 @@ function closeModal(){document.getElementById('modalBg').classList.remove('open'
 (async()=>{try{const r=await fetch('/api/stats');if(!r.ok)throw 0;const d=await r.json();if(d.members||d.users)document.getElementById('s1').textContent=d.members||d.users;if(d.companies)document.getElementById('s2').textContent=d.companies;if(d.events)document.getElementById('s3').textContent=d.events;if(d.jobs)document.getElementById('s4').textContent=d.jobs;}catch{}})();
 const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum'};
 const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум'};
-function demoPosts(){return[{id:1,type:'projects',author:'Мария Захарова',role:'Логист · NorthBridge',text:'Рады сообщить об открытии нового маршрута СНГ–ЕС. Мультимодальная перевозка с таможенным сопровождением. Принимаем грузы от 5 тонн.',likes_count:8,comments_count:1,created_at:new Date(Date.now()-10800000).toISOString()},{id:2,type:'news',author:'LASTOP Digital',role:'Компания',text:'Обновление платформы v2.4: добавлен модуль аналитики по резюме и вакансиям, улучшен поиск по навыкам, новый дашборд для компаний.',likes_count:34,comments_count:9,created_at:new Date(Date.now()-18000000).toISOString()},{id:3,type:'companies',author:'Загрузка...',role:'Участник LASTOP',text:'ООО «Ластоп Групп» — российская интеграционная компания, формирующая инфраструктуру системного взаимодействия бизнеса. Платформа фиксирует роли участников, объединяет коммерческие и образовательные контуры.',likes_count:12,comments_count:3,created_at:new Date(Date.now()-86400000).toISOString()}];}
-async function loadFeed(){try{const r=await fetch('/api/feed?limit=3');if(!r.ok)throw 0;const d=await r.json();const p=d.posts||d.items||[];if(p.length){render(p.slice(0,3));return;}}catch{}render(demoPosts());}
+async function loadFeed(){
+  const empty='<div style="padding:30px 20px;text-align:center;color:var(--gmt);font-size:13px">Пока нет публикаций</div>';
+  try{
+    const r=await fetch('/api/feed?limit=3');
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const p=d.posts||d.items||[];
+    if(p.length){render(p.slice(0,3));return;}
+  }catch{}
+  const feed=document.getElementById('feed')||document.querySelector('.feed-list');
+  if(feed)feed.innerHTML=empty;
+}
+
 function render(posts){document.getElementById('feedPosts').innerHTML=posts.map((p,i)=>{const n=p.author||'Участник';const tag=TAG[p.type]||'t-news',lbl=LBL[p.type]||'Публикация';const t=p.created_at?ago(p.created_at):(p.ago||'');const href=p.type==='forum'?'/forum.html':'/dashboard.html';const id=p.id?'?id='+p.id:'';return`<div class="post-card" style="animation-delay:${i*.08}s;margin-bottom:10px" onclick="location.href='${href}${id}'"><div class="pc-head"><div class="pc-av" style="background:${avc(n)}">${letter(n)}</div><div><div class="pc-name">${esc(n)}</div><div class="pc-meta">${esc(p.role||'')}${p.role?' · ':''}${esc(t)}</div></div><span class="pc-tag ${tag}">${lbl}</span></div><div class="pc-text">${esc(p.text||p.content||'')}</div><div class="pc-foot"><div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||0}</div><div class="pc-act" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||0}</div><span class="pc-time">${esc(t)}</span></div></div>`;}).join('');}
 window.addEventListener('DOMContentLoaded',loadFeed);
 </script>
