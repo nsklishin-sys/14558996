@@ -780,13 +780,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="chat-head">
       <div class="ch-av-wrap">
         <div class="ch-av" id="chatAv" style="background:#5AB080">М</div>
-        <div class="ch-online-dot"></div>
+        <div class="ch-online-dot" id="chatOnlineDot" style="display:none"></div>
       </div>
       <div class="ch-info" onclick="openInfoPanel()">
         <div class="ch-name" id="chatName">Мария Захарова</div>
-        <div class="ch-status typing" id="chatStatus">
-          <span>печатает…</span>
-        </div>
+        <div class="ch-status" id="chatStatus"></div>
       </div>
       <div class="ch-actions">
         <button class="chat-friend-btn" id="chatFriendBtn" onclick="chatFriendClick()" style="display:none" title="">
@@ -1342,7 +1340,20 @@ function renderConversations(){
   }
   list.innerHTML = state.conversations.map(c => `<div class="d-item ${state.activeConvPublicID===c.public_id?'active':''} ${c.pinned?'pinned':''}" onclick="selectConversation('${c.public_id}')"><div class="d-av-wrap"><div class="d-av" style="background:${c.display_color}">${c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name)}</div>${c.is_online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(c.display_name)}</div></div><div class="d-bot"><div class="d-preview">${c.last_message_author?`<span class='me-prefix'>${esc(c.last_message_author)}: </span>`:''}${esc(c.last_message_text||'')}</div>${c.unread_count?`<span class='d-badge'>${c.unread_count}</span>`:''}</div></div></div>`).join('');
 }
-function applyConversation(c){if(!c)return;chatName.textContent=c.display_name;chatAv.style.background=c.display_color;chatAv.innerHTML=c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name);chatStatus.textContent=c.is_online?'в сети':'в чате';state.activeConversation=c}
+function applyConversation(c){
+  if(!c)return;
+  chatName.textContent=c.display_name;
+  chatAv.style.background=c.display_color;
+  chatAv.innerHTML=c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name);
+  const dot=document.getElementById('chatOnlineDot');
+  if(dot)dot.style.display=(c.type==='direct'&&c.is_online)?'block':'none';
+  if(c.type==='direct'){
+    chatStatus.textContent=c.is_online?'в сети':'был(а) недавно';
+  }else{
+    chatStatus.textContent=c.members_count?`${c.members_count} участников`:'';
+  }
+  state.activeConversation=c;
+}
 async function selectConversation(pid){state.activeConvPublicID=pid;renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){

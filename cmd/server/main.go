@@ -442,6 +442,9 @@ type chatPresenceStore struct {
 func newChatPresenceStore() *chatPresenceStore {
 	return &chatPresenceStore{last: map[int64]time.Time{}}
 }
+
+var chatPresence = newChatPresenceStore()
+
 func (s *chatPresenceStore) touch(uid int64) {
 	s.mu.Lock()
 	s.last[uid] = time.Now().UTC()
@@ -2237,7 +2240,7 @@ func main() {
 		})
 	})
 
-	chatPresence := newChatPresenceStore()
+	chatPresence = newChatPresenceStore()
 	chatMessageRateLimiter := newIPRateLimiter(60, time.Minute)
 	chatTypingRateLimiter := newIPRateLimiter(20, time.Minute)
 	chatCreateRateLimiter := newIPRateLimiter(10, time.Minute)
@@ -16772,6 +16775,9 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 		c.LastMessageAuthor = "Вы"
 	} else {
 		c.LastMessageAuthor = lastAuthorName
+	}
+	if c.Type == "direct" && otherUID.Valid && otherUID.Int64 > 0 {
+		c.IsOnline = chatPresence.isOnline(otherUID.Int64)
 	}
 	return c, nil
 }
