@@ -15855,6 +15855,7 @@ func newPublicEventID() (string, error) {
 }
 
 func isValidEventPublicID(s string) bool {
+	// Новый формат: "evt_" + 12 hex (длина 16)
 	if len(s) == 16 && strings.HasPrefix(s, "evt_") {
 		for _, ch := range s[4:] {
 			if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
@@ -15863,15 +15864,16 @@ func isValidEventPublicID(s string) bool {
 		}
 		return true
 	}
-	if len(s) != 16 || !strings.HasPrefix(s, "evt_") {
-		return false
-	}
-	for _, ch := range s[4:] {
-		if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
-			return false
+	// Старый формат (seed/миграция): "evt" + 10 hex (длина 13, без подчёркивания)
+	if len(s) == 13 && strings.HasPrefix(s, "evt") {
+		for _, ch := range s[3:] {
+			if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
+				return false
+			}
 		}
+		return true
 	}
-	return true
+	return false
 }
 
 func parseEventTime(s string, tz string) (time.Time, error) {
