@@ -981,6 +981,49 @@ type createExhibitionTicketRequest struct {
 	SortOrder   int      `json:"sort_order"`
 }
 
+type exhibitorApplication struct {
+	ID                 int64      `json:"id"`
+	ExhibitionID       int64      `json:"exhibition_id"`
+	CompanyID          int64      `json:"company_id"`
+	CompanyName        string     `json:"company_name,omitempty"`
+	CompanySlug        string     `json:"company_slug,omitempty"`
+	CompanyLogo        string     `json:"company_logo,omitempty"`
+	AppliedByUserID    int64      `json:"applied_by_user_id"`
+	AppliedByUserName  string     `json:"applied_by_user_name,omitempty"`
+	ContactFullName    string     `json:"contact_full_name"`
+	ContactEmail       string     `json:"contact_email"`
+	ContactPhone       string     `json:"contact_phone"`
+	ApplicationMessage string     `json:"application_message"`
+	StandTopic         string     `json:"stand_topic"`
+	DesiredZoneID      int64      `json:"desired_zone_id,omitempty"`
+	DesiredZoneTitle   string     `json:"desired_zone_title,omitempty"`
+	DesiredAreaSqm     int        `json:"desired_area_sqm"`
+	Status             string     `json:"status"`
+	ReviewMessage      string     `json:"review_message"`
+	ReviewedAt         *time.Time `json:"reviewed_at,omitempty"`
+	ReviewedByUserID   int64      `json:"reviewed_by_user_id,omitempty"`
+	AppliedAt          time.Time  `json:"applied_at"`
+}
+
+type createExhibitorApplicationRequest struct {
+	CompanyID          int64  `json:"company_id"`
+	ContactFullName    string `json:"contact_full_name"`
+	ContactEmail       string `json:"contact_email"`
+	ContactPhone       string `json:"contact_phone"`
+	ApplicationMessage string `json:"application_message"`
+	StandTopic         string `json:"stand_topic"`
+	DesiredZoneID      *int64 `json:"desired_zone_id,omitempty"`
+	DesiredAreaSqm     int    `json:"desired_area_sqm"`
+}
+
+type reviewExhibitorApplicationRequest struct {
+	Action        string `json:"action"`         // "approve" | "reject"
+	ReviewMessage string `json:"review_message"` // комментарий админа
+	BoothNumber   string `json:"booth_number"`   // если approve — необязательно
+	Pavilion      string `json:"pavilion"`
+	ZoneID        *int64 `json:"zone_id"`
+}
+
 type registerToEventRequest struct {
 	TicketType string `json:"ticket_type"`
 }
@@ -15075,6 +15118,181 @@ func handleExhibitionNested(w http.ResponseWriter, r *http.Request, db *sql.DB, 
 		}
 	}
 }
+
+// ─── exhibitor applications ──────────────────────────────────
+
+func createExhibitorApplication(db *sql.DB, exhibitionID, userID int64, req createExhibitorApplicationRequest) (exhibitorApplication, error) {
+	if req.CompanyID == 0 {
+		return exhibitorApplication{}, fmt.Errorf("validation: company_id required")
+	}
+	if strings.TrimSpace(req.ContactFullName) == "" {
+		return exhibitorApplication{}, fmt.Errorf("validation: contact_full_name required")
+	}
+	// Проверка формата выставки — для online без zone/area
+	var format string
+	if err := db.QueryRow(`SELECT format FROM exhibitions WHERE id=$1 AND is_deleted=FALSE`, exhibitionID).Scan(&format); err != nil {
+		return exhibitorApplication{}, err
+	}
+	var desiredZone sql.NullInt64
+	desiredArea := req.DesiredAreaSqm
+	if format == "online" {
+		// online — никаких зон и площади
+		desiredArea = 0
+	} else {
+		if req.DesiredZoneID != nil && *req.DesiredZoneID > 0 {
+			desiredZone = sql.NullInt64{Int64: *req.DesiredZoneID, Valid: true}
+		}
+	}
+	var app exhibitorApplication
+	err := db.QueryRow(`
+		INSERT INTO exhibition_exhibitor_applications
+		(exhibition_id, company_id, applied_by_user_id, contact_full_name, contact_email, contact_phone,
+		 application_message, stand_topic, desired_zone_id, desired_area_sqm)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		RETURNING id, exhibition_id, company_id, applied_by_user_id,
+			contact_full_name, contact_email, contact_phone, application_message,
+			stand_topic, COALESCE(desired_zone_id,0), desired_area_sqm,
+			status, review_message, reviewed_at, COALESCE(reviewed_by_user_id,0), applied_at
+	`, exhibitionID, req.CompanyID, userID, req.ContactFullName, req.ContactEmail, req.ContactPhone,
+		req.ApplicationMessage, req.StandTopic, desiredZone, desiredArea).Scan(
+		&app.ID, &app.ExhibitionID, &app.CompanyID, &app.AppliedByUserID,
+		&app.ContactFullName, &app.ContactEmail, &app.ContactPhone, &app.ApplicationMessage,
+		&app.StandTopic, &app.DesiredZoneID, &app.DesiredAreaSqm,
+		&app.Status, &app.ReviewMessage, &app.ReviewedAt, &app.ReviewedByUserID, &app.AppliedAt)
+	return app, err
+}
+
+func listExhibitorApplications(db *sql.DB, exhibitionID int64) ([]exhibitorApplication, error) {
+	rows, err := db.Query(`
+		SELECT a.id, a.exhibition_id, a.company_id,
+			COALESCE(c.name,''), COALESCE(c.slug,''), COALESCE(c.logo_image,''),
+			a.applied_by_user_id, COALESCE(u.full_name,''),
+			a.contact_full_name, a.contact_email, a.contact_phone, a.application_message,
+			a.stand_topic, COALESCE(a.desired_zone_id,0), COALESCE(z.title,''), a.desired_area_sqm,
+			a.status, a.review_message, a.reviewed_at, COALESCE(a.reviewed_by_user_id,0), a.applied_at
+		FROM exhibition_exhibitor_applications a
+		LEFT JOIN companies c ON c.id = a.company_id
+		LEFT JOIN users u ON u.id = a.applied_by_user_id
+		LEFT JOIN exhibition_zones z ON z.id = a.desired_zone_id
+		WHERE a.exhibition_id=$1
+		ORDER BY a.applied_at DESC, a.id DESC
+	`, exhibitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []exhibitorApplication
+	for rows.Next() {
+		var a exhibitorApplication
+		if err := rows.Scan(&a.ID, &a.ExhibitionID, &a.CompanyID,
+			&a.CompanyName, &a.CompanySlug, &a.CompanyLogo,
+			&a.AppliedByUserID, &a.AppliedByUserName,
+			&a.ContactFullName, &a.ContactEmail, &a.ContactPhone, &a.ApplicationMessage,
+			&a.StandTopic, &a.DesiredZoneID, &a.DesiredZoneTitle, &a.DesiredAreaSqm,
+			&a.Status, &a.ReviewMessage, &a.ReviewedAt, &a.ReviewedByUserID, &a.AppliedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, a)
+	}
+	if items == nil {
+		items = []exhibitorApplication{}
+	}
+	return items, rows.Err()
+}
+
+func reviewExhibitorApplication(db *sql.DB, exhibitionID, applicationID, reviewerID int64, req reviewExhibitorApplicationRequest) (*exhibitorApplication, error) {
+	action := strings.ToLower(strings.TrimSpace(req.Action))
+	if action != "approve" && action != "reject" {
+		return nil, fmt.Errorf("validation: action must be approve or reject")
+	}
+	newStatus := "approved"
+	if action == "reject" {
+		newStatus = "rejected"
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Прочесть текущую заявку (для проверки и для последующего INSERT в exhibitors)
+	var companyID int64
+	var currentStatus string
+	if err := tx.QueryRow(`
+		SELECT company_id, status FROM exhibition_exhibitor_applications
+		WHERE id=$1 AND exhibition_id=$2
+	`, applicationID, exhibitionID).Scan(&companyID, &currentStatus); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, err
+	}
+	if currentStatus != "pending" {
+		return nil, fmt.Errorf("validation: application already %s", currentStatus)
+	}
+
+	// Обновить статус
+	if _, err := tx.Exec(`
+		UPDATE exhibition_exhibitor_applications
+		SET status=$1, review_message=$2, reviewed_at=NOW(), reviewed_by_user_id=$3
+		WHERE id=$4 AND exhibition_id=$5
+	`, newStatus, req.ReviewMessage, reviewerID, applicationID, exhibitionID); err != nil {
+		return nil, err
+	}
+
+	// Если approve — добавить в exhibition_exhibitors
+	if action == "approve" {
+		var zoneID sql.NullInt64
+		if req.ZoneID != nil && *req.ZoneID > 0 {
+			zoneID = sql.NullInt64{Int64: *req.ZoneID, Valid: true}
+		}
+		if _, err := tx.Exec(`
+			INSERT INTO exhibition_exhibitors (exhibition_id, company_id, booth_number, pavilion, zone_id)
+			VALUES ($1,$2,$3,$4,$5)
+			ON CONFLICT (exhibition_id, company_id) DO UPDATE
+				SET booth_number=EXCLUDED.booth_number, pavilion=EXCLUDED.pavilion, zone_id=EXCLUDED.zone_id
+		`, exhibitionID, companyID, req.BoothNumber, req.Pavilion, zoneID); err != nil {
+			return nil, err
+		}
+		// Обновить exhibitors_count
+		if _, err := tx.Exec(`
+			UPDATE exhibitions SET exhibitors_count = (SELECT COUNT(*) FROM exhibition_exhibitors WHERE exhibition_id=$1)
+			WHERE id=$1
+		`, exhibitionID); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	// Вернуть обновлённую заявку (через listExhibitorApplications + filter — проще, но не оптимально; делаем точечный SELECT)
+	var a exhibitorApplication
+	err = db.QueryRow(`
+		SELECT a.id, a.exhibition_id, a.company_id,
+			COALESCE(c.name,''), COALESCE(c.slug,''), COALESCE(c.logo_image,''),
+			a.applied_by_user_id, COALESCE(u.full_name,''),
+			a.contact_full_name, a.contact_email, a.contact_phone, a.application_message,
+			a.stand_topic, COALESCE(a.desired_zone_id,0), COALESCE(z.title,''), a.desired_area_sqm,
+			a.status, a.review_message, a.reviewed_at, COALESCE(a.reviewed_by_user_id,0), a.applied_at
+		FROM exhibition_exhibitor_applications a
+		LEFT JOIN companies c ON c.id = a.company_id
+		LEFT JOIN users u ON u.id = a.applied_by_user_id
+		LEFT JOIN exhibition_zones z ON z.id = a.desired_zone_id
+		WHERE a.id=$1 AND a.exhibition_id=$2
+	`, applicationID, exhibitionID).Scan(&a.ID, &a.ExhibitionID, &a.CompanyID,
+		&a.CompanyName, &a.CompanySlug, &a.CompanyLogo,
+		&a.AppliedByUserID, &a.AppliedByUserName,
+		&a.ContactFullName, &a.ContactEmail, &a.ContactPhone, &a.ApplicationMessage,
+		&a.StandTopic, &a.DesiredZoneID, &a.DesiredZoneTitle, &a.DesiredAreaSqm,
+		&a.Status, &a.ReviewMessage, &a.ReviewedAt, &a.ReviewedByUserID, &a.AppliedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
 func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibitionFull, error) {
 	base, err := getExhibitionByPublicID(db, publicID, viewerID, hasAuth)
 	if err != nil {
