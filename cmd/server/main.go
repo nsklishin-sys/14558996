@@ -2628,6 +2628,25 @@ func main() {
 		}
 	})
 
+	// TEMP: одноразовая выдача is_admin текущему юзеру. Удалить после использования.
+	mux.HandleFunc("/api/dev/grant-admin", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		userID, ok := sessions.getUserID(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Сессия недействительна")
+			return
+		}
+		if _, err := db.Exec(`UPDATE users SET is_admin = TRUE WHERE id = $1`, userID); err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка обновления")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user_id": userID})
+	})
+
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
