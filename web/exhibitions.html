@@ -802,16 +802,17 @@ function renderFeed(list){
 const FILTER_IDS=['filterCat','filterCity','filterFormat','filterPart','filterSort'];
 
 function applyFilters(){
-  const cat=document.getElementById('filterCat').value;
-  const city=document.getElementById('filterCity').value;
-  const format=document.getElementById('filterFormat').value;
-  const month=document.getElementById('filterMonth').value;
-  const scale=document.getElementById('filterScale').value;
-  const country=document.getElementById('filterCountry').value;
-  const part=document.getElementById('filterPart').value;
-  const visitors=document.getElementById('filterVisitors').value;
-  const duration=document.getElementById('filterDuration').value;
-  const sort=document.getElementById('filterSort').value;
+  const fv=id=>{const el=document.getElementById(id);return el?el.value:''};
+  const cat=fv('filterCat');
+  const city=fv('filterCity');
+  const format=fv('filterFormat');
+  const month=fv('filterMonth');
+  const scale=fv('filterScale');
+  const country=fv('filterCountry');
+  const part=fv('filterPart');
+  const visitors=fv('filterVisitors');
+  const duration=fv('filterDuration');
+  const sort=fv('filterSort');
 
   // Подсветить активные фильтры
   FILTER_IDS.forEach(id=>{
