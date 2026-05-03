@@ -399,6 +399,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="etab" onclick="setTab('past',this)">Прошедшие</button>
     </div>
     <div class="toolbar-right">
+      <a id="btnCreateExhibition" href="/exhibition-edit.html" style="display:none;background:var(--g);color:#fff;border:none;border-radius:99px;padding:8px 16px;font-size:13px;font-weight:700;text-decoration:none;display:none;align-items:center;gap:6px;font-family:inherit;cursor:pointer;margin-right:8px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать выставку</a>
       <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       </button>
@@ -625,7 +626,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
+function tk(){return localStorage.getItem('token')||''}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function letter(s){return((s||'?')[0]).toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
@@ -657,15 +658,74 @@ const GRADIENTS={
   'Фармацевтика':'linear-gradient(135deg,#B05090,#9060C0)',
 };
 
-const EXPOS=[
-  {id:1,title:'LogisticsPro 2026',cat:'Логистика',city:'Москва',venue:'МВЦ «Крокус Экспо»',dates:'14–16 мая 2026',dateSort:'2026-05-14',desc:'Главная отраслевая выставка логистики, транспорта и управления цепочками поставок.',exhibitors:280,visitors:'10к+',visitorsNum:10000,days:3,paid:false,online:false,hybrid:false,international:false,registered:true,past:false,featured:true},
-  {id:2,title:'BuildExpo Russia 2026',cat:'Строительство',city:'Санкт-Петербург',venue:'Экспофорум',dates:'2–5 июня 2026',dateSort:'2026-06-02',desc:'Международная выставка строительных материалов, технологий и оборудования.',exhibitors:430,visitors:'25к+',visitorsNum:25000,days:4,paid:true,online:false,hybrid:false,international:true,registered:false,past:false},
-  {id:3,title:'Digital Freight Forum 2026',cat:'Технологии',city:'Москва',venue:'Экспоцентр',dates:'11–12 июня 2026',dateSort:'2026-06-11',desc:'Форум и выставка цифровых решений для грузовой логистики: TMS, WMS, EDI, ИИ.',exhibitors:120,visitors:'3к+',visitorsNum:3000,days:2,paid:false,online:false,hybrid:false,international:false,registered:false,past:false},
-  {id:4,title:'AgroLogistics 2026',cat:'АПК',city:'Новосибирск',venue:'МВК «Новосибирск Экспоцентр»',dates:'3–5 июля 2026',dateSort:'2026-07-03',desc:'Специализированная выставка агрологистики, хранения и транспортировки сельхозпродукции.',exhibitors:95,visitors:'2к+',visitorsNum:2000,days:3,paid:true,online:false,hybrid:false,international:false,registered:false,past:false},
-  {id:5,title:'IndustrialTech 2026',cat:'Промышленность',city:'Екатеринбург',venue:'МВЦ «Екатеринбург-ЭКСПО»',dates:'18–20 сентября 2026',dateSort:'2026-09-18',desc:'Крупнейшая выставка промышленного оборудования, станков и автоматизации производства на Урале.',exhibitors:190,visitors:'8к+',visitorsNum:8000,days:3,paid:true,online:false,hybrid:false,international:false,registered:false,past:false},
-  {id:6,title:'PharmaLogistica 2026',cat:'Фармацевтика',city:'Казань',venue:'КВЦ «Казань Экспо»',dates:'8–9 октября 2026',dateSort:'2026-10-08',desc:'Отраслевая выставка решений для фармацевтической логистики: холодовая цепь, сертификация, GDP.',exhibitors:68,visitors:'1к+',visitorsNum:1000,days:2,paid:true,online:false,hybrid:false,international:false,registered:false,past:false},
-  {id:7,title:'TransRussia 2025',cat:'Логистика',city:'Москва',venue:'МВЦ «Крокус Экспо»',dates:'15–17 апреля 2025',dateSort:'2025-04-15',desc:'Международная выставка транспортно-логистических услуг, прошедшая в апреле 2025 года.',exhibitors:310,visitors:'12к+',visitorsNum:12000,days:3,paid:false,online:false,hybrid:false,international:true,registered:false,past:true},
-];
+let EXPOS=[];
+
+const MONTH_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+function formatDateRange(starts, ends){
+  const s=new Date(starts), e=new Date(ends);
+  const sameMonth=s.getMonth()===e.getMonth() && s.getFullYear()===e.getFullYear();
+  if(sameMonth){
+    return s.getDate()+'–'+e.getDate()+' '+MONTH_RU[s.getMonth()]+' '+s.getFullYear();
+  }
+  return s.getDate()+' '+MONTH_RU[s.getMonth()]+' – '+e.getDate()+' '+MONTH_RU[e.getMonth()]+' '+s.getFullYear();
+}
+
+function mapApiExhibition(e){
+  const startDate=new Date(e.starts_at);
+  const endDate=new Date(e.ends_at);
+  const now=new Date();
+  const days=Math.max(1, Math.round((endDate-startDate)/86400000)+1);
+  return {
+    id: e.public_id,
+    public_id: e.public_id,
+    title: e.title||'',
+    cat: e.category||'',
+    city: e.city||'',
+    venue: e.venue||'',
+    address: e.address||'',
+    dates: formatDateRange(e.starts_at, e.ends_at),
+    dateSort: (e.starts_at||'').slice(0,10),
+    desc: e.short_description||e.description||'',
+    exhibitors: e.exhibitors_count||0,
+    visitors: (e.visitors_count>=1000? Math.round(e.visitors_count/1000)+'к+' : String(e.visitors_count||0)),
+    visitorsNum: e.visitors_count||0,
+    days,
+    paid: false,
+    online: e.format==='online',
+    hybrid: e.format==='hybrid',
+    international: false,
+    registered: !!e.is_registered,
+    saved: !!e.is_saved,
+    past: endDate < now,
+    featured: false,
+    cover_url: e.cover_url||'',
+    organizer: e.organizer_company_name || e.organizer_label || '',
+    format: e.format
+  };
+}
+
+async function loadExhibitions(){
+  try{
+    const r=await fetch(API+'/exhibitions?limit=200',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const d=await r.json();
+    EXPOS=(d.exhibitions||[]).map(mapApiExhibition);
+    EXPOS.forEach(e=>{ if(e.registered)regSet.add(e.id); if(e.saved)favSet.add(e.id); });
+    applyFilters();
+  }catch(err){console.error('loadExhibitions',err)}
+}
+
+async function checkAdminAndShowCreateBtn(){
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d.user?.is_admin){
+      const btn=document.getElementById('btnCreateExhibition');
+      if(btn)btn.style.display='';
+    }
+  }catch(err){}
+}
 
 let currentTab='all';
 let currentView='grid';
@@ -846,12 +906,8 @@ function toggleFav(id,btn){
   else{favSet.add(id);btn.classList.add('active');showToast('Добавлено в избранное ✓','success');}
 }
 
-function openExhibition(id){
-  const ex=EXPOS.find(e=>e.id===id);
-  if(!ex)return;
-  const params=new URLSearchParams({id:String(id),title:ex.title});
-  location.href='/exhibition-detail.html?'+params.toString();
-}
+function openExhibition(id){if(!id)return;location.href='/exhibition-detail.html?id='+encodeURIComponent(id)}
+
 
 /* ── МОДАЛКА СТЕНДА ── */
 function openStandModal(){document.getElementById('modalBg').classList.add('open');}
@@ -884,7 +940,8 @@ function submitStand(){
     document.getElementById('pddName').textContent=name;
     document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
   }catch{}
-  applyFilters();
+  loadExhibitions();
+  checkAdminAndShowCreateBtn();
 })();
 </script>
 <script src="/assets/profile-context.js" defer></script>
