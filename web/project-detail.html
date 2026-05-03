@@ -1165,11 +1165,12 @@ async function loadRepostFriends(){
       return;
     }
     list.innerHTML = friends.slice(0, 20).map(f => {
-      const pid = f.public_id || '';
-      const name = f.full_name || 'Друг';
-      const sub = f.position || f.company_name || '';
-      const initials = (name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase())||'?';
-      return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(name)}')">
+      const pid = f.public_id || f.friend_id || '';
+      const name = f.full_name || f.friend_name || f.name || 'Без имени';
+      const sub = f.position || f.company_name || f.email || '';
+      const initials = (name.split(/\s+/).map(s => s[0]||'').join('').slice(0,2).toUpperCase()) || '?';
+      const safeName = name.replace(/'/g, '\\\'');
+      return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(safeName)}')">
         <div class="repost-item-av" style="background:#3A90C0">${esc(initials)}</div>
         <div class="repost-item-body">
           <div class="repost-item-name">${esc(name)}</div>
