@@ -1401,7 +1401,17 @@ function renderMessages(){
       </div>`);
   });
   if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);
-  if(el){if(wasAtBottom)el.scrollTop=el.scrollHeight;else el.scrollTop=prevScroll}
+  if(el){
+    if(wasAtBottom){
+      const scrollDown=()=>{el.scrollTop=el.scrollHeight};
+      scrollDown();
+      requestAnimationFrame(scrollDown);
+      setTimeout(scrollDown,100);
+      setTimeout(scrollDown,400);
+    }else{
+      el.scrollTop=prevScroll;
+    }
+  }
 }
 function renderAttachment(m){
   if (!m.attachment_url) return '';
