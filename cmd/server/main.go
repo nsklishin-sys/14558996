@@ -54,6 +54,7 @@ type user struct {
 	City        string `json:"city,omitempty"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
 	Handle      string `json:"handle,omitempty"`
+	IsAdmin     bool   `json:"is_admin,omitempty"`
 }
 
 type registerRequest struct {
@@ -6873,6 +6874,161 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS tickets JSONB NOT NULL DEFAULT '[]':
 
 CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id) WHERE author_company_id IS NOT NULL;
 
+-- Sprint 12: Выставки
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS exhibitions (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    short_description TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    format TEXT NOT NULL DEFAULT 'offline',
+    status TEXT NOT NULL DEFAULT 'planned',
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    timezone TEXT NOT NULL DEFAULT 'Europe/Moscow',
+    city TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    venue TEXT NOT NULL DEFAULT '',
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    online_url TEXT NOT NULL DEFAULT '',
+    cover_url TEXT NOT NULL DEFAULT '',
+    organizer_label TEXT NOT NULL DEFAULT '',
+    organizer_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+    external_expo_url TEXT NOT NULL DEFAULT '',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    views_count INTEGER NOT NULL DEFAULT 0,
+    visitors_count INTEGER NOT NULL DEFAULT 0,
+    exhibitors_count INTEGER NOT NULL DEFAULT 0,
+    saves_count INTEGER NOT NULL DEFAULT 0,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by_user_id BIGINT NOT NULL REFERENCES users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS exhibitions_status_idx ON exhibitions(status) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS exhibitions_starts_at_idx ON exhibitions(starts_at) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS exhibitions_category_idx ON exhibitions(category) WHERE is_deleted = FALSE;
+
+CREATE TABLE IF NOT EXISTS exhibition_days (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    day_date DATE NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (exhibition_id, day_date)
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_zones (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '#1E8A4C',
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_speakers (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT '',
+    bio TEXT NOT NULL DEFAULT '',
+    photo_url TEXT NOT NULL DEFAULT '',
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_sessions (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    day_id BIGINT NOT NULL REFERENCES exhibition_days(id) ON DELETE CASCADE,
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    session_type TEXT NOT NULL DEFAULT 'talk',
+    location TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_session_speakers (
+    session_id BIGINT NOT NULL REFERENCES exhibition_sessions(id) ON DELETE CASCADE,
+    speaker_id BIGINT NOT NULL REFERENCES exhibition_speakers(id) ON DELETE CASCADE,
+    PRIMARY KEY (session_id, speaker_id)
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_tickets (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    price_cents INTEGER NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    role TEXT NOT NULL DEFAULT 'visitor',
+    seats_limit INTEGER NOT NULL DEFAULT 0,
+    seats_taken INTEGER NOT NULL DEFAULT 0,
+    perks TEXT[] NOT NULL DEFAULT '{}',
+    is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_visitor_registrations (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ticket_id BIGINT NOT NULL REFERENCES exhibition_tickets(id) ON DELETE RESTRICT,
+    company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+    full_name TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    attendance_mode TEXT NOT NULL DEFAULT 'in_person',
+    status TEXT NOT NULL DEFAULT 'registered',
+    registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (exhibition_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_exhibitor_applications (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    applied_by_user_id BIGINT NOT NULL REFERENCES users(id),
+    contact_full_name TEXT NOT NULL DEFAULT '',
+    contact_email TEXT NOT NULL DEFAULT '',
+    contact_phone TEXT NOT NULL DEFAULT '',
+    application_message TEXT NOT NULL DEFAULT '',
+    stand_topic TEXT NOT NULL DEFAULT '',
+    desired_zone_id BIGINT REFERENCES exhibition_zones(id) ON DELETE SET NULL,
+    desired_area_sqm INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    review_message TEXT NOT NULL DEFAULT '',
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by_user_id BIGINT REFERENCES users(id),
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (exhibition_id, company_id)
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_exhibitors (
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    booth_number TEXT NOT NULL DEFAULT '',
+    pavilion TEXT NOT NULL DEFAULT '',
+    zone_id BIGINT REFERENCES exhibition_zones(id) ON DELETE SET NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (exhibition_id, company_id)
+);
+
+CREATE TABLE IF NOT EXISTS exhibition_saves (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, exhibition_id)
+);
+
 CREATE TABLE IF NOT EXISTS event_registrations (
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -7840,15 +7996,40 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE)
 		FROM users
 		WHERE id = $1 AND is_deleted = FALSE
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle)
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin)
 	if err != nil {
 		return user{}, err
 	}
 
 	return u, nil
+}
+
+// requireAdmin проверяет что у юзера is_admin = true.
+// Возвращает userID и true если ок. Если нет — пишет ошибку в ResponseWriter и возвращает false.
+func requireAdmin(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *sessionStore) (int64, bool) {
+	token := tokenFromRequest(r)
+	if token == "" {
+		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+		return 0, false
+	}
+	userID, ok := sessions.getUserID(token)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Сессия недействительна")
+		return 0, false
+	}
+	var isAdmin bool
+	if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id = $1`, userID).Scan(&isAdmin); err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка проверки прав")
+		return 0, false
+	}
+	if !isAdmin {
+		writeError(w, http.StatusForbidden, "Доступ только для администраторов")
+		return 0, false
+	}
+	return userID, true
 }
 
 func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessionStore) (int64, bool) {
