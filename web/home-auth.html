@@ -624,6 +624,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       <button class="ftab" data-type="news">Новости</button>
       <button class="ftab" data-type="projects">Проекты</button>
       <button class="ftab" data-type="companies">Компании</button>
+      <button class="ftab" data-type="communities">Сообщества</button>
       <button class="ftab" data-type="forum">Форум</button>
     </div>
     <div class="feed" id="feed"></div>
@@ -1347,7 +1348,7 @@ function renderFeedFiltered(type){
 
   // Сбрасываем сигнатуру при переключении на не-постовые вкладки,
   // чтобы при возврате на 'all' лента точно перерисовалась.
-  if (type === 'projects' || type === 'forum' || type === 'companies') {
+  if (type === 'projects' || type === 'forum' || type === 'companies' || type === 'communities') {
     _feedRenderSig = '';
     if (type === 'projects') {
       loadFeedProjects(feed);
@@ -1358,7 +1359,11 @@ function renderFeedFiltered(type){
       return;
     }
     if (type === 'companies') {
-      renderFeedCompanies(feed);
+      loadFeedCompanies(feed);
+      return;
+    }
+    if (type === 'communities') {
+      loadFeedCommunities(feed);
       return;
     }
   }
@@ -1493,88 +1498,92 @@ async function loadFeedForum(feed){
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
 
-// Кеш компаний — грузим один раз за сессию страницы (повторное переключение
-// на вкладку не дёргает API). Если нужны свежие данные — перезагрузка страницы.
-let _companiesCache = null;
-let _companiesLoading = false;
-
-async function renderFeedCompanies(container){
-  // Если уже грузим — просто покажем skeleton
-  if (_companiesLoading) {
-    container.innerHTML = skels(3, 80);
-    return;
-  }
-  // Если в кеше есть — рисуем сразу
-  if (_companiesCache) {
-    rerenderCompanies(container, _companiesCache);
-    return;
-  }
-
-  // Первая загрузка
-  _companiesLoading = true;
+async function loadFeedCompanies(container){
   container.innerHTML = skels(3, 80);
-
   try {
     const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
-    const r = await fetch(API + '/communities', {headers});
+    const r = await fetch(API + '/companies?limit=10', {headers});
     if (!r.ok) throw 0;
     const d = await r.json();
-    const items = (d.communities || []).slice(0, 10);
-    _companiesCache = items;
-    rerenderCompanies(container, items);
+    const items = (d.companies || d.items || []).slice(0, 10);
+    if (!items.length) {
+      container.innerHTML = `
+        <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:48px 24px;text-align:center">
+          <div style="font-size:42px;margin-bottom:14px">🏢</div>
+          <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:6px">Пока нет компаний</div>
+          <div style="font-size:13px;color:var(--gmt)">Зарегистрируйте свою компанию в разделе «Моя компания».</div>
+        </div>`;
+      return;
+    }
+    container.innerHTML = items.map((c, i) => {
+      const name = escHtml(c.name || 'Без названия');
+      const slug = escAttr(c.slug || '');
+      const cat = escHtml(c.category || c.industry || 'Компания');
+      const desc = escHtml((c.description || '').slice(0, 140));
+      const logo = c.logo_image ? `<img src="${escAttr(c.logo_image)}" style="width:100%;height:100%;object-fit:cover">` : escHtml((c.name||'C').charAt(0).toUpperCase());
+      const color = c.brand_color || '#1A8A6A';
+      return `
+        <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer;animation-delay:${i*.05}s" onclick="location.href='/company-detail.html?slug=${slug}'">
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+            <div style="width:44px;height:44px;border-radius:10px;background:${color};display:grid;place-items:center;color:#fff;font-weight:800;overflow:hidden">${logo}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:800;color:var(--t);font-size:15px">${name}</div>
+              <div style="font-size:11px;color:var(--gmt);margin-top:2px">${cat}</div>
+            </div>
+          </div>
+          ${desc ? `<div style="font-size:13px;color:var(--tm);line-height:1.4">${desc}</div>` : ''}
+        </div>`;
+    }).join('');
   } catch {
     container.innerHTML = `
       <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:32px 24px;text-align:center">
-        <div style="font-size:13px;color:var(--gmt);font-style:italic">Не удалось загрузить список компаний</div>
+        <div style="font-size:13px;color:var(--gmt);font-style:italic">Не удалось загрузить компании</div>
       </div>`;
-  } finally {
-    _companiesLoading = false;
   }
 }
 
-function rerenderCompanies(container, items){
-  if (!items || !items.length) {
+async function loadFeedCommunities(container){
+  container.innerHTML = skels(3, 80);
+  try {
+    const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
+    const r = await fetch(API + '/communities?limit=10', {headers});
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = (d.communities || []).slice(0, 10);
+    if (!items.length) {
+      container.innerHTML = `
+        <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:48px 24px;text-align:center">
+          <div style="font-size:42px;margin-bottom:14px">👥</div>
+          <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:6px">Пока нет сообществ</div>
+          <div style="font-size:13px;color:var(--gmt)">Создайте первое сообщество в разделе «Сообщества».</div>
+        </div>`;
+      return;
+    }
+    container.innerHTML = items.map((c, i) => {
+      const name = escHtml(c.name || 'Без названия');
+      const pid = escAttr(c.public_id || c.id || '');
+      const cat = escHtml(c.category || 'Сообщество');
+      const desc = escHtml((c.description || '').slice(0, 140));
+      const cover = c.cover_image ? `background-image:url('${escAttr(c.cover_image)}');background-size:cover` : 'background:linear-gradient(135deg,#9060C0,#6040A0)';
+      return `
+        <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;margin-bottom:12px;cursor:pointer;animation-delay:${i*.05}s" onclick="location.href='/community-detail.html?id=${pid}'">
+          <div style="height:80px;${cover}"></div>
+          <div style="padding:14px 18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="background:#F5EFFA;color:#6040A0;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700">Сообщество</span>
+              <span style="font-size:11px;color:var(--gmt)">${cat}</span>
+            </div>
+            <div style="font-weight:800;color:var(--t);font-size:15px;margin-bottom:6px">${name}</div>
+            ${desc ? `<div style="font-size:13px;color:var(--tm);line-height:1.4">${desc}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch {
     container.innerHTML = `
-      <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:48px 24px;text-align:center">
-        <div style="font-size:42px;margin-bottom:14px">🏢</div>
-        <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:6px">Пока нет компаний</div>
-        <div style="font-size:13px;color:var(--gmt)">Будьте первыми — создайте сообщество компании в разделе «Сообщества».</div>
+      <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:32px 24px;text-align:center">
+        <div style="font-size:13px;color:var(--gmt);font-style:italic">Не удалось загрузить сообщества</div>
       </div>`;
-    return;
   }
-
-  container.innerHTML = items.map((c, i) => {
-    const name = c.name || 'Без названия';
-    const cat = c.category || 'Сообщество';
-    const desc = (c.description || '').slice(0, 140);
-    const members = Number(c.members_count || 0);
-    const color = c.color || avc(name);
-    const initial = letter(name);
-    const created = c.created_at ? ago(c.created_at) : '';
-    const href = '/community-detail.html?id=' + encodeURIComponent(c.id);
-
-    return `<div class="post-card" style="animation-delay:${i*.05}s;cursor:pointer" onclick="location.href='${href}'">
-      <div class="pc-head">
-        <div class="pc-av" style="background:${color}">${esc(initial)}</div>
-        <div style="flex:1;min-width:0">
-          <div class="pc-name">${esc(name)}</div>
-          <div class="pc-meta">${esc(cat)}${created ? ' · ' + esc(created) : ''}</div>
-        </div>
-        <span class="pc-tag t-co">Компания</span>
-      </div>
-      ${desc ? `<div class="pc-text">${esc(desc)}</div>` : ''}
-      <div class="pc-foot">
-        <div class="pc-act">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          ${members} ${members === 1 ? 'участник' : (members < 5 ? 'участника' : 'участников')}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
 }
-setInterval(()=>{if(document.visibilityState==='visible'){void loadFeed();}},60000);
-</script>
-<script src="/site-search.js" defer></script>
-<script src="/assets/profile-context.js" defer></script>
-</body>
-</html>
+
+
