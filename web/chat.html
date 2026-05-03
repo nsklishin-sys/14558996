@@ -958,7 +958,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="nd-pane" id="nd-group"><input class="nd-input" id="ndGroupTitle" placeholder="Название группы"><input class="nd-search" id="ndGroupSearch" placeholder="Добавить участников…" oninput="ndSearchForGroup(this.value)"><div class="nd-list" id="ndGroupList"></div><div class="nd-selected" id="ndGroupSelected"></div><button class="nd-submit" onclick="ndCreateGroup()">Создать группу</button></div>
   </div>
 </div>
-<input id="chatHiddenFile" type="file" hidden accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt">
+<input id="chatHiddenFile" type="file" hidden accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt">
 <div class="emoji-picker" id="emojiPicker"></div>
 <div class="toast" id="toast"></div>
 
@@ -1234,10 +1234,22 @@ function renderAttachment(m){
   const type = m.attachment_type || '';
   const size = m.attachment_size || 0;
   const isImage = type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
+  const isVideo = type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(url);
+  const isAudio = type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a)$/i.test(url);
 
   if (isImage) {
     return `<div class='msg-image' onclick="window.open('${esc(url)}', '_blank')">
       <img src='${esc(url)}' alt='${esc(name)}' loading='lazy'>
+    </div>`;
+  }
+  if (isVideo) {
+    return `<div style='margin-top:6px;border-radius:10px;overflow:hidden;background:#000;max-width:380px'>
+      <video controls preload='metadata' style='width:100%;display:block;max-height:320px' src='${esc(url)}'></video>
+    </div>`;
+  }
+  if (isAudio) {
+    return `<div style='margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--gp);max-width:320px'>
+      <audio controls preload='metadata' style='width:100%' src='${esc(url)}'></audio>
     </div>`;
   }
 
@@ -1410,9 +1422,11 @@ chatHiddenFile?.addEventListener('change', async (e) => {
   // Сбрасываем input чтобы можно было выбрать тот же файл повторно
   e.target.value = '';
 
-  // Проверка размера 25 МБ
-  if (file.size > 25 * 1024 * 1024) {
-    showToast('Файл слишком большой (макс. 25 МБ)');
+  // Лимит: видео — 100 МБ, остальное — 25 МБ
+  const isVideo = (file.type||'').startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+  const maxBytes = isVideo ? 100*1024*1024 : 25*1024*1024;
+  if (file.size > maxBytes) {
+    showToast(isVideo ? 'Видео слишком большое (макс. 100 МБ)' : 'Файл слишком большой (макс. 25 МБ)');
     return;
   }
 
