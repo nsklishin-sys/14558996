@@ -549,11 +549,12 @@ async function loadData(){
     outgoing=out.data?.requests||out.requests||[];
     candidates=cand.data?.users||cand.users||[];
   }catch{
-    // Демо-данные если API недоступен
-    friends=DEMO_FRIENDS;
-    incoming=DEMO_INCOMING;
-    outgoing=DEMO_OUTGOING;
-    candidates=DEMO_CANDIDATES;
+    friends=[];
+    incoming=[];
+    outgoing=[];
+    candidates=[];
+    if(typeof showToast==='function')showToast('Не удалось загрузить друзей');
+    else if(typeof toast==='function')toast('Не удалось загрузить друзей');
   }
   renderAll();
 }
@@ -639,31 +640,6 @@ function goChat(id,name){
   toast('Открываем чат с '+name+'…','ok');
   setTimeout(()=>{location.href='/chat.html?user='+encodeURIComponent(id)},600);
 }
-
-/* ══ ДЕМО ДАННЫЕ (fallback) ══ */
-const DEMO_FRIENDS=[
-  {friend_id:'1',friend_name:'Марина Захарова',position:'Специалист ВЭД',company_name:'ТаможПром',is_online:true,mutual_friends:3},
-  {friend_id:'2',friend_name:'Дмитрий Козлов',position:'Product Manager TMS',company_name:'LASTOP Digital',is_online:false,mutual_friends:5},
-  {friend_id:'3',friend_name:'NorthBridge Logistics',position:'Компания',company_name:'Логистика',is_online:true},
-  {friend_id:'4',friend_name:'Алексей Петров',position:'Таможенный брокер',company_name:'FastCargo',is_online:false,mutual_friends:2},
-  {friend_id:'5',friend_name:'Ольга Павлова',position:'COO',company_name:'NorthBridge',is_online:true,mutual_friends:7},
-  {friend_id:'6',friend_name:'Сергей Крылов',position:'IT-директор',company_name:'NorthBridge',is_online:false},
-];
-const DEMO_INCOMING=[
-  {user_id:'7',friend_name:'Игорь Лебедев',position:'Логист',company_name:'Volga Industrial',mutual_friends:1},
-  {user_id:'8',friend_name:'Елена Морозова',position:'HR-менеджер',company_name:'GlobalFreight',mutual_friends:4},
-];
-const DEMO_OUTGOING=[
-  {friend_id:'9',friend_name:'Иван Новиков',position:'Директор по логистике',company_name:'RetailGroup'},
-];
-const DEMO_CANDIDATES=[
-  {id:'10',full_name:'Артём Смирнов',position:'Таможенный декларант',company_name:'АльфаТаможня',mutual_friends:3},
-  {id:'11',full_name:'Наталья Фёдорова',position:'Специалист по ВЭД',company_name:'ImportExpert',mutual_friends:2},
-  {id:'12',full_name:'Павел Кузнецов',position:'Логист-экспедитор',company_name:'СБЛогистик',mutual_friends:5},
-  {id:'13',full_name:'Виктория Морозова',position:'Менеджер по закупкам',company_name:'ПромИмпорт'},
-  {id:'14',full_name:'Андрей Васильев',position:'Product Manager',company_name:'LogTech',mutual_friends:1},
-  {id:'15',full_name:'Анна Соколова',position:'Руководитель склада',company_name:'МегаСтор'},
-];
 
 /* ══ АВТОРИЗАЦИЯ ══ */
 (async()=>{
