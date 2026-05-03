@@ -1024,6 +1024,29 @@ type reviewExhibitorApplicationRequest struct {
 	ZoneID        *int64 `json:"zone_id"`
 }
 
+type registerVisitorRequest struct {
+	TicketID       int64  `json:"ticket_id"`
+	FullName       string `json:"full_name"`
+	Email          string `json:"email"`
+	CompanyID      *int64 `json:"company_id,omitempty"`
+	AttendanceMode string `json:"attendance_mode"` // "in_person" / "online" — для hybrid
+}
+
+type visitorRegistration struct {
+	ID             int64     `json:"id"`
+	ExhibitionID   int64     `json:"exhibition_id"`
+	UserID         int64     `json:"user_id"`
+	TicketID       int64     `json:"ticket_id"`
+	TicketTitle    string    `json:"ticket_title"`
+	CompanyID      int64     `json:"company_id,omitempty"`
+	CompanyName    string    `json:"company_name,omitempty"`
+	FullName       string    `json:"full_name"`
+	Email          string    `json:"email"`
+	AttendanceMode string    `json:"attendance_mode"`
+	Status         string    `json:"status"`
+	RegisteredAt   time.Time `json:"registered_at"`
+}
+
 type registerToEventRequest struct {
 	TicketType string `json:"ticket_type"`
 }
@@ -3042,6 +3065,59 @@ func main() {
 			}
 			writeJSON(w, http.StatusCreated, map[string]any{"application": app})
 			return
+		}
+
+		// Регистрация посетителем — POST/DELETE доступны любому залогиненному
+		if len(parts) >= 2 && parts[1] == "register" {
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			userID, hasAuth := sessions.getUserID(token)
+			if !hasAuth {
+				writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+				return
+			}
+			exhibitionID, err := resolveExhibitionID(db, publicID)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Выставка не найдена")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			switch r.Method {
+			case http.MethodPost:
+				var req registerVisitorRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				reg, err := registerVisitor(db, exhibitionID, userID, req)
+				if err != nil {
+					if strings.HasPrefix(err.Error(), "validation:") {
+						writeError(w, http.StatusBadRequest, err.Error())
+						return
+					}
+					log.Printf("[exhibitions] register: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusCreated, map[string]any{"registration": reg})
+				return
+			case http.MethodDelete:
+				if err := cancelVisitorRegistration(db, exhibitionID, userID); err != nil {
+					if err == sql.ErrNoRows {
+						writeError(w, http.StatusNotFound, "Регистрация не найдена")
+						return
+					}
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				return
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
 		}
 
 		// Заявки экспонентов — список и review (только админ)
@@ -15395,6 +15471,149 @@ func reviewExhibitorApplication(db *sql.DB, exhibitionID, applicationID, reviewe
 		return nil, err
 	}
 	return &a, nil
+}
+
+func registerVisitor(db *sql.DB, exhibitionID, userID int64, req registerVisitorRequest) (*visitorRegistration, error) {
+	if req.TicketID == 0 {
+		return nil, fmt.Errorf("validation: ticket_id required")
+	}
+	// Прочесть формат выставки + email юзера для адаптации
+	var format string
+	if err := db.QueryRow(`SELECT format FROM exhibitions WHERE id=$1 AND is_deleted=FALSE`, exhibitionID).Scan(&format); err != nil {
+		return nil, err
+	}
+	var userEmail, userFullName string
+	_ = db.QueryRow(`SELECT COALESCE(email,''), COALESCE(full_name,'') FROM users WHERE id=$1`, userID).Scan(&userEmail, &userFullName)
+
+	email := strings.TrimSpace(req.Email)
+	if email == "" {
+		email = userEmail
+	}
+	fullName := strings.TrimSpace(req.FullName)
+	if fullName == "" {
+		fullName = userFullName
+	}
+	attendanceMode := req.AttendanceMode
+
+	// Адаптация под формат
+	switch format {
+	case "online":
+		// Только email, всё остальное чистим
+		fullName = ""
+		req.CompanyID = nil
+		attendanceMode = "online"
+	case "offline":
+		// Нужны email + ФИО (+ компания опционально)
+		if fullName == "" {
+			return nil, fmt.Errorf("validation: full_name required for offline")
+		}
+		attendanceMode = "in_person"
+	case "hybrid":
+		// Нужны email + ФИО + выбор очно/онлайн
+		if fullName == "" {
+			return nil, fmt.Errorf("validation: full_name required for hybrid")
+		}
+		if attendanceMode != "in_person" && attendanceMode != "online" {
+			return nil, fmt.Errorf("validation: attendance_mode must be in_person or online")
+		}
+	default:
+		return nil, fmt.Errorf("validation: unknown format")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Проверить что билет принадлежит этой выставке + лимит мест
+	var ticketTitle string
+	var ticketLimit, ticketTaken int
+	if err := tx.QueryRow(`
+		SELECT title, seats_limit, seats_taken FROM exhibition_tickets
+		WHERE id=$1 AND exhibition_id=$2
+	`, req.TicketID, exhibitionID).Scan(&ticketTitle, &ticketLimit, &ticketTaken); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("validation: ticket not found")
+		}
+		return nil, err
+	}
+	if ticketLimit > 0 && ticketTaken >= ticketLimit {
+		return nil, fmt.Errorf("validation: no seats left")
+	}
+
+	var companyID sql.NullInt64
+	if req.CompanyID != nil && *req.CompanyID > 0 {
+		companyID = sql.NullInt64{Int64: *req.CompanyID, Valid: true}
+	}
+
+	var reg visitorRegistration
+	err = tx.QueryRow(`
+		INSERT INTO exhibition_visitor_registrations
+		(exhibition_id, user_id, ticket_id, company_id, full_name, email, attendance_mode)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+		RETURNING id, exhibition_id, user_id, ticket_id, COALESCE(company_id,0), full_name, email, attendance_mode, status, registered_at
+	`, exhibitionID, userID, req.TicketID, companyID, fullName, email, attendanceMode).Scan(
+		&reg.ID, &reg.ExhibitionID, &reg.UserID, &reg.TicketID, &reg.CompanyID,
+		&reg.FullName, &reg.Email, &reg.AttendanceMode, &reg.Status, &reg.RegisteredAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, fmt.Errorf("validation: already registered")
+		}
+		return nil, err
+	}
+	reg.TicketTitle = ticketTitle
+
+	// Увеличить seats_taken и visitors_count
+	if _, err := tx.Exec(`UPDATE exhibition_tickets SET seats_taken = seats_taken + 1 WHERE id=$1`, req.TicketID); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(`UPDATE exhibitions SET visitors_count = (SELECT COUNT(*) FROM exhibition_visitor_registrations WHERE exhibition_id=$1 AND status='registered') WHERE id=$1`, exhibitionID); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	if reg.CompanyID > 0 {
+		_ = db.QueryRow(`SELECT COALESCE(name,'') FROM companies WHERE id=$1`, reg.CompanyID).Scan(&reg.CompanyName)
+	}
+	return &reg, nil
+}
+
+func cancelVisitorRegistration(db *sql.DB, exhibitionID, userID int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var ticketID int64
+	if err := tx.QueryRow(`
+		SELECT ticket_id FROM exhibition_visitor_registrations
+		WHERE exhibition_id=$1 AND user_id=$2 AND status='registered'
+	`, exhibitionID, userID).Scan(&ticketID); err != nil {
+		if err == sql.ErrNoRows {
+			return sql.ErrNoRows
+		}
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE exhibition_visitor_registrations SET status='cancelled'
+		WHERE exhibition_id=$1 AND user_id=$2 AND status='registered'
+	`, exhibitionID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE exhibition_tickets SET seats_taken = GREATEST(seats_taken - 1, 0) WHERE id=$1`, ticketID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE exhibitions SET visitors_count = (SELECT COUNT(*) FROM exhibition_visitor_registrations WHERE exhibition_id=$1 AND status='registered') WHERE id=$1`, exhibitionID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibitionFull, error) {
