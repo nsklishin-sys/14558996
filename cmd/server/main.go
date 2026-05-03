@@ -2362,6 +2362,26 @@ func main() {
 			return
 		}
 		publicID := parts[0]
+		if len(parts) == 1 && r.Method == http.MethodDelete {
+			// Удалить участие текущего юзера в этом чате (мягкое удаление — у собеседника остаётся)
+			res, err := db.Exec(`
+				DELETE FROM chat_participants
+				WHERE user_id=$1 AND conversation_id=(SELECT id FROM chat_conversations WHERE public_id=$2)
+			`, userID, publicID)
+			if err != nil {
+				log.Printf("[chat] delete participation: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				writeError(w, http.StatusNotFound, "Чат не найден")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+
 		if len(parts) == 1 && r.Method == http.MethodGet {
 			item, err := getConversationByPublicID(db, userID, publicID)
 			if err != nil {
