@@ -664,6 +664,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* Unified hover effect for all card-like classes */
 [class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
 [class*="card"]:hover{box-shadow:var(--shm);transform:translateY(-3px)}
+.chat-search-bar{display:none;align-items:center;gap:8px;padding:8px 12px;background:var(--gp);border-bottom:1px solid var(--bdr);font-size:12px}
+.chat-search-bar.open{display:flex}
+.chat-search-bar input{flex:1;background:var(--w);border:1px solid var(--bdr);border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;color:var(--t);outline:none}
+.chat-search-bar input:focus{border-color:var(--g)}
+.chat-search-counter{font-size:11px;color:var(--gmt);min-width:50px;text-align:center}
+.chat-search-nav{display:flex;gap:4px}
+.chat-search-nav button{width:24px;height:24px;border-radius:6px;background:transparent;border:1px solid var(--bdr);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tm)}
+.chat-search-nav button:hover{background:var(--w);border-color:var(--g)}
+.chat-search-nav button:disabled{opacity:.4;cursor:not-allowed}
+.chat-search-nav button svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.chat-search-close{background:transparent;border:none;cursor:pointer;color:var(--gmt);font-size:18px;padding:0 4px}
+.msg.search-highlight .msg-bubble{box-shadow:0 0 0 2px var(--g);transition:box-shadow .2s}
+.msg.search-current .msg-bubble{box-shadow:0 0 0 2px #FFA500;background:rgba(255,165,0,0.08)}
 </style>
 
 <style>
@@ -807,6 +820,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
 
     <!-- Лента сообщений -->
+    <div class="chat-search-bar" id="chatSearchBar">
+      <input type="text" id="chatSearchInput" placeholder="Поиск в диалоге..." oninput="searchInChat(this.value)">
+      <span class="chat-search-counter" id="chatSearchCounter"></span>
+      <div class="chat-search-nav">
+        <button id="chatSearchPrev" onclick="searchNavigate(-1)" title="Предыдущее"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></button>
+        <button id="chatSearchNext" onclick="searchNavigate(1)" title="Следующее"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+      </div>
+      <button class="chat-search-close" onclick="closeChatSearch()">✕</button>
+    </div>
     <div class="chat-body" id="chatBody">
 
       <div class="date-sep">Вчера</div>
@@ -1295,7 +1317,7 @@ function renderMessages(){
     const replyHTML = m.reply_to ? `<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>` : '';
 
     el.insertAdjacentHTML('beforeend', `
-      <div class='msg ${mine?'me':'them'}'>
+      <div class='msg ${mine?'me':'them'}' data-msg-id='${m.id}'>
         <div class='msg-av' style='background:${m.author_color}'>${letter(m.author_name)}</div>
         <div class='msg-group'>
           <div class='msg-bubble'>
@@ -1669,7 +1691,83 @@ async function ndCreateGroup(){
   await loadConversations();
   selectConversation(d.conversation.public_id);
 }
-async function openChatSearch(){const q=prompt('Поиск в диалоге:');if(!q||!state.activeConvPublicID)return;const d=await api(`/chat/conversations/${state.activeConvPublicID}/search?q=${encodeURIComponent(q)}`).catch(()=>null);showToast(d?.messages?.length?`Найдено: ${d.messages.length}`:'Ничего не найдено')}
+let _chatSearchResults=[];
+let _chatSearchIndex=-1;
+let _chatSearchTimer=null;
+
+function openChatSearch(){
+  if(!state.activeConvPublicID){showToast('Сначала откройте диалог');return;}
+  const bar=document.getElementById('chatSearchBar');
+  const inp=document.getElementById('chatSearchInput');
+  if(bar)bar.classList.add('open');
+  if(inp){inp.value='';inp.focus();}
+  _chatSearchResults=[];
+  _chatSearchIndex=-1;
+  updateSearchUI();
+}
+function closeChatSearch(){
+  const bar=document.getElementById('chatSearchBar');
+  if(bar)bar.classList.remove('open');
+  document.querySelectorAll('.msg.search-highlight,.msg.search-current').forEach(el=>{
+    el.classList.remove('search-highlight');
+    el.classList.remove('search-current');
+  });
+  _chatSearchResults=[];
+  _chatSearchIndex=-1;
+}
+function updateSearchUI(){
+  const cnt=document.getElementById('chatSearchCounter');
+  const prev=document.getElementById('chatSearchPrev');
+  const next=document.getElementById('chatSearchNext');
+  const total=_chatSearchResults.length;
+  if(cnt){
+    if(total===0)cnt.textContent='';
+    else cnt.textContent=`${_chatSearchIndex+1} / ${total}`;
+  }
+  if(prev)prev.disabled=total===0;
+  if(next)next.disabled=total===0;
+}
+function searchInChat(q){
+  clearTimeout(_chatSearchTimer);
+  _chatSearchTimer=setTimeout(async ()=>{
+    document.querySelectorAll('.msg.search-highlight,.msg.search-current').forEach(el=>{
+      el.classList.remove('search-highlight');
+      el.classList.remove('search-current');
+    });
+    _chatSearchResults=[];
+    _chatSearchIndex=-1;
+    const query=(q||'').trim();
+    if(!query||!state.activeConvPublicID){updateSearchUI();return;}
+    const d=await api(`/chat/conversations/${state.activeConvPublicID}/search?q=${encodeURIComponent(query)}`).catch(()=>null);
+    if(!d||!d.messages){updateSearchUI();return;}
+    _chatSearchResults=d.messages.map(m=>m.id);
+    // подсветить все
+    _chatSearchResults.forEach(id=>{
+      const el=document.querySelector(`.msg[data-msg-id="${id}"]`);
+      if(el)el.classList.add('search-highlight');
+    });
+    if(_chatSearchResults.length){
+      _chatSearchIndex=0;
+      jumpToCurrentMatch();
+    }
+    updateSearchUI();
+  },300);
+}
+function searchNavigate(dir){
+  if(!_chatSearchResults.length)return;
+  _chatSearchIndex=(_chatSearchIndex+dir+_chatSearchResults.length)%_chatSearchResults.length;
+  jumpToCurrentMatch();
+  updateSearchUI();
+}
+function jumpToCurrentMatch(){
+  document.querySelectorAll('.msg.search-current').forEach(el=>el.classList.remove('search-current'));
+  const id=_chatSearchResults[_chatSearchIndex];
+  const el=document.querySelector(`.msg[data-msg-id="${id}"]`);
+  if(el){
+    el.classList.add('search-current');
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
 window.addEventListener('DOMContentLoaded', async () => {
   // Шаг 0: проверка токена
   if (!tk()) {
@@ -1730,6 +1828,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Шаг 5: polling раз в 3 сек
   startPolling();
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key==='Escape'){
+      const bar=document.getElementById('chatSearchBar');
+      if(bar && bar.classList.contains('open'))closeChatSearch();
+    }
+  });
 })
 </script>
 <script src="/assets/profile-context.js" defer></script>
