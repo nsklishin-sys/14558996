@@ -12374,7 +12374,7 @@ func createProject(db *sql.DB, ownerID int64, req createProjectRequest) (project
 	var pid int64
 	err := db.QueryRow(`
 		INSERT INTO projects (public_id, owner_id, author_company_id, title, description, category, status, deadline, budget, cover_color, tags)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, NULLIF($3, 0)::bigint, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id`,
 		publicID, ownerID, req.CompanyID, title, description, strings.TrimSpace(req.Category), status,
 		req.Deadline, req.Budget, coverColor, tags,
