@@ -3120,6 +3120,37 @@ func main() {
 			}
 		}
 
+		// Toggle save (избранное) — POST доступен любому залогиненному
+		if len(parts) >= 2 && parts[1] == "save" {
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			userID, hasAuth := sessions.getUserID(token)
+			if !hasAuth {
+				writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+				return
+			}
+			exhibitionID, err := resolveExhibitionID(db, publicID)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Выставка не найдена")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			saved, err := toggleExhibitionSave(db, exhibitionID, userID)
+			if err != nil {
+				log.Printf("[exhibitions] toggle save: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"is_saved": saved})
+			return
+		}
+
 		// Заявки экспонентов — список и review (только админ)
 		if len(parts) >= 2 && parts[1] == "exhibitor-applications" {
 			reviewerID, ok := requireAdmin(w, r, db, sessions)
@@ -15614,6 +15645,35 @@ func cancelVisitorRegistration(db *sql.DB, exhibitionID, userID int64) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+func toggleExhibitionSave(db *sql.DB, exhibitionID, userID int64) (bool, error) {
+	// Проверить — есть ли запись
+	var exists bool
+	if err := db.QueryRow(`SELECT EXISTS (SELECT 1 FROM exhibition_saves WHERE user_id=$1 AND exhibition_id=$2)`, userID, exhibitionID).Scan(&exists); err != nil {
+		return false, err
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	if exists {
+		if _, err := tx.Exec(`DELETE FROM exhibition_saves WHERE user_id=$1 AND exhibition_id=$2`, userID, exhibitionID); err != nil {
+			return false, err
+		}
+	} else {
+		if _, err := tx.Exec(`INSERT INTO exhibition_saves (user_id, exhibition_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, userID, exhibitionID); err != nil {
+			return false, err
+		}
+	}
+	if _, err := tx.Exec(`UPDATE exhibitions SET saves_count = (SELECT COUNT(*) FROM exhibition_saves WHERE exhibition_id=$1) WHERE id=$1`, exhibitionID); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return !exists, nil
 }
 
 func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibitionFull, error) {
