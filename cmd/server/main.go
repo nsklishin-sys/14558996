@@ -14,6 +14,7 @@ import (
 	"hash/fnv"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"net/http"
 	"net/mail"
@@ -791,6 +792,68 @@ type updateEventRequest struct {
 	Tags        *[]string `json:"tags,omitempty"`
 	Status      *string   `json:"status,omitempty"`
 }
+
+type exhibition struct {
+	ID                   int64     `json:"id"`
+	PublicID             string    `json:"public_id"`
+	Slug                 string    `json:"slug"`
+	Title                string    `json:"title"`
+	ShortDescription     string    `json:"short_description"`
+	Description          string    `json:"description"`
+	Category             string    `json:"category"`
+	Format               string    `json:"format"`
+	Status               string    `json:"status"`
+	StartsAt             time.Time `json:"starts_at"`
+	EndsAt               time.Time `json:"ends_at"`
+	Timezone             string    `json:"timezone"`
+	City                 string    `json:"city"`
+	Address              string    `json:"address"`
+	Venue                string    `json:"venue"`
+	Latitude             float64   `json:"latitude"`
+	Longitude            float64   `json:"longitude"`
+	OnlineURL            string    `json:"online_url"`
+	CoverURL             string    `json:"cover_url"`
+	OrganizerLabel       string    `json:"organizer_label"`
+	OrganizerCompanyID   int64     `json:"organizer_company_id"`
+	OrganizerCompanyName string    `json:"organizer_company_name,omitempty"`
+	OrganizerCompanySlug string    `json:"organizer_company_slug,omitempty"`
+	OrganizerCompanyLogo string    `json:"organizer_company_logo,omitempty"`
+	ExternalExpoURL      string    `json:"external_expo_url"`
+	Tags                 []string  `json:"tags"`
+	ViewsCount           int       `json:"views_count"`
+	VisitorsCount        int       `json:"visitors_count"`
+	ExhibitorsCount      int       `json:"exhibitors_count"`
+	SavesCount           int       `json:"saves_count"`
+	IsSaved              bool      `json:"is_saved"`
+	IsRegistered         bool      `json:"is_registered"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+
+type createExhibitionRequest struct {
+	Title              string   `json:"title"`
+	ShortDescription   string   `json:"short_description"`
+	Description        string   `json:"description"`
+	Category           string   `json:"category"`
+	Format             string   `json:"format"`
+	Status             string   `json:"status"`
+	StartsAt           string   `json:"starts_at"`
+	EndsAt             string   `json:"ends_at"`
+	Timezone           string   `json:"timezone"`
+	City               string   `json:"city"`
+	Address            string   `json:"address"`
+	Venue              string   `json:"venue"`
+	Latitude           float64  `json:"latitude"`
+	Longitude          float64  `json:"longitude"`
+	OnlineURL          string   `json:"online_url"`
+	CoverURL           string   `json:"cover_url"`
+	OrganizerLabel     string   `json:"organizer_label"`
+	OrganizerCompanyID *int64   `json:"organizer_company_id,omitempty"`
+	ExternalExpoURL    string   `json:"external_expo_url"`
+	Tags               []string `json:"tags"`
+}
+
+type updateExhibitionRequest = createExhibitionRequest
 
 type registerToEventRequest struct {
 	TicketType string `json:"ticket_type"`
@@ -2683,6 +2746,69 @@ func main() {
 				return
 			}
 			writeJSON(w, http.StatusCreated, map[string]any{"event": item})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/exhibitions", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			userID, ok := requireAdmin(w, r, db, sessions)
+			if !ok {
+				return
+			}
+			var req createExhibitionRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			item, err := createExhibition(db, userID, req)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				log.Printf("[exhibitions] create failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка создания выставки")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"exhibition": item})
+		case http.MethodGet:
+			writeJSON(w, http.StatusOK, map[string]any{"exhibitions": []exhibition{}, "total": 0})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/exhibitions/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/exhibitions/")
+		path = strings.TrimSuffix(path, "/")
+		if path == "" {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		parts := strings.Split(path, "/")
+		publicID := parts[0]
+		switch r.Method {
+		case http.MethodGet:
+			if len(parts) != 1 {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			viewerID, hasAuth := sessions.getUserID(token)
+			item, err := getExhibitionByPublicID(db, publicID, viewerID, hasAuth)
+			if err != nil {
+				log.Printf("[exhibitions] get failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if item == nil {
+				writeError(w, http.StatusNotFound, "Выставка не найдена")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
@@ -13760,6 +13886,164 @@ type listEventsFilter struct {
 	Query        string
 	Limit        int
 	BeforeCursor int64
+}
+
+func newPublicExhibitionID() (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, 12)
+	for i := range b {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = charset[n.Int64()]
+	}
+	return "exh_" + string(b), nil
+}
+
+func slugifyExhibition(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	prevDash := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevDash = false
+		case r == ' ' || r == '-' || r == '_':
+			if !prevDash && b.Len() > 0 {
+				b.WriteRune('-')
+				prevDash = true
+			}
+		}
+	}
+	out := strings.TrimRight(b.String(), "-")
+	if out == "" {
+		out = "exhibition"
+	}
+	if len(out) > 60 {
+		out = out[:60]
+	}
+	return out
+}
+
+func createExhibition(db *sql.DB, creatorID int64, req createExhibitionRequest) (exhibition, error) {
+	if strings.TrimSpace(req.Title) == "" {
+		return exhibition{}, fmt.Errorf("validation: title required")
+	}
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		return exhibition{}, fmt.Errorf("validation: starts_at invalid")
+	}
+	endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
+	if err != nil {
+		return exhibition{}, fmt.Errorf("validation: ends_at invalid")
+	}
+	if !endsAt.After(startsAt) {
+		return exhibition{}, fmt.Errorf("validation: ends_at must be after starts_at")
+	}
+	format := req.Format
+	if format == "" {
+		format = "offline"
+	}
+	status := req.Status
+	if status == "" {
+		status = "planned"
+	}
+	timezone := req.Timezone
+	if timezone == "" {
+		timezone = "Europe/Moscow"
+	}
+	var pgTags pgtype.FlatArray[string] = req.Tags
+	baseSlug := slugifyExhibition(req.Title)
+	var organizerCompanyID sql.NullInt64
+	if req.OrganizerCompanyID != nil && *req.OrganizerCompanyID > 0 {
+		organizerCompanyID = sql.NullInt64{Int64: *req.OrganizerCompanyID, Valid: true}
+	}
+	for i := 0; i < 5; i++ {
+		pid, err := newPublicExhibitionID()
+		if err != nil {
+			return exhibition{}, err
+		}
+		slug := baseSlug
+		if i > 0 {
+			slug = baseSlug + "-" + pid[len(pid)-4:]
+		}
+		row := db.QueryRow(`
+			INSERT INTO exhibitions
+			(public_id, slug, title, short_description, description, category, format, status,
+			 starts_at, ends_at, timezone, city, address, venue, latitude, longitude, online_url,
+			 cover_url, organizer_label, organizer_company_id, external_expo_url, tags, created_by_user_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+			RETURNING id, public_id, slug, title, short_description, description, category, format, status,
+				starts_at, ends_at, timezone, city, address, venue,
+				COALESCE(latitude,0), COALESCE(longitude,0), online_url, cover_url,
+				organizer_label, COALESCE(organizer_company_id,0), external_expo_url,
+				COALESCE(array_to_json(tags), '[]'::json),
+				views_count, visitors_count, exhibitors_count, saves_count, created_at, updated_at
+		`, pid, slug, req.Title, req.ShortDescription, req.Description, req.Category, format, status,
+			startsAt, endsAt, timezone, req.City, req.Address, req.Venue, req.Latitude, req.Longitude, req.OnlineURL,
+			req.CoverURL, req.OrganizerLabel, organizerCompanyID, req.ExternalExpoURL, pgTags, creatorID)
+		var item exhibition
+		var tagsJSON []byte
+		err = row.Scan(&item.ID, &item.PublicID, &item.Slug, &item.Title, &item.ShortDescription, &item.Description,
+			&item.Category, &item.Format, &item.Status, &item.StartsAt, &item.EndsAt, &item.Timezone,
+			&item.City, &item.Address, &item.Venue, &item.Latitude, &item.Longitude, &item.OnlineURL, &item.CoverURL,
+			&item.OrganizerLabel, &item.OrganizerCompanyID, &item.ExternalExpoURL, &tagsJSON,
+			&item.ViewsCount, &item.VisitorsCount, &item.ExhibitorsCount, &item.SavesCount, &item.CreatedAt, &item.UpdatedAt)
+		if err == nil {
+			_ = json.Unmarshal(tagsJSON, &item.Tags)
+			return item, nil
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			continue
+		}
+		return exhibition{}, err
+	}
+	return exhibition{}, fmt.Errorf("failed to generate unique exhibition id")
+}
+
+func getExhibitionByPublicID(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibition, error) {
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: viewerID, Valid: true}
+	}
+	row := db.QueryRow(`
+		SELECT e.id, e.public_id, e.slug, e.title, e.short_description, e.description, e.category, e.format, e.status,
+			e.starts_at, e.ends_at, e.timezone, e.city, e.address, e.venue,
+			COALESCE(e.latitude,0), COALESCE(e.longitude,0), e.online_url, e.cover_url,
+			e.organizer_label, COALESCE(e.organizer_company_id,0),
+			COALESCE(oc.name,''), COALESCE(oc.slug,''), COALESCE(oc.logo_image,''),
+			e.external_expo_url, COALESCE(array_to_json(e.tags), '[]'::json),
+			e.views_count, e.visitors_count, e.exhibitors_count, e.saves_count,
+			COALESCE(es.user_id IS NOT NULL, FALSE),
+			COALESCE(evr.user_id IS NOT NULL, FALSE),
+			e.created_at, e.updated_at
+		FROM exhibitions e
+		LEFT JOIN companies oc ON oc.id = e.organizer_company_id
+		LEFT JOIN exhibition_saves es ON es.exhibition_id = e.id AND es.user_id = $2::bigint
+		LEFT JOIN exhibition_visitor_registrations evr ON evr.exhibition_id = e.id AND evr.user_id = $2::bigint AND evr.status = 'registered'
+		WHERE e.public_id = $1 AND e.is_deleted = FALSE
+	`, publicID, currentUser)
+	var item exhibition
+	var tagsJSON []byte
+	err := row.Scan(&item.ID, &item.PublicID, &item.Slug, &item.Title, &item.ShortDescription, &item.Description,
+		&item.Category, &item.Format, &item.Status, &item.StartsAt, &item.EndsAt, &item.Timezone,
+		&item.City, &item.Address, &item.Venue, &item.Latitude, &item.Longitude, &item.OnlineURL, &item.CoverURL,
+		&item.OrganizerLabel, &item.OrganizerCompanyID,
+		&item.OrganizerCompanyName, &item.OrganizerCompanySlug, &item.OrganizerCompanyLogo,
+		&item.ExternalExpoURL, &tagsJSON,
+		&item.ViewsCount, &item.VisitorsCount, &item.ExhibitorsCount, &item.SavesCount,
+		&item.IsSaved, &item.IsRegistered, &item.CreatedAt, &item.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(tagsJSON, &item.Tags)
+	return &item, nil
 }
 
 func newPublicEventID() (string, error) {
