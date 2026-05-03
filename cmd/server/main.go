@@ -2999,6 +2999,110 @@ func main() {
 		parts := strings.Split(path, "/")
 		publicID := parts[0]
 
+		// Заявка на экспонента — POST доступен любому залогиненному
+		if len(parts) >= 2 && parts[1] == "exhibitor-application" {
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			userID, hasAuth := sessions.getUserID(token)
+			if !hasAuth {
+				writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+				return
+			}
+			exhibitionID, err := resolveExhibitionID(db, publicID)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Выставка не найдена")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			var req createExhibitorApplicationRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			app, err := createExhibitorApplication(db, exhibitionID, userID, req)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+					writeError(w, http.StatusConflict, "Заявка от этой компании уже подана")
+					return
+				}
+				log.Printf("[exhibitions] application create: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"application": app})
+			return
+		}
+
+		// Заявки экспонентов — список и review (только админ)
+		if len(parts) >= 2 && parts[1] == "exhibitor-applications" {
+			reviewerID, ok := requireAdmin(w, r, db, sessions)
+			if !ok {
+				return
+			}
+			exhibitionID, err := resolveExhibitionID(db, publicID)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Выставка не найдена")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			// GET /api/exhibitions/{id}/exhibitor-applications
+			if len(parts) == 2 && r.Method == http.MethodGet {
+				items, err := listExhibitorApplications(db, exhibitionID)
+				if err != nil {
+					log.Printf("[exhibitions] list applications: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"applications": items})
+				return
+			}
+			// POST /api/exhibitions/{id}/exhibitor-applications/{appID}/review
+			if len(parts) == 4 && parts[3] == "review" && r.Method == http.MethodPost {
+				appID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный applicationID")
+					return
+				}
+				var req reviewExhibitorApplicationRequest
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				app, err := reviewExhibitorApplication(db, exhibitionID, appID, reviewerID, req)
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Заявка не найдена")
+					return
+				}
+				if err != nil {
+					if strings.HasPrefix(err.Error(), "validation:") {
+						writeError(w, http.StatusBadRequest, err.Error())
+						return
+					}
+					log.Printf("[exhibitions] review application: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"application": app})
+				return
+			}
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+
 		// /api/exhibitions/{publicID}/{kind}[/{itemID}] — вложенные сущности (только админ)
 		if len(parts) >= 2 {
 			kind := parts[1]
