@@ -2455,6 +2455,74 @@ func main() {
 				return
 			}
 		}
+		if len(parts) == 2 && parts[1] == "attachments" && r.Method == http.MethodGet {
+			// Проверка — юзер участник чата
+			var convID int64
+			if err := db.QueryRow(`
+				SELECT c.id FROM chat_conversations c
+				JOIN chat_participants p ON p.conversation_id=c.id
+				WHERE c.public_id=$1 AND p.user_id=$2
+			`, publicID, userID).Scan(&convID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Чат не найден")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			rows, err := db.Query(`
+				SELECT id, attachment_url, attachment_name, attachment_type, attachment_size, content, created_at
+				FROM chat_messages
+				WHERE conversation_id=$1 AND is_deleted=FALSE
+				  AND (attachment_url<>'' OR content ~ 'https?://')
+				ORDER BY id DESC
+				LIMIT 200
+			`, convID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			images := []map[string]any{}
+			files := []map[string]any{}
+			audio := []map[string]any{}
+			links := []map[string]any{}
+			urlRe := regexp.MustCompile(`https?://[^\s]+`)
+			for rows.Next() {
+				var id int64
+				var aURL, aName, aType, content string
+				var aSize int64
+				var createdAt time.Time
+				if err := rows.Scan(&id, &aURL, &aName, &aType, &aSize, &content, &createdAt); err != nil {
+					continue
+				}
+				if aURL != "" {
+					item := map[string]any{
+						"id": id, "url": aURL, "name": aName, "type": aType,
+						"size": aSize, "created_at": createdAt,
+					}
+					switch {
+					case strings.HasPrefix(aType, "image/"):
+						images = append(images, item)
+					case strings.HasPrefix(aType, "audio/"):
+						audio = append(audio, item)
+					default:
+						files = append(files, item)
+					}
+				}
+				if content != "" {
+					for _, m := range urlRe.FindAllString(content, -1) {
+						links = append(links, map[string]any{
+							"id": id, "url": m, "created_at": createdAt,
+						})
+					}
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"images": images, "files": files, "audio": audio, "links": links,
+			})
+			return
+		}
 		if len(parts) == 2 && parts[1] == "read" && r.Method == http.MethodPost {
 			var req markReadRequest
 			if err := decodeJSON(w, r, &req); err != nil {
