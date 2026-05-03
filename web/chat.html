@@ -1612,15 +1612,63 @@ function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogMod
 function ndSwitchTab(tab,btn){document.querySelectorAll('.nd-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.nd-pane').forEach(x=>x.classList.remove('active'));document.getElementById('nd-'+tab).classList.add('active')}
 async function ndSearchFriends(q){
   const query=(q||'').trim();
-  const d=query.startsWith('@')
-    ?await api('/users/search?prefix_handle='+encodeURIComponent(query.slice(1)))
-    :await api('/friends/candidates?q='+encodeURIComponent(query));
-  ndFriendList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndPickDirect('${u.id}')"><span>${esc(u.full_name)}</span><small>${esc((u.email||'') || ('@'+(u.handle||'')))}</small></div>`).join('')
+  let users=[];
+  if(query.startsWith('@')){
+    const d=await api('/users/search?prefix_handle='+encodeURIComponent(query.slice(1))).catch(()=>null);
+    users=(d&&d.users)||[];
+  }else{
+    // По умолчанию — друзья. Если есть строка — фильтруем локально по имени.
+    const d=await api('/friends').catch(()=>null);
+    users=(d&&d.friends)||[];
+    if(query){
+      const ql=query.toLowerCase();
+      users=users.filter(u=>(u.full_name||'').toLowerCase().includes(ql));
+    }
+  }
+  if(!users.length){
+    ndFriendList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">'+(query?'Никого не найдено':'У вас пока нет друзей. Введите @никнейм для поиска')+'</div>';
+    return;
+  }
+  ndFriendList.innerHTML=users.map(u=>`<div class='nd-item' onclick="ndPickDirect('${esc(u.public_id||u.id||'')}')"><span>${esc(u.full_name||'')}</span><small>${esc((u.position||'')+(u.company_name?' · '+u.company_name:''))||esc('@'+(u.handle||''))}</small></div>`).join('');
 }
 async function ndPickDirect(id){const c=await openOrCreateDirectByPublicID(id);closeNewDialog();selectConversation(c.public_id)}
-async function ndSearchForGroup(q){const d=await api('/friends/candidates?q='+encodeURIComponent(q||''));ndGroupList.innerHTML=(d.users||[]).map(u=>`<div class='nd-item' onclick="ndToggleGroupMember('${u.id}','${esc(u.full_name)}')"><span>${esc(u.full_name)}</span><small>${state.groupSelected.includes(u.id)?'✓':''}</small></div>`).join('')}
-function ndToggleGroupMember(id,name){if(state.groupSelected.includes(id))state.groupSelected=state.groupSelected.filter(x=>x!==id);else state.groupSelected.push(id);ndGroupSelected.innerHTML=state.groupSelected.map(x=>`<span class='nd-chip'>${x}</span>`).join('');ndSearchForGroup(ndGroupSearch.value)}
-async function ndCreateGroup(){const title=ndGroupTitle.value.trim();if(!title||state.groupSelected.length<2){showToast('Укажите название и минимум 2 участников');return}const d=await api('/chat/conversations/group',{method:'POST',body:{title,member_public_ids:state.groupSelected}});closeNewDialog();await loadConversations();selectConversation(d.conversation.public_id)}
+async function ndSearchForGroup(q){
+  const query=(q||'').trim();
+  const d=await api('/friends').catch(()=>null);
+  let users=(d&&d.friends)||[];
+  if(query){
+    const ql=query.toLowerCase();
+    users=users.filter(u=>(u.full_name||'').toLowerCase().includes(ql));
+  }
+  if(!users.length){
+    ndGroupList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">У вас нет друзей для добавления в группу</div>';
+    return;
+  }
+  ndGroupList.innerHTML=users.map(u=>{
+    const pid=u.public_id||u.id||'';
+    const sel=state.groupSelected.find(x=>x.id===pid);
+    return `<div class='nd-item' onclick="ndToggleGroupMember('${esc(pid)}','${esc(u.full_name||'')}')"><span>${esc(u.full_name||'')}</span><small>${sel?'✓':''}</small></div>`;
+  }).join('');
+}
+
+function ndToggleGroupMember(id,name){
+  const idx=state.groupSelected.findIndex(x=>x.id===id);
+  if(idx>=0)state.groupSelected.splice(idx,1);
+  else state.groupSelected.push({id,name});
+  ndGroupSelected.innerHTML=state.groupSelected.map(x=>`<span class='nd-chip'>${esc(x.name)}<span style="margin-left:6px;cursor:pointer" onclick="ndToggleGroupMember('${esc(x.id)}','${esc(x.name)}')">✕</span></span>`).join('');
+  ndSearchForGroup(ndGroupSearch.value);
+}
+
+async function ndCreateGroup(){
+  const title=ndGroupTitle.value.trim();
+  if(!title||state.groupSelected.length<2){showToast('Укажите название и минимум 2 участников');return}
+  const memberIDs=state.groupSelected.map(x=>x.id);
+  const d=await api('/chat/conversations/group',{method:'POST',body:{title,member_public_ids:memberIDs}});
+  closeNewDialog();
+  state.groupSelected=[];
+  await loadConversations();
+  selectConversation(d.conversation.public_id);
+}
 async function openChatSearch(){const q=prompt('Поиск в диалоге:');if(!q||!state.activeConvPublicID)return;const d=await api(`/chat/conversations/${state.activeConvPublicID}/search?q=${encodeURIComponent(q)}`).catch(()=>null);showToast(d?.messages?.length?`Найдено: ${d.messages.length}`:'Ничего не найдено')}
 window.addEventListener('DOMContentLoaded', async () => {
   // Шаг 0: проверка токена
