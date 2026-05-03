@@ -2955,6 +2955,41 @@ func main() {
 		}
 		parts := strings.Split(path, "/")
 		publicID := parts[0]
+
+		// /api/exhibitions/{publicID}/{kind}[/{itemID}] — вложенные сущности (только админ)
+		if len(parts) >= 2 {
+			kind := parts[1]
+			validKinds := map[string]bool{"days": true, "zones": true, "speakers": true, "sessions": true, "tickets": true}
+			if !validKinds[kind] {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if _, ok := requireAdmin(w, r, db, sessions); !ok {
+				return
+			}
+			exhibitionID, err := resolveExhibitionID(db, publicID)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Выставка не найдена")
+				return
+			}
+			if err != nil {
+				log.Printf("[exhibitions] resolve failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			var itemID int64
+			if len(parts) >= 3 {
+				if v, err := strconv.ParseInt(parts[2], 10, 64); err == nil {
+					itemID = v
+				} else {
+					writeError(w, http.StatusBadRequest, "Некорректный itemID")
+					return
+				}
+			}
+			handleExhibitionNested(w, r, db, exhibitionID, kind, itemID)
+			return
+		}
+
 		switch r.Method {
 		case http.MethodGet:
 			if len(parts) != 1 {
@@ -14752,6 +14787,291 @@ func deleteExhibitionTicket(db *sql.DB, exhibitionID, ticketID int64) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+func handleExhibitionNested(w http.ResponseWriter, r *http.Request, db *sql.DB, exhibitionID int64, kind string, itemID int64) {
+	switch kind {
+	case "days":
+		switch r.Method {
+		case http.MethodPost:
+			if itemID != 0 {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			var req createExhibitionDayRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			d, err := createExhibitionDay(db, exhibitionID, req)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				log.Printf("[exhibitions] day create: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"day": d})
+		case http.MethodPatch:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			var req createExhibitionDayRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			d, err := updateExhibitionDay(db, exhibitionID, itemID, req)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"day": d})
+		case http.MethodDelete:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			if err := deleteExhibitionDay(db, exhibitionID, itemID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Не найдено")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	case "zones":
+		switch r.Method {
+		case http.MethodPost:
+			var req createExhibitionZoneRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			z, err := createExhibitionZone(db, exhibitionID, req)
+			if err != nil {
+				log.Printf("[exhibitions] zone create: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"zone": z})
+		case http.MethodPatch:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			var req createExhibitionZoneRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			z, err := updateExhibitionZone(db, exhibitionID, itemID, req)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"zone": z})
+		case http.MethodDelete:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			if err := deleteExhibitionZone(db, exhibitionID, itemID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Не найдено")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	case "speakers":
+		switch r.Method {
+		case http.MethodPost:
+			var req createExhibitionSpeakerRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			s, err := createExhibitionSpeaker(db, exhibitionID, req)
+			if err != nil {
+				log.Printf("[exhibitions] speaker create: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"speaker": s})
+		case http.MethodPatch:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			var req createExhibitionSpeakerRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			s, err := updateExhibitionSpeaker(db, exhibitionID, itemID, req)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"speaker": s})
+		case http.MethodDelete:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			if err := deleteExhibitionSpeaker(db, exhibitionID, itemID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Не найдено")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	case "sessions":
+		switch r.Method {
+		case http.MethodPost:
+			var req createExhibitionSessionRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			s, err := createExhibitionSession(db, exhibitionID, req)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				log.Printf("[exhibitions] session create: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"session": s})
+		case http.MethodPatch:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			var req createExhibitionSessionRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			s, err := updateExhibitionSession(db, exhibitionID, itemID, req)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"session": s})
+		case http.MethodDelete:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			if err := deleteExhibitionSession(db, exhibitionID, itemID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Не найдено")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	case "tickets":
+		switch r.Method {
+		case http.MethodPost:
+			var req createExhibitionTicketRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			t, err := createExhibitionTicket(db, exhibitionID, req)
+			if err != nil {
+				log.Printf("[exhibitions] ticket create: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"ticket": t})
+		case http.MethodPatch:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			var req createExhibitionTicketRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			t, err := updateExhibitionTicket(db, exhibitionID, itemID, req)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ticket": t})
+		case http.MethodDelete:
+			if itemID == 0 {
+				writeError(w, http.StatusBadRequest, "Не указан itemID")
+				return
+			}
+			if err := deleteExhibitionTicket(db, exhibitionID, itemID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Не найдено")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	}
 }
 func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibitionFull, error) {
 	base, err := getExhibitionByPublicID(db, publicID, viewerID, hasAuth)
