@@ -14734,13 +14734,15 @@ func createExhibitionTicket(db *sql.DB, exhibitionID int64, req createExhibition
 	}
 	var pgPerks pgtype.FlatArray[string] = req.Perks
 	var t exhibitionTicket
-	var perks pgtype.FlatArray[string]
+	var perksJSON []byte
 	err := db.QueryRow(`
 		INSERT INTO exhibition_tickets (exhibition_id, title, description, price_cents, currency, role, seats_limit, perks, is_featured, sort_order)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		RETURNING id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken, COALESCE(perks,'{}'), is_featured, sort_order
-	`, exhibitionID, req.Title, req.Description, req.PriceCents, currency, role, req.SeatsLimit, pgPerks, req.IsFeatured, req.SortOrder).Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perks, &t.IsFeatured, &t.SortOrder)
-	t.Perks = []string(perks)
+		RETURNING id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken, COALESCE(array_to_json(perks),'[]'::json), is_featured, sort_order
+	`, exhibitionID, req.Title, req.Description, req.PriceCents, currency, role, req.SeatsLimit, pgPerks, req.IsFeatured, req.SortOrder).Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perksJSON, &t.IsFeatured, &t.SortOrder)
+	if err == nil {
+		_ = json.Unmarshal(perksJSON, &t.Perks)
+	}
 	if t.Perks == nil {
 		t.Perks = []string{}
 	}
@@ -14758,19 +14760,19 @@ func updateExhibitionTicket(db *sql.DB, exhibitionID, ticketID int64, req create
 	}
 	var pgPerks pgtype.FlatArray[string] = req.Perks
 	var t exhibitionTicket
-	var perks pgtype.FlatArray[string]
+	var perksJSON []byte
 	err := db.QueryRow(`
 		UPDATE exhibition_tickets SET title=$1, description=$2, price_cents=$3, currency=$4, role=$5, seats_limit=$6, perks=$7, is_featured=$8, sort_order=$9
 		WHERE id=$10 AND exhibition_id=$11
-		RETURNING id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken, COALESCE(perks,'{}'), is_featured, sort_order
-	`, req.Title, req.Description, req.PriceCents, currency, role, req.SeatsLimit, pgPerks, req.IsFeatured, req.SortOrder, ticketID, exhibitionID).Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perks, &t.IsFeatured, &t.SortOrder)
+		RETURNING id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken, COALESCE(array_to_json(perks),'[]'::json), is_featured, sort_order
+	`, req.Title, req.Description, req.PriceCents, currency, role, req.SeatsLimit, pgPerks, req.IsFeatured, req.SortOrder, ticketID, exhibitionID).Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perksJSON, &t.IsFeatured, &t.SortOrder)
 	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}
 	if err != nil {
 		return nil, err
 	}
-	t.Perks = []string(perks)
+	_ = json.Unmarshal(perksJSON, &t.Perks)
 	if t.Perks == nil {
 		t.Perks = []string{}
 	}
@@ -15192,7 +15194,7 @@ func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool
 
 	ticketRows, err := db.Query(`
 		SELECT id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken,
-			COALESCE(perks, '{}'), is_featured, sort_order
+			COALESCE(array_to_json(perks), '[]'::json), is_featured, sort_order
 		FROM exhibition_tickets
 		WHERE exhibition_id=$1
 		ORDER BY sort_order, id
@@ -15203,11 +15205,11 @@ func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool
 	defer ticketRows.Close()
 	for ticketRows.Next() {
 		var t exhibitionTicket
-		var perks pgtype.FlatArray[string]
-		if err := ticketRows.Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perks, &t.IsFeatured, &t.SortOrder); err != nil {
+		var perksJSON []byte
+		if err := ticketRows.Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perksJSON, &t.IsFeatured, &t.SortOrder); err != nil {
 			return nil, err
 		}
-		t.Perks = []string(perks)
+		_ = json.Unmarshal(perksJSON, &t.Perks)
 		if t.Perks == nil {
 			t.Perks = []string{}
 		}
