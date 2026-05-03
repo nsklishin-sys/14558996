@@ -15855,8 +15855,8 @@ func newPublicEventID() (string, error) {
 }
 
 func isValidEventPublicID(s string) bool {
-	if len(s) == 13 && strings.HasPrefix(s, "evt") {
-		for _, ch := range s[3:] {
+	if len(s) == 16 && strings.HasPrefix(s, "evt_") {
+		for _, ch := range s[4:] {
 			if (ch < 'a' || ch > 'f') && (ch < '0' || ch > '9') {
 				return false
 			}
