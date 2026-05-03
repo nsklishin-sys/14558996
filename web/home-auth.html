@@ -1307,20 +1307,53 @@ function calGoToday(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadCalendarMonth(CAL_STATE.year,CAL_STATE.month)});
 /* ── РЕКОМЕНДАЦИИ (правый сайдбар) ── */
-function loadRec(){
-  const recs=[
-    {name:'NorthBridge Logistics',sub:'Партнёр LASTOP · Логистика',c:'#1A8A6A',href:'/companies.html'},
-    {name:'GlobalFreight',sub:'Таможенное оформление · Москва',c:'#3A90C0',href:'/companies.html'},
-    {name:'Форум «Логистика 2026»',sub:'24 апреля · Москва · офлайн',c:'#9060C0',href:'/events.html'},
-  ];
-  document.getElementById('recList').innerHTML=recs.map(r=>`
-    <div class="rec-item" onclick="location.href='${r.href}'">
-      <div class="rec-av" style="background:${r.c}">${letter(r.name)}</div>
-      <div style="min-width:0;flex:1">
-        <div class="rec-name">${esc(r.name)}</div>
-        <div class="rec-sub">${esc(r.sub)}</div>
-      </div>
-    </div>`).join('');
+async function loadRec(){
+  const recList = document.getElementById('recList');
+  if (!recList) return;
+  recList.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--gmt);text-align:center">Загрузка…</div>';
+  const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
+  try {
+    const [coRes, evRes] = await Promise.all([
+      fetch(API + '/companies?limit=2', {headers}).then(r => r.ok ? r.json() : {companies:[]}).catch(() => ({companies:[]})),
+      fetch(API + '/events?limit=1', {headers}).then(r => r.ok ? r.json() : {events:[]}).catch(() => ({events:[]}))
+    ]);
+    const items = [];
+    (coRes.companies || []).slice(0, 2).forEach(c => {
+      items.push({
+        name: c.name || 'Компания',
+        sub: (c.industry || c.category || 'Компания') + (c.city ? ' · ' + c.city : ''),
+        c: c.brand_color || '#1A8A6A',
+        href: c.slug ? '/company-detail.html?slug=' + encodeURIComponent(c.slug) : '/companies.html',
+        logo: c.logo_image || ''
+      });
+    });
+    (evRes.events || []).slice(0, 1).forEach(e => {
+      const d = e.starts_at ? new Date(e.starts_at) : null;
+      const fmt = d ? d.toLocaleDateString('ru-RU', {day:'numeric',month:'short'}) : '';
+      const place = e.format === 'online' ? 'онлайн' : (e.city || 'офлайн');
+      items.push({
+        name: e.title || 'Мероприятие',
+        sub: fmt + (place ? ' · ' + place : ''),
+        c: '#9060C0',
+        href: '/event-detail.html?id=' + encodeURIComponent(e.public_id || ''),
+        logo: ''
+      });
+    });
+    if (!items.length) {
+      recList.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--gmt);text-align:center">Пока нет рекомендаций</div>';
+      return;
+    }
+    recList.innerHTML = items.map(r => `
+      <div class="rec-item" onclick="location.href='${r.href}'">
+        <div class="rec-av" style="background:${r.c}">${r.logo ? `<img src="${esc(r.logo)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : letter(r.name)}</div>
+        <div style="min-width:0;flex:1">
+          <div class="rec-name">${esc(r.name)}</div>
+          <div class="rec-sub">${esc(r.sub)}</div>
+        </div>
+      </div>`).join('');
+  } catch {
+    recList.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--gmt);text-align:center">Не удалось загрузить</div>';
+  }
 }
 
 /* ── ЛЕНТА ── */
