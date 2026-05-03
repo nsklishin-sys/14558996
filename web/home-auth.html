@@ -1350,13 +1350,11 @@ function renderFeedFiltered(type){
   if (type === 'projects' || type === 'forum' || type === 'companies') {
     _feedRenderSig = '';
     if (type === 'projects') {
-      renderFeedStub(feed, '🚧', 'Раздел проектов в разработке',
-        'Скоро здесь появится возможность публиковать и обсуждать проекты сообщества.');
+      loadFeedProjects(feed);
       return;
     }
     if (type === 'forum') {
-      renderFeedStub(feed, '💬', 'Форум готовится к запуску',
-        'Раздел для обсуждений и тематических веток откроется в ближайших обновлениях.');
+      loadFeedForum(feed);
       return;
     }
     if (type === 'companies') {
@@ -1438,6 +1436,62 @@ function renderFeedStub(container, icon, title, subtitle){
       <div style="font-size:13px;color:var(--gmt);line-height:1.5;max-width:380px;margin:0 auto">${esc(subtitle)}</div>
     </div>`;
 }
+
+
+async function loadFeedProjects(feed){
+  feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Загрузка проектов…</span></div>`;
+  try{
+    const r = await fetch('/api/projects?limit=10', { headers: { Authorization: 'Bearer ' + tk() } });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = d.projects || d.items || [];
+    if (!items.length){
+      feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Пока нет проектов</span></div>`;
+      return;
+    }
+    feed.innerHTML = items.map(p => `
+      <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer" onclick="location.href='/project-detail.html?id=${escAttr(p.public_id||'')}'">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="t-tag t-proj" style="background:var(--gl);color:var(--g);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700">Проект</span>
+          <span style="font-size:11px;color:var(--gmt)">${escHtml(p.status_label||p.status||'')}</span>
+        </div>
+        <div style="font-weight:700;color:var(--t);font-size:15px;margin-bottom:6px">${escHtml(p.title||'Без названия')}</div>
+        <div style="font-size:13px;color:var(--tm);line-height:1.4">${escHtml((p.description||'').slice(0,200))}</div>
+      </div>
+    `).join('');
+  }catch{
+    feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Не удалось загрузить проекты</span></div>`;
+  }
+}
+
+async function loadFeedForum(feed){
+  feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Загрузка тем форума…</span></div>`;
+  try{
+    const r = await fetch('/api/forum/topics?limit=10', { headers: { Authorization: 'Bearer ' + tk() } });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = d.topics || d.items || [];
+    if (!items.length){
+      feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">На форуме пока нет тем</span></div>`;
+      return;
+    }
+    feed.innerHTML = items.map(t => `
+      <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer" onclick="location.href='/forum-topic.html?id=${escAttr(t.public_id||t.id||'')}'">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="t-tag t-forum" style="background:#FFF4E0;color:#C07030;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700">Форум</span>
+          <span style="font-size:11px;color:var(--gmt)">${escHtml(t.category_name||'')}</span>
+        </div>
+        <div style="font-weight:700;color:var(--t);font-size:15px;margin-bottom:6px">${escHtml(t.title||'Без темы')}</div>
+        <div style="font-size:12px;color:var(--gmt)">${(t.messages_count||0)} сообщений · ${(t.views_count||0)} просмотров</div>
+      </div>
+    `).join('');
+  }catch{
+    feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Не удалось загрузить темы форума</span></div>`;
+  }
+}
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
 
 // Кеш компаний — грузим один раз за сессию страницы (повторное переключение
 // на вкладку не дёргает API). Если нужны свежие данные — перезагрузка страницы.
