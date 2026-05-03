@@ -1625,7 +1625,23 @@ function formatFileSize(bytes){
 const emojis=['😀','😁','😂','🤣','😊','😍','😘','😎','🤝','👍','👏','🙏','🔥','✅','📦','🚚','📍','📄','💼','📊','📞','💬','🧠','⚙️','🎯','⏰','🌍','🧾','📌','💡','❤️','😅','😢','😡','😴','🤔','🙌','🎉','🚀','👀'];
 function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button onclick="insertEmoji('${e}')">${e}</button>`).join('');
 function insertEmoji(e){const i=msgInput;const s=i.selectionStart||i.value.length;const v=i.value;i.value=v.slice(0,s)+e+v.slice(s);i.focus();i.selectionStart=i.selectionEnd=s+e.length;autoGrow(i)}
-let typeDeb; function onTyping(){clearTimeout(typeDeb);if(state.activeConvPublicID)api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:true}}).catch(()=>{});typeDeb=setTimeout(()=>{if(state.activeConvPublicID)api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:false}}).catch(()=>{})},4000)}
+let typeDeb;
+let _lastTypingSent=0;
+function onTyping(){
+  clearTimeout(typeDeb);
+  if(!state.activeConvPublicID)return;
+  const now=Date.now();
+  // Отправляем is_typing:true не чаще раз в 3 секунды
+  if(now-_lastTypingSent>3000){
+    _lastTypingSent=now;
+    api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:true}}).catch(()=>{});
+  }
+  // Спустя 4 секунды бездействия — is_typing:false
+  typeDeb=setTimeout(()=>{
+    _lastTypingSent=0;
+    if(state.activeConvPublicID)api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:false}}).catch(()=>{});
+  },4000);
+}
 msgInput?.addEventListener('input',onTyping)
 async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});if(state.activeConvPublicID){await loadMessages().catch(()=>{});const t=await api(`/chat/conversations/${state.activeConvPublicID}/typing`).catch(()=>({users:[]}));state.typingUsers=t.users||[];renderMessages();}}
 function startPolling(){clearInterval(state.pollTimer);state.pollTimer=setInterval(pollTick,3000)};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pollTick()})
