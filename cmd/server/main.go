@@ -2775,7 +2775,46 @@ func main() {
 			}
 			writeJSON(w, http.StatusCreated, map[string]any{"exhibition": item})
 		case http.MethodGet:
-			writeJSON(w, http.StatusOK, map[string]any{"exhibitions": []exhibition{}, "total": 0})
+			q := r.URL.Query()
+			f := listExhibitionsFilter{
+				Category: q.Get("category"),
+				Format:   q.Get("format"),
+				Status:   q.Get("status"),
+				City:     q.Get("city"),
+				Query:    q.Get("query"),
+			}
+			if v := q.Get("limit"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					f.Limit = n
+				}
+			}
+			if v := q.Get("offset"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					f.Offset = n
+				}
+			}
+			if v := q.Get("from"); v != "" {
+				if t, err := time.Parse(time.RFC3339, v); err == nil {
+					f.From = &t
+				}
+			}
+			if v := q.Get("to"); v != "" {
+				if t, err := time.Parse(time.RFC3339, v); err == nil {
+					f.To = &t
+				}
+			}
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			viewerID, hasAuth := sessions.getUserID(token)
+			items, total, err := listExhibitions(db, viewerID, hasAuth, f)
+			if err != nil {
+				log.Printf("[exhibitions] list failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if items == nil {
+				items = []exhibition{}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"exhibitions": items, "total": total})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
@@ -2809,6 +2848,52 @@ func main() {
 				return
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
+		case http.MethodPatch:
+			if _, ok := requireAdmin(w, r, db, sessions); !ok {
+				return
+			}
+			if len(parts) != 1 {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			var req updateExhibitionRequest
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			item, err := updateExhibition(db, publicID, req)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "validation:") {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Выставка не найдена")
+					return
+				}
+				log.Printf("[exhibitions] update failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка обновления")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
+		case http.MethodDelete:
+			if _, ok := requireAdmin(w, r, db, sessions); !ok {
+				return
+			}
+			if len(parts) != 1 {
+				writeError(w, http.StatusNotFound, "Не найдено")
+				return
+			}
+			if err := deleteExhibition(db, publicID); err != nil {
+				if err == sql.ErrNoRows {
+					writeError(w, http.StatusNotFound, "Выставка не найдена")
+					return
+				}
+				log.Printf("[exhibitions] delete failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка удаления")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
@@ -14044,6 +14129,173 @@ func getExhibitionByPublicID(db *sql.DB, publicID string, viewerID int64, hasAut
 	}
 	_ = json.Unmarshal(tagsJSON, &item.Tags)
 	return &item, nil
+}
+
+type listExhibitionsFilter struct {
+	Category string
+	Format   string
+	Status   string
+	City     string
+	From     *time.Time
+	To       *time.Time
+	Query    string
+	Limit    int
+	Offset   int
+}
+
+func listExhibitions(db *sql.DB, viewerID int64, hasAuth bool, f listExhibitionsFilter) ([]exhibition, int64, error) {
+	if f.Limit <= 0 || f.Limit > 100 {
+		f.Limit = 30
+	}
+	currentUser := sql.NullInt64{}
+	if hasAuth {
+		currentUser = sql.NullInt64{Int64: viewerID, Valid: true}
+	}
+	args := []any{currentUser}
+	var conds []string
+	conds = append(conds, "e.is_deleted = FALSE")
+	if f.Category != "" {
+		args = append(args, f.Category)
+		conds = append(conds, fmt.Sprintf("e.category = $%d", len(args)))
+	}
+	if f.Format != "" {
+		args = append(args, f.Format)
+		conds = append(conds, fmt.Sprintf("e.format = $%d", len(args)))
+	}
+	if f.Status != "" {
+		args = append(args, f.Status)
+		conds = append(conds, fmt.Sprintf("e.status = $%d", len(args)))
+	}
+	if f.City != "" {
+		args = append(args, f.City)
+		conds = append(conds, fmt.Sprintf("e.city = $%d", len(args)))
+	}
+	if f.From != nil {
+		args = append(args, *f.From)
+		conds = append(conds, fmt.Sprintf("e.starts_at >= $%d", len(args)))
+	}
+	if f.To != nil {
+		args = append(args, *f.To)
+		conds = append(conds, fmt.Sprintf("e.ends_at <= $%d", len(args)))
+	}
+	if strings.TrimSpace(f.Query) != "" {
+		args = append(args, "%"+strings.ToLower(strings.TrimSpace(f.Query))+"%")
+		conds = append(conds, fmt.Sprintf("(LOWER(e.title) LIKE $%d OR LOWER(e.short_description) LIKE $%d)", len(args), len(args)))
+	}
+	where := strings.Join(conds, " AND ")
+
+	var total int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM exhibitions e WHERE `+where, args[1:]...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	args = append(args, f.Limit, f.Offset)
+	query := `
+		SELECT e.id, e.public_id, e.slug, e.title, e.short_description, e.description, e.category, e.format, e.status,
+			e.starts_at, e.ends_at, e.timezone, e.city, e.address, e.venue,
+			COALESCE(e.latitude,0), COALESCE(e.longitude,0), e.online_url, e.cover_url,
+			e.organizer_label, COALESCE(e.organizer_company_id,0),
+			COALESCE(oc.name,''), COALESCE(oc.slug,''), COALESCE(oc.logo_image,''),
+			e.external_expo_url, COALESCE(array_to_json(e.tags), '[]'::json),
+			e.views_count, e.visitors_count, e.exhibitors_count, e.saves_count,
+			COALESCE(es.user_id IS NOT NULL, FALSE),
+			COALESCE(evr.user_id IS NOT NULL, FALSE),
+			e.created_at, e.updated_at
+		FROM exhibitions e
+		LEFT JOIN companies oc ON oc.id = e.organizer_company_id
+		LEFT JOIN exhibition_saves es ON es.exhibition_id = e.id AND es.user_id = $1::bigint
+		LEFT JOIN exhibition_visitor_registrations evr ON evr.exhibition_id = e.id AND evr.user_id = $1::bigint AND evr.status = 'registered'
+		WHERE ` + where + `
+		ORDER BY e.starts_at ASC, e.id ASC
+		LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var items []exhibition
+	for rows.Next() {
+		var item exhibition
+		var tagsJSON []byte
+		if err := rows.Scan(&item.ID, &item.PublicID, &item.Slug, &item.Title, &item.ShortDescription, &item.Description,
+			&item.Category, &item.Format, &item.Status, &item.StartsAt, &item.EndsAt, &item.Timezone,
+			&item.City, &item.Address, &item.Venue, &item.Latitude, &item.Longitude, &item.OnlineURL, &item.CoverURL,
+			&item.OrganizerLabel, &item.OrganizerCompanyID,
+			&item.OrganizerCompanyName, &item.OrganizerCompanySlug, &item.OrganizerCompanyLogo,
+			&item.ExternalExpoURL, &tagsJSON,
+			&item.ViewsCount, &item.VisitorsCount, &item.ExhibitorsCount, &item.SavesCount,
+			&item.IsSaved, &item.IsRegistered, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		_ = json.Unmarshal(tagsJSON, &item.Tags)
+		items = append(items, item)
+	}
+	return items, total, rows.Err()
+}
+
+func updateExhibition(db *sql.DB, publicID string, req updateExhibitionRequest) (*exhibition, error) {
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, fmt.Errorf("validation: title required")
+	}
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		return nil, fmt.Errorf("validation: starts_at invalid")
+	}
+	endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
+	if err != nil {
+		return nil, fmt.Errorf("validation: ends_at invalid")
+	}
+	if !endsAt.After(startsAt) {
+		return nil, fmt.Errorf("validation: ends_at must be after starts_at")
+	}
+	format := req.Format
+	if format == "" {
+		format = "offline"
+	}
+	status := req.Status
+	if status == "" {
+		status = "planned"
+	}
+	timezone := req.Timezone
+	if timezone == "" {
+		timezone = "Europe/Moscow"
+	}
+	var pgTags pgtype.FlatArray[string] = req.Tags
+	var organizerCompanyID sql.NullInt64
+	if req.OrganizerCompanyID != nil && *req.OrganizerCompanyID > 0 {
+		organizerCompanyID = sql.NullInt64{Int64: *req.OrganizerCompanyID, Valid: true}
+	}
+	res, err := db.Exec(`
+		UPDATE exhibitions SET
+			title=$1, short_description=$2, description=$3, category=$4, format=$5, status=$6,
+			starts_at=$7, ends_at=$8, timezone=$9, city=$10, address=$11, venue=$12,
+			latitude=$13, longitude=$14, online_url=$15, cover_url=$16, organizer_label=$17,
+			organizer_company_id=$18, external_expo_url=$19, tags=$20, updated_at=NOW()
+		WHERE public_id=$21 AND is_deleted=FALSE
+	`, req.Title, req.ShortDescription, req.Description, req.Category, format, status,
+		startsAt, endsAt, timezone, req.City, req.Address, req.Venue,
+		req.Latitude, req.Longitude, req.OnlineURL, req.CoverURL, req.OrganizerLabel,
+		organizerCompanyID, req.ExternalExpoURL, pgTags, publicID)
+	if err != nil {
+		return nil, err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, sql.ErrNoRows
+	}
+	return getExhibitionByPublicID(db, publicID, 0, false)
+}
+
+func deleteExhibition(db *sql.DB, publicID string) error {
+	res, err := db.Exec(`UPDATE exhibitions SET is_deleted=TRUE, updated_at=NOW() WHERE public_id=$1 AND is_deleted=FALSE`, publicID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func newPublicEventID() (string, error) {
