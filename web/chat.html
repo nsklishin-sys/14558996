@@ -1354,7 +1354,7 @@ function applyConversation(c){
   }
   state.activeConversation=c;
 }
-async function selectConversation(pid){state.activeConvPublicID=pid;renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){state.activeConvPublicID=pid;renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at]));
@@ -1364,8 +1364,10 @@ function renderMessages(){
   renderCache.messagesSig=fullSig;
   renderCache.typingSig=typingSig;
   const el=chatBody;
-  const wasAtBottom=el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true;
+  const justSelected=!!window._chatJustSelected;
+  const wasAtBottom=justSelected?true:(el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true);
   const prevScroll=el?el.scrollTop:0;
+  if(justSelected)window._chatJustSelected=false;
   el.innerHTML='';let prevDate='';state.messages.forEach(m=>{
     const createdAt = new Date(m.created_at);
     const date = createdAt.toDateString();
