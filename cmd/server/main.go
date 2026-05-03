@@ -14424,6 +14424,335 @@ func deleteExhibition(db *sql.DB, publicID string) error {
 	return nil
 }
 
+// ─── exhibition_days ─────────────────────────────────────────
+
+func resolveExhibitionID(db *sql.DB, publicID string) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT id FROM exhibitions WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, sql.ErrNoRows
+	}
+	return id, err
+}
+
+func createExhibitionDay(db *sql.DB, exhibitionID int64, req createExhibitionDayRequest) (exhibitionDay, error) {
+	dayDate, err := time.Parse("2006-01-02", req.DayDate)
+	if err != nil {
+		return exhibitionDay{}, fmt.Errorf("validation: day_date invalid (YYYY-MM-DD)")
+	}
+	var d exhibitionDay
+	err = db.QueryRow(`
+		INSERT INTO exhibition_days (exhibition_id, day_date, title, sort_order)
+		VALUES ($1,$2,$3,$4)
+		RETURNING id, exhibition_id, day_date, title, sort_order
+	`, exhibitionID, dayDate, req.Title, req.SortOrder).Scan(&d.ID, &d.ExhibitionID, &d.DayDate, &d.Title, &d.SortOrder)
+	return d, err
+}
+
+func updateExhibitionDay(db *sql.DB, exhibitionID, dayID int64, req createExhibitionDayRequest) (*exhibitionDay, error) {
+	dayDate, err := time.Parse("2006-01-02", req.DayDate)
+	if err != nil {
+		return nil, fmt.Errorf("validation: day_date invalid (YYYY-MM-DD)")
+	}
+	var d exhibitionDay
+	err = db.QueryRow(`
+		UPDATE exhibition_days SET day_date=$1, title=$2, sort_order=$3
+		WHERE id=$4 AND exhibition_id=$5
+		RETURNING id, exhibition_id, day_date, title, sort_order
+	`, dayDate, req.Title, req.SortOrder, dayID, exhibitionID).Scan(&d.ID, &d.ExhibitionID, &d.DayDate, &d.Title, &d.SortOrder)
+	if err == sql.ErrNoRows {
+		return nil, sql.ErrNoRows
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+func deleteExhibitionDay(db *sql.DB, exhibitionID, dayID int64) error {
+	res, err := db.Exec(`DELETE FROM exhibition_days WHERE id=$1 AND exhibition_id=$2`, dayID, exhibitionID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// ─── exhibition_zones ────────────────────────────────────────
+
+func createExhibitionZone(db *sql.DB, exhibitionID int64, req createExhibitionZoneRequest) (exhibitionZone, error) {
+	color := req.Color
+	if color == "" {
+		color = "#1E8A4C"
+	}
+	var z exhibitionZone
+	err := db.QueryRow(`
+		INSERT INTO exhibition_zones (exhibition_id, title, description, color, sort_order)
+		VALUES ($1,$2,$3,$4,$5)
+		RETURNING id, exhibition_id, title, description, color, sort_order
+	`, exhibitionID, req.Title, req.Description, color, req.SortOrder).Scan(&z.ID, &z.ExhibitionID, &z.Title, &z.Description, &z.Color, &z.SortOrder)
+	return z, err
+}
+
+func updateExhibitionZone(db *sql.DB, exhibitionID, zoneID int64, req createExhibitionZoneRequest) (*exhibitionZone, error) {
+	color := req.Color
+	if color == "" {
+		color = "#1E8A4C"
+	}
+	var z exhibitionZone
+	err := db.QueryRow(`
+		UPDATE exhibition_zones SET title=$1, description=$2, color=$3, sort_order=$4
+		WHERE id=$5 AND exhibition_id=$6
+		RETURNING id, exhibition_id, title, description, color, sort_order
+	`, req.Title, req.Description, color, req.SortOrder, zoneID, exhibitionID).Scan(&z.ID, &z.ExhibitionID, &z.Title, &z.Description, &z.Color, &z.SortOrder)
+	if err == sql.ErrNoRows {
+		return nil, sql.ErrNoRows
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &z, nil
+}
+
+func deleteExhibitionZone(db *sql.DB, exhibitionID, zoneID int64) error {
+	res, err := db.Exec(`DELETE FROM exhibition_zones WHERE id=$1 AND exhibition_id=$2`, zoneID, exhibitionID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// ─── exhibition_speakers ─────────────────────────────────────
+
+func createExhibitionSpeaker(db *sql.DB, exhibitionID int64, req createExhibitionSpeakerRequest) (exhibitionSpeaker, error) {
+	var userID sql.NullInt64
+	if req.UserPublicID != "" {
+		var id int64
+		if err := db.QueryRow(`SELECT id FROM users WHERE public_id=$1`, req.UserPublicID).Scan(&id); err == nil {
+			userID = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
+	var s exhibitionSpeaker
+	var publicID sql.NullString
+	err := db.QueryRow(`
+		INSERT INTO exhibition_speakers (exhibition_id, full_name, role, bio, photo_url, user_id, sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+		RETURNING id, exhibition_id, full_name, role, bio, photo_url, COALESCE(user_id,0), sort_order
+	`, exhibitionID, req.FullName, req.Role, req.Bio, req.PhotoURL, userID, req.SortOrder).Scan(&s.ID, &s.ExhibitionID, &s.FullName, &s.Role, &s.Bio, &s.PhotoURL, &s.UserID, &s.SortOrder)
+	if err == nil && s.UserID > 0 {
+		_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, s.UserID).Scan(&publicID)
+		s.UserPublicID = publicID.String
+	}
+	return s, err
+}
+
+func updateExhibitionSpeaker(db *sql.DB, exhibitionID, speakerID int64, req createExhibitionSpeakerRequest) (*exhibitionSpeaker, error) {
+	var userID sql.NullInt64
+	if req.UserPublicID != "" {
+		var id int64
+		if err := db.QueryRow(`SELECT id FROM users WHERE public_id=$1`, req.UserPublicID).Scan(&id); err == nil {
+			userID = sql.NullInt64{Int64: id, Valid: true}
+		}
+	}
+	var s exhibitionSpeaker
+	err := db.QueryRow(`
+		UPDATE exhibition_speakers SET full_name=$1, role=$2, bio=$3, photo_url=$4, user_id=$5, sort_order=$6
+		WHERE id=$7 AND exhibition_id=$8
+		RETURNING id, exhibition_id, full_name, role, bio, photo_url, COALESCE(user_id,0), sort_order
+	`, req.FullName, req.Role, req.Bio, req.PhotoURL, userID, req.SortOrder, speakerID, exhibitionID).Scan(&s.ID, &s.ExhibitionID, &s.FullName, &s.Role, &s.Bio, &s.PhotoURL, &s.UserID, &s.SortOrder)
+	if err == sql.ErrNoRows {
+		return nil, sql.ErrNoRows
+	}
+	if err != nil {
+		return nil, err
+	}
+	if s.UserID > 0 {
+		var publicID sql.NullString
+		_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, s.UserID).Scan(&publicID)
+		s.UserPublicID = publicID.String
+	}
+	return &s, nil
+}
+
+func deleteExhibitionSpeaker(db *sql.DB, exhibitionID, speakerID int64) error {
+	res, err := db.Exec(`DELETE FROM exhibition_speakers WHERE id=$1 AND exhibition_id=$2`, speakerID, exhibitionID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// ─── exhibition_sessions ─────────────────────────────────────
+
+func setSessionSpeakers(db *sql.DB, sessionID int64, speakerIDs []int64) error {
+	if _, err := db.Exec(`DELETE FROM exhibition_session_speakers WHERE session_id=$1`, sessionID); err != nil {
+		return err
+	}
+	for _, sid := range speakerIDs {
+		if _, err := db.Exec(`INSERT INTO exhibition_session_speakers (session_id, speaker_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, sessionID, sid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createExhibitionSession(db *sql.DB, exhibitionID int64, req createExhibitionSessionRequest) (exhibitionSession, error) {
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		return exhibitionSession{}, fmt.Errorf("validation: starts_at invalid")
+	}
+	endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
+	if err != nil {
+		return exhibitionSession{}, fmt.Errorf("validation: ends_at invalid")
+	}
+	sessionType := req.SessionType
+	if sessionType == "" {
+		sessionType = "talk"
+	}
+	var s exhibitionSession
+	err = db.QueryRow(`
+		INSERT INTO exhibition_sessions (exhibition_id, day_id, starts_at, ends_at, title, description, session_type, location, sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		RETURNING id, exhibition_id, day_id, starts_at, ends_at, title, description, session_type, location, sort_order
+	`, exhibitionID, req.DayID, startsAt, endsAt, req.Title, req.Description, sessionType, req.Location, req.SortOrder).Scan(&s.ID, &s.ExhibitionID, &s.DayID, &s.StartsAt, &s.EndsAt, &s.Title, &s.Description, &s.SessionType, &s.Location, &s.SortOrder)
+	if err != nil {
+		return exhibitionSession{}, err
+	}
+	if err := setSessionSpeakers(db, s.ID, req.SpeakerIDs); err != nil {
+		return s, err
+	}
+	s.SpeakerIDs = req.SpeakerIDs
+	if s.SpeakerIDs == nil {
+		s.SpeakerIDs = []int64{}
+	}
+	return s, nil
+}
+
+func updateExhibitionSession(db *sql.DB, exhibitionID, sessionID int64, req createExhibitionSessionRequest) (*exhibitionSession, error) {
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		return nil, fmt.Errorf("validation: starts_at invalid")
+	}
+	endsAt, err := time.Parse(time.RFC3339, req.EndsAt)
+	if err != nil {
+		return nil, fmt.Errorf("validation: ends_at invalid")
+	}
+	sessionType := req.SessionType
+	if sessionType == "" {
+		sessionType = "talk"
+	}
+	var s exhibitionSession
+	err = db.QueryRow(`
+		UPDATE exhibition_sessions SET day_id=$1, starts_at=$2, ends_at=$3, title=$4, description=$5, session_type=$6, location=$7, sort_order=$8
+		WHERE id=$9 AND exhibition_id=$10
+		RETURNING id, exhibition_id, day_id, starts_at, ends_at, title, description, session_type, location, sort_order
+	`, req.DayID, startsAt, endsAt, req.Title, req.Description, sessionType, req.Location, req.SortOrder, sessionID, exhibitionID).Scan(&s.ID, &s.ExhibitionID, &s.DayID, &s.StartsAt, &s.EndsAt, &s.Title, &s.Description, &s.SessionType, &s.Location, &s.SortOrder)
+	if err == sql.ErrNoRows {
+		return nil, sql.ErrNoRows
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := setSessionSpeakers(db, s.ID, req.SpeakerIDs); err != nil {
+		return &s, err
+	}
+	s.SpeakerIDs = req.SpeakerIDs
+	if s.SpeakerIDs == nil {
+		s.SpeakerIDs = []int64{}
+	}
+	return &s, nil
+}
+
+func deleteExhibitionSession(db *sql.DB, exhibitionID, sessionID int64) error {
+	res, err := db.Exec(`DELETE FROM exhibition_sessions WHERE id=$1 AND exhibition_id=$2`, sessionID, exhibitionID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// ─── exhibition_tickets ──────────────────────────────────────
+
+func createExhibitionTicket(db *sql.DB, exhibitionID int64, req createExhibitionTicketRequest) (exhibitionTicket, error) {
+	currency := req.Currency
+	if currency == "" {
+		currency = "RUB"
+	}
+	role := req.Role
+	if role == "" {
+		role = "visitor"
+	}
+	var pgPerks pgtype.FlatArray[string] = req.Perks
+	var t exhibitionTicket
+	var perks pgtype.FlatArray[string]
+	err := db.QueryRow(`
+		INSERT INTO exhibition_tickets (exhibition_id, title, description, price_cents, currency, role, seats_limit, perks, is_featured, sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		RETURNING id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken, COALESCE(perks,'{}'), is_featured, sort_order
+	`, exhibitionID, req.Title, req.Description, req.PriceCents, currency, role, req.SeatsLimit, pgPerks, req.IsFeatured, req.SortOrder).Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perks, &t.IsFeatured, &t.SortOrder)
+	t.Perks = []string(perks)
+	if t.Perks == nil {
+		t.Perks = []string{}
+	}
+	return t, err
+}
+
+func updateExhibitionTicket(db *sql.DB, exhibitionID, ticketID int64, req createExhibitionTicketRequest) (*exhibitionTicket, error) {
+	currency := req.Currency
+	if currency == "" {
+		currency = "RUB"
+	}
+	role := req.Role
+	if role == "" {
+		role = "visitor"
+	}
+	var pgPerks pgtype.FlatArray[string] = req.Perks
+	var t exhibitionTicket
+	var perks pgtype.FlatArray[string]
+	err := db.QueryRow(`
+		UPDATE exhibition_tickets SET title=$1, description=$2, price_cents=$3, currency=$4, role=$5, seats_limit=$6, perks=$7, is_featured=$8, sort_order=$9
+		WHERE id=$10 AND exhibition_id=$11
+		RETURNING id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken, COALESCE(perks,'{}'), is_featured, sort_order
+	`, req.Title, req.Description, req.PriceCents, currency, role, req.SeatsLimit, pgPerks, req.IsFeatured, req.SortOrder, ticketID, exhibitionID).Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perks, &t.IsFeatured, &t.SortOrder)
+	if err == sql.ErrNoRows {
+		return nil, sql.ErrNoRows
+	}
+	if err != nil {
+		return nil, err
+	}
+	t.Perks = []string(perks)
+	if t.Perks == nil {
+		t.Perks = []string{}
+	}
+	return &t, nil
+}
+
+func deleteExhibitionTicket(db *sql.DB, exhibitionID, ticketID int64) error {
+	res, err := db.Exec(`DELETE FROM exhibition_tickets WHERE id=$1 AND exhibition_id=$2`, ticketID, exhibitionID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
 func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibitionFull, error) {
 	base, err := getExhibitionByPublicID(db, publicID, viewerID, hasAuth)
 	if err != nil {
