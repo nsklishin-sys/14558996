@@ -2154,8 +2154,8 @@ func main() {
 			return
 		}
 
-		// Лимит 25 МБ
-		const maxUploadSize = 25 * 1024 * 1024
+		// Лимит 100 МБ (для видео; для остального фронт ограничивает 25)
+		const maxUploadSize = 100 * 1024 * 1024
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		if err := r.ParseMultipartForm(maxUploadSize); err != nil {
 			writeError(w, http.StatusBadRequest, "Файл слишком большой или повреждён")
