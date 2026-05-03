@@ -1257,8 +1257,11 @@ function renderCalendar(){
         <div class="ev-info"><div class="ev-title">${esc(ev.title)}<span class="ev-tag ${fmtCls}">${fmt}</span></div></div>
       </div>`;
     }).join('') + '</div>';
+  } else if(CAL_STATE.selectedDay){
+    // День выбран, но событий нет
+    html += '<div style="padding:14px 8px;text-align:center;color:var(--gmt);font-size:12px">На этот день событий нет</div>';
   }
-  if(!dayList.length){
+  if(!dayList.length && !CAL_STATE.selectedDay){
     const upcoming = CAL_STATE.events
       .filter(e => new Date(e.starts_at) >= new Date())
       .sort((a,b) => new Date(a.starts_at) - new Date(b.starts_at))
@@ -1280,8 +1283,10 @@ function renderCalendar(){
   document.getElementById('calendarWidget').innerHTML=html;
 }
 function pickDay(day){
-  const list=CAL_STATE.events.filter(ev=>{const d=new Date(ev.starts_at);return d.getFullYear()===CAL_STATE.year&&d.getMonth()===CAL_STATE.month&&d.getDate()===day;});
-  CAL_STATE.selectedDay=list.length?day:null;renderCalendar();
+  // Запоминаем выбранный день в любом случае.
+  // Логика отображения списка событий — в renderCalendar.
+  CAL_STATE.selectedDay = (CAL_STATE.selectedDay === day) ? null : day;
+  renderCalendar();
 }
 function calPrevMonth(){
   const y = CAL_STATE.month === 0 ? CAL_STATE.year - 1 : CAL_STATE.year;
