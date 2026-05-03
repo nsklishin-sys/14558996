@@ -1334,14 +1334,7 @@ async function loadFeed(){
     if (!r.ok) throw 0;
     const d = await r.json();
     allPosts = d.posts || d.items || [];
-    if (!allPosts.length && _feedFirstLoad) {
-      // На первой загрузке если ничего не пришло — показать demo (как было)
-      allPosts = demoFeedPosts();
-    }
   } catch {
-    if (_feedFirstLoad) {
-      allPosts = demoFeedPosts();
-    }
     // На polling-тике если запрос упал — не трогаем allPosts,
     // ничего не меняется на экране.
   }
