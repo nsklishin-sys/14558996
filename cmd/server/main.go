@@ -855,6 +855,132 @@ type createExhibitionRequest struct {
 
 type updateExhibitionRequest = createExhibitionRequest
 
+type exhibitionDay struct {
+	ID           int64     `json:"id"`
+	ExhibitionID int64     `json:"exhibition_id"`
+	DayDate      time.Time `json:"day_date"`
+	Title        string    `json:"title"`
+	SortOrder    int       `json:"sort_order"`
+}
+
+type exhibitionZone struct {
+	ID           int64  `json:"id"`
+	ExhibitionID int64  `json:"exhibition_id"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	Color        string `json:"color"`
+	SortOrder    int    `json:"sort_order"`
+}
+
+type exhibitionSpeaker struct {
+	ID           int64  `json:"id"`
+	ExhibitionID int64  `json:"exhibition_id"`
+	FullName     string `json:"full_name"`
+	Role         string `json:"role"`
+	Bio          string `json:"bio"`
+	PhotoURL     string `json:"photo_url"`
+	UserID       int64  `json:"user_id,omitempty"`
+	UserPublicID string `json:"user_public_id,omitempty"`
+	SortOrder    int    `json:"sort_order"`
+}
+
+type exhibitionSession struct {
+	ID           int64               `json:"id"`
+	ExhibitionID int64               `json:"exhibition_id"`
+	DayID        int64               `json:"day_id"`
+	StartsAt     time.Time           `json:"starts_at"`
+	EndsAt       time.Time           `json:"ends_at"`
+	Title        string              `json:"title"`
+	Description  string              `json:"description"`
+	SessionType  string              `json:"session_type"`
+	Location     string              `json:"location"`
+	SortOrder    int                 `json:"sort_order"`
+	SpeakerIDs   []int64             `json:"speaker_ids"`
+	Speakers     []exhibitionSpeaker `json:"speakers,omitempty"`
+}
+
+type exhibitionTicket struct {
+	ID           int64    `json:"id"`
+	ExhibitionID int64    `json:"exhibition_id"`
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+	PriceCents   int      `json:"price_cents"`
+	Currency     string   `json:"currency"`
+	Role         string   `json:"role"`
+	SeatsLimit   int      `json:"seats_limit"`
+	SeatsTaken   int      `json:"seats_taken"`
+	Perks        []string `json:"perks"`
+	IsFeatured   bool     `json:"is_featured"`
+	SortOrder    int      `json:"sort_order"`
+}
+
+type exhibitionExhibitor struct {
+	CompanyID   int64  `json:"company_id"`
+	CompanyName string `json:"company_name"`
+	CompanySlug string `json:"company_slug"`
+	CompanyLogo string `json:"company_logo"`
+	BoothNumber string `json:"booth_number"`
+	Pavilion    string `json:"pavilion"`
+	ZoneID      int64  `json:"zone_id,omitempty"`
+	SortOrder   int    `json:"sort_order"`
+}
+
+type exhibitionFull struct {
+	exhibition
+	Days       []exhibitionDay       `json:"days"`
+	Zones      []exhibitionZone      `json:"zones"`
+	Speakers   []exhibitionSpeaker   `json:"speakers"`
+	Sessions   []exhibitionSession   `json:"sessions"`
+	Tickets    []exhibitionTicket    `json:"tickets"`
+	Exhibitors []exhibitionExhibitor `json:"exhibitors"`
+}
+
+type createExhibitionDayRequest struct {
+	DayDate   string `json:"day_date"`
+	Title     string `json:"title"`
+	SortOrder int    `json:"sort_order"`
+}
+
+type createExhibitionZoneRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+	SortOrder   int    `json:"sort_order"`
+}
+
+type createExhibitionSpeakerRequest struct {
+	FullName     string `json:"full_name"`
+	Role         string `json:"role"`
+	Bio          string `json:"bio"`
+	PhotoURL     string `json:"photo_url"`
+	UserPublicID string `json:"user_public_id,omitempty"`
+	SortOrder    int    `json:"sort_order"`
+}
+
+type createExhibitionSessionRequest struct {
+	DayID       int64   `json:"day_id"`
+	StartsAt    string  `json:"starts_at"`
+	EndsAt      string  `json:"ends_at"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	SessionType string  `json:"session_type"`
+	Location    string  `json:"location"`
+	SortOrder   int     `json:"sort_order"`
+	SpeakerIDs  []int64 `json:"speaker_ids"`
+}
+
+type createExhibitionTicketRequest struct {
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	PriceCents  int      `json:"price_cents"`
+	Currency    string   `json:"currency"`
+	Role        string   `json:"role"`
+	SeatsLimit  int      `json:"seats_limit"`
+	Perks       []string `json:"perks"`
+	IsFeatured  bool     `json:"is_featured"`
+	SortOrder   int      `json:"sort_order"`
+}
+
 type registerToEventRequest struct {
 	TicketType string `json:"ticket_type"`
 }
@@ -2837,7 +2963,7 @@ func main() {
 			}
 			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			viewerID, hasAuth := sessions.getUserID(token)
-			item, err := getExhibitionByPublicID(db, publicID, viewerID, hasAuth)
+			item, err := getExhibitionFull(db, publicID, viewerID, hasAuth)
 			if err != nil {
 				log.Printf("[exhibitions] get failed: %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -14296,6 +14422,176 @@ func deleteExhibition(db *sql.DB, publicID string) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (*exhibitionFull, error) {
+	base, err := getExhibitionByPublicID(db, publicID, viewerID, hasAuth)
+	if err != nil {
+		return nil, err
+	}
+	if base == nil {
+		return nil, nil
+	}
+	full := &exhibitionFull{exhibition: *base}
+
+	dayRows, err := db.Query(`SELECT id, exhibition_id, day_date, title, sort_order FROM exhibition_days WHERE exhibition_id=$1 ORDER BY sort_order, day_date`, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer dayRows.Close()
+	for dayRows.Next() {
+		var d exhibitionDay
+		if err := dayRows.Scan(&d.ID, &d.ExhibitionID, &d.DayDate, &d.Title, &d.SortOrder); err != nil {
+			return nil, err
+		}
+		full.Days = append(full.Days, d)
+	}
+	if full.Days == nil {
+		full.Days = []exhibitionDay{}
+	}
+
+	zoneRows, err := db.Query(`SELECT id, exhibition_id, title, description, color, sort_order FROM exhibition_zones WHERE exhibition_id=$1 ORDER BY sort_order, id`, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer zoneRows.Close()
+	for zoneRows.Next() {
+		var z exhibitionZone
+		if err := zoneRows.Scan(&z.ID, &z.ExhibitionID, &z.Title, &z.Description, &z.Color, &z.SortOrder); err != nil {
+			return nil, err
+		}
+		full.Zones = append(full.Zones, z)
+	}
+	if full.Zones == nil {
+		full.Zones = []exhibitionZone{}
+	}
+
+	speakerRows, err := db.Query(`
+		SELECT s.id, s.exhibition_id, s.full_name, s.role, s.bio, s.photo_url,
+			COALESCE(s.user_id,0), COALESCE(u.public_id,''), s.sort_order
+		FROM exhibition_speakers s
+		LEFT JOIN users u ON u.id = s.user_id
+		WHERE s.exhibition_id=$1
+		ORDER BY s.sort_order, s.id
+	`, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer speakerRows.Close()
+	speakerByID := map[int64]exhibitionSpeaker{}
+	for speakerRows.Next() {
+		var sp exhibitionSpeaker
+		if err := speakerRows.Scan(&sp.ID, &sp.ExhibitionID, &sp.FullName, &sp.Role, &sp.Bio, &sp.PhotoURL, &sp.UserID, &sp.UserPublicID, &sp.SortOrder); err != nil {
+			return nil, err
+		}
+		full.Speakers = append(full.Speakers, sp)
+		speakerByID[sp.ID] = sp
+	}
+	if full.Speakers == nil {
+		full.Speakers = []exhibitionSpeaker{}
+	}
+
+	sessionRows, err := db.Query(`
+		SELECT id, exhibition_id, day_id, starts_at, ends_at, title, description, session_type, location, sort_order
+		FROM exhibition_sessions
+		WHERE exhibition_id=$1
+		ORDER BY day_id, starts_at, id
+	`, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer sessionRows.Close()
+	sessionByID := map[int64]*exhibitionSession{}
+	for sessionRows.Next() {
+		var s exhibitionSession
+		if err := sessionRows.Scan(&s.ID, &s.ExhibitionID, &s.DayID, &s.StartsAt, &s.EndsAt, &s.Title, &s.Description, &s.SessionType, &s.Location, &s.SortOrder); err != nil {
+			return nil, err
+		}
+		s.SpeakerIDs = []int64{}
+		s.Speakers = []exhibitionSpeaker{}
+		full.Sessions = append(full.Sessions, s)
+		sessionByID[s.ID] = &full.Sessions[len(full.Sessions)-1]
+	}
+	if full.Sessions == nil {
+		full.Sessions = []exhibitionSession{}
+	}
+
+	if len(sessionByID) > 0 {
+		linkRows, err := db.Query(`
+			SELECT session_id, speaker_id
+			FROM exhibition_session_speakers ess
+			JOIN exhibition_sessions s ON s.id = ess.session_id
+			WHERE s.exhibition_id=$1
+		`, base.ID)
+		if err != nil {
+			return nil, err
+		}
+		defer linkRows.Close()
+		for linkRows.Next() {
+			var sessionID, speakerID int64
+			if err := linkRows.Scan(&sessionID, &speakerID); err != nil {
+				return nil, err
+			}
+			if sess, ok := sessionByID[sessionID]; ok {
+				sess.SpeakerIDs = append(sess.SpeakerIDs, speakerID)
+				if sp, ok := speakerByID[speakerID]; ok {
+					sess.Speakers = append(sess.Speakers, sp)
+				}
+			}
+		}
+	}
+
+	ticketRows, err := db.Query(`
+		SELECT id, exhibition_id, title, description, price_cents, currency, role, seats_limit, seats_taken,
+			COALESCE(perks, '{}'), is_featured, sort_order
+		FROM exhibition_tickets
+		WHERE exhibition_id=$1
+		ORDER BY sort_order, id
+	`, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer ticketRows.Close()
+	for ticketRows.Next() {
+		var t exhibitionTicket
+		var perks pgtype.FlatArray[string]
+		if err := ticketRows.Scan(&t.ID, &t.ExhibitionID, &t.Title, &t.Description, &t.PriceCents, &t.Currency, &t.Role, &t.SeatsLimit, &t.SeatsTaken, &perks, &t.IsFeatured, &t.SortOrder); err != nil {
+			return nil, err
+		}
+		t.Perks = []string(perks)
+		if t.Perks == nil {
+			t.Perks = []string{}
+		}
+		full.Tickets = append(full.Tickets, t)
+	}
+	if full.Tickets == nil {
+		full.Tickets = []exhibitionTicket{}
+	}
+
+	exhRows, err := db.Query(`
+		SELECT ex.company_id, COALESCE(c.name,''), COALESCE(c.slug,''), COALESCE(c.logo_image,''),
+			ex.booth_number, ex.pavilion, COALESCE(ex.zone_id,0), ex.sort_order
+		FROM exhibition_exhibitors ex
+		LEFT JOIN companies c ON c.id = ex.company_id
+		WHERE ex.exhibition_id=$1
+		ORDER BY ex.sort_order, ex.company_id
+	`, base.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer exhRows.Close()
+	for exhRows.Next() {
+		var e exhibitionExhibitor
+		if err := exhRows.Scan(&e.CompanyID, &e.CompanyName, &e.CompanySlug, &e.CompanyLogo, &e.BoothNumber, &e.Pavilion, &e.ZoneID, &e.SortOrder); err != nil {
+			return nil, err
+		}
+		full.Exhibitors = append(full.Exhibitors, e)
+	}
+	if full.Exhibitors == nil {
+		full.Exhibitors = []exhibitionExhibitor{}
+	}
+
+	return full, nil
 }
 
 func newPublicEventID() (string, error) {
