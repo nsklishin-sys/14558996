@@ -764,10 +764,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
 
     <div class="d-tabs">
-      <button class="d-tab active" onclick="filterTab('all', this)">Все <span class="d-tab-count">12</span></button>
-      <button class="d-tab" onclick="filterTab('unread', this)">Непрочитанные <span class="d-tab-count">3</span></button>
-      <button class="d-tab" onclick="filterTab('companies', this)">Компании</button>
-      <button class="d-tab" onclick="filterTab('groups', this)">Группы</button>
+      <button class="d-tab active" onclick="filterTab('all', this)">Все <span class="d-tab-count" id="dTabCntAll">0</span></button>
+      <button class="d-tab" onclick="filterTab('unread', this)">Непрочитанные <span class="d-tab-count" id="dTabCntUnread">0</span></button>
+      <button class="d-tab" onclick="filterTab('companies', this)">Компании <span class="d-tab-count" id="dTabCntCompanies">0</span></button>
+      <button class="d-tab" onclick="filterTab('groups', this)">Группы <span class="d-tab-count" id="dTabCntGroups">0</span></button>
     </div>
 
     <div class="d-list" id="dialogList"></div>
@@ -1212,7 +1212,21 @@ async function loadConversations(){
     renderConversations();
   }
 }
+function updateTabCounts(){
+  const conv=state.conversations||[];
+  const all=conv.length;
+  const unread=conv.filter(c=>c.unread_count>0).length;
+  const companies=conv.filter(c=>{const r=(c.display_role||'').toString();return r.includes('·');}).length;
+  const groups=conv.filter(c=>c.type==='group'||c.type==='community').length;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=String(v);};
+  set('dTabCntAll',all);
+  set('dTabCntUnread',unread);
+  set('dTabCntCompanies',companies);
+  set('dTabCntGroups',groups);
+}
+
 function renderConversations(){
+  updateTabCounts();
   const sig=makeSig((state.conversations||[]).map(c=>[c.public_id,c.last_message_at,c.last_message_text,c.unread_count,c.is_online?1:0,c.display_name,c.pinned?1:0]));
   const fullSig=sig+'|'+(state.activeConvPublicID||'')+'|'+(state.activeFilter||'')+'|'+(state.searchQuery||'');
   if(fullSig===renderCache.conversationsSig)return;
