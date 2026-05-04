@@ -8601,7 +8601,13 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 			PrivacyWhoCanMessage:  "all",
 		}
 	}
-	profile.IsPrivate = settings.PrivacyProfilePrivate && !isSelf
+	isFriend := false
+	if !isSelf && viewerID > 0 {
+		var s string
+		_ = db.QueryRow(`SELECT status FROM friend_requests WHERE ((requester_id=$1 AND addressee_id=$2) OR (requester_id=$2 AND addressee_id=$1)) AND status='accepted' LIMIT 1`, viewerID, ownerID).Scan(&s)
+		isFriend = s == "accepted"
+	}
+	profile.IsPrivate = settings.PrivacyProfilePrivate && !isSelf && !isFriend
 	if profile.IsPrivate {
 		profile.FirstName = ""
 		profile.LastName = ""
