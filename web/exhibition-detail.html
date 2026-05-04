@@ -338,6 +338,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .exh-info{flex:1;min-width:0}
 .exh-name{font-size:13px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .exh-booth{font-size:10px;color:var(--gmt);margin-top:1px}
+
+/* === SIDEBAR (rendered) === */
+.sb-org-card{display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);text-decoration:none;color:inherit;transition:border-color .15s;margin-bottom:8px}
+.sb-org-card:hover{border-color:var(--gb)}
+.sb-org-logo{width:42px;height:42px;border-radius:11px;background:var(--g);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:800;flex-shrink:0;background-size:cover;background-position:center}
+.sb-org-name{font-size:13px;font-weight:800;color:var(--t)}
+.sb-org-meta{font-size:11px;color:var(--gmt);margin-top:1px}
+.sb-org-write{width:100%;padding:7px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.sb-org-write:hover{background:var(--g);color:#fff}
+.sb-similar{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--rm);text-decoration:none;color:inherit;transition:background .15s;cursor:pointer}
+.sb-similar:hover{background:var(--gp)}
+.sb-similar-icon{width:34px;height:34px;border-radius:8px;background:var(--gl);display:grid;place-items:center;font-size:14px;flex-shrink:0;background-size:cover;background-position:center;color:var(--g);font-weight:800}
+.sb-similar-info{min-width:0;flex:1}
+.sb-similar-title{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-similar-meta{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -563,83 +578,95 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <aside class="right">
   <div class="card">
     <div class="block-title">Информация</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Даты</span><span class="stat-val" style="font-size:12px">14–16 мая 2026</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Время</span><span class="stat-val">10:00–18:00</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Формат</span><span class="stat-val">Гибрид</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Экспонентов</span><span class="stat-val" style="color:var(--g)" id="rightCntExp">280</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Посетителей</span><span class="stat-val" id="rightCntVis">6 840</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>Стран</span><span class="stat-val">28</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/></svg>Вход от</span><span class="stat-val">Бесплатно</span></div>
+    <div id="sidebarInfo"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sidebarOrgCard" style="display:none">
     <div class="block-title">Организатор</div>
-    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);cursor:pointer;transition:border-color .15s;margin-bottom:8px" onclick="toast('Открываем профиль…')">
-      <div style="width:42px;height:42px;border-radius:11px;background:#1E8A4C;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">N</div>
-      <div>
-        <div style="font-size:13px;font-weight:800;color:var(--t)">NorthBridge Expo Group</div>
-        <div style="font-size:11px;color:var(--gmt);margin-top:1px">Организатор выставок · Москва</div>
-      </div>
-    </div>
-    <button style="width:100%;padding:7px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'" onclick="toast('Написали организатору ✓',true)">Написать организатору</button>
+    <div id="sidebarOrg"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="sidebarSimilarCard" style="display:none">
     <div class="block-title">Похожие выставки</div>
-    <div class="sim-item" onclick="toast('Открываем…')">
-      <div class="sim-icon" style="background:#E6F1FB">🏗️</div>
-      <div class="sim-body"><div class="sim-title">BuildExpo Russia 2026</div><div class="sim-meta">Санкт-Петербург · 2–5 июня</div></div>
-    </div>
-    <div class="sim-item" onclick="toast('Открываем…')">
-      <div class="sim-icon" style="background:#EDE8FA">⚙️</div>
-      <div class="sim-body"><div class="sim-title">IndustrialTech 2026</div><div class="sim-meta">Екатеринбург · 18–20 сент.</div></div>
-    </div>
-    <div class="sim-item" onclick="toast('Открываем…')">
-      <div class="sim-icon" style="background:var(--gl)">🌾</div>
-      <div class="sim-body"><div class="sim-title">AgroLogistics Forum 2026</div><div class="sim-meta">Воронеж · июль</div></div>
-    </div>
+    <div id="sidebarSimilar"></div>
   </div>
 </aside>
 
 <!-- МОДАЛКА -->
-<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+<!-- МОДАЛКА: РЕГИСТРАЦИЯ ПОСЕТИТЕЛЯ -->
+<div class="modal-bg" id="visitorModalBg" onclick="if(event.target===this)closeVisitorModal()" style="display:none">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title" id="modalTitle">Регистрация</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <span class="modal-title">Регистрация на выставку</span>
+      <button class="modal-close" onclick="closeVisitorModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
-      <div class="order-summary" id="orderSummary">
-        <div class="os-row"><span>Выставка</span><span style="font-weight:700;color:var(--t);max-width:200px;text-align:right">LogisticsPro 2026</span></div>
-        <div class="os-row"><span>Тип участия</span><span id="oType" style="font-weight:700;color:var(--t)">Посетитель</span></div>
-        <div class="os-row"><span>Даты</span><span>14–16 мая 2026</span></div>
-        <div class="os-row total"><span>Итого</span><span id="oTotal" style="color:var(--g)">Бесплатно</span></div>
+      <div class="order-summary">
+        <div class="os-row"><span>Выставка</span><span style="font-weight:700;color:var(--t);max-width:200px;text-align:right" id="vmExName">—</span></div>
+        <div class="os-row"><span>Билет</span><span id="vmTicket" style="font-weight:700;color:var(--t)">—</span></div>
+        <div class="os-row total"><span>Итого</span><span id="vmPrice" style="color:var(--g)">—</span></div>
       </div>
-      <div><label class="mf-label">Имя и фамилия *</label><input class="mf-input" id="mName" placeholder="Иван Иванов"></div>
-      <div><label class="mf-label">Email *</label><input class="mf-input" id="mEmail" type="email" placeholder="ivan@company.ru"></div>
-      <div><label class="mf-label">Компания *</label><input class="mf-input" id="mCompany" placeholder="ООО «Ваша компания»"></div>
-      <div><label class="mf-label">Должность</label><input class="mf-input" id="mPosition" placeholder="Директор по логистике"></div>
-      <!-- Только для экспонентов -->
-      <div id="expFields" style="display:none;flex-direction:column;gap:12px">
-        <div><label class="mf-label">Краткое описание стенда</label>
-          <textarea class="mf-textarea" id="mDesc" style="height:72px" placeholder="Что планируете представить на выставке…"></textarea></div>
-        <div><label class="mf-label">Телефон для связи *</label><input class="mf-input" id="mPhone" placeholder="+7 900 000-00-00"></div>
+      <div><label class="mf-label">Имя и фамилия *</label><input class="mf-input" id="vmName" placeholder="Иван Иванов"></div>
+      <div><label class="mf-label">Email *</label><input class="mf-input" id="vmEmail" type="email" placeholder="ivan@company.ru"></div>
+      <div id="vmModeWrap" style="display:none">
+        <label class="mf-label">Формат участия</label>
+        <select class="mf-input" id="vmMode">
+          <option value="in_person">Очно</option>
+          <option value="online">Онлайн</option>
+        </select>
       </div>
-      <div style="padding:10px 12px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);font-size:11px;color:var(--gmt);line-height:1.55" id="modalNote">
-        Подтверждение регистрации придёт на указанный email. Вход бесплатный.
-      </div>
+      <div class="mf-note" id="vmNote">Регистрация бесплатная. Подтверждение придёт на email.</div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-confirm" id="btnConfirm" style="background:var(--g)" onclick="submitReg()">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        <span id="btnConfirmLabel">Подтвердить регистрацию</span>
-      </button>
+      <button class="btn-cancel" onclick="closeVisitorModal()">Отмена</button>
+      <button class="btn-confirm" id="vmSubmit" style="background:var(--g)" onclick="submitVisitor()">Подтвердить регистрацию</button>
     </div>
   </div>
 </div>
 
-</div><!-- /shell -->
+<!-- МОДАЛКА: ЗАЯВКА ЭКСПОНЕНТА (S12-9) -->
+<div class="modal-bg" id="exhibitorModalBg" onclick="if(event.target===this)closeExhibitorModal()" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Заявка на участие экспонентом</span>
+      <button class="modal-close" onclick="closeExhibitorModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="order-summary">
+        <div class="os-row"><span>Выставка</span><span style="font-weight:700;color:var(--t);max-width:200px;text-align:right" id="emExName">—</span></div>
+      </div>
+      <div><label class="mf-label">Компания *</label>
+        <select class="mf-input" id="emCompany"><option value="">Загрузка списка ваших компаний…</option></select>
+        <div class="mf-help" style="font-size:11px;color:var(--gmt);margin-top:4px">Доступны только компании, в которых у вас есть права администратора</div>
+      </div>
+      <div><label class="mf-label">Контактное лицо *</label><input class="mf-input" id="emContactName" placeholder="Иван Петров"></div>
+      <div><label class="mf-label">Email для связи *</label><input class="mf-input" id="emContactEmail" type="email" placeholder="contact@company.ru"></div>
+      <div><label class="mf-label">Телефон</label><input class="mf-input" id="emContactPhone" placeholder="+7 (999) 000-00-00"></div>
+      <div><label class="mf-label">Тема стенда / продукция *</label>
+        <input class="mf-input" id="emStandTopic" placeholder="Логистические IT-решения для e-commerce">
+      </div>
+      <div class="form-grid2-detail" style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+        <div>
+          <label class="mf-label">Желаемая зона</label>
+          <select class="mf-input" id="emZone"><option value="">Не важно</option></select>
+        </div>
+        <div>
+          <label class="mf-label">Площадь, м²</label>
+          <input class="mf-input" id="emArea" type="number" min="0" max="500" placeholder="12">
+        </div>
+      </div>
+      <div><label class="mf-label">Сообщение организатору</label>
+        <textarea class="mf-input" id="emMessage" rows="3" placeholder="Кратко опишите цели участия, ожидания, дополнительные пожелания"></textarea>
+      </div>
+      <div class="mf-note">Заявка будет отправлена организатору. Он рассмотрит её и пришлёт ответ.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeExhibitorModal()">Отмена</button>
+      <button class="btn-confirm" id="emSubmit" style="background:var(--g)" onclick="submitExhibitor()">Отправить заявку</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -890,6 +917,8 @@ async function loadExhibition(){
     renderExhibitors(state.exhibition);
     renderLocation(state.exhibition);
     renderTags(state.exhibition);
+    renderSidebar(state.exhibition);
+    loadSimilar(state.exhibition);
   }catch(e){
     console.error('loadExhibition error',e);
     toast('Ошибка загрузки выставки',false);
@@ -1084,9 +1113,223 @@ function renderTags(ex){
   list.innerHTML=tags.map(t=>`<a class="ex-tag" href="/exhibitions.html?tag=${encodeURIComponent(t)}"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${escD(t)}</a>`).join('');
 }
 
-/* placeholders для модалок S12-9 — реализуем в этапе 7.3 */
-window.openVisitorModal=window.openVisitorModal||function(ticketID){toast('Регистрация посетителя — в следующем этапе',false);};
-window.openExhibitorModal=window.openExhibitorModal||function(){toast('Заявка экспонента — в следующем этапе',false);};
+
+/* === SIDEBAR === */
+function renderSidebar(ex){
+  const info=document.getElementById('sidebarInfo');
+  if(info){
+    const FORMAT_MAP={offline:'Офлайн',online:'Онлайн',hybrid:'Гибрид'};
+    const fmt=FORMAT_MAP[ex.format]||(ex.format||'—');
+    const days=Math.max(1,Math.round((new Date(ex.ends_at)-new Date(ex.starts_at))/86400000)+1);
+    const minPrice=(ex.tickets||[]).filter(t=>t.role!=='exhibitor').reduce((m,t)=>{
+      const c=t.price_cents||0;
+      if(m===null)return c;
+      return c<m?c:m;
+    },null);
+    const priceLbl=minPrice===null?'—':(minPrice===0?'Бесплатно':fmtPriceDet(minPrice,(ex.tickets[0]||{}).currency||'RUB'));
+    const rows=[
+      {lbl:'Даты',val:fmtDateRange(ex.starts_at,ex.ends_at),svg:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'},
+      {lbl:'Длительность',val:days+' '+(days===1?'день':(days<5?'дня':'дней')),svg:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+      {lbl:'Формат',val:fmt,svg:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'},
+      {lbl:'Экспонентов',val:fmtNum(ex.exhibitors_count),svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>',color:'var(--g)'},
+      {lbl:'Посетителей',val:fmtNum(ex.visitors_count),svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'},
+      {lbl:'Вход от',val:priceLbl,svg:'<path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/>'}
+    ];
+    if(ex.city){rows.splice(3,0,{lbl:'Город',val:ex.city,svg:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'});}
+    info.innerHTML=rows.map(r=>`<div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24">${r.svg}</svg>${escD(r.lbl)}</span><span class="stat-val"${r.color?` style="color:${r.color}"`:''}>${escD(r.val)}</span></div>`).join('');
+  }
+  const orgCard=document.getElementById('sidebarOrgCard');
+  const orgEl=document.getElementById('sidebarOrg');
+  const orgName=ex.organizer_company_name||ex.organizer_label||'';
+  if(orgName&&orgEl&&orgCard){
+    orgCard.style.display='';
+    const photo=ex.organizer_company_logo?`background-image:url(${escD(ex.organizer_company_logo)})`:'';
+    const initial=ex.organizer_company_logo?'':((orgName||'?')[0]||'?').toUpperCase();
+    const href=ex.organizer_company_slug?'/company-detail.html?slug='+encodeURIComponent(ex.organizer_company_slug):'#';
+    orgEl.innerHTML=`<a class="sb-org-card" href="${href}">
+      <div class="sb-org-logo" style="${photo}">${initial}</div>
+      <div><div class="sb-org-name">${escD(orgName)}</div><div class="sb-org-meta">${escD(ex.organizer_company_slug?'Открыть профиль компании':'Организатор')}</div></div>
+    </a>${ex.organizer_company_id?`<button class="sb-org-write" onclick="writeOrganizer(${ex.organizer_company_id})">Написать организатору</button>`:''}`;
+  } else if(orgCard){
+    orgCard.style.display='none';
+  }
+}
+
+window.writeOrganizer=function(companyID){
+  if(!companyID)return;
+  // переходим в чат с компанией; если нет роутинга — fallback на toast
+  location.href='/chat.html?company='+companyID;
+};
+
+async function loadSimilar(ex){
+  try{
+    const cat=ex.category||'';
+    const url=API+'/exhibitions?limit=4'+(cat?'&category='+encodeURIComponent(cat):'');
+    const r=await fetch(url,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    if(!r.ok)return;
+    const d=await r.json();
+    const list=(d.exhibitions||[]).filter(e=>e.public_id!==ex.public_id).slice(0,3);
+    const card=document.getElementById('sidebarSimilarCard');
+    const el=document.getElementById('sidebarSimilar');
+    if(!list.length||!el||!card)return;
+    card.style.display='';
+    el.innerHTML=list.map(e=>{
+      const photo=e.cover_url?`background-image:url(${escD(e.cover_url)})`:'';
+      const initial=e.cover_url?'':((e.title||'?')[0]||'?').toUpperCase();
+      const cityDates=[e.city,fmtDateRange(e.starts_at,e.ends_at)].filter(Boolean).join(' · ');
+      return `<a class="sb-similar" href="/exhibition-detail.html?id=${encodeURIComponent(e.public_id)}">
+        <div class="sb-similar-icon" style="${photo}">${initial}</div>
+        <div class="sb-similar-info">
+          <div class="sb-similar-title">${escD(e.title||'')}</div>
+          <div class="sb-similar-meta">${escD(cityDates)}</div>
+        </div>
+      </a>`;
+    }).join('');
+  }catch(e){console.error('loadSimilar',e);}
+}
+
+/* === VISITOR REGISTRATION MODAL === */
+window.openVisitorModal=function(ticketID){
+  if(!tk()){toast('Войдите чтобы зарегистрироваться',false);return;}
+  const ex=state.exhibition||{};
+  const t=(ex.tickets||[]).find(x=>x.id===ticketID);
+  if(!t){toast('Билет не найден',false);return;}
+  if(ex.is_registered){toast('Вы уже зарегистрированы',false);return;}
+  state.currentTicket=t;
+  document.getElementById('vmExName').textContent=ex.title||'';
+  document.getElementById('vmTicket').textContent=t.title||'';
+  document.getElementById('vmPrice').textContent=fmtPriceDet(t.price_cents,t.currency);
+  // префилл из user (если есть)
+  try{
+    const u=JSON.parse(localStorage.getItem('user')||'{}');
+    if(u.full_name)document.getElementById('vmName').value=u.full_name;
+    if(u.email)document.getElementById('vmEmail').value=u.email;
+  }catch{}
+  // hybrid → показать выбор формата
+  const wrap=document.getElementById('vmModeWrap');
+  if(ex.format==='hybrid'){wrap.style.display='';}else{wrap.style.display='none';document.getElementById('vmMode').value=ex.format==='online'?'online':'in_person';}
+  // note
+  const note=document.getElementById('vmNote');
+  if((t.price_cents||0)>0){
+    note.textContent='Это платный билет. Оплата производится после подтверждения регистрации.';
+  }else{
+    note.textContent='Регистрация бесплатная. Подтверждение придёт на email.';
+  }
+  document.getElementById('visitorModalBg').style.display='flex';
+};
+window.closeVisitorModal=function(){document.getElementById('visitorModalBg').style.display='none';};
+
+window.submitVisitor=async function(){
+  const t=state.currentTicket;if(!t)return;
+  const name=document.getElementById('vmName').value.trim();
+  const email=document.getElementById('vmEmail').value.trim();
+  if(!name){toast('Укажите имя',false);return;}
+  if(!email||!email.includes('@')){toast('Укажите корректный email',false);return;}
+  const body={
+    ticket_id:t.id,
+    full_name:name,
+    email:email,
+    attendance_mode:document.getElementById('vmMode').value||'in_person'
+  };
+  const btn=document.getElementById('vmSubmit');
+  btn.disabled=true;const old=btn.textContent;btn.textContent='Регистрируем…';
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/register',{
+      method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify(body)
+    });
+    if(!r.ok){
+      const txt=await r.text().catch(()=>'');
+      toast('Ошибка: '+(txt||r.status),false);btn.disabled=false;btn.textContent=old;return;
+    }
+    toast('Вы зарегистрированы ✓',true);
+    closeVisitorModal();
+    // перезагружаем выставку чтобы обновить is_registered + visitors_count
+    await loadExhibition();
+  }catch(e){
+    console.error('register',e);toast('Ошибка сети',false);
+    btn.disabled=false;btn.textContent=old;
+  }
+};
+
+/* === EXHIBITOR APPLICATION MODAL (S12-9) === */
+window.openExhibitorModal=async function(){
+  if(!tk()){toast('Войдите чтобы подать заявку',false);return;}
+  const ex=state.exhibition||{};
+  document.getElementById('emExName').textContent=ex.title||'';
+  // префилл контакта
+  try{
+    const u=JSON.parse(localStorage.getItem('user')||'{}');
+    if(u.full_name)document.getElementById('emContactName').value=u.full_name;
+    if(u.email)document.getElementById('emContactEmail').value=u.email;
+  }catch{}
+  // подгрузить мои компании
+  await loadMyCompaniesForExhibitor();
+  // зоны выставки
+  const zSel=document.getElementById('emZone');
+  zSel.innerHTML='<option value="">Не важно</option>'+(ex.zones||[]).map(z=>`<option value="${z.id}">${escD(z.title||'')}</option>`).join('');
+  document.getElementById('exhibitorModalBg').style.display='flex';
+};
+window.closeExhibitorModal=function(){document.getElementById('exhibitorModalBg').style.display='none';};
+
+async function loadMyCompaniesForExhibitor(){
+  const sel=document.getElementById('emCompany');
+  if(!sel)return;
+  sel.innerHTML='<option value="">Загрузка…</option>';
+  try{
+    // эндпоинт /api/companies/my вернёт массив компаний пользователя
+    const r=await fetch(API+'/companies/my',{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const d=await r.json();
+      const list=d.companies||d.items||[];
+      if(list.length){
+        sel.innerHTML='<option value="">Выберите компанию…</option>'+list.map(co=>`<option value="${co.id}">${escD(co.name||co.title||'Компания #'+co.id)}</option>`).join('');
+        return;
+      }
+    }
+  }catch{}
+  sel.innerHTML='<option value="">У вас нет компаний</option>';
+}
+
+window.submitExhibitor=async function(){
+  const companyID=parseInt(document.getElementById('emCompany').value||'0',10);
+  if(!companyID){toast('Выберите компанию',false);return;}
+  const contactName=document.getElementById('emContactName').value.trim();
+  const contactEmail=document.getElementById('emContactEmail').value.trim();
+  const standTopic=document.getElementById('emStandTopic').value.trim();
+  if(!contactName||!contactEmail||!standTopic){toast('Заполните обязательные поля',false);return;}
+  if(!contactEmail.includes('@')){toast('Некорректный email',false);return;}
+  const zoneIDRaw=document.getElementById('emZone').value;
+  const body={
+    company_id:companyID,
+    contact_full_name:contactName,
+    contact_email:contactEmail,
+    contact_phone:document.getElementById('emContactPhone').value.trim(),
+    application_message:document.getElementById('emMessage').value.trim(),
+    stand_topic:standTopic,
+    desired_area_sqm:parseInt(document.getElementById('emArea').value||'0',10)||0
+  };
+  if(zoneIDRaw)body.desired_zone_id=parseInt(zoneIDRaw,10);
+  const btn=document.getElementById('emSubmit');
+  btn.disabled=true;const old=btn.textContent;btn.textContent='Отправляем…';
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-application',{
+      method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify(body)
+    });
+    if(!r.ok){
+      const txt=await r.text().catch(()=>'');
+      toast('Ошибка: '+(txt||r.status),false);btn.disabled=false;btn.textContent=old;return;
+    }
+    toast('Заявка отправлена ✓ Организатор получит уведомление',true);
+    closeExhibitorModal();
+  }catch(e){
+    console.error('exhibitor app',e);toast('Ошибка сети',false);
+    btn.disabled=false;btn.textContent=old;
+  }
+};
+
+
 
 
 (async()=>{
