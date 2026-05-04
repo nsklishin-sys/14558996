@@ -642,7 +642,7 @@ function renderSidebarCalendar(){
 function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}closePopup(false);renderSidebarCalendar();}
 function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}closePopup(false);renderSidebarCalendar();}
 function calGoToday(){calYear=NOW.getFullYear();calMonth=NOW.getMonth();selectedDay=NOW.getDate();renderSidebarCalendar();openDayPopup(calYear,calMonth,selectedDay);}
-function setMode(mode,btn){currentMode=mode;document.querySelectorAll('#modeAll,#modeMy').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyFilters()}
+function setMode(mode,btn){currentMode=mode;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyFilters()}
 function setType(type,btn){currentType=type;document.querySelectorAll('.etab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');applyFilters()}
 function applyFilters(){const q=(document.getElementById('searchInput').value||'').toLowerCase();let items=[...EVENTS];if(currentMode==='my')items=items.filter(e=>registeredSet.has(e.public_id));if(currentType)items=items.filter(e=>e.type===currentType);if(q)items=items.filter(e=>e.title.toLowerCase().includes(q));renderList(items);renderSidebar()}
 async function toggleReg(publicID,btn){
