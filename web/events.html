@@ -525,6 +525,7 @@ const NOW=new Date();
 const API='/api';
 function tk(){return localStorage.getItem('token')||''}
 let EVENTS=[];
+let CAL_EVENTS=[];
 const registeredSet=new Set();
 const savedSet=new Set();
 
@@ -578,7 +579,18 @@ async function loadEvents(){
     EVENTS = (d.events||[]).map(mapApiEvent);
     EVENTS.forEach(e=>{ if(e.isRegistered&&e.public_id)registeredSet.add(e.public_id); if(e.isSaved&&e.public_id)savedSet.add(e.public_id); });
     applyFilters();
+    loadCalendarEvents();
   }catch(err){console.error('loadEvents',err)}
+}
+async function loadCalendarEvents(){
+  try{
+    const from=new Date(); from.setMonth(from.getMonth()-6); from.setHours(0,0,0,0);
+    const r=await fetch(API+'/events?limit=500&from='+encodeURIComponent(from.toISOString()),{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const d=await r.json();
+    CAL_EVENTS=(d.events||[]).map(mapApiEvent);
+    renderSidebarCalendar();
+  }catch(err){console.error('loadCalendarEvents',err)}
 }
 let currentType=''; let currentMode='all'; let calYear=NOW.getFullYear(); let calMonth=NOW.getMonth(); let selectedDay=null;
 function renderCard(ev,i){
@@ -590,7 +602,8 @@ function renderList(items){const c=document.getElementById('evContent'); c.inner
 function renderSidebar(){const now=new Date(); const upcoming=[...EVENTS].filter(e=>(e.date instanceof Date?e.date:new Date(e.date))>=now); const soon=document.getElementById('soonList'); if(soon){soon.innerHTML=upcoming.map(ev=>`<div class="soon-item">${esc(ev.title)}</div>`).join('')||'<div style="font-size:12px;color:var(--gmt)">Нет событий</div>';}
 const myRegs=[...EVENTS].filter(e=>registeredSet.has(e.public_id)); document.getElementById('myRegList').innerHTML=myRegs.map(ev=>`<div class="my-reg-item">${esc(ev.title)}</div>`).join('')||'<div style="font-size:12px;color:var(--gmt)">Вы пока не записаны ни на одно событие</div>'; const stat=document.getElementById('statMyReg'); if(stat) stat.textContent=String(myRegs.length)}
 function calendarEventsForMonth(year,month){
-  return EVENTS.filter(e=>{
+  const src=CAL_EVENTS.length?CAL_EVENTS:EVENTS;
+  return src.filter(e=>{
     const d=e.date instanceof Date?e.date:new Date(e.date);
     return d.getFullYear()===year&&d.getMonth()===month;
   });
