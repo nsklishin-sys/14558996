@@ -957,7 +957,7 @@ function applyCurrentUser(user){
   ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
 }
 (async()=>{
-  if(!tk())return;
+  // гость может смотреть мероприятия
   try{
     const cached=JSON.parse(localStorage.getItem('user')||'{}');
     if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}

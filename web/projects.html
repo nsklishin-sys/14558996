@@ -904,7 +904,7 @@ function resetCreateForm(){
 
 /* ── АВТОРИЗАЦИЯ ── */
 (async()=>{
-  if(!tk())return;
+  // гость может смотреть проекты
   try{
     const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
