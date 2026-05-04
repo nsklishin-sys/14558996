@@ -1116,15 +1116,34 @@ async function saveProfile(){
 
   showToast(synced?'Профиль сохранён ✓':'Профиль сохранён локально ✓');
 }
-async function saveAccount(){
+function saveAccount(){
   const email=document.getElementById('emailField').value.trim();
   if(!email){showToast('Введите email');return;}
-  const current_password=prompt('Введите текущий пароль для смены email');
-  if(!current_password)return;
-  const r=await fetch(API+'/account/email',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({email,current_password})});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok){showToast(d.error||'Не удалось сменить email');return;}
-  currentUser={...currentUser,email};localStorage.setItem('user',JSON.stringify(currentUser));updateWebsiteField();showToast('Email обновлён ✓');
+  document.getElementById('emailModalNew').textContent=email;
+  document.getElementById('emailModalPwd').value='';
+  document.getElementById('emailModalError').style.display='none';
+  document.getElementById('emailModalBg').classList.add('open');
+  setTimeout(()=>document.getElementById('emailModalPwd').focus(),100);
+}
+function closeEmailModal(){document.getElementById('emailModalBg').classList.remove('open');}
+async function executeEmailChange(){
+  const email=document.getElementById('emailField').value.trim();
+  const current_password=document.getElementById('emailModalPwd').value;
+  const err=document.getElementById('emailModalError');
+  err.style.display='none';
+  if(!current_password){err.textContent='Введите пароль';err.style.display='block';return;}
+  const btn=document.getElementById('emailModalConfirm');
+  btn.disabled=true;btn.textContent='…';
+  try{
+    const r=await fetch(API+'/account/email',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({email,current_password})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){err.textContent=d.error||'Не удалось сменить email';err.style.display='block';btn.disabled=false;btn.textContent='Подтвердить';return;}
+    currentUser={...currentUser,email};localStorage.setItem('user',JSON.stringify(currentUser));updateWebsiteField();
+    closeEmailModal();
+    showToast('Email обновлён ✓');
+  }catch{
+    err.textContent='Ошибка сети';err.style.display='block';btn.disabled=false;btn.textContent='Подтвердить';
+  }
 }
 async function saveSettings(section){
   const body={};
@@ -1258,6 +1277,20 @@ async function executePwdChange(){
   }
 }
 </script>
+<div class="modal-bg" id="emailModalBg" onclick="if(event.target===this)closeEmailModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px">
+  <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.18)">
+    <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px">Смена email</div>
+    <div style="font-size:12px;color:var(--gmt);margin-bottom:6px">Новый email:</div>
+    <div id="emailModalNew" style="font-size:13px;font-weight:700;color:var(--t);padding:8px 10px;background:var(--gp);border-radius:8px;margin-bottom:12px"></div>
+    <div style="font-size:12px;color:var(--gmt);margin-bottom:6px">Введите пароль для подтверждения:</div>
+    <input type="password" id="emailModalPwd" placeholder="Текущий пароль" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:14px">
+    <div id="emailModalError" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeEmailModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
+      <button id="emailModalConfirm" onclick="executeEmailChange()" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Подтвердить</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="pwdModalBg" onclick="if(event.target===this)closePwdModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px">
   <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px">Смена пароля</div>
