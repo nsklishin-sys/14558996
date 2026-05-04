@@ -229,6 +229,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
+<div id="ee-debug" style="position:fixed;top:5px;right:5px;background:#000;color:#0f0;padding:8px 12px;border-radius:6px;font-family:monospace;font-size:11px;z-index:99999;max-width:380px;line-height:1.5;white-space:pre-wrap;word-break:break-all">DEBUG starting...</div>
 <div class="shell">
 
 <a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
@@ -530,17 +531,26 @@ async function deleteExhibition(){
   }catch{eeToast('Ошибка сети','err');}
 }
 
+function dbg(msg){const el=document.getElementById('ee-debug');if(el)el.textContent+='\n'+msg;console.log('[EE]',msg);}
 (async()=>{
+  dbg('1. start');
+  dbg('1.1 token: '+(tk()?'YES':'NO'));
   await loadProfile();
-  if(!ADMIN_OK.ok){renderAccessDenied();return;}
+  dbg('2. loaded profile, ADMIN='+ADMIN_OK.ok);
+  if(!ADMIN_OK.ok){dbg('3a. NOT admin -> denied');renderAccessDenied();return;}
   state.publicID=getPublicID();
+  dbg('3b. publicID="'+state.publicID+'"');
   state.mode=state.publicID?'edit':'create';
+  dbg('4. mode='+state.mode);
   if(state.mode==='edit'){
     state.exhibition=await loadExhibition();
-    if(!state.exhibition){document.getElementById('contentRoot').innerHTML='<div class="ee-card ee-access-denied"><h2>Выставка не найдена</h2></div>';return;}
+    dbg('5. exhibition='+(state.exhibition?'LOADED title='+state.exhibition.title:'NULL'));
+    if(!state.exhibition){dbg('6a. not found');document.getElementById('contentRoot').innerHTML='<div class="ee-card ee-access-denied"><h2>Выставка не найдена</h2></div>';return;}
   }
+  dbg('6b. renderForm');
   renderForm();
-})();
+  dbg('7. done');
+})().catch(e=>dbg('ERR: '+e.message));
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
