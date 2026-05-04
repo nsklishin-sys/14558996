@@ -914,7 +914,7 @@ async function fetchCommunitiesByRegion(region){
 
 /* ── АВТОРИЗАЦИЯ ── */
 (async()=>{
-  if(!tk()){location.href='/login.html';return}
+  if(!tk())return;
   try{
     const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(isUnauthorizedResponse(r)){forceRelogin('Сессия истекла. Войдите снова');return}

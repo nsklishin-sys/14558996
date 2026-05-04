@@ -843,7 +843,7 @@ function renderRight(){
 
 // ─── Save toggle ───
 async function toggleSave(){
-  if (!tk()){ location.href = '/login.html'; return; }
+  if(!tk())return;
   if (!JOB) return;
   const btn = document.getElementById('btnSave');
   if (btn) btn.disabled = true;
@@ -867,7 +867,7 @@ async function toggleSave(){
 
 // ─── Apply modal ───
 function openApplyModal(){
-  if (!tk()){ location.href = '/login.html'; return; }
+  if(!tk())return;
   if (!JOB || JOB.viewer_has_applied || JOB.status === 'closed' || JOB.viewer_is_author) return;
   document.getElementById('applyMessage').value = '';
   updateApplyCounter();
