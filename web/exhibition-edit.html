@@ -225,6 +225,20 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ee-access-denied h2{font-size:18px;font-weight:800;color:var(--t);margin-bottom:8px}
 .ee-access-denied p{font-size:13px;color:var(--gmt)}
 @media(max-width:760px){.ee-grid2,.ee-grid3{grid-template-columns:1fr}}
+
+/* === LOCATION SECTION === */
+.ee-loc-search{display:flex;gap:8px;align-items:flex-end;margin-bottom:8px}
+.ee-loc-search .ee-field{flex:1;margin-bottom:0}
+.ee-loc-results{margin-top:8px;border:1px solid var(--bdr);border-radius:var(--rm);overflow:hidden;max-height:240px;overflow-y:auto;display:none}
+.ee-loc-results.active{display:block}
+.ee-loc-result{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--bdr);font-size:12px;color:var(--t);transition:background .15s}
+.ee-loc-result:last-child{border-bottom:none}
+.ee-loc-result:hover{background:var(--gp)}
+.ee-loc-result .lr-coords{font-size:10px;color:var(--gmt);margin-top:2px;font-family:monospace}
+.ee-loc-confirmed{padding:10px 12px;background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);font-size:12px;color:var(--g);font-weight:600;display:flex;align-items:center;gap:8px;margin-top:8px}
+.ee-loc-confirmed .check{font-size:14px}
+.ee-loc-map-preview{margin-top:10px;border:1px solid var(--bdr);border-radius:var(--rm);overflow:hidden;background:var(--gp)}
+.ee-loc-map-preview iframe{width:100%;height:200px;border:0;display:block}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -305,7 +319,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API='/api';
 const tk=()=>localStorage.getItem('token')||'';
 const ADMIN_OK={ok:false};
-const state={mode:'create',publicID:'',exhibition:null};
+const state={mode:'create',publicID:'',exhibition:null,pendingLat:0,pendingLng:0};
+const YANDEX_API_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
@@ -459,7 +474,35 @@ function renderForm(){
     </div>
 
     ${isEdit?`
-    <div class="ee-card"><div class="ee-section-title">Локация</div><div class="ee-stub">Раздел 2 — этап S12-8.2 (с автогеокодированием Я.Карт).</div></div>
+    <div class="ee-card" id="locCard">
+      <div class="ee-section-title">Локация</div>
+      <div id="locContent">
+        <div class="ee-grid2">
+          <div class="ee-field">
+            <label class="ee-field-label">Город</label>
+            <input class="ee-input" id="fCity" value="${escHtml(ex.city||'')}" placeholder="Москва">
+          </div>
+          <div class="ee-field">
+            <label class="ee-field-label">Площадка / Venue</label>
+            <input class="ee-input" id="fVenue" value="${escHtml(ex.venue||'')}" placeholder="МВЦ «Крокус Экспо», павильоны 1-3">
+          </div>
+        </div>
+        <div class="ee-loc-search">
+          <div class="ee-field">
+            <label class="ee-field-label">Адрес</label>
+            <input class="ee-input" id="fAddress" value="${escHtml(ex.address||'')}" placeholder="65-66 км МКАД, Красногорск, Московская область">
+          </div>
+          <button class="ee-btn ee-btn-sec" type="button" onclick="geocodeAddress()" style="white-space:nowrap" id="btnGeocode">Найти на карте</button>
+        </div>
+        <div class="ee-loc-results" id="locResults"></div>
+        <div id="locConfirmed">${(ex.latitude&&ex.longitude)?`<div class="ee-loc-confirmed"><span class="check">✓</span><span>Координаты: ${ex.latitude.toFixed(5)}, ${ex.longitude.toFixed(5)}</span><button type="button" class="ee-btn ee-btn-sec" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="clearCoords()">Сбросить</button></div><div class="ee-loc-map-preview"><iframe src="https://yandex.ru/map-widget/v1/?ll=${ex.longitude},${ex.latitude}&z=15&pt=${ex.longitude},${ex.latitude},pm2rdm" loading="lazy"></iframe></div>`:''}</div>
+        <div class="ee-help" style="margin-top:10px">Адрес геокодируется через Яндекс.Карты. Нажмите «Найти на карте», выберите подходящий вариант — координаты сохранятся при сохранении формы.</div>
+        <div class="ee-field" style="margin-top:14px">
+          <label class="ee-field-label">URL онлайн-площадки (для гибрид/онлайн)</label>
+          <input class="ee-input" id="fOnlineURL" value="${escHtml(ex.online_url||'')}" placeholder="https://meet.example.com/exhibition">
+        </div>
+      </div>
+    </div>
     <div class="ee-card"><div class="ee-section-title">Программа · Дни и сессии</div><div class="ee-stub">Раздел 3 — этап S12-8.3.</div></div>
     <div class="ee-card"><div class="ee-section-title">Билеты</div><div class="ee-stub">Раздел 4 — этап S12-8.4.</div></div>
     <div class="ee-card"><div class="ee-section-title">Тематические зоны</div><div class="ee-stub">Раздел 5 — этап S12-8.5.</div></div>
@@ -494,8 +537,12 @@ function collectForm(){
     tags,
     organizer_label:document.getElementById('fOrgLabel').value.trim(),
     external_expo_url:document.getElementById('fExpoURL').value.trim(),
-    city:ex.city||'',address:ex.address||'',venue:ex.venue||'',
-    latitude:ex.latitude||0,longitude:ex.longitude||0,online_url:ex.online_url||''
+    city:(document.getElementById('fCity')?.value||'').trim(),
+    address:(document.getElementById('fAddress')?.value||'').trim(),
+    venue:(document.getElementById('fVenue')?.value||'').trim(),
+    latitude:state.pendingLat||ex.latitude||0,
+    longitude:state.pendingLng||ex.longitude||0,
+    online_url:(document.getElementById('fOnlineURL')?.value||'').trim()
   };
   if(orgID>0)body.organizer_company_id=orgID;
   return body;
@@ -518,6 +565,58 @@ async function saveBasic(){
     if(state.mode==='create'&&ex.public_id){setTimeout(()=>{location.href='/exhibition-edit.html?id='+encodeURIComponent(ex.public_id);},800);}
     else{state.exhibition=ex;btn.disabled=false;btn.textContent=oldText;}
   }catch(e){console.error('save error',e);eeToast('Ошибка сети','err');btn.disabled=false;btn.textContent=oldText;}
+}
+
+
+async function geocodeAddress(){
+  const addr=(document.getElementById('fAddress')?.value||'').trim();
+  if(!addr){eeToast('Введите адрес','err');return;}
+  const btn=document.getElementById('btnGeocode');
+  const oldText=btn.textContent;btn.disabled=true;btn.textContent='Ищем…';
+  const resBox=document.getElementById('locResults');
+  try{
+    const url=`https://geocode-maps.yandex.ru/v1/?apikey=${YANDEX_API_KEY}&geocode=${encodeURIComponent(addr)}&format=json&lang=ru_RU&results=5`;
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    const members=data?.response?.GeoObjectCollection?.featureMember||[];
+    if(!members.length){eeToast('Адрес не найден','err');resBox.innerHTML='';resBox.classList.remove('active');return;}
+    resBox.innerHTML=members.map((m,i)=>{
+      const obj=m.GeoObject;
+      const text=obj.metaDataProperty?.GeocoderMetaData?.text||obj.name||'';
+      const pos=(obj.Point?.pos||'').split(' ');
+      const lng=parseFloat(pos[0])||0,lat=parseFloat(pos[1])||0;
+      return `<div class="ee-loc-result" onclick="selectGeocodeResult(${lat},${lng},'${escHtml(text).replace(/'/g,"\\'")}')">${escHtml(text)}<div class="lr-coords">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div>`;
+    }).join('');
+    resBox.classList.add('active');
+  }catch(e){
+    console.error('geocode error',e);
+    eeToast('Ошибка геокодинга','err');
+  }finally{
+    btn.disabled=false;btn.textContent=oldText;
+  }
+}
+
+function selectGeocodeResult(lat,lng,text){
+  state.pendingLat=lat;state.pendingLng=lng;
+  document.getElementById('locResults').classList.remove('active');
+  document.getElementById('locResults').innerHTML='';
+  // Опционально подставим текст в адрес если поле пустое
+  const addrInput=document.getElementById('fAddress');
+  if(addrInput&&!addrInput.value.trim())addrInput.value=text;
+  // Превью
+  const conf=document.getElementById('locConfirmed');
+  if(conf){
+    conf.innerHTML=`<div class="ee-loc-confirmed"><span class="check">✓</span><span>Координаты: ${lat.toFixed(5)}, ${lng.toFixed(5)}</span><button type="button" class="ee-btn ee-btn-sec" style="margin-left:auto;padding:4px 10px;font-size:11px" onclick="clearCoords()">Сбросить</button></div><div class="ee-loc-map-preview"><iframe src="https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&z=15&pt=${lng},${lat},pm2rdm" loading="lazy"></iframe></div>`;
+  }
+  eeToast('Координаты выбраны. Не забудьте сохранить.','ok');
+}
+
+function clearCoords(){
+  state.pendingLat=0;state.pendingLng=0;
+  if(state.exhibition){state.exhibition.latitude=0;state.exhibition.longitude=0;}
+  const conf=document.getElementById('locConfirmed');if(conf)conf.innerHTML='';
+  eeToast('Координаты сброшены','ok');
 }
 
 async function deleteExhibition(){
