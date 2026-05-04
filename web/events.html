@@ -957,7 +957,7 @@ function applyCurrentUser(user){
   ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
 }
 (async()=>{
-  if(!tk()){location.href='/login.html';return}
+  if(!tk())return;
   try{
     const cached=JSON.parse(localStorage.getItem('user')||'{}');
     if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}

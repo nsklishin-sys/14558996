@@ -1947,7 +1947,7 @@ function pluralRu(n, forms){
 
 /* АВТОРИЗАЦИЯ */
 (async()=>{
-  if(!tk()){location.href='/login.html';return}
+  if(!tk())return;
   try{
     const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
