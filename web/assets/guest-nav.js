@@ -43,24 +43,21 @@
   }
 
   function hideAuthOnlyTopbar(){
-    // Скрыть выпадашку профиля и кнопку Выйти
+    // Заменяем выпадашку профиля на кнопки Войти/Регистрация
     var profile=document.getElementById('topbarProfile');
-    if(profile)profile.style.display='none';
-    var profileDD=document.getElementById('profileDD');
-    if(profileDD)profileDD.style.display='none';
-    // Скрыть кнопку колокольчика уведомлений
-    var bell=document.querySelector('.tp-bell, .topbar-bell, [data-bell]');
-    if(bell)bell.style.display='none';
-    // Добавить кнопки Войти/Регистрация в топбар если их нет
-    var topbar=document.querySelector('.topbar');
-    if(topbar && !document.getElementById('guestTopbarBtns')){
+    if(profile && !document.getElementById('guestTopbarBtns')){
       var div=document.createElement('div');
       div.id='guestTopbarBtns';
-      div.style.cssText='display:flex;align-items:center;gap:8px;margin-left:auto';
-      div.innerHTML='<a href="/login.html" style="height:34px;padding:0 16px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);text-decoration:none;display:inline-flex;align-items:center">Войти</a>'
-        +'<a href="/register.html" style="height:34px;padding:0 18px;border-radius:99px;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px">Регистрация</a>';
-      topbar.appendChild(div);
+      div.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0';
+      div.innerHTML='<a href="/login.html" style="height:32px;padding:0 14px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap">Войти</a>'
+        +'<a href="/register.html" style="height:32px;padding:0 16px;border-radius:99px;background:var(--g);color:#fff;font-family:inherit;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap">Регистрация</a>';
+      profile.parentNode.insertBefore(div, profile);
+      profile.style.display='none';
     }
+    var profileDD=document.getElementById('profileDD');
+    if(profileDD)profileDD.style.display='none';
+    var bell=document.querySelector('.tp-bell, .topbar-bell, [data-bell]');
+    if(bell)bell.style.display='none';
   }
 
   function showGuestModal(){
