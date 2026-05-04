@@ -736,7 +736,7 @@ const regSet=new Set([1]);
 function renderCard(ex,i){
   const grad=GRADIENTS[ex.cat]||GRADIENTS['Логистика'];
   const isReg=regSet.has(ex.id);
-  return`<div class="ex-card" style="animation-delay:${i*.05}s" onclick="openExhibition(${ex.id})">
+  return`<div class="ex-card" style="animation-delay:${i*.05}s" onclick="openExhibition('${ex.id}')">
     <div class="ec-cover">
       <div class="ec-cover-inner" style="background:${grad}"></div>
       <span class="ec-cat-pill">${esc(ex.cat)}</span>
@@ -752,7 +752,7 @@ function renderCard(ex,i){
       <div class="ec-foot">
         <span class="ec-stat"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>${ex.exhibitors} экспон.</span>
         <span class="ec-stat" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${ex.visitors}</span>
-        <button class="ec-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition(${ex.id},'ec-reg-${ex.id}')" id="ec-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
+        <button class="ec-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition('${ex.id}','ec-reg-${ex.id}')" id="ec-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
       </div>
     </div>
   </div>`;
@@ -763,7 +763,7 @@ function renderRow(ex,i){
   const isReg=regSet.has(ex.id);
   const badgeCls=ex.past?'s-done':ex.cat==='Логистика'?'s-active':'s-planned';
   const stLabel=ex.past?'Прошедшая':'Предстоящая';
-  return`<div class="ex-row" style="animation-delay:${i*.04}s" onclick="openExhibition(${ex.id})">
+  return`<div class="ex-row" style="animation-delay:${i*.04}s" onclick="openExhibition('${ex.id}')">
     <div class="er-thumb"><div class="er-thumb-inner" style="background:${grad}"></div></div>
     <div class="er-body">
       <div class="er-top">
@@ -778,7 +778,7 @@ function renderRow(ex,i){
       </div>
     </div>
     <div class="er-right">
-      <button class="er-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition(${ex.id},'er-reg-${ex.id}')" id="er-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
+      <button class="er-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition('${ex.id}','er-reg-${ex.id}')" id="er-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
     </div>
   </div>`;
 }
