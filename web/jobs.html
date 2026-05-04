@@ -524,6 +524,7 @@ const TABS_CVS = [
 
 // ─── Helpers ───
 function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escAttr(s){ return esc(s); }
 function pluralRu(n, forms){const a=[2,0,1,1,1,2];return forms[(n%100>4&&n%100<20)?2:a[Math.min(n%10,5)]];}
 function fmtNumber(n){ return Number(n).toLocaleString('ru-RU'); }
 function fmtSalary(from, to){
