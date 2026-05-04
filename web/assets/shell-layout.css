@@ -447,26 +447,54 @@ html.lt-shell-2col .topbar > .search-wrap{
    Управляются через global-settings.js
    ═══════════════════════════════════════════════════════════════ */
 
-/* Компактная лента — уменьшаем padding и шрифт у карточек */
+/* ── Компактный вид ленты ── */
+/* Меньше отступы в карточках */
+html[data-compact-feed="1"] .news-card,
 html[data-compact-feed="1"] .post-card,
 html[data-compact-feed="1"] .feed-card,
-html[data-compact-feed="1"] .news-card,
 html[data-compact-feed="1"] .saved-card{
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding: 12px 14px !important;
 }
 
-html[data-compact-feed="1"] .post-card .post-text,
-html[data-compact-feed="1"] .feed-card .post-text,
-html[data-compact-feed="1"] .news-card .news-text,
-html[data-compact-feed="1"] .saved-card .saved-card-text{
-  font-size: 13px;
-  -webkit-line-clamp: 2;
+/* Прячем картинку — занимает много места */
+html[data-compact-feed="1"] .news-card .nc-img-wrap{
+  display: none !important;
 }
 
-html[data-compact-feed="1"] .post-card .post-stats,
-html[data-compact-feed="1"] .feed-card .post-stats{
-  padding-top: 8px;
+/* Карточка превращается в одну колонку */
+html[data-compact-feed="1"] .news-card .nc-body{
+  display: block !important;
+}
+
+/* Заголовок и текст — мельче и в одну строку */
+html[data-compact-feed="1"] .news-card .nc-title-clamp{
+  font-size: 14px !important;
+  -webkit-line-clamp: 1 !important;
+  margin-bottom: 4px !important;
+}
+html[data-compact-feed="1"] .news-card .nc-text-clamp{
+  font-size: 12px !important;
+  -webkit-line-clamp: 1 !important;
+}
+
+/* Шапка и подвал — компактнее */
+html[data-compact-feed="1"] .news-card .nc-head{
+  margin-bottom: 8px !important;
+  gap: 8px !important;
+}
+html[data-compact-feed="1"] .news-card .nc-av{
+  width: 30px !important;
+  height: 30px !important;
+}
+html[data-compact-feed="1"] .news-card .nc-foot{
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+}
+
+/* Между карточками — меньше промежуток */
+html[data-compact-feed="1"] .news-feed,
+html[data-compact-feed="1"] .feed-list{
+  gap: 8px !important;
 }
 
 /* Адаптивные сайдбары — на больших экранах автоматически расширяются */
