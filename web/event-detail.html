@@ -129,6 +129,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .btn-save:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
 .btn-save.saved{border-color:var(--gb);background:var(--gl);color:var(--g)}
 .btn-save svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.repost-wrap{position:relative}
+.repost-dd{position:absolute;top:calc(100% + 8px);left:0;width:280px;max-height:60vh;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;z-index:100;overflow-y:auto}
+.repost-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.repost-dd-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bdr)}
+.repost-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .12s}
+.repost-item:hover{background:var(--gp)}
+.repost-item-av{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.repost-item-body{flex:1;min-width:0}
+.repost-item-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repost-item-sub{font-size:10px;color:var(--gmt)}
+.repost-div{height:1px;background:var(--bdr)}
 .btn-share{padding:11px 14px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);color:var(--gmt);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
 .btn-share:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
 .btn-share svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
@@ -463,10 +474,27 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           Сохранить
         </button>
-        <button class="btn-share" onclick="toast('Ссылка скопирована ✓',true)">
-          <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          Поделиться
-        </button>
+        <div class="repost-wrap">
+          <button class="btn-share" id="btnRepost" onclick="toggleRepost(event)">
+            <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Поделиться
+          </button>
+          <div class="repost-dd" id="repostDD">
+            <div class="repost-dd-head">Поделиться в…</div>
+            <div class="repost-item" onclick="doRepost('page')">
+              <div class="repost-item-av" style="background:#1E8A4C">Я</div>
+              <div class="repost-item-body">
+                <div class="repost-item-name">Моя страница</div>
+                <div class="repost-item-sub">Опубликовать в ленте</div>
+              </div>
+            </div>
+            <div class="repost-div"></div>
+            <div class="repost-dd-head" style="padding-top:8px">Отправить в чат</div>
+            <div id="repostFriendsList">
+              <div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Загрузка друзей…</div>
+            </div>
+          </div>
+        </div>
         <span class="ev-views">
           <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           <span id="evViewsBottom">0</span>
@@ -640,6 +668,90 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
+
+let _repostFriendsLoaded=false;
+async function toggleRepost(e){
+  e.stopPropagation();
+  document.getElementById('repostDD').classList.toggle('open');
+  if(!_repostFriendsLoaded) await loadRepostFriends();
+}
+document.addEventListener('click',e=>{
+  const rd=document.getElementById('repostDD'),rb=document.getElementById('btnRepost');
+  if(rd&&rb&&!rd.contains(e.target)&&!rb.contains(e.target))rd.classList.remove('open');
+});
+async function loadRepostFriends(){
+  const list=document.getElementById('repostFriendsList');
+  if(!list)return;
+  try{
+    const r=await fetch('/api/friends',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const friends=d.friends||[];
+    if(!friends.length){
+      list.innerHTML='<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">У вас пока нет друзей</div>';
+      _repostFriendsLoaded=true;return;
+    }
+    list.innerHTML=friends.slice(0,20).map(f=>{
+      const pid=f.public_id||f.friend_id||'';
+      const name=f.full_name||f.friend_name||f.name||'Без имени';
+      const sub=f.position||f.company_name||f.email||'';
+      const initials=(name.split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase())||'?';
+      const safeName=name.replace(/'/g,'\\'');
+      return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(safeName)}')">
+        <div class="repost-item-av" style="background:#3A90C0">${esc(initials)}</div>
+        <div class="repost-item-body">
+          <div class="repost-item-name">${esc(name)}</div>
+          ${sub?`<div class="repost-item-sub">${esc(sub)}</div>`:''}
+        </div></div>`;
+    }).join('');
+    _repostFriendsLoaded=true;
+  }catch{
+    list.innerHTML='<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Не удалось загрузить друзей</div>';
+  }
+}
+async function doRepost(target){
+  document.getElementById('repostDD')?.classList.remove('open');
+  if(target!=='page')return;
+  const ev=state.currentEvent||{};
+  const title=ev.title||document.getElementById('evTitle')?.textContent||'Мероприятие';
+  const url=location.href;
+  try{
+    const r=await fetch('/api/posts',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({title:'Делюсь мероприятием: '+title,content:'Посмотрите это мероприятие: '+url,type:'event',tags:[]})
+    });
+    if(!r.ok){const er=await r.json().catch(()=>({}));toast(er.error||'Не удалось опубликовать');return;}
+    toast('Опубликовано в вашей ленте ✓',true);
+  }catch{toast('Ошибка сети');}
+}
+async function doRepostToFriend(friendPublicID,friendName){
+  document.getElementById('repostDD')?.classList.remove('open');
+  if(!friendPublicID){toast('Не удалось определить получателя');return;}
+  const ev=state.currentEvent||{};
+  const title=ev.title||document.getElementById('evTitle')?.textContent||'Мероприятие';
+  const url=location.href;
+  const message=`📅 Делюсь мероприятием: ${title}
+${url}`;
+  try{
+    const dc=await fetch('/api/chat/conversations/direct',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({user_public_id:friendPublicID})
+    });
+    if(!dc.ok){toast('Не удалось открыть чат');return;}
+    const dd=await dc.json();
+    const convPID=dd.conversation&&dd.conversation.public_id;
+    if(!convPID){toast('Не удалось открыть чат');return;}
+    const r=await fetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify({content:message})
+    });
+    if(!r.ok){const er=await r.json().catch(()=>({}));toast(er.error||'Не удалось отправить');return;}
+    toast('Отправлено '+friendName+' ✓',true);
+  }catch{toast('Ошибка сети');}
+}
 function logout(){localStorage.removeItem('token');location.href='/login.html'}
 
 /* DROPDOWN */
