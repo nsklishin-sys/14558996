@@ -97,6 +97,38 @@
     if(hasToken())return;
     lockNavItems();
     hideAuthOnlyTopbar();
+    blockActionButtons();
+    interceptActionClicks();
+  }
+
+  // Скрываем кнопки создания на публичных страницах (Создать, Написать)
+  function blockActionButtons(){
+    var sel='.btn-create,.btn-write';
+    document.querySelectorAll(sel).forEach(function(btn){
+      // Просто скрываем — на публичных страницах для гостя они не нужны
+      btn.style.display='none';
+    });
+  }
+
+  // Перехват кликов на действия в карточках (лайк, сохранить, откликнуться, записаться)
+  function interceptActionClicks(){
+    var BLOCK_SEL=[
+      '.nc-action',           // лайк/комментарий в карточке поста
+      '.btn-save',            // сохранить (мероприятие, вакансия и т.д.)
+      '.btn-reg',             // записаться на мероприятие
+      '.btn-respond',         // откликнуться на вакансию
+      '[data-guest-block]'    // явно помеченные элементы
+    ].join(',');
+    document.addEventListener('click', function(e){
+      var el=e.target.closest(BLOCK_SEL);
+      if(!el)return;
+      // Не перехватывать кнопки навигации — у них своя логика locked
+      if(el.classList.contains('locked'))return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+      showGuestModal();
+    }, true); // capture phase — срабатывает до встроенного onclick
   }
 
   if(document.readyState==='loading'){
