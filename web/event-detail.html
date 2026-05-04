@@ -607,20 +607,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 
   <!-- Похожие -->
-  <div class="card">
+  <div class="card" id="similarBlock" style="display:none">
     <div class="block-title">Похожие события</div>
-    <div class="sim-item" onclick="openSimilar(this)">
-      <div class="sim-date-box"><div class="sim-d">5</div><div class="sim-m">Май</div></div>
-      <div class="sim-body"><div class="sim-title">Вебинар: WMS-прокачка — склад без ошибок</div><div class="sim-meta">Онлайн · Бесплатно</div></div>
-    </div>
-    <div class="sim-item" onclick="openSimilar(this)">
-      <div class="sim-date-box"><div class="sim-d">12</div><div class="sim-m">Май</div></div>
-      <div class="sim-body"><div class="sim-title">Таможня 2026: новые правила для экспортёров</div><div class="sim-meta">Онлайн · Бесплатно</div></div>
-    </div>
-    <div class="sim-item" onclick="openSimilar(this)">
-      <div class="sim-date-box"><div class="sim-d">20</div><div class="sim-m">Май</div></div>
-      <div class="sim-body"><div class="sim-title">Конференция AgroLogistics 2026</div><div class="sim-meta">Воронеж · от 8 000 ₽</div></div>
-    </div>
+    <div id="similarList"></div>
   </div>
 
 </aside>
@@ -635,9 +624,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="modal-body">
       <!-- Сводка заказа -->
       <div class="order-summary">
-        <div class="os-row"><span>Мероприятие</span><span style="font-weight:700;color:var(--t);max-width:180px;text-align:right">LogisticsPro Digital Q2 2026</span></div>
+        <div class="os-row"><span>Мероприятие</span><span id="oEventTitle" style="font-weight:700;color:var(--t);max-width:180px;text-align:right">—</span></div>
         <div class="os-row"><span>Тип билета</span><span id="oTicketType" style="font-weight:700;color:var(--t)">Стандарт</span></div>
-        <div class="os-row"><span>Дата</span><span>28 апреля 2026, 10:00</span></div>
+        <div class="os-row"><span>Дата</span><span id="oEventDate">—</span></div>
         <div class="os-row total"><span>Итого</span><span id="oTotal" style="color:var(--g)">4 900 ₽</span></div>
       </div>
       <!-- Форма -->
@@ -790,7 +779,22 @@ function loadMap(){
 }
 function openMapExternal(){const ev=state.currentEvent||{};const q=encodeURIComponent([ev.city,ev.address].filter(Boolean).join(' '));window.open('https://yandex.ru/maps/?text='+q,'_blank');}
 let currentTicket={name:'standard',price:0};
-function openTicketModal(name='standard',price=0){currentTicket={name,price};document.getElementById('oTicketType').textContent=name;document.getElementById('oTotal').textContent=price>0?new Intl.NumberFormat('ru-RU').format(price)+' ₽':'Бесплатно';document.getElementById('btnPayLabel').textContent=price>0?'Оплатить '+new Intl.NumberFormat('ru-RU').format(price)+' ₽':'Подтвердить регистрацию';document.getElementById('modalBg').classList.add('open');}
+function openTicketModal(name='standard',price=0){
+  currentTicket={name,price};
+  document.getElementById('oTicketType').textContent=name;
+  document.getElementById('oTotal').textContent=price>0?new Intl.NumberFormat('ru-RU').format(price)+' ₽':'Бесплатно';
+  document.getElementById('btnPayLabel').textContent=price>0?'Оплатить '+new Intl.NumberFormat('ru-RU').format(price)+' ₽':'Подтвердить регистрацию';
+  if(state.currentEvent){
+    document.getElementById('oEventTitle').textContent=state.currentEvent.title||'—';
+    let dateStr='—';
+    if(state.currentEvent.starts_at){
+      const d=new Date(state.currentEvent.starts_at);
+      dateStr=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})+', '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    }
+    document.getElementById('oEventDate').textContent=dateStr;
+  }
+  document.getElementById('modalBg').classList.add('open');
+}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
 async function registerEvent(ticketType='standard'){if(!state.currentEvent)return;const r=await fetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({ticket_type:ticketType})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось записаться');return false;}state.currentEvent.is_registered=true;applyEvent(state.currentEvent);return true;}
 async function submitTicket(){const name=(document.getElementById('mName')?.value||'').trim();const email=(document.getElementById('mEmail')?.value||'').trim();if(!name||!email){toast('Заполните имя и email');return;}const ok=await registerEvent(String(currentTicket.name||'standard').toLowerCase());if(!ok)return;closeModal();toast(currentTicket.price>0?'Счёт отправлен на email, ждите оплаты':'Вы записаны ✓',true);}
@@ -808,7 +812,34 @@ async function clickReg(){
   await registerEvent('standard');
   toast('Вы записаны ✓',true);
 }
-async function loadSimilar(){if(!state.currentEvent)return;try{const r=await fetch(`${API}/events?type=${encodeURIComponent(state.currentEvent.type||'')}&limit=3`,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)return;const d=await r.json();state.similar=(d.events||[]).filter(x=>x.public_id!==state.currentEvent.public_id).slice(0,3);const items=[...document.querySelectorAll('.sim-item')];items.forEach((el,i)=>{const ev=state.similar[i];if(!ev)return;const t=el.querySelector('div div');if(t)t.textContent=ev.title;el.dataset.pid=ev.public_id;});}catch{}}
+async function loadSimilar(){
+  if(!state.currentEvent)return;
+  try{
+    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
+    const r=await fetch(`${API}/events?type=${encodeURIComponent(state.currentEvent.type||'')}&limit=4`,{headers});
+    if(!r.ok)return;
+    const d=await r.json();
+    state.similar=(d.events||[]).filter(x=>x.public_id!==state.currentEvent.public_id).slice(0,3);
+    const block=document.getElementById('similarBlock');
+    const list=document.getElementById('similarList');
+    if(!list)return;
+    if(!state.similar.length){block.style.display='none';return;}
+    const MONTHS=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+    list.innerHTML=state.similar.map(ev=>{
+      const d=ev.starts_at?new Date(ev.starts_at):null;
+      const day=d?d.getDate():'—';
+      const mon=d?MONTHS[d.getMonth()]:'';
+      const fmt=ev.format==='online'?'Онлайн':(ev.city||'Офлайн');
+      const fee=(ev.fee_cents||0)>0?'от '+new Intl.NumberFormat('ru-RU').format(Math.round(ev.fee_cents/100))+' ₽':'Бесплатно';
+      const title=(ev.title||'').replace(/"/g,'&quot;');
+      return `<div class="sim-item" onclick="location.href='/event-detail.html?id=${encodeURIComponent(ev.public_id)}'">
+        <div class="sim-date-box"><div class="sim-d">${day}</div><div class="sim-m">${mon}</div></div>
+        <div class="sim-body"><div class="sim-title">${title}</div><div class="sim-meta">${fmt} · ${fee}</div></div>
+      </div>`;
+    }).join('');
+    block.style.display='';
+  }catch{}
+}
 function openSimilar(el){const pid=el?.dataset?.pid;if(pid)location.href='/event-detail.html?id='+encodeURIComponent(pid)}
 async function messageOrganizer(){if(!state.currentEvent)return;const r=await fetch(`${API}/chat/conversations/direct`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({user_public_id:state.currentEvent.organizer_public_id})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось открыть чат');return;}const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';location.href='/chat.html?conv='+encodeURIComponent(conv);}
 async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await fetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
