@@ -239,6 +239,111 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ee-loc-confirmed .check{font-size:14px}
 .ee-loc-map-preview{margin-top:10px;border:1px solid var(--bdr);border-radius:var(--rm);overflow:hidden;background:var(--gp)}
 .ee-loc-map-preview iframe{width:100%;height:200px;border:0;display:block}
+
+/* === PROGRAM SECTION === */
+.ee-prog-block{margin-bottom:14px}
+.ee-prog-block-title{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.ee-prog-add{padding:6px 14px;border-radius:99px;background:transparent;border:1.5px dashed var(--gb);color:var(--g);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.ee-prog-add:hover{background:var(--gl);border-style:solid}
+.ee-prog-empty{padding:14px;text-align:center;font-size:12px;color:var(--gmt);background:var(--gp);border:1px dashed var(--bdr);border-radius:var(--rm)}
+
+/* Speakers */
+.ee-spk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:8px}
+.ee-spk-card{padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);display:flex;gap:8px;align-items:flex-start;position:relative}
+.ee-spk-photo{width:36px;height:36px;border-radius:8px;flex-shrink:0;background:var(--g);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;background-size:cover;background-position:center}
+.ee-spk-info{flex:1;min-width:0}
+.ee-spk-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ee-spk-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ee-spk-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.ee-spk-card:hover .ee-spk-actions{opacity:1}
+.ee-icon-btn{width:22px;height:22px;border-radius:6px;border:1px solid var(--bdr);background:var(--w);cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:all .15s;padding:0}
+.ee-icon-btn:hover{color:var(--g);border-color:var(--g)}
+.ee-icon-btn.danger:hover{color:var(--red);border-color:var(--red)}
+.ee-icon-btn svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Days */
+.ee-day{margin-bottom:10px;border:1px solid var(--bdr);border-radius:var(--rm);overflow:hidden;background:var(--w)}
+.ee-day-head{padding:10px 12px;background:var(--gp);display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bdr)}
+.ee-day-num{width:32px;height:32px;border-radius:8px;background:var(--g);color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;flex-shrink:0}
+.ee-day-info{flex:1;min-width:0}
+.ee-day-title{font-size:13px;font-weight:700;color:var(--t)}
+.ee-day-date{font-size:11px;color:var(--gmt);margin-top:1px}
+.ee-day-actions{display:flex;gap:4px;flex-shrink:0}
+.ee-day-body{padding:10px 12px}
+
+/* Sessions */
+.ee-session{padding:8px 10px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);margin-bottom:6px;display:flex;gap:10px;align-items:flex-start}
+.ee-session-time{font-size:11px;font-weight:700;color:var(--g);white-space:nowrap;font-family:monospace;padding-top:2px;flex-shrink:0;width:90px}
+.ee-session-body{flex:1;min-width:0}
+.ee-session-title{font-size:12px;font-weight:700;color:var(--t)}
+.ee-session-meta{font-size:10px;color:var(--gmt);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ee-session-type{padding:1px 6px;border-radius:99px;background:var(--gl);color:var(--g);font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.04em}
+.ee-session-type.t-panel{background:#FAEEDA;color:#633806}
+.ee-session-type.t-workshop{background:#E6F1FB;color:#185FA5}
+.ee-session-type.t-break{background:#F1EFE8;color:#5F5E5A}
+.ee-session-type.t-award{background:#FAEEDA;color:#A0530A}
+.ee-session-actions{display:flex;gap:4px;flex-shrink:0}
+
+/* Inline form */
+.ee-inline-form{padding:12px;background:var(--gp);border:1.5px solid var(--gb);border-radius:var(--rm);margin-bottom:10px}
+.ee-inline-form-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
+.ee-multiselect{width:100%;padding:8px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);min-height:60px;display:flex;flex-wrap:wrap;gap:5px;cursor:pointer;align-items:flex-start;align-content:flex-start}
+.ee-multiselect-chip{padding:3px 9px;border-radius:99px;background:var(--g);color:#fff;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.ee-multiselect-chip .x{cursor:pointer;font-size:13px;line-height:1;opacity:.85}
+.ee-multiselect-empty{font-size:11px;color:var(--gmt);padding:3px}
+.ee-spk-picker{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.ee-spk-pick{padding:3px 9px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);color:var(--tm);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
+.ee-spk-pick:hover{border-color:var(--gb);color:var(--g)}
+.ee-spk-pick.selected{background:var(--g);color:#fff;border-color:var(--g)}
+
+/* === TICKETS === */
+.ee-ticket{padding:10px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);margin-bottom:6px;display:flex;gap:10px;align-items:flex-start}
+.ee-ticket-role{padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;margin-top:1px}
+.ee-ticket-role.r-visitor{background:var(--gl);color:var(--g)}
+.ee-ticket-role.r-premium{background:#FAEEDA;color:#A0530A}
+.ee-ticket-role.r-exhibitor{background:#E6F1FB;color:#185FA5}
+.ee-ticket-body{flex:1;min-width:0}
+.ee-ticket-title{font-size:13px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:8px}
+.ee-ticket-price{font-size:11px;font-weight:700;color:var(--g);margin-left:auto}
+.ee-ticket-price.free{color:var(--gmt)}
+.ee-ticket-meta{font-size:10px;color:var(--gmt);margin-top:3px}
+.ee-ticket-perks{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px}
+.ee-ticket-perk{padding:1px 7px;border-radius:99px;background:var(--w);border:1px solid var(--bdr);font-size:10px;color:var(--tm)}
+.ee-ticket-actions{display:flex;gap:4px;flex-shrink:0;margin-top:1px}
+
+/* === ZONES === */
+.ee-zone{padding:10px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);margin-bottom:6px;display:flex;gap:10px;align-items:flex-start}
+.ee-zone-color{width:14px;height:14px;border-radius:4px;flex-shrink:0;margin-top:3px;border:1px solid rgba(0,0,0,.1)}
+.ee-zone-body{flex:1;min-width:0}
+.ee-zone-title{font-size:13px;font-weight:700;color:var(--t)}
+.ee-zone-desc{font-size:11px;color:var(--gmt);margin-top:2px;line-height:1.5}
+.ee-zone-actions{display:flex;gap:4px;flex-shrink:0}
+
+/* === EXHIBITORS / APPLICATIONS === */
+.ee-app{padding:12px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);margin-bottom:8px}
+.ee-app-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ee-app-logo{width:36px;height:36px;border-radius:8px;background:var(--g);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;background-size:cover;background-position:center}
+.ee-app-co{flex:1;min-width:0}
+.ee-app-name{font-size:13px;font-weight:700;color:var(--t)}
+.ee-app-applied{font-size:10px;color:var(--gmt);margin-top:1px}
+.ee-app-status{padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
+.ee-app-status.s-pending{background:#FAEEDA;color:#A0530A}
+.ee-app-status.s-approved{background:var(--gl);color:var(--g)}
+.ee-app-status.s-rejected{background:#FBE5E5;color:var(--red)}
+.ee-app-body{font-size:11px;color:var(--tm);line-height:1.6}
+.ee-app-row{margin-bottom:4px}
+.ee-app-row strong{color:var(--t);font-weight:700;margin-right:4px}
+.ee-app-actions{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)}
+.ee-app-actions .ee-btn{padding:6px 14px;font-size:11px}
+.ee-app-review{font-size:11px;color:var(--gmt);font-style:italic;margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)}
+
+/* exhibitors approved */
+.ee-exh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.ee-exh-card{padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);display:flex;gap:8px;align-items:center}
+.ee-exh-logo{width:32px;height:32px;border-radius:6px;background:var(--g);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;background-size:cover;background-position:center}
+.ee-exh-info{flex:1;min-width:0}
+.ee-exh-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ee-exh-booth{font-size:10px;color:var(--gmt);margin-top:1px}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -319,7 +424,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API='/api';
 const tk=()=>localStorage.getItem('token')||'';
 const ADMIN_OK={ok:false};
-const state={mode:'create',publicID:'',exhibition:null,pendingLat:0,pendingLng:0};
+const state={mode:'create',publicID:'',exhibition:null,pendingLat:0,pendingLng:0,applications:[]};
 const YANDEX_API_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -503,10 +608,45 @@ function renderForm(){
         </div>
       </div>
     </div>
-    <div class="ee-card"><div class="ee-section-title">Программа · Дни и сессии</div><div class="ee-stub">Раздел 3 — этап S12-8.3.</div></div>
-    <div class="ee-card"><div class="ee-section-title">Билеты</div><div class="ee-stub">Раздел 4 — этап S12-8.4.</div></div>
-    <div class="ee-card"><div class="ee-section-title">Тематические зоны</div><div class="ee-stub">Раздел 5 — этап S12-8.5.</div></div>
-    <div class="ee-card"><div class="ee-section-title">Экспоненты и заявки</div><div class="ee-stub">Раздел 6 — этап S12-8.6.</div></div>
+    <div class="ee-card" id="programCard">
+      <div class="ee-section-title">Программа · Дни и сессии</div>
+
+      <!-- Спикеры -->
+      <div class="ee-prog-block">
+        <div class="ee-prog-block-title">
+          <span>Спикеры</span>
+          <button class="ee-prog-add" type="button" onclick="openSpeakerForm()">+ Добавить спикера</button>
+        </div>
+        <div id="speakerFormSlot"></div>
+        <div id="speakersList"></div>
+      </div>
+
+      <!-- Дни и сессии -->
+      <div class="ee-prog-block">
+        <div class="ee-prog-block-title">
+          <span>Дни и сессии</span>
+          <button class="ee-prog-add" type="button" onclick="openDayForm()">+ Добавить день</button>
+        </div>
+        <div id="dayFormSlot"></div>
+        <div id="daysList"></div>
+      </div>
+    </div>
+    <div class="ee-card" id="ticketsCard">
+      <div class="ee-section-title" style="display:flex;align-items:center;justify-content:space-between;border-bottom:none;padding-bottom:0;margin-bottom:12px"><span>Билеты</span><button class="ee-prog-add" type="button" onclick="openTicketForm()">+ Добавить билет</button></div>
+      <div id="ticketFormSlot"></div>
+      <div id="ticketsList"></div>
+    </div>
+    <div class="ee-card" id="zonesCard">
+      <div class="ee-section-title" style="display:flex;align-items:center;justify-content:space-between;border-bottom:none;padding-bottom:0;margin-bottom:12px"><span>Тематические зоны</span><button class="ee-prog-add" type="button" onclick="openZoneForm()">+ Добавить зону</button></div>
+      <div id="zoneFormSlot"></div>
+      <div id="zonesList"></div>
+    </div>
+    <div class="ee-card" id="exhibitorsCard">
+      <div class="ee-section-title">Заявки на участие</div>
+      <div id="applicationsList"><div class="ee-prog-empty">Загрузка заявок…</div></div>
+      <div class="ee-section-title" style="margin-top:18px">Одобренные экспоненты</div>
+      <div id="exhibitorsList"></div>
+    </div>
     <div class="ee-card">
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="ee-btn ee-btn-danger" onclick="deleteExhibition()">Удалить выставку</button>
@@ -619,6 +759,660 @@ function clearCoords(){
   eeToast('Координаты сброшены','ok');
 }
 
+
+/* === PROGRAM (DAYS / SESSIONS / SPEAKERS) === */
+const SESSION_TYPES={talk:'Доклад',panel:'Панель',workshop:'Воркшоп',break:'Перерыв',award:'Награждение'};
+const SESSION_TYPE_CLASS={panel:'t-panel',workshop:'t-workshop',break:'t-break',award:'t-award'};
+
+function fmtTime(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
+function fmtDayDate(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const MM=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return d.getDate()+' '+MM[d.getMonth()];}
+
+function renderProgram(){
+  renderSpeakers();
+  renderDays();
+}
+
+function renderSpeakers(){
+  const sps=(state.exhibition?.speakers||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const el=document.getElementById('speakersList');if(!el)return;
+  if(!sps.length){el.innerHTML='<div class="ee-prog-empty">Спикеры пока не добавлены</div>';return;}
+  el.innerHTML='<div class="ee-spk-grid">'+sps.map(s=>{
+    const photo=s.photo_url?`background-image:url(${escHtml(s.photo_url)})`:'';
+    const initial=s.photo_url?'':((s.full_name||'?')[0]||'?').toUpperCase();
+    return `<div class="ee-spk-card">
+      <div class="ee-spk-photo" style="${photo}">${initial}</div>
+      <div class="ee-spk-info">
+        <div class="ee-spk-name">${escHtml(s.full_name||'')}</div>
+        <div class="ee-spk-role">${escHtml(s.role||'')}</div>
+      </div>
+      <div class="ee-spk-actions">
+        <button class="ee-icon-btn" type="button" title="Редактировать" onclick="openSpeakerForm(${s.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ee-icon-btn danger" type="button" title="Удалить" onclick="deleteSpeaker(${s.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function openSpeakerForm(speakerID){
+  const slot=document.getElementById('speakerFormSlot');
+  const isEdit=!!speakerID;
+  const sp=isEdit?(state.exhibition.speakers||[]).find(s=>s.id===speakerID)||{}:{};
+  slot.innerHTML=`
+    <div class="ee-inline-form">
+      <div class="ee-grid2">
+        <div class="ee-field">
+          <label class="ee-field-label">Имя и фамилия<span class="req">*</span></label>
+          <input class="ee-input" id="spkFullName" maxlength="200" value="${escHtml(sp.full_name||'')}" placeholder="Иван Петров">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Должность / роль</label>
+          <input class="ee-input" id="spkRole" maxlength="200" value="${escHtml(sp.role||'')}" placeholder="CEO, Логистика-Прайм">
+        </div>
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">URL фотографии</label>
+        <input class="ee-input" id="spkPhotoURL" value="${escHtml(sp.photo_url||'')}" placeholder="https://…/photo.jpg">
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Био / краткая информация</label>
+        <textarea class="ee-textarea" id="spkBio" rows="3" placeholder="Краткая биография, ключевые достижения…">${escHtml(sp.bio||'')}</textarea>
+      </div>
+      <div class="ee-inline-form-actions">
+        <button class="ee-btn ee-btn-sec" type="button" onclick="closeSpeakerForm()">Отмена</button>
+        <button class="ee-btn ee-btn-primary" type="button" onclick="saveSpeaker(${isEdit?speakerID:0})">${isEdit?'Сохранить':'Добавить'}</button>
+      </div>
+    </div>`;
+}
+function closeSpeakerForm(){document.getElementById('speakerFormSlot').innerHTML='';}
+
+async function saveSpeaker(speakerID){
+  const body={
+    full_name:document.getElementById('spkFullName').value.trim(),
+    role:document.getElementById('spkRole').value.trim(),
+    photo_url:document.getElementById('spkPhotoURL').value.trim(),
+    bio:document.getElementById('spkBio').value.trim(),
+    sort_order:0
+  };
+  if(!body.full_name){eeToast('Введите имя','err');return;}
+  const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers'+(speakerID?'/'+speakerID:'');
+  const method=speakerID?'PATCH':'POST';
+  try{
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const sp=data.speaker||data;
+    state.exhibition.speakers=state.exhibition.speakers||[];
+    if(speakerID){
+      const i=state.exhibition.speakers.findIndex(s=>s.id===speakerID);
+      if(i>=0)state.exhibition.speakers[i]=sp;
+    }else{
+      state.exhibition.speakers.push(sp);
+    }
+    closeSpeakerForm();renderSpeakers();
+    eeToast(speakerID?'Спикер обновлён ✓':'Спикер добавлен ✓','ok');
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+}
+
+async function deleteSpeaker(speakerID){
+  if(!confirm('Удалить спикера? Сессии с этим спикером сохранятся, но без привязки.'))return;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers/'+speakerID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){eeToast('Ошибка удаления','err');return;}
+    state.exhibition.speakers=(state.exhibition.speakers||[]).filter(s=>s.id!==speakerID);
+    // также убираем из speaker_ids в сессиях локально
+    (state.exhibition.sessions||[]).forEach(s=>{s.speaker_ids=(s.speaker_ids||[]).filter(id=>id!==speakerID);});
+    renderSpeakers();renderDays();
+    eeToast('Удалено','ok');
+  }catch{eeToast('Ошибка сети','err');}
+}
+
+/* DAYS */
+function renderDays(){
+  const days=(state.exhibition?.days||[]).slice().sort((a,b)=>new Date(a.day_date)-new Date(b.day_date));
+  const el=document.getElementById('daysList');if(!el)return;
+  if(!days.length){el.innerHTML='<div class="ee-prog-empty">Дней пока нет. Добавьте первый день программы.</div>';return;}
+  el.innerHTML=days.map((d,i)=>renderDay(d,i+1)).join('');
+}
+
+function renderDay(d,num){
+  const sessions=((state.exhibition?.sessions||[]).filter(s=>s.day_id===d.id)).slice().sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+  return `<div class="ee-day">
+    <div class="ee-day-head">
+      <div class="ee-day-num">${num}</div>
+      <div class="ee-day-info">
+        <div class="ee-day-title">${escHtml(d.title||'День '+num)}</div>
+        <div class="ee-day-date">${fmtDayDate(d.day_date)}</div>
+      </div>
+      <div class="ee-day-actions">
+        <button class="ee-icon-btn" type="button" title="Редактировать день" onclick="openDayForm(${d.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ee-icon-btn danger" type="button" title="Удалить день" onclick="deleteDay(${d.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div>
+    </div>
+    <div class="ee-day-body">
+      ${sessions.length?sessions.map(s=>renderSession(s)).join(''):'<div class="ee-prog-empty" style="padding:8px">Сессий пока нет</div>'}
+      <div id="sessionFormSlot-${d.id}"></div>
+      <button class="ee-prog-add" type="button" onclick="openSessionForm(${d.id})" style="margin-top:8px">+ Добавить сессию</button>
+    </div>
+  </div>`;
+}
+
+function renderSession(s){
+  const cls=SESSION_TYPE_CLASS[s.session_type]||'';
+  const typeLabel=SESSION_TYPES[s.session_type]||s.session_type||'Сессия';
+  const speakerNames=(s.speaker_ids||[]).map(id=>{
+    const sp=(state.exhibition.speakers||[]).find(x=>x.id===id);
+    return sp?escHtml(sp.full_name):'';
+  }).filter(Boolean).join(', ');
+  return `<div class="ee-session">
+    <div class="ee-session-time">${fmtTime(s.starts_at)}–${fmtTime(s.ends_at)}</div>
+    <div class="ee-session-body">
+      <div class="ee-session-title">${escHtml(s.title||'')}</div>
+      <div class="ee-session-meta">
+        <span class="ee-session-type ${cls}">${typeLabel}</span>
+        ${s.location?'<span>📍 '+escHtml(s.location)+'</span>':''}
+        ${speakerNames?'<span>👥 '+speakerNames+'</span>':''}
+      </div>
+    </div>
+    <div class="ee-session-actions">
+      <button class="ee-icon-btn" type="button" title="Редактировать" onclick="openSessionForm(${s.day_id},${s.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button class="ee-icon-btn danger" type="button" title="Удалить" onclick="deleteSession(${s.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+    </div>
+  </div>`;
+}
+
+function dateToInput(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const pad=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+
+function openDayForm(dayID){
+  const slot=document.getElementById('dayFormSlot');
+  const isEdit=!!dayID;
+  const d=isEdit?(state.exhibition.days||[]).find(x=>x.id===dayID)||{}:{};
+  // Подсказка: дата по умолчанию = starts_at выставки + (количество дней)
+  let defaultDate='';
+  if(!isEdit){
+    const exStart=state.exhibition?.starts_at;
+    if(exStart){
+      const cnt=(state.exhibition.days||[]).length;
+      const dt=new Date(exStart);dt.setDate(dt.getDate()+cnt);
+      defaultDate=dateToInput(dt.toISOString());
+    }
+  }
+  slot.innerHTML=`
+    <div class="ee-inline-form">
+      <div class="ee-grid2">
+        <div class="ee-field">
+          <label class="ee-field-label">Дата<span class="req">*</span></label>
+          <input class="ee-input" id="dayDate" type="date" value="${dateToInput(d.day_date)||defaultDate}">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Название (опционально)</label>
+          <input class="ee-input" id="dayTitle" maxlength="200" value="${escHtml(d.title||'')}" placeholder="День 1: Открытие">
+        </div>
+      </div>
+      <div class="ee-inline-form-actions">
+        <button class="ee-btn ee-btn-sec" type="button" onclick="closeDayForm()">Отмена</button>
+        <button class="ee-btn ee-btn-primary" type="button" onclick="saveDay(${isEdit?dayID:0})">${isEdit?'Сохранить':'Добавить день'}</button>
+      </div>
+    </div>`;
+}
+function closeDayForm(){document.getElementById('dayFormSlot').innerHTML='';}
+
+async function saveDay(dayID){
+  const dateStr=document.getElementById('dayDate').value;
+  if(!dateStr){eeToast('Укажите дату','err');return;}
+  const body={
+    day_date:dateStr,
+    title:document.getElementById('dayTitle').value.trim(),
+    sort_order:0
+  };
+  const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/days'+(dayID?'/'+dayID:'');
+  const method=dayID?'PATCH':'POST';
+  try{
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const d=data.day||data;
+    state.exhibition.days=state.exhibition.days||[];
+    if(dayID){const i=state.exhibition.days.findIndex(x=>x.id===dayID);if(i>=0)state.exhibition.days[i]=d;}
+    else state.exhibition.days.push(d);
+    closeDayForm();renderDays();
+    eeToast(dayID?'День обновлён ✓':'День добавлен ✓','ok');
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+}
+
+async function deleteDay(dayID){
+  if(!confirm('Удалить день? Все сессии этого дня будут удалены.'))return;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/days/'+dayID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){eeToast('Ошибка удаления','err');return;}
+    state.exhibition.days=(state.exhibition.days||[]).filter(d=>d.id!==dayID);
+    state.exhibition.sessions=(state.exhibition.sessions||[]).filter(s=>s.day_id!==dayID);
+    renderDays();eeToast('Удалено','ok');
+  }catch{eeToast('Ошибка сети','err');}
+}
+
+/* SESSIONS */
+function combineDateTime(dateStr,timeStr){
+  if(!dateStr||!timeStr)return'';
+  return new Date(dateStr+'T'+timeStr+':00').toISOString();
+}
+function isoToTime(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
+
+function openSessionForm(dayID,sessionID){
+  const slot=document.getElementById('sessionFormSlot-'+dayID);
+  if(!slot)return;
+  const isEdit=!!sessionID;
+  const s=isEdit?(state.exhibition.sessions||[]).find(x=>x.id===sessionID)||{}:{};
+  const day=(state.exhibition.days||[]).find(d=>d.id===dayID);
+  const dayDateStr=day?dateToInput(day.day_date):'';
+  const speakers=(state.exhibition.speakers||[]);
+  const selectedIDs=new Set(s.speaker_ids||[]);
+
+  slot.innerHTML=`
+    <div class="ee-inline-form">
+      <div class="ee-grid3">
+        <div class="ee-field">
+          <label class="ee-field-label">Начало<span class="req">*</span></label>
+          <input class="ee-input" id="sesStart-${dayID}" type="time" value="${isoToTime(s.starts_at)}">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Окончание<span class="req">*</span></label>
+          <input class="ee-input" id="sesEnd-${dayID}" type="time" value="${isoToTime(s.ends_at)}">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Тип</label>
+          <select class="ee-select" id="sesType-${dayID}">
+            ${Object.entries(SESSION_TYPES).map(([k,v])=>`<option value="${k}"${(s.session_type||'talk')===k?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Название<span class="req">*</span></label>
+        <input class="ee-input" id="sesTitle-${dayID}" maxlength="200" value="${escHtml(s.title||'')}" placeholder="Открытие выставки">
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Локация</label>
+        <input class="ee-input" id="sesLoc-${dayID}" maxlength="100" value="${escHtml(s.location||'')}" placeholder="Зал А, павильон 2">
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Описание</label>
+        <textarea class="ee-textarea" id="sesDesc-${dayID}" rows="2">${escHtml(s.description||'')}</textarea>
+      </div>
+      ${speakers.length?`
+      <div class="ee-field">
+        <label class="ee-field-label">Спикеры</label>
+        <div class="ee-spk-picker" id="sesSpkPicker-${dayID}" data-day="${dayID}">
+          ${speakers.map(sp=>`<button type="button" class="ee-spk-pick${selectedIDs.has(sp.id)?' selected':''}" data-id="${sp.id}" onclick="this.classList.toggle('selected')">${escHtml(sp.full_name)}</button>`).join('')}
+        </div>
+      </div>`:'<div class="ee-help" style="margin:6px 0 14px">Чтобы добавить спикеров — сначала добавьте их в блоке «Спикеры» выше.</div>'}
+      <input type="hidden" id="sesDayDate-${dayID}" value="${dayDateStr}">
+      <div class="ee-inline-form-actions">
+        <button class="ee-btn ee-btn-sec" type="button" onclick="closeSessionForm(${dayID})">Отмена</button>
+        <button class="ee-btn ee-btn-primary" type="button" onclick="saveSession(${dayID},${isEdit?sessionID:0})">${isEdit?'Сохранить':'Добавить сессию'}</button>
+      </div>
+    </div>`;
+}
+function closeSessionForm(dayID){const s=document.getElementById('sessionFormSlot-'+dayID);if(s)s.innerHTML='';}
+
+async function saveSession(dayID,sessionID){
+  const dateStr=document.getElementById('sesDayDate-'+dayID).value;
+  const startTime=document.getElementById('sesStart-'+dayID).value;
+  const endTime=document.getElementById('sesEnd-'+dayID).value;
+  const title=document.getElementById('sesTitle-'+dayID).value.trim();
+  if(!startTime||!endTime){eeToast('Укажите время','err');return;}
+  if(!title){eeToast('Укажите название','err');return;}
+
+  const speakerIDs=[];
+  const picker=document.getElementById('sesSpkPicker-'+dayID);
+  if(picker){
+    picker.querySelectorAll('.ee-spk-pick.selected').forEach(b=>{
+      const id=parseInt(b.dataset.id,10);if(id)speakerIDs.push(id);
+    });
+  }
+
+  const body={
+    day_id:dayID,
+    starts_at:combineDateTime(dateStr,startTime),
+    ends_at:combineDateTime(dateStr,endTime),
+    title,
+    description:document.getElementById('sesDesc-'+dayID).value.trim(),
+    session_type:document.getElementById('sesType-'+dayID).value,
+    location:document.getElementById('sesLoc-'+dayID).value.trim(),
+    speaker_ids:speakerIDs,
+    sort_order:0
+  };
+  const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/sessions'+(sessionID?'/'+sessionID:'');
+  const method=sessionID?'PATCH':'POST';
+  try{
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const ses=data.session||data;
+    state.exhibition.sessions=state.exhibition.sessions||[];
+    if(sessionID){const i=state.exhibition.sessions.findIndex(x=>x.id===sessionID);if(i>=0)state.exhibition.sessions[i]=ses;}
+    else state.exhibition.sessions.push(ses);
+    renderDays();
+    eeToast(sessionID?'Сессия обновлена ✓':'Сессия добавлена ✓','ok');
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+}
+
+async function deleteSession(sessionID){
+  if(!confirm('Удалить сессию?'))return;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/sessions/'+sessionID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){eeToast('Ошибка удаления','err');return;}
+    state.exhibition.sessions=(state.exhibition.sessions||[]).filter(s=>s.id!==sessionID);
+    renderDays();eeToast('Удалено','ok');
+  }catch{eeToast('Ошибка сети','err');}
+}
+
+
+/* === TICKETS === */
+const TICKET_ROLES={visitor:'Посетитель',premium:'Премиум',exhibitor:'Экспонент'};
+const TICKET_ROLE_CLASS={visitor:'r-visitor',premium:'r-premium',exhibitor:'r-exhibitor'};
+
+function fmtPrice(cents,currency){
+  const c=cents||0;
+  if(c===0)return 'Бесплатно';
+  const sym=currency==='USD'?'$':(currency==='EUR'?'€':'₽');
+  return new Intl.NumberFormat('ru-RU').format(c/100)+' '+sym;
+}
+
+function renderTickets(){
+  const tickets=(state.exhibition?.tickets||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const el=document.getElementById('ticketsList');if(!el)return;
+  if(!tickets.length){el.innerHTML='<div class="ee-prog-empty">Билетов пока нет. Добавьте первый билет.</div>';return;}
+  el.innerHTML=tickets.map(t=>{
+    const cls=TICKET_ROLE_CLASS[t.role]||'r-visitor';
+    const roleLabel=TICKET_ROLES[t.role]||t.role;
+    const price=fmtPrice(t.price_cents,t.currency);
+    const isFree=(t.price_cents||0)===0;
+    const seats=t.seats_limit?` · ${t.seats_taken||0}/${t.seats_limit} мест`:'';
+    const perks=(t.perks||[]).map(p=>`<span class="ee-ticket-perk">${escHtml(p)}</span>`).join('');
+    return `<div class="ee-ticket">
+      <span class="ee-ticket-role ${cls}">${roleLabel}</span>
+      <div class="ee-ticket-body">
+        <div class="ee-ticket-title">${escHtml(t.title||'')}<span class="ee-ticket-price${isFree?' free':''}">${price}</span></div>
+        ${t.description?`<div class="ee-ticket-meta">${escHtml(t.description)}${seats}</div>`:(seats?`<div class="ee-ticket-meta">${seats.replace(/^ \u00b7 /,'')}</div>`:'')}
+        ${perks?`<div class="ee-ticket-perks">${perks}</div>`:''}
+      </div>
+      <div class="ee-ticket-actions">
+        <button class="ee-icon-btn" type="button" title="Редактировать" onclick="openTicketForm(${t.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ee-icon-btn danger" type="button" title="Удалить" onclick="deleteTicket(${t.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openTicketForm(ticketID){
+  const slot=document.getElementById('ticketFormSlot');
+  const isEdit=!!ticketID;
+  const t=isEdit?(state.exhibition.tickets||[]).find(x=>x.id===ticketID)||{}:{};
+  slot.innerHTML=`
+    <div class="ee-inline-form">
+      <div class="ee-grid2">
+        <div class="ee-field">
+          <label class="ee-field-label">Название билета<span class="req">*</span></label>
+          <input class="ee-input" id="tckTitle" maxlength="200" value="${escHtml(t.title||'')}" placeholder="Стандартный посетитель">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Тип<span class="req">*</span></label>
+          <select class="ee-select" id="tckRole">
+            ${Object.entries(TICKET_ROLES).map(([k,v])=>`<option value="${k}"${(t.role||'visitor')===k?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="ee-grid3">
+        <div class="ee-field">
+          <label class="ee-field-label">Цена</label>
+          <input class="ee-input" id="tckPrice" type="number" min="0" step="100" value="${(t.price_cents||0)/100}" placeholder="0 = бесплатно">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Валюта</label>
+          <select class="ee-select" id="tckCurrency">
+            <option value="RUB"${(t.currency||'RUB')==='RUB'?' selected':''}>RUB ₽</option>
+            <option value="USD"${t.currency==='USD'?' selected':''}>USD $</option>
+            <option value="EUR"${t.currency==='EUR'?' selected':''}>EUR €</option>
+          </select>
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Лимит мест</label>
+          <input class="ee-input" id="tckSeats" type="number" min="0" value="${t.seats_limit||0}" placeholder="0 = без лимита">
+        </div>
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Описание</label>
+        <textarea class="ee-textarea" id="tckDesc" rows="2" placeholder="Что входит в билет">${escHtml(t.description||'')}</textarea>
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Преимущества (через запятую)</label>
+        <input class="ee-input" id="tckPerks" value="${escHtml((t.perks||[]).join(', '))}" placeholder="Доступ ко всем сессиям, кофе-брейк, networking">
+      </div>
+      <div class="ee-inline-form-actions">
+        <button class="ee-btn ee-btn-sec" type="button" onclick="closeTicketForm()">Отмена</button>
+        <button class="ee-btn ee-btn-primary" type="button" onclick="saveTicket(${isEdit?ticketID:0})">${isEdit?'Сохранить':'Добавить билет'}</button>
+      </div>
+    </div>`;
+}
+function closeTicketForm(){document.getElementById('ticketFormSlot').innerHTML='';}
+
+async function saveTicket(ticketID){
+  const perks=(document.getElementById('tckPerks').value||'').split(',').map(p=>p.trim()).filter(Boolean);
+  const body={
+    title:document.getElementById('tckTitle').value.trim(),
+    description:document.getElementById('tckDesc').value.trim(),
+    price_cents:Math.round((parseFloat(document.getElementById('tckPrice').value)||0)*100),
+    currency:document.getElementById('tckCurrency').value,
+    role:document.getElementById('tckRole').value,
+    seats_limit:parseInt(document.getElementById('tckSeats').value||'0',10)||0,
+    perks,
+    is_featured:false,
+    sort_order:0
+  };
+  if(!body.title){eeToast('Введите название','err');return;}
+  const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets'+(ticketID?'/'+ticketID:'');
+  const method=ticketID?'PATCH':'POST';
+  try{
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const tk2=data.ticket||data;
+    state.exhibition.tickets=state.exhibition.tickets||[];
+    if(ticketID){const i=state.exhibition.tickets.findIndex(x=>x.id===ticketID);if(i>=0)state.exhibition.tickets[i]=tk2;}
+    else state.exhibition.tickets.push(tk2);
+    closeTicketForm();renderTickets();
+    eeToast(ticketID?'Билет обновлён ✓':'Билет добавлен ✓','ok');
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+}
+
+async function deleteTicket(ticketID){
+  if(!confirm('Удалить билет?'))return;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets/'+ticketID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){eeToast('Ошибка удаления','err');return;}
+    state.exhibition.tickets=(state.exhibition.tickets||[]).filter(t=>t.id!==ticketID);
+    renderTickets();eeToast('Удалено','ok');
+  }catch{eeToast('Ошибка сети','err');}
+}
+
+/* === ZONES === */
+function renderZones(){
+  const zones=(state.exhibition?.zones||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const el=document.getElementById('zonesList');if(!el)return;
+  if(!zones.length){el.innerHTML='<div class="ee-prog-empty">Тематических зон пока нет.</div>';return;}
+  el.innerHTML=zones.map(z=>{
+    const color=z.color||'#1E8A4C';
+    return `<div class="ee-zone">
+      <div class="ee-zone-color" style="background:${escHtml(color)}"></div>
+      <div class="ee-zone-body">
+        <div class="ee-zone-title">${escHtml(z.title||'')}</div>
+        ${z.description?`<div class="ee-zone-desc">${escHtml(z.description)}</div>`:''}
+      </div>
+      <div class="ee-zone-actions">
+        <button class="ee-icon-btn" type="button" title="Редактировать" onclick="openZoneForm(${z.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ee-icon-btn danger" type="button" title="Удалить" onclick="deleteZone(${z.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openZoneForm(zoneID){
+  const slot=document.getElementById('zoneFormSlot');
+  const isEdit=!!zoneID;
+  const z=isEdit?(state.exhibition.zones||[]).find(x=>x.id===zoneID)||{}:{};
+  slot.innerHTML=`
+    <div class="ee-inline-form">
+      <div class="ee-grid2">
+        <div class="ee-field">
+          <label class="ee-field-label">Название зоны<span class="req">*</span></label>
+          <input class="ee-input" id="znTitle" maxlength="200" value="${escHtml(z.title||'')}" placeholder="Транспорт и перевозки">
+        </div>
+        <div class="ee-field">
+          <label class="ee-field-label">Цвет</label>
+          <input class="ee-input" id="znColor" type="color" value="${escHtml(z.color||'#1E8A4C')}" style="height:38px;padding:3px">
+        </div>
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Описание</label>
+        <textarea class="ee-textarea" id="znDesc" rows="2" placeholder="Краткое описание тематики зоны">${escHtml(z.description||'')}</textarea>
+      </div>
+      <div class="ee-inline-form-actions">
+        <button class="ee-btn ee-btn-sec" type="button" onclick="closeZoneForm()">Отмена</button>
+        <button class="ee-btn ee-btn-primary" type="button" onclick="saveZone(${isEdit?zoneID:0})">${isEdit?'Сохранить':'Добавить зону'}</button>
+      </div>
+    </div>`;
+}
+function closeZoneForm(){document.getElementById('zoneFormSlot').innerHTML='';}
+
+async function saveZone(zoneID){
+  const body={
+    title:document.getElementById('znTitle').value.trim(),
+    description:document.getElementById('znDesc').value.trim(),
+    color:document.getElementById('znColor').value,
+    sort_order:0
+  };
+  if(!body.title){eeToast('Введите название','err');return;}
+  const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/zones'+(zoneID?'/'+zoneID:'');
+  const method=zoneID?'PATCH':'POST';
+  try{
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const z=data.zone||data;
+    state.exhibition.zones=state.exhibition.zones||[];
+    if(zoneID){const i=state.exhibition.zones.findIndex(x=>x.id===zoneID);if(i>=0)state.exhibition.zones[i]=z;}
+    else state.exhibition.zones.push(z);
+    closeZoneForm();renderZones();
+    eeToast(zoneID?'Зона обновлена ✓':'Зона добавлена ✓','ok');
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+}
+
+async function deleteZone(zoneID){
+  if(!confirm('Удалить зону?'))return;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/zones/'+zoneID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){eeToast('Ошибка удаления','err');return;}
+    state.exhibition.zones=(state.exhibition.zones||[]).filter(z=>z.id!==zoneID);
+    renderZones();eeToast('Удалено','ok');
+  }catch{eeToast('Ошибка сети','err');}
+}
+
+/* === EXHIBITOR APPLICATIONS === */
+const APP_STATUS={pending:'Ожидает',approved:'Одобрена',rejected:'Отклонена'};
+
+async function loadApplications(){
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-applications',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const data=await r.json();
+    state.applications=data.applications||[];
+    renderApplications();
+  }catch{state.applications=[];renderApplications();}
+}
+
+function renderApplications(){
+  const list=(state.applications||[]).slice().sort((a,b)=>{
+    if(a.status==='pending'&&b.status!=='pending')return -1;
+    if(b.status==='pending'&&a.status!=='pending')return 1;
+    return new Date(b.applied_at)-new Date(a.applied_at);
+  });
+  const el=document.getElementById('applicationsList');if(!el)return;
+  if(!list.length){el.innerHTML='<div class="ee-prog-empty">Заявок ещё нет. Они появятся, когда компании отправят заявку через деталку выставки.</div>';renderExhibitorsApproved();return;}
+  el.innerHTML=list.map(a=>{
+    const logo=a.company_logo?`background-image:url(${escHtml(a.company_logo)})`:'';
+    const initial=a.company_logo?'':((a.company_name||'?')[0]||'?').toUpperCase();
+    const cls='s-'+(a.status||'pending');
+    const lbl=APP_STATUS[a.status]||a.status;
+    const isPending=a.status==='pending';
+    return `<div class="ee-app">
+      <div class="ee-app-head">
+        <div class="ee-app-logo" style="${logo}">${initial}</div>
+        <div class="ee-app-co">
+          <div class="ee-app-name">${escHtml(a.company_name||'Компания #'+a.company_id)}</div>
+          <div class="ee-app-applied">Заявка от ${escHtml(a.applied_by_user_name||'')} · ${new Date(a.applied_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'})}</div>
+        </div>
+        <span class="ee-app-status ${cls}">${lbl}</span>
+      </div>
+      <div class="ee-app-body">
+        ${a.contact_full_name?`<div class="ee-app-row"><strong>Контакт:</strong>${escHtml(a.contact_full_name)} · ${escHtml(a.contact_email||'')} ${a.contact_phone?'· '+escHtml(a.contact_phone):''}</div>`:''}
+        ${a.stand_topic?`<div class="ee-app-row"><strong>Тема стенда:</strong>${escHtml(a.stand_topic)}</div>`:''}
+        ${a.desired_zone_title?`<div class="ee-app-row"><strong>Желаемая зона:</strong>${escHtml(a.desired_zone_title)}</div>`:''}
+        ${a.desired_area_sqm?`<div class="ee-app-row"><strong>Площадь:</strong>${a.desired_area_sqm} м²</div>`:''}
+        ${a.application_message?`<div class="ee-app-row"><strong>Сообщение:</strong>${escHtml(a.application_message)}</div>`:''}
+      </div>
+      ${a.review_message?`<div class="ee-app-review">Комментарий админа: ${escHtml(a.review_message)}</div>`:''}
+      ${isPending?`<div class="ee-app-actions">
+        <button class="ee-btn ee-btn-primary" type="button" onclick="reviewApp(${a.id},'approve')">Одобрить</button>
+        <button class="ee-btn ee-btn-danger" type="button" onclick="reviewApp(${a.id},'reject')">Отклонить</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+  renderExhibitorsApproved();
+}
+
+function renderExhibitorsApproved(){
+  const exhibitors=(state.exhibition?.exhibitors||[]);
+  const el=document.getElementById('exhibitorsList');if(!el)return;
+  if(!exhibitors.length){el.innerHTML='<div class="ee-prog-empty">Одобренных экспонентов пока нет.</div>';return;}
+  el.innerHTML='<div class="ee-exh-grid">'+exhibitors.map(e=>{
+    const logo=e.company_logo?`background-image:url(${escHtml(e.company_logo)})`:'';
+    const initial=e.company_logo?'':((e.company_name||'?')[0]||'?').toUpperCase();
+    return `<div class="ee-exh-card">
+      <div class="ee-exh-logo" style="${logo}">${initial}</div>
+      <div class="ee-exh-info">
+        <div class="ee-exh-name">${escHtml(e.company_name||'Компания #'+e.company_id)}</div>
+        <div class="ee-exh-booth">${e.booth_number?'Стенд '+escHtml(e.booth_number):''}${e.pavilion?(e.booth_number?' · ':'')+'Пав. '+escHtml(e.pavilion):''}</div>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function reviewApp(appID,action){
+  let reviewMessage='';
+  let boothNumber='';
+  let pavilion='';
+  if(action==='approve'){
+    boothNumber=prompt('Номер стенда (опционально):','')||'';
+    pavilion=prompt('Павильон (опционально):','')||'';
+  }else{
+    reviewMessage=prompt('Причина отклонения (опционально):','')||'';
+  }
+  const body={action,review_message:reviewMessage,booth_number:boothNumber,pavilion};
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-applications/'+appID+'/review',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const upd=data.application||data;
+    state.applications=(state.applications||[]).map(a=>a.id===appID?upd:a);
+    // если одобрили — перезагружаем выставку, чтобы получить нового экспонента
+    if(action==='approve'){
+      const fresh=await loadExhibition();
+      if(fresh)state.exhibition=fresh;
+    }
+    renderApplications();
+    eeToast(action==='approve'?'Заявка одобрена ✓':'Заявка отклонена','ok');
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+}
+
 async function deleteExhibition(){
   if(!state.publicID)return;
   if(!confirm('Удалить выставку «'+(state.exhibition?.title||'')+'»? Это действие необратимо.'))return;
@@ -639,6 +1433,12 @@ async function deleteExhibition(){
     if(!state.exhibition){document.getElementById('contentRoot').innerHTML='<div class="ee-card ee-access-denied"><h2>Выставка не найдена</h2></div>';return;}
   }
   renderForm();
+  if(state.mode==='edit'){
+    renderProgram();
+    renderTickets();
+    renderZones();
+    loadApplications();
+  }
 })();
 </script>
 <script src="/assets/guest-nav.js" defer></script>
