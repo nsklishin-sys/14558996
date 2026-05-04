@@ -6,7 +6,6 @@
  *  Инжектируется через middleware на каждую страницу.
  *  Загружает настройки текущего юзера через GET /api/settings и
  *  применяет их к DOM:
- *  - data-compact-feed на html (для компактных карточек ленты).
  *  - data-layout-mode на html (для широкой раскладки).
  *  - data-msg-perm на html (можно ли пользователю писать).
  *  - Тёмная тема уже применяется через dark-theme-init.js.
@@ -30,13 +29,6 @@
   function applySettings(s) {
     if (!s) return;
     var html = document.documentElement;
-
-    // Компактная лента
-    if (s.compact_feed) {
-      html.setAttribute('data-compact-feed', '1');
-    } else {
-      html.removeAttribute('data-compact-feed');
-    }
 
     // Кому можно писать (для скрытия кнопок «Написать» на чужих профилях)
     if (s.privacy_who_can_message) {

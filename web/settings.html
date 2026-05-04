@@ -803,10 +803,6 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
         <div class="panel-section">
           <div class="ps-label">Макет</div>
-          <div class="toggle-row" data-setting="compact_feed" onclick="toggleCheck(this)">
-            <div class="tr-left"><div class="tr-title">Компактный вид ленты</div><div class="tr-sub">Уменьшает размер карточек публикаций</div></div>
-            <label class="toggle"><input type="checkbox"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-          </div>
         </div>
 
         <div class="panel-section">
@@ -1154,7 +1150,6 @@ async function saveSettings(section){
   }
   if(section==='appearance'){
     body.theme=document.querySelector('.theme-card.selected')?.dataset.themeCard||'light';
-    body.compact_feed=!!document.querySelector('[data-setting="compact_feed"] input')?.checked;
     body.locale=document.getElementById('localeSelect').value;
     body.timezone=document.getElementById('timezoneSelect').value;
     body.date_format=document.getElementById('dateFormatSelect').value;
