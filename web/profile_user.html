@@ -1049,7 +1049,7 @@ async function loadViewedUser(){
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/';}
 function switchTab(tab, btn){if(!btn){btn=document.querySelector(`.ptab[onclick*="'${tab}'"]`);}document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));const content=document.getElementById('tab-'+tab);if(content)content.classList.add('active');if(btn)btn.classList.add('active');if(tab==='publications'){void loadViewedPublications();}document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});}
 function goToChat(){const uid=getViewedUid();location.href='/chat.html'+(uid?`?uid=${encodeURIComponent(uid)}`:'');}
 async function loadViewedPublications(){
