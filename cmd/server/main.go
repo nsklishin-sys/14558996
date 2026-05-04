@@ -8659,6 +8659,11 @@ func computeFriendStatus(db *sql.DB, viewerID, ownerID int64) string {
 		FROM friend_requests
 		WHERE (requester_id = $1 AND addressee_id = $2)
 		   OR (requester_id = $2 AND addressee_id = $1)
+		ORDER BY CASE status
+			WHEN 'accepted' THEN 1
+			WHEN 'pending' THEN 2
+			ELSE 3
+		END, updated_at DESC
 		LIMIT 1
 	`, viewerID, ownerID).Scan(&requesterID, &addresseeID, &status)
 	if err != nil {
