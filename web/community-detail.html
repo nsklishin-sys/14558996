@@ -550,7 +550,12 @@ function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile'
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
 
-function openCommunityChat(){const id=queryCommunityID();if(!id)return;location.href="/chat.html?community="+encodeURIComponent(id);}
+function openCommunityChat(){
+  const c=currentCommunity;
+  if(c&&c.contact_user_public_id){location.href="/chat.html?to="+encodeURIComponent(c.contact_user_public_id);return;}
+  const id=queryCommunityID();if(!id)return;
+  location.href="/chat.html?community="+encodeURIComponent(id);
+}
 function openManageCommunity(){if(!currentCommunityID)return;location.href="/my-community-edit.html?id="+encodeURIComponent(currentCommunityID);}
 function switchTab(id, btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
