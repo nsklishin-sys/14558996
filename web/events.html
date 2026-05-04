@@ -379,7 +379,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="mode-switch">
       <button class="mode-btn active" id="modeAll" onclick="setMode('all',this)">Все</button>
       <button class="mode-btn" id="modeMy" onclick="setMode('my',this)">Мои</button>
-      <button class="mode-btn" id="modeOrganized" onclick="setMode('organized',this)">Организую</button>
       <button class="mode-btn" id="modeSaved" onclick="setMode('saved',this)">Сохранённые</button>
     </div>
     <div class="ev-tabs" id="evTabs">
@@ -559,6 +558,7 @@ function mapApiEvent(e){
     tags: e.tags || [],
     isRegistered: !!e.is_registered,
     isSaved: !!e.is_saved,
+    is_mine: !!e.is_mine,
     cover_url: e.cover_url || '',
     latitude: e.latitude||0,
     longitude: e.longitude||0,
@@ -644,7 +644,7 @@ function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}closePopup(f
 function calGoToday(){calYear=NOW.getFullYear();calMonth=NOW.getMonth();selectedDay=NOW.getDate();renderSidebarCalendar();openDayPopup(calYear,calMonth,selectedDay);}
 function setMode(mode,btn){currentMode=mode;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyFilters()}
 function setType(type,btn){currentType=type;document.querySelectorAll('.etab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');applyFilters()}
-function applyFilters(){const q=(document.getElementById('searchInput').value||'').toLowerCase();let items=[...EVENTS];if(currentMode==='my')items=items.filter(e=>registeredSet.has(e.public_id));if(currentType)items=items.filter(e=>e.type===currentType);if(q)items=items.filter(e=>e.title.toLowerCase().includes(q));renderList(items);renderSidebar()}
+function applyFilters(){const q=(document.getElementById('searchInput').value||'').toLowerCase();let items=[...EVENTS];if(currentMode==='my')items=items.filter(e=>registeredSet.has(e.public_id)||e.is_mine);else if(currentMode==='saved')items=items.filter(e=>savedSet.has(e.public_id));if(currentType)items=items.filter(e=>e.type===currentType);if(q)items=items.filter(e=>e.title.toLowerCase().includes(q));renderList(items);renderSidebar()}
 async function toggleReg(publicID,btn){
   if(!publicID){return}
   const wasRegistered=registeredSet.has(publicID);
