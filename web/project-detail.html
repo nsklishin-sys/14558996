@@ -1897,7 +1897,7 @@ async function loadNeeds(){
             ? ''
             : (responded
                 ? '<button class="need-respond" disabled style="background:var(--gp);color:var(--gmt);cursor:default;border:1.5px solid var(--bdr)"><svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>Отклик отправлен</button>'
-                : '<button class="need-respond" onclick="openRespondModal(' + n.id + ', &quot;' + escAttr(n.title) + '&quot;)">Откликнуться</button>'));
+                : '<button class="need-respond" data-guest-block onclick="openRespondModal(' + n.id + ', &quot;' + escAttr(n.title) + '&quot;)">Откликнуться</button>'));
 
       const responsesInfo = n.responses_count > 0
         ? (viewerCanManage
