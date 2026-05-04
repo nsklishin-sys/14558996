@@ -1229,19 +1229,50 @@ function applySettingsToUI(s){
     window.LastopSettings.apply(s);
   }
 }
-async function changePassword(){
-  const current_password=prompt('Текущий пароль');
-  if(!current_password)return;
-  const new_password=prompt('Новый пароль (минимум 8 символов)');
-  if(!new_password)return;
-  const repeat=prompt('Повторите новый пароль');
-  if(new_password!==repeat){showToast('Пароли не совпадают');return;}
-  const r=await fetch(API+'/account/password',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({current_password,new_password})});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok){showToast(d.error||'Не удалось сменить пароль');return;}
-  showToast('Вы вышли из всех устройств кроме этого. Войдите повторно если нужно.');
+function changePassword(){
+  ['pwdCurrent','pwdNew','pwdRepeat'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pwdError').style.display='none';
+  document.getElementById('pwdModalBg').classList.add('open');
+  setTimeout(()=>document.getElementById('pwdCurrent').focus(),100);
+}
+function closePwdModal(){document.getElementById('pwdModalBg').classList.remove('open');}
+async function executePwdChange(){
+  const cur=document.getElementById('pwdCurrent').value;
+  const nw=document.getElementById('pwdNew').value;
+  const rep=document.getElementById('pwdRepeat').value;
+  const err=document.getElementById('pwdError');
+  err.style.display='none';
+  if(!cur){err.textContent='Введите текущий пароль';err.style.display='block';return;}
+  if(nw.length<8){err.textContent='Новый пароль минимум 8 символов';err.style.display='block';return;}
+  if(nw!==rep){err.textContent='Пароли не совпадают';err.style.display='block';return;}
+  const btn=document.getElementById('pwdSubmitBtn');
+  btn.disabled=true;btn.textContent='…';
+  try{
+    const r=await fetch(API+'/account/password',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({current_password:cur,new_password:nw})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){err.textContent=d.error||'Не удалось сменить пароль';err.style.display='block';btn.disabled=false;btn.textContent='Сменить';return;}
+    closePwdModal();
+    showToast('Пароль изменён. Вы вышли из других устройств');
+  }catch{
+    err.textContent='Ошибка сети';err.style.display='block';btn.disabled=false;btn.textContent='Сменить';
+  }
 }
 </script>
+<div class="modal-bg" id="pwdModalBg" onclick="if(event.target===this)closePwdModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px">
+  <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.18)">
+    <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px">Смена пароля</div>
+    <div style="font-size:12px;color:var(--gmt);margin-bottom:14px">После смены вы будете разлогинены на других устройствах</div>
+    <input type="password" id="pwdCurrent" placeholder="Текущий пароль" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:8px">
+    <input type="password" id="pwdNew" placeholder="Новый пароль (минимум 8 символов)" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:8px">
+    <input type="password" id="pwdRepeat" placeholder="Повторите новый пароль" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:14px">
+    <div id="pwdError" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closePwdModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
+      <button id="pwdSubmitBtn" onclick="executePwdChange()" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Сменить</button>
+    </div>
+  </div>
+</div>
+<style>.modal-bg.open{display:flex!important}</style>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
 </body>
