@@ -188,6 +188,13 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 .tr-left{flex:1}
 .tr-title{font-size:12px;font-weight:600;color:var(--t)}
 .tr-sub{font-size:10px;color:var(--gmt);margin-top:2px}
+.radio-row{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-radius:8px;transition:background .12s}
+.radio-row:hover{background:var(--gp)}
+.radio-row .rr-circle{width:16px;height:16px;border-radius:50%;border:2px solid var(--bdr);flex-shrink:0;display:grid;place-items:center;transition:border-color .15s}
+.radio-row.active .rr-circle{border-color:var(--g)}
+.radio-row.active .rr-circle::after{content:'';width:7px;height:7px;border-radius:50%;background:var(--g)}
+.radio-row .rr-label{font-size:13px;font-weight:500;color:var(--t)}
+.radio-row.active .rr-label{font-weight:600}
 .toggle{
   position:relative;width:36px;height:20px;flex-shrink:0
 }
@@ -740,17 +747,17 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
         <div class="panel-section">
           <div class="ps-label">Сообщения</div>
           <div class="ps-label" style="font-size:11px;color:var(--tm);text-transform:none;letter-spacing:0;margin-bottom:8px;font-weight:500">Кто может писать вам в чат</div>
-          <div class="toggle-row" onclick="setMsgPerm(this, 'all')" id="msg-all" style="margin-bottom:4px">
-            <div class="tr-left"><div class="tr-title">Все участники платформы</div></div>
-            <div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--g);background:var(--g);flex-shrink:0"></div>
+          <div class="radio-row active" onclick="setMsgPerm(this, 'all')" id="msg-all">
+            <div class="rr-circle"></div>
+            <div class="rr-label">Все участники платформы</div>
           </div>
-          <div class="toggle-row" onclick="setMsgPerm(this, 'contacts')" id="msg-contacts" style="margin-bottom:4px">
-            <div class="tr-left"><div class="tr-title">Только мои контакты</div></div>
-            <div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--bdr);flex-shrink:0"></div>
+          <div class="radio-row" onclick="setMsgPerm(this, 'contacts')" id="msg-contacts">
+            <div class="rr-circle"></div>
+            <div class="rr-label">Только мои контакты</div>
           </div>
-          <div class="toggle-row" onclick="setMsgPerm(this, 'nobody')" id="msg-nobody">
-            <div class="tr-left"><div class="tr-title">Никто (только я инициирую)</div></div>
-            <div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--bdr);flex-shrink:0"></div>
+          <div class="radio-row" onclick="setMsgPerm(this, 'nobody')" id="msg-nobody">
+            <div class="rr-circle"></div>
+            <div class="rr-label">Никто (только я инициирую)</div>
           </div>
         </div>
 
@@ -998,10 +1005,7 @@ function setMsgPerm(row, val){
   state.privacy_who_can_message=val;
   ['all','contacts','nobody'].forEach(k=>{
     const r=document.getElementById('msg-'+k);
-    if(!r)return;
-    const dot=r.querySelector('div:last-child');
-    if(k===val){dot.style.background='var(--g)';dot.style.borderColor='var(--g)';}
-    else{dot.style.background='transparent';dot.style.borderColor='var(--bdr)';}
+    if(r)r.classList.toggle('active',k===val);
   });
 }
 
