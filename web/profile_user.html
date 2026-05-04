@@ -956,7 +956,7 @@ function applyViewedUserProfile(u){
   document.getElementById('profileAvatarText').textContent=initials;
   document.getElementById('profileFullName').textContent=fullName;
   const h=(u.handle||'').trim(),hh=document.getElementById('profileHandle');
-  if(h){hh.textContent='@'+h;hh.onclick=()=>navigator.clipboard?.writeText('@'+h).then(()=>showToast('Скопировано'));}else{hh.textContent='';hh.onclick=null;}
+  if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
   document.getElementById('profileRole').textContent=company?`${role} · ${company}`:role;
   document.getElementById('profileBio').textContent=bio;
@@ -1072,6 +1072,7 @@ applyTopbarUser();
 loadViewedUser();
 </script>
 <script src="/site-search.js" defer></script>
+<script src="/assets/copy-helper.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
 </body>
 </html>

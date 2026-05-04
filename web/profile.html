@@ -781,7 +781,7 @@ async function applyCurrentUserProfile(){
   document.getElementById('profileFullName').textContent=fullName;
   const h=(mergedUser.handle||'').trim();
   const hh=document.getElementById('profileHandle');
-  if(h){hh.textContent='@'+h;hh.onclick=()=>navigator.clipboard?.writeText('@'+h).then(()=>showToast('Скопировано'));}else{hh.textContent='';hh.onclick=null;}
+  if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((node)=>{node.textContent=fullName;});
 
   document.getElementById('topbarRole').textContent=role;
@@ -864,6 +864,7 @@ function switchTab(tab, btn){
 }
 </script>
 <script src="/site-search.js" defer></script>
+<script src="/assets/copy-helper.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
 </body>
 </html>
