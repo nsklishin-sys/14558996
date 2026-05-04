@@ -908,11 +908,7 @@ async function toggleLike(postKey,btn){
 function sharePost(postKey){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
   const link=n?.public_id?`${location.origin}/news-detail.html?id=${encodeURIComponent(n.public_id)}`:location.href;
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(()=>showToast('Ссылка скопирована')).catch(()=>showToast('Не удалось скопировать ссылку'));
-    return;
-  }
-  showToast('Скопируйте ссылку вручную');
+  lastopCopy(link,'Ссылка скопирована','Не удалось скопировать ссылку');
 }
 
 /* ── COMPOSE ── */
@@ -1254,6 +1250,7 @@ function toggleFollow(btn){
 })();
 
 </script>
+<script src="/assets/copy-helper.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
 </body>
 </html>
