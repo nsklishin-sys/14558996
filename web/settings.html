@@ -803,10 +803,6 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
         <div class="panel-section">
           <div class="ps-label">Макет</div>
-          <div class="toggle-row" data-setting="layout_mode_wide" onclick="toggleCheck(this)">
-            <div class="tr-left"><div class="tr-title">Широкоформатный режим</div><div class="tr-sub">Увеличивает ширину контента на больших экранах</div></div>
-            <label class="toggle"><input type="checkbox" id="wideMode"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-          </div>
           <div class="toggle-row" data-setting="compact_feed" onclick="toggleCheck(this)">
             <div class="tr-left"><div class="tr-title">Компактный вид ленты</div><div class="tr-sub">Уменьшает размер карточек публикаций</div></div>
             <label class="toggle"><input type="checkbox"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
@@ -972,7 +968,6 @@ function populateUI(){
   updateWebsiteField();
   pendingAvatarURL=currentUser.avatar_url||'';
   /* Настройки внешнего вида */
-  document.getElementById('wideMode').checked=(localStorage.getItem('lastop-layout-mode')==='wide');
   const initialTheme=(window.LastopTheme && typeof window.LastopTheme.current==='function')?window.LastopTheme.current():(localStorage.getItem('lastop-theme')||'light');
   markThemeCard(initialTheme);
 }
@@ -1159,7 +1154,6 @@ async function saveSettings(section){
   }
   if(section==='appearance'){
     body.theme=document.querySelector('.theme-card.selected')?.dataset.themeCard||'light';
-    body.layout_mode=document.querySelector('[data-setting="layout_mode_wide"] input')?.checked?'wide':'normal';
     body.compact_feed=!!document.querySelector('[data-setting="compact_feed"] input')?.checked;
     body.locale=document.getElementById('localeSelect').value;
     body.timezone=document.getElementById('timezoneSelect').value;
@@ -1264,7 +1258,7 @@ async function loadSettings(){
 function applySettingsToUI(s){
   document.querySelectorAll('[data-setting]').forEach((row)=>{
     const k=row.dataset.setting,inp=row.querySelector('input[type=checkbox]');if(!inp)return;
-    if(k==='layout_mode_wide')inp.checked=s.layout_mode==='wide'; else if(k in s)inp.checked=!!s[k];
+    if(k in s)inp.checked=!!s[k];
   });
   state.privacy_who_can_message=s.privacy_who_can_message||'all';setMsgPerm(null,state.privacy_who_can_message);
   setSelectValue('localeSelect',s.locale||detectDefaultLocale(),'ru');

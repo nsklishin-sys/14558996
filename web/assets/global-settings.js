@@ -38,13 +38,6 @@
       html.removeAttribute('data-compact-feed');
     }
 
-    // Широкая раскладка
-    if (s.layout_mode === 'wide') {
-      html.setAttribute('data-layout-mode', 'wide');
-    } else {
-      html.removeAttribute('data-layout-mode');
-    }
-
     // Кому можно писать (для скрытия кнопок «Написать» на чужих профилях)
     if (s.privacy_who_can_message) {
       html.setAttribute('data-msg-perm', s.privacy_who_can_message);
