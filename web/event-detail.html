@@ -696,7 +696,7 @@ async function loadRepostFriends(){
       const name=f.full_name||f.friend_name||f.name||'Без имени';
       const sub=f.position||f.company_name||f.email||'';
       const initials=(name.split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase())||'?';
-      const safeName=name.replace(/'/g,'\\'');
+      const safeName=name.split("'").join("\\'");
       return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(safeName)}')">
         <div class="repost-item-av" style="background:#3A90C0">${esc(initials)}</div>
         <div class="repost-item-body">
