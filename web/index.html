@@ -7,19 +7,8 @@
     <title>LASTOP GROUP</title>
     <script>
       (function redirectHomeByAuth() {
-        function hasAccount() {
-          const token = localStorage.getItem("token");
-          if (token && token.trim()) return true;
-
-          try {
-            const user = JSON.parse(localStorage.getItem("user") || "null");
-            return Boolean(user && (user.id || user.email || user.name));
-          } catch {
-            return false;
-          }
-        }
-
-        const target = hasAccount() ? "/home-auth.html" : "/home-guest.html";
+        const token = localStorage.getItem("token");
+        const target = (token && token.trim()) ? "/home-auth.html" : "/home-guest.html";
         location.replace(target);
       })();
     </script>
