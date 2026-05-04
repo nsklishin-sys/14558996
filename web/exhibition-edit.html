@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Редактирование выставки — LASTOP GROUP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;--w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;--red:#E04040;--rm:12px;--rl:18px;--rxl:24px;--sh:0 2px 12px rgba(30,138,76,.07)}
+html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.main{grid-area:main;overflow-y:auto;padding-bottom:24px;display:flex;flex-direction:column;gap:12px}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh)}
+.page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-title{font-size:20px;font-weight:800;color:var(--t)}
+.page-sub{font-size:12px;color:var(--gmt);margin-top:3px}
+.btn{padding:9px 20px;border-radius:99px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn-primary{background:var(--g);color:#fff}
+.btn-primary:hover{background:var(--gm)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.btn-sec{background:var(--gp);border:1.5px solid var(--bdr);color:var(--tm)}
+.btn-sec:hover{border-color:var(--gb);color:var(--g)}
+.btn-danger{background:transparent;border:1.5px solid #FABCBC;color:var(--red)}
+.btn-danger:hover{background:#FFF4F4}
+.section-title{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--bdr)}
+.field{margin-bottom:14px}
+.field-label{font-size:11px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
+.field-label .req{color:var(--red);margin-left:2px}
+.field-input,.field-select,.field-textarea{width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;color:var(--t);background:var(--gp);outline:none;transition:border-color .2s}
+.field-input:focus,.field-select:focus,.field-textarea:focus{border-color:var(--gm)}
+.field-textarea{resize:vertical;min-height:84px;line-height:1.55}
+.field-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.field-help{font-size:11px;color:var(--gmt);margin-top:4px}
+.section-stub{padding:18px;text-align:center;color:var(--gmt);background:var(--gp);border:1px dashed var(--bdr);border-radius:var(--rm);font-size:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--g)}
+.toast.err{background:var(--red)}
+.access-denied{padding:60px 20px;text-align:center}
+.access-denied h2{font-size:18px;font-weight:800;color:var(--t);margin-bottom:8px}
+.access-denied p{font-size:13px;color:var(--gmt)}
+@media(max-width:760px){.field-grid2,.field-grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP" onerror="this.style.display='none'"></a>
+  <header class="topbar">
+    <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input type="search" id="searchInput" placeholder="Поиск…" autocomplete="off"></div>
+    <div class="profile-dd-wrap">
+      <div class="topbar-profile" id="topbarProfile" onclick="document.getElementById('profileDD').classList.toggle('open')">
+        <div class="tp-av" id="topbarAv">?</div>
+        <div class="tp-info"><span class="tp-name" id="topbarName">…</span><span class="tp-role" id="topbarRole">Админ</span></div>
+        <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="profile-dd" id="profileDD">
+        <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      </div>
+    </div>
+  </header>
+  <nav class="nav">
+    <a class="nav-item" href="/"><span>Главная</span></a>
+    <a class="nav-item" href="/exhibitions.html" style="background:var(--gl);color:var(--g);font-weight:700"><span>Выставки</span></a>
+    <a class="nav-item" href="/profile.html"><span>Профиль</span></a>
+  </nav>
+
+  <div class="main">
+    <div id="contentRoot">
+      <div class="card" style="padding:40px;text-align:center;color:var(--gmt)">Загрузка…</div>
+    </div>
+  </div>
+
+  <aside class="right">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px;border:none;padding:0">Подсказка</div>
+      <p style="font-size:12px;color:var(--tm);line-height:1.6">После сохранения базовых данных откроются разделы: Локация, Программа (дни и сессии), Билеты, Зоны, Экспоненты.</p>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+const tk=()=>localStorage.getItem('token')||'';
+const ADMIN_OK={ok:false};
+const state={mode:'create',publicID:'',exhibition:null};
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
+function ltr(s){return((s||'?')[0]||'?').toUpperCase();}
+function toast(msg,kind){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(kind||'');setTimeout(()=>t.classList.remove('show'),2400);}
+
+function getPublicID(){const u=new URL(location.href);return u.searchParams.get('id')||u.searchParams.get('public_id')||'';}
+
+function isoToDateTimeLocal(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+function dateTimeLocalToISO(v){if(!v)return '';const d=new Date(v);if(isNaN(d))return '';return d.toISOString();}
+
+async function loadProfile(){
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}}=await r.json();
+    const name=user.full_name||user.name||'Пользователь';
+    document.getElementById('topbarAv').textContent=ltr(name);
+    document.getElementById('topbarAv').style.background=avc(name);
+    document.getElementById('topbarName').textContent=name;
+    ADMIN_OK.ok=!!user.is_admin;
+  }catch{}
+}
+
+async function loadExhibition(){
+  if(!state.publicID)return null;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return null;
+    const data=await r.json();
+    return data.exhibition||data;
+  }catch{return null;}
+}
+
+function renderAccessDenied(){
+  document.getElementById('contentRoot').innerHTML=`
+    <div class="card access-denied">
+      <h2>Доступ запрещён</h2>
+      <p>Создание и редактирование выставок доступно только администраторам платформы.</p>
+      <p style="margin-top:14px"><a href="/exhibitions.html" class="btn btn-sec">← К списку выставок</a></p>
+    </div>`;
+}
+
+function renderForm(){
+  const ex=state.exhibition||{};
+  const isEdit=state.mode==='edit';
+  const root=document.getElementById('contentRoot');
+
+  root.innerHTML=`
+    <div class="card">
+      <div class="page-head">
+        <div>
+          <div class="page-title">${isEdit?'Редактирование выставки':'Создание выставки'}</div>
+          <div class="page-sub">${isEdit?esc(ex.title||'Без названия'):'Заполните основные данные. Остальные разделы откроются после сохранения.'}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="${isEdit?'/exhibition-detail.html?id='+encodeURIComponent(state.publicID):'/exhibitions.html'}" class="btn btn-sec">Отмена</a>
+          <button class="btn btn-primary" id="btnSaveBasic" onclick="saveBasic()">${isEdit?'Сохранить изменения':'Создать выставку'}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Основное</div>
+
+      <div class="field">
+        <label class="field-label">Название<span class="req">*</span></label>
+        <input class="field-input" id="fTitle" maxlength="200" value="${esc(ex.title||'')}" placeholder="LogisticsPro 2026">
+      </div>
+
+      <div class="field">
+        <label class="field-label">Краткое описание</label>
+        <input class="field-input" id="fShortDesc" maxlength="500" value="${esc(ex.short_description||'')}" placeholder="Главная отраслевая выставка логистики и транспорта">
+        <div class="field-help">До 500 символов. Показывается в карточке списка.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Подробное описание</label>
+        <textarea class="field-textarea" id="fDesc" rows="6" placeholder="Полное описание выставки, программа, что будет интересно посетителям и экспонентам…">${esc(ex.description||'')}</textarea>
+      </div>
+
+      <div class="field-grid2">
+        <div class="field">
+          <label class="field-label">Категория<span class="req">*</span></label>
+          <select class="field-select" id="fCategory">
+            ${['Логистика','Производство','Технологии','Машиностроение','Строительство','Финансы','Сельское хозяйство','Энергетика','Медицина','Другое'].map(c=>`<option value="${esc(c)}"${(ex.category||'')===c?' selected':''}>${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Формат<span class="req">*</span></label>
+          <select class="field-select" id="fFormat">
+            <option value="offline"${(ex.format||'offline')==='offline'?' selected':''}>Офлайн</option>
+            <option value="online"${ex.format==='online'?' selected':''}>Онлайн</option>
+            <option value="hybrid"${ex.format==='hybrid'?' selected':''}>Гибрид</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-grid2">
+        <div class="field">
+          <label class="field-label">Дата начала<span class="req">*</span></label>
+          <input class="field-input" id="fStartsAt" type="datetime-local" value="${isoToDateTimeLocal(ex.starts_at)}">
+        </div>
+        <div class="field">
+          <label class="field-label">Дата окончания<span class="req">*</span></label>
+          <input class="field-input" id="fEndsAt" type="datetime-local" value="${isoToDateTimeLocal(ex.ends_at)}">
+        </div>
+      </div>
+
+      <div class="field-grid2">
+        <div class="field">
+          <label class="field-label">Часовой пояс</label>
+          <input class="field-input" id="fTimezone" value="${esc(ex.timezone||'Europe/Moscow')}" placeholder="Europe/Moscow">
+        </div>
+        <div class="field">
+          <label class="field-label">Статус</label>
+          <select class="field-select" id="fStatus">
+            <option value="upcoming"${(ex.status||'upcoming')==='upcoming'?' selected':''}>Предстоит</option>
+            <option value="ongoing"${ex.status==='ongoing'?' selected':''}>Идёт сейчас</option>
+            <option value="finished"${ex.status==='finished'?' selected':''}>Завершена</option>
+            <option value="cancelled"${ex.status==='cancelled'?' selected':''}>Отменена</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">URL обложки</label>
+        <input class="field-input" id="fCoverURL" value="${esc(ex.cover_url||'')}" placeholder="https://…/cover.jpg">
+        <div class="field-help">Прямая ссылка на изображение обложки. Загрузка файлов появится позже.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Теги</label>
+        <input class="field-input" id="fTags" value="${esc((ex.tags||[]).join(', '))}" placeholder="логистика, выставка, b2b">
+        <div class="field-help">Через запятую.</div>
+      </div>
+
+      <div class="field-grid2">
+        <div class="field">
+          <label class="field-label">Организатор (отображаемое имя)</label>
+          <input class="field-input" id="fOrgLabel" value="${esc(ex.organizer_label||'')}" placeholder="NorthBridge Expo Group">
+          <div class="field-help">Если выставку проводит компания — указывается ниже её ID. Это поле — fallback или подпись.</div>
+        </div>
+        <div class="field">
+          <label class="field-label">ID компании-организатора</label>
+          <input class="field-input" id="fOrgCompanyID" type="number" min="0" value="${ex.organizer_company_id||''}" placeholder="0 = без компании">
+          <div class="field-help">Числовой ID компании из таблицы companies. Опционально.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">URL внешней выставочной платформы</label>
+        <input class="field-input" id="fExpoURL" value="${esc(ex.external_expo_url||'')}" placeholder="https://expo.example.com">
+        <div class="field-help">Куда ведёт кнопка «Открыть выставку» на деталке. Если пусто — будет тост «появится скоро».</div>
+      </div>
+    </div>
+
+    ${isEdit?`
+    <div class="card">
+      <div class="section-title">Локация</div>
+      <div class="section-stub">Раздел 2 — добавлю в следующем этапе (S12-8.2).</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Программа · Дни и сессии</div>
+      <div class="section-stub">Раздел 3 — добавлю в этапе S12-8.3.</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Билеты</div>
+      <div class="section-stub">Раздел 4 — этап S12-8.4.</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Тематические зоны</div>
+      <div class="section-stub">Раздел 5 — этап S12-8.5.</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Экспоненты и заявки</div>
+      <div class="section-stub">Раздел 6 — этап S12-8.6.</div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-danger" onclick="deleteExhibition()">Удалить выставку</button>
+        <a href="/exhibition-detail.html?id=${encodeURIComponent(state.publicID)}" class="btn btn-sec">Открыть деталку →</a>
+      </div>
+    </div>
+    `:`
+    <div class="card">
+      <div class="section-stub">После создания откроются разделы: Локация, Программа, Билеты, Зоны, Экспоненты.</div>
+    </div>
+    `}
+  `;
+}
+
+function collectForm(){
+  const tags=(document.getElementById('fTags').value||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const orgID=parseInt(document.getElementById('fOrgCompanyID').value||'0',10)||0;
+  const body={
+    title:document.getElementById('fTitle').value.trim(),
+    short_description:document.getElementById('fShortDesc').value.trim(),
+    description:document.getElementById('fDesc').value.trim(),
+    category:document.getElementById('fCategory').value,
+    format:document.getElementById('fFormat').value,
+    status:document.getElementById('fStatus').value,
+    starts_at:dateTimeLocalToISO(document.getElementById('fStartsAt').value),
+    ends_at:dateTimeLocalToISO(document.getElementById('fEndsAt').value),
+    timezone:document.getElementById('fTimezone').value.trim()||'Europe/Moscow',
+    cover_url:document.getElementById('fCoverURL').value.trim(),
+    tags,
+    organizer_label:document.getElementById('fOrgLabel').value.trim(),
+    external_expo_url:document.getElementById('fExpoURL').value.trim(),
+    // location поля — пока пустые, заполнятся в S12-8.2
+    city:state.exhibition?.city||'',
+    address:state.exhibition?.address||'',
+    venue:state.exhibition?.venue||'',
+    latitude:state.exhibition?.latitude||0,
+    longitude:state.exhibition?.longitude||0,
+    online_url:state.exhibition?.online_url||''
+  };
+  if(orgID>0)body.organizer_company_id=orgID;
+  return body;
+}
+
+async function saveBasic(){
+  const btn=document.getElementById('btnSaveBasic');
+  if(!btn)return;
+  const body=collectForm();
+  if(!body.title){toast('Введите название','err');return;}
+  if(!body.starts_at||!body.ends_at){toast('Укажите даты начала и окончания','err');return;}
+  if(new Date(body.ends_at)<new Date(body.starts_at)){toast('Дата окончания раньше начала','err');return;}
+
+  btn.disabled=true;
+  const oldText=btn.textContent;
+  btn.textContent='Сохраняем…';
+
+  try{
+    const url=state.mode==='edit'
+      ? API+'/exhibitions/'+encodeURIComponent(state.publicID)
+      : API+'/exhibitions';
+    const method=state.mode==='edit'?'PATCH':'POST';
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){
+      const txt=await r.text().catch(()=>'');
+      console.error('save failed',r.status,txt);
+      toast('Ошибка: '+(txt||r.status),'err');
+      btn.disabled=false;
+      btn.textContent=oldText;
+      return;
+    }
+    const data=await r.json();
+    const ex=data.exhibition||data;
+    toast(state.mode==='edit'?'Сохранено ✓':'Выставка создана ✓','ok');
+    if(state.mode==='create'&&ex.public_id){
+      // редирект на режим редактирования с новым id
+      setTimeout(()=>{location.href='/exhibition-edit.html?id='+encodeURIComponent(ex.public_id);},800);
+    }else{
+      state.exhibition=ex;
+      btn.disabled=false;
+      btn.textContent=oldText;
+    }
+  }catch(e){
+    console.error('save error',e);
+    toast('Ошибка сети','err');
+    btn.disabled=false;
+    btn.textContent=oldText;
+  }
+}
+
+async function deleteExhibition(){
+  if(!state.publicID)return;
+  if(!confirm('Удалить выставку «'+(state.exhibition?.title||'')+'»? Это действие необратимо.'))return;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){toast('Ошибка удаления','err');return;}
+    toast('Выставка удалена','ok');
+    setTimeout(()=>{location.href='/exhibitions.html';},800);
+  }catch{toast('Ошибка сети','err');}
+}
+
+(async()=>{
+  await loadProfile();
+  if(!ADMIN_OK.ok){renderAccessDenied();return;}
+  state.publicID=getPublicID();
+  state.mode=state.publicID?'edit':'create';
+  if(state.mode==='edit'){
+    state.exhibition=await loadExhibition();
+    if(!state.exhibition){
+      document.getElementById('contentRoot').innerHTML='<div class="card access-denied"><h2>Выставка не найдена</h2></div>';
+      return;
+    }
+  }
+  renderForm();
+})();
+</script>
+</body>
+</html>
