@@ -586,7 +586,7 @@ async function loadItem(){
     const d = await r.json();
     item = d.item;
     if (!item) throw new Error('пустой ответ');
-    if (item.type !== 'product') {
+    if (item.type === 'service') {
       // Если это услуга — редирект на правильную страницу
       location.href = '/service-detail.html?id=' + encodeURIComponent(publicID);
       return;
