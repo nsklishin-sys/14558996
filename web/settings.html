@@ -1185,15 +1185,40 @@ async function saveSettings(section){
     showToast('Ошибка сохранения');
   }
 }
-async function confirmDelete(){
-  const current_password=prompt('Введите пароль');
-  if(!current_password)return;
-  const confirmation=prompt('Введите слово УДАЛИТЬ для подтверждения');
-  if(!confirmation)return;
-  const r=await fetch(API+'/account',{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({current_password,confirmation})});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok){showToast(d.error||'Не удалось удалить аккаунт');return;}
-  localStorage.clear();location.href='/login.html?deleted=1';
+function confirmDelete(){
+  document.getElementById('delAccPwd').value='';
+  document.getElementById('delAccConfirm').value='';
+  document.getElementById('delAccError').style.display='none';
+  document.getElementById('delAccBtn').disabled=true;
+  document.getElementById('delAccBtn').style.opacity='.5';
+  document.getElementById('delAccModalBg').classList.add('open');
+  setTimeout(()=>document.getElementById('delAccPwd').focus(),100);
+}
+function closeDelAccModal(){document.getElementById('delAccModalBg').classList.remove('open');}
+function checkDelAccInput(){
+  const ok=document.getElementById('delAccConfirm').value.trim()==='УДАЛИТЬ';
+  const btn=document.getElementById('delAccBtn');
+  btn.disabled=!ok;
+  btn.style.opacity=ok?'1':'.5';
+}
+async function executeDelAcc(){
+  const current_password=document.getElementById('delAccPwd').value;
+  const confirmation=document.getElementById('delAccConfirm').value.trim();
+  const err=document.getElementById('delAccError');
+  err.style.display='none';
+  if(!current_password){err.textContent='Введите пароль';err.style.display='block';return;}
+  if(confirmation!=='УДАЛИТЬ'){err.textContent='Нужно ввести слово УДАЛИТЬ';err.style.display='block';return;}
+  const btn=document.getElementById('delAccBtn');
+  btn.disabled=true;btn.textContent='Удаление…';
+  try{
+    const r=await fetch(API+'/account',{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({current_password,confirmation})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){err.textContent=d.error||'Не удалось удалить аккаунт';err.style.display='block';btn.disabled=false;btn.textContent='Удалить навсегда';return;}
+    localStorage.clear();
+    location.href='/login.html?deleted=1';
+  }catch{
+    err.textContent='Ошибка сети';err.style.display='block';btn.disabled=false;btn.textContent='Удалить навсегда';
+  }
 }
 document.getElementById('emailField').addEventListener('input',updateWebsiteField);
 
@@ -1277,6 +1302,20 @@ async function executePwdChange(){
   }
 }
 </script>
+<div class="modal-bg" id="delAccModalBg" onclick="if(event.target===this)closeDelAccModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px">
+  <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.18)">
+    <div style="font-size:16px;font-weight:800;color:var(--red);margin-bottom:8px">Удалить аккаунт</div>
+    <div style="font-size:13px;color:var(--tm);line-height:1.5;margin-bottom:14px">Это действие необратимо. Все ваши данные, посты, проекты и сообщения будут удалены навсегда.</div>
+    <input type="password" id="delAccPwd" placeholder="Текущий пароль" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:8px">
+    <div style="font-size:12px;color:var(--gmt);margin-bottom:6px">Для подтверждения введите слово <b style="color:var(--red)">УДАЛИТЬ</b>:</div>
+    <input type="text" id="delAccConfirm" placeholder="УДАЛИТЬ" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:14px" oninput="checkDelAccInput()">
+    <div id="delAccError" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeDelAccModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
+      <button id="delAccBtn" onclick="executeDelAcc()" disabled style="padding:9px 18px;border-radius:10px;border:none;background:var(--red);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;opacity:.5">Удалить навсегда</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="emailModalBg" onclick="if(event.target===this)closeEmailModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px">
   <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px">Смена email</div>
