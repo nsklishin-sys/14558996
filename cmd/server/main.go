@@ -357,27 +357,29 @@ type searchResult struct {
 }
 
 type chatConversation struct {
-	ID                int64      `json:"id"`
-	PublicID          string     `json:"public_id"`
-	Type              string     `json:"type"`
-	Title             string     `json:"title"`
-	AvatarURL         string     `json:"avatar_url"`
-	CommunityID       *int64     `json:"community_id,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	LastMessageAt     *time.Time `json:"last_message_at,omitempty"`
-	DisplayName       string     `json:"display_name"`
-	DisplayRole       string     `json:"display_role"`
-	DisplayColor      string     `json:"display_color"`
-	DisplayAvatar     string     `json:"display_avatar"`
-	OtherPublicID     string     `json:"other_public_id,omitempty"`
-	LastMessageText   string     `json:"last_message_text"`
-	LastMessageAuthor string     `json:"last_message_author"`
-	UnreadCount       int        `json:"unread_count"`
-	MembersCount      int        `json:"members_count"`
-	IsOnline          bool       `json:"is_online"`
-	Pinned            bool       `json:"pinned"`
-	Muted             bool       `json:"muted"`
-	MyRole            string     `json:"my_role"`
+	ID                             int64      `json:"id"`
+	PublicID                       string     `json:"public_id"`
+	Type                           string     `json:"type"`
+	Title                          string     `json:"title"`
+	AvatarURL                      string     `json:"avatar_url"`
+	CommunityID                    *int64     `json:"community_id,omitempty"`
+	CreatedAt                      time.Time  `json:"created_at"`
+	LastMessageAt                  *time.Time `json:"last_message_at,omitempty"`
+	DisplayName                    string     `json:"display_name"`
+	DisplayRole                    string     `json:"display_role"`
+	DisplayColor                   string     `json:"display_color"`
+	DisplayAvatar                  string     `json:"display_avatar"`
+	OtherPublicID                  string     `json:"other_public_id,omitempty"`
+	LastMessageText                string     `json:"last_message_text"`
+	LastMessageAuthor              string     `json:"last_message_author"`
+	LastMessageSenderCompanyName   string     `json:"last_message_sender_company_name,omitempty"`
+	LastMessageSenderCommunityName string     `json:"last_message_sender_community_name,omitempty"`
+	UnreadCount                    int        `json:"unread_count"`
+	MembersCount                   int        `json:"members_count"`
+	IsOnline                       bool       `json:"is_online"`
+	Pinned                         bool       `json:"pinned"`
+	Muted                          bool       `json:"muted"`
+	MyRole                         string     `json:"my_role"`
 }
 
 type chatReplyPreview struct {
@@ -17153,7 +17155,7 @@ func getConversationByID(db *sql.DB, userID, convID int64) (chatConversation, er
 func getConversationByPublicID(db *sql.DB, userID int64, publicID string) (chatConversation, error) {
 	var c chatConversation
 	var lastAuthorID sql.NullInt64
-	var lastAuthorName, lastContent string
+	var lastAuthorName, lastContent, lastSenderCompanyName, lastSenderCommunityName string
 	var pinned, muted bool
 	var role string
 	var otherID sql.NullString
@@ -17167,6 +17169,8 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
        COALESCE((SELECT m.content FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
        (SELECT m.author_id FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),
        COALESCE((SELECT u.full_name FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
+       COALESCE((SELECT co.name FROM chat_messages m LEFT JOIN companies co ON co.id=m.sender_company_id WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
+       COALESCE((SELECT cm.name FROM chat_messages m LEFT JOIN communities cm ON cm.id=m.sender_community_id WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
        COALESCE((SELECT u2.public_id FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT u2.id FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),0),
        COALESCE((SELECT u2.full_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
@@ -17174,7 +17178,7 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
        COALESCE((SELECT u2.company_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT u2.avatar_url FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),'')
 FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id
-WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar)
+WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c, errNotFound
@@ -17194,6 +17198,8 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 		c.DisplayColor = stableColorForName(c.Title)
 	}
 	c.LastMessageText = messagePreview(lastContent, 120)
+	c.LastMessageSenderCompanyName = strings.TrimSpace(lastSenderCompanyName)
+	c.LastMessageSenderCommunityName = strings.TrimSpace(lastSenderCommunityName)
 	if lastAuthorID.Valid && lastAuthorID.Int64 == userID {
 		c.LastMessageAuthor = "Вы"
 	} else {
