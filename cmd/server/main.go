@@ -17139,7 +17139,7 @@ func findOrCreateDirectConversation(db *sql.DB, r *http.Request, userID int64, t
 		return chatConversation{}, err
 	}
 	var convID int64
-	err = tx.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p1 ON p1.conversation_id=c.id AND p1.user_id=$1 JOIN chat_participants p2 ON p2.conversation_id=c.id AND p2.user_id=$2 WHERE c.type='direct' LIMIT 1`, userID, targetID).Scan(&convID)
+	err = tx.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p1 ON p1.conversation_id=c.id AND p1.user_id=$1 JOIN chat_participants p2 ON p2.conversation_id=c.id AND p2.user_id=$2 WHERE c.type='direct' AND c.owner_kind=$3 AND c.owner_id=$4 LIMIT 1`, userID, targetID, ownerKind, ownerID).Scan(&convID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return chatConversation{}, err
 	}
@@ -17151,7 +17151,7 @@ func findOrCreateDirectConversation(db *sql.DB, r *http.Request, userID int64, t
 		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,'member'),($1,$3,'member')`, convID, userID, targetID); err != nil {
 			return chatConversation{}, err
 		}
-		if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3 AND owner_id=0`, ownerKind, ownerID, convID); err != nil {
+		if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3`, ownerKind, ownerID, convID); err != nil {
 			return chatConversation{}, err
 		}
 	}
@@ -17364,7 +17364,7 @@ func createGroupConversation(db *sql.DB, r *http.Request, creatorID int64, req c
 			return chatConversation{}, err
 		}
 	}
-	if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3 AND owner_id=0`, ownerKind, ownerID, convID); err != nil {
+	if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3`, ownerKind, ownerID, convID); err != nil {
 		return chatConversation{}, err
 	}
 	if err := tx.Commit(); err != nil {
