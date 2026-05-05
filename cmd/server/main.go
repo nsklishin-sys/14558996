@@ -17405,12 +17405,14 @@ ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 			return nil, err
 		}
 		c, err := getConversationByPublicID(db, userID, pid)
-		if err == nil {
-			c.OwnerKind = convOwnerKind
-			c.OwnerID = convOwnerID
-			c.OwnerName = strings.TrimSpace(convOwnerName)
-			items = append(items, c)
+		if err != nil {
+			log.Printf("[chat] listConversations: drop pid=%s userID=%d err=%v", pid, userID, err)
+			continue
 		}
+		c.OwnerKind = convOwnerKind
+		c.OwnerID = convOwnerID
+		c.OwnerName = strings.TrimSpace(convOwnerName)
+		items = append(items, c)
 	}
 	q = strings.ToLower(strings.TrimSpace(q))
 	out := make([]chatConversation, 0, len(items))
