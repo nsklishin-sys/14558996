@@ -7512,28 +7512,6 @@ func initDBFromEnv() (*sql.DB, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	// A2.1R: автопочинка owner_id для старых диалогов — на каждом старте
-	go func() {
-		time.Sleep(2 * time.Second) // дождаться завершения миграций
-		res, err := db.Exec(`
-			UPDATE chat_conversations c
-			SET owner_id = (
-				SELECT p.user_id FROM chat_participants p
-				WHERE p.conversation_id = c.id
-				LIMIT 1
-			)
-			WHERE c.owner_id = 0 AND c.owner_kind = 'user'
-			AND EXISTS (SELECT 1 FROM chat_participants p WHERE p.conversation_id = c.id)
-		`)
-		if err != nil {
-			log.Printf("[A2.1R] backfill owner_id error: %v", err)
-			return
-		}
-		n, _ := res.RowsAffected()
-		if n > 0 {
-			log.Printf("[A2.1R] backfilled owner_id for %d conversations", n)
-		}
-	}()
 
 	return db, nil
 }
@@ -8687,55 +8665,6 @@ CREATE INDEX IF NOT EXISTS forum_topics_author_company_idx ON forum_topics(autho
 		return fmt.Errorf("create schema: %w", err)
 	}
 
-	// === A2.1R-DIAG: одноразовая разведка схемы chat_participants ===
-	{
-		log.Printf("[A2.1R-DIAG] === schema chat_participants ===")
-		rows, err := db.Query(`
-			SELECT column_name, data_type, is_nullable, column_default
-			FROM information_schema.columns
-			WHERE table_name = 'chat_participants'
-			ORDER BY ordinal_position
-		`)
-		if err != nil {
-			log.Printf("[A2.1R-DIAG] columns query error: %v", err)
-		} else {
-			for rows.Next() {
-				var name, dtype, nullable string
-				var defVal sql.NullString
-				rows.Scan(&name, &dtype, &nullable, &defVal)
-				log.Printf("[A2.1R-DIAG]   col: %s | %s | nullable=%s | default=%s", name, dtype, nullable, defVal.String)
-			}
-			rows.Close()
-		}
-
-		// Количество строк
-		var cnt int
-		db.QueryRow(`SELECT COUNT(*) FROM chat_participants`).Scan(&cnt)
-		log.Printf("[A2.1R-DIAG] total participants rows: %d", cnt)
-
-		// Сэмпл — первые 3 строки
-		rows2, err := db.Query(`SELECT * FROM chat_participants LIMIT 3`)
-		if err == nil {
-			cols, _ := rows2.Columns()
-			log.Printf("[A2.1R-DIAG] SELECT * columns: %v", cols)
-			for rows2.Next() {
-				vals := make([]any, len(cols))
-				ptrs := make([]any, len(cols))
-				for i := range vals {
-					ptrs[i] = &vals[i]
-				}
-				rows2.Scan(ptrs...)
-				log.Printf("[A2.1R-DIAG] sample row: %v", vals)
-			}
-			rows2.Close()
-		}
-
-		// Состояние chat_conversations
-		var totalConv, ownedZero int
-		db.QueryRow(`SELECT COUNT(*) FROM chat_conversations`).Scan(&totalConv)
-		db.QueryRow(`SELECT COUNT(*) FROM chat_conversations WHERE owner_id=0`).Scan(&ownedZero)
-		log.Printf("[A2.1R-DIAG] chat_conversations: total=%d, owner_id=0: %d", totalConv, ownedZero)
-	}
 
 	if err := migratePublicationSeedData(db); err != nil {
 		log.Printf("WARN: migrate publication seed data failed: %v", err)
@@ -17304,30 +17233,33 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 }
 
 func listConversations(db *sql.DB, r *http.Request, userID int64, filter, q string, limit int) ([]chatConversation, error) {
-	ownerKind := "user"
-	ownerID := userID
+	// A2.1R: резолвим активный контекст
+	activeKind := "user"
+	var activeID int64 = userID
 	if cid, err := resolveActiveCompanyID(db, r, userID, 0); err == nil && cid > 0 {
-		ownerKind = "company"
-		ownerID = cid
+		activeKind = "company"
+		activeID = cid
 	} else if cmid, err := resolveActiveCommunityID(db, r, userID, 0); err == nil && cmid > 0 {
-		ownerKind = "community"
-		ownerID = cmid
+		activeKind = "community"
+		activeID = cmid
 	}
+	args := []any{userID}
+	args = append(args, activeKind, activeID)
 	rows, err := db.Query(`SELECT c.public_id,c.owner_kind,c.owner_id,
 COALESCE(co.name, cm.name, '') AS owner_name
 FROM chat_conversations c
 JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
-WHERE p.user_id=$1 AND (
-	(c.owner_kind=$2 AND c.owner_id=$3)
-	OR
-	(c.owner_id=0 AND $2='user' AND EXISTS(
-		SELECT 1 FROM chat_participants p2
-		WHERE p2.conversation_id=c.id AND p2.user_id=$3
-	))
-)
-ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, userID, ownerKind, ownerID)
+WHERE p.user_id=$1
+  AND CASE
+    WHEN $2::text = 'user' THEN
+      c.owner_kind = 'user'
+      AND EXISTS(SELECT 1 FROM chat_participants p2 WHERE p2.conversation_id = c.id AND p2.user_id = $3)
+    ELSE
+      c.owner_kind = $2::text AND c.owner_id = $3
+  END
+ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
