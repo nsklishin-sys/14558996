@@ -882,9 +882,14 @@ async function sendComment(){
   if (!text) return;
   if (!postPublicID) return;
   try {
+    const headers = { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' };
+    const coId = localStorage.getItem('active_company_id');
+    const cmId = localStorage.getItem('active_community_id');
+    if (coId) headers['X-Active-Company-Id'] = String(coId);
+    else if (cmId) headers['X-Active-Community-Id'] = String(cmId);
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ content: text })
     });
     if (!r.ok) {
@@ -894,13 +899,22 @@ async function sendComment(){
     }
     const d = await r.json();
     const c = d.comment || {};
+    let dispName = c.author_name || 'Участник';
+    let dispRole = c.author_role || 'Участник LASTOP';
+    if (c.sender_company_id && c.sender_company_name) {
+      dispName = c.sender_company_name;
+      dispRole = 'Компания';
+    } else if (c.sender_community_id && c.sender_community_name) {
+      dispName = c.sender_community_name;
+      dispRole = 'Сообщество';
+    }
     comments.unshift({
       id: c.id,
       public_id: c.author_public_id || '',
-      name: c.author_name || 'Участник',
-      role: c.author_role || 'Участник LASTOP',
-      av: ltr(c.author_name || 'У'),
-      color: c.author_color || avc(c.author_name || 'У'),
+      name: dispName,
+      role: dispRole,
+      av: ltr(dispName),
+      color: avc(dispName),
       text: c.content || text,
       likes: 0,
       liked: false,
