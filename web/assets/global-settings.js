@@ -323,7 +323,13 @@
     // Стартуем polling и первый запрос
     refreshUnreadCount();
     if (_notifPollTimer) clearInterval(_notifPollTimer);
-    _notifPollTimer = setInterval(refreshUnreadCount, 60000);
+    _notifPollTimer = setInterval(refreshUnreadCount, 5000);
+    // Обновлять сразу когда вкладка снова стала активной
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') refreshUnreadCount();
+    });
+    // И на focus окна (на случай если visibility не сработал)
+    window.addEventListener('focus', refreshUnreadCount);
   }
 
   function toggleNotifDropdown() {
