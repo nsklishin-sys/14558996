@@ -1072,12 +1072,19 @@ type registerToEventRequest struct {
 }
 
 type postComment struct {
-	ID             int64     `json:"id"`
-	AuthorPublicID string    `json:"author_public_id"`
-	AuthorName     string    `json:"author_name"`
-	Content        string    `json:"content"`
-	ParentID       *int64    `json:"parent_id,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID                    int64     `json:"id"`
+	AuthorPublicID        string    `json:"author_public_id"`
+	AuthorName            string    `json:"author_name"`
+	Content               string    `json:"content"`
+	ParentID              *int64    `json:"parent_id,omitempty"`
+	CreatedAt             time.Time `json:"created_at"`
+	SenderCompanyID       int64     `json:"sender_company_id,omitempty"`
+	SenderCompanyName     string    `json:"sender_company_name,omitempty"`
+	SenderCompanySlug     string    `json:"sender_company_slug,omitempty"`
+	SenderCompanyLogo     string    `json:"sender_company_logo,omitempty"`
+	SenderCommunityID     int64     `json:"sender_community_id,omitempty"`
+	SenderCommunityName   string    `json:"sender_community_name,omitempty"`
+	SenderCommunityAvatar string    `json:"sender_community_avatar,omitempty"`
 }
 
 type createCommentRequest struct {
@@ -4027,7 +4034,7 @@ func main() {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
 					return
 				}
-				comment, err := createComment(db, postPublicID, userID, req)
+				comment, err := createComment(db, r, postPublicID, userID, req)
 				if err != nil {
 					handlePostActionError(w, err)
 					return
@@ -8719,6 +8726,8 @@ ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
 ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_company_id BIGINT;
 ALTER TABLE forum_messages ADD COLUMN IF NOT EXISTS sender_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE forum_messages ADD COLUMN IF NOT EXISTS sender_community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS sender_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS sender_community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS jobs_author_community_idx ON jobs(author_community_id) WHERE author_community_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS catalog_items_author_community_idx ON catalog_items(author_community_id) WHERE author_community_id IS NOT NULL;
@@ -14255,10 +14264,14 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 
 func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, error) {
 	rows, err := db.Query(`
-		SELECT pc.id, u.public_id, u.full_name, pc.content, pc.parent_id, pc.created_at
+		SELECT pc.id, u.public_id, u.full_name, pc.content, pc.parent_id, pc.created_at,
+		       COALESCE(pc.sender_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''), COALESCE(co.logo_image, ''),
+		       COALESCE(pc.sender_community_id, 0), COALESCE(cm.name, ''), COALESCE(cm.avatar_url, '')
 		FROM post_comments pc
 		JOIN posts p ON p.id = pc.post_id
 		JOIN users u ON u.id = pc.author_id
+		LEFT JOIN companies co ON co.id = pc.sender_company_id
+		LEFT JOIN communities cm ON cm.id = pc.sender_community_id
 		WHERE p.public_id = $1 AND p.is_deleted = FALSE AND pc.is_deleted = FALSE
 		ORDER BY pc.created_at ASC, pc.id ASC
 		LIMIT $2
@@ -14270,7 +14283,11 @@ func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, er
 	var out []postComment
 	for rows.Next() {
 		var c postComment
-		if err := rows.Scan(&c.ID, &c.AuthorPublicID, &c.AuthorName, &c.Content, &c.ParentID, &c.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&c.ID, &c.AuthorPublicID, &c.AuthorName, &c.Content, &c.ParentID, &c.CreatedAt,
+			&c.SenderCompanyID, &c.SenderCompanyName, &c.SenderCompanySlug, &c.SenderCompanyLogo,
+			&c.SenderCommunityID, &c.SenderCommunityName, &c.SenderCommunityAvatar,
+		); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -14278,7 +14295,7 @@ func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, er
 	return out, rows.Err()
 }
 
-func createComment(db *sql.DB, postPublicID string, authorID int64, req createCommentRequest) (postComment, error) {
+func createComment(db *sql.DB, r *http.Request, postPublicID string, authorID int64, req createCommentRequest) (postComment, error) {
 	content := strings.TrimSpace(req.Content)
 	if count := utf8.RuneCountInString(content); count < 1 || count > 5000 {
 		return postComment{}, fmt.Errorf("%w: комментарий должен быть от 1 до 5000 символов", errValidation)
@@ -14307,12 +14324,18 @@ func createComment(db *sql.DB, postPublicID string, authorID int64, req createCo
 			return postComment{}, fmt.Errorf("%w: parent_id должен принадлежать тому же посту", errValidation)
 		}
 	}
+	var senderCompanyID, senderCommunityID int64
+	if cid, _ := resolveActiveCompanyID(db, r, authorID, 0); cid > 0 {
+		senderCompanyID = cid
+	} else if cmid, _ := resolveActiveCommunityID(db, r, authorID, 0); cmid > 0 {
+		senderCommunityID = cmid
+	}
 	var created postComment
 	if err := tx.QueryRow(`
-		INSERT INTO post_comments(post_id, author_id, parent_id, content)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO post_comments(post_id, author_id, parent_id, content, sender_company_id, sender_community_id)
+		VALUES ($1, $2, $3, $4, NULLIF($5, 0), NULLIF($6, 0))
 		RETURNING id, parent_id, content, created_at
-	`, postID, authorID, req.ParentID, content).Scan(&created.ID, &created.ParentID, &created.Content, &created.CreatedAt); err != nil {
+	`, postID, authorID, req.ParentID, content, senderCompanyID, senderCommunityID).Scan(&created.ID, &created.ParentID, &created.Content, &created.CreatedAt); err != nil {
 		return postComment{}, err
 	}
 	if _, err := tx.Exec(`UPDATE posts SET comments_count = comments_count + 1, updated_at = NOW() WHERE id = $1`, postID); err != nil {
@@ -14320,6 +14343,12 @@ func createComment(db *sql.DB, postPublicID string, authorID int64, req createCo
 	}
 	if err := tx.QueryRow(`SELECT public_id, full_name FROM users WHERE id = $1`, authorID).Scan(&created.AuthorPublicID, &created.AuthorName); err != nil {
 		return postComment{}, err
+	}
+	if senderCompanyID > 0 {
+		_ = tx.QueryRow(`SELECT id, name, slug, COALESCE(logo_image,'') FROM companies WHERE id=$1`, senderCompanyID).Scan(&created.SenderCompanyID, &created.SenderCompanyName, &created.SenderCompanySlug, &created.SenderCompanyLogo)
+	}
+	if senderCommunityID > 0 {
+		_ = tx.QueryRow(`SELECT id, name, COALESCE(avatar_url,'') FROM communities WHERE id=$1`, senderCommunityID).Scan(&created.SenderCommunityID, &created.SenderCommunityName, &created.SenderCommunityAvatar)
 	}
 	if err := tx.Commit(); err != nil {
 		return postComment{}, err
