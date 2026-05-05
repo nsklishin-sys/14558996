@@ -1665,23 +1665,46 @@ function onTyping(){
   clearTimeout(typeDeb);
   if(!state.activeConvPublicID)return;
   const now=Date.now();
-  // Отправляем is_typing:true не чаще раз в 3 секунды
   if(now-_lastTypingSent>3000){
     _lastTypingSent=now;
-    api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:true}}).catch(()=>{});
+    if(window.wsClient) window.wsClient.send({type:'chat:typing',data:{conversation_public_id:state.activeConvPublicID,is_typing:true}});
   }
-  // Спустя 4 секунды бездействия — is_typing:false
   typeDeb=setTimeout(()=>{
     _lastTypingSent=0;
-    if(state.activeConvPublicID)api(`/chat/conversations/${state.activeConvPublicID}/typing`,{method:'POST',body:{is_typing:false}}).catch(()=>{});
+    if(state.activeConvPublicID && window.wsClient) window.wsClient.send({type:'chat:typing',data:{conversation_public_id:state.activeConvPublicID,is_typing:false}});
   },4000);
 }
 msgInput?.addEventListener('input',onTyping)
-async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});if(state.activeConvPublicID){await loadMessages().catch(()=>{});const t=await api(`/chat/conversations/${state.activeConvPublicID}/typing`).catch(()=>({users:[]}));state.typingUsers=t.users||[];renderMessages();}}
+async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});}
 
 // Real-time через WebSocket
 function setupChatWS(){
   if(!window.wsClient) return;
+  // Typing-индикатор
+  window.wsClient.on('chat:typing', function(data){
+    if(!data || !data.conversation_public_id) return;
+    if(state.activeConvPublicID !== data.conversation_public_id) return;
+    const list = state.typingUsers || [];
+    const idx = list.findIndex(u => u.user_id === data.user_id);
+    if(data.is_typing){
+      if(idx === -1) list.push({user_id: data.user_id, name: data.name || ''});
+    } else {
+      if(idx !== -1) list.splice(idx, 1);
+    }
+    state.typingUsers = list;
+    renderMessages();
+  });
+  // Онлайн-статус собеседника
+  window.wsClient.on('presence:update', function(data){
+    if(!data) return;
+    // Обновим список диалогов — там per-conversation IsOnline
+    loadConversations().catch(()=>{});
+    // Если открыт direct-диалог с этим юзером — обновим шапку
+    const conv = (state.conversations||[]).find(c=>c.public_id===state.activeConvPublicID);
+    if(conv && conv.other_public_id){
+      // других точных полей у нас нет, но loadConversations подхватит is_online
+    }
+  });
   window.wsClient.on('chat:message', function(data){
     if(!data || !data.conversation_public_id || !data.message) return;
     const convPid = data.conversation_public_id;
