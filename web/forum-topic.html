@@ -679,7 +679,23 @@ function renderMessages(){
 }
 
 function renderMessage(m){
-  const color = stableColor(m.author_name || '?');
+  // Контекст автора: компания / сообщество / личный.
+  let displayName = m.author_name || 'Аноним';
+  let displayLink = '/profile_user.html?id=' + esc(m.author_public_id || '');
+  let displayAvatarText = initials(m.author_name);
+  let displayAvatarColor = stableColor(m.author_name || '?');
+  if (m.sender_company_id && m.sender_company_name) {
+    displayName = m.sender_company_name;
+    displayLink = '/company_view.html?slug=' + esc(m.sender_company_slug || '');
+    displayAvatarText = initials(m.sender_company_name);
+    displayAvatarColor = stableColor(m.sender_company_name);
+  } else if (m.sender_community_id && m.sender_community_name) {
+    displayName = m.sender_community_name;
+    displayLink = '/community_view.html?id=' + esc(m.sender_community_id);
+    displayAvatarText = initials(m.sender_community_name);
+    displayAvatarColor = stableColor(m.sender_community_name);
+  }
+  const color = displayAvatarColor;
   const editedTag = m.edited_at ? '<span class="msg-edited">· изменено</span>' : '';
   const isMine = m.is_author;
 
@@ -722,10 +738,10 @@ function renderMessage(m){
     : '';
 
   return '<div class="msg" id="msg-' + esc(m.public_id) + '">' +
-    '<a class="msg-av" style="background:' + esc(color) + '" href="/profile_user.html?id=' + esc(m.author_public_id) + '">' + esc(initials(m.author_name)) + '</a>' +
+    '<a class="msg-av" style="background:' + esc(color) + '" href="' + displayLink + '">' + esc(displayAvatarText) + '</a>' +
     '<div class="msg-body">' +
       '<div class="msg-head">' +
-        '<a class="msg-author" href="/profile_user.html?id=' + esc(m.author_public_id) + '">' + esc(m.author_name || 'Аноним') + '</a>' +
+        '<a class="msg-author" href="' + displayLink + '">' + esc(displayName) + '</a>' +
         '<span class="msg-date" title="' + esc(formatFull(m.created_at)) + '">' + formatRelative(m.created_at) + '</span>' +
         editedTag +
       '</div>' +
