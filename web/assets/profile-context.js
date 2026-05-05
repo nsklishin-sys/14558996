@@ -31,6 +31,7 @@
       localStorage.setItem('active_company_id', String(id));
       localStorage.removeItem('active_community_id'); // взаимоисключение
     }
+    window.dispatchEvent(new CustomEvent('lastop:context-changed'));
   }
 
   function getActiveCommunityID() {
@@ -46,6 +47,7 @@
       localStorage.setItem('active_community_id', String(id));
       localStorage.removeItem('active_company_id'); // взаимоисключение
     }
+    window.dispatchEvent(new CustomEvent('lastop:context-changed'));
   }
 
   function getActiveContextKind() {
@@ -325,6 +327,7 @@
     document.dispatchEvent(new CustomEvent('profileContextChanged', {
       detail: { kind: kind, companyID: getActiveCompanyID(), communityID: getActiveCommunityID() }
     }));
+    window.dispatchEvent(new CustomEvent('lastop:context-changed'));
   }
 
   window.__pcxSwitchPersonal = function () {
