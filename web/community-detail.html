@@ -928,13 +928,9 @@ async function submitComment(publicID,btn){
   if(!content){toast('Введите текст');return;}
   btn.disabled=true;
   try{
-    const _h={'Content-Type':'application/json',Authorization:'Bearer '+tk()};
-    const _co=localStorage.getItem('active_company_id'),_cm=localStorage.getItem('active_community_id');
-    if(_co) _h['X-Active-Company-Id']=String(_co);
-    else if(_cm) _h['X-Active-Community-Id']=String(_cm);
     const r=await fetch(API+'/posts/'+encodeURIComponent(publicID)+'/comments',{
       method:'POST',
-      headers:_h,
+      headers:window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}),
       body:JSON.stringify({content})
     });
     if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось отправить');return;}

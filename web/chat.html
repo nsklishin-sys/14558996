@@ -1086,16 +1086,8 @@ async function api(path,opt={}){
   if(opt.body&&!(opt.body instanceof FormData)){h['Content-Type']='application/json';opt.body=JSON.stringify(opt.body)}
   // A2.1R: для ВСЕХ запросов /chat/* — добавляем заголовок активного контекста.
   // Это влияет и на чтение списка диалогов (фильтр по owner), и на отправку (запись sender_company_id).
-  const needsCtx = path.startsWith('/chat/');
-  if(needsCtx){
-    if(typeof window.withActiveContextHeaders === 'function'){
-      Object.assign(h, window.withActiveContextHeaders({}));
-    } else {
-      const coId = localStorage.getItem('active_company_id');
-      const cmId = localStorage.getItem('active_community_id');
-      if(coId) h['X-Active-Company-Id'] = String(coId);
-      else if(cmId) h['X-Active-Community-Id'] = String(cmId);
-    }
+  if(path.startsWith('/chat/') && typeof window.withActiveContextHeaders === 'function'){
+    Object.assign(h, window.withActiveContextHeaders({}));
   }
   const r=await fetch(API+path,{...opt,headers:h});
   if(r.status===401){localStorage.removeItem('token');location.href='/login.html';throw new Error('401')}

@@ -1146,7 +1146,8 @@ type statusRecorder struct {
 //     на клике "Главная".
 //  3. Редирект залогиненного юзера с /home-guest.html и /index.html
 //     сразу на /home-auth.html, без рендера гостевой.
-const htmlInject = `<script src="/assets/ws.js" defer></script>
+const htmlInject = `<script src="/assets/active-context.js"></script>
+<script src="/assets/ws.js" defer></script>
 <style>
 @view-transition { navigation: auto; }
 ::view-transition-old(root),
