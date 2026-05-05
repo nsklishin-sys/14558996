@@ -1722,13 +1722,27 @@ function setupChatWS(){
   });
   // Онлайн-статус собеседника
   window.wsClient.on('presence:update', function(data){
-    if(!data) return;
-    // Обновим список диалогов — там per-conversation IsOnline
-    loadConversations().catch(()=>{});
-    // Если открыт direct-диалог с этим юзером — обновим шапку
-    const conv = (state.conversations||[]).find(c=>c.public_id===state.activeConvPublicID);
-    if(conv && conv.other_public_id){
-      // других точных полей у нас нет, но loadConversations подхватит is_online
+    if(!data || !data.user_public_id) return;
+    // Локально обновляем is_online во всех direct-диалогах с этим юзером
+    (state.conversations||[]).forEach(c => {
+      if(c.type === 'direct' && c.other_public_id === data.user_public_id){
+        c.is_online = !!data.is_online;
+      }
+    });
+    renderConversations();
+    // Если открыт диалог с этим собеседником — перерисуем шапку
+    const active = (state.conversations||[]).find(x => x.public_id === state.activeConvPublicID);
+    if(active && active.type === 'direct' && active.other_public_id === data.user_public_id){
+      const chatStatus = document.getElementById('chatStatus');
+      if(chatStatus){
+        if((state.typingUsers||[]).length > 0){
+          chatStatus.textContent = 'печатает…';
+          chatStatus.className = 'ch-status typing';
+        } else {
+          chatStatus.textContent = data.is_online ? 'в сети' : 'был(а) недавно';
+          chatStatus.className = 'ch-status' + (data.is_online ? ' online' : '');
+        }
+      }
     }
   });
   window.wsClient.on('chat:message', function(data){
