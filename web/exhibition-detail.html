@@ -702,11 +702,20 @@ function handleCoverUpload(input){
 
 /* СОХРАНИТЬ */
 let saved=false;
-function toggleSave(){
-  saved=!saved;
+async function toggleSave(){
+  if(!tk()){toast('Войдите чтобы сохранить выставку',false);return;}
+  if(!state.publicID){return;}
   const btn=document.getElementById('btnSave'),icon=document.getElementById('saveIcon');
-  if(saved){btn.classList.add('saved');icon.style.fill='var(--g)';icon.style.stroke='var(--g)';toast('Выставка сохранена ✓',true)}
-  else{btn.classList.remove('saved');icon.style.fill='none';icon.style.stroke='currentColor';toast('Убрано из сохранённых')}
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/save',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){toast('Ошибка',false);return;}
+    const data=await r.json().catch(()=>({}));
+    saved=!!data.saved;
+    if(saved){btn.classList.add('saved');if(icon){icon.style.fill='var(--g)';icon.style.stroke='var(--g)';}toast('Выставка сохранена ✓',true);}
+    else{btn.classList.remove('saved');if(icon){icon.style.fill='none';icon.style.stroke='currentColor';}toast('Убрано из сохранённых');}
+  }catch(e){console.error(e);toast('Ошибка сети',false);}
+  finally{if(btn)btn.disabled=false;}
 }
 
 /* КАРТА */

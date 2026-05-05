@@ -588,7 +588,7 @@ function renderForm(){
             <input class="ee-input" id="fCity" value="${escHtml(ex.city||'')}" placeholder="Москва">
           </div>
           <div class="ee-field">
-            <label class="ee-field-label">Площадка / Venue</label>
+            <label class="ee-field-label">Площадка</label>
             <input class="ee-input" id="fVenue" value="${escHtml(ex.venue||'')}" placeholder="МВЦ «Крокус Экспо», павильоны 1-3">
           </div>
         </div>
@@ -703,7 +703,14 @@ async function saveBasic(){
     const data=await r.json();const ex=data.exhibition||data;
     eeToast(state.mode==='edit'?'Сохранено ✓':'Выставка создана ✓','ok');
     if(state.mode==='create'&&ex.public_id){setTimeout(()=>{location.href='/exhibition-edit.html?id='+encodeURIComponent(ex.public_id);},800);}
-    else{state.exhibition=ex;btn.disabled=false;btn.textContent=oldText;}
+    else{
+      state.exhibition=ex;btn.disabled=false;btn.textContent=oldText;
+      // обновляем values input'ов чтобы отразить сохранённые данные
+      const fields={fTitle:'title',fShortDesc:'short_description',fDesc:'description',fCategory:'category',fFormat:'format',fStatus:'status',fTimezone:'timezone',fCoverURL:'cover_url',fOrgLabel:'organizer_label',fExpoURL:'external_expo_url',fCity:'city',fAddress:'address',fVenue:'venue',fOnlineURL:'online_url'};
+      Object.keys(fields).forEach(id=>{const el=document.getElementById(id);if(el)el.value=ex[fields[id]]||'';});
+      const fOrg=document.getElementById('fOrgCompanyID');if(fOrg)fOrg.value=ex.organizer_company_id||'';
+      const fTags=document.getElementById('fTags');if(fTags)fTags.value=(ex.tags||[]).join(', ');
+    }
   }catch(e){console.error('save error',e);eeToast('Ошибка сети','err');btn.disabled=false;btn.textContent=oldText;}
 }
 
@@ -1209,11 +1216,15 @@ async function saveTicket(ticketID){
     sort_order:0
   };
   if(!body.title){eeToast('Введите название','err');return;}
+  // блокируем все кнопки в форме чтобы не было дубля при двойном клике
+  const formSlot=document.getElementById('ticketFormSlot');
+  const btns=formSlot?formSlot.querySelectorAll('button'):[];
+  btns.forEach(b=>b.disabled=true);
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets'+(ticketID?'/'+ticketID:'');
   const method=ticketID?'PATCH':'POST';
   try{
     const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
-    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');btns.forEach(b=>b.disabled=false);return;}
     const data=await r.json();
     const tk2=data.ticket||data;
     state.exhibition.tickets=state.exhibition.tickets||[];
@@ -1221,7 +1232,7 @@ async function saveTicket(ticketID){
     else state.exhibition.tickets.push(tk2);
     closeTicketForm();renderTickets();
     eeToast(ticketID?'Билет обновлён ✓':'Билет добавлен ✓','ok');
-  }catch(e){console.error(e);eeToast('Ошибка сети','err');}
+  }catch(e){console.error(e);eeToast('Ошибка сети','err');btns.forEach(b=>b.disabled=false);}
 }
 
 async function deleteTicket(ticketID){

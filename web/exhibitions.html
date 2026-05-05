@@ -881,30 +881,34 @@ function setView(view,btn){
 
 /* ── РЕГИСТРАЦИЯ ── */
 function registerExhibition(id, btnId){
-  if(regSet.has(id)){
-    showToast('Регистрация отменена');
-    regSet.delete(id);
-  } else {
-    showToast('Вы зарегистрированы ✓','success');
-    regSet.add(id);
-  }
-  // Обновляем все кнопки для этой выставки
-  const isReg=regSet.has(id);
-  document.querySelectorAll(`[id*="-reg-${id}"]`).forEach(btn=>{
-    if(btn.classList.contains('btn-reg')||btn.classList.contains('ec-btn')||btn.classList.contains('er-btn')){
-      btn.textContent=isReg?'Зарегистрирован':'Участвовать';
-      isReg?btn.classList.add('registered'):btn.classList.remove('registered');
-    }
-  });
-  if(id===1){
-    const h=document.getElementById('heroRegBtn');
-    if(h){h.innerHTML=`<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>${isReg?'Зарегистрирован':'Зарегистрироваться'}`;if(isReg)h.style.background='var(--gm)';else h.style.background='';}
-  }
+  // Регистрация на выставку идёт через деталку — там полноценная модалка с выбором билета и формата
+  if(!id)return;
+  location.href='/exhibition-detail.html?id='+encodeURIComponent(id);
 }
 
-function toggleFav(id,btn){
-  if(favSet.has(id)){favSet.delete(id);btn.classList.remove('active');showToast('Удалено из избранного');}
-  else{favSet.add(id);btn.classList.add('active');showToast('Добавлено в избранное ✓','success');}
+async function toggleFav(id,btn){
+  if(!tk()){showToast('Войдите чтобы сохранять выставки');return;}
+  if(!id)return;
+  const wasFav=favSet.has(id);
+  // оптимистично переключаем UI
+  if(wasFav){favSet.delete(id);btn.classList.remove('active');}
+  else{favSet.add(id);btn.classList.add('active');}
+  try{
+    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(id)+'/save',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok){
+      // откатываем
+      if(wasFav){favSet.add(id);btn.classList.add('active');}
+      else{favSet.delete(id);btn.classList.remove('active');}
+      showToast('Ошибка');return;
+    }
+    const data=await r.json().catch(()=>({}));
+    if(data.saved){favSet.add(id);btn.classList.add('active');showToast('Добавлено в избранное ✓','success');}
+    else{favSet.delete(id);btn.classList.remove('active');showToast('Удалено из избранного');}
+  }catch(e){
+    if(wasFav){favSet.add(id);btn.classList.add('active');}
+    else{favSet.delete(id);btn.classList.remove('active');}
+    showToast('Ошибка сети');
+  }
 }
 
 function openExhibition(id){if(!id)return;location.href='/exhibition-detail.html?id='+encodeURIComponent(id)}
