@@ -882,14 +882,9 @@ async function sendComment(){
   if (!text) return;
   if (!postPublicID) return;
   try {
-    const headers = { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' };
-    const coId = localStorage.getItem('active_company_id');
-    const cmId = localStorage.getItem('active_community_id');
-    if (coId) headers['X-Active-Company-Id'] = String(coId);
-    else if (cmId) headers['X-Active-Community-Id'] = String(cmId);
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`, {
       method: 'POST',
-      headers,
+      headers: window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }),
       body: JSON.stringify({ content: text })
     });
     if (!r.ok) {

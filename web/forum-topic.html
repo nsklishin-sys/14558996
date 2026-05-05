@@ -934,11 +934,7 @@ async function submitReply(){
   try {
     const body = { content };
     if (replyParentMsgID) body.parent_public_id = replyParentMsgID;
-    const headers = { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' };
-    const coId = localStorage.getItem('active_company_id');
-    const cmId = localStorage.getItem('active_community_id');
-    if (coId) headers['X-Active-Company-Id'] = String(coId);
-    else if (cmId) headers['X-Active-Community-Id'] = String(cmId);
+    const headers = window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' });
     const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
       method: 'POST',
       headers,
