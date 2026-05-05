@@ -2524,57 +2524,6 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"conversations": items})
 	})
 
-	mux.HandleFunc("/api/_debug/chat-state", func(w http.ResponseWriter, r *http.Request) {
-		userID, ok := authenticatedUserID(w, r, sessions)
-		if !ok {
-			return
-		}
-		convs := []map[string]any{}
-		rows, err := db.Query(`SELECT id, public_id, type, owner_kind, owner_id, created_by, created_at FROM chat_conversations WHERE id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY id`, userID)
-		if err != nil {
-			writeError(w, 500, err.Error())
-			return
-		}
-		for rows.Next() {
-			var id, ownerID, createdBy int64
-			var pid, typ, ownerKind string
-			var createdAt time.Time
-			_ = rows.Scan(&id, &pid, &typ, &ownerKind, &ownerID, &createdBy, &createdAt)
-			convs = append(convs, map[string]any{"id": id, "pid": pid, "type": typ, "owner_kind": ownerKind, "owner_id": ownerID, "created_by": createdBy, "created_at": createdAt})
-		}
-		rows.Close()
-		parts := []map[string]any{}
-		rows2, err := db.Query(`SELECT conversation_id, user_id, role FROM chat_participants WHERE conversation_id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY conversation_id, user_id`, userID)
-		if err != nil {
-			writeError(w, 500, err.Error())
-			return
-		}
-		for rows2.Next() {
-			var cid, uid int64
-			var role string
-			_ = rows2.Scan(&cid, &uid, &role)
-			parts = append(parts, map[string]any{"conv_id": cid, "user_id": uid, "role": role})
-		}
-		rows2.Close()
-		msgs := []map[string]any{}
-		rows3, err := db.Query(`SELECT id, conversation_id, author_id, sender_company_id, sender_community_id, LEFT(content, 50), is_deleted, created_at FROM chat_messages WHERE conversation_id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY conversation_id, id`, userID)
-		if err != nil {
-			writeError(w, 500, err.Error())
-			return
-		}
-		for rows3.Next() {
-			var id, cid, authorID int64
-			var coID, cmID sql.NullInt64
-			var content string
-			var isDel bool
-			var createdAt time.Time
-			_ = rows3.Scan(&id, &cid, &authorID, &coID, &cmID, &content, &isDel, &createdAt)
-			msgs = append(msgs, map[string]any{"id": id, "conv_id": cid, "author_id": authorID, "sender_company_id": coID.Int64, "sender_community_id": cmID.Int64, "content": content, "is_deleted": isDel, "created_at": createdAt})
-		}
-		rows3.Close()
-		writeJSON(w, 200, map[string]any{"conversations": convs, "participants": parts, "messages": msgs})
-	})
-
 	mux.HandleFunc("/api/chat/conversations/direct", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -17392,8 +17341,7 @@ func listConversations(db *sql.DB, r *http.Request, userID int64, filter, q stri
 		activeKind = "community"
 		activeID = cmid
 	}
-	args := []any{userID}
-	args = append(args, activeKind, activeID)
+	args := []any{userID, activeKind, activeID}
 	rows, err := db.Query(`SELECT c.public_id,c.owner_kind,c.owner_id,
 COALESCE(co.name, cm.name, '') AS owner_name
 FROM chat_conversations c
@@ -17403,20 +17351,15 @@ LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
 WHERE p.user_id=$1
   AND CASE
     WHEN $2::text = 'user' THEN
-      EXISTS(SELECT 1 FROM chat_participants p2 WHERE p2.conversation_id = c.id AND p2.user_id = $3)
-      AND (
-        c.owner_kind = 'user'
-        OR
-        (c.owner_kind = 'company' AND NOT EXISTS(
-          SELECT 1 FROM company_members cm2
-          WHERE cm2.company_id = c.owner_id AND cm2.user_id = $3
-        ))
-        OR
-        (c.owner_kind = 'community' AND NOT EXISTS(
-          SELECT 1 FROM community_members cmm
-          WHERE cmm.community_id = c.owner_id AND cmm.user_id = $3
-        ))
-      )
+      c.owner_kind = 'user'
+      OR (c.owner_kind = 'company' AND NOT EXISTS(
+        SELECT 1 FROM company_members cm2
+        WHERE cm2.company_id = c.owner_id AND cm2.user_id = $1
+      ))
+      OR (c.owner_kind = 'community' AND NOT EXISTS(
+        SELECT 1 FROM community_members cmm
+        WHERE cmm.community_id = c.owner_id AND cmm.user_id = $1
+      ))
     ELSE
       c.owner_kind = $2::text AND c.owner_id = $3
   END
