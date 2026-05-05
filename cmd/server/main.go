@@ -1681,16 +1681,23 @@ func main() {
 		path := strings.TrimPrefix(r.URL.Path, "/api/analytics/community/")
 		parts := strings.Split(path, "/")
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			writeError(w, http.StatusBadRequest, "Формат пути: /api/analytics/community/{slug}/{section}")
+			writeError(w, http.StatusBadRequest, "Формат пути: /api/analytics/community/{id}/{section}")
 			return
 		}
-		slug := parts[0]
+		communityID, parseErr := strconv.ParseInt(parts[0], 10, 64)
+		if parseErr != nil || communityID <= 0 {
+			writeError(w, http.StatusBadRequest, "id сообщества должен быть числом")
+			return
+		}
 		section := parts[1]
-		communityID, err := resolveCommunityIDBySlug(db, slug)
-		if err != nil {
+		// Проверка что сообщество существует и не удалено
+		var exists bool
+		_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM communities WHERE id=$1 AND is_deleted=FALSE)`, communityID).Scan(&exists)
+		if !exists {
 			writeError(w, http.StatusNotFound, "Сообщество не найдено")
 			return
 		}
+		var err error
 		if !canAccessCommunityAnalytics(db, userID, communityID) {
 			writeError(w, http.StatusForbidden, "Нет прав на аналитику этого сообщества")
 			return
@@ -18259,13 +18266,6 @@ func canAccessCommunityAnalytics(db *sql.DB, userID, communityID int64) bool {
 		return false
 	}
 	return role == "owner" || role == "admin" || role == "moderator"
-}
-
-// resolveCommunityIDBySlug возвращает id сообщества по slug.
-func resolveCommunityIDBySlug(db *sql.DB, slug string) (int64, error) {
-	var id int64
-	err := db.QueryRow(`SELECT id FROM communities WHERE slug=$1`, slug).Scan(&id)
-	return id, err
 }
 
 func computeCompanyAnalyticsOverview(db *sql.DB, companyID int64, period string) (map[string]any, error) {
