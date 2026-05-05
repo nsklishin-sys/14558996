@@ -387,23 +387,30 @@ type chatReplyPreview struct {
 }
 
 type chatMessage struct {
-	ID             int64             `json:"id"`
-	ConversationID int64             `json:"conversation_id"`
-	AuthorPublicID string            `json:"author_public_id"`
-	AuthorName     string            `json:"author_name"`
-	AuthorColor    string            `json:"author_color"`
-	AuthorAvatar   string            `json:"author_avatar,omitempty"`
-	Content        string            `json:"content"`
-	AttachmentURL  string            `json:"attachment_url,omitempty"`
-	AttachmentName string            `json:"attachment_name,omitempty"`
-	AttachmentType string            `json:"attachment_type,omitempty"`
-	AttachmentSize int64             `json:"attachment_size,omitempty"`
-	ReplyTo        *chatReplyPreview `json:"reply_to,omitempty"`
-	IsEdited       bool              `json:"is_edited"`
-	IsDeleted      bool              `json:"is_deleted"`
-	CreatedAt      time.Time         `json:"created_at"`
-	EditedAt       *time.Time        `json:"edited_at,omitempty"`
-	IsMine         bool              `json:"is_mine"`
+	ID                    int64             `json:"id"`
+	ConversationID        int64             `json:"conversation_id"`
+	AuthorPublicID        string            `json:"author_public_id"`
+	AuthorName            string            `json:"author_name"`
+	AuthorColor           string            `json:"author_color"`
+	AuthorAvatar          string            `json:"author_avatar,omitempty"`
+	SenderCompanyID       int64             `json:"sender_company_id,omitempty"`
+	SenderCompanyName     string            `json:"sender_company_name,omitempty"`
+	SenderCompanySlug     string            `json:"sender_company_slug,omitempty"`
+	SenderCompanyLogo     string            `json:"sender_company_logo,omitempty"`
+	SenderCommunityID     int64             `json:"sender_community_id,omitempty"`
+	SenderCommunityName   string            `json:"sender_community_name,omitempty"`
+	SenderCommunityAvatar string            `json:"sender_community_avatar,omitempty"`
+	Content               string            `json:"content"`
+	AttachmentURL         string            `json:"attachment_url,omitempty"`
+	AttachmentName        string            `json:"attachment_name,omitempty"`
+	AttachmentType        string            `json:"attachment_type,omitempty"`
+	AttachmentSize        int64             `json:"attachment_size,omitempty"`
+	ReplyTo               *chatReplyPreview `json:"reply_to,omitempty"`
+	IsEdited              bool              `json:"is_edited"`
+	IsDeleted             bool              `json:"is_deleted"`
+	CreatedAt             time.Time         `json:"created_at"`
+	EditedAt              *time.Time        `json:"edited_at,omitempty"`
+	IsMine                bool              `json:"is_mine"`
 }
 
 type createDirectConversationRequest struct {
@@ -420,6 +427,9 @@ type sendMessageRequest struct {
 	AttachmentName string `json:"attachment_name,omitempty"`
 	AttachmentType string `json:"attachment_type,omitempty"`
 	AttachmentSize int64  `json:"attachment_size,omitempty"`
+	// Контекст отправки (резолвится handler'ом из X-Active-Company-Id / X-Active-Community-Id, не приходит из тела)
+	SenderCompanyID   int64 `json:"-"`
+	SenderCommunityID int64 `json:"-"`
 }
 type editMessageRequest struct {
 	Content string `json:"content"`
@@ -2656,6 +2666,12 @@ func main() {
 				if err := decodeJSON(w, r, &req); err != nil {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
 					return
+				}
+				// Резолвим контекст отправки (компания ИЛИ сообщество, взаимоисключающие)
+				if cid, errCtx := resolveActiveCompanyID(db, r, userID, 0); errCtx == nil && cid > 0 {
+					req.SenderCompanyID = cid
+				} else if cmid, errCtx := resolveActiveCommunityID(db, r, userID, 0); errCtx == nil && cmid > 0 {
+					req.SenderCommunityID = cmid
 				}
 				msg, err := sendMessage(db, userID, publicID, req)
 				if err != nil {
@@ -8195,6 +8211,8 @@ ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_check;
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_type TEXT NOT NULL DEFAULT '';
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_size BIGINT NOT NULL DEFAULT 0;
 -- Новый CHECK: либо есть текст, либо есть attachment.
 ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_or_attachment_check;
@@ -17381,7 +17399,7 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	if limit > 200 {
 		limit = 200
 	}
-	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,''),m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=$1`
+	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,''),m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size,m.sender_company_id,COALESCE(c.name,''),COALESCE(c.slug,''),COALESCE(c.logo_image,''),m.sender_community_id,COALESCE(cm.name,''),COALESCE(cm.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id LEFT JOIN companies c ON c.id=m.sender_company_id LEFT JOIN communities cm ON cm.id=m.sender_community_id WHERE m.conversation_id=$1`
 	args := []any{cid}
 	if beforeID > 0 {
 		q += ` AND m.id < $2`
@@ -17403,8 +17421,22 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	for rows.Next() {
 		var m chatMessage
 		var reply sql.NullInt64
-		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize); err != nil {
+		var coID, cmID sql.NullInt64
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize, &coID, &m.SenderCompanyName, &m.SenderCompanySlug, &m.SenderCompanyLogo, &cmID, &m.SenderCommunityName, &m.SenderCommunityAvatar); err != nil {
 			return nil, err
+		}
+		if coID.Valid {
+			m.SenderCompanyID = coID.Int64
+		} else {
+			m.SenderCompanyName = ""
+			m.SenderCompanySlug = ""
+			m.SenderCompanyLogo = ""
+		}
+		if cmID.Valid {
+			m.SenderCommunityID = cmID.Int64
+		} else {
+			m.SenderCommunityName = ""
+			m.SenderCommunityAvatar = ""
 		}
 		m.IsMine = m.AuthorPublicID == myPublicID
 		m.AuthorColor = stableColorForName(m.AuthorName)
@@ -17452,26 +17484,54 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 	}
 
 	var mid int64
+	var senderCoParam, senderCmParam sql.NullInt64
+	if req.SenderCompanyID > 0 {
+		senderCoParam = sql.NullInt64{Int64: req.SenderCompanyID, Valid: true}
+	}
+	if req.SenderCommunityID > 0 {
+		senderCmParam = sql.NullInt64{Int64: req.SenderCommunityID, Valid: true}
+	}
 	err = db.QueryRow(`
-		INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id,attachment_url,attachment_name,attachment_type,attachment_size)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-		cid, userID, content, req.ReplyToID, aURL, aName, aType, req.AttachmentSize).Scan(&mid)
+		INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id,attachment_url,attachment_name,attachment_type,attachment_size,sender_company_id,sender_community_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+		cid, userID, content, req.ReplyToID, aURL, aName, aType, req.AttachmentSize, senderCoParam, senderCmParam).Scan(&mid)
 	if err != nil {
 		return chatMessage{}, err
 	}
 	_, _ = db.Exec(`UPDATE chat_conversations SET last_message_at=NOW() WHERE id=$1`, cid)
 	_, _ = db.Exec(`DELETE FROM chat_typing WHERE conversation_id=$1 AND user_id=$2`, cid, userID)
 	var m chatMessage
+	var coID, cmID sql.NullInt64
+	var coName, coSlug, coLogo, cmName, cmAvatar sql.NullString
 	if err := db.QueryRow(`
 		SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,
 		       u.public_id,u.full_name,COALESCE(u.avatar_url,''),
-		       m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size
-		FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.id=$1`, mid).Scan(
+		       m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size,
+		       m.sender_company_id, c.name, c.slug, c.logo_image,
+		       m.sender_community_id, cm.name, cm.avatar_url
+		FROM chat_messages m
+		JOIN users u ON u.id=m.author_id
+		LEFT JOIN companies c ON c.id=m.sender_company_id
+		LEFT JOIN communities cm ON cm.id=m.sender_community_id
+		WHERE m.id=$1`, mid).Scan(
 		&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt,
 		&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar,
 		&m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize,
+		&coID, &coName, &coSlug, &coLogo,
+		&cmID, &cmName, &cmAvatar,
 	); err != nil {
 		return chatMessage{}, err
+	}
+	if coID.Valid {
+		m.SenderCompanyID = coID.Int64
+		m.SenderCompanyName = coName.String
+		m.SenderCompanySlug = coSlug.String
+		m.SenderCompanyLogo = coLogo.String
+	}
+	if cmID.Valid {
+		m.SenderCommunityID = cmID.Int64
+		m.SenderCommunityName = cmName.String
+		m.SenderCommunityAvatar = cmAvatar.String
 	}
 	m.IsMine = true
 	m.AuthorColor = stableColorForName(m.AuthorName)
