@@ -117,12 +117,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ex-meta-item svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;flex-shrink:0}
 .ex-meta-sep{width:3px;height:3px;border-radius:50%;background:var(--bdr)}
 /* Счётчики участников */
-.ex-counters{display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap}
-.ex-counter{display:flex;flex-direction:column;gap:2px}
-.ex-counter-val{font-size:22px;font-weight:900;color:var(--t);line-height:1}
+.ex-counters{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.ex-counter{display:flex;flex-direction:column;gap:2px;min-width:fit-content}
+.ex-counter-val{font-size:18px;font-weight:900;color:var(--t);line-height:1;white-space:nowrap}
 .ex-counter-val.green{color:var(--g)}
-.ex-counter-lbl{font-size:11px;color:var(--gmt);font-weight:600}
-.ex-counter-sep{width:1px;height:36px;background:var(--bdr);flex-shrink:0}
+.ex-counter-lbl{font-size:10px;color:var(--gmt);font-weight:600;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.ex-counter-sep{width:1px;height:30px;background:var(--bdr);flex-shrink:0}
 
 /* CTA — две кнопки регистрации */
 .ex-cta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--bdr)}
@@ -282,7 +282,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 [class*="card"]:hover{box-shadow:var(--shm);transform:translateY(-3px)}
 
 /* === PROGRAM (detail page) === */
-.prog-day-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1px solid var(--bdr);padding-bottom:10px}
+.prog-day-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:0;border-bottom:none}
 .prog-day-tab{padding:7px 14px;border-radius:99px;background:var(--gp);border:1.5px solid var(--bdr);font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);cursor:pointer;display:flex;flex-direction:column;line-height:1.25;align-items:flex-start;gap:1px;transition:all .15s}
 .prog-day-tab:hover{border-color:var(--gb);color:var(--g)}
 .prog-day-tab.active{background:var(--g);border-color:var(--g);color:#fff}
@@ -305,7 +305,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .prog-spk-photo{width:18px;height:18px;border-radius:50%;background:var(--g);color:#fff;display:grid;place-items:center;font-size:9px;font-weight:800;background-size:cover;background-position:center;flex-shrink:0}
 
 /* TICKETS detail */
-.tic-card{padding:14px;background:var(--w);border:2px solid var(--bdr);border-radius:var(--rm);display:flex;flex-direction:column;gap:8px;transition:border-color .15s}
+.tic-card{padding:16px;background:var(--w);border:2px solid var(--bdr);border-radius:var(--rm);display:flex;flex-direction:column;gap:8px;transition:border-color .15s,box-shadow .15s}
+.tic-card:hover{box-shadow:var(--sh)}
 .tic-card:hover{border-color:var(--gb)}
 .tic-role-badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;align-self:flex-start}
 .tic-role-badge.r-visitor{background:var(--gl);color:var(--g)}
@@ -722,12 +723,21 @@ async function toggleSave(){
 let mapLoaded=false;
 function loadMap(){
   if(mapLoaded)return;mapLoaded=true;
+  const ex=state.exhibition||{};
   const ph=document.getElementById('mapPlaceholder'),mc=document.getElementById('mapContainer');
   const iframe=document.createElement('iframe');
-  iframe.src='https://yandex.ru/map-widget/v1/?ll=37.329&z=14&l=map&pt=37.329,55.821,pm2rdm';
+  // координаты выставки (или дефолтная Москва)
+  const lat=ex.latitude||55.755,lng=ex.longitude||37.620;
+  iframe.src=`https://yandex.ru/map-widget/v1/?ll=${lng}%2C${lat}&z=14&l=map&pt=${lng},${lat},pm2rdm`;
   iframe.allowFullscreen=true;iframe.loading='lazy';
+  // фиксированная высота карты 280px, не растягивает родителя
   iframe.style.cssText='width:100%;height:280px;border:none;display:block;border-radius:var(--rm)';
-  if(ph)ph.style.display='none';mc.appendChild(iframe);
+  if(ph)ph.style.display='none';
+  // карта рендерится в контейнер места, без влияния на cover
+  mc.appendChild(iframe);
+  mc.style.height='280px';
+  mc.style.maxHeight='280px';
+  mc.style.overflow='hidden';
   toast('Карта загружена',true);
 }
 
@@ -977,20 +987,42 @@ function renderZones(ex){
   const zones=(ex.zones||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   if(!zones.length){sec.style.display='none';return;}
   sec.style.display='';
-  grid.innerHTML=zones.map(z=>`<div class="zone-card">
-    <div class="zone-color-dot" style="background:${escD(z.color||'#1E8A4C')}"></div>
-    <div class="zone-info">
-      <div class="zone-title">${escD(z.title||'')}</div>
-      ${z.description?`<div class="zone-desc">${escD(z.description)}</div>`:''}
-    </div>
-  </div>`).join('');
+  grid.innerHTML=zones.map(z=>{
+    const color=z.color||'#1E8A4C';
+    return `<div style="padding:12px 14px;background:var(--w);border:1px solid var(--bdr);border-left:4px solid ${color};border-radius:var(--rm);display:flex;align-items:center;gap:12px;transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--sh)'" onmouseout="this.style.boxShadow='none'">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--t)">${escD(z.title||'')}</div>
+        ${z.description?`<div style="font-size:11px;color:var(--gmt);margin-top:3px;line-height:1.45">${escD(z.description)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 }
+
 
 function renderProgram(ex){
   const sec=document.getElementById('programSection');
   if(!sec)return;
   const days=(ex.days||[]).slice().sort((a,b)=>new Date(a.day_date)-new Date(b.day_date));
-  if(!days.length){sec.style.display='none';return;}
+  const speakers=ex.speakers||[];
+  // если есть спикеры но нет дней — показываем секцию спикеров отдельно
+  if(!days.length){
+    if(speakers.length){
+      sec.style.display='';
+      const tabsEl=document.getElementById('programDayTabs');
+      tabsEl.innerHTML='';
+      const content=document.getElementById('programContent');
+      content.innerHTML='<div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Спикеры</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'+speakers.map(s=>{
+        const photo=s.photo_url?`background-image:url(${escD(s.photo_url)});background-size:cover;background-position:center;color:transparent`:'';
+        const initial=((s.full_name||'?')[0]||'?').toUpperCase();
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm)">
+          <span style="width:40px;height:40px;border-radius:50%;background:#1E8A4C;color:#fff;display:grid;place-items:center;font-size:14px;font-weight:800;flex-shrink:0;${photo}">${initial}</span>
+          <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:700;color:var(--t)">${escD(s.full_name||'')}</div>${s.role?`<div style="font-size:11px;color:var(--gmt);margin-top:1px">${escD(s.role)}</div>`:''}</div>
+        </div>`;
+      }).join('')+'</div>';
+      return;
+    }
+    sec.style.display='none';return;
+  }
   sec.style.display='';
 
   const tabsEl=document.getElementById('programDayTabs');
@@ -999,7 +1031,6 @@ function renderProgram(ex){
     <span class="pdt-date">${escD(fmtDayDateDet(d.day_date))}${d.title?' · '+escD(d.title):''}</span>
   </button>`).join('');
 
-  // показать первый день
   switchProgramDay(days[0].id);
 }
 
@@ -1019,18 +1050,7 @@ window.switchProgramDay=function(dayID){
       const initial=sp.photo_url?'':(sp.full_name||'?')[0].toUpperCase();
       return `<span class="prog-spk"><span class="prog-spk-photo" style="${photo}">${initial}</span>${escD(sp.full_name)}</span>`;
     }).filter(Boolean).join('');
-    return `<div class="prog-session">
-      <div class="prog-session-time">${fmtTimeDet(s.starts_at)}–${fmtTimeDet(s.ends_at)}</div>
-      <div class="prog-session-body">
-        <div class="prog-session-title">${escD(s.title||'')}</div>
-        ${s.description?`<div class="prog-session-desc">${escD(s.description)}</div>`:''}
-        <div class="prog-session-meta">
-          ${typeLbl?`<span class="prog-session-type ${cls}">${typeLbl}</span>`:''}
-          ${s.location?`<span class="prog-session-loc">📍 ${escD(s.location)}</span>`:''}
-        </div>
-        ${speakerChips?`<div class="prog-session-speakers">${speakerChips}</div>`:''}
-      </div>
-    </div>`;
+    return `<div class="prog-session"><div class="prog-session-time">${fmtTimeDet(s.starts_at)}–${fmtTimeDet(s.ends_at)}</div><div class="prog-session-body"><div class="prog-session-title">${escD(s.title||'')}</div>${s.description?`<div class="prog-session-desc">${escD(s.description)}</div>`:''}<div class="prog-session-meta">${typeLbl?`<span class="prog-session-type ${cls}">${typeLbl}</span>`:''}${s.location?`<span class="prog-session-loc">📍 ${escD(s.location)}</span>`:''}</div>${speakerChips?`<div class="prog-session-speakers">${speakerChips}</div>`:''}</div></div>`;
   }).join('');
 };
 
