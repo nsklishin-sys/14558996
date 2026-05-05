@@ -1084,8 +1084,9 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 async function api(path,opt={}){
   const h={...(opt.headers||{}),Authorization:`Bearer ${tk()}`};
   if(opt.body&&!(opt.body instanceof FormData)){h['Content-Type']='application/json';opt.body=JSON.stringify(opt.body)}
-  // A2.1: при отправке сообщений в чат — добавляем заголовок активного контекста (компания/сообщество)
-  const needsCtx = (opt.method==='POST') && /\/chat\/conversations\/[^/]+\/messages($|\?)/.test(path);
+  // A2.1R: для ВСЕХ запросов /chat/* — добавляем заголовок активного контекста.
+  // Это влияет и на чтение списка диалогов (фильтр по owner), и на отправку (запись sender_company_id).
+  const needsCtx = path.startsWith('/chat/');
   if(needsCtx){
     if(typeof window.withActiveContextHeaders === 'function'){
       Object.assign(h, window.withActiveContextHeaders({}));
@@ -1161,7 +1162,23 @@ function resetActiveContext(){
   showToast('Личный контекст активен');
 }
 window.addEventListener('storage', (e)=>{
-  if(e.key === 'active_company_id' || e.key === 'active_community_id') renderComposeBanner();
+  if(e.key === 'active_company_id' || e.key === 'active_community_id'){
+    renderComposeBanner();
+    // Сбрасываем активный диалог и кеш — список диалогов изменится
+    state.activeConvPublicID = null;
+    state.activeConversation = null;
+    state.messages = [];
+    renderCache.conversationsSig = '';
+    renderCache.messagesSig = '';
+    if(typeof loadConversations === 'function') loadConversations();
+    // Очистим лента сообщений
+    const cb = document.getElementById('chatBody');
+    if(cb) cb.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>';
+    const chName = document.getElementById('chatName');
+    const chStatus = document.getElementById('chatStatus');
+    if(chName) chName.textContent = '';
+    if(chStatus) chStatus.textContent = '';
+  }
 });
 
 async function loadCurrentUser(){
