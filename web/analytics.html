@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Аналитика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+
+/* MAIN */
+.main{grid-area:main;overflow-y:auto;padding-bottom:20px}
+
+/* TOOLBAR */
+.an-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 18px;box-shadow:var(--sh);display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.an-title{font-size:18px;font-weight:900;color:var(--t);letter-spacing:-.01em}
+.an-subtitle{font-size:12px;color:var(--gmt);margin-right:auto}
+
+/* PERIOD SWITCHER */
+.period-switch{display:flex;background:var(--gp);border:1.5px solid var(--bdr);border-radius:99px;padding:3px;gap:2px}
+.period-btn{padding:6px 14px;border-radius:99px;background:transparent;color:var(--gmt);border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;min-width:42px}
+.period-btn:hover{color:var(--g)}
+.period-btn.active{background:var(--g);color:#fff;box-shadow:0 1px 4px rgba(30,138,76,.2)}
+
+/* SCOPE TABS */
+.scope-tabs{display:flex;gap:6px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:6px;box-shadow:var(--sh);margin-bottom:12px;overflow-x:auto}
+.scope-tab{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--rm);border:none;background:transparent;color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.scope-tab:hover{background:var(--gp);color:var(--g)}
+.scope-tab.active{background:var(--g);color:#fff;font-weight:700}
+.scope-tab svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.scope-select{margin-left:auto;height:32px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);font-family:inherit;font-size:12px;color:var(--t);cursor:pointer;outline:none;display:none}
+.scope-select.show{display:block}
+
+/* DASHBOARD */
+.dash{display:flex;flex-direction:column;gap:12px;animation:fadeUp .25s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.kpi-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--g)}
+.kpi-card.kpi-blue::before{background:#3A90C0}
+.kpi-card.kpi-orange::before{background:#C07030}
+.kpi-card.kpi-purple::before{background:#9060C0}
+.kpi-card.kpi-pink::before{background:#B05090}
+.kpi-card.kpi-teal::before{background:#208090}
+.kpi-label{font-size:10px;color:var(--gmt);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.kpi-value{font-size:28px;font-weight:900;color:var(--t);line-height:1;letter-spacing:-.02em}
+.kpi-hint{font-size:11px;color:var(--gmt)}
+
+/* PANELS (charts, tables) */
+.panels-row{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.panels-row.panels-row-1col{grid-template-columns:1fr}
+.panel{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh)}
+.panel-title{font-size:13px;font-weight:800;color:var(--t);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel-title svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round}
+.panel-empty{padding:30px 14px;text-align:center;color:var(--gmt);font-size:12px;font-style:italic}
+
+/* CHART CONTAINER */
+.chart-box{position:relative;height:240px;width:100%}
+.chart-box.chart-tall{height:320px}
+
+/* TABLES */
+.an-table{width:100%;border-collapse:collapse;font-size:12px}
+.an-table th{padding:8px 10px;text-align:left;color:var(--gmt);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid var(--bdr);white-space:nowrap}
+.an-table td{padding:9px 10px;border-bottom:1px solid var(--bdr);color:var(--t)}
+.an-table tr:last-child td{border-bottom:none}
+.an-table .an-td-num{text-align:right;font-weight:700;color:var(--g)}
+.an-row-link{cursor:pointer;transition:background .12s}
+.an-row-link:hover{background:var(--gp)}
+.an-user{display:flex;align-items:center;gap:8px}
+.an-av{width:28px;height:28px;border-radius:8px;background:var(--g);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;flex-shrink:0;background-size:cover;background-position:center}
+.an-name{font-weight:700;color:var(--t);font-size:12px;line-height:1.3}
+.an-sub{font-size:10px;color:var(--gmt);margin-top:1px}
+
+/* RIGHT SIDEBAR INFO */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.card{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);padding:14px}
+.block-title{font-size:11px;font-weight:800;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.tip-card{background:linear-gradient(135deg,var(--gl),var(--gp));border:1px solid var(--gb);border-radius:var(--rxl);padding:14px}
+.tip-title{font-size:12px;font-weight:800;color:var(--g);margin-bottom:6px}
+.tip-text{font-size:11px;color:var(--tm);line-height:1.55}
+
+.skel{background:var(--gp);border-radius:var(--rm);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.panels-row{grid-template-columns:1fr}}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="shell">
+
+<!-- LOGO -->
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+
+<!-- TOPBAR (стандартный — заполняется shell-layout/profile-context) -->
+<header class="topbar">
+  <div class="search-wrap"><span class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span><input type="search" id="searchInput" placeholder="Поиск по платформе…" autocomplete="off"></div>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">?</div>
+      <div class="tp-info"><span class="tp-name" id="topbarName">Загрузка...</span><span class="tp-role" id="topbarRole">Участник LASTOP</span></div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head"><div class="pdd-av" id="pddAv">?</div><div class="pdd-info"><div class="pdd-name" id="pddName">Загрузка...</div><div class="pdd-role" id="pddRole">Участник LASTOP</div></div></div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="pdd-item-label">Друзья</span></a>
+        <a href="/my-company.html" class="pdd-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span class="pdd-item-label">Моя компания</span></a>
+        <a href="/communities.html?filter=my" class="pdd-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="pdd-item-label">Мои сообщества</span></a>
+        <a href="/saved.html" class="pdd-item"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span class="pdd-item-label">Сохранённое</span></a>
+        <a href="/analytics.html" class="pdd-item" style="background:var(--gp);color:var(--g);font-weight:700"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="pdd-item-label">Аналитика</span></a>
+        <div id="profileContextSlot"></div>
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="pdd-item-label">Выход</span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NAV (стандартный) -->
+<nav class="nav">
+  <div class="nav-group">Навигация</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Главная</span></a>
+  <a class="nav-item" href="/dashboard.html"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Новости</span></a>
+  <a class="nav-item" href="/projects.html"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Проекты</span></a>
+  <a class="nav-item" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Мероприятия</span></a>
+  <a class="nav-item" href="/exhibitions.html"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg><span>Выставки</span></a>
+  <a class="nav-item" href="/jobs.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Резюме</span></a>
+  <a class="nav-item" href="/catalog.html"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Товары и услуги</span></a>
+  <div class="nav-group">Общение</div>
+  <a class="nav-item" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Форум</span></a>
+  <a class="nav-item" href="/companies.html"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg><span>Компании</span></a>
+  <a class="nav-item" href="/communities.html"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Сообщества</span></a>
+  <div class="nav-group">Профиль</div>
+  <a class="nav-item" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><span>Чат</span></a>
+  <a class="nav-item" href="/profile.html"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Профиль</span></a>
+  <div class="nav-bottom">
+    <a class="nav-item" href="/settings.html" style="color:var(--gmt)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Настройки</span></a>
+  </div>
+</nav>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+
+  <!-- TOOLBAR -->
+  <div class="an-toolbar">
+    <span class="an-title">Аналитика</span>
+    <span class="an-subtitle">Активность и метрики на платформе</span>
+    <div class="period-switch" id="periodSwitch">
+      <button class="period-btn" data-period="7d">7д</button>
+      <button class="period-btn active" data-period="30d">30д</button>
+      <button class="period-btn" data-period="90d">90д</button>
+      <button class="period-btn" data-period="all">всё</button>
+    </div>
+  </div>
+
+  <!-- SCOPE TABS -->
+  <div class="scope-tabs" id="scopeTabs">
+    <!-- табы рендерятся в JS на основе доступности -->
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="dash" id="dashContainer">
+    <div class="panel"><div class="panel-empty">Загрузка…</div></div>
+  </div>
+
+</div>
+
+<!-- ════ RIGHT ════ -->
+<aside class="right">
+  <div class="card">
+    <div class="block-title">Что показывает аналитика</div>
+    <div style="font-size:12px;color:var(--tm);line-height:1.55">
+      Аналитика отображает активность вокруг вашего контента: просмотры, реакции, отклики, регистрации и сохранения.
+    </div>
+  </div>
+  <div class="card">
+    <div class="block-title">Скоупы доступа</div>
+    <div style="font-size:11px;color:var(--tm);line-height:1.55">
+      <div style="margin-bottom:6px"><b style="color:var(--t)">👤 Личная</b> — события вокруг вашего профиля и контента</div>
+      <div style="margin-bottom:6px"><b style="color:var(--t)">🏢 Компания</b> — для владельцев и администраторов компаний</div>
+      <div style="margin-bottom:6px"><b style="color:var(--t)">👥 Сообщество</b> — для админов сообществ</div>
+      <div><b style="color:var(--t)">⚙️ Платформа</b> — общая статистика, доступна администраторам</div>
+    </div>
+  </div>
+  <div class="tip-card">
+    <div class="tip-title">💡 Приватность</div>
+    <div class="tip-text">Вы можете отключить отображение себя в списке «Кто смотрел профиль» в настройках приватности.</div>
+  </div>
+</aside>
+
+</div><!-- /shell -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+const tk = () => localStorage.getItem('token');
+
+// ── STATE ──
+const state = {
+  user: null,
+  scope: 'me',           // me | company | community | platform
+  period: '30d',
+  companies: [],         // мои компании
+  communities: [],       // мои сообщества
+  selectedCompanyId: null,
+  selectedCommunityId: null,
+  charts: {},            // живые экземпляры Chart.js (для destroy при перерендере)
+};
+
+// ── UTILS ──
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function letter(s){return ((s||'?')[0]||'?').toUpperCase();}
+function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#185FA5'];return C[(s||'').charCodeAt(0)%C.length];}
+function fmtNum(n){
+  n = parseInt(n)||0;
+  if(n>=1e6)return (n/1e6).toFixed(1).replace('.0','')+'M';
+  if(n>=1e4)return (n/1e3).toFixed(1).replace('.0','')+'k';
+  return new Intl.NumberFormat('ru-RU').format(n);
+}
+function fmtPct(n){if(!n)return '0%';return (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,'')+'%';}
+function ago(ts){if(!ts)return'';const d=new Date(ts);if(isNaN(d))return'';const m=Math.max(1,Math.floor((Date.now()-d)/60000));if(m<60)return m+' мин';if(m<1440)return Math.floor(m/60)+' ч';if(m<10080)return Math.floor(m/1440)+' д';return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+function toggleProfileDD(e){e.stopPropagation();const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');dd.classList.toggle('open');tp.classList.toggle('open');}
+document.addEventListener('click',(e)=>{const dd=document.getElementById('profileDD');if(dd&&!dd.contains(e.target)&&!document.getElementById('topbarProfile').contains(e.target)){dd.classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
+
+// ── AUTH + USER ──
+async function loadUser(){
+  if(!tk()){location.href='/login.html';return;}
+  try{
+    const r = await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const{user={}} = await r.json();
+    state.user = user;
+    localStorage.setItem('user', JSON.stringify(user));
+    populateProfile(user);
+  }catch{
+    state.user = JSON.parse(localStorage.getItem('user')||'{}');
+    if(!state.user.id){location.href='/login.html';return;}
+    populateProfile(state.user);
+  }
+}
+function populateProfile(u){
+  const name = u.full_name||u.name||'Участник';
+  const ltr = letter(name);
+  ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=avc(name);}});
+  ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name;});
+  ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=u.position||u.role||'Участник LASTOP';});
+}
+
+// ── SCOPES (доступные табы) ──
+async function loadAvailableScopes(){
+  // 1. Получить мои компании (где owner/admin)
+  try{
+    const r = await fetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const d = await r.json();
+      state.companies = (d.items || d.companies || []).filter(c=>{
+        const role = c.my_role || c.role;
+        return role==='owner' || role==='admin';
+      });
+    }
+  }catch{}
+  // 2. Получить мои сообщества (где owner/admin/moderator)
+  try{
+    const r = await fetch(API+'/communities?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const d = await r.json();
+      state.communities = (d.communities || d.items || []).filter(c=>{
+        const role = c.my_role || c.role;
+        return role==='owner' || role==='admin' || role==='moderator';
+      });
+    }
+  }catch{}
+  renderScopeTabs();
+}
+
+function renderScopeTabs(){
+  const tabs = [];
+  // Личная — всегда
+  tabs.push({key:'me', label:'Личная', svg:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'});
+  // Компания — если есть
+  if(state.companies.length){
+    tabs.push({key:'company', label:'Компания', svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'});
+  }
+  // Сообщество — если есть
+  if(state.communities.length){
+    tabs.push({key:'community', label:'Сообщество', svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'});
+  }
+  // Платформа — если is_admin
+  if(state.user && state.user.is_admin){
+    tabs.push({key:'platform', label:'Платформа', svg:'<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>'});
+  }
+  // Селекторы (компания / сообщество)
+  let companySelect = '';
+  if(state.companies.length){
+    companySelect = `<select class="scope-select" id="scopeCompanySelect" onchange="onCompanyChange()">${state.companies.map((c,i)=>`<option value="${c.id}|${c.slug||''}">${esc(c.name||c.title||'')}</option>`).join('')}</select>`;
+  }
+  let communitySelect = '';
+  if(state.communities.length){
+    communitySelect = `<select class="scope-select" id="scopeCommunitySelect" onchange="onCommunityChange()">${state.communities.map(c=>`<option value="${c.id}">${esc(c.name||c.title||'')}</option>`).join('')}</select>`;
+  }
+  document.getElementById('scopeTabs').innerHTML =
+    tabs.map(t=>`<button class="scope-tab${t.key===state.scope?' active':''}" data-scope="${t.key}" onclick="setScope('${t.key}')">
+      <svg viewBox="0 0 24 24">${t.svg}</svg>${t.label}
+    </button>`).join('') + companySelect + communitySelect;
+  if(state.companies.length){
+    state.selectedCompanyId = state.companies[0].id;
+    state.selectedCompanySlug = state.companies[0].slug;
+  }
+  if(state.communities.length){
+    state.selectedCommunityId = state.communities[0].id;
+  }
+  updateScopeSelects();
+}
+
+function updateScopeSelects(){
+  const co = document.getElementById('scopeCompanySelect');
+  const cm = document.getElementById('scopeCommunitySelect');
+  if(co) co.classList.toggle('show', state.scope==='company');
+  if(cm) cm.classList.toggle('show', state.scope==='community');
+}
+
+function setScope(scope){
+  state.scope = scope;
+  document.querySelectorAll('.scope-tab').forEach(t=>t.classList.toggle('active', t.dataset.scope===scope));
+  updateScopeSelects();
+  renderDashboard();
+}
+function onCompanyChange(){
+  const sel = document.getElementById('scopeCompanySelect');
+  const [id, slug] = (sel.value||'').split('|');
+  state.selectedCompanyId = parseInt(id, 10);
+  state.selectedCompanySlug = slug;
+  renderDashboard();
+}
+function onCommunityChange(){
+  const sel = document.getElementById('scopeCommunitySelect');
+  state.selectedCommunityId = parseInt(sel.value, 10);
+  renderDashboard();
+}
+
+// ── PERIOD ──
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('periodSwitch').addEventListener('click',(e)=>{
+    const btn = e.target.closest('.period-btn');
+    if(!btn)return;
+    state.period = btn.dataset.period;
+    document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    renderDashboard();
+  });
+});
+
+// ── FETCH ──
+async function fetchAnalytics(url){
+  const r = await fetch(url, {headers:{Authorization:'Bearer '+tk()}});
+  if(!r.ok){
+    return {error: 'HTTP '+r.status, status: r.status};
+  }
+  return await r.json();
+}
+
+// ── RENDER DASHBOARD (router по scope) ──
+async function renderDashboard(){
+  // Сбросить старые графики
+  Object.values(state.charts).forEach(ch=>{try{ch.destroy();}catch{}});
+  state.charts = {};
+
+  const c = document.getElementById('dashContainer');
+  c.innerHTML = '<div class="panel"><div class="panel-empty">Загружаем данные…</div></div>';
+
+  if(state.scope==='me'){
+    await renderMeDashboard();
+  } else if(state.scope==='company'){
+    await renderCompanyDashboard();
+  } else if(state.scope==='community'){
+    await renderCommunityDashboard();
+  } else if(state.scope==='platform'){
+    await renderPlatformDashboard();
+  }
+}
+
+// ── COLORS for charts ──
+const CHART_COLORS = ['#1E8A4C','#3A90C0','#9060C0','#C07030','#B05090','#208090','#3B6D11','#185FA5','#A0530A','#5F5E5A'];
+const EVENT_LABELS = {
+  profile_view:'Просмотры профилей',
+  post_view:'Посты',
+  job_view:'Вакансии',
+  resume_view:'Резюме',
+  catalog_view:'Товары',
+  exhibition_view:'Выставки',
+  event_view:'Мероприятия',
+  forum_view:'Форум',
+  forum_message_sent:'Форум-сообщения',
+  message_sent:'Сообщения',
+  comment_added:'Комментарии',
+  save_action:'Сохранения',
+  reaction:'Реакции',
+  job_apply:'Отклики',
+  event_register:'Регистрации',
+  exhibition_register:'Регистрации на выставку',
+  exhibition_view:'Просмотры выставок',
+  company_view:'Просмотры компании',
+};
+
+// ── CHART HELPERS ──
+function makeLineChart(canvasId, labels, datasets){
+  const ctx = document.getElementById(canvasId);
+  if(!ctx)return;
+  const chart = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets: datasets.map((ds,i)=>({
+      label: ds.label,
+      data: ds.data,
+      borderColor: ds.color || CHART_COLORS[i%CHART_COLORS.length],
+      backgroundColor: (ds.color || CHART_COLORS[i%CHART_COLORS.length])+'22',
+      fill:true, tension:0.35, pointRadius:2, pointHoverRadius:5, borderWidth:2
+    }))},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:datasets.length>1, position:'top', labels:{font:{size:11}, boxWidth:12}}},
+      scales:{
+        y:{beginAtZero:true, ticks:{font:{size:10}, color:'#5A8A6A'}, grid:{color:'#DDE8E2'}},
+        x:{ticks:{font:{size:9}, color:'#5A8A6A', maxRotation:0, autoSkip:true, maxTicksLimit:8}, grid:{display:false}}
+      }
+    }
+  });
+  state.charts[canvasId] = chart;
+}
+function makeDoughnutChart(canvasId, labels, data, colors){
+  const ctx = document.getElementById(canvasId);
+  if(!ctx)return;
+  const chart = new Chart(ctx,{
+    type:'doughnut',
+    data:{labels, datasets:[{data, backgroundColor: colors||CHART_COLORS, borderWidth:0}]},
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{legend:{position:'right', labels:{font:{size:11}, boxWidth:12, padding:10}}}
+    }
+  });
+  state.charts[canvasId] = chart;
+}
+function makeBarChart(canvasId, labels, data, label, color){
+  const ctx = document.getElementById(canvasId);
+  if(!ctx)return;
+  const chart = new Chart(ctx,{
+    type:'bar',
+    data:{labels, datasets:[{label: label||'', data, backgroundColor: color||CHART_COLORS[0], borderRadius:6}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true, ticks:{font:{size:10}, color:'#5A8A6A'}, grid:{color:'#DDE8E2'}},
+        x:{ticks:{font:{size:10}, color:'#5A8A6A', maxRotation:0, autoSkip:true, maxTicksLimit:10}, grid:{display:false}}
+      }
+    }
+  });
+  state.charts[canvasId] = chart;
+}
+
+function dailyToChart(daily, mergeAll){
+  // принимает [{date:'2026-04-01', count: 5}] или [{date, event_type, count}] (если mergeAll=true → все типы суммируем)
+  if(!daily||!daily.length)return {labels:[], data:[]};
+  const map = {};
+  daily.forEach(d=>{
+    map[d.date] = (map[d.date]||0) + (d.count||0);
+  });
+  const labels = Object.keys(map).sort();
+  const data = labels.map(l=>map[l]);
+  return {labels: labels.map(l=>l.slice(5)), data}; // показываем MM-DD
+}
+
+function dailyByTypeToChart(daily){
+  // daily: [{date, event_type, count}]
+  if(!daily||!daily.length)return {labels:[], datasets:[]};
+  const types = [...new Set(daily.map(d=>d.event_type))];
+  const dates = [...new Set(daily.map(d=>d.date))].sort();
+  const datasets = types.map((t,i)=>({
+    label: EVENT_LABELS[t]||t,
+    color: CHART_COLORS[i%CHART_COLORS.length],
+    data: dates.map(d=>{
+      const m = daily.find(x=>x.date===d && x.event_type===t);
+      return m ? m.count : 0;
+    })
+  }));
+  return {labels: dates.map(d=>d.slice(5)), datasets};
+}
+
+// ─────────────────────────────────────────────
+// === ЛИЧНАЯ АНАЛИТИКА ===
+// ─────────────────────────────────────────────
+async function renderMeDashboard(){
+  const [overview, profileViews, content, career] = await Promise.all([
+    fetchAnalytics(`${API}/analytics/me/overview?period=${state.period}`),
+    fetchAnalytics(`${API}/analytics/me/profile-views?period=${state.period}`),
+    fetchAnalytics(`${API}/analytics/me/content?period=${state.period}`),
+    fetchAnalytics(`${API}/analytics/me/career?period=${state.period}`),
+  ]);
+  if(overview.error){
+    document.getElementById('dashContainer').innerHTML = `<div class="panel"><div class="panel-empty">Не удалось загрузить данные. ${esc(overview.error)}</div></div>`;
+    return;
+  }
+  const ov = overview.analytics || {};
+  const pv = profileViews.analytics || {};
+  const ct = content.analytics || {};
+  const cr = career.analytics || {};
+
+  document.getElementById('dashContainer').innerHTML = `
+    <!-- KPI -->
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Просмотры профиля</div><div class="kpi-value">${fmtNum(ov.profile_views)}</div><div class="kpi-hint">${fmtNum(ov.unique_viewers)} уникальных</div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-label">Просмотры контента</div><div class="kpi-value">${fmtNum(ov.content_views)}</div><div class="kpi-hint">посты, вакансии, выставки</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">Действия с контентом</div><div class="kpi-value">${fmtNum(ov.actions_received)}</div><div class="kpi-hint">сохранения, отклики, комментарии</div></div>
+      <div class="kpi-card kpi-purple"><div class="kpi-label">Сообщений отправлено</div><div class="kpi-value">${fmtNum(ov.messages_sent)}</div><div class="kpi-hint">чат и форум</div></div>
+    </div>
+
+    <!-- Графики: профиль и контент -->
+    <div class="panels-row">
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><polyline points="3,17 9,11 13,15 21,7"/></svg>Просмотры профиля по дням</div>
+        ${(pv.daily&&pv.daily.length)?'<div class="chart-box"><canvas id="chPVDaily"></canvas></div>':'<div class="panel-empty">Нет данных за период</div>'}
+      </div>
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8a4 4 0 1 0 0 8"/></svg>Контент по типам</div>
+        ${(ct.by_type&&ct.by_type.length)?'<div class="chart-box"><canvas id="chContentType"></canvas></div>':'<div class="panel-empty">Нет данных</div>'}
+      </div>
+    </div>
+
+    <!-- График динамики контента -->
+    <div class="panels-row panels-row-1col">
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><polyline points="3,18 8,12 13,16 21,8"/></svg>Динамика просмотров вашего контента</div>
+        ${(ct.daily&&ct.daily.length)?'<div class="chart-box chart-tall"><canvas id="chContentDaily"></canvas></div>':'<div class="panel-empty">Нет данных за период</div>'}
+      </div>
+    </div>
+
+    <!-- Карьерные метрики -->
+    <div class="kpi-row">
+      <div class="kpi-card kpi-teal"><div class="kpi-label">Просмотры резюме</div><div class="kpi-value">${fmtNum(cr.resume_views)}</div></div>
+      <div class="kpi-card kpi-pink"><div class="kpi-label">Сохранений резюме</div><div class="kpi-value">${fmtNum(cr.resume_saves)}</div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-label">Просмотры вакансий</div><div class="kpi-value">${fmtNum(cr.job_views)}</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">Откликов на вакансии</div><div class="kpi-value">${fmtNum(cr.job_applies)}</div></div>
+    </div>
+
+    <!-- Топ зрителей -->
+    <div class="panels-row panels-row-1col">
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Кто смотрел ваш профиль</div>
+        ${renderTopViewers(pv.top_viewers||[])}
+      </div>
+    </div>
+  `;
+
+  // Render charts
+  if(pv.daily && pv.daily.length){
+    const {labels, data} = dailyToChart(pv.daily);
+    makeLineChart('chPVDaily', labels, [{label:'Просмотры профиля', data, color:'#1E8A4C'}]);
+  }
+  if(ct.by_type && ct.by_type.length){
+    const labels = ct.by_type.map(x=>EVENT_LABELS[x.event_type]||x.event_type);
+    const data = ct.by_type.map(x=>x.count);
+    makeDoughnutChart('chContentType', labels, data);
+  }
+  if(ct.daily && ct.daily.length){
+    const {labels, data} = dailyToChart(ct.daily);
+    makeLineChart('chContentDaily', labels, [{label:'Просмотры контента', data, color:'#3A90C0'}]);
+  }
+}
+
+function renderTopViewers(viewers){
+  if(!viewers.length)return '<div class="panel-empty">Никто не смотрел ваш профиль за выбранный период (или они отключили видимость в настройках приватности).</div>';
+  return `<table class="an-table">
+    <thead><tr><th>Пользователь</th><th>Должность</th><th class="an-td-num">Визитов</th><th class="an-td-num">Последний визит</th></tr></thead>
+    <tbody>${viewers.map(v=>{
+      const photo = v.avatar_url ? `background-image:url(${esc(v.avatar_url)})` : `background:${avc(v.name)}`;
+      const initial = v.avatar_url ? '' : letter(v.name);
+      return `<tr class="an-row-link" onclick="location.href='/profile.html?user=${encodeURIComponent(v.public_id)}'">
+        <td><div class="an-user"><div class="an-av" style="${photo}">${initial}</div><div><div class="an-name">${esc(v.name||'')}</div></div></div></td>
+        <td style="color:var(--gmt);font-size:11px">${esc(v.position||'—')}</td>
+        <td class="an-td-num">${fmtNum(v.visit_count)}</td>
+        <td class="an-td-num" style="color:var(--gmt);font-weight:600">${ago(v.last_visit)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ─────────────────────────────────────────────
+// === АНАЛИТИКА КОМПАНИИ ===
+// ─────────────────────────────────────────────
+async function renderCompanyDashboard(){
+  if(!state.selectedCompanySlug){
+    document.getElementById('dashContainer').innerHTML = '<div class="panel"><div class="panel-empty">Выберите компанию из списка.</div></div>';
+    return;
+  }
+  const slug = state.selectedCompanySlug;
+  const [overview, jobs, products] = await Promise.all([
+    fetchAnalytics(`${API}/analytics/company/${encodeURIComponent(slug)}/overview?period=${state.period}`),
+    fetchAnalytics(`${API}/analytics/company/${encodeURIComponent(slug)}/jobs?period=${state.period}`),
+    fetchAnalytics(`${API}/analytics/company/${encodeURIComponent(slug)}/products?period=${state.period}`),
+  ]);
+  if(overview.error){
+    document.getElementById('dashContainer').innerHTML = `<div class="panel"><div class="panel-empty">Не удалось загрузить. ${esc(overview.error)}</div></div>`;
+    return;
+  }
+  const ov = overview.analytics || {};
+  const jb = jobs.analytics || {};
+  const pr = products.analytics || {};
+
+  document.getElementById('dashContainer').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Просмотры компании</div><div class="kpi-value">${fmtNum(ov.company_views)}</div><div class="kpi-hint">${fmtNum(ov.unique_visitors)} уникальных</div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-label">Просмотры контента</div><div class="kpi-value">${fmtNum(ov.content_views)}</div><div class="kpi-hint">всего материалов</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">Просмотры вакансий</div><div class="kpi-value">${fmtNum(ov.job_views)}</div><div class="kpi-hint">${fmtNum(ov.job_applies)} откликов</div></div>
+      <div class="kpi-card kpi-purple"><div class="kpi-label">Просмотры товаров</div><div class="kpi-value">${fmtNum(ov.catalog_views)}</div></div>
+      <div class="kpi-card kpi-teal"><div class="kpi-label">Просмотры выставок</div><div class="kpi-value">${fmtNum(ov.exhibition_views)}</div></div>
+      <div class="kpi-card kpi-pink"><div class="kpi-label">Действия пользователей</div><div class="kpi-value">${fmtNum(ov.actions_received)}</div></div>
+    </div>
+
+    <div class="panels-row">
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><polyline points="3,17 9,11 13,15 21,7"/></svg>Все события компании по дням</div>
+        ${(ov.daily&&ov.daily.length)?'<div class="chart-box"><canvas id="chCoDaily"></canvas></div>':'<div class="panel-empty">Нет данных</div>'}
+      </div>
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8a4 4 0 1 0 0 8"/></svg>Распределение по типам</div>
+        ${(ov.by_type&&ov.by_type.length)?'<div class="chart-box"><canvas id="chCoType"></canvas></div>':'<div class="panel-empty">Нет данных</div>'}
+      </div>
+    </div>
+
+    <!-- Топ вакансий -->
+    <div class="panel">
+      <div class="panel-title"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Вакансии: топ по просмотрам ${jb.conversion?'<span style="margin-left:auto;font-size:11px;color:var(--gmt);font-weight:600">Конверсия в отклик: '+fmtPct(jb.conversion)+'</span>':''}</div>
+      ${renderTopJobs(jb.top_jobs||[])}
+    </div>
+
+    <!-- Топ товаров -->
+    <div class="panel">
+      <div class="panel-title"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>Товары и услуги: топ</div>
+      ${renderTopProducts(pr.top_products||[])}
+    </div>
+  `;
+
+  if(ov.daily && ov.daily.length){
+    const {labels, data} = dailyToChart(ov.daily);
+    makeLineChart('chCoDaily', labels, [{label:'Все события', data, color:'#1E8A4C'}]);
+  }
+  if(ov.by_type && ov.by_type.length){
+    const labels = ov.by_type.map(x=>EVENT_LABELS[x.event_type]||x.event_type);
+    const data = ov.by_type.map(x=>x.count);
+    makeDoughnutChart('chCoType', labels, data);
+  }
+}
+
+function renderTopJobs(jobs){
+  if(!jobs.length)return '<div class="panel-empty">Нет данных по вакансиям.</div>';
+  return `<table class="an-table">
+    <thead><tr><th>Вакансия</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Отклики</th><th class="an-td-num">Конверсия</th></tr></thead>
+    <tbody>${jobs.map(j=>{
+      const conv = j.views>0 ? (j.applies/j.views*100) : 0;
+      return `<tr class="an-row-link" onclick="location.href='/job-detail.html?id=${encodeURIComponent(j.public_id)}'">
+        <td><div class="an-name">${esc(j.title||'')}</div></td>
+        <td class="an-td-num">${fmtNum(j.views)}</td>
+        <td class="an-td-num">${fmtNum(j.applies)}</td>
+        <td class="an-td-num" style="color:${conv>5?'var(--g)':'var(--gmt)'}">${fmtPct(conv)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+function renderTopProducts(products){
+  if(!products.length)return '<div class="panel-empty">Нет данных по товарам.</div>';
+  return `<table class="an-table">
+    <thead><tr><th>Товар / услуга</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Сохранения</th></tr></thead>
+    <tbody>${products.map(p=>`<tr class="an-row-link" onclick="location.href='/catalog.html'">
+      <td><div class="an-name">${esc(p.title||'')}</div></td>
+      <td class="an-td-num">${fmtNum(p.views)}</td>
+      <td class="an-td-num">${fmtNum(p.saves)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ─────────────────────────────────────────────
+// === АНАЛИТИКА СООБЩЕСТВА ===
+// ─────────────────────────────────────────────
+async function renderCommunityDashboard(){
+  if(!state.selectedCommunityId){
+    document.getElementById('dashContainer').innerHTML = '<div class="panel"><div class="panel-empty">Выберите сообщество из списка.</div></div>';
+    return;
+  }
+  const id = state.selectedCommunityId;
+  const r = await fetchAnalytics(`${API}/analytics/community/${id}/overview?period=${state.period}`);
+  if(r.error){
+    document.getElementById('dashContainer').innerHTML = `<div class="panel"><div class="panel-empty">Не удалось загрузить. ${esc(r.error)}</div></div>`;
+    return;
+  }
+  const a = r.analytics || {};
+
+  document.getElementById('dashContainer').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Участников</div><div class="kpi-value">${fmtNum(a.members_count)}</div><div class="kpi-hint">всего в сообществе</div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-label">Постов</div><div class="kpi-value">${fmtNum(a.posts_count)}</div><div class="kpi-hint">за 90 дней</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">Просмотры контента</div><div class="kpi-value">${fmtNum(a.content_views)}</div></div>
+      <div class="kpi-card kpi-purple"><div class="kpi-label">Действия</div><div class="kpi-value">${fmtNum(a.actions_received)}</div><div class="kpi-hint">${fmtNum(a.unique_visitors)} уникальных посетителей</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><svg viewBox="0 0 24 24"><polyline points="3,17 9,11 13,15 21,7"/></svg>Активность по дням</div>
+      ${(a.daily&&a.daily.length)?'<div class="chart-box chart-tall"><canvas id="chCmDaily"></canvas></div>':'<div class="panel-empty">Нет данных за период</div>'}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Топ постов сообщества</div>
+      ${renderTopPosts(a.top_posts||[])}
+    </div>
+  `;
+
+  if(a.daily && a.daily.length){
+    const {labels, data} = dailyToChart(a.daily);
+    makeLineChart('chCmDaily', labels, [{label:'Активность', data, color:'#9060C0'}]);
+  }
+}
+function renderTopPosts(posts){
+  if(!posts.length)return '<div class="panel-empty">Нет постов с активностью за период.</div>';
+  return `<table class="an-table">
+    <thead><tr><th>Пост</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Лайки</th><th class="an-td-num">Комментарии</th></tr></thead>
+    <tbody>${posts.map(p=>`<tr class="an-row-link" onclick="location.href='/post.html?id=${encodeURIComponent(p.public_id)}'">
+      <td><div class="an-name">${esc(p.title||'(без заголовка)')}</div></td>
+      <td class="an-td-num">${fmtNum(p.views)}</td>
+      <td class="an-td-num">${fmtNum(p.likes)}</td>
+      <td class="an-td-num">${fmtNum(p.comments)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ─────────────────────────────────────────────
+// === АНАЛИТИКА ПЛАТФОРМЫ (АДМИН) ===
+// ─────────────────────────────────────────────
+async function renderPlatformDashboard(){
+  const [overview, users] = await Promise.all([
+    fetchAnalytics(`${API}/analytics/platform/overview?period=${state.period}`),
+    fetchAnalytics(`${API}/analytics/platform/users?period=${state.period}`),
+  ]);
+  if(overview.error){
+    document.getElementById('dashContainer').innerHTML = `<div class="panel"><div class="panel-empty">Доступ только для администраторов. ${esc(overview.error)}</div></div>`;
+    return;
+  }
+  const ov = overview.analytics || {};
+  const us = users.analytics || {};
+  const ret = us.retention || {d1:0,d7:0,d30:0};
+
+  document.getElementById('dashContainer').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Всего пользователей</div><div class="kpi-value">${fmtNum(ov.total_users)}</div><div class="kpi-hint">+${fmtNum(ov.new_users)} за период</div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-label">DAU</div><div class="kpi-value">${fmtNum(ov.dau)}</div><div class="kpi-hint">за последние 24ч</div></div>
+      <div class="kpi-card kpi-purple"><div class="kpi-label">WAU</div><div class="kpi-value">${fmtNum(ov.wau)}</div><div class="kpi-hint">за последние 7д</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">MAU</div><div class="kpi-value">${fmtNum(ov.mau)}</div><div class="kpi-hint">за последние 30д</div></div>
+      <div class="kpi-card kpi-teal"><div class="kpi-label">Всего событий</div><div class="kpi-value">${fmtNum(ov.total_events)}</div><div class="kpi-hint">за период</div></div>
+      <div class="kpi-card kpi-pink"><div class="kpi-label">Retention</div><div class="kpi-value" style="font-size:18px">D1 ${fmtPct(ret.d1)} · D7 ${fmtPct(ret.d7)} · D30 ${fmtPct(ret.d30)}</div></div>
+    </div>
+
+    <div class="panels-row">
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><polyline points="3,17 9,11 13,15 21,7"/></svg>Активность платформы по дням</div>
+        ${(ov.daily&&ov.daily.length)?'<div class="chart-box"><canvas id="chPlDaily"></canvas></div>':'<div class="panel-empty">Нет данных</div>'}
+      </div>
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>События по типам</div>
+        ${(ov.by_event_type&&ov.by_event_type.length)?'<div class="chart-box"><canvas id="chPlType"></canvas></div>':'<div class="panel-empty">Нет данных</div>'}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Регистрации по дням</div>
+      ${(ov.signups_daily&&ov.signups_daily.length)?'<div class="chart-box"><canvas id="chSignups"></canvas></div>':'<div class="panel-empty">Нет регистраций за период</div>'}
+    </div>
+
+    <div class="panels-row">
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Топ активных пользователей</div>
+        ${renderTopActors(us.top_actors||[])}
+      </div>
+      <div class="panel">
+        <div class="panel-title"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Топ просматриваемых профилей</div>
+        ${renderTopTargets(us.top_targets||[])}
+      </div>
+    </div>
+  `;
+
+  if(ov.daily && ov.daily.length){
+    const {labels, data} = dailyToChart(ov.daily);
+    makeLineChart('chPlDaily', labels, [{label:'Все события', data, color:'#1E8A4C'}]);
+  }
+  if(ov.by_event_type && ov.by_event_type.length){
+    const top10 = ov.by_event_type.slice(0,10);
+    const labels = top10.map(x=>EVENT_LABELS[x.event_type]||x.event_type);
+    const data = top10.map(x=>x.count);
+    makeBarChart('chPlType', labels, data, 'Событий', '#3A90C0');
+  }
+  if(ov.signups_daily && ov.signups_daily.length){
+    const {labels, data} = dailyToChart(ov.signups_daily);
+    makeLineChart('chSignups', labels, [{label:'Регистрации', data, color:'#9060C0'}]);
+  }
+}
+function renderTopActors(actors){
+  if(!actors.length)return '<div class="panel-empty">Нет активных пользователей.</div>';
+  return `<table class="an-table">
+    <thead><tr><th>Пользователь</th><th class="an-td-num">Событий</th></tr></thead>
+    <tbody>${actors.map(a=>{
+      const photo = a.avatar_url ? `background-image:url(${esc(a.avatar_url)})` : `background:${avc(a.name)}`;
+      const initial = a.avatar_url ? '' : letter(a.name);
+      return `<tr class="an-row-link" onclick="location.href='/profile.html?user=${encodeURIComponent(a.public_id)}'">
+        <td><div class="an-user"><div class="an-av" style="${photo}">${initial}</div><div class="an-name">${esc(a.name||'')}</div></div></td>
+        <td class="an-td-num">${fmtNum(a.events_count)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+function renderTopTargets(targets){
+  if(!targets.length)return '<div class="panel-empty">Нет данных.</div>';
+  return `<table class="an-table">
+    <thead><tr><th>Пользователь</th><th class="an-td-num">Просмотров</th></tr></thead>
+    <tbody>${targets.map(a=>{
+      const photo = a.avatar_url ? `background-image:url(${esc(a.avatar_url)})` : `background:${avc(a.name)}`;
+      const initial = a.avatar_url ? '' : letter(a.name);
+      return `<tr class="an-row-link" onclick="location.href='/profile.html?user=${encodeURIComponent(a.public_id)}'">
+        <td><div class="an-user"><div class="an-av" style="${photo}">${initial}</div><div class="an-name">${esc(a.name||'')}</div></div></td>
+        <td class="an-td-num">${fmtNum(a.views_count)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ── INIT ──
+(async function init(){
+  await loadUser();
+  await loadAvailableScopes();
+  await renderDashboard();
+})();
+</script>
+</body>
+</html>
