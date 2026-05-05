@@ -3267,6 +3267,9 @@ func main() {
 				return
 			}
 			saved, err := toggleExhibitionSave(db, exhibitionID, userID)
+			if err == nil && saved {
+				recordEvent(db, "save_action", userID, "exhibition", exhibitionID, 0, 0, 0, map[string]any{"saved": true})
+			}
 			if err != nil {
 				log.Printf("[exhibitions] toggle save: %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -3386,6 +3389,11 @@ func main() {
 			if item == nil {
 				writeError(w, http.StatusNotFound, "Выставка не найдена")
 				return
+			}
+			if item != nil && (viewerID == 0 || (item.OrganizerCompanyID == 0 && viewerID != 0)) {
+				_, _ = db.Exec(`UPDATE exhibitions SET views_count = views_count + 1 WHERE id = $1`, item.ID)
+				item.ViewsCount++
+				recordEvent(db, "exhibition_view", viewerID, "exhibition", item.ID, 0, item.OrganizerCompanyID, 0, nil)
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
 		case http.MethodPatch:
@@ -3686,6 +3694,13 @@ func main() {
 				return
 			}
 			isSaved, savesCount, err := togglePostSave(db, postPublicID, userID)
+			if err == nil && isSaved {
+				var pID int64
+				_ = db.QueryRow(`SELECT id FROM posts WHERE public_id=$1`, postPublicID).Scan(&pID)
+				if pID > 0 {
+					recordEvent(db, "save_action", userID, "post", pID, 0, 0, 0, map[string]any{"saved": true})
+				}
+			}
 			if err != nil {
 				handlePostActionError(w, err)
 				return
@@ -4916,6 +4931,7 @@ func main() {
 				http.Error(w, "internal", http.StatusInternalServerError)
 				return
 			}
+			recordEvent(db, "job_apply", userID, "job", jobID, 0, 0, 0, nil)
 			writeJSON(w, http.StatusOK, result)
 			return
 		}
@@ -4939,6 +4955,11 @@ func main() {
 			err = db.QueryRow(`SELECT 1 FROM saved_jobs WHERE user_id=$1 AND job_id=$2`, userID, jobID).Scan(&existing)
 			if err == sql.ErrNoRows {
 				if _, err := db.Exec(`INSERT INTO saved_jobs (user_id, job_id) VALUES ($1, $2)`, userID, jobID); err != nil {
+					_ = err
+				} else {
+					recordEvent(db, "save_action", userID, "job", jobID, 0, 0, 0, map[string]any{"saved": true})
+				}
+				if false {
 					http.Error(w, "internal", http.StatusInternalServerError)
 					return
 				}
@@ -5029,6 +5050,7 @@ func main() {
 				}
 				_, _ = db.Exec(`UPDATE jobs SET views_count = views_count + 1 WHERE id = $1`, job.ID)
 				job.ViewsCount++
+				recordEvent(db, "job_view", viewerID, "job", job.ID, job.AuthorUserID, job.AuthorCompanyID, 0, nil)
 				writeJSON(w, http.StatusOK, map[string]any{"job": job})
 
 			case http.MethodPatch:
@@ -5349,6 +5371,11 @@ func main() {
 			err = db.QueryRow(`SELECT 1 FROM saved_resumes WHERE user_id=$1 AND resume_id=$2`, userID, resID).Scan(&existing)
 			if err == sql.ErrNoRows {
 				if _, err := db.Exec(`INSERT INTO saved_resumes (user_id, resume_id) VALUES ($1, $2)`, userID, resID); err != nil {
+					_ = err
+				} else {
+					recordEvent(db, "save_action", userID, "resume", resID, 0, 0, 0, map[string]any{"saved": true})
+				}
+				if false {
 					http.Error(w, "internal", http.StatusInternalServerError)
 					return
 				}
@@ -5440,6 +5467,7 @@ func main() {
 			if viewerID != res.AuthorUserID {
 				_, _ = db.Exec(`UPDATE resumes SET views_count = views_count + 1 WHERE id = $1`, res.ID)
 				res.ViewsCount++
+				recordEvent(db, "resume_view", viewerID, "resume", res.ID, res.AuthorUserID, 0, 0, nil)
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"resume": res})
 
@@ -5759,6 +5787,7 @@ func main() {
 				if viewerID > 0 && viewerID != item.AuthorUserID {
 					_, _ = db.Exec(`UPDATE catalog_items SET views_count = views_count + 1 WHERE id = $1`, item.ID)
 					item.ViewsCount++
+					recordEvent(db, "catalog_view", viewerID, "catalog_item", item.ID, item.AuthorUserID, item.AuthorCompanyID, item.AuthorCommunityID, nil)
 				}
 				writeJSON(w, http.StatusOK, map[string]any{"item": item})
 				return
@@ -9997,6 +10026,7 @@ func recordForumTopicView(db *sql.DB, topicID, viewerID int64) (bool, error) {
 	rows, _ := res.RowsAffected()
 	if rows > 0 {
 		// Инкрементим счётчик
+		recordEvent(db, "forum_view", viewerID, "forum_topic", topicID, 0, 0, 0, nil)
 		if _, err := db.Exec(
 			`UPDATE forum_topics SET views_count = views_count + 1 WHERE id = $1`,
 			topicID,
@@ -10165,6 +10195,7 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 	}
 	for _, m := range msgs {
 		if m.ID == msgID {
+			recordEvent(db, "message_sent", userID, "chat_message", m.ID, 0, 0, 0, nil)
 			return m, nil
 		}
 	}
@@ -13674,6 +13705,7 @@ func registerPostView(db *sql.DB, postPublicID string, userID int64, ipHash stri
 		if _, err := tx.Exec(`UPDATE posts SET views_count = views_count + 1, updated_at = NOW() WHERE id = $1`, postID); err != nil {
 			return false, 0, err
 		}
+		// recordEvent вызывается в caller'е этой функции, после успешного коммита
 		counted = true
 	}
 	var viewsCount int
@@ -13965,6 +13997,7 @@ func createComment(db *sql.DB, postPublicID string, authorID int64, req createCo
 	go notifyOnComment(db, postID, postPublicID, created.ID, created.ParentID, authorID, content)
 
 	_ = saveMentions(db, "comment", created.ID, authorID, content, content)
+	recordEvent(db, "comment_added", authorID, "post", postID, 0, 0, 0, nil)
 	return created, nil
 }
 
@@ -16313,6 +16346,11 @@ func getEvent(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (event,
 	}
 	_, _ = db.Exec(`UPDATE events SET views_count = views_count + 1 WHERE id=$1`, item.ID)
 	item.ViewsCount++
+	var ownerCommunityID int64
+	if item.CommunityID != nil {
+		ownerCommunityID = *item.CommunityID
+	}
+	recordEvent(db, "event_view", viewerID, "event", item.ID, 0, item.AuthorCompanyID, ownerCommunityID, nil)
 	return item, nil
 }
 
@@ -16526,6 +16564,9 @@ func registerToEvent(db *sql.DB, userID int64, publicID, ticketType string) (str
 		status = "waitlist"
 	}
 	_, err = tx.Exec(`INSERT INTO event_registrations(event_id,user_id,ticket_type,status) VALUES ($1,$2,$3,$4) ON CONFLICT (event_id,user_id) DO UPDATE SET status=EXCLUDED.status, ticket_type=EXCLUDED.ticket_type`, eventID, userID, ticketType, status)
+	if err == nil && status == "confirmed" {
+		recordEvent(db, "event_register", userID, "event", eventID, 0, 0, 0, map[string]any{"ticket_type": ticketType})
+	}
 	if err != nil {
 		return "", 0, err
 	}
