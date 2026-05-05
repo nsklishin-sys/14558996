@@ -8687,6 +8687,56 @@ CREATE INDEX IF NOT EXISTS forum_topics_author_company_idx ON forum_topics(autho
 		return fmt.Errorf("create schema: %w", err)
 	}
 
+	// === A2.1R-DIAG: одноразовая разведка схемы chat_participants ===
+	{
+		log.Printf("[A2.1R-DIAG] === schema chat_participants ===")
+		rows, err := db.Query(`
+			SELECT column_name, data_type, is_nullable, column_default
+			FROM information_schema.columns
+			WHERE table_name = 'chat_participants'
+			ORDER BY ordinal_position
+		`)
+		if err != nil {
+			log.Printf("[A2.1R-DIAG] columns query error: %v", err)
+		} else {
+			for rows.Next() {
+				var name, dtype, nullable string
+				var defVal sql.NullString
+				rows.Scan(&name, &dtype, &nullable, &defVal)
+				log.Printf("[A2.1R-DIAG]   col: %s | %s | nullable=%s | default=%s", name, dtype, nullable, defVal.String)
+			}
+			rows.Close()
+		}
+
+		// Количество строк
+		var cnt int
+		db.QueryRow(`SELECT COUNT(*) FROM chat_participants`).Scan(&cnt)
+		log.Printf("[A2.1R-DIAG] total participants rows: %d", cnt)
+
+		// Сэмпл — первые 3 строки
+		rows2, err := db.Query(`SELECT * FROM chat_participants LIMIT 3`)
+		if err == nil {
+			cols, _ := rows2.Columns()
+			log.Printf("[A2.1R-DIAG] SELECT * columns: %v", cols)
+			for rows2.Next() {
+				vals := make([]any, len(cols))
+				ptrs := make([]any, len(cols))
+				for i := range vals {
+					ptrs[i] = &vals[i]
+				}
+				rows2.Scan(ptrs...)
+				log.Printf("[A2.1R-DIAG] sample row: %v", vals)
+			}
+			rows2.Close()
+		}
+
+		// Состояние chat_conversations
+		var totalConv, ownedZero int
+		db.QueryRow(`SELECT COUNT(*) FROM chat_conversations`).Scan(&totalConv)
+		db.QueryRow(`SELECT COUNT(*) FROM chat_conversations WHERE owner_id=0`).Scan(&ownedZero)
+		log.Printf("[A2.1R-DIAG] chat_conversations: total=%d, owner_id=0: %d", totalConv, ownedZero)
+	}
+
 	if err := migratePublicationSeedData(db); err != nil {
 		log.Printf("WARN: migrate publication seed data failed: %v", err)
 	}
