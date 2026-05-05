@@ -14630,7 +14630,8 @@ func handleGlobalSearch(w http.ResponseWriter, r *http.Request, db *sql.DB, sess
 		typ = "all"
 	}
 	switch typ {
-	case "all", "users", "posts", "communities", "events", "companies", "sections":
+	case "all", "users", "posts", "communities", "events", "companies",
+		"forum", "jobs", "resumes", "catalog", "chats", "sections":
 	default:
 		typ = "all"
 	}
@@ -20904,63 +20905,115 @@ func searchChatsInto(db *sql.DB, q, sortBy string, limit, offset int, viewerID i
 		return 0, nil
 	}
 	_ = sortBy
+	_ = q
 	escaped := searchEscapeILike(q)
+	// Шаг 1: загружаем все диалоги пользователя с базовой информацией
 	rows, err := db.Query(`
-		SELECT c.public_id, c.type, COALESCE(c.owner_kind, 'user'),
-		       COALESCE(c.title, '') AS title,
-		       COALESCE(co.name, '') AS company_name,
-		       COALESCE(cm.name, '') AS community_name,
-		       COALESCE((SELECT u.full_name FROM chat_participants cp2 JOIN users u ON u.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$3 LIMIT 1), '') AS other_name,
-		       COALESCE((SELECT m.content FROM chat_messages m WHERE m.conversation_id=c.id AND m.is_deleted=FALSE ORDER BY m.id DESC LIMIT 1), '') AS last_message
+		SELECT c.id, c.public_id, c.type, COALESCE(c.owner_kind, 'user'),
+		       COALESCE(c.title, ''),
+		       COALESCE(co.name, ''),
+		       COALESCE(cm.name, '')
 		FROM chat_conversations c
-		JOIN chat_participants p ON p.conversation_id = c.id AND p.user_id = $3
+		JOIN chat_participants p ON p.conversation_id = c.id AND p.user_id = $1
 		LEFT JOIN companies co ON co.id = c.owner_id AND c.owner_kind = 'company'
 		LEFT JOIN communities cm ON cm.id = c.owner_id AND c.owner_kind = 'community'
-		WHERE
-		    COALESCE(c.title, '') ILIKE '%' || $1 || '%' ESCAPE '\' OR
-		    COALESCE(co.name, '') ILIKE '%' || $1 || '%' ESCAPE '\' OR
-		    COALESCE(cm.name, '') ILIKE '%' || $1 || '%' ESCAPE '\' OR
-		    EXISTS (
-		      SELECT 1 FROM chat_participants cp2 JOIN users u ON u.id=cp2.user_id
-		      WHERE cp2.conversation_id=c.id AND cp2.user_id<>$3 AND u.full_name ILIKE '%' || $1 || '%' ESCAPE '\'
-		    )
 		ORDER BY c.last_message_at DESC NULLS LAST
-		LIMIT $2 OFFSET $4
-	`, escaped, limit, viewerID, offset)
+		LIMIT 200
+	`, viewerID)
 	if err != nil {
 		return 0, err
 	}
 	defer rows.Close()
-	_ = q
-	out := make([]searchChat, 0, limit)
+
+	type convRow struct {
+		id        int64
+		publicID  string
+		typ       string
+		ownerKind string
+		title     string
+		coName    string
+		cmName    string
+	}
+	var convs []convRow
+	var convIDs []int64
 	for rows.Next() {
-		var item searchChat
-		var title, coName, cmName, otherName, lastMsg string
-		if err := rows.Scan(&item.PublicID, &item.Type, &item.OwnerKind, &title, &coName, &cmName, &otherName, &lastMsg); err != nil {
+		var r convRow
+		if err := rows.Scan(&r.id, &r.publicID, &r.typ, &r.ownerKind, &r.title, &r.coName, &r.cmName); err != nil {
 			return 0, err
 		}
-		// DisplayName: если direct и owner=company/community — имя организации; иначе — title или собеседник
-		if item.Type == "direct" && item.OwnerKind == "company" && coName != "" {
-			item.DisplayName = coName
-		} else if item.Type == "direct" && item.OwnerKind == "community" && cmName != "" {
-			item.DisplayName = cmName
-		} else if title != "" {
-			item.DisplayName = title
-		} else if otherName != "" {
-			item.DisplayName = otherName
-		}
-		if item.DisplayName == "" {
-			continue
-		}
-		// preview сообщения — обрезаем
-		if len(lastMsg) > 100 {
-			lastMsg = lastMsg[:100] + "…"
-		}
-		item.LastMessage = lastMsg
-		out = append(out, item)
+		convs = append(convs, r)
+		convIDs = append(convIDs, r.id)
 	}
 	if err := rows.Err(); err != nil {
 		return 0, err
+	}
+	if len(convs) == 0 {
+		mu.Lock()
+		res.Chats = []searchChat{}
+		mu.Unlock()
+		return 0, nil
+	}
+
+	// Шаг 2: для direct-чатов получаем имя собеседника
+	otherNames := map[int64]string{}
+	if len(convIDs) > 0 {
+		nameRows, err := db.Query(`
+			SELECT cp.conversation_id, u.full_name
+			FROM chat_participants cp
+			JOIN users u ON u.id = cp.user_id
+			WHERE cp.conversation_id = ANY($1) AND cp.user_id <> $2
+		`, convIDs, viewerID)
+		if err == nil {
+			for nameRows.Next() {
+				var cid int64
+				var name string
+				if nameRows.Scan(&cid, &name) == nil {
+					if _, ok := otherNames[cid]; !ok {
+						otherNames[cid] = name
+					}
+				}
+			}
+			nameRows.Close()
+		}
+	}
+
+	// Шаг 3: фильтруем по запросу в Go и собираем display_name
+	out := make([]searchChat, 0, limit)
+	queryLower := strings.ToLower(strings.TrimSpace(escaped))
+	for _, c := range convs {
+		var displayName string
+		if c.typ == "direct" && c.ownerKind == "company" && c.coName != "" {
+			displayName = c.coName
+		} else if c.typ == "direct" && c.ownerKind == "community" && c.cmName != "" {
+			displayName = c.cmName
+		} else if c.title != "" {
+			displayName = c.title
+		} else if other, ok := otherNames[c.id]; ok {
+			displayName = other
+		}
+		if displayName == "" {
+			continue
+		}
+		if queryLower != "" && !strings.Contains(strings.ToLower(displayName), queryLower) {
+			continue
+		}
+		out = append(out, searchChat{
+			PublicID:    c.publicID,
+			DisplayName: displayName,
+			Type:        c.typ,
+			OwnerKind:   c.ownerKind,
+		})
+		if len(out) >= limit+offset {
+			break
+		}
+	}
+	if offset < len(out) {
+		out = out[offset:]
+	} else {
+		out = []searchChat{}
+	}
+	if len(out) > limit {
+		out = out[:limit]
 	}
 	mu.Lock()
 	res.Chats = out
