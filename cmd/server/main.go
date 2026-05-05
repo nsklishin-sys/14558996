@@ -339,11 +339,14 @@ type searchEvent struct {
 }
 
 type searchCompany struct {
+	PublicID    string  `json:"public_id"`
+	Slug        string  `json:"slug"`
 	Name        string  `json:"name"`
 	Industry    string  `json:"industry"`
 	City        string  `json:"city"`
 	IsPartner   bool    `json:"is_partner"`
 	Description string  `json:"description"`
+	LogoImage   string  `json:"logo_image,omitempty"`
 	Score       float64 `json:"score,omitempty"`
 }
 
@@ -14771,7 +14774,7 @@ func searchCommunitiesInto(db *sql.DB, q, sortBy string, limit, offset int, view
 	escaped := searchEscapeILike(q)
 	rows, err := db.Query(`
 		SELECT
-			public_id, name,
+			id::text AS public_id, name,
 			COALESCE(description,'') AS description,
 			COALESCE(region,'') AS region,
 			COALESCE(category,'') AS category,
@@ -14891,26 +14894,36 @@ func searchEventsInto(db *sql.DB, q, sortBy string, limit, offset int, viewerID 
 }
 
 func searchCompaniesInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
-	orderBy := "score DESC, employee_count DESC"
-	if sortBy == "recent" || sortBy == "popular" {
-		orderBy = "employee_count DESC, name"
+	orderBy := "score DESC, name"
+	if sortBy == "recent" {
+		orderBy = "created_at DESC, name"
+	} else if sortBy == "popular" {
+		orderBy = "name"
 	}
 	escaped := searchEscapeILike(q)
 	rows, err := db.Query(`
 		SELECT
-			company_name AS name,
-			COUNT(*) AS employee_count,
-			MAX(COALESCE(position,'')) AS industry,
-			MAX(COALESCE(city,'')) AS city,
+			public_id, slug, name,
+			COALESCE(category,'') AS industry,
+			COALESCE(city,'') AS city,
+			COALESCE(is_verified, FALSE) AS is_partner,
+			LEFT(COALESCE(description,''), 400) AS description,
+			COALESCE(logo_image,'') AS logo_image,
 			(
-				CASE WHEN LOWER(company_name) = LOWER($2) THEN 10 ELSE 0 END +
-				CASE WHEN LOWER(company_name) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END
+				CASE WHEN LOWER(name) = LOWER($2) THEN 10 ELSE 0 END +
+				CASE WHEN LOWER(name) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+				CASE WHEN COALESCE(category,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 3 ELSE 0 END +
+				CASE WHEN COALESCE(city,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 2 ELSE 0 END +
+				CASE WHEN COALESCE(description,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 1 ELSE 0 END
 			) AS score
-		FROM users
-		WHERE is_deleted = FALSE
-		  AND COALESCE(company_name,'') <> ''
-		  AND company_name ILIKE '%' || $1 || '%' ESCAPE '\'
-		GROUP BY company_name
+		FROM companies
+		WHERE deleted_at IS NULL AND status = 'active'
+		  AND (
+			name ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(description,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(category,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+			COALESCE(city,'') ILIKE '%' || $1 || '%' ESCAPE '\'
+		  )
 		ORDER BY `+orderBy+`
 		LIMIT $3 OFFSET $4
 	`, escaped, q, limit, offset)
@@ -14921,12 +14934,9 @@ func searchCompaniesInto(db *sql.DB, q, sortBy string, limit, offset int, res *s
 	out := make([]searchCompany, 0, limit)
 	for rows.Next() {
 		var item searchCompany
-		var employeeCount int
-		if err := rows.Scan(&item.Name, &employeeCount, &item.Industry, &item.City, &item.Score); err != nil {
+		if err := rows.Scan(&item.PublicID, &item.Slug, &item.Name, &item.Industry, &item.City, &item.IsPartner, &item.Description, &item.LogoImage, &item.Score); err != nil {
 			return 0, err
 		}
-		item.IsPartner = false
-		item.Description = ""
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
