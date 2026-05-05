@@ -956,7 +956,9 @@ function renderRow(cat,it){
     </a>`;
   }
   if(cat==='posts'){
-    const author=it.author_name||'LASTOP';
+    let author = it.author_name || 'LASTOP';
+    if (it.author_company_id && it.author_company_name) author = it.author_company_name;
+    else if (it.author_community_id && it.author_community_name) author = it.author_community_name;
     const cat=it.category||'Публикация';
     const text=it.content||it.text||'';
     const time=it.created_human||(it.created_at?formatTime(it.created_at):'');

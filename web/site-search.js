@@ -223,7 +223,9 @@
       </a>`};
     }
     function pRow(p,q){
-      const author=p.author_name||'LASTOP';
+      let author = p.author_name || 'LASTOP';
+      if (p.author_company_id && p.author_company_name) author = p.author_company_name;
+      else if (p.author_community_id && p.author_community_name) author = p.author_community_name;
       const text=p.content||'';
       const preview=text.length>80?text.slice(0,80)+'…':text;
       const url='/news-detail.html?id='+encodeURIComponent(p.public_id||p.id||'');

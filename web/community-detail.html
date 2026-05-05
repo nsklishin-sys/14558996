@@ -903,7 +903,9 @@ async function loadComments(publicID){
     const comments=d.comments||[];
     if(!comments.length){list.innerHTML='<div class="comments-empty">Комментариев пока нет</div>';return;}
     list.innerHTML=comments.map(c=>{
-      const name=c.author_name||'Участник';
+      let name=c.author_name||'Участник';
+      if(c.sender_company_id && c.sender_company_name) name=c.sender_company_name;
+      else if(c.sender_community_id && c.sender_community_name) name=c.sender_community_name;
       return `<div class="comment-item">
         <div class="comment-av" style="background:${avc(name)}">${ltr(name)}</div>
         <div class="comment-body">
