@@ -18122,6 +18122,13 @@ func (w *htmlInjectWriter) flush() {
 
 func accessLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// WebSocket-апгрейду нужен http.Hijacker. Обёртка statusRecorder его не реализует,
+		// поэтому для WS пропускаем оригинальный ResponseWriter без обёртки.
+		if r.URL.Path == "/api/ws" || strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			next.ServeHTTP(w, r)
+			log.Printf("%s %s (websocket) ip=%s", r.Method, r.URL.Path, clientIP(r))
+			return
+		}
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
