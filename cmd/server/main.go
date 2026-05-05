@@ -8191,6 +8191,16 @@ SET owner_id = COALESCE(
 )
 WHERE owner_id = 0 AND owner_kind = 'user';
 
+-- A2.1R-FIX: повторный backfill owner_id для диалогов где он остался 0
+UPDATE chat_conversations c
+SET owner_id = sub.user_id
+FROM (
+    SELECT DISTINCT ON (conversation_id) conversation_id, user_id
+    FROM chat_participants
+    ORDER BY conversation_id, id ASC
+) sub
+WHERE c.id = sub.conversation_id AND c.owner_id = 0 AND c.owner_kind = 'user';
+
 CREATE INDEX IF NOT EXISTS chat_conversations_owner_idx ON chat_conversations(owner_kind, owner_id);
 
 CREATE TABLE IF NOT EXISTS chat_participants (
