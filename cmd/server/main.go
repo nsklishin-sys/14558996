@@ -468,6 +468,11 @@ func (s *chatPresenceStore) touch(uid int64) {
 	s.mu.Unlock()
 }
 func (s *chatPresenceStore) isOnline(uid int64) bool {
+	// Источник истины — наличие активного WS-соединения.
+	if wsHub != nil && wsHub.IsOnline(uid) {
+		return true
+	}
+	// Fallback на heartbeat через HTTP-запросы (если клиент без WS, например старый кеш).
 	s.mu.Lock()
 	t := s.last[uid]
 	s.mu.Unlock()
@@ -1449,8 +1454,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore(db)
+	presenceDB = db
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
-		handleWebSocket(w, r, sessions)
+		handleWebSocket(w, r, sessions, db)
 	})
 	authRateLimiter := newIPRateLimiter(10, time.Minute)
 	postRateLimiter := newIPRateLimiter(10, time.Minute)
@@ -20407,7 +20413,7 @@ func (h *wsHubT) IsOnline(userID int64) bool {
 
 // handleWebSocket обслуживает соединение: апгрейд, пинг, чтение, запись.
 // Аутентификация — через токен в query (?token=...), т.к. браузерный WS не умеет custom headers.
-func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionStore) {
+func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionStore, db *sql.DB) {
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
 	if token == "" {
 		http.Error(w, "no token", http.StatusUnauthorized)
@@ -20433,6 +20439,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionSt
 	conn := &wsConn{c: c, send: make(chan []byte, 64), userID: userID}
 	wsHub.add(conn)
 	log.Printf("[ws] connect user=%d total=%d", userID, len(wsHub.conns[userID]))
+	// Если это первое соединение юзера — broadcast presence=online собеседникам в direct-диалогах
+	if len(wsHub.conns[userID]) == 1 {
+		go broadcastPresence(userID, true)
+	}
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -20473,14 +20483,97 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionSt
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			continue
 		}
-		// Сейчас просто эхо-pong, чтобы клиент знал что жив.
-		// Конкретные обработчики (typing/read) добавим в коммите 4-5.
-		if t, _ := msg["type"].(string); t == "ping" {
+		t, _ := msg["type"].(string)
+		switch t {
+		case "ping":
 			conn.send <- []byte(`{"type":"pong"}`)
+		case "chat:typing":
+			data, _ := msg["data"].(map[string]any)
+			if data == nil {
+				continue
+			}
+			convPid, _ := data["conversation_public_id"].(string)
+			isTyping, _ := data["is_typing"].(bool)
+			if convPid == "" {
+				continue
+			}
+			// Резолвим conversation_id и проверяем что юзер — participant
+			var convID int64
+			if err := db.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id WHERE c.public_id=$1 AND p.user_id=$2`, convPid, userID).Scan(&convID); err != nil {
+				continue
+			}
+			// Имя отправителя (с учётом per-participant контекста)
+			senderName := getUserDisplayName(db, userID)
+			var pKind string
+			var pID int64
+			_ = db.QueryRow(`SELECT participant_kind, participant_id FROM chat_participants WHERE conversation_id=$1 AND user_id=$2`, convID, userID).Scan(&pKind, &pID)
+			if pKind == "company" && pID > 0 {
+				var n string
+				if err := db.QueryRow(`SELECT name FROM companies WHERE id=$1`, pID).Scan(&n); err == nil && strings.TrimSpace(n) != "" {
+					senderName = n
+				}
+			} else if pKind == "community" && pID > 0 {
+				var n string
+				if err := db.QueryRow(`SELECT name FROM communities WHERE id=$1`, pID).Scan(&n); err == nil && strings.TrimSpace(n) != "" {
+					senderName = n
+				}
+			}
+			// Broadcast другим participants
+			rows, err := db.Query(`SELECT user_id FROM chat_participants WHERE conversation_id=$1 AND user_id<>$2`, convID, userID)
+			if err == nil {
+				payload := map[string]any{
+					"conversation_public_id": convPid,
+					"user_id":                userID,
+					"name":                   senderName,
+					"is_typing":              isTyping,
+				}
+				for rows.Next() {
+					var uid int64
+					if err := rows.Scan(&uid); err == nil {
+						wsHub.Send(uid, "chat:typing", payload)
+					}
+				}
+				rows.Close()
+			}
 		}
 	}
 
 	wsHub.remove(conn)
 	_ = c.Close(websocket.StatusNormalClosure, "")
 	log.Printf("[ws] disconnect user=%d", userID)
+	// Если это было последнее соединение юзера — broadcast presence=offline
+	if !wsHub.IsOnline(userID) {
+		go broadcastPresence(userID, false)
+	}
 }
+
+// broadcastPresence шлёт presence:update всем direct-собеседникам данного юзера.
+// Используется при connect/disconnect WS чтобы UI мгновенно обновил онлайн-статус.
+func broadcastPresence(userID int64, isOnline bool) {
+	// Берём DB через глобальный путь — у нас она в main, но на этом уровне доступа нет.
+	// Поэтому хук-функция: устанавливается из main() при старте.
+	if presenceDB == nil {
+		return
+	}
+	rows, err := presenceDB.Query(`
+		SELECT DISTINCT p2.user_id
+		FROM chat_participants p1
+		JOIN chat_conversations c ON c.id = p1.conversation_id
+		JOIN chat_participants p2 ON p2.conversation_id = c.id AND p2.user_id <> p1.user_id
+		WHERE p1.user_id = $1 AND c.type = 'direct'
+	`, userID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	payload := map[string]any{"user_id": userID, "is_online": isOnline}
+	for rows.Next() {
+		var uid int64
+		if err := rows.Scan(&uid); err == nil {
+			wsHub.Send(uid, "presence:update", payload)
+		}
+	}
+}
+
+// presenceDB — ссылка на *sql.DB для broadcastPresence (устанавливается из main()).
+var presenceDB *sql.DB
