@@ -968,19 +968,30 @@ async function loadPostAndComments(){
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments?limit=100`, { headers: { Authorization: 'Bearer ' + tk() } });
     if (r.ok) {
       const d = await r.json();
-      comments = (d.comments || []).map(c => ({
-        id: c.id,
-        public_id: c.author_public_id || '',
-        name: c.author_name || 'Участник',
-        role: c.author_role || 'Участник LASTOP',
-        av: ltr(c.author_name || 'У'),
-        color: c.author_color || avc(c.author_name || 'У'),
-        text: c.content,
-        likes: 0,
-        liked: false,
-        ts: c.created_at,
-        replies: []
-      }));
+      comments = (d.comments || []).map(c => {
+        let dispName = c.author_name || 'Участник';
+        let dispRole = c.author_role || 'Участник LASTOP';
+        if (c.sender_company_id && c.sender_company_name) {
+          dispName = c.sender_company_name;
+          dispRole = 'Компания';
+        } else if (c.sender_community_id && c.sender_community_name) {
+          dispName = c.sender_community_name;
+          dispRole = 'Сообщество';
+        }
+        return {
+          id: c.id,
+          public_id: c.author_public_id || '',
+          name: dispName,
+          role: dispRole,
+          av: ltr(dispName),
+          color: avc(dispName),
+          text: c.content,
+          likes: 0,
+          liked: false,
+          ts: c.created_at,
+          replies: []
+        };
+      });
       commentCount = comments.length;
       ['btnComCount', 'comCountBadge', 'statComments'].forEach(id => {
         const el = document.getElementById(id);
