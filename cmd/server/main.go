@@ -2556,7 +2556,7 @@ func main() {
 			writeError(w, http.StatusForbidden, "Этот пользователь ограничил приём сообщений")
 			return
 		}
-		item, err := findOrCreateDirectConversation(db, userID, req.UserPublicID)
+		item, err := findOrCreateDirectConversation(db, r, userID, req.UserPublicID)
 		if err != nil {
 			handleChatError(w, err)
 			return
@@ -2583,7 +2583,7 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
-		item, err := createGroupConversation(db, userID, req)
+		item, err := createGroupConversation(db, r, userID, req)
 		if err != nil {
 			handleChatError(w, err)
 			return
@@ -2609,7 +2609,7 @@ func main() {
 				writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
 				return
 			}
-			item, err := getOrCreateCommunityConversation(db, communityID, userID)
+			item, err := getOrCreateCommunityConversation(db, r, communityID, userID)
 			if err != nil {
 				handleChatError(w, err)
 				return
@@ -7512,6 +7512,28 @@ func initDBFromEnv() (*sql.DB, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	// A2.1R: автопочинка owner_id для старых диалогов — на каждом старте
+	go func() {
+		time.Sleep(2 * time.Second) // дождаться завершения миграций
+		res, err := db.Exec(`
+			UPDATE chat_conversations c
+			SET owner_id = (
+				SELECT p.user_id FROM chat_participants p
+				WHERE p.conversation_id = c.id
+				LIMIT 1
+			)
+			WHERE c.owner_id = 0 AND c.owner_kind = 'user'
+			AND EXISTS (SELECT 1 FROM chat_participants p WHERE p.conversation_id = c.id)
+		`)
+		if err != nil {
+			log.Printf("[A2.1R] backfill owner_id error: %v", err)
+			return
+		}
+		n, _ := res.RowsAffected()
+		if n > 0 {
+			log.Printf("[A2.1R] backfilled owner_id for %d conversations", n)
+		}
+	}()
 
 	return db, nil
 }
@@ -8182,16 +8204,6 @@ CREATE INDEX IF NOT EXISTS chat_conversations_community_idx
 
 ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS owner_kind TEXT NOT NULL DEFAULT 'user';
 ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS owner_id BIGINT NOT NULL DEFAULT 0;
-
--- A2.1R: backfill owner_id из chat_participants (без обращения к несуществующему participants.id)
-UPDATE chat_conversations c
-SET owner_id = sub.user_id
-FROM (
-    SELECT DISTINCT ON (conversation_id) conversation_id, user_id
-    FROM chat_participants
-    ORDER BY conversation_id, user_id ASC
-) sub
-WHERE c.id = sub.conversation_id AND c.owner_id = 0 AND c.owner_kind = 'user';
 
 CREATE INDEX IF NOT EXISTS chat_conversations_owner_idx ON chat_conversations(owner_kind, owner_id);
 
@@ -17120,13 +17132,22 @@ func getUserIDByPublicID(db *sql.DB, publicID string) (int64, error) {
 	return id, nil
 }
 
-func findOrCreateDirectConversation(db *sql.DB, userID int64, targetPublicID string) (chatConversation, error) {
+func findOrCreateDirectConversation(db *sql.DB, r *http.Request, userID int64, targetPublicID string) (chatConversation, error) {
 	targetID, err := getUserIDByPublicID(db, targetPublicID)
 	if err != nil {
 		return chatConversation{}, err
 	}
 	if targetID == userID {
 		return chatConversation{}, fmt.Errorf("%w: нельзя создать диалог с собой", errValidation)
+	}
+	ownerKind := "user"
+	ownerID := userID
+	if cid, _ := resolveActiveCompanyID(db, r, userID, 0); cid > 0 {
+		ownerKind = "company"
+		ownerID = cid
+	} else if cmid, _ := resolveActiveCommunityID(db, r, userID, 0); cmid > 0 {
+		ownerKind = "community"
+		ownerID = cmid
 	}
 	ids := []int64{userID, targetID}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
@@ -17149,6 +17170,9 @@ func findOrCreateDirectConversation(db *sql.DB, userID int64, targetPublicID str
 			return chatConversation{}, err
 		}
 		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,'member'),($1,$3,'member')`, convID, userID, targetID); err != nil {
+			return chatConversation{}, err
+		}
+		if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3 AND owner_id=0`, ownerKind, ownerID, convID); err != nil {
 			return chatConversation{}, err
 		}
 	}
@@ -17245,7 +17269,14 @@ FROM chat_conversations c
 JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
-WHERE p.user_id=$1 AND c.owner_kind=$2 AND c.owner_id=$3
+WHERE p.user_id=$1 AND (
+	(c.owner_kind=$2 AND c.owner_id=$3)
+	OR
+	(c.owner_id=0 AND $2='user' AND EXISTS(
+		SELECT 1 FROM chat_participants p2
+		WHERE p2.conversation_id=c.id AND p2.user_id=$3
+	))
+)
 ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, userID, ownerKind, ownerID)
 	if err != nil {
 		return nil, err
@@ -17295,7 +17326,7 @@ ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, userID, o
 	return out, nil
 }
 
-func createGroupConversation(db *sql.DB, creatorID int64, req createGroupConversationRequest) (chatConversation, error) {
+func createGroupConversation(db *sql.DB, r *http.Request, creatorID int64, req createGroupConversationRequest) (chatConversation, error) {
 	title := strings.TrimSpace(req.Title)
 	if utf8.RuneCountInString(title) < 3 || utf8.RuneCountInString(title) > 120 {
 		return chatConversation{}, fmt.Errorf("%w: название группы 3..120", errValidation)
@@ -17323,6 +17354,15 @@ func createGroupConversation(db *sql.DB, creatorID int64, req createGroupConvers
 	if len(members) < 3 || len(members) > 51 {
 		return chatConversation{}, fmt.Errorf("%w: участников 2..50 кроме создателя", errValidation)
 	}
+	ownerKind := "user"
+	ownerID := creatorID
+	if cid, _ := resolveActiveCompanyID(db, r, creatorID, 0); cid > 0 {
+		ownerKind = "company"
+		ownerID = cid
+	} else if cmid, _ := resolveActiveCommunityID(db, r, creatorID, 0); cmid > 0 {
+		ownerKind = "community"
+		ownerID = cmid
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		return chatConversation{}, err
@@ -17342,13 +17382,16 @@ func createGroupConversation(db *sql.DB, creatorID int64, req createGroupConvers
 			return chatConversation{}, err
 		}
 	}
+	if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3 AND owner_id=0`, ownerKind, ownerID, convID); err != nil {
+		return chatConversation{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return chatConversation{}, err
 	}
 	return getConversationByID(db, creatorID, convID)
 }
 
-func getOrCreateCommunityConversation(db *sql.DB, communityID int64, userID int64) (chatConversation, error) {
+func getOrCreateCommunityConversation(db *sql.DB, r *http.Request, communityID int64, userID int64) (chatConversation, error) {
 	var isMember bool
 	if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM community_members WHERE community_id=$1 AND user_id=$2)`, communityID, userID).Scan(&isMember); err != nil {
 		return chatConversation{}, err
@@ -17386,6 +17429,18 @@ func getOrCreateCommunityConversation(db *sql.DB, communityID int64, userID int6
 				role = "admin"
 			}
 			_, _ = tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,$3) ON CONFLICT(conversation_id,user_id) DO UPDATE SET role=EXCLUDED.role`, convID, uid, role)
+		}
+		ownerKind := "user"
+		ownerID := userID
+		if cid, _ := resolveActiveCompanyID(db, r, userID, 0); cid > 0 {
+			ownerKind = "company"
+			ownerID = cid
+		} else if cmid, _ := resolveActiveCommunityID(db, r, userID, 0); cmid > 0 {
+			ownerKind = "community"
+			ownerID = cmid
+		}
+		if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3 AND owner_id=0`, ownerKind, ownerID, convID); err != nil {
+			return chatConversation{}, err
 		}
 		if err := tx.Commit(); err != nil {
 			return chatConversation{}, err
