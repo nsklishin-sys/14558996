@@ -12675,17 +12675,6 @@ func markNotificationRead(db *sql.DB, userID int64, notifID int64) error {
 		return err
 	}
 	n, _ := res.RowsAffected()
-	if n > 0 {
-		// Обновили существующее уведомление — клиент должен перерисовать бейдж.
-		wsHub.Send(recipientID, "notif:new", map[string]any{
-			"type":             "chat_message",
-			"source_type":      "chat",
-			"source_id":        conversationID,
-			"source_public_id": conversationPublicID,
-			"title":            title,
-			"preview":          preview,
-		})
-	}
 	if n == 0 {
 		return nil
 	}
