@@ -10195,7 +10195,7 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 	}
 	for _, m := range msgs {
 		if m.ID == msgID {
-			recordEvent(db, "message_sent", userID, "chat_message", m.ID, 0, 0, 0, nil)
+			recordEvent(db, "forum_message_sent", authorID, "forum_message", m.ID, 0, 0, 0, nil)
 			return m, nil
 		}
 	}
@@ -17268,6 +17268,8 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 	}
 	m.IsMine = true
 	m.AuthorColor = stableColorForName(m.AuthorName)
+
+	recordEvent(db, "message_sent", userID, "chat_message", m.ID, 0, 0, 0, nil)
 
 	// Уведомление получателю — best-effort, после основной операции.
 	// Только для direct-чатов (1-на-1). Для групповых/community-чатов не уведомляем,
