@@ -2672,36 +2672,21 @@ func main() {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
 					return
 				}
-				// A2.1R-4: контекст сообщения берём из owner_kind/owner_id диалога, а не из заголовков.
-				// Это гарантирует что в диалоге компании всегда пишется от имени компании.
-				var conversationID int64
-				if err := db.QueryRow(`SELECT id FROM chat_conversations WHERE public_id=$1`, publicID).Scan(&conversationID); err != nil {
+				// Контекст отправителя берём из participant_kind/participant_id текущего юзера в этом диалоге.
+				var pKind string
+				var pID int64
+				if err := db.QueryRow(`SELECT p.participant_kind, p.participant_id FROM chat_participants p JOIN chat_conversations c ON c.id = p.conversation_id WHERE c.public_id=$1 AND p.user_id=$2`, publicID, userID).Scan(&pKind, &pID); err != nil {
 					writeError(w, http.StatusNotFound, "Диалог не найден")
 					return
 				}
-				var convOwnerKind string
-				var convOwnerID int64
-				if err := db.QueryRow(`SELECT owner_kind, owner_id FROM chat_conversations WHERE id=$1`, conversationID).Scan(&convOwnerKind, &convOwnerID); err != nil {
-					writeError(w, http.StatusNotFound, "Диалог не найден")
-					return
-				}
-				switch convOwnerKind {
+				switch pKind {
 				case "company":
-					if cid, err := resolveActiveCompanyID(db, r, userID, convOwnerID); err != nil || cid != convOwnerID {
-						writeError(w, http.StatusForbidden, "Нет доступа к этой компании")
-						return
-					}
-					req.SenderCompanyID = convOwnerID
+					req.SenderCompanyID = pID
 					req.SenderCommunityID = 0
 				case "community":
-					if cmid, err := resolveActiveCommunityID(db, r, userID, convOwnerID); err != nil || cmid != convOwnerID {
-						writeError(w, http.StatusForbidden, "Нет доступа к этому сообществу")
-						return
-					}
-					req.SenderCommunityID = convOwnerID
+					req.SenderCommunityID = pID
 					req.SenderCompanyID = 0
 				default:
-					// owner_kind='user' — личный диалог, без company/community контекста.
 					req.SenderCompanyID = 0
 					req.SenderCommunityID = 0
 				}
@@ -8253,8 +8238,26 @@ CREATE TABLE IF NOT EXISTS chat_participants (
     CHECK (role IN ('owner', 'admin', 'member'))
 );
 
+ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS participant_kind TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS participant_id BIGINT NOT NULL DEFAULT 0;
+
+-- Бэкфилл: ставим participant из owner_kind/owner_id для creator, остальные = user
+UPDATE chat_participants p
+SET participant_kind = c.owner_kind, participant_id = c.owner_id
+FROM chat_conversations c
+WHERE p.conversation_id = c.id
+  AND p.user_id = c.created_by
+  AND c.owner_kind IN ('company','community')
+  AND p.participant_id = 0;
+
+UPDATE chat_participants
+SET participant_id = user_id
+WHERE participant_kind = 'user' AND participant_id = 0;
+
 CREATE INDEX IF NOT EXISTS chat_participants_user_idx
     ON chat_participants(user_id);
+CREATE INDEX IF NOT EXISTS chat_participants_ctx_idx
+    ON chat_participants(user_id, participant_kind, participant_id);
 
 CREATE TABLE IF NOT EXISTS chat_messages (
     id BIGSERIAL PRIMARY KEY,
@@ -17216,7 +17219,7 @@ func findOrCreateDirectConversation(db *sql.DB, r *http.Request, userID int64, t
 		return chatConversation{}, err
 	}
 	var convID int64
-	err = tx.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p1 ON p1.conversation_id=c.id AND p1.user_id=$1 JOIN chat_participants p2 ON p2.conversation_id=c.id AND p2.user_id=$2 WHERE c.type='direct' AND c.owner_kind=$3 AND c.owner_id=$4 LIMIT 1`, userID, targetID, ownerKind, ownerID).Scan(&convID)
+	err = tx.QueryRow(`SELECT c.id FROM chat_conversations c JOIN chat_participants p1 ON p1.conversation_id=c.id AND p1.user_id=$1 AND p1.participant_kind=$3 AND p1.participant_id=$4 JOIN chat_participants p2 ON p2.conversation_id=c.id AND p2.user_id=$2 AND p2.participant_kind='user' WHERE c.type='direct' LIMIT 1`, userID, targetID, ownerKind, ownerID).Scan(&convID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return chatConversation{}, err
 	}
@@ -17225,7 +17228,8 @@ func findOrCreateDirectConversation(db *sql.DB, r *http.Request, userID int64, t
 		if err := tx.QueryRow(`INSERT INTO chat_conversations(public_id,type,created_by,last_message_at) VALUES($1,'direct',$2,NOW()) RETURNING id`, pid, userID).Scan(&convID); err != nil {
 			return chatConversation{}, err
 		}
-		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,'member'),($1,$3,'member')`, convID, userID, targetID); err != nil {
+		// Инициатор сохраняет свой контекст (kind/id), собеседник всегда как личный.
+		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role,participant_kind,participant_id) VALUES($1,$2,'member',$3,$4),($1,$5,'member','user',$5)`, convID, userID, ownerKind, ownerID, targetID); err != nil {
 			return chatConversation{}, err
 		}
 		if _, err := tx.Exec(`UPDATE chat_conversations SET owner_kind=$1, owner_id=$2 WHERE id=$3`, ownerKind, ownerID, convID); err != nil {
@@ -17349,21 +17353,8 @@ JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
 WHERE p.user_id=$1
-  AND (
-    ($2::text = 'user' AND (
-      c.owner_kind = 'user'
-      OR (c.owner_kind = 'company' AND NOT EXISTS(
-        SELECT 1 FROM company_members WHERE company_id = c.owner_id AND user_id = $1
-      ))
-      OR (c.owner_kind = 'community' AND NOT EXISTS(
-        SELECT 1 FROM community_members WHERE community_id = c.owner_id AND user_id = $1
-      ))
-    ))
-    OR
-    ($2::text = 'company' AND c.owner_kind = 'company' AND c.owner_id = $3)
-    OR
-    ($2::text = 'community' AND c.owner_kind = 'community' AND c.owner_id = $3)
-  )
+  AND p.participant_kind = $2::text
+  AND p.participant_id = $3
 ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 	if err != nil {
 		return nil, err
@@ -17739,10 +17730,9 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 // Для групповых/community-чатов не уведомляет (избегаем спама).
 // Запускать в горутине после основной операции.
 func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID string, actorID int64, content string) {
-	// 1. Тип + контекст диалога
-	var chatType, ownerKind string
-	var ownerID int64
-	if err := db.QueryRow(`SELECT type, COALESCE(owner_kind,'user'), COALESCE(owner_id,0) FROM chat_conversations WHERE id = $1`, conversationID).Scan(&chatType, &ownerKind, &ownerID); err != nil {
+	// 1. Тип чата
+	var chatType string
+	if err := db.QueryRow(`SELECT type FROM chat_conversations WHERE id = $1`, conversationID).Scan(&chatType); err != nil {
 		log.Printf("notif chat: get conv: %v", err)
 		return
 	}
@@ -17750,7 +17740,12 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 		return
 	}
 
-	// 2. Достаём ID собеседника
+	// 2. Контекст отправителя из его participant
+	var senderKind string
+	var senderID int64
+	_ = db.QueryRow(`SELECT participant_kind, participant_id FROM chat_participants WHERE conversation_id=$1 AND user_id=$2`, conversationID, actorID).Scan(&senderKind, &senderID)
+
+	// 3. Получатель
 	var recipientID int64
 	if err := db.QueryRow(`
 		SELECT user_id FROM chat_participants
@@ -17764,16 +17759,16 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 		return
 	}
 
-	// 3. Имя отправителя — компания/сообщество если контекст диалога не личный
+	// 4. Имя отправителя берётся из его participant_kind/id
 	actorName := getUserDisplayName(db, actorID)
-	if ownerKind == "company" && ownerID > 0 {
+	if senderKind == "company" && senderID > 0 {
 		var coName string
-		if err := db.QueryRow(`SELECT name FROM companies WHERE id=$1`, ownerID).Scan(&coName); err == nil && strings.TrimSpace(coName) != "" {
+		if err := db.QueryRow(`SELECT name FROM companies WHERE id=$1`, senderID).Scan(&coName); err == nil && strings.TrimSpace(coName) != "" {
 			actorName = coName
 		}
-	} else if ownerKind == "community" && ownerID > 0 {
+	} else if senderKind == "community" && senderID > 0 {
 		var cmName string
-		if err := db.QueryRow(`SELECT name FROM communities WHERE id=$1`, ownerID).Scan(&cmName); err == nil && strings.TrimSpace(cmName) != "" {
+		if err := db.QueryRow(`SELECT name FROM communities WHERE id=$1`, senderID).Scan(&cmName); err == nil && strings.TrimSpace(cmName) != "" {
 			actorName = cmName
 		}
 	}
