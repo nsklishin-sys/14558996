@@ -2556,7 +2556,23 @@ func main() {
 			parts = append(parts, map[string]any{"conv_id": cid, "user_id": uid, "role": role})
 		}
 		rows2.Close()
-		writeJSON(w, 200, map[string]any{"conversations": convs, "participants": parts})
+		msgs := []map[string]any{}
+		rows3, err := db.Query(`SELECT id, conversation_id, author_id, sender_company_id, sender_community_id, LEFT(content, 50), is_deleted, created_at FROM chat_messages WHERE conversation_id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY conversation_id, id`, userID)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		for rows3.Next() {
+			var id, cid, authorID int64
+			var coID, cmID sql.NullInt64
+			var content string
+			var isDel bool
+			var createdAt time.Time
+			_ = rows3.Scan(&id, &cid, &authorID, &coID, &cmID, &content, &isDel, &createdAt)
+			msgs = append(msgs, map[string]any{"id": id, "conv_id": cid, "author_id": authorID, "sender_company_id": coID.Int64, "sender_community_id": cmID.Int64, "content": content, "is_deleted": isDel, "created_at": createdAt})
+		}
+		rows3.Close()
+		writeJSON(w, 200, map[string]any{"conversations": convs, "participants": parts, "messages": msgs})
 	})
 
 	mux.HandleFunc("/api/chat/conversations/direct", func(w http.ResponseWriter, r *http.Request) {
@@ -8758,7 +8774,6 @@ CREATE INDEX IF NOT EXISTS forum_topics_author_company_idx ON forum_topics(autho
 		return fmt.Errorf("create schema: %w", err)
 	}
 
-
 	if err := migratePublicationSeedData(db); err != nil {
 		log.Printf("WARN: migrate publication seed data failed: %v", err)
 	}
@@ -10207,29 +10222,29 @@ func listForumTopics(db *sql.DB, categoryKey string, viewerID int64, limit, offs
 // ─── Сообщения форума ───
 
 type forumMessage struct {
-	ID             int64      `json:"id"`
-	PublicID       string     `json:"public_id"`
-	TopicID        int64      `json:"topic_id"`
-	AuthorID       int64      `json:"author_id"`
-	AuthorPublicID string     `json:"author_public_id"`
-	AuthorName     string     `json:"author_name"`
-	Content        string     `json:"content"`
-	ParentID       *int64     `json:"parent_id,omitempty"`
-	ParentPublicID string     `json:"parent_public_id,omitempty"`
-	ParentAuthor   string     `json:"parent_author,omitempty"`
-	ParentSnippet  string     `json:"parent_snippet,omitempty"`
-	LikesCount     int        `json:"likes_count"`
-	ViewerHasLiked bool       `json:"viewer_has_liked"`
-	CreatedAt      time.Time  `json:"created_at"`
-	EditedAt       *time.Time `json:"edited_at,omitempty"`
-	IsAuthor       bool       `json:"is_author"`
-	SenderCompanyID       int64  `json:"sender_company_id,omitempty"`
-	SenderCompanyName     string `json:"sender_company_name,omitempty"`
-	SenderCompanySlug     string `json:"sender_company_slug,omitempty"`
-	SenderCompanyLogo     string `json:"sender_company_logo,omitempty"`
-	SenderCommunityID     int64  `json:"sender_community_id,omitempty"`
-	SenderCommunityName   string `json:"sender_community_name,omitempty"`
-	SenderCommunityAvatar string `json:"sender_community_avatar,omitempty"`
+	ID                    int64      `json:"id"`
+	PublicID              string     `json:"public_id"`
+	TopicID               int64      `json:"topic_id"`
+	AuthorID              int64      `json:"author_id"`
+	AuthorPublicID        string     `json:"author_public_id"`
+	AuthorName            string     `json:"author_name"`
+	Content               string     `json:"content"`
+	ParentID              *int64     `json:"parent_id,omitempty"`
+	ParentPublicID        string     `json:"parent_public_id,omitempty"`
+	ParentAuthor          string     `json:"parent_author,omitempty"`
+	ParentSnippet         string     `json:"parent_snippet,omitempty"`
+	LikesCount            int        `json:"likes_count"`
+	ViewerHasLiked        bool       `json:"viewer_has_liked"`
+	CreatedAt             time.Time  `json:"created_at"`
+	EditedAt              *time.Time `json:"edited_at,omitempty"`
+	IsAuthor              bool       `json:"is_author"`
+	SenderCompanyID       int64      `json:"sender_company_id,omitempty"`
+	SenderCompanyName     string     `json:"sender_company_name,omitempty"`
+	SenderCompanySlug     string     `json:"sender_company_slug,omitempty"`
+	SenderCompanyLogo     string     `json:"sender_company_logo,omitempty"`
+	SenderCommunityID     int64      `json:"sender_community_id,omitempty"`
+	SenderCommunityName   string     `json:"sender_community_name,omitempty"`
+	SenderCommunityAvatar string     `json:"sender_community_avatar,omitempty"`
 }
 
 // listForumMessages — все сообщения темы (без пагинации, обычно тема <100 сообщений).
@@ -10544,13 +10559,13 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 	return forumMessage{}, fmt.Errorf("not found after insert")
 }
 
-
 func sqlNullInt64(v int64) sql.NullInt64 {
 	if v > 0 {
 		return sql.NullInt64{Int64: v, Valid: true}
 	}
 	return sql.NullInt64{}
 }
+
 // toggleForumMessageLike — ставит или снимает лайк.
 // Возвращает новое значение likes_count и флаг "сейчас залайкано".
 func toggleForumMessageLike(db *sql.DB, messageID, userID int64) (int, bool, error) {
