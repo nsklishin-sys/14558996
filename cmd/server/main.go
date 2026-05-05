@@ -1621,6 +1621,97 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
 	})
 
+	mux.HandleFunc("/api/analytics/company/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		// path: /api/analytics/company/{slug}/{section}
+		path := strings.TrimPrefix(r.URL.Path, "/api/analytics/company/")
+		parts := strings.Split(path, "/")
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			writeError(w, http.StatusBadRequest, "Формат пути: /api/analytics/company/{slug}/{section}")
+			return
+		}
+		slug := parts[0]
+		section := parts[1]
+		companyID, err := getCompanyBySlug(db, slug)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "Компания не найдена")
+			return
+		}
+		if !canAccessCompanyAnalytics(db, userID, companyID) {
+			writeError(w, http.StatusForbidden, "Нет прав на аналитику этой компании")
+			return
+		}
+		period := r.URL.Query().Get("period")
+		var data map[string]any
+		switch section {
+		case "overview":
+			data, err = computeCompanyAnalyticsOverview(db, companyID, period)
+		case "jobs":
+			data, err = computeCompanyAnalyticsJobs(db, companyID, period)
+		case "products":
+			data, err = computeCompanyAnalyticsProducts(db, companyID, period)
+		default:
+			writeError(w, http.StatusNotFound, "Секция не поддерживается: "+section)
+			return
+		}
+		if err != nil {
+			log.Printf("[analytics] company/%s: %v", section, err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
+	mux.HandleFunc("/api/analytics/community/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		path := strings.TrimPrefix(r.URL.Path, "/api/analytics/community/")
+		parts := strings.Split(path, "/")
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			writeError(w, http.StatusBadRequest, "Формат пути: /api/analytics/community/{slug}/{section}")
+			return
+		}
+		slug := parts[0]
+		section := parts[1]
+		communityID, err := resolveCommunityIDBySlug(db, slug)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "Сообщество не найдено")
+			return
+		}
+		if !canAccessCommunityAnalytics(db, userID, communityID) {
+			writeError(w, http.StatusForbidden, "Нет прав на аналитику этого сообщества")
+			return
+		}
+		period := r.URL.Query().Get("period")
+		var data map[string]any
+		switch section {
+		case "overview":
+			data, err = computeCommunityAnalyticsOverview(db, communityID, period)
+		default:
+			writeError(w, http.StatusNotFound, "Секция не поддерживается: "+section)
+			return
+		}
+		if err != nil {
+			log.Printf("[analytics] community/%s: %v", section, err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
 	mux.HandleFunc("/api/me/privacy", func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != http.MethodPatch {
@@ -18139,6 +18230,330 @@ func computePersonalCareer(db *sql.DB, userID int64, period string) (map[string]
 		}
 		if daily != nil {
 			out["daily"] = daily
+		}
+	}
+	return out, nil
+}
+
+// canAccessCompanyAnalytics проверяет что юзер — owner или admin компании.
+func canAccessCompanyAnalytics(db *sql.DB, userID, companyID int64) bool {
+	if userID == 0 || companyID == 0 {
+		return false
+	}
+	var role string
+	err := db.QueryRow(`SELECT role FROM company_members WHERE company_id=$1 AND user_id=$2`, companyID, userID).Scan(&role)
+	if err != nil {
+		return false
+	}
+	return role == "owner" || role == "admin"
+}
+
+// canAccessCommunityAnalytics проверяет что юзер — owner или admin сообщества.
+func canAccessCommunityAnalytics(db *sql.DB, userID, communityID int64) bool {
+	if userID == 0 || communityID == 0 {
+		return false
+	}
+	var role string
+	err := db.QueryRow(`SELECT role FROM community_members WHERE community_id=$1 AND user_id=$2`, communityID, userID).Scan(&role)
+	if err != nil {
+		return false
+	}
+	return role == "owner" || role == "admin" || role == "moderator"
+}
+
+// resolveCommunityIDBySlug возвращает id сообщества по slug.
+func resolveCommunityIDBySlug(db *sql.DB, slug string) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT id FROM communities WHERE slug=$1`, slug).Scan(&id)
+	return id, err
+}
+
+func computeCompanyAnalyticsOverview(db *sql.DB, companyID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":           periodLabel,
+		"company_views":    int64(0),
+		"content_views":    int64(0),
+		"job_views":        int64(0),
+		"job_applies":      int64(0),
+		"catalog_views":    int64(0),
+		"exhibition_views": int64(0),
+		"actions_received": int64(0),
+		"unique_visitors":  int64(0),
+		"daily":            []map[string]any{},
+		"by_type":          []map[string]any{},
+	}
+	var companyViews, contentViews, jobViews, jobApplies, catalogViews, exhibitionViews, actions, uniqueVisitors int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='company_view' AND target_id=$1 AND `+timeFilter, companyID).Scan(&companyViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('post_view','job_view','catalog_view','exhibition_view','event_view') AND target_owner_company_id=$1 AND `+timeFilter, companyID).Scan(&contentViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='job_view' AND target_owner_company_id=$1 AND `+timeFilter, companyID).Scan(&jobViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='job_apply' AND target_owner_company_id=$1 AND `+timeFilter, companyID).Scan(&jobApplies)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='catalog_view' AND target_owner_company_id=$1 AND `+timeFilter, companyID).Scan(&catalogViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='exhibition_view' AND target_owner_company_id=$1 AND `+timeFilter, companyID).Scan(&exhibitionViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('save_action','reaction','comment_added','job_apply','event_register','exhibition_register') AND target_owner_company_id=$1 AND `+timeFilter, companyID).Scan(&actions)
+	_ = db.QueryRow(`SELECT COUNT(DISTINCT actor_user_id) FROM analytics_events WHERE target_owner_company_id=$1 AND actor_user_id IS NOT NULL AND `+timeFilter, companyID).Scan(&uniqueVisitors)
+	out["company_views"] = companyViews
+	out["content_views"] = contentViews
+	out["job_views"] = jobViews
+	out["job_applies"] = jobApplies
+	out["catalog_views"] = catalogViews
+	out["exhibition_views"] = exhibitionViews
+	out["actions_received"] = actions
+	out["unique_visitors"] = uniqueVisitors
+
+	// Дневная динамика
+	rows, err := db.Query(`
+		SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+		FROM analytics_events
+		WHERE target_owner_company_id=$1 AND `+timeFilter+`
+		GROUP BY day ORDER BY day ASC`, companyID)
+	if err == nil {
+		defer rows.Close()
+		var daily []map[string]any
+		for rows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := rows.Scan(&day, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+
+	// Распределение по event_type
+	typeRows, err := db.Query(`
+		SELECT event_type, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE target_owner_company_id=$1 AND `+timeFilter+`
+		GROUP BY event_type ORDER BY cnt DESC`, companyID)
+	if err == nil {
+		defer typeRows.Close()
+		var byType []map[string]any
+		for typeRows.Next() {
+			var et string
+			var cnt int64
+			if err := typeRows.Scan(&et, &cnt); err == nil {
+				byType = append(byType, map[string]any{"event_type": et, "count": cnt})
+			}
+		}
+		if byType != nil {
+			out["by_type"] = byType
+		}
+	}
+	return out, nil
+}
+
+func computeCompanyAnalyticsJobs(db *sql.DB, companyID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":     periodLabel,
+		"top_jobs":   []map[string]any{},
+		"daily":      []map[string]any{},
+		"conversion": 0.0,
+	}
+	// Топ вакансий компании по просмотрам
+	rows, err := db.Query(`
+		SELECT j.id, j.public_id, j.title,
+			COUNT(*) FILTER (WHERE ae.event_type='job_view') as views,
+			COUNT(*) FILTER (WHERE ae.event_type='job_apply') as applies
+		FROM analytics_events ae
+		JOIN jobs j ON j.id = ae.target_id
+		WHERE ae.target_type='job'
+		  AND ae.target_owner_company_id=$1
+		  AND ae.`+timeFilter+`
+		GROUP BY j.id, j.public_id, j.title
+		ORDER BY views DESC LIMIT 10`, companyID)
+	var totalViews, totalApplies int64
+	if err == nil {
+		defer rows.Close()
+		var top []map[string]any
+		for rows.Next() {
+			var jobID int64
+			var pid, title string
+			var v, a int64
+			if err := rows.Scan(&jobID, &pid, &title, &v, &a); err == nil {
+				top = append(top, map[string]any{
+					"id": jobID, "public_id": pid, "title": title,
+					"views": v, "applies": a,
+				})
+				totalViews += v
+				totalApplies += a
+			}
+		}
+		if top != nil {
+			out["top_jobs"] = top
+		}
+	}
+	if totalViews > 0 {
+		out["conversion"] = float64(totalApplies) / float64(totalViews) * 100.0
+	}
+
+	// Дневная динамика просмотров и откликов
+	dailyRows, err := db.Query(`
+		SELECT DATE(created_at) AS day, event_type, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE event_type IN ('job_view','job_apply')
+		  AND target_owner_company_id=$1 AND `+timeFilter+`
+		GROUP BY day, event_type ORDER BY day ASC`, companyID)
+	if err == nil {
+		defer dailyRows.Close()
+		var daily []map[string]any
+		for dailyRows.Next() {
+			var day time.Time
+			var et string
+			var cnt int64
+			if err := dailyRows.Scan(&day, &et, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "event_type": et, "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+	return out, nil
+}
+
+func computeCompanyAnalyticsProducts(db *sql.DB, companyID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":       periodLabel,
+		"top_products": []map[string]any{},
+		"daily":        []map[string]any{},
+	}
+	rows, err := db.Query(`
+		SELECT ci.id, ci.public_id, ci.title,
+			COUNT(*) FILTER (WHERE ae.event_type='catalog_view') as views,
+			COUNT(*) FILTER (WHERE ae.event_type='save_action') as saves
+		FROM analytics_events ae
+		JOIN catalog_items ci ON ci.id = ae.target_id
+		WHERE ae.target_type='catalog_item'
+		  AND ae.target_owner_company_id=$1
+		  AND ae.`+timeFilter+`
+		GROUP BY ci.id, ci.public_id, ci.title
+		ORDER BY views DESC LIMIT 10`, companyID)
+	if err == nil {
+		defer rows.Close()
+		var top []map[string]any
+		for rows.Next() {
+			var itemID int64
+			var pid, title string
+			var v, s int64
+			if err := rows.Scan(&itemID, &pid, &title, &v, &s); err == nil {
+				top = append(top, map[string]any{
+					"id": itemID, "public_id": pid, "title": title,
+					"views": v, "saves": s,
+				})
+			}
+		}
+		if top != nil {
+			out["top_products"] = top
+		}
+	}
+
+	dailyRows, err := db.Query(`
+		SELECT DATE(created_at) AS day, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE event_type='catalog_view' AND target_owner_company_id=$1 AND `+timeFilter+`
+		GROUP BY day ORDER BY day ASC`, companyID)
+	if err == nil {
+		defer dailyRows.Close()
+		var daily []map[string]any
+		for dailyRows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := dailyRows.Scan(&day, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+	return out, nil
+}
+
+func computeCommunityAnalyticsOverview(db *sql.DB, communityID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":           periodLabel,
+		"members_count":    int64(0),
+		"posts_count":      int64(0),
+		"content_views":    int64(0),
+		"actions_received": int64(0),
+		"unique_visitors":  int64(0),
+		"daily":            []map[string]any{},
+		"top_posts":        []map[string]any{},
+	}
+	// Кол-во участников (всё время)
+	var membersCount int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM community_members WHERE community_id=$1`, communityID).Scan(&membersCount)
+	out["members_count"] = membersCount
+
+	// Кол-во постов сообщества за период
+	var postsCount int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE community_id=$1 AND is_deleted=FALSE AND created_at >= NOW() - INTERVAL '90 days'`, communityID).Scan(&postsCount)
+	out["posts_count"] = postsCount
+
+	var contentViews, actions, uniqueVisitors int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('post_view','event_view','catalog_view') AND target_owner_community_id=$1 AND `+timeFilter, communityID).Scan(&contentViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('save_action','reaction','comment_added') AND target_owner_community_id=$1 AND `+timeFilter, communityID).Scan(&actions)
+	_ = db.QueryRow(`SELECT COUNT(DISTINCT actor_user_id) FROM analytics_events WHERE target_owner_community_id=$1 AND actor_user_id IS NOT NULL AND `+timeFilter, communityID).Scan(&uniqueVisitors)
+	out["content_views"] = contentViews
+	out["actions_received"] = actions
+	out["unique_visitors"] = uniqueVisitors
+
+	// Дневная динамика
+	rows, err := db.Query(`
+		SELECT DATE(created_at) AS day, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE target_owner_community_id=$1 AND `+timeFilter+`
+		GROUP BY day ORDER BY day ASC`, communityID)
+	if err == nil {
+		defer rows.Close()
+		var daily []map[string]any
+		for rows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := rows.Scan(&day, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+
+	// Топ-5 постов сообщества
+	postRows, err := db.Query(`
+		SELECT p.id, p.public_id, COALESCE(p.title, ''),
+			COUNT(*) FILTER (WHERE ae.event_type='post_view') as views,
+			p.likes_count, p.comments_count
+		FROM analytics_events ae
+		JOIN posts p ON p.id = ae.target_id
+		WHERE ae.target_type='post'
+		  AND ae.target_owner_community_id=$1
+		  AND ae.`+timeFilter+`
+		GROUP BY p.id, p.public_id, p.title, p.likes_count, p.comments_count
+		ORDER BY views DESC LIMIT 5`, communityID)
+	if err == nil {
+		defer postRows.Close()
+		var top []map[string]any
+		for postRows.Next() {
+			var pid int64
+			var publicID, title string
+			var v int64
+			var likes, comments int
+			if err := postRows.Scan(&pid, &publicID, &title, &v, &likes, &comments); err == nil {
+				top = append(top, map[string]any{
+					"id": pid, "public_id": publicID, "title": title,
+					"views": v, "likes": likes, "comments": comments,
+				})
+			}
+		}
+		if top != nil {
+			out["top_posts"] = top
 		}
 	}
 	return out, nil
