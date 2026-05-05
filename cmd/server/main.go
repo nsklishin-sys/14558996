@@ -34,6 +34,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/time/rate"
+	"nhooyr.io/websocket"
 )
 
 type greetingResponse struct {
@@ -1447,6 +1448,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore(db)
+	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
+		handleWebSocket(w, r, sessions)
+	})
 	authRateLimiter := newIPRateLimiter(10, time.Minute)
 	postRateLimiter := newIPRateLimiter(10, time.Minute)
 	commentRateLimiter := newIPRateLimiter(30, time.Minute)
@@ -20278,4 +20282,155 @@ func resolveActiveCommunityID(db *sql.DB, r *http.Request, userID, requestedID i
 		return 0, fmt.Errorf("user %d cannot publish for community %d (role=%s)", userID, cid, role)
 	}
 	return cid, nil
+}
+
+// ── WebSocket Hub ─────────────────────────────────────────────
+// Один процесс хранит все активные WS-соединения в памяти.
+// Каждое соединение привязано к userID. Отправка идёт в неблокирующий канал;
+// если канал переполнен — соединение считается зависшим и закрывается.
+
+type wsConn struct {
+	c      *websocket.Conn
+	send   chan []byte
+	userID int64
+}
+
+type wsHubT struct {
+	mu    sync.RWMutex
+	conns map[int64]map[*wsConn]struct{}
+}
+
+var wsHub = &wsHubT{conns: map[int64]map[*wsConn]struct{}{}}
+
+func (h *wsHubT) add(c *wsConn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.conns[c.userID] == nil {
+		h.conns[c.userID] = map[*wsConn]struct{}{}
+	}
+	h.conns[c.userID][c] = struct{}{}
+}
+
+func (h *wsHubT) remove(c *wsConn) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if set, ok := h.conns[c.userID]; ok {
+		delete(set, c)
+		if len(set) == 0 {
+			delete(h.conns, c.userID)
+		}
+	}
+}
+
+// Send отправляет JSON-событие конкретному пользователю на все его открытые WS-соединения.
+// Безопасен для вызова из любой горутины. Не блокирует.
+func (h *wsHubT) Send(userID int64, eventType string, data any) {
+	payload, err := json.Marshal(map[string]any{"type": eventType, "data": data})
+	if err != nil {
+		log.Printf("[ws] marshal: %v", err)
+		return
+	}
+	h.mu.RLock()
+	set := h.conns[userID]
+	conns := make([]*wsConn, 0, len(set))
+	for c := range set {
+		conns = append(conns, c)
+	}
+	h.mu.RUnlock()
+	for _, c := range conns {
+		select {
+		case c.send <- payload:
+		default:
+			// канал переполнен — клиент тормозит, дропаем соединение
+			log.Printf("[ws] drop slow conn user=%d", c.userID)
+			_ = c.c.Close(websocket.StatusPolicyViolation, "slow consumer")
+		}
+	}
+}
+
+// IsOnline возвращает есть ли у юзера хоть одно активное WS-соединение.
+func (h *wsHubT) IsOnline(userID int64) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.conns[userID]) > 0
+}
+
+// handleWebSocket обслуживает соединение: апгрейд, пинг, чтение, запись.
+// Аутентификация — через токен в query (?token=...), т.к. браузерный WS не умеет custom headers.
+func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionStore) {
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if token == "" {
+		http.Error(w, "no token", http.StatusUnauthorized)
+		return
+	}
+	userID, ok := sessions.getUserID(token)
+	if !ok {
+		http.Error(w, "bad token", http.StatusUnauthorized)
+		return
+	}
+
+	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		// Список origin'ов, с которых принимаем апгрейд. Прод — это сам домен.
+		// Для упрощения принимаем всё; при необходимости заменить на InsecureSkipVerify=false + OriginPatterns.
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		log.Printf("[ws] accept: %v", err)
+		return
+	}
+	c.SetReadLimit(1 << 16) // 64KB max per frame
+
+	conn := &wsConn{c: c, send: make(chan []byte, 64), userID: userID}
+	wsHub.add(conn)
+	log.Printf("[ws] connect user=%d total=%d", userID, len(wsHub.conns[userID]))
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	// Writer goroutine + ping
+	go func() {
+		ticker := time.NewTicker(25 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg := <-conn.send:
+				wctx, wcancel := context.WithTimeout(ctx, 10*time.Second)
+				err := c.Write(wctx, websocket.MessageText, msg)
+				wcancel()
+				if err != nil {
+					return
+				}
+			case <-ticker.C:
+				wctx, wcancel := context.WithTimeout(ctx, 10*time.Second)
+				err := c.Ping(wctx)
+				wcancel()
+				if err != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	// Reader loop. Читаем входящие от клиента (typing/read), пока не отвалится.
+	for {
+		_, raw, err := c.Read(ctx)
+		if err != nil {
+			break
+		}
+		var msg map[string]any
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			continue
+		}
+		// Сейчас просто эхо-pong, чтобы клиент знал что жив.
+		// Конкретные обработчики (typing/read) добавим в коммите 4-5.
+		if t, _ := msg["type"].(string); t == "ping" {
+			conn.send <- []byte(`{"type":"pong"}`)
+		}
+	}
+
+	wsHub.remove(conn)
+	_ = c.Close(websocket.StatusNormalClosure, "")
+	log.Printf("[ws] disconnect user=%d", userID)
 }
