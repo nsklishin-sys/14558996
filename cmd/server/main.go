@@ -2524,6 +2524,33 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"conversations": items})
 	})
 
+	mux.HandleFunc("/api/_debug/chat-state", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		convs := []map[string]any{}
+		rows, _ := db.Query(`SELECT id, public_id, type, owner_kind, owner_id FROM chat_conversations WHERE id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY id`, userID)
+		for rows.Next() {
+			var id, oid int64
+			var pid, typ, ok2 string
+			_ = rows.Scan(&id, &pid, &typ, &ok2, &oid)
+			convs = append(convs, map[string]any{"id": id, "pid": pid, "type": typ, "owner_kind": ok2, "owner_id": oid})
+		}
+		rows.Close()
+		msgs := []map[string]any{}
+		rows3, _ := db.Query(`SELECT id, conversation_id, author_id, COALESCE(sender_company_id,0), COALESCE(sender_community_id,0), LEFT(content, 60), is_deleted FROM chat_messages WHERE conversation_id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY conversation_id, id`, userID)
+		for rows3.Next() {
+			var id, cid, aid, scoid, scmid int64
+			var content string
+			var isDel bool
+			_ = rows3.Scan(&id, &cid, &aid, &scoid, &scmid, &content, &isDel)
+			msgs = append(msgs, map[string]any{"id": id, "conv_id": cid, "author_id": aid, "sender_company_id": scoid, "sender_community_id": scmid, "content": content, "is_deleted": isDel})
+		}
+		rows3.Close()
+		writeJSON(w, 200, map[string]any{"my_user_id": userID, "conversations": convs, "messages": msgs})
+	})
+
 	mux.HandleFunc("/api/chat/conversations/direct", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -17737,14 +17764,15 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 // Для групповых/community-чатов не уведомляет (избегаем спама).
 // Запускать в горутине после основной операции.
 func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID string, actorID int64, content string) {
-	// 1. Проверяем тип чата — только direct
-	var chatType string
-	if err := db.QueryRow(`SELECT type FROM chat_conversations WHERE id = $1`, conversationID).Scan(&chatType); err != nil {
-		log.Printf("notif chat: get type: %v", err)
+	// 1. Тип + контекст диалога
+	var chatType, ownerKind string
+	var ownerID int64
+	if err := db.QueryRow(`SELECT type, COALESCE(owner_kind,'user'), COALESCE(owner_id,0) FROM chat_conversations WHERE id = $1`, conversationID).Scan(&chatType, &ownerKind, &ownerID); err != nil {
+		log.Printf("notif chat: get conv: %v", err)
 		return
 	}
 	if chatType != "direct" {
-		return // групповые/community не уведомляем
+		return
 	}
 
 	// 2. Достаём ID собеседника
@@ -17761,8 +17789,19 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 		return
 	}
 
-	// 3. Создаём уведомление
+	// 3. Имя отправителя — компания/сообщество если контекст диалога не личный
 	actorName := getUserDisplayName(db, actorID)
+	if ownerKind == "company" && ownerID > 0 {
+		var coName string
+		if err := db.QueryRow(`SELECT name FROM companies WHERE id=$1`, ownerID).Scan(&coName); err == nil && strings.TrimSpace(coName) != "" {
+			actorName = coName
+		}
+	} else if ownerKind == "community" && ownerID > 0 {
+		var cmName string
+		if err := db.QueryRow(`SELECT name FROM communities WHERE id=$1`, ownerID).Scan(&cmName); err == nil && strings.TrimSpace(cmName) != "" {
+			actorName = cmName
+		}
+	}
 	title := actorName + " написал вам"
 	preview := truncateRunes(content, 200)
 	if err := createNotification(db, createNotificationParams{
