@@ -323,13 +323,22 @@
     // Стартуем polling и первый запрос
     refreshUnreadCount();
     if (_notifPollTimer) clearInterval(_notifPollTimer);
-    _notifPollTimer = setInterval(refreshUnreadCount, 5000);
+    // WS пушит notif:new мгновенно — polling оставляем редким fallback'ом.
+    _notifPollTimer = setInterval(refreshUnreadCount, 60000);
     // Обновлять сразу когда вкладка снова стала активной
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'visible') refreshUnreadCount();
     });
     // И на focus окна (на случай если visibility не сработал)
     window.addEventListener('focus', refreshUnreadCount);
+    // Real-time push через WebSocket
+    if (window.wsClient) {
+      window.wsClient.on('notif:new', function() {
+        refreshUnreadCount();
+        // Если выпадашка уведомлений открыта — обновим список тоже
+        if (_notifIsOpen) loadNotifList();
+      });
+    }
   }
 
   function toggleNotifDropdown() {

@@ -9239,6 +9239,17 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT DO NOTHING`,
 		p.RecipientID, actorIDArg, p.Type, p.SourceType, p.SourceID, p.SourcePublicID, title, preview)
+	if err == nil {
+		// Real-time push: уведомляем подключённого клиента, чтобы бейдж обновился без polling.
+		wsHub.Send(p.RecipientID, "notif:new", map[string]any{
+			"type":             p.Type,
+			"source_type":      p.SourceType,
+			"source_id":        p.SourceID,
+			"source_public_id": p.SourcePublicID,
+			"title":            title,
+			"preview":          preview,
+		})
+	}
 	return err
 }
 
@@ -12664,6 +12675,17 @@ func markNotificationRead(db *sql.DB, userID int64, notifID int64) error {
 		return err
 	}
 	n, _ := res.RowsAffected()
+	if n > 0 {
+		// Обновили существующее уведомление — клиент должен перерисовать бейдж.
+		wsHub.Send(recipientID, "notif:new", map[string]any{
+			"type":             "chat_message",
+			"source_type":      "chat",
+			"source_id":        conversationID,
+			"source_public_id": conversationPublicID,
+			"title":            title,
+			"preview":          preview,
+		})
+	}
 	if n == 0 {
 		return nil
 	}
@@ -17797,6 +17819,17 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 		return
 	}
 	n, _ := res.RowsAffected()
+	if n > 0 {
+		// Обновили существующее уведомление — клиент должен перерисовать бейдж.
+		wsHub.Send(recipientID, "notif:new", map[string]any{
+			"type":             "chat_message",
+			"source_type":      "chat",
+			"source_id":        conversationID,
+			"source_public_id": conversationPublicID,
+			"title":            title,
+			"preview":          preview,
+		})
+	}
 	if n == 0 {
 		if err := createNotification(db, createNotificationParams{
 			RecipientID:    recipientID,
