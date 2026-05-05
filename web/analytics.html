@@ -102,6 +102,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .scope-tab svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .scope-select{margin-left:auto;height:32px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);font-family:inherit;font-size:12px;color:var(--t);cursor:pointer;outline:none;display:none;max-width:240px}
 .scope-select.show{display:block}
+.ctx-selector{background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rxl);padding:11px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctx-label{font-size:11px;color:var(--gmt);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.ctx-select{height:34px;padding:0 30px 0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polyline points='6 9 12 15 18 9' stroke='%235A8A6A' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") right 8px center/12px no-repeat;font-family:inherit;font-size:13px;font-weight:600;color:var(--t);cursor:pointer;outline:none;-webkit-appearance:none;-moz-appearance:none;appearance:none;min-width:240px;transition:border-color .15s}
+.ctx-select:focus{border-color:var(--g)}
+.ctx-current{font-size:14px;font-weight:800;color:var(--t)}
+
 
 /* DASHBOARD */
 .dash{display:flex;flex-direction:column;gap:12px;animation:fadeUp .25s ease both}
@@ -345,10 +351,7 @@ async function loadAvailableScopes(){
     const r = await fetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}});
     if(r.ok){
       const d = await r.json();
-      state.companies = (d.items || d.companies || []).filter(c=>{
-        const role = c.my_role || c.role;
-        return role==='owner' || role==='admin';
-      });
+      state.companies = (d.items || d.companies || []);
     }
   }catch{}
   // 2. Получить мои сообщества (где owner/admin/moderator)
@@ -356,10 +359,7 @@ async function loadAvailableScopes(){
     const r = await fetch(API+'/communities?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}});
     if(r.ok){
       const d = await r.json();
-      state.communities = (d.communities || d.items || []).filter(c=>{
-        const role = c.my_role || c.role;
-        return role==='owner' || role==='admin' || role==='moderator';
-      });
+      state.communities = (d.communities || d.items || []);
     }
   }catch{}
   renderScopeTabs();
@@ -382,18 +382,10 @@ function renderScopeTabs(){
     tabs.push({key:'platform', label:'Платформа', svg:'<path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/>'});
   }
   // Селекторы (компания / сообщество)
-  let companySelect = '';
-  if(state.companies.length){
-    companySelect = `<select class="scope-select" id="scopeCompanySelect" onchange="onCompanyChange()">${state.companies.map((c,i)=>`<option value="${c.id}|${c.slug||''}">${esc(c.name||c.title||'')}</option>`).join('')}</select>`;
-  }
-  let communitySelect = '';
-  if(state.communities.length){
-    communitySelect = `<select class="scope-select" id="scopeCommunitySelect" onchange="onCommunityChange()">${state.communities.map(c=>`<option value="${c.id}">${esc(c.name||c.title||'')}</option>`).join('')}</select>`;
-  }
   document.getElementById('scopeTabs').innerHTML =
     tabs.map(t=>`<button class="scope-tab${t.key===state.scope?' active':''}" data-scope="${t.key}" onclick="setScope('${t.key}')">
       <svg viewBox="0 0 24 24">${t.svg}</svg>${t.label}
-    </button>`).join('') + companySelect + communitySelect;
+    </button>`).join('');
   if(state.companies.length){
     state.selectedCompanyId = state.companies[0].id;
     state.selectedCompanySlug = state.companies[0].slug;
@@ -401,31 +393,22 @@ function renderScopeTabs(){
   if(state.communities.length){
     state.selectedCommunityId = state.communities[0].id;
   }
-  updateScopeSelects();
-}
-
-function updateScopeSelects(){
-  const co = document.getElementById('scopeCompanySelect');
-  const cm = document.getElementById('scopeCommunitySelect');
-  if(co) co.classList.toggle('show', state.scope==='company');
-  if(cm) cm.classList.toggle('show', state.scope==='community');
 }
 
 function setScope(scope){
   state.scope = scope;
   document.querySelectorAll('.scope-tab').forEach(t=>t.classList.toggle('active', t.dataset.scope===scope));
-  updateScopeSelects();
   renderDashboard();
 }
 function onCompanyChange(){
-  const sel = document.getElementById('scopeCompanySelect');
+  const sel = document.getElementById('ctxCompanySelect');
   const [id, slug] = (sel.value||'').split('|');
   state.selectedCompanyId = parseInt(id, 10);
   state.selectedCompanySlug = slug;
   renderDashboard();
 }
 function onCommunityChange(){
-  const sel = document.getElementById('scopeCommunitySelect');
+  const sel = document.getElementById('ctxCommunitySelect');
   state.selectedCommunityId = parseInt(sel.value, 10);
   renderDashboard();
 }
@@ -489,7 +472,6 @@ const EVENT_LABELS = {
   job_apply:'Отклики',
   event_register:'Регистрации',
   exhibition_register:'Регистрации на выставку',
-  exhibition_view:'Просмотры выставок',
   company_view:'Просмотры компании',
 };
 
@@ -696,7 +678,15 @@ async function renderCompanyDashboard(){
   const jb = jobs.analytics || {};
   const pr = products.analytics || {};
 
+  const coSelector = state.companies.length > 1 ? `
+    <div class="ctx-selector">
+      <span class="ctx-label">Компания:</span>
+      <select class="ctx-select" id="ctxCompanySelect" onchange="onCompanyChange()">
+        ${state.companies.map(c=>`<option value="${c.id}|${c.slug||''}" ${c.id===state.selectedCompanyId?'selected':''}>${esc(c.name||c.title||'')}</option>`).join('')}
+      </select>
+    </div>` : `<div class="ctx-selector"><span class="ctx-label">Компания:</span><span class="ctx-current">${esc((state.companies[0]||{}).name||'')}</span></div>`;
   document.getElementById('dashContainer').innerHTML = `
+    ${coSelector}
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-label">Просмотры компании</div><div class="kpi-value">${fmtNum(ov.company_views)}</div><div class="kpi-hint">${fmtNum(ov.unique_visitors)} уникальных</div></div>
       <div class="kpi-card kpi-blue"><div class="kpi-label">Просмотры контента</div><div class="kpi-value">${fmtNum(ov.content_views)}</div><div class="kpi-hint">всего материалов</div></div>
@@ -784,7 +774,15 @@ async function renderCommunityDashboard(){
   }
   const a = r.analytics || {};
 
+  const cmSelector = state.communities.length > 1 ? `
+    <div class="ctx-selector">
+      <span class="ctx-label">Сообщество:</span>
+      <select class="ctx-select" id="ctxCommunitySelect" onchange="onCommunityChange()">
+        ${state.communities.map(c=>`<option value="${c.id}" ${c.id===state.selectedCommunityId?'selected':''}>${esc(c.name||c.title||'')}</option>`).join('')}
+      </select>
+    </div>` : `<div class="ctx-selector"><span class="ctx-label">Сообщество:</span><span class="ctx-current">${esc((state.communities[0]||{}).name||'')}</span></div>`;
   document.getElementById('dashContainer').innerHTML = `
+    ${cmSelector}
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-label">Участников</div><div class="kpi-value">${fmtNum(a.members_count)}</div><div class="kpi-hint">всего в сообществе</div></div>
       <div class="kpi-card kpi-blue"><div class="kpi-label">Постов</div><div class="kpi-value">${fmtNum(a.posts_count)}</div><div class="kpi-hint">за 90 дней</div></div>
@@ -840,9 +838,9 @@ async function renderPlatformDashboard(){
   document.getElementById('dashContainer').innerHTML = `
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-label">Всего пользователей</div><div class="kpi-value">${fmtNum(ov.total_users)}</div><div class="kpi-hint">+${fmtNum(ov.new_users)} за период</div></div>
-      <div class="kpi-card kpi-blue"><div class="kpi-label">DAU</div><div class="kpi-value">${fmtNum(ov.dau)}</div><div class="kpi-hint">за последние 24ч</div></div>
-      <div class="kpi-card kpi-purple"><div class="kpi-label">WAU</div><div class="kpi-value">${fmtNum(ov.wau)}</div><div class="kpi-hint">за последние 7д</div></div>
-      <div class="kpi-card kpi-orange"><div class="kpi-label">MAU</div><div class="kpi-value">${fmtNum(ov.mau)}</div><div class="kpi-hint">за последние 30д</div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-label">Активных за день</div><div class="kpi-value">${fmtNum(ov.dau)}</div><div class="kpi-hint">DAU · за 24 часа</div></div>
+      <div class="kpi-card kpi-purple"><div class="kpi-label">Активных за неделю</div><div class="kpi-value">${fmtNum(ov.wau)}</div><div class="kpi-hint">WAU · за 7 дней</div></div>
+      <div class="kpi-card kpi-orange"><div class="kpi-label">Активных за месяц</div><div class="kpi-value">${fmtNum(ov.mau)}</div><div class="kpi-hint">MAU · за 30 дней</div></div>
       <div class="kpi-card kpi-teal"><div class="kpi-label">Всего событий</div><div class="kpi-value">${fmtNum(ov.total_events)}</div><div class="kpi-hint">за период</div></div>
       <div class="kpi-card kpi-pink"><div class="kpi-label">Retention</div><div class="kpi-value" style="font-size:18px">D1 ${fmtPct(ret.d1)} · D7 ${fmtPct(ret.d7)} · D30 ${fmtPct(ret.d30)}</div></div>
     </div>
