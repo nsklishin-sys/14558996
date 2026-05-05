@@ -1272,6 +1272,31 @@ function renderConversations(){
     return `<div class="d-item ${state.activeConvPublicID===c.public_id?'active':''} ${c.pinned?'pinned':''}" onclick="selectConversation('${c.public_id}')"><div class="d-av-wrap"><div class="d-av" style="background:${c.display_color}">${c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name)}</div>${c.is_online?'<div class="d-online"></div>':''}</div><div class="d-body"><div class="d-top"><div class="d-name">${esc(c.display_name)}</div></div><div class="d-bot"><div class="d-preview">${authorPrefix}${esc(c.last_message_text||'')}</div>${c.unread_count?`<span class='d-badge'>${c.unread_count}</span>`:''}</div></div></div>`;
   }).join('');
 }
+function refreshChatHeaderStatus(){
+  const chatStatus = document.getElementById('chatStatus');
+  if(!chatStatus) return;
+  const conv = (state.conversations||[]).find(x=>x.public_id===state.activeConvPublicID);
+  if(!conv) return;
+  if(conv.type === 'direct'){
+    if((state.typingUsers||[]).length > 0){
+      chatStatus.textContent = 'печатает…';
+      chatStatus.className = 'ch-status typing';
+    } else {
+      chatStatus.textContent = conv.is_online ? 'в сети' : 'был(а) недавно';
+      chatStatus.className = 'ch-status' + (conv.is_online ? ' online' : '');
+    }
+  } else {
+    if((state.typingUsers||[]).length > 0){
+      const names = state.typingUsers.map(u => u.name).filter(Boolean).join(', ');
+      chatStatus.textContent = names ? `${names} печатает…` : 'печатает…';
+      chatStatus.className = 'ch-status typing';
+    } else {
+      chatStatus.textContent = conv.members_count ? `${conv.members_count} участников` : '';
+      chatStatus.className = 'ch-status';
+    }
+  }
+}
+
 function applyConversation(c){
   if(!c)return;
   chatName.textContent=c.display_name;
@@ -1286,7 +1311,7 @@ function applyConversation(c){
   }
   state.activeConversation=c;
 }
-async function selectConversation(pid){state.activeConvPublicID=pid;renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
@@ -1353,7 +1378,7 @@ function renderMessages(){
         </div>
       </div>`);
   });
-  if(state.typingUsers.length)el.insertAdjacentHTML('beforeend',`<div class='typing-bubble'>${esc(state.typingUsers.map(x=>x.name).join(', '))} печатает…</div>`);
+  // typing теперь отображается в шапке (#chatStatus), здесь не дублируем
   if(el){
     if(wasAtBottom){
       const scrollDown=()=>{el.scrollTop=el.scrollHeight};
@@ -1692,6 +1717,7 @@ function setupChatWS(){
       if(idx !== -1) list.splice(idx, 1);
     }
     state.typingUsers = list;
+    refreshChatHeaderStatus();
     renderMessages();
   });
   // Онлайн-статус собеседника
