@@ -362,6 +362,9 @@ type chatConversation struct {
 	Type                           string     `json:"type"`
 	Title                          string     `json:"title"`
 	AvatarURL                      string     `json:"avatar_url"`
+	OwnerKind                      string     `json:"owner_kind"`
+	OwnerID                        int64      `json:"owner_id"`
+	OwnerName                      string     `json:"owner_name,omitempty"`
 	CommunityID                    *int64     `json:"community_id,omitempty"`
 	CreatedAt                      time.Time  `json:"created_at"`
 	LastMessageAt                  *time.Time `json:"last_message_at,omitempty"`
@@ -2513,7 +2516,7 @@ func main() {
 			filter = "all"
 		}
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		items, err := listConversations(db, userID, filter, r.URL.Query().Get("q"), limit)
+		items, err := listConversations(db, r, userID, filter, r.URL.Query().Get("q"), limit)
 		if err != nil {
 			handleChatError(w, err)
 			return
@@ -8176,6 +8179,19 @@ CREATE TABLE IF NOT EXISTS chat_conversations (
 
 CREATE INDEX IF NOT EXISTS chat_conversations_community_idx
     ON chat_conversations(community_id) WHERE community_id IS NOT NULL;
+
+ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS owner_kind TEXT NOT NULL DEFAULT 'user';
+ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS owner_id BIGINT NOT NULL DEFAULT 0;
+
+UPDATE chat_conversations c
+SET owner_id = COALESCE(
+    c.created_by,
+    (SELECT user_id FROM chat_participants p WHERE p.conversation_id = c.id ORDER BY p.joined_at ASC, p.user_id ASC LIMIT 1),
+    0
+)
+WHERE owner_id = 0 AND owner_kind = 'user';
+
+CREATE INDEX IF NOT EXISTS chat_conversations_owner_idx ON chat_conversations(owner_kind, owner_id);
 
 CREATE TABLE IF NOT EXISTS chat_participants (
     conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
@@ -17211,8 +17227,24 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 	return c, nil
 }
 
-func listConversations(db *sql.DB, userID int64, filter, q string, limit int) ([]chatConversation, error) {
-	rows, err := db.Query(`SELECT c.public_id FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id WHERE p.user_id=$1 ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, userID)
+func listConversations(db *sql.DB, r *http.Request, userID int64, filter, q string, limit int) ([]chatConversation, error) {
+	ownerKind := "user"
+	ownerID := userID
+	if cid, err := resolveActiveCompanyID(db, r, userID, 0); err == nil && cid > 0 {
+		ownerKind = "company"
+		ownerID = cid
+	} else if cmid, err := resolveActiveCommunityID(db, r, userID, 0); err == nil && cmid > 0 {
+		ownerKind = "community"
+		ownerID = cmid
+	}
+	rows, err := db.Query(`SELECT c.public_id,c.owner_kind,c.owner_id,
+COALESCE(co.name, cm.name, '') AS owner_name
+FROM chat_conversations c
+JOIN chat_participants p ON p.conversation_id=c.id
+LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
+LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
+WHERE p.user_id=$1 AND c.owner_kind=$2 AND c.owner_id=$3
+ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, userID, ownerKind, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -17220,11 +17252,17 @@ func listConversations(db *sql.DB, userID int64, filter, q string, limit int) ([
 	items := make([]chatConversation, 0)
 	for rows.Next() {
 		var pid string
-		if err := rows.Scan(&pid); err != nil {
+		var convOwnerKind string
+		var convOwnerID int64
+		var convOwnerName string
+		if err := rows.Scan(&pid, &convOwnerKind, &convOwnerID, &convOwnerName); err != nil {
 			return nil, err
 		}
 		c, err := getConversationByPublicID(db, userID, pid)
 		if err == nil {
+			c.OwnerKind = convOwnerKind
+			c.OwnerID = convOwnerID
+			c.OwnerName = strings.TrimSpace(convOwnerName)
 			items = append(items, c)
 		}
 	}
