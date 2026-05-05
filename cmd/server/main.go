@@ -1669,6 +1669,42 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
 	})
 
+	mux.HandleFunc("/api/analytics/platform/overview", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		_, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		data, err := computePlatformAnalyticsOverview(db, r.URL.Query().Get("period"))
+		if err != nil {
+			log.Printf("[analytics] platform/overview: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
+	mux.HandleFunc("/api/analytics/platform/users", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		_, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		data, err := computePlatformAnalyticsUsers(db, r.URL.Query().Get("period"))
+		if err != nil {
+			log.Printf("[analytics] platform/users: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
 	mux.HandleFunc("/api/analytics/community/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -18556,6 +18592,196 @@ func computeCommunityAnalyticsOverview(db *sql.DB, communityID int64, period str
 			out["top_posts"] = top
 		}
 	}
+	return out, nil
+}
+
+func computePlatformAnalyticsOverview(db *sql.DB, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":        periodLabel,
+		"total_users":   int64(0),
+		"new_users":     int64(0),
+		"dau":           int64(0),
+		"wau":           int64(0),
+		"mau":           int64(0),
+		"total_events":  int64(0),
+		"by_event_type": []map[string]any{},
+		"daily":         []map[string]any{},
+		"signups_daily": []map[string]any{},
+	}
+	var totalUsers, newUsers, dau, wau, mau, totalEvents int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_deleted = FALSE`).Scan(&totalUsers)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_deleted=FALSE AND ` + timeFilter).Scan(&newUsers)
+	_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_seen_at > NOW() - INTERVAL '1 day'`).Scan(&dau)
+	_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_seen_at > NOW() - INTERVAL '7 days'`).Scan(&wau)
+	_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_seen_at > NOW() - INTERVAL '30 days'`).Scan(&mau)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE ` + timeFilter).Scan(&totalEvents)
+	out["total_users"] = totalUsers
+	out["new_users"] = newUsers
+	out["dau"] = dau
+	out["wau"] = wau
+	out["mau"] = mau
+	out["total_events"] = totalEvents
+
+	// Распределение событий по типу
+	typeRows, err := db.Query(`
+		SELECT event_type, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE ` + timeFilter + `
+		GROUP BY event_type ORDER BY cnt DESC LIMIT 20`)
+	if err == nil {
+		defer typeRows.Close()
+		var byType []map[string]any
+		for typeRows.Next() {
+			var et string
+			var cnt int64
+			if err := typeRows.Scan(&et, &cnt); err == nil {
+				byType = append(byType, map[string]any{"event_type": et, "count": cnt})
+			}
+		}
+		if byType != nil {
+			out["by_event_type"] = byType
+		}
+	}
+
+	// Дневная динамика всех событий
+	rows, err := db.Query(`
+		SELECT DATE(created_at) AS day, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE ` + timeFilter + `
+		GROUP BY day ORDER BY day ASC`)
+	if err == nil {
+		defer rows.Close()
+		var daily []map[string]any
+		for rows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := rows.Scan(&day, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+
+	// Регистрации по дням
+	signupRows, err := db.Query(`
+		SELECT DATE(created_at) as day, COUNT(*) as cnt
+		FROM users
+		WHERE is_deleted=FALSE AND ` + timeFilter + `
+		GROUP BY day ORDER BY day ASC`)
+	if err == nil {
+		defer signupRows.Close()
+		var signups []map[string]any
+		for signupRows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := signupRows.Scan(&day, &cnt); err == nil {
+				signups = append(signups, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if signups != nil {
+			out["signups_daily"] = signups
+		}
+	}
+	return out, nil
+}
+
+func computePlatformAnalyticsUsers(db *sql.DB, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	aeTimeFilter := strings.ReplaceAll(timeFilter, "created_at", "ae.created_at")
+	out := map[string]any{
+		"period":      periodLabel,
+		"top_actors":  []map[string]any{},
+		"top_targets": []map[string]any{},
+		"retention":   map[string]any{"d1": 0.0, "d7": 0.0, "d30": 0.0},
+	}
+	// Топ-10 наиболее активных пользователей (по кол-ву событий)
+	actorRows, err := db.Query(`
+		SELECT u.public_id, u.full_name, COALESCE(u.avatar_url,''),
+			COUNT(*) as events_count
+		FROM analytics_events ae
+		JOIN users u ON u.id = ae.actor_user_id
+		WHERE ae.actor_user_id IS NOT NULL AND ` + aeTimeFilter + `
+		GROUP BY u.id, u.public_id, u.full_name, u.avatar_url
+		ORDER BY events_count DESC LIMIT 10`)
+	if err == nil {
+		defer actorRows.Close()
+		var top []map[string]any
+		for actorRows.Next() {
+			var pid, name, avatar string
+			var cnt int64
+			if err := actorRows.Scan(&pid, &name, &avatar, &cnt); err == nil {
+				top = append(top, map[string]any{
+					"public_id": pid, "name": name, "avatar_url": avatar,
+					"events_count": cnt,
+				})
+			}
+		}
+		if top != nil {
+			out["top_actors"] = top
+		}
+	}
+
+	// Топ-10 наиболее просматриваемых пользователей (чьи профили смотрят)
+	targetRows, err := db.Query(`
+		SELECT u.public_id, u.full_name, COALESCE(u.avatar_url,''),
+			COUNT(*) as views_count
+		FROM analytics_events ae
+		JOIN users u ON u.id = ae.target_owner_user_id
+		WHERE ae.event_type='profile_view' AND ` + aeTimeFilter + `
+		GROUP BY u.id, u.public_id, u.full_name, u.avatar_url
+		ORDER BY views_count DESC LIMIT 10`)
+	if err == nil {
+		defer targetRows.Close()
+		var top []map[string]any
+		for targetRows.Next() {
+			var pid, name, avatar string
+			var cnt int64
+			if err := targetRows.Scan(&pid, &name, &avatar, &cnt); err == nil {
+				top = append(top, map[string]any{
+					"public_id": pid, "name": name, "avatar_url": avatar,
+					"views_count": cnt,
+				})
+			}
+		}
+		if top != nil {
+			out["top_targets"] = top
+		}
+	}
+
+	// Retention D1/D7/D30 — % новых юзеров за период, вернувшихся через 1/7/30 дней
+	// Простой расчёт: для каждой когорты считаем долю активных через N дней
+	var d1, d7, d30 float64
+	_ = db.QueryRow(`
+		SELECT COALESCE(
+			(SELECT COUNT(DISTINCT s.user_id)::float / NULLIF(COUNT(DISTINCT u.id),0)::float * 100
+			FROM users u
+			LEFT JOIN sessions s ON s.user_id = u.id
+				AND s.last_seen_at >= u.created_at + INTERVAL '1 day'
+				AND s.last_seen_at <= u.created_at + INTERVAL '2 days'
+			WHERE u.is_deleted=FALSE AND u.created_at >= NOW() - INTERVAL '30 days'),
+		0)`).Scan(&d1)
+	_ = db.QueryRow(`
+		SELECT COALESCE(
+			(SELECT COUNT(DISTINCT s.user_id)::float / NULLIF(COUNT(DISTINCT u.id),0)::float * 100
+			FROM users u
+			LEFT JOIN sessions s ON s.user_id = u.id
+				AND s.last_seen_at >= u.created_at + INTERVAL '7 days'
+				AND s.last_seen_at <= u.created_at + INTERVAL '8 days'
+			WHERE u.is_deleted=FALSE AND u.created_at >= NOW() - INTERVAL '60 days'),
+		0)`).Scan(&d7)
+	_ = db.QueryRow(`
+		SELECT COALESCE(
+			(SELECT COUNT(DISTINCT s.user_id)::float / NULLIF(COUNT(DISTINCT u.id),0)::float * 100
+			FROM users u
+			LEFT JOIN sessions s ON s.user_id = u.id
+				AND s.last_seen_at >= u.created_at + INTERVAL '30 days'
+				AND s.last_seen_at <= u.created_at + INTERVAL '31 days'
+			WHERE u.is_deleted=FALSE AND u.created_at >= NOW() - INTERVAL '90 days'),
+		0)`).Scan(&d30)
+	out["retention"] = map[string]any{"d1": d1, "d7": d7, "d30": d30}
 	return out, nil
 }
 
