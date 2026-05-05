@@ -17232,8 +17232,11 @@ func getConversationByPublicID(db *sql.DB, userID int64, publicID string) (chatC
 	var otherID sql.NullString
 	var otherName, otherPosition, otherCompany, otherAvatar string
 	var otherUID sql.NullInt64
+	var ownerKind string
+	var ownerID int64
+	var ownerCompanyName, ownerCommunityName, ownerCompanyLogo, ownerCommunityAvatar string
 	err := db.QueryRow(`
-SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,c.last_message_at,
+SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,c.last_message_at,c.owner_kind,c.owner_id,
        COALESCE(p.pinned,false),COALESCE(p.muted,false),COALESCE(p.role,'member'),
        (SELECT COUNT(*) FROM chat_participants cp WHERE cp.conversation_id=c.id),
        (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id=c.id AND m.id>p.last_read_message_id AND m.author_id<>$1 AND m.is_deleted=FALSE),
@@ -17247,9 +17250,12 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
        COALESCE((SELECT u2.full_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT u2.position FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT u2.company_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
-       COALESCE((SELECT u2.avatar_url FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),'')
+       COALESCE((SELECT u2.avatar_url FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
+       COALESCE(co.name,''), COALESCE(cm.name,''), COALESCE(co.logo_image,''), COALESCE(cm.avatar_url,'')
 FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id
-WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar)
+LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
+LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
+WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c, errNotFound
@@ -17257,12 +17263,27 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 		return c, err
 	}
 	c.Pinned, c.Muted, c.MyRole = pinned, muted, role
+	c.OwnerKind, c.OwnerID = ownerKind, ownerID
 	if c.Type == "direct" {
-		c.DisplayName = otherName
-		c.DisplayRole = strings.TrimSpace(strings.TrimSpace(otherPosition+" · ") + otherCompany)
-		c.DisplayAvatar = otherAvatar
-		c.OtherPublicID = otherID.String
-		c.DisplayColor = stableColorForName(otherName)
+		if ownerKind == "company" {
+			c.DisplayName = strings.TrimSpace(ownerCompanyName)
+			c.DisplayRole = ""
+			c.DisplayAvatar = strings.TrimSpace(ownerCompanyLogo)
+			c.OtherPublicID = otherID.String
+			c.DisplayColor = stableColorForName(c.DisplayName)
+		} else if ownerKind == "community" {
+			c.DisplayName = strings.TrimSpace(ownerCommunityName)
+			c.DisplayRole = ""
+			c.DisplayAvatar = strings.TrimSpace(ownerCommunityAvatar)
+			c.OtherPublicID = otherID.String
+			c.DisplayColor = stableColorForName(c.DisplayName)
+		} else {
+			c.DisplayName = otherName
+			c.DisplayRole = strings.TrimSpace(strings.TrimSpace(otherPosition+" · ") + otherCompany)
+			c.DisplayAvatar = otherAvatar
+			c.OtherPublicID = otherID.String
+			c.DisplayColor = stableColorForName(otherName)
+		}
 	} else {
 		c.DisplayName = c.Title
 		c.DisplayAvatar = c.AvatarURL
@@ -17304,8 +17325,20 @@ LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
 WHERE p.user_id=$1
   AND CASE
     WHEN $2::text = 'user' THEN
-      c.owner_kind = 'user'
-      AND EXISTS(SELECT 1 FROM chat_participants p2 WHERE p2.conversation_id = c.id AND p2.user_id = $3)
+      EXISTS(SELECT 1 FROM chat_participants p2 WHERE p2.conversation_id = c.id AND p2.user_id = $3)
+      AND (
+        c.owner_kind = 'user'
+        OR
+        (c.owner_kind = 'company' AND NOT EXISTS(
+          SELECT 1 FROM company_members cm2
+          WHERE cm2.company_id = c.owner_id AND cm2.user_id = $3
+        ))
+        OR
+        (c.owner_kind = 'community' AND NOT EXISTS(
+          SELECT 1 FROM community_members cmm
+          WHERE cmm.community_id = c.owner_id AND cmm.user_id = $3
+        ))
+      )
     ELSE
       c.owner_kind = $2::text AND c.owner_id = $3
   END
