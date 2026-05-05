@@ -744,6 +744,18 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
           </div>
         </div>
 
+        <div class="settings-card" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:14px">
+          <h3 style="font-size:14px;font-weight:800;margin-bottom:4px">Приватность аналитики</h3>
+          <p style="font-size:12px;color:var(--gmt);margin-bottom:12px;line-height:1.5">Управляйте тем, как другие участники видят вас в аналитике профилей.</p>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;background:var(--gp);border-radius:var(--rm)">
+            <input type="checkbox" id="prvVisibleInViewers" style="margin-top:2px;width:16px;height:16px;accent-color:var(--g);cursor:pointer">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--t)">Показывать меня в списке «Кто смотрел профиль»</div>
+              <div style="font-size:11px;color:var(--gmt);margin-top:3px;line-height:1.5">Если выключено — владельцы просмотренных вами профилей не увидят вас в своём списке зрителей. Это не отменяет анонимный счётчик просмотров.</div>
+            </div>
+          </label>
+        </div>
+
         <div class="panel-section">
           <div class="ps-label">Сообщения</div>
           <div class="ps-label" style="font-size:11px;color:var(--tm);text-transform:none;letter-spacing:0;margin-bottom:8px;font-weight:500">Кто может писать вам в чат</div>
@@ -1294,6 +1306,27 @@ async function executePwdChange(){
     err.textContent='Ошибка сети';err.style.display='block';btn.disabled=false;btn.textContent='Сменить';
   }
 }
+(async function initPrivacySettings(){
+  const cb=document.getElementById('prvVisibleInViewers');
+  if(!cb)return;
+  const tk=()=>localStorage.getItem('token');
+  if(!tk())return;
+  try{
+    const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const{user={}}=await r.json();
+    cb.checked=user.analytics_visible_in_viewers!==false;
+  }catch{}
+  cb.addEventListener('change',async()=>{
+    cb.disabled=true;
+    try{
+      const r=await fetch('/api/me/privacy',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({analytics_visible_in_viewers:cb.checked})});
+      if(!r.ok)cb.checked=!cb.checked;
+    }catch{cb.checked=!cb.checked;}
+    finally{cb.disabled=false;}
+  });
+})();
+
 </script>
 <div class="modal-bg" id="delAccModalBg" onclick="if(event.target===this)closeDelAccModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px">
   <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.18)">

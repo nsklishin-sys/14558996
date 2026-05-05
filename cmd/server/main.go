@@ -41,21 +41,22 @@ type greetingResponse struct {
 }
 
 type user struct {
-	ID          int64  `json:"id"`
-	PublicID    string `json:"public_id"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	FullName    string `json:"full_name"`
-	Email       string `json:"email"`
-	Position    string `json:"position,omitempty"`
-	CompanyName string `json:"company_name,omitempty"`
-	Bio         string `json:"bio,omitempty"`
-	Phone       string `json:"phone,omitempty"`
-	Location    string `json:"location,omitempty"`
-	City        string `json:"city,omitempty"`
-	AvatarURL   string `json:"avatar_url,omitempty"`
-	Handle      string `json:"handle,omitempty"`
-	IsAdmin     bool   `json:"is_admin,omitempty"`
+	ID                        int64  `json:"id"`
+	PublicID                  string `json:"public_id"`
+	FirstName                 string `json:"first_name"`
+	LastName                  string `json:"last_name"`
+	FullName                  string `json:"full_name"`
+	Email                     string `json:"email"`
+	Position                  string `json:"position,omitempty"`
+	CompanyName               string `json:"company_name,omitempty"`
+	Bio                       string `json:"bio,omitempty"`
+	Phone                     string `json:"phone,omitempty"`
+	Location                  string `json:"location,omitempty"`
+	City                      string `json:"city,omitempty"`
+	AvatarURL                 string `json:"avatar_url,omitempty"`
+	Handle                    string `json:"handle,omitempty"`
+	IsAdmin                   bool   `json:"is_admin,omitempty"`
+	AnalyticsVisibleInViewers bool   `json:"analytics_visible_in_viewers"`
 }
 
 type registerRequest struct {
@@ -1546,6 +1547,37 @@ func main() {
 
 		sessions.put(token, authUser.ID)
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
+	})
+
+	mux.HandleFunc("/api/me/privacy", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			AnalyticsVisibleInViewers *bool `json:"analytics_visible_in_viewers"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректные данные")
+			return
+		}
+		if req.AnalyticsVisibleInViewers != nil {
+			if _, err := db.Exec(`UPDATE users SET analytics_visible_in_viewers=$1 WHERE id=$2`, *req.AnalyticsVisibleInViewers, userID); err != nil {
+				log.Printf("[privacy] update failed: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сохранения")
+				return
+			}
+		}
+		usr, err := getUserByID(db, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка чтения")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"user": usr})
 	})
 
 	mux.HandleFunc("/api/me", func(w http.ResponseWriter, r *http.Request) {
@@ -7596,6 +7628,26 @@ CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id
 -- Sprint 12: Выставки
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS analytics_visible_in_viewers BOOLEAN NOT NULL DEFAULT TRUE;
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+    id BIGSERIAL PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    actor_user_id BIGINT,
+    target_type TEXT NOT NULL,
+    target_id BIGINT NOT NULL,
+    target_owner_user_id BIGINT,
+    target_owner_company_id BIGINT,
+    target_owner_community_id BIGINT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ae_owner_user ON analytics_events(target_owner_user_id, created_at DESC) WHERE target_owner_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ae_owner_company ON analytics_events(target_owner_company_id, created_at DESC) WHERE target_owner_company_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ae_owner_community ON analytics_events(target_owner_community_id, created_at DESC) WHERE target_owner_community_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ae_type_created ON analytics_events(event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ae_actor ON analytics_events(actor_user_id, created_at DESC) WHERE actor_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ae_dedup ON analytics_events(event_type, target_type, target_id, actor_user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS exhibitions (
     id BIGSERIAL PRIMARY KEY,
@@ -8729,10 +8781,11 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE)
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE),
+			COALESCE(analytics_visible_in_viewers, TRUE)
 		FROM users
 		WHERE id = $1 AND is_deleted = FALSE
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin)
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin, &u.AnalyticsVisibleInViewers)
 	if err != nil {
 		return user{}, err
 	}
@@ -17731,6 +17784,53 @@ func loadUserSettings(db *sql.DB, userID int64) (userSettings, error) {
 
 // computePlatformStats собирает агрегированные данные платформы.
 // Использует только COUNT-запросы и индексы. Тяжёлых JOIN'ов нет.
+// recordEvent пишет событие в analytics_events. Вызывается асинхронно из handler'ов.
+// Дедупликация: одно событие (event_type + target + actor) в час = одна запись.
+// Если actorUserID == 0 — событие от гостя.
+// ownerUserID/ownerCompanyID/ownerCommunityID — владельцы целевого объекта (для агрегации); 0 если неприменимо.
+func recordEvent(db *sql.DB, eventType string, actorUserID int64, targetType string, targetID int64, ownerUserID, ownerCompanyID, ownerCommunityID int64, metadata map[string]any) {
+	go func() {
+		// Дедупликация: проверяем что такое же событие уже не было в последний час
+		if actorUserID > 0 {
+			var existsID int64
+			err := db.QueryRow(`
+				SELECT id FROM analytics_events
+				WHERE event_type=$1 AND target_type=$2 AND target_id=$3 AND actor_user_id=$4
+				  AND created_at > NOW() - INTERVAL '1 hour'
+				LIMIT 1
+			`, eventType, targetType, targetID, actorUserID).Scan(&existsID)
+			if err == nil && existsID > 0 {
+				// дубль в течение часа — пропускаем
+				return
+			}
+		}
+		var actorParam, ownerUParam, ownerCoParam, ownerCmParam sql.NullInt64
+		if actorUserID > 0 {
+			actorParam = sql.NullInt64{Int64: actorUserID, Valid: true}
+		}
+		if ownerUserID > 0 {
+			ownerUParam = sql.NullInt64{Int64: ownerUserID, Valid: true}
+		}
+		if ownerCompanyID > 0 {
+			ownerCoParam = sql.NullInt64{Int64: ownerCompanyID, Valid: true}
+		}
+		if ownerCommunityID > 0 {
+			ownerCmParam = sql.NullInt64{Int64: ownerCommunityID, Valid: true}
+		}
+		var metaJSON []byte
+		if len(metadata) > 0 {
+			metaJSON, _ = json.Marshal(metadata)
+		}
+		_, err := db.Exec(`
+			INSERT INTO analytics_events (event_type, actor_user_id, target_type, target_id, target_owner_user_id, target_owner_company_id, target_owner_community_id, metadata)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`, eventType, actorParam, targetType, targetID, ownerUParam, ownerCoParam, ownerCmParam, metaJSON)
+		if err != nil {
+			log.Printf("[analytics] recordEvent failed: type=%s target=%s/%d err=%v", eventType, targetType, targetID, err)
+		}
+	}()
+}
+
 func computePlatformStats(db *sql.DB) (map[string]any, error) {
 	out := map[string]any{
 		"members":       0,
