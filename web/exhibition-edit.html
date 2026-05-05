@@ -411,10 +411,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="ee-section-title" style="margin-bottom:8px;border:none;padding:0">Подсказка</div>
     <p style="font-size:12px;color:var(--tm);line-height:1.6">После сохранения базовых данных откроются разделы: Локация, Программа (дни и сессии), Билеты, Зоны, Экспоненты.</p>
   </div>
-  <div class="ee-card" style="background:#FFF8E5;border-color:#F4D58A">
-    <div class="ee-section-title" style="margin-bottom:6px;border:none;padding:0;color:#8A5A00">Только админ</div>
-    <p style="font-size:12px;color:#5A4000;line-height:1.6">Создание и редактирование выставок доступно только администраторам платформы.</p>
-  </div>
 </aside>
 
 </div><!-- /shell -->
@@ -453,6 +449,19 @@ async function loadProfile(){
     ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name;});
     ADMIN_OK.ok=!!user.is_admin;
   }catch{}
+}
+
+async function loadOrgCompanies(){
+  const sel=document.getElementById('fOrgCompanyID');
+  if(!sel)return;
+  try{
+    const r=await fetch(API+'/companies?limit=200',{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)return;
+    const d=await r.json();
+    const list=d.companies||d.items||[];
+    const currentID=parseInt(document.getElementById('fOrgCompanyIDHidden')?.value||'0',10);
+    sel.innerHTML='<option value="">— не указана —</option>'+list.map(co=>`<option value="${co.id}"${co.id===currentID?' selected':''}>${(co.name||co.title||'#'+co.id).replace(/</g,'&lt;')}</option>`).join('');
+  }catch(e){console.error('loadOrgCompanies',e);}
 }
 
 async function loadExhibition(){
@@ -567,8 +576,11 @@ function renderForm(){
           <input class="ee-input" id="fOrgLabel" value="${escHtml(ex.organizer_label||'')}" placeholder="NorthBridge Expo Group">
         </div>
         <div class="ee-field">
-          <label class="ee-field-label">ID компании-организатора</label>
-          <input class="ee-input" id="fOrgCompanyID" type="number" min="0" value="${ex.organizer_company_id||''}" placeholder="0 = без компании">
+          <label class="ee-field-label">Компания-организатор</label>
+          <select class="ee-input" id="fOrgCompanyID">
+            <option value="">— не указана —</option>
+          </select>
+          <input type="hidden" id="fOrgCompanyIDHidden" value="${ex.organizer_company_id||''}">
         </div>
       </div>
       <div class="ee-field">
@@ -650,7 +662,7 @@ function renderForm(){
     <div class="ee-card">
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="ee-btn ee-btn-danger" onclick="deleteExhibition()">Удалить выставку</button>
-        <a href="/exhibition-detail.html?id=${encodeURIComponent(state.publicID)}" class="ee-btn ee-btn-sec">Открыть деталку →</a>
+        <a href="/exhibition-detail.html?id=${encodeURIComponent(state.publicID)}" class="ee-btn ee-btn-sec">Открыть страницу выставки →</a>
       </div>
     </div>
     `:`
@@ -838,7 +850,7 @@ async function saveSpeaker(speakerID){
     role:document.getElementById('spkRole').value.trim(),
     photo_url:document.getElementById('spkPhotoURL').value.trim(),
     bio:document.getElementById('spkBio').value.trim(),
-    sort_order:0
+    sort_order:dayID?0:(state.exhibition.days||[]).length>0?(Math.max(...(state.exhibition.days||[]).map(x=>x.sort_order||0))+1):1
   };
   if(!body.full_name){eeToast('Введите имя','err');return;}
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers'+(speakerID?'/'+speakerID:'');
@@ -933,6 +945,12 @@ function openDayForm(dayID){
   const slot=document.getElementById('dayFormSlot');
   const isEdit=!!dayID;
   const d=isEdit?(state.exhibition.days||[]).find(x=>x.id===dayID)||{}:{};
+  // авто-номер для нового дня
+  if(!isEdit){
+    const days=(state.exhibition.days||[]);
+    d.sort_order=days.length>0?(Math.max(...days.map(x=>x.sort_order||0))+1):1;
+    if(!d.title)d.title='День '+d.sort_order;
+  }
   // Подсказка: дата по умолчанию = starts_at выставки + (количество дней)
   let defaultDate='';
   if(!isEdit){
@@ -1279,7 +1297,10 @@ function openZoneForm(zoneID){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Цвет</label>
-          <input class="ee-input" id="znColor" type="color" value="${escHtml(z.color||'#1E8A4C')}" style="height:38px;padding:3px">
+          <div id="znColorPicker" style="display:flex;flex-wrap:wrap;gap:6px;padding:6px;background:var(--gp);border:1.5px solid var(--bdr);border-radius:8px">
+            ${['#1E8A4C','#22A05A','#3A90C0','#185FA5','#9060C0','#B05090','#C07030','#E04040','#A0530A','#5F5E5A'].map(c=>`<span class="zn-color-opt" data-color="${c}" onclick="selectZnColor('${c}')" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${(z.color||'#1E8A4C')===c?'var(--t)':'transparent'};box-sizing:border-box;transition:transform .15s" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></span>`).join('')}
+          </div>
+          <input type="hidden" id="znColor" value="${escHtml(z.color||'#1E8A4C')}">
         </div>
       </div>
       <div class="ee-field">
@@ -1293,6 +1314,13 @@ function openZoneForm(zoneID){
     </div>`;
 }
 function closeZoneForm(){document.getElementById('zoneFormSlot').innerHTML='';}
+
+function selectZnColor(c){
+  document.getElementById('znColor').value=c;
+  document.querySelectorAll('#znColorPicker .zn-color-opt').forEach(el=>{
+    el.style.borderColor=el.dataset.color===c?'var(--t)':'transparent';
+  });
+}
 
 async function saveZone(zoneID){
   const body={
@@ -1444,6 +1472,7 @@ async function deleteExhibition(){
     if(!state.exhibition){document.getElementById('contentRoot').innerHTML='<div class="ee-card ee-access-denied"><h2>Выставка не найдена</h2></div>';return;}
   }
   renderForm();
+  loadOrgCompanies();
   if(state.mode==='edit'){
     renderProgram();
     renderTickets();
