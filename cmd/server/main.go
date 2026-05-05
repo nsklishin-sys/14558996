@@ -17741,6 +17741,26 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 
 	recordEvent(db, "message_sent", userID, "chat_message", m.ID, 0, 0, 0, nil)
 
+	// Real-time push: всем participants диалога (включая отправителя на других устройствах).
+	go func() {
+		rows, err := db.Query(`SELECT user_id FROM chat_participants WHERE conversation_id=$1`, cid)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		payload := map[string]any{
+			"conversation_public_id": conversationPublicID,
+			"message":                m,
+		}
+		for rows.Next() {
+			var uid int64
+			if err := rows.Scan(&uid); err != nil {
+				continue
+			}
+			wsHub.Send(uid, "chat:message", payload)
+		}
+	}()
+
 	// Уведомление получателю — best-effort, после основной операции.
 	// Только для direct-чатов (1-на-1). Для групповых/community-чатов не уведомляем,
 	// чтобы не спамить участников.

@@ -1678,6 +1678,38 @@ function onTyping(){
 }
 msgInput?.addEventListener('input',onTyping)
 async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});if(state.activeConvPublicID){await loadMessages().catch(()=>{});const t=await api(`/chat/conversations/${state.activeConvPublicID}/typing`).catch(()=>({users:[]}));state.typingUsers=t.users||[];renderMessages();}}
+
+// Real-time через WebSocket
+function setupChatWS(){
+  if(!window.wsClient) return;
+  window.wsClient.on('chat:message', function(data){
+    if(!data || !data.conversation_public_id || !data.message) return;
+    const convPid = data.conversation_public_id;
+    const msg = data.message;
+    // Если это активный диалог — дописать в DOM и пометить прочитанным
+    if(state.activeConvPublicID === convPid){
+      // Не дублируем если уже есть (отправитель уже добавил optimistic-render)
+      const exists = (state.messages||[]).some(m => m.id === msg.id);
+      if(!exists){
+        state.messages = state.messages || [];
+        state.messages.push(msg);
+        renderMessages();
+        // Прокрутить вниз
+        const wrap = document.getElementById('msgsWrap');
+        if(wrap) wrap.scrollTop = wrap.scrollHeight;
+        // Помечаем прочитанным сразу — диалог открыт
+        api(`/chat/conversations/${convPid}/read`,{method:'POST'}).catch(()=>{});
+      }
+    }
+    // В любом случае — обновляем список диалогов (last_message, unread_count)
+    loadConversations().catch(()=>{});
+  });
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', setupChatWS);
+} else {
+  setupChatWS();
+}
 function startPolling(){clearInterval(state.pollTimer);state.pollTimer=setInterval(pollTick,3000)};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pollTick()})
 function openNewDialogModal(){newDialogOverlay.classList.add('open');newDialogModal.classList.add('open');ndSearchFriends('')}
 function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogModal.classList.remove('open')}
