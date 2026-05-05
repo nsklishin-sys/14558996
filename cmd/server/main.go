@@ -2524,6 +2524,41 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"conversations": items})
 	})
 
+	mux.HandleFunc("/api/_debug/chat-state", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		convs := []map[string]any{}
+		rows, err := db.Query(`SELECT id, public_id, type, owner_kind, owner_id, created_by, created_at FROM chat_conversations WHERE id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY id`, userID)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		for rows.Next() {
+			var id, ownerID, createdBy int64
+			var pid, typ, ownerKind string
+			var createdAt time.Time
+			_ = rows.Scan(&id, &pid, &typ, &ownerKind, &ownerID, &createdBy, &createdAt)
+			convs = append(convs, map[string]any{"id": id, "pid": pid, "type": typ, "owner_kind": ownerKind, "owner_id": ownerID, "created_by": createdBy, "created_at": createdAt})
+		}
+		rows.Close()
+		parts := []map[string]any{}
+		rows2, err := db.Query(`SELECT conversation_id, user_id, role FROM chat_participants WHERE conversation_id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY conversation_id, user_id`, userID)
+		if err != nil {
+			writeError(w, 500, err.Error())
+			return
+		}
+		for rows2.Next() {
+			var cid, uid int64
+			var role string
+			_ = rows2.Scan(&cid, &uid, &role)
+			parts = append(parts, map[string]any{"conv_id": cid, "user_id": uid, "role": role})
+		}
+		rows2.Close()
+		writeJSON(w, 200, map[string]any{"conversations": convs, "participants": parts})
+	})
+
 	mux.HandleFunc("/api/chat/conversations/direct", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
