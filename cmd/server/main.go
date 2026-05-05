@@ -468,15 +468,8 @@ func (s *chatPresenceStore) touch(uid int64) {
 	s.mu.Unlock()
 }
 func (s *chatPresenceStore) isOnline(uid int64) bool {
-	// Источник истины — наличие активного WS-соединения.
-	if wsHub != nil && wsHub.IsOnline(uid) {
-		return true
-	}
-	// Fallback на heartbeat через HTTP-запросы (если клиент без WS, например старый кеш).
-	s.mu.Lock()
-	t := s.last[uid]
-	s.mu.Unlock()
-	return time.Since(t) < 30*time.Second
+	// Источник истины — активное WS-соединение. Без WS считаем оффлайном.
+	return wsHub != nil && wsHub.IsOnline(uid)
 }
 
 func newChatPublicID() (string, error) {
