@@ -17296,23 +17296,30 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 	c.Pinned, c.Muted, c.MyRole = pinned, muted, role
 	c.OwnerKind, c.OwnerID = ownerKind, ownerID
 	if c.Type == "direct" {
-		if ownerKind == "company" {
-			c.DisplayName = strings.TrimSpace(ownerCompanyName)
+		// Имя/аватар в шапке берутся из participant противоположной стороны.
+		var otherKind string
+		var otherCtxID int64
+		_ = db.QueryRow(`SELECT participant_kind, participant_id FROM chat_participants WHERE conversation_id=$1 AND user_id<>$2 LIMIT 1`, c.ID, userID).Scan(&otherKind, &otherCtxID)
+		c.OtherPublicID = otherID.String
+		switch otherKind {
+		case "company":
+			var coName, coLogo string
+			_ = db.QueryRow(`SELECT name, COALESCE(logo_image,'') FROM companies WHERE id=$1`, otherCtxID).Scan(&coName, &coLogo)
+			c.DisplayName = strings.TrimSpace(coName)
 			c.DisplayRole = ""
-			c.DisplayAvatar = strings.TrimSpace(ownerCompanyLogo)
-			c.OtherPublicID = otherID.String
+			c.DisplayAvatar = strings.TrimSpace(coLogo)
 			c.DisplayColor = stableColorForName(c.DisplayName)
-		} else if ownerKind == "community" {
-			c.DisplayName = strings.TrimSpace(ownerCommunityName)
+		case "community":
+			var cmName, cmAvatar string
+			_ = db.QueryRow(`SELECT name, COALESCE(avatar_url,'') FROM communities WHERE id=$1`, otherCtxID).Scan(&cmName, &cmAvatar)
+			c.DisplayName = strings.TrimSpace(cmName)
 			c.DisplayRole = ""
-			c.DisplayAvatar = strings.TrimSpace(ownerCommunityAvatar)
-			c.OtherPublicID = otherID.String
+			c.DisplayAvatar = strings.TrimSpace(cmAvatar)
 			c.DisplayColor = stableColorForName(c.DisplayName)
-		} else {
+		default:
 			c.DisplayName = otherName
 			c.DisplayRole = strings.TrimSpace(strings.TrimSpace(otherPosition+" · ") + otherCompany)
 			c.DisplayAvatar = otherAvatar
-			c.OtherPublicID = otherID.String
 			c.DisplayColor = stableColorForName(otherName)
 		}
 	} else {
