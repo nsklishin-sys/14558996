@@ -4859,7 +4859,13 @@ func main() {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
 					return
 				}
-				msg, err := addForumMessage(db, topicID, actorID, req.Content, req.ParentPublicID)
+				var senderCompanyID, senderCommunityID int64
+				if cid, _ := resolveActiveCompanyID(db, r, actorID, 0); cid > 0 {
+					senderCompanyID = cid
+				} else if cmid, _ := resolveActiveCommunityID(db, r, actorID, 0); cmid > 0 {
+					senderCommunityID = cmid
+				}
+				msg, err := addForumMessage(db, topicID, actorID, req.Content, req.ParentPublicID, senderCompanyID, senderCommunityID)
 				if err != nil {
 					if err.Error() == "topic closed" {
 						writeError(w, http.StatusForbidden, "Тема закрыта для ответов")
@@ -8704,6 +8710,8 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
 ALTER TABLE catalog_items ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
 ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_community_id BIGINT;
 ALTER TABLE forum_topics ADD COLUMN IF NOT EXISTS author_company_id BIGINT;
+ALTER TABLE forum_messages ADD COLUMN IF NOT EXISTS sender_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE forum_messages ADD COLUMN IF NOT EXISTS sender_community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS jobs_author_community_idx ON jobs(author_community_id) WHERE author_community_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS catalog_items_author_community_idx ON catalog_items(author_community_id) WHERE author_community_id IS NOT NULL;
@@ -10180,6 +10188,13 @@ type forumMessage struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	EditedAt       *time.Time `json:"edited_at,omitempty"`
 	IsAuthor       bool       `json:"is_author"`
+	SenderCompanyID       int64  `json:"sender_company_id,omitempty"`
+	SenderCompanyName     string `json:"sender_company_name,omitempty"`
+	SenderCompanySlug     string `json:"sender_company_slug,omitempty"`
+	SenderCompanyLogo     string `json:"sender_company_logo,omitempty"`
+	SenderCommunityID     int64  `json:"sender_community_id,omitempty"`
+	SenderCommunityName   string `json:"sender_community_name,omitempty"`
+	SenderCommunityAvatar string `json:"sender_community_avatar,omitempty"`
 }
 
 // listForumMessages — все сообщения темы (без пагинации, обычно тема <100 сообщений).
@@ -10189,11 +10204,15 @@ func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessag
 			m.id, m.public_id, m.topic_id, m.author_id,
 			COALESCE(au.public_id, ''), COALESCE(au.full_name, au.handle, ''),
 			m.content, m.parent_id, m.likes_count, m.created_at, m.edited_at,
-			pm.public_id, COALESCE(pu.full_name, pu.handle, ''), COALESCE(SUBSTRING(pm.content, 1, 200), '')
+			pm.public_id, COALESCE(pu.full_name, pu.handle, ''), COALESCE(SUBSTRING(pm.content, 1, 200), ''),
+			COALESCE(m.sender_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''), COALESCE(co.logo_image, ''),
+			COALESCE(m.sender_community_id, 0), COALESCE(cm.name, ''), COALESCE(cm.avatar_url, '')
 		FROM forum_messages m
 		LEFT JOIN users au ON au.id = m.author_id
 		LEFT JOIN forum_messages pm ON pm.id = m.parent_id AND pm.deleted_at IS NULL
 		LEFT JOIN users pu ON pu.id = pm.author_id
+		LEFT JOIN companies co ON co.id = m.sender_company_id
+		LEFT JOIN communities cm ON cm.id = m.sender_community_id
 		WHERE m.topic_id = $1 AND m.deleted_at IS NULL
 		ORDER BY m.created_at ASC, m.id ASC
 	`, topicID)
@@ -10213,6 +10232,8 @@ func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessag
 			&m.AuthorPublicID, &m.AuthorName,
 			&m.Content, &m.ParentID, &m.LikesCount, &m.CreatedAt, &m.EditedAt,
 			&parentPublicID, &parentAuthor, &parentSnippet,
+			&m.SenderCompanyID, &m.SenderCompanyName, &m.SenderCompanySlug, &m.SenderCompanyLogo,
+			&m.SenderCommunityID, &m.SenderCommunityName, &m.SenderCommunityAvatar,
 		); err != nil {
 			return nil, err
 		}
@@ -10363,9 +10384,9 @@ func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content st
 	}
 
 	if _, err := tx.Exec(
-		`INSERT INTO forum_messages (public_id, topic_id, author_id, content)
-		 VALUES ($1, $2, $3, $4)`,
-		msgPublicID, topicID, authorID, content,
+		`INSERT INTO forum_messages (public_id, topic_id, author_id, content, sender_company_id, sender_community_id)
+		 VALUES ($1, $2, $3, $4, NULLIF($5, 0), NULLIF($6, 0))`,
+		msgPublicID, topicID, authorID, content, authorCompanyID, authorCommunityID,
 	); err != nil {
 		return forumTopic{}, err
 	}
@@ -10388,7 +10409,7 @@ func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content st
 
 // addForumMessage — добавляет ответ в существующую тему. Возвращает новое сообщение.
 // parentPublicID — пустая строка если без цитирования.
-func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicID string) (forumMessage, error) {
+func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicID string, senderCompanyID, senderCommunityID int64) (forumMessage, error) {
 	content = strings.TrimSpace(content)
 	if content == "" || len(content) > 5000 {
 		return forumMessage{}, fmt.Errorf("content length")
@@ -10428,9 +10449,9 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 
 	var msgID int64
 	if err := tx.QueryRow(
-		`INSERT INTO forum_messages (public_id, topic_id, author_id, content, parent_id)
-		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		msgPublicID, topicID, authorID, content, parentID,
+		`INSERT INTO forum_messages (public_id, topic_id, author_id, content, parent_id, sender_company_id, sender_community_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		msgPublicID, topicID, authorID, content, parentID, sqlNullInt64(senderCompanyID), sqlNullInt64(senderCommunityID),
 	).Scan(&msgID); err != nil {
 		return forumMessage{}, err
 	}
@@ -10488,6 +10509,13 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 	return forumMessage{}, fmt.Errorf("not found after insert")
 }
 
+
+func sqlNullInt64(v int64) sql.NullInt64 {
+	if v > 0 {
+		return sql.NullInt64{Int64: v, Valid: true}
+	}
+	return sql.NullInt64{}
+}
 // toggleForumMessageLike — ставит или снимает лайк.
 // Возвращает новое значение likes_count и флаг "сейчас залайкано".
 func toggleForumMessageLike(db *sql.DB, messageID, userID int64) (int, bool, error) {
