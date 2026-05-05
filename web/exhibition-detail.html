@@ -1014,9 +1014,10 @@ function renderProgram(ex){
       content.innerHTML='<div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Спикеры</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'+speakers.map(s=>{
         const photo=s.photo_url?`background-image:url(${escD(s.photo_url)});background-size:cover;background-position:center;color:transparent`:'';
         const initial=((s.full_name||'?')[0]||'?').toUpperCase();
+        const subText=[s.role,s.company].filter(Boolean).join(' · ');
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm)">
           <span style="width:40px;height:40px;border-radius:50%;background:#1E8A4C;color:#fff;display:grid;place-items:center;font-size:14px;font-weight:800;flex-shrink:0;${photo}">${initial}</span>
-          <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:700;color:var(--t)">${escD(s.full_name||'')}</div>${s.role?`<div style="font-size:11px;color:var(--gmt);margin-top:1px">${escD(s.role)}</div>`:''}</div>
+          <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:700;color:var(--t)">${escD(s.full_name||'')}</div>${subText?`<div style="font-size:11px;color:var(--gmt);margin-top:1px">${escD(subText)}</div>`:''}</div>
         </div>`;
       }).join('')+'</div>';
       return;
@@ -1048,7 +1049,8 @@ window.switchProgramDay=function(dayID){
       const sp=speakers.find(x=>x.id===id);if(!sp)return '';
       const photo=sp.photo_url?`background-image:url(${escD(sp.photo_url)})`:'';
       const initial=sp.photo_url?'':(sp.full_name||'?')[0].toUpperCase();
-      return `<span class="prog-spk"><span class="prog-spk-photo" style="${photo}">${initial}</span>${escD(sp.full_name)}</span>`;
+      const subText=[sp.role,sp.company].filter(Boolean).join(' · ');
+      return `<span class="prog-spk" title="${escD(subText)}"><span class="prog-spk-photo" style="${photo}">${initial}</span>${escD(sp.full_name)}</span>`;
     }).filter(Boolean).join('');
     return `<div class="prog-session"><div class="prog-session-time">${fmtTimeDet(s.starts_at)}–${fmtTimeDet(s.ends_at)}</div><div class="prog-session-body"><div class="prog-session-title">${escD(s.title||'')}</div>${s.description?`<div class="prog-session-desc">${escD(s.description)}</div>`:''}<div class="prog-session-meta">${typeLbl?`<span class="prog-session-type ${cls}">${typeLbl}</span>`:''}${s.location?`<span class="prog-session-loc">📍 ${escD(s.location)}</span>`:''}</div>${speakerChips?`<div class="prog-session-speakers">${speakerChips}</div>`:''}</div></div>`;
   }).join('');

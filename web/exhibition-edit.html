@@ -451,6 +451,25 @@ async function loadProfile(){
   }catch{}
 }
 
+async function uploadFileToInput(fileInput,targetInputID){
+  const file=fileInput.files&&fileInput.files[0];
+  if(!file)return;
+  if(file.size>5*1024*1024){eeToast('Файл больше 5 МБ','err');fileInput.value='';return;}
+  const fd=new FormData();fd.append('file',file);
+  const target=document.getElementById(targetInputID);
+  if(target){target.disabled=true;target.placeholder='Загружаем…';}
+  try{
+    const r=await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка загрузки: '+(t||r.status),'err');return;}
+    const data=await r.json();
+    const url=data.url||data.URL||'';
+    if(!url){eeToast('Сервер не вернул URL файла','err');return;}
+    if(target){target.value=url;target.placeholder='https://… или загрузите файл';}
+    eeToast('Файл загружен ✓','ok');
+  }catch(e){console.error('upload',e);eeToast('Ошибка сети при загрузке','err');}
+  finally{if(target)target.disabled=false;fileInput.value='';}
+}
+
 async function loadOrgCompanies(){
   const sel=document.getElementById('fOrgCompanyID');
   if(!sel)return;
@@ -561,9 +580,13 @@ function renderForm(){
         </div>
       </div>
       <div class="ee-field">
-        <label class="ee-field-label">URL обложки</label>
-        <input class="ee-input" id="fCoverURL" value="${escHtml(ex.cover_url||'')}" placeholder="https://…/cover.jpg">
-        <div class="ee-help">Прямая ссылка на изображение. Загрузка файлов появится позже.</div>
+        <label class="ee-label">Обложка выставки</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="ee-input" id="fCoverURL" value="${escHtml(ex.cover_url||'')}" placeholder="https://… или загрузите файл" style="flex:1">
+            <button class="ee-btn ee-btn-sec" type="button" onclick="document.getElementById('fCoverFile').click()" style="white-space:nowrap">📷 Загрузить</button>
+            <input type="file" id="fCoverFile" accept="image/*" style="display:none" onchange="uploadFileToInput(this,'fCoverURL')">
+          </div>
+          ${ex.cover_url?`<div style="margin-top:8px"><img src="${escHtml(ex.cover_url)}" style="max-width:200px;max-height:120px;border-radius:8px;border:1px solid var(--bdr);object-fit:cover" onerror="this.style.display='none'"></div>`:''}
       </div>
       <div class="ee-field">
         <label class="ee-field-label">Теги</label>
@@ -714,7 +737,7 @@ async function saveBasic(){
     if(!r.ok){const txt=await r.text().catch(()=>'');console.error('save failed',r.status,txt);eeToast('Ошибка: '+(txt||r.status),'err');btn.disabled=false;btn.textContent=oldText;return;}
     const data=await r.json();const ex=data.exhibition||data;
     eeToast(state.mode==='edit'?'Сохранено ✓':'Выставка создана ✓','ok');
-    if(state.mode==='create'&&ex.public_id){setTimeout(()=>{location.href='/exhibition-edit.html?id='+encodeURIComponent(ex.public_id);},800);}
+    if(state.mode==='create'&&ex.public_id){location.href='/exhibition-edit.html?id='+encodeURIComponent(ex.public_id);}
     else{
       state.exhibition=ex;btn.disabled=false;btn.textContent=oldText;
       // обновляем values input'ов чтобы отразить сохранённые данные
@@ -802,7 +825,7 @@ function renderSpeakers(){
       <div class="ee-spk-photo" style="${photo}">${initial}</div>
       <div class="ee-spk-info">
         <div class="ee-spk-name">${escHtml(s.full_name||'')}</div>
-        <div class="ee-spk-role">${escHtml(s.role||'')}</div>
+        <div class="ee-spk-role">${escHtml([s.role,s.company].filter(Boolean).join(' · '))}</div>
       </div>
       <div class="ee-spk-actions">
         <button class="ee-icon-btn" type="button" title="Редактировать" onclick="openSpeakerForm(${s.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -825,12 +848,21 @@ function openSpeakerForm(speakerID){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Должность / роль</label>
-          <input class="ee-input" id="spkRole" maxlength="200" value="${escHtml(sp.role||'')}" placeholder="CEO, Логистика-Прайм">
+          <input class="ee-input" id="spkRole" maxlength="200" value="${escHtml(sp.role||'')}" placeholder="CEO">
         </div>
       </div>
       <div class="ee-field">
-        <label class="ee-field-label">URL фотографии</label>
-        <input class="ee-input" id="spkPhotoURL" value="${escHtml(sp.photo_url||'')}" placeholder="https://…/photo.jpg">
+        <label class="ee-field-label">Компания</label>
+        <input class="ee-input" id="spkCompany" maxlength="200" value="${escHtml(sp.company||'')}" placeholder="ООО Логистика-Прайм">
+      </div>
+      <div class="ee-field">
+        <label class="ee-field-label">Фотография</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="ee-input" id="spkPhotoURL" value="${escHtml(sp.photo_url||'')}" placeholder="https://… или загрузите файл" style="flex:1">
+          <button class="ee-btn ee-btn-sec" type="button" onclick="document.getElementById('spkPhotoFile').click()" style="white-space:nowrap">📷 Загрузить</button>
+          <input type="file" id="spkPhotoFile" accept="image/*" style="display:none" onchange="uploadFileToInput(this,'spkPhotoURL')">
+        </div>
+        ${sp.photo_url?`<div style="margin-top:8px"><img src="${escHtml(sp.photo_url)}" style="max-width:80px;max-height:80px;border-radius:50%;border:2px solid var(--bdr);object-fit:cover" onerror="this.style.display='none'"></div>`:''}
       </div>
       <div class="ee-field">
         <label class="ee-field-label">Био / краткая информация</label>
@@ -848,9 +880,10 @@ async function saveSpeaker(speakerID){
   const body={
     full_name:document.getElementById('spkFullName').value.trim(),
     role:document.getElementById('spkRole').value.trim(),
+    company:document.getElementById('spkCompany').value.trim(),
     photo_url:document.getElementById('spkPhotoURL').value.trim(),
     bio:document.getElementById('spkBio').value.trim(),
-    sort_order:dayID?0:(state.exhibition.days||[]).length>0?(Math.max(...(state.exhibition.days||[]).map(x=>x.sort_order||0))+1):1
+    sort_order:speakerID?0:((state.exhibition.speakers||[]).length>0?(Math.max(...(state.exhibition.speakers||[]).map(x=>x.sort_order||0))+1):1)
   };
   if(!body.full_name){eeToast('Введите имя','err');return;}
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers'+(speakerID?'/'+speakerID:'');

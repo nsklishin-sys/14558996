@@ -880,6 +880,7 @@ type exhibitionSpeaker struct {
 	ExhibitionID int64  `json:"exhibition_id"`
 	FullName     string `json:"full_name"`
 	Role         string `json:"role"`
+	Company      string `json:"company"`
 	Bio          string `json:"bio"`
 	PhotoURL     string `json:"photo_url"`
 	UserID       int64  `json:"user_id,omitempty"`
@@ -954,6 +955,7 @@ type createExhibitionZoneRequest struct {
 type createExhibitionSpeakerRequest struct {
 	FullName     string `json:"full_name"`
 	Role         string `json:"role"`
+	Company      string `json:"company"`
 	Bio          string `json:"bio"`
 	PhotoURL     string `json:"photo_url"`
 	UserPublicID string `json:"user_public_id,omitempty"`
@@ -7655,11 +7657,14 @@ CREATE TABLE IF NOT EXISTS exhibition_speakers (
     exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT '',
+    company TEXT NOT NULL DEFAULT '',
     bio TEXT NOT NULL DEFAULT '',
     photo_url TEXT NOT NULL DEFAULT '',
     user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     sort_order INTEGER NOT NULL DEFAULT 0
 );
+
+ALTER TABLE exhibition_speakers ADD COLUMN IF NOT EXISTS company TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS exhibition_sessions (
     id BIGSERIAL PRIMARY KEY,
@@ -14933,10 +14938,10 @@ func createExhibitionSpeaker(db *sql.DB, exhibitionID int64, req createExhibitio
 	var s exhibitionSpeaker
 	var publicID sql.NullString
 	err := db.QueryRow(`
-		INSERT INTO exhibition_speakers (exhibition_id, full_name, role, bio, photo_url, user_id, sort_order)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-		RETURNING id, exhibition_id, full_name, role, bio, photo_url, COALESCE(user_id,0), sort_order
-	`, exhibitionID, req.FullName, req.Role, req.Bio, req.PhotoURL, userID, req.SortOrder).Scan(&s.ID, &s.ExhibitionID, &s.FullName, &s.Role, &s.Bio, &s.PhotoURL, &s.UserID, &s.SortOrder)
+		INSERT INTO exhibition_speakers (exhibition_id, full_name, role, company, bio, photo_url, user_id, sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		RETURNING id, exhibition_id, full_name, role, company, bio, photo_url, COALESCE(user_id,0), sort_order
+	`, exhibitionID, req.FullName, req.Role, req.Company, req.Bio, req.PhotoURL, userID, req.SortOrder).Scan(&s.ID, &s.ExhibitionID, &s.FullName, &s.Role, &s.Company, &s.Bio, &s.PhotoURL, &s.UserID, &s.SortOrder)
 	if err == nil && s.UserID > 0 {
 		_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, s.UserID).Scan(&publicID)
 		s.UserPublicID = publicID.String
@@ -14954,10 +14959,10 @@ func updateExhibitionSpeaker(db *sql.DB, exhibitionID, speakerID int64, req crea
 	}
 	var s exhibitionSpeaker
 	err := db.QueryRow(`
-		UPDATE exhibition_speakers SET full_name=$1, role=$2, bio=$3, photo_url=$4, user_id=$5, sort_order=$6
-		WHERE id=$7 AND exhibition_id=$8
-		RETURNING id, exhibition_id, full_name, role, bio, photo_url, COALESCE(user_id,0), sort_order
-	`, req.FullName, req.Role, req.Bio, req.PhotoURL, userID, req.SortOrder, speakerID, exhibitionID).Scan(&s.ID, &s.ExhibitionID, &s.FullName, &s.Role, &s.Bio, &s.PhotoURL, &s.UserID, &s.SortOrder)
+		UPDATE exhibition_speakers SET full_name=$1, role=$2, company=$3, bio=$4, photo_url=$5, user_id=$6, sort_order=$7
+		WHERE id=$8 AND exhibition_id=$9
+		RETURNING id, exhibition_id, full_name, role, company, bio, photo_url, COALESCE(user_id,0), sort_order
+	`, req.FullName, req.Role, req.Company, req.Bio, req.PhotoURL, userID, req.SortOrder, speakerID, exhibitionID).Scan(&s.ID, &s.ExhibitionID, &s.FullName, &s.Role, &s.Company, &s.Bio, &s.PhotoURL, &s.UserID, &s.SortOrder)
 	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}
@@ -15821,7 +15826,7 @@ func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool
 	}
 
 	speakerRows, err := db.Query(`
-		SELECT s.id, s.exhibition_id, s.full_name, s.role, s.bio, s.photo_url,
+		SELECT s.id, s.exhibition_id, s.full_name, s.role, s.company, s.bio, s.photo_url,
 			COALESCE(s.user_id,0), COALESCE(u.public_id,''), s.sort_order
 		FROM exhibition_speakers s
 		LEFT JOIN users u ON u.id = s.user_id
@@ -15835,7 +15840,7 @@ func getExhibitionFull(db *sql.DB, publicID string, viewerID int64, hasAuth bool
 	speakerByID := map[int64]exhibitionSpeaker{}
 	for speakerRows.Next() {
 		var sp exhibitionSpeaker
-		if err := speakerRows.Scan(&sp.ID, &sp.ExhibitionID, &sp.FullName, &sp.Role, &sp.Bio, &sp.PhotoURL, &sp.UserID, &sp.UserPublicID, &sp.SortOrder); err != nil {
+		if err := speakerRows.Scan(&sp.ID, &sp.ExhibitionID, &sp.FullName, &sp.Role, &sp.Company, &sp.Bio, &sp.PhotoURL, &sp.UserID, &sp.UserPublicID, &sp.SortOrder); err != nil {
 			return nil, err
 		}
 		full.Speakers = append(full.Speakers, sp)
