@@ -14717,7 +14717,7 @@ func searchPostsInto(db *sql.DB, q, sortBy string, limit, offset int, res *searc
 			u.public_id AS author_public_id,
 			u.full_name AS author_name,
 			COALESCE(p.author_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''),
-			COALESCE(p.author_community_id, 0), COALESCE(cm.name, ''),
+			COALESCE(p.community_id, 0), COALESCE(cm.name, ''),
 			COALESCE(p.likes_count, 0) AS likes_count,
 			COALESCE(p.comments_count, 0) AS comments_count,
 			p.created_at,
@@ -14728,7 +14728,7 @@ func searchPostsInto(db *sql.DB, q, sortBy string, limit, offset int, res *searc
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN companies co ON co.id = p.author_company_id
-		LEFT JOIN communities cm ON cm.id = p.author_community_id
+		LEFT JOIN communities cm ON cm.id = p.community_id
 		WHERE COALESCE(p.is_deleted, FALSE) = FALSE
 		  AND p.privacy_level = 'public'
 		  AND p.content ILIKE '%' || $1 || '%' ESCAPE '\'
