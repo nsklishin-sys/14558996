@@ -17781,17 +17781,30 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 	}
 	title := actorName + " написал вам"
 	preview := truncateRunes(content, 200)
-	if err := createNotification(db, createNotificationParams{
-		RecipientID:    recipientID,
-		ActorID:        actorID,
-		Type:           "chat_message",
-		SourceType:     "chat",
-		SourceID:       conversationID,
-		SourcePublicID: conversationPublicID,
-		Title:          title,
-		Preview:        preview,
-	}); err != nil {
-		log.Printf("notif chat_message: %v", err)
+	// Для чата: одно «активное» уведомление на диалог-актор. При повторе — апдейтим title/preview/created_at и сбрасываем is_read.
+	res, err := db.Exec(`
+		UPDATE notifications
+		SET title=$1, preview=$2, created_at=NOW(), is_read=FALSE, source_public_id=$3
+		WHERE recipient_id=$4 AND type='chat_message' AND source_type='chat' AND source_id=$5 AND COALESCE(actor_id,0)=$6
+	`, title, preview, conversationPublicID, recipientID, conversationID, actorID)
+	if err != nil {
+		log.Printf("notif chat_message update: %v", err)
+		return
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		if err := createNotification(db, createNotificationParams{
+			RecipientID:    recipientID,
+			ActorID:        actorID,
+			Type:           "chat_message",
+			SourceType:     "chat",
+			SourceID:       conversationID,
+			SourcePublicID: conversationPublicID,
+			Title:          title,
+			Preview:        preview,
+		}); err != nil {
+			log.Printf("notif chat_message: %v", err)
+		}
 	}
 }
 
