@@ -550,19 +550,19 @@ function renderTopics(topics){
         '<div class="topic-title">' + esc(t.title) + '</div>' +
         '<div class="topic-meta-row">' +
           (function(){
-            // Приоритет автора: community > company > user
-            var authorName, authorIcon;
+            var authorName = t.author_name || 'Аноним';
+            var authorIcon = '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+            var authorLink = '/profile_user.html?id=' + (t.author_public_id || '');
             if (t.author_community_id && t.author_community_name) {
               authorName = t.author_community_name;
               authorIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+              authorLink = '/community_view.html?id=' + t.author_community_id;
             } else if (t.author_company_id && t.author_company_name) {
               authorName = t.author_company_name;
               authorIcon = '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>';
-            } else {
-              authorName = t.author_name || 'Аноним';
-              authorIcon = '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+              authorLink = '/company_view.html?slug=' + (t.author_company_slug || '');
             }
-            return '<span class="topic-meta-item">' + authorIcon + '<span class="topic-meta-author">' + esc(authorName) + '</span></span>';
+            return '<span class="topic-meta-item">' + authorIcon + '<a class="topic-meta-author" href="' + esc(authorLink) + '" onclick="event.stopPropagation()">' + esc(authorName) + '</a></span>';
           })() +
           '<span class="topic-meta-item"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + t.replies_count + ' ' + pluralRu(t.replies_count, ['ответ','ответа','ответов']) + '</span>' +
           '<span class="topic-meta-item"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' + t.views_count + ' ' + pluralRu(t.views_count, ['просмотр','просмотра','просмотров']) + '</span>' +
