@@ -1161,25 +1161,27 @@ function resetActiveContext(){
   if(typeof window.applyContextToTopbar === 'function') window.applyContextToTopbar();
   showToast('Личный контекст активен');
 }
+function _a21rOnContextChange(){
+  renderComposeBanner();
+  state.activeConvPublicID = null;
+  state.activeConversation = null;
+  state.messages = [];
+  renderCache.conversationsSig = '';
+  renderCache.messagesSig = '';
+  if(typeof loadConversations === 'function') loadConversations();
+  const cb = document.getElementById('chatBody');
+  if(cb) cb.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>';
+  const chName = document.getElementById('chatName');
+  const chStatus = document.getElementById('chatStatus');
+  if(chName) chName.textContent = '';
+  if(chStatus) chStatus.textContent = '';
+}
+// storage event — для других вкладок
 window.addEventListener('storage', (e)=>{
-  if(e.key === 'active_company_id' || e.key === 'active_community_id'){
-    renderComposeBanner();
-    // Сбрасываем активный диалог и кеш — список диалогов изменится
-    state.activeConvPublicID = null;
-    state.activeConversation = null;
-    state.messages = [];
-    renderCache.conversationsSig = '';
-    renderCache.messagesSig = '';
-    if(typeof loadConversations === 'function') loadConversations();
-    // Очистим лента сообщений
-    const cb = document.getElementById('chatBody');
-    if(cb) cb.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>';
-    const chName = document.getElementById('chatName');
-    const chStatus = document.getElementById('chatStatus');
-    if(chName) chName.textContent = '';
-    if(chStatus) chStatus.textContent = '';
-  }
+  if(e.key === 'active_company_id' || e.key === 'active_community_id') _a21rOnContextChange();
 });
+// Кастомное событие — для текущей вкладки (storage не срабатывает в той же вкладке которая писала)
+window.addEventListener('lastop:context-changed', _a21rOnContextChange);
 
 async function loadCurrentUser(){
   const d = await api('/me');
