@@ -8183,21 +8183,13 @@ CREATE INDEX IF NOT EXISTS chat_conversations_community_idx
 ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS owner_kind TEXT NOT NULL DEFAULT 'user';
 ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS owner_id BIGINT NOT NULL DEFAULT 0;
 
-UPDATE chat_conversations c
-SET owner_id = COALESCE(
-    c.created_by,
-    (SELECT user_id FROM chat_participants p WHERE p.conversation_id = c.id ORDER BY p.joined_at ASC, p.user_id ASC LIMIT 1),
-    0
-)
-WHERE owner_id = 0 AND owner_kind = 'user';
-
--- A2.1R-FIX: повторный backfill owner_id для диалогов где он остался 0
+-- A2.1R: backfill owner_id из chat_participants (без обращения к несуществующему participants.id)
 UPDATE chat_conversations c
 SET owner_id = sub.user_id
 FROM (
     SELECT DISTINCT ON (conversation_id) conversation_id, user_id
     FROM chat_participants
-    ORDER BY conversation_id, id ASC
+    ORDER BY conversation_id, user_id ASC
 ) sub
 WHERE c.id = sub.conversation_id AND c.owner_id = 0 AND c.owner_kind = 'user';
 
