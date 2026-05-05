@@ -1854,30 +1854,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   const convParam = params.get('conv');
   const communityParam = params.get('community');
 
+  // A2.1R: автовыбор первого диалога убран — юзер сам выбирает что открыть.
+  // Открываем диалог только если в URL передан явный параметр (?conv=, ?user=, ?community=).
   try {
     if (convParam) {
       const exists = state.conversations.find(c => c.public_id === convParam);
-      if (exists) {
-        selectConversation(convParam);
-      } else if (state.conversations.length) {
-        selectConversation(state.conversations[0].public_id);
-      }
+      if (exists) selectConversation(convParam);
     } else if (userParam) {
       const conv = await openOrCreateDirectByPublicID(userParam);
       if (conv) selectConversation(conv.public_id);
-      else if (state.conversations.length) selectConversation(state.conversations[0].public_id);
     } else if (communityParam) {
       const conv = await openCommunityConv(communityParam);
       if (conv) selectConversation(conv.public_id);
-      else if (state.conversations.length) selectConversation(state.conversations[0].public_id);
-    } else if (state.conversations.length) {
-      selectConversation(state.conversations[0].public_id);
     }
+    // Без параметров — никакого автовыбора, просто показываем список диалогов слева
   } catch (err) {
     console.warn('[chat] open conversation failed:', err);
-    if (state.conversations.length) {
-      selectConversation(state.conversations[0].public_id);
-    }
   }
 
   // A2.1: загружаем мои компании/сообщества и рисуем баннер контекста
