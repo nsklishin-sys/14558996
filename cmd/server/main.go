@@ -17352,8 +17352,12 @@ WHERE p.user_id=$1
   AND (
     ($2::text = 'user' AND (
       c.owner_kind = 'user'
-      OR c.owner_kind = 'company'
-      OR c.owner_kind = 'community'
+      OR (c.owner_kind = 'company' AND NOT EXISTS(
+        SELECT 1 FROM company_members WHERE company_id = c.owner_id AND user_id = $1
+      ))
+      OR (c.owner_kind = 'community' AND NOT EXISTS(
+        SELECT 1 FROM community_members WHERE community_id = c.owner_id AND user_id = $1
+      ))
     ))
     OR
     ($2::text = 'company' AND c.owner_kind = 'company' AND c.owner_id = $3)
