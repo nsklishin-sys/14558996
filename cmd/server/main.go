@@ -2672,11 +2672,38 @@ func main() {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
 					return
 				}
-				// Резолвим контекст отправки (компания ИЛИ сообщество, взаимоисключающие)
-				if cid, errCtx := resolveActiveCompanyID(db, r, userID, 0); errCtx == nil && cid > 0 {
-					req.SenderCompanyID = cid
-				} else if cmid, errCtx := resolveActiveCommunityID(db, r, userID, 0); errCtx == nil && cmid > 0 {
-					req.SenderCommunityID = cmid
+				// A2.1R-4: контекст сообщения берём из owner_kind/owner_id диалога, а не из заголовков.
+				// Это гарантирует что в диалоге компании всегда пишется от имени компании.
+				var conversationID int64
+				if err := db.QueryRow(`SELECT id FROM chat_conversations WHERE public_id=$1`, publicID).Scan(&conversationID); err != nil {
+					writeError(w, http.StatusNotFound, "Диалог не найден")
+					return
+				}
+				var convOwnerKind string
+				var convOwnerID int64
+				if err := db.QueryRow(`SELECT owner_kind, owner_id FROM chat_conversations WHERE id=$1`, conversationID).Scan(&convOwnerKind, &convOwnerID); err != nil {
+					writeError(w, http.StatusNotFound, "Диалог не найден")
+					return
+				}
+				switch convOwnerKind {
+				case "company":
+					if cid, err := resolveActiveCompanyID(db, r, userID, convOwnerID); err != nil || cid != convOwnerID {
+						writeError(w, http.StatusForbidden, "Нет доступа к этой компании")
+						return
+					}
+					req.SenderCompanyID = convOwnerID
+					req.SenderCommunityID = 0
+				case "community":
+					if cmid, err := resolveActiveCommunityID(db, r, userID, convOwnerID); err != nil || cmid != convOwnerID {
+						writeError(w, http.StatusForbidden, "Нет доступа к этому сообществу")
+						return
+					}
+					req.SenderCommunityID = convOwnerID
+					req.SenderCompanyID = 0
+				default:
+					// owner_kind='user' — личный диалог, без company/community контекста.
+					req.SenderCompanyID = 0
+					req.SenderCommunityID = 0
 				}
 				msg, err := sendMessage(db, userID, publicID, req)
 				if err != nil {
