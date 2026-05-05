@@ -445,7 +445,9 @@ function renderCard(type, i){
 }
 
 function renderPostCard(p){
-  const author = p.author_name || p.author || 'Без имени';
+  let author = p.author_name || p.author || 'Без имени';
+  if (p.author_company_id && p.author_company_name) author = p.author_company_name;
+  else if (p.author_community_id && p.author_community_name) author = p.author_community_name;
   const url = p.public_id ? '/post.html?id=' + encodeURIComponent(p.public_id) : '#';
   const text = p.content || p.text || p.title || '';
   const preview = text.length > 200 ? text.slice(0, 200) + '…' : text;
