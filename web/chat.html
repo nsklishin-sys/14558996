@@ -804,7 +804,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <!-- Шапка -->
     <div class="chat-head">
       <div class="ch-av-wrap">
-        <div class="ch-av" id="chatAv" style="background:var(--gp)"></div>
+        <div class="ch-av" id="chatAv" style="background:transparent"></div>
         <div class="ch-online-dot" id="chatOnlineDot" style="display:none"></div>
       </div>
       <div class="ch-info" onclick="openInfoPanel()">
@@ -1175,6 +1175,13 @@ function _a21rOnContextChange(){
   const chStatus = document.getElementById('chatStatus');
   if(chName) chName.textContent = '';
   if(chStatus) chStatus.textContent = '';
+  // A2.1R: скрываем аватар собеседника когда нет активного диалога
+  const chAv = document.getElementById('chatAv');
+  if(chAv){ chAv.innerHTML=''; chAv.style.background='transparent'; }
+  const chDot = document.getElementById('chatOnlineDot');
+  if(chDot) chDot.style.display='none';
+  const chFriendBtn = document.getElementById('chatFriendBtn');
+  if(chFriendBtn) chFriendBtn.style.display='none';
 }
 // storage event — для других вкладок
 window.addEventListener('storage', (e)=>{
