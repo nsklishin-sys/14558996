@@ -172,6 +172,32 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+
+/* ── SIDEBAR ── */
+.sb-card{padding:14px 16px}
+.sb-summary-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--bdr);font-size:12px;color:var(--t)}
+.sb-summary-row:last-child{border-bottom:none}
+.sb-summary-icon{font-size:14px;flex-shrink:0;width:18px;text-align:center}
+.sb-summary-num{font-weight:800;color:var(--g);margin-left:auto;font-size:13px;white-space:nowrap}
+.sb-summary-num.neg{color:var(--red)}
+.sb-summary-num.zero{color:var(--gmt)}
+.sb-summary-empty,.sb-top-empty{font-size:11px;color:var(--gmt);font-style:italic;padding:6px 2px}
+.sb-top-row{display:flex;align-items:center;gap:8px;padding:7px 4px;cursor:pointer;border-radius:var(--rm);transition:background .12s;text-decoration:none;color:inherit}
+.sb-top-row:hover{background:var(--gp)}
+.sb-top-row:not(:last-child){border-bottom:1px solid var(--bdr);border-radius:0}
+.sb-top-row:hover{border-radius:var(--rm)}
+.sb-top-av{width:28px;height:28px;border-radius:8px;background:var(--g);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;flex-shrink:0;background-size:cover;background-position:center}
+.sb-top-info{flex:1;min-width:0}
+.sb-top-name{font-size:11.5px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.sb-top-sub{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-top-num{font-size:11px;font-weight:800;color:var(--g);flex-shrink:0;white-space:nowrap}
+.sb-top-more{display:block;text-align:center;padding:6px;margin-top:6px;border-top:1px solid var(--bdr);font-size:10px;font-weight:700;color:var(--g);text-decoration:none;cursor:pointer;letter-spacing:.05em;text-transform:uppercase}
+.sb-top-more:hover{color:var(--gm)}
+.sb-action-btn{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--w);color:var(--t);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;width:100%;transition:all .15s;margin-bottom:6px}
+.sb-action-btn:last-child{margin-bottom:0}
+.sb-action-btn:hover{background:var(--gp);border-color:var(--gb);color:var(--g)}
+.sb-action-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
 @media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
 @media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar" "nav main"}.right{display:none}}
 @media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.panels-row{grid-template-columns:1fr}}
@@ -262,24 +288,32 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <!-- ════ RIGHT ════ -->
 <aside class="right">
-  <div class="card">
-    <div class="block-title">Что показывает аналитика</div>
-    <div style="font-size:12px;color:var(--tm);line-height:1.55">
-      Аналитика отображает активность вокруг вашего контента: просмотры, реакции, отклики, регистрации и сохранения.
-    </div>
+  <!-- Слот 1: Сводка периода -->
+  <div class="card sb-card" id="sbSummary">
+    <div class="block-title">Ключевая динамика</div>
+    <div class="sb-summary-empty">Загрузка…</div>
   </div>
-  <div class="card">
-    <div class="block-title">Скоупы доступа</div>
-    <div style="font-size:11px;color:var(--tm);line-height:1.55">
-      <div style="margin-bottom:6px"><b style="color:var(--t)">👤 Личная</b> — события вокруг вашего профиля и контента</div>
-      <div style="margin-bottom:6px"><b style="color:var(--t)">🏢 Компания</b> — для владельцев и администраторов компаний</div>
-      <div style="margin-bottom:6px"><b style="color:var(--t)">👥 Сообщество</b> — для админов сообществ</div>
-      <div><b style="color:var(--t)">⚙️ Платформа</b> — общая статистика, доступна администраторам</div>
-    </div>
+
+  <!-- Слот 2: Топ-3 (контекстный по табу) -->
+  <div class="card sb-card" id="sbTop">
+    <div class="block-title" id="sbTopTitle">Топ</div>
+    <div class="sb-top-empty">Загрузка…</div>
   </div>
-  <div class="tip-card">
-    <div class="tip-title">💡 Приватность</div>
-    <div class="tip-text">Вы можете отключить отображение себя в списке «Кто смотрел профиль» в настройках приватности.</div>
+
+  <!-- Слот 3: Действия (контекстный по табу) -->
+  <div class="card sb-card" id="sbActions">
+    <div class="block-title">Действия</div>
+    <div id="sbActionsList"></div>
+  </div>
+
+  <!-- Реклама -->
+  <div class="ad-block">
+    <div class="ad-label">реклама</div>
+    <div class="ad-content">
+      <div class="ad-title">LogisticsPro 2026</div>
+      <div class="ad-sub">Выставка · Москва · май</div>
+      <button class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button>
+    </div>
   </div>
 </aside>
 
@@ -637,6 +671,9 @@ async function renderMeDashboard(){
     const {labels, data} = dailyToChart(ct.daily);
     makeLineChart('chContentDaily', labels, [{label:'Просмотры контента', data, color:'#3A90C0'}]);
   }
+  // Sidebar
+  renderSummary([...(pv.daily||[]), ...(ct.daily||[])], {label:'Уникальных зрителей', value:fmtNum(ov.unique_viewers||0), icon:'👥'});
+  renderSidebarMe(profileViews);
 }
 
 function renderTopViewers(viewers){
@@ -729,6 +766,9 @@ async function renderCompanyDashboard(){
     const data = ov.by_type.map(x=>x.count);
     makeDoughnutChart('chCoType', labels, data);
   }
+  // Sidebar
+  renderSummary(ov.daily, {label:'Уникальных посетителей', value:fmtNum(ov.unique_visitors||0), icon:'👥'});
+  renderSidebarCompany(jobs, products);
 }
 
 function renderTopJobs(jobs){
@@ -805,6 +845,9 @@ async function renderCommunityDashboard(){
     const {labels, data} = dailyToChart(a.daily);
     makeLineChart('chCmDaily', labels, [{label:'Активность', data, color:'#9060C0'}]);
   }
+  // Sidebar
+  renderSummary(a.daily, {label:'Участников', value:fmtNum(a.members_count||0), icon:'👤'});
+  renderSidebarCommunity(r);
 }
 function renderTopPosts(posts){
   if(!posts.length)return '<div class="panel-empty">Нет постов с активностью за период.</div>';
@@ -887,6 +930,9 @@ async function renderPlatformDashboard(){
     const {labels, data} = dailyToChart(ov.signups_daily);
     makeLineChart('chSignups', labels, [{label:'Регистрации', data, color:'#9060C0'}]);
   }
+  // Sidebar
+  renderSummary(ov.daily, {label:'DAU / MAU', value:(ov.mau>0?Math.round(ov.dau/ov.mau*100):0)+'%', icon:'📊'});
+  renderSidebarPlatform(users);
 }
 function renderTopActors(actors){
   if(!actors.length)return '<div class="panel-empty">Нет активных пользователей.</div>';
@@ -916,6 +962,221 @@ function renderTopTargets(targets){
     }).join('')}</tbody>
   </table>`;
 }
+
+
+// ─────────────────────────────────────────────
+// === SIDEBAR (3 контекстных блока) ===
+// ─────────────────────────────────────────────
+
+// Расчёт сводки периода: сравниваем текущий период с предыдущим равной длины
+function computeSummary(daily, periodLabel){
+  if(!daily || !daily.length){
+    return null;
+  }
+  // Агрегируем по дням (если daily содержит event_type — суммируем все типы)
+  const byDay = {};
+  daily.forEach(d=>{ byDay[d.date] = (byDay[d.date]||0) + (d.count||0); });
+  const dates = Object.keys(byDay).sort();
+  if(!dates.length) return null;
+
+  // Лучший день
+  let bestDay = dates[0], bestCount = byDay[dates[0]];
+  dates.forEach(d=>{ if(byDay[d] > bestCount){ bestDay = d; bestCount = byDay[d]; } });
+
+  // Сравнение с предыдущим периодом — если у нас есть >= 2 дней, делим пополам
+  let growth = null;
+  if(dates.length >= 2){
+    const half = Math.floor(dates.length / 2);
+    const firstHalf = dates.slice(0, half).reduce((s,d)=>s+byDay[d], 0);
+    const secondHalf = dates.slice(half).reduce((s,d)=>s+byDay[d], 0);
+    if(firstHalf > 0){
+      growth = ((secondHalf - firstHalf) / firstHalf) * 100;
+    } else if(secondHalf > 0){
+      growth = 100;
+    }
+  }
+
+  const total = dates.reduce((s,d)=>s+byDay[d], 0);
+
+  return { bestDay, bestCount, growth, total, days: dates.length };
+}
+
+function renderSummary(daily, extra){
+  // extra: {label2, val2, icon2} — опциональная третья строка (зависит от скоупа)
+  const sum = computeSummary(daily);
+  const el = document.getElementById('sbSummary');
+  if(!sum){
+    el.innerHTML = '<div class="block-title">Ключевая динамика</div><div class="sb-summary-empty">Нет данных за период</div>';
+    return;
+  }
+  let growthRow = '';
+  if(sum.growth !== null){
+    const positive = sum.growth >= 0;
+    const cls = positive ? '' : 'neg';
+    const sign = positive ? '+' : '';
+    const arrow = positive ? '↗' : '↘';
+    growthRow = `<div class="sb-summary-row">
+      <span class="sb-summary-icon">${arrow}</span>
+      <span>Динамика к началу периода</span>
+      <span class="sb-summary-num ${cls}">${sign}${Math.round(sum.growth)}%</span>
+    </div>`;
+  } else {
+    growthRow = `<div class="sb-summary-row">
+      <span class="sb-summary-icon">—</span>
+      <span>Период слишком короткий</span>
+      <span class="sb-summary-num zero">—</span>
+    </div>`;
+  }
+
+  // Лучший день в человеческом формате
+  const d = new Date(sum.bestDay);
+  const dayLabel = isNaN(d) ? sum.bestDay : d.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
+
+  let extraRow = '';
+  if(extra){
+    extraRow = `<div class="sb-summary-row">
+      <span class="sb-summary-icon">${extra.icon||'•'}</span>
+      <span>${esc(extra.label)}</span>
+      <span class="sb-summary-num">${esc(String(extra.value))}</span>
+    </div>`;
+  }
+
+  el.innerHTML = `<div class="block-title">Ключевая динамика</div>
+    ${growthRow}
+    <div class="sb-summary-row">
+      <span class="sb-summary-icon">🏆</span>
+      <span>Лучший день: ${dayLabel}</span>
+      <span class="sb-summary-num">${fmtNum(sum.bestCount)}</span>
+    </div>
+    <div class="sb-summary-row">
+      <span class="sb-summary-icon">∑</span>
+      <span>Всего за период</span>
+      <span class="sb-summary-num">${fmtNum(sum.total)}</span>
+    </div>
+    ${extraRow}`;
+}
+
+function renderTopBlock(title, rows, moreLabel, moreHref){
+  const el = document.getElementById('sbTop');
+  if(!rows || !rows.length){
+    el.innerHTML = `<div class="block-title">${esc(title)}</div><div class="sb-top-empty">Нет данных за период</div>`;
+    return;
+  }
+  const rowsHtml = rows.slice(0,3).map(r=>{
+    const photo = r.avatar_url ? `background-image:url(${esc(r.avatar_url)})` : `background:${avc(r.name||r.title||'')}`;
+    const initial = r.avatar_url ? '' : letter(r.name||r.title||'?');
+    return `<a class="sb-top-row" href="${r.href||'javascript:void(0)'}" ${r.onclick?`onclick="${r.onclick}"`:''}>
+      <div class="sb-top-av" style="${photo}">${initial}</div>
+      <div class="sb-top-info">
+        <div class="sb-top-name">${esc(r.name||r.title||'')}</div>
+        ${r.sub?`<div class="sb-top-sub">${esc(r.sub)}</div>`:''}
+      </div>
+      <span class="sb-top-num">${esc(r.value||'')}</span>
+    </a>`;
+  }).join('');
+  const more = (moreLabel && moreHref) ? `<a class="sb-top-more" href="${esc(moreHref)}">${esc(moreLabel)} →</a>` : '';
+  el.innerHTML = `<div class="block-title">${esc(title)}</div>${rowsHtml}${more}`;
+}
+
+function renderActionsBlock(actions){
+  const el = document.getElementById('sbActionsList');
+  el.innerHTML = actions.map(a=>{
+    if(a.href){
+      return `<a class="sb-action-btn" href="${esc(a.href)}"><svg viewBox="0 0 24 24">${a.svg}</svg>${esc(a.label)}</a>`;
+    }
+    return `<button class="sb-action-btn" onclick="${esc(a.onclick||'')}"><svg viewBox="0 0 24 24">${a.svg}</svg>${esc(a.label)}</button>`;
+  }).join('');
+}
+
+// Действия по скоупу
+const ACTION_PRIVACY = {label:'Настройки приватности', href:'/settings.html', svg:'<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6"/>'};
+
+function copyProfileLink(){
+  if(!state.user || !state.user.public_id){showToast('Не удалось получить ссылку');return;}
+  const url = location.origin + '/profile.html?user=' + encodeURIComponent(state.user.public_id);
+  navigator.clipboard.writeText(url).then(()=>showToast('Ссылка на профиль скопирована')).catch(()=>showToast('Не удалось скопировать'));
+}
+
+function renderSidebarMe(profileViews){
+  const pv = profileViews.analytics || {};
+  // Топ-3 зрителей профиля
+  const viewers = (pv.top_viewers||[]).slice(0,3).map(v=>({
+    name: v.name,
+    sub: v.position||'',
+    avatar_url: v.avatar_url,
+    value: fmtNum(v.visit_count) + ' виз.',
+    href: '/profile.html?user='+encodeURIComponent(v.public_id||'')
+  }));
+  renderTopBlock('Кто смотрел профиль', viewers, 'Все зрители', '#');
+  renderActionsBlock([
+    {label:'Скопировать ссылку на профиль', onclick:'copyProfileLink()', svg:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'},
+    {label:'Мой профиль', href:'/profile.html', svg:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    ACTION_PRIVACY
+  ]);
+}
+
+function renderSidebarCompany(jobsData, productsData){
+  const jb = jobsData.analytics || {};
+  // Топ-3 вакансии по конверсии
+  const jobs = (jb.top_jobs||[]).slice().sort((a,b)=>{
+    const ca = a.views>0 ? a.applies/a.views : 0;
+    const cb = b.views>0 ? b.applies/b.views : 0;
+    return cb-ca;
+  }).slice(0,3).map(j=>{
+    const conv = j.views>0 ? (j.applies/j.views*100) : 0;
+    return {
+      name: j.title,
+      sub: fmtNum(j.views)+' просм. · '+fmtNum(j.applies)+' откл.',
+      avatar_url: '',
+      value: conv>0 ? Math.round(conv)+'%' : '—',
+      href: '/jobs.html'
+    };
+  });
+  renderTopBlock('Топ вакансий по конверсии', jobs, 'Все вакансии', '/jobs.html');
+  const slug = state.selectedCompanySlug||'';
+  renderActionsBlock([
+    {label:'Профиль компании', href:`/company.html?slug=${encodeURIComponent(slug)}`, svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'},
+    {label:'Мои вакансии', href:'/jobs.html', svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/>'},
+    {label:'Товары и услуги', href:'/catalog.html', svg:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>'},
+    ACTION_PRIVACY
+  ]);
+}
+
+function renderSidebarCommunity(overviewData){
+  const a = overviewData.analytics || {};
+  const posts = (a.top_posts||[]).slice(0,3).map(p=>({
+    name: p.title || '(без заголовка)',
+    sub: fmtNum(p.likes||0)+' ♥ · '+fmtNum(p.comments||0)+' 💬',
+    avatar_url: '',
+    value: fmtNum(p.views||0),
+    href: '/dashboard.html'
+  }));
+  renderTopBlock('Топ постов сообщества', posts, 'Открыть сообщество', `/communities.html`);
+  const cmId = state.selectedCommunityId || '';
+  renderActionsBlock([
+    {label:'Открыть сообщество', href:`/communities.html`, svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Все сообщества', href:'/communities.html', svg:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>'},
+    ACTION_PRIVACY
+  ]);
+}
+
+function renderSidebarPlatform(usersData){
+  const us = usersData.analytics || {};
+  const top = (us.top_actors||[]).slice(0,3).map(a=>({
+    name: a.name,
+    sub: 'Активный пользователь',
+    avatar_url: a.avatar_url,
+    value: fmtNum(a.events_count)+' соб.',
+    href: '/profile.html?user='+encodeURIComponent(a.public_id||'')
+  }));
+  renderTopBlock('Топ активных пользователей', top, '', '');
+  renderActionsBlock([
+    {label:'Все пользователи', href:'/users.html', svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>'},
+    {label:'Сводный отчёт (скоро)', onclick:'showToast(\'Экспорт отчётов появится в следующих обновлениях\')', svg:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
+    ACTION_PRIVACY
+  ]);
+}
+
 
 // ── INIT ──
 (async function init(){
