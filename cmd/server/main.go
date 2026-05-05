@@ -7268,42 +7268,65 @@ func main() {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
-		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
 			return
 		}
-		prefix := strings.TrimSpace(r.URL.Query().Get("prefix_handle"))
-		if prefix != "" {
-			items, err := searchUsersByHandle(db, prefix, parseLimit(r.URL.Query().Get("limit"), 8, 20))
-			if err != nil {
-				handleAccountError(w, err)
-				return
-			}
-			writeJSON(w, http.StatusOK, map[string]any{"users": items})
-			return
-		}
+
 		q := strings.TrimSpace(r.URL.Query().Get("q"))
-		items, err := db.Query(`
-			SELECT public_id, full_name, COALESCE(handle,'')
+		prefixHandle := strings.TrimSpace(r.URL.Query().Get("prefix_handle"))
+
+		if prefixHandle == "" && q == "" {
+			writeJSON(w, http.StatusOK, map[string]any{"users": []map[string]any{}})
+			return
+		}
+
+		query := `
+			SELECT id, public_id, full_name, position, company_name, COALESCE(handle, '')
 			FROM users
-			WHERE is_deleted = FALSE AND (LOWER(full_name) LIKE LOWER('%' || $1 || '%') OR LOWER(COALESCE(handle,'')) LIKE LOWER('%' || $1 || '%'))
-			ORDER BY full_name
-			LIMIT 20
-		`, q)
+			WHERE is_deleted = FALSE AND id != $1`
+		arg := any(q)
+		if prefixHandle != "" {
+			query += ` AND COALESCE(handle,'') ILIKE $2 || '%'`
+			arg = prefixHandle
+		} else {
+			query += ` AND full_name ILIKE '%' || $2 || '%'`
+		}
+		query += ` ORDER BY full_name LIMIT 20`
+
+		rows, err := db.Query(query, userID, arg)
 		if err != nil {
 			handleAccountError(w, err)
 			return
 		}
-		defer items.Close()
-		var out []friendCandidateDTO
-		for items.Next() {
-			var row friendCandidateDTO
-			if err := items.Scan(&row.ID, &row.FullName, &row.Email); err != nil {
+		defer rows.Close()
+
+		type userResult struct {
+			ID          int64  `json:"id"`
+			PublicID    string `json:"public_id"`
+			FullName    string `json:"full_name"`
+			Position    string `json:"position,omitempty"`
+			CompanyName string `json:"company_name,omitempty"`
+			Handle      string `json:"handle,omitempty"`
+		}
+
+		users := make([]userResult, 0, 20)
+		for rows.Next() {
+			var u userResult
+			var pos, co sql.NullString
+			if err := rows.Scan(&u.ID, &u.PublicID, &u.FullName, &pos, &co, &u.Handle); err != nil {
 				handleAccountError(w, err)
 				return
 			}
-			out = append(out, row)
+			u.Position = pos.String
+			u.CompanyName = co.String
+			users = append(users, u)
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"users": out})
+		if err := rows.Err(); err != nil {
+			handleAccountError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"users": users})
 	})
 
 	mux.HandleFunc("/api/search", func(w http.ResponseWriter, r *http.Request) {

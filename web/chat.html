@@ -1317,7 +1317,6 @@ function renderMessages(){
 
     // A2.1: вычисляем effective автора и аватар с учётом контекста
     let avatarHtml = '';
-    let asUserSign = '';
     let displayName = m.author_name;
     if(m.sender_company_id && m.sender_company_name){
       displayName = m.sender_company_name;
@@ -1325,14 +1324,12 @@ function renderMessages(){
       avatarHtml = m.sender_company_logo
         ? `<div class='msg-av' style='background-image:url("${esc(m.sender_company_logo)}");background-color:${color}'></div>`
         : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
-      asUserSign = `<div class='msg-as-user'>От: ${esc(m.author_name||'')}</div>`;
     } else if(m.sender_community_id && m.sender_community_name){
       displayName = m.sender_community_name;
       const color = '#9060C0';
       avatarHtml = m.sender_community_avatar
         ? `<div class='msg-av' style='background-image:url("${esc(m.sender_community_avatar)}");background-color:${color}'></div>`
         : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
-      asUserSign = `<div class='msg-as-user'>От: ${esc(m.author_name||'')}</div>`;
     } else {
       avatarHtml = `<div class='msg-av' style='background:${m.author_color}'>${esc(letter(m.author_name))}</div>`;
     }
@@ -1349,7 +1346,6 @@ function renderMessages(){
             ${attachHTML}
             <span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span>
           </div>
-          ${asUserSign}
           <div class='msg-meta'>
             <span>${msgTime}</span>
             ${m.is_edited ? '<span>(изм.)</span>' : ''}
@@ -1689,23 +1685,21 @@ function ndSwitchTab(tab,btn){document.querySelectorAll('.nd-tab').forEach(x=>x.
 async function ndSearchFriends(q){
   const query=(q||'').trim();
   let users=[];
-  if(query.startsWith('@')){
-    const d=await api('/users/search?prefix_handle='+encodeURIComponent(query.slice(1))).catch(()=>null);
+  // Если запрос непустой — ищем по всем юзерам платформы (через /users/search), не только друзей
+  if(query.length>=2){
+    const param = query.startsWith('@') ? 'prefix_handle='+encodeURIComponent(query.slice(1)) : 'q='+encodeURIComponent(query);
+    const d=await api('/users/search?'+param).catch(()=>null);
     users=(d&&d.users)||[];
-  }else{
-    // По умолчанию — друзья. Если есть строка — фильтруем локально по имени.
+  } else {
+    // Пусто — показываем друзей
     const d=await api('/friends').catch(()=>null);
     users=(d&&d.friends)||[];
-    if(query){
-      const ql=query.toLowerCase();
-      users=users.filter(u=>(u.full_name||'').toLowerCase().includes(ql));
-    }
   }
   if(!users.length){
-    ndFriendList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">'+(query?'Никого не найдено':'У вас пока нет друзей. Введите @никнейм для поиска')+'</div>';
+    ndFriendList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">'+(query?'Никого не найдено':'Введите имя или @никнейм для поиска')+'</div>';
     return;
   }
-  ndFriendList.innerHTML=users.map(u=>`<div class='nd-item' onclick="ndPickDirect('${esc(u.public_id||u.id||'')}')"><span>${esc(u.full_name||'')}</span><small>${esc((u.position||'')+(u.company_name?' · '+u.company_name:''))||esc('@'+(u.handle||''))}</small></div>`).join('');
+  ndFriendList.innerHTML=users.map(u=>`<div class='nd-item' onclick="ndPickDirect('${esc(u.public_id||u.id||'')}')"><span>${esc(u.full_name||'')}</span><small>${esc((u.position||'')+(u.company_name?' · '+u.company_name:''))||(u.handle?'@'+esc(u.handle):'')}</small></div>`).join('');
 }
 async function ndPickDirect(id){const c=await openOrCreateDirectByPublicID(id);closeNewDialog();selectConversation(c.public_id)}
 async function ndSearchForGroup(q){
