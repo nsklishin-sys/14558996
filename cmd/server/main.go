@@ -352,17 +352,75 @@ type searchCompany struct {
 
 type searchSection struct{}
 
+type searchForumTopic struct {
+	PublicID     string    `json:"public_id"`
+	Title        string    `json:"title"`
+	CategoryKey  string    `json:"category_key"`
+	AuthorName   string    `json:"author_name"`
+	RepliesCount int       `json:"replies_count"`
+	ViewsCount   int       `json:"views_count"`
+	CreatedAt    time.Time `json:"created_at"`
+	Score        float64   `json:"score,omitempty"`
+}
+
+type searchJob struct {
+	PublicID    string  `json:"public_id"`
+	Title       string  `json:"title"`
+	CompanyName string  `json:"company_name,omitempty"`
+	City        string  `json:"city"`
+	WorkFormat  string  `json:"work_format"`
+	SalaryFrom  int64   `json:"salary_from,omitempty"`
+	SalaryTo    int64   `json:"salary_to,omitempty"`
+	Score       float64 `json:"score,omitempty"`
+}
+
+type searchResume struct {
+	PublicID        string  `json:"public_id"`
+	Title           string  `json:"title"`
+	AuthorName      string  `json:"author_name"`
+	City            string  `json:"city"`
+	WorkFormat      string  `json:"work_format"`
+	ExperienceYears int     `json:"experience_years"`
+	Score           float64 `json:"score,omitempty"`
+}
+
+type searchCatalogItem struct {
+	PublicID   string  `json:"public_id"`
+	Type       string  `json:"type"`
+	Title      string  `json:"title"`
+	Category   string  `json:"category"`
+	Price      int64   `json:"price,omitempty"`
+	Currency   string  `json:"currency,omitempty"`
+	City       string  `json:"city"`
+	CoverImage string  `json:"cover_image,omitempty"`
+	Score      float64 `json:"score,omitempty"`
+}
+
+type searchChat struct {
+	PublicID    string  `json:"public_id"`
+	DisplayName string  `json:"display_name"`
+	Type        string  `json:"type"`
+	OwnerKind   string  `json:"owner_kind"`
+	LastMessage string  `json:"last_message,omitempty"`
+	Score       float64 `json:"score,omitempty"`
+}
+
 type searchResult struct {
-	Query       string            `json:"query"`
-	Total       int               `json:"total"`
-	TookMS      int64             `json:"took_ms"`
-	Counts      map[string]int    `json:"counts"`
-	Users       []searchUser      `json:"users,omitempty"`
-	Posts       []searchPost      `json:"posts,omitempty"`
-	Communities []searchCommunity `json:"communities,omitempty"`
-	Events      []searchEvent     `json:"events,omitempty"`
-	Companies   []searchCompany   `json:"companies,omitempty"`
-	Sections    []searchSection   `json:"sections"`
+	Query       string              `json:"query"`
+	Total       int                 `json:"total"`
+	TookMS      int64               `json:"took_ms"`
+	Counts      map[string]int      `json:"counts"`
+	Users       []searchUser        `json:"users,omitempty"`
+	Posts       []searchPost        `json:"posts,omitempty"`
+	Communities []searchCommunity   `json:"communities,omitempty"`
+	Events      []searchEvent       `json:"events,omitempty"`
+	Companies   []searchCompany     `json:"companies,omitempty"`
+	Forum       []searchForumTopic  `json:"forum,omitempty"`
+	Jobs        []searchJob         `json:"jobs,omitempty"`
+	Resumes     []searchResume      `json:"resumes,omitempty"`
+	Catalog     []searchCatalogItem `json:"catalog,omitempty"`
+	Chats       []searchChat        `json:"chats,omitempty"`
+	Sections    []searchSection     `json:"sections"`
 }
 
 type chatConversation struct {
@@ -14604,13 +14662,20 @@ func handleGlobalSearch(w http.ResponseWriter, r *http.Request, db *sql.DB, sess
 	res := searchResult{
 		Query: q,
 		Counts: map[string]int{
-			"users": 0, "posts": 0, "communities": 0, "events": 0, "companies": 0, "sections": 0,
+			"users": 0, "posts": 0, "communities": 0, "events": 0, "companies": 0,
+			"forum": 0, "jobs": 0, "resumes": 0, "catalog": 0, "chats": 0,
+			"sections": 0,
 		},
 		Users:       []searchUser{},
 		Posts:       []searchPost{},
 		Communities: []searchCommunity{},
 		Events:      []searchEvent{},
 		Companies:   []searchCompany{},
+		Forum:       []searchForumTopic{},
+		Jobs:        []searchJob{},
+		Resumes:     []searchResume{},
+		Catalog:     []searchCatalogItem{},
+		Chats:       []searchChat{},
 		Sections:    []searchSection{},
 	}
 
@@ -14639,10 +14704,15 @@ func handleGlobalSearch(w http.ResponseWriter, r *http.Request, db *sql.DB, sess
 	runOne("communities", func() (int, error) { return searchCommunitiesInto(db, q, sortBy, limit, offset, viewerID, &res, &mu) })
 	runOne("events", func() (int, error) { return searchEventsInto(db, q, sortBy, limit, offset, viewerID, &res, &mu) })
 	runOne("companies", func() (int, error) { return searchCompaniesInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("forum", func() (int, error) { return searchForumInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("jobs", func() (int, error) { return searchJobsInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("resumes", func() (int, error) { return searchResumesInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("catalog", func() (int, error) { return searchCatalogInto(db, q, sortBy, limit, offset, &res, &mu) })
+	runOne("chats", func() (int, error) { return searchChatsInto(db, q, sortBy, limit, offset, viewerID, &res, &mu) })
 
 	wg.Wait()
 
-	res.Total = res.Counts["users"] + res.Counts["posts"] + res.Counts["communities"] + res.Counts["events"] + res.Counts["companies"]
+	res.Total = res.Counts["users"] + res.Counts["posts"] + res.Counts["communities"] + res.Counts["events"] + res.Counts["companies"] + res.Counts["forum"] + res.Counts["jobs"] + res.Counts["resumes"] + res.Counts["catalog"] + res.Counts["chats"]
 	res.TookMS = time.Since(started).Milliseconds()
 	writeJSON(w, http.StatusOK, res)
 }
@@ -20629,3 +20699,271 @@ func broadcastPresence(userID int64, isOnline bool) {
 
 // presenceDB — ссылка на *sql.DB для broadcastPresence (устанавливается из main()).
 var presenceDB *sql.DB
+
+func searchForumInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, t.last_reply_at DESC"
+	if sortBy == "recent" {
+		orderBy = "t.last_reply_at DESC"
+	} else if sortBy == "popular" {
+		orderBy = "t.replies_count DESC, t.views_count DESC"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT t.public_id, t.title, t.category_key,
+		       COALESCE(u.full_name, u.handle, '') AS author_name,
+		       COALESCE(t.replies_count, 0), COALESCE(t.views_count, 0), t.created_at,
+		       (
+		         CASE WHEN LOWER(t.title) = LOWER($2) THEN 10 ELSE 0 END +
+		         CASE WHEN LOWER(t.title) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+		         CASE WHEN t.title ILIKE '%' || $1 || '%' ESCAPE '\' THEN 3 ELSE 0 END +
+		         LN(GREATEST(COALESCE(t.replies_count,0), 1) + 1)
+		       ) AS score
+		FROM forum_topics t
+		LEFT JOIN users u ON u.id = t.author_id
+		WHERE t.deleted_at IS NULL
+		  AND t.title ILIKE '%' || $1 || '%' ESCAPE '\'
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchForumTopic, 0, limit)
+	for rows.Next() {
+		var item searchForumTopic
+		if err := rows.Scan(&item.PublicID, &item.Title, &item.CategoryKey, &item.AuthorName, &item.RepliesCount, &item.ViewsCount, &item.CreatedAt, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Forum = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchJobsInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, j.created_at DESC"
+	if sortBy == "recent" {
+		orderBy = "j.created_at DESC"
+	} else if sortBy == "popular" {
+		orderBy = "COALESCE(j.views_count, 0) DESC, j.created_at DESC"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT j.public_id, j.title, COALESCE(co.name, ''),
+		       COALESCE(j.city, ''), COALESCE(j.work_format, ''),
+		       COALESCE(j.salary_from, 0), COALESCE(j.salary_to, 0),
+		       (
+		         CASE WHEN LOWER(j.title) = LOWER($2) THEN 10 ELSE 0 END +
+		         CASE WHEN LOWER(j.title) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+		         CASE WHEN COALESCE(j.description,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 2 ELSE 0 END +
+		         CASE WHEN COALESCE(j.city,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 1 ELSE 0 END
+		       ) AS score
+		FROM jobs j
+		LEFT JOIN companies co ON co.id = j.author_company_id
+		WHERE j.deleted_at IS NULL AND j.status IN ('active','hot','new')
+		  AND (
+		    j.title ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(j.description,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(j.city,'') ILIKE '%' || $1 || '%' ESCAPE '\'
+		  )
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchJob, 0, limit)
+	for rows.Next() {
+		var item searchJob
+		if err := rows.Scan(&item.PublicID, &item.Title, &item.CompanyName, &item.City, &item.WorkFormat, &item.SalaryFrom, &item.SalaryTo, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Jobs = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchResumesInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, r.created_at DESC"
+	if sortBy == "recent" {
+		orderBy = "r.created_at DESC"
+	} else if sortBy == "popular" {
+		orderBy = "COALESCE(r.views_count, 0) DESC, r.created_at DESC"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT r.public_id, r.title,
+		       COALESCE(u.full_name, u.handle, '') AS author_name,
+		       COALESCE(r.city, ''), COALESCE(r.work_format, ''),
+		       COALESCE(r.experience_years, 0),
+		       (
+		         CASE WHEN LOWER(r.title) = LOWER($2) THEN 10 ELSE 0 END +
+		         CASE WHEN LOWER(r.title) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+		         CASE WHEN COALESCE(r.about,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 2 ELSE 0 END +
+		         CASE WHEN COALESCE(r.city,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 1 ELSE 0 END
+		       ) AS score
+		FROM resumes r
+		LEFT JOIN users u ON u.id = r.author_user_id
+		WHERE r.deleted_at IS NULL AND r.status IN ('active','open')
+		  AND (
+		    r.title ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(r.about,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(r.city,'') ILIKE '%' || $1 || '%' ESCAPE '\'
+		  )
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchResume, 0, limit)
+	for rows.Next() {
+		var item searchResume
+		if err := rows.Scan(&item.PublicID, &item.Title, &item.AuthorName, &item.City, &item.WorkFormat, &item.ExperienceYears, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Resumes = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+func searchCatalogInto(db *sql.DB, q, sortBy string, limit, offset int, res *searchResult, mu *sync.Mutex) (int, error) {
+	orderBy := "score DESC, c.created_at DESC"
+	if sortBy == "recent" {
+		orderBy = "c.created_at DESC"
+	} else if sortBy == "popular" {
+		orderBy = "COALESCE(c.views_count, 0) DESC, c.created_at DESC"
+	}
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT c.public_id, c.type, c.title, c.category,
+		       COALESCE(c.price, 0), COALESCE(c.currency, ''),
+		       COALESCE(c.city, ''), COALESCE(c.cover_image, ''),
+		       (
+		         CASE WHEN LOWER(c.title) = LOWER($2) THEN 10 ELSE 0 END +
+		         CASE WHEN LOWER(c.title) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
+		         CASE WHEN COALESCE(c.description,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 2 ELSE 0 END +
+		         CASE WHEN COALESCE(c.city,'') ILIKE '%' || $1 || '%' ESCAPE '\' THEN 1 ELSE 0 END
+		       ) AS score
+		FROM catalog_items c
+		WHERE c.status = 'active'
+		  AND (
+		    c.title ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(c.description,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(c.city,'') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(c.category,'') ILIKE '%' || $1 || '%' ESCAPE '\'
+		  )
+		ORDER BY `+orderBy+`
+		LIMIT $3 OFFSET $4
+	`, escaped, q, limit, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	out := make([]searchCatalogItem, 0, limit)
+	for rows.Next() {
+		var item searchCatalogItem
+		if err := rows.Scan(&item.PublicID, &item.Type, &item.Title, &item.Category, &item.Price, &item.Currency, &item.City, &item.CoverImage, &item.Score); err != nil {
+			return 0, err
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Catalog = out
+	mu.Unlock()
+	return len(out), nil
+}
+
+// searchChatsInto — поиск по диалогам пользователя по display_name (имя собеседника / название группы / название чата компании).
+// Не ищет внутри сообщений (это позже).
+func searchChatsInto(db *sql.DB, q, sortBy string, limit, offset int, viewerID int64, res *searchResult, mu *sync.Mutex) (int, error) {
+	if viewerID == 0 {
+		return 0, nil
+	}
+	_ = sortBy
+	escaped := searchEscapeILike(q)
+	rows, err := db.Query(`
+		SELECT c.public_id, c.type, COALESCE(c.owner_kind, 'user'),
+		       COALESCE(c.title, '') AS title,
+		       COALESCE(co.name, '') AS company_name,
+		       COALESCE(cm.name, '') AS community_name,
+		       COALESCE((SELECT u.full_name FROM chat_participants cp2 JOIN users u ON u.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$3 LIMIT 1), '') AS other_name,
+		       COALESCE((SELECT m.content FROM chat_messages m WHERE m.conversation_id=c.id AND m.is_deleted=FALSE ORDER BY m.id DESC LIMIT 1), '') AS last_message
+		FROM chat_conversations c
+		JOIN chat_participants p ON p.conversation_id = c.id AND p.user_id = $3
+		LEFT JOIN companies co ON co.id = c.owner_id AND c.owner_kind = 'company'
+		LEFT JOIN communities cm ON cm.id = c.owner_id AND c.owner_kind = 'community'
+		WHERE
+		    COALESCE(c.title, '') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(co.name, '') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    COALESCE(cm.name, '') ILIKE '%' || $1 || '%' ESCAPE '\' OR
+		    EXISTS (
+		      SELECT 1 FROM chat_participants cp2 JOIN users u ON u.id=cp2.user_id
+		      WHERE cp2.conversation_id=c.id AND cp2.user_id<>$3 AND u.full_name ILIKE '%' || $1 || '%' ESCAPE '\'
+		    )
+		ORDER BY c.last_message_at DESC NULLS LAST
+		LIMIT $2 OFFSET $4
+	`, escaped, limit, viewerID, offset)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	_ = q
+	out := make([]searchChat, 0, limit)
+	for rows.Next() {
+		var item searchChat
+		var title, coName, cmName, otherName, lastMsg string
+		if err := rows.Scan(&item.PublicID, &item.Type, &item.OwnerKind, &title, &coName, &cmName, &otherName, &lastMsg); err != nil {
+			return 0, err
+		}
+		// DisplayName: если direct и owner=company/community — имя организации; иначе — title или собеседник
+		if item.Type == "direct" && item.OwnerKind == "company" && coName != "" {
+			item.DisplayName = coName
+		} else if item.Type == "direct" && item.OwnerKind == "community" && cmName != "" {
+			item.DisplayName = cmName
+		} else if title != "" {
+			item.DisplayName = title
+		} else if otherName != "" {
+			item.DisplayName = otherName
+		}
+		if item.DisplayName == "" {
+			continue
+		}
+		// preview сообщения — обрезаем
+		if len(lastMsg) > 100 {
+			lastMsg = lastMsg[:100] + "…"
+		}
+		item.LastMessage = lastMsg
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	res.Chats = out
+	mu.Unlock()
+	return len(out), nil
+}
