@@ -17369,6 +17369,7 @@ func listConversations(db *sql.DB, r *http.Request, userID int64, filter, q stri
 		activeID = cmid
 	}
 	args := []any{userID, activeKind, activeID}
+	log.Printf("[chat] listConversations userID=%d activeKind=%s activeID=%d", userID, activeKind, activeID)
 	rows, err := db.Query(`SELECT c.public_id,c.owner_kind,c.owner_id,
 COALESCE(co.name, cm.name, '') AS owner_name
 FROM chat_conversations c
@@ -17414,6 +17415,7 @@ ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 		c.OwnerName = strings.TrimSpace(convOwnerName)
 		items = append(items, c)
 	}
+	log.Printf("[chat] listConversations userID=%d items=%d filter=%s", userID, len(items), filter)
 	q = strings.ToLower(strings.TrimSpace(q))
 	out := make([]chatConversation, 0, len(items))
 	for _, c := range items {
