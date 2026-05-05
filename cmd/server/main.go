@@ -2524,33 +2524,6 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"conversations": items})
 	})
 
-	mux.HandleFunc("/api/_debug/chat-state", func(w http.ResponseWriter, r *http.Request) {
-		userID, ok := authenticatedUserID(w, r, sessions)
-		if !ok {
-			return
-		}
-		convs := []map[string]any{}
-		rows, _ := db.Query(`SELECT id, public_id, type, owner_kind, owner_id FROM chat_conversations WHERE id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY id`, userID)
-		for rows.Next() {
-			var id, oid int64
-			var pid, typ, ok2 string
-			_ = rows.Scan(&id, &pid, &typ, &ok2, &oid)
-			convs = append(convs, map[string]any{"id": id, "pid": pid, "type": typ, "owner_kind": ok2, "owner_id": oid})
-		}
-		rows.Close()
-		msgs := []map[string]any{}
-		rows3, _ := db.Query(`SELECT id, conversation_id, author_id, COALESCE(sender_company_id,0), COALESCE(sender_community_id,0), LEFT(content, 60), is_deleted FROM chat_messages WHERE conversation_id IN (SELECT conversation_id FROM chat_participants WHERE user_id=$1) ORDER BY conversation_id, id`, userID)
-		for rows3.Next() {
-			var id, cid, aid, scoid, scmid int64
-			var content string
-			var isDel bool
-			_ = rows3.Scan(&id, &cid, &aid, &scoid, &scmid, &content, &isDel)
-			msgs = append(msgs, map[string]any{"id": id, "conv_id": cid, "author_id": aid, "sender_company_id": scoid, "sender_community_id": scmid, "content": content, "is_deleted": isDel})
-		}
-		rows3.Close()
-		writeJSON(w, 200, map[string]any{"my_user_id": userID, "conversations": convs, "messages": msgs})
-	})
-
 	mux.HandleFunc("/api/chat/conversations/direct", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -17369,7 +17342,6 @@ func listConversations(db *sql.DB, r *http.Request, userID int64, filter, q stri
 		activeID = cmid
 	}
 	args := []any{userID, activeKind, activeID}
-	log.Printf("[chat] listConversations userID=%d activeKind=%s activeID=%d", userID, activeKind, activeID)
 	rows, err := db.Query(`SELECT c.public_id,c.owner_kind,c.owner_id,
 COALESCE(co.name, cm.name, '') AS owner_name
 FROM chat_conversations c
@@ -17377,20 +17349,17 @@ JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
 WHERE p.user_id=$1
-  AND CASE
-    WHEN $2::text = 'user' THEN
+  AND (
+    ($2::text = 'user' AND (
       c.owner_kind = 'user'
-      OR (c.owner_kind = 'company' AND NOT EXISTS(
-        SELECT 1 FROM company_members cm2
-        WHERE cm2.company_id = c.owner_id AND cm2.user_id = $1
-      ))
-      OR (c.owner_kind = 'community' AND NOT EXISTS(
-        SELECT 1 FROM community_members cmm
-        WHERE cmm.community_id = c.owner_id AND cmm.user_id = $1
-      ))
-    ELSE
-      c.owner_kind = $2::text AND c.owner_id = $3
-  END
+      OR c.owner_kind = 'company'
+      OR c.owner_kind = 'community'
+    ))
+    OR
+    ($2::text = 'company' AND c.owner_kind = 'company' AND c.owner_id = $3)
+    OR
+    ($2::text = 'community' AND c.owner_kind = 'community' AND c.owner_id = $3)
+  )
 ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 	if err != nil {
 		return nil, err
@@ -17407,7 +17376,6 @@ ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 		}
 		c, err := getConversationByPublicID(db, userID, pid)
 		if err != nil {
-			log.Printf("[chat] listConversations: drop pid=%s userID=%d err=%v", pid, userID, err)
 			continue
 		}
 		c.OwnerKind = convOwnerKind
@@ -17415,7 +17383,6 @@ ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 		c.OwnerName = strings.TrimSpace(convOwnerName)
 		items = append(items, c)
 	}
-	log.Printf("[chat] listConversations userID=%d items=%d filter=%s", userID, len(items), filter)
 	q = strings.ToLower(strings.TrimSpace(q))
 	out := make([]chatConversation, 0, len(items))
 	for _, c := range items {
