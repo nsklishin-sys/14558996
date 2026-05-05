@@ -1549,7 +1549,80 @@ func main() {
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
 	})
 
+	mux.HandleFunc("/api/analytics/me/overview", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		data, err := computePersonalAnalyticsOverview(db, userID, r.URL.Query().Get("period"))
+		if err != nil {
+			log.Printf("[analytics] me/overview: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
+	mux.HandleFunc("/api/analytics/me/profile-views", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		data, err := computePersonalProfileViews(db, userID, r.URL.Query().Get("period"))
+		if err != nil {
+			log.Printf("[analytics] me/profile-views: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
+	mux.HandleFunc("/api/analytics/me/content", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		data, err := computePersonalContent(db, userID, r.URL.Query().Get("period"))
+		if err != nil {
+			log.Printf("[analytics] me/content: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
+	mux.HandleFunc("/api/analytics/me/career", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		data, err := computePersonalCareer(db, userID, r.URL.Query().Get("period"))
+		if err != nil {
+			log.Printf("[analytics] me/career: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка получения данных")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"analytics": data})
+	})
+
 	mux.HandleFunc("/api/me/privacy", func(w http.ResponseWriter, r *http.Request) {
+
 		if r.Method != http.MethodPatch {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
@@ -17874,7 +17947,205 @@ func recordEvent(db *sql.DB, eventType string, actorUserID int64, targetType str
 	}()
 }
 
+// parseAnalyticsPeriod возвращает SQL-фильтр и метку периода для UI.
+func parseAnalyticsPeriod(p string) (string, string) {
+	switch p {
+	case "7d":
+		return "created_at >= NOW() - INTERVAL '7 days'", "7d"
+	case "90d":
+		return "created_at >= NOW() - INTERVAL '90 days'", "90d"
+	case "all":
+		return "TRUE", "all"
+	case "30d", "":
+		fallthrough
+	default:
+		return "created_at >= NOW() - INTERVAL '30 days'", "30d"
+	}
+}
+
+func computePersonalAnalyticsOverview(db *sql.DB, userID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":           periodLabel,
+		"profile_views":    int64(0),
+		"content_views":    int64(0),
+		"actions_received": int64(0),
+		"messages_sent":    int64(0),
+		"unique_viewers":   int64(0),
+	}
+	var profileViews, contentViews, actions, messages, uniqueViewers int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='profile_view' AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&profileViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('post_view','job_view','resume_view','catalog_view','exhibition_view','event_view','forum_view') AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&contentViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('save_action','reaction','comment_added','job_apply','event_register','exhibition_register') AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&actions)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type IN ('message_sent','forum_message_sent') AND actor_user_id=$1 AND `+timeFilter, userID).Scan(&messages)
+	_ = db.QueryRow(`SELECT COUNT(DISTINCT actor_user_id) FROM analytics_events WHERE event_type='profile_view' AND target_owner_user_id=$1 AND actor_user_id IS NOT NULL AND `+timeFilter, userID).Scan(&uniqueViewers)
+	out["profile_views"] = profileViews
+	out["content_views"] = contentViews
+	out["actions_received"] = actions
+	out["messages_sent"] = messages
+	out["unique_viewers"] = uniqueViewers
+	return out, nil
+}
+
+func computePersonalProfileViews(db *sql.DB, userID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":      periodLabel,
+		"daily":       []map[string]any{},
+		"top_viewers": []map[string]any{},
+	}
+	rows, err := db.Query(`
+		SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+		FROM analytics_events
+		WHERE event_type='profile_view' AND target_owner_user_id=$1 AND `+timeFilter+`
+		GROUP BY day ORDER BY day ASC`, userID)
+	if err == nil {
+		defer rows.Close()
+		var daily []map[string]any
+		for rows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := rows.Scan(&day, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+	viewerRows, err := db.Query(`
+		SELECT u.public_id, u.full_name, COALESCE(u.avatar_url,''), COALESCE(u.position,''),
+			COUNT(*) as visit_count, MAX(ae.created_at) as last_visit
+		FROM analytics_events ae
+		JOIN users u ON u.id = ae.actor_user_id
+		LEFT JOIN user_settings us ON us.user_id = u.id
+		WHERE ae.event_type='profile_view' AND ae.target_owner_user_id=$1
+		  AND ae.actor_user_id IS NOT NULL AND ae.actor_user_id != $1
+		  AND `+timeFilter+`
+		  AND COALESCE(us.privacy_visible_in_viewers, TRUE) = TRUE
+		GROUP BY u.id, u.public_id, u.full_name, u.avatar_url, u.position
+		ORDER BY last_visit DESC LIMIT 10`, userID)
+	if err == nil {
+		defer viewerRows.Close()
+		var viewers []map[string]any
+		for viewerRows.Next() {
+			var pid, name, avatar, position string
+			var cnt int64
+			var lastVisit time.Time
+			if err := viewerRows.Scan(&pid, &name, &avatar, &position, &cnt, &lastVisit); err == nil {
+				viewers = append(viewers, map[string]any{
+					"public_id":   pid,
+					"name":        name,
+					"avatar_url":  avatar,
+					"position":    position,
+					"visit_count": cnt,
+					"last_visit":  lastVisit,
+				})
+			}
+		}
+		if viewers != nil {
+			out["top_viewers"] = viewers
+		}
+	}
+	return out, nil
+}
+
+func computePersonalContent(db *sql.DB, userID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":  periodLabel,
+		"daily":   []map[string]any{},
+		"by_type": []map[string]any{},
+	}
+	rows, err := db.Query(`
+		SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+		FROM analytics_events
+		WHERE event_type IN ('post_view','job_view','resume_view','catalog_view','exhibition_view','event_view')
+		  AND target_owner_user_id=$1 AND `+timeFilter+`
+		GROUP BY day ORDER BY day ASC`, userID)
+	if err == nil {
+		defer rows.Close()
+		var daily []map[string]any
+		for rows.Next() {
+			var day time.Time
+			var cnt int64
+			if err := rows.Scan(&day, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+	typeRows, err := db.Query(`
+		SELECT event_type, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE event_type IN ('post_view','job_view','resume_view','catalog_view','exhibition_view','event_view')
+		  AND target_owner_user_id=$1 AND `+timeFilter+`
+		GROUP BY event_type ORDER BY cnt DESC`, userID)
+	if err == nil {
+		defer typeRows.Close()
+		var byType []map[string]any
+		for typeRows.Next() {
+			var et string
+			var cnt int64
+			if err := typeRows.Scan(&et, &cnt); err == nil {
+				byType = append(byType, map[string]any{"event_type": et, "count": cnt})
+			}
+		}
+		if byType != nil {
+			out["by_type"] = byType
+		}
+	}
+	return out, nil
+}
+
+func computePersonalCareer(db *sql.DB, userID int64, period string) (map[string]any, error) {
+	timeFilter, periodLabel := parseAnalyticsPeriod(period)
+	out := map[string]any{
+		"period":       periodLabel,
+		"resume_views": int64(0),
+		"resume_saves": int64(0),
+		"job_views":    int64(0),
+		"job_applies":  int64(0),
+		"daily":        []map[string]any{},
+	}
+	var resumeViews, resumeSaves, jobViews, jobApplies int64
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='resume_view' AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&resumeViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='save_action' AND target_type='resume' AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&resumeSaves)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='job_view' AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&jobViews)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM analytics_events WHERE event_type='job_apply' AND target_owner_user_id=$1 AND `+timeFilter, userID).Scan(&jobApplies)
+	out["resume_views"] = resumeViews
+	out["resume_saves"] = resumeSaves
+	out["job_views"] = jobViews
+	out["job_applies"] = jobApplies
+
+	rows, err := db.Query(`
+		SELECT DATE(created_at) AS day, event_type, COUNT(*) as cnt
+		FROM analytics_events
+		WHERE event_type IN ('resume_view','job_view','job_apply')
+		  AND target_owner_user_id=$1 AND `+timeFilter+`
+		GROUP BY day, event_type ORDER BY day ASC`, userID)
+	if err == nil {
+		defer rows.Close()
+		var daily []map[string]any
+		for rows.Next() {
+			var day time.Time
+			var et string
+			var cnt int64
+			if err := rows.Scan(&day, &et, &cnt); err == nil {
+				daily = append(daily, map[string]any{"date": day.Format("2006-01-02"), "event_type": et, "count": cnt})
+			}
+		}
+		if daily != nil {
+			out["daily"] = daily
+		}
+	}
+	return out, nil
+}
+
 func computePlatformStats(db *sql.DB) (map[string]any, error) {
+
 	out := map[string]any{
 		"members":       0,
 		"news":          0,
