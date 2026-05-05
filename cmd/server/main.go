@@ -20550,11 +20550,12 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionSt
 // broadcastPresence шлёт presence:update всем direct-собеседникам данного юзера.
 // Используется при connect/disconnect WS чтобы UI мгновенно обновил онлайн-статус.
 func broadcastPresence(userID int64, isOnline bool) {
-	// Берём DB через глобальный путь — у нас она в main, но на этом уровне доступа нет.
-	// Поэтому хук-функция: устанавливается из main() при старте.
 	if presenceDB == nil {
 		return
 	}
+	// Резолвим public_id юзера, чтобы клиенты могли матчить статус с диалогами через c.other_public_id.
+	var userPublicID string
+	_ = presenceDB.QueryRow(`SELECT public_id FROM users WHERE id=$1`, userID).Scan(&userPublicID)
 	rows, err := presenceDB.Query(`
 		SELECT DISTINCT p2.user_id
 		FROM chat_participants p1
@@ -20566,7 +20567,11 @@ func broadcastPresence(userID int64, isOnline bool) {
 		return
 	}
 	defer rows.Close()
-	payload := map[string]any{"user_id": userID, "is_online": isOnline}
+	payload := map[string]any{
+		"user_id":        userID,
+		"user_public_id": userPublicID,
+		"is_online":      isOnline,
+	}
 	for rows.Next() {
 		var uid int64
 		if err := rows.Scan(&uid); err == nil {
