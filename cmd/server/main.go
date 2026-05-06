@@ -1536,25 +1536,81 @@ func sendPasswordResetEmail(ctx context.Context, db *sql.DB, baseURL string, use
 	return mail.Send(ctx, toEmail, "Восстановление пароля — LASTOP GROUP", buildPasswordResetEmailHTML(userName, link))
 }
 
-func buildVerificationEmailHTML(name, link string) string {
-	return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#F2F5F3;padding:30px;color:#1A2A22">
-<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;padding:32px;border:1px solid #DDE8E2">
-<h2 style="margin:0 0 14px;color:#1E8A4C">Здравствуйте, ` + htmlSafe(name) + `!</h2>
-<p>Спасибо за регистрацию в LASTOP GROUP. Чтобы подтвердить email, перейдите по ссылке:</p>
-<p style="margin:24px 0"><a href="` + link + `" style="display:inline-block;padding:12px 24px;background:#1E8A4C;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Подтвердить email</a></p>
-<p style="font-size:12px;color:#5A8A6A">Ссылка действительна 24 часа. Если вы не регистрировались — просто проигнорируйте это письмо.</p>
-<p style="font-size:12px;color:#5A8A6A">Или скопируйте адрес: <a href="` + link + `" style="color:#1E8A4C">` + link + `</a></p>
-</div></body></html>`
+// emailTemplate — параметры для рендера письма.
+type emailTemplate struct {
+	Heading  string // заголовок (h1)
+	Greeting string // персональное приветствие (опционально)
+	Intro    string // первый абзац
+	CTAText  string // текст кнопки (если "" — кнопка не рендерится)
+	CTALink  string // URL кнопки
+	Note     string // заметка под кнопкой (мелким шрифтом)
 }
+
+// buildEmail рендерит универсальный HTML-шаблон письма с фирменным стилем LASTOP.
+func buildEmail(t emailTemplate) string {
+	var greeting string
+	if t.Greeting != "" {
+		greeting = `<p style="margin:0 0 14px;font-size:15px">Здравствуйте, ` + htmlSafe(t.Greeting) + `!</p>`
+	}
+	var cta string
+	if t.CTAText != "" && t.CTALink != "" {
+		cta = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0">` +
+			`<tr><td style="border-radius:10px;background:#1E8A4C">` +
+			`<a href="` + t.CTALink + `" target="_blank" style="display:inline-block;padding:14px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;font-family:Arial,sans-serif;border-radius:10px">` + htmlSafe(t.CTAText) + `</a>` +
+			`</td></tr></table>` +
+			`<p style="font-size:12px;color:#5A8A6A;margin:16px 0 0">Если кнопка не работает, скопируйте ссылку:<br><a href="` + t.CTALink + `" style="color:#1E8A4C;word-break:break-all">` + t.CTALink + `</a></p>`
+	}
+	var note string
+	if t.Note != "" {
+		note = `<p style="font-size:12px;color:#5A8A6A;margin:18px 0 0;line-height:1.6">` + t.Note + `</p>`
+	}
+	return `<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LASTOP GROUP</title></head>
+<body style="margin:0;padding:0;background:#F2F5F3;font-family:Arial,Helvetica,sans-serif;color:#1A2A22">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F2F5F3;padding:32px 16px">
+<tr><td align="center">
+<table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:16px;border:1px solid #DDE8E2;overflow:hidden">
+<tr><td style="background:#1E8A4C;padding:20px 32px">
+<div style="display:inline-block;font-size:18px;font-weight:800;color:#fff;letter-spacing:.04em">LASTOP <span style="font-weight:600;letter-spacing:.12em;font-size:11px;opacity:.85;margin-left:4px">GROUP</span></div>
+</td></tr>
+<tr><td style="padding:32px">
+<h1 style="margin:0 0 18px;color:#1A2A22;font-size:22px;font-weight:800;line-height:1.3">` + htmlSafe(t.Heading) + `</h1>
+` + greeting + `
+<div style="font-size:14px;color:#3A5245;line-height:1.65">` + t.Intro + `</div>
+` + cta + `
+` + note + `
+</td></tr>
+<tr><td style="background:#F0FAF4;padding:18px 32px;border-top:1px solid #DDE8E2;font-size:11px;color:#5A8A6A;line-height:1.6">
+<div style="margin-bottom:6px"><strong style="color:#3A5245">LASTOP GROUP</strong> — деловая платформа для логистики, ВЭД и таможни.</div>
+<div>ООО «Ластоп Групп», ОГРН 1245000049568, ИНН 5024242752</div>
+<div style="margin-top:10px"><a href="https://lastop.ru" style="color:#1E8A4C;text-decoration:none">lastop.ru</a> &middot; <a href="mailto:partner@lastop.ru" style="color:#1E8A4C;text-decoration:none">partner@lastop.ru</a></div>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`
+}
+
+func buildVerificationEmailHTML(name, link string) string {
+	return buildEmail(emailTemplate{
+		Heading:  "Подтвердите ваш email",
+		Greeting: name,
+		Intro:    "Спасибо за регистрацию в LASTOP GROUP. Один шаг остался — подтвердите свой email, чтобы получать уведомления о подключённых компаниях, мероприятиях и сообщениях.",
+		CTAText:  "Подтвердить email",
+		CTALink:  link,
+		Note:     "Ссылка действительна 24 часа. Если вы не регистрировались на платформе — просто проигнорируйте это письмо.",
+	})
+}
+
 func buildPasswordResetEmailHTML(name, link string) string {
-	return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#F2F5F3;padding:30px;color:#1A2A22">
-<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;padding:32px;border:1px solid #DDE8E2">
-<h2 style="margin:0 0 14px;color:#1E8A4C">Восстановление пароля</h2>
-<p>Здравствуйте, ` + htmlSafe(name) + `! Кто-то (надеемся, вы) запросил восстановление пароля. Чтобы задать новый пароль, перейдите по ссылке:</p>
-<p style="margin:24px 0"><a href="` + link + `" style="display:inline-block;padding:12px 24px;background:#1E8A4C;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Сбросить пароль</a></p>
-<p style="font-size:12px;color:#5A8A6A">Ссылка действительна 1 час. Если запрос не от вас — просто проигнорируйте это письмо, пароль не изменится.</p>
-<p style="font-size:12px;color:#5A8A6A">Или скопируйте адрес: <a href="` + link + `" style="color:#1E8A4C">` + link + `</a></p>
-</div></body></html>`
+	return buildEmail(emailTemplate{
+		Heading:  "Восстановление пароля",
+		Greeting: name,
+		Intro:    "Кто-то (надеемся, вы) запросил восстановление пароля для вашего аккаунта в LASTOP GROUP. Чтобы задать новый пароль, перейдите по ссылке ниже.",
+		CTAText:  "Сбросить пароль",
+		CTALink:  link,
+		Note:     "Ссылка действительна 1 час и может быть использована один раз. Если запрос не от вас — пароль не изменится, но мы рекомендуем убедиться что доступ к email защищён.",
+	})
 }
 func htmlSafe(s string) string {
 	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", "\"", "&quot;", "'", "&#39;")
@@ -1860,6 +1916,31 @@ func main() {
 			}
 		}(createdUser.ID, createdUser.Email, createdUser.FullName, publicBaseURL(r))
 		writeJSON(w, http.StatusCreated, authResponse{Token: token, User: createdUser})
+	})
+
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		// Лёгкая проверка БД — pingуем
+		err := db.PingContext(r.Context())
+		dbStatus := "ok"
+		if err != nil {
+			dbStatus = "error"
+		}
+		mailerType := "unknown"
+		switch mail.(type) {
+		case *mailer.LogMailer:
+			mailerType = "log"
+		case *mailer.SMTPMailer:
+			mailerType = "smtp"
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":   "ok",
+			"db":       dbStatus,
+			"storage":  store.Type(),
+			"mailer":   mailerType,
+			"captcha":  cap.Type(),
+			"errtrack": errs.Type(),
+			"time":     time.Now().UTC().Format(time.RFC3339),
+		})
 	})
 
 	mux.HandleFunc("/api/captcha/config", func(w http.ResponseWriter, r *http.Request) {
