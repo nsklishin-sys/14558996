@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LASTOP GROUP — Настройки</title>
@@ -368,7 +367,6 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 [class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
 [class*="card"]:hover{box-shadow:var(--shm);transform:translateY(-3px)}
 </style>
-<link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
 <div class="shell">
@@ -1294,7 +1292,16 @@ function applySettingsToUI(s){
   setSelectValue('localeSelect',s.locale||detectDefaultLocale(),'ru');
   setSelectValue('timezoneSelect',s.timezone||detectDefaultTimezone(),'Europe/Moscow');
   setSelectValue('dateFormatSelect',s.date_format||detectDefaultDateFormat(),'DD.MM.YYYY');
-  if(s.theme){markThemeCard(s.theme);if(window.LastopTheme?.set)window.LastopTheme.set(s.theme);}
+  if(s.theme){
+    // Клиентский выбор темы важнее серверного дефолта.
+    // Если на этом устройстве уже выбирали тему вручную — оставляем клиентское.
+    var clientSource = localStorage.getItem('lastop-theme-source');
+    var currentTheme = (window.LastopTheme && typeof window.LastopTheme.current === 'function') ? window.LastopTheme.current() : (localStorage.getItem('lastop-theme') || s.theme);
+    markThemeCard(currentTheme);
+    if(!clientSource && window.LastopTheme && typeof window.LastopTheme.set === 'function'){
+      window.LastopTheme.set(s.theme);
+    }
+  }
 
   // Применяем глобальные настройки к текущей странице немедленно (без перезагрузки)
   if (window.LastopSettings && window.LastopSettings.apply) {
