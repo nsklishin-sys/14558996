@@ -29,7 +29,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
 
 /* ═══ TOPBAR ═══ */
-.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:var(--sh)}
+.shell > .topbar{padding-left:0;padding-right:0}
+.shell > .topbar > .search-wrap{padding-left:16px}
+.shell > .topbar > .profile-dd-wrap{padding-right:16px}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0;box-shadow:var(--sh)}
 .search-wrap{flex:1;position:relative;display:flex;align-items:center}
 .search-dot{position:absolute;left:13px;width:8px;height:8px;border-radius:50%;background:var(--g);pointer-events:none}
 .search-wrap input{width:100%;height:36px;padding:0 14px 0 30px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
@@ -45,7 +48,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .tp-role{font-size:10px;color:var(--gmt)}
 .tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
 /* ─── DROPDOWN ─── */
-.profile-dd-wrap{position:relative;flex-shrink:0}
+.profile-dd-wrap{position:relative;flex-shrink:0;display:flex;align-items:center;gap:8px}
 .profile-dd{position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s;z-index:200;overflow:hidden}
 .profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .pdd-head{padding:14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;background:var(--gp)}
