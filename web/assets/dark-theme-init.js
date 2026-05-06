@@ -16,11 +16,17 @@
   var SYSTEM_KEY = 'lastop-theme-source';
 
   function getPreference() {
-    return localStorage.getItem(THEME_KEY) || 'light';
+    var stored = localStorage.getItem(THEME_KEY);
+    if (stored) return stored;
+    // Если в localStorage пусто — следуем настройкам устройства
+    return systemPrefersDark() ? 'dark' : 'light';
   }
 
   function getSource() {
-    return localStorage.getItem(SYSTEM_KEY) || 'manual';
+    var stored = localStorage.getItem(SYSTEM_KEY);
+    if (stored) return stored;
+    // Если источник не задан — по умолчанию следуем системе
+    return localStorage.getItem(THEME_KEY) ? 'manual' : 'system';
   }
 
   function systemPrefersDark() {

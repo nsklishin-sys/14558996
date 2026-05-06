@@ -1,59 +1,76 @@
 /*
  * ══════════════════════════════════════════════════════════════
- *  LASTOP GROUP — Dark Theme
+ *  LASTOP GROUP — Dark Theme (Apple-style)
  *  Файл: web/assets/dark-theme.css
  *
- *  Покрывает два слоя фронтенда:
- *  1. CSS-переменные страницы (events, news, jobs, projects…)
- *  2. Tailwind-страницы (dashboard, index, settings…)
+ *  Нейтрально-серая палитра, без зелёного оттенка фонов.
+ *  Зелёный акцент сохранён только для активных элементов и текста.
  *
- *  Подключение: добавьте в <head> каждой страницы ДО </head>
- *  <link rel="stylesheet" href="/assets/dark-theme.css">
+ *  Палитра соответствует iOS / macOS Dark Mode:
+ *  - Background:   #000000 (system bg, true black)
+ *  - Surface 1:    #1C1C1E (cards, containers)
+ *  - Surface 2:    #2C2C2E (elevated, inputs)
+ *  - Surface 3:    #3A3A3C (modal, dropdown)
+ *  - Separator:    rgba(84,84,88,0.65)
+ *  - Label:        #FFFFFF
+ *  - Secondary:    rgba(235,235,245,0.6)
+ *  - Tertiary:     rgba(235,235,245,0.3)
+ *  - Accent green: #30D158 (system green, Apple)
+ *
+ *  Подключение: автоматически через htmlInject в main.go
  * ══════════════════════════════════════════════════════════════
  */
 
 /* ─────────────────────────────────────────────────────────────
    СЛОЙ 1 — Страницы на CSS-переменных
-   (events, news, jobs, projects, communities, exhibitions…)
-   Переопределяем :root-переменные когда <html data-theme="dark">
    ───────────────────────────────────────────────────────────── */
 
 [data-theme="dark"] {
-  /* Фоны */
-  --bg:  #0F1712;
-  --w:   #161E1A;
-  --gp:  #111A14;
-  --gl:  #0D2016;
+  /* Фоны — нейтрально-серые, без оттенка */
+  --bg:  #000000;
+  --w:   #1C1C1E;
+  --gp:  #2C2C2E;
+  --gl:  #1F2A22;
 
   /* Текст */
-  --t:   #E8F0EB;
-  --tm:  #A8BDB0;
-  --gmt: #6A9A7A;
+  --t:   #FFFFFF;
+  --tm:  rgba(235,235,245,0.6);
+  --gmt: rgba(235,235,245,0.45);
 
-  /* Зелёный акцент */
-  --g:   #26A85A;
-  --gm:  #2EBF66;
-  --gb:  #1E5C30;
+  /* Зелёный акцент (Apple system green) */
+  --g:   #30D158;
+  --gm:  #34D964;
+  --gb:  #1F4D2C;
 
-  /* Границы */
-  --bdr: #1F2E24;
+  /* Границы — Apple separator */
+  --bdr: rgba(84,84,88,0.45);
 
   /* Тени */
-  --sh:  0 2px 12px rgba(0,0,0,.35);
-  --shm: 0 6px 24px rgba(0,0,0,.5);
+  --sh:  0 1px 3px rgba(0,0,0,.4);
+  --shm: 0 4px 16px rgba(0,0,0,.6);
 
-  /* Красный — чуть мягче на тёмном */
-  --red: #F06060;
+  /* Красный — Apple system red */
+  --red: #FF453A;
 }
 
-/* Скроллбар для CSS-var страниц */
-[data-theme="dark"] .main::-webkit-scrollbar-thumb,
-[data-theme="dark"] .nav::-webkit-scrollbar-thumb,
-[data-theme="dark"] .right::-webkit-scrollbar-thumb {
-  background: #1E5C30;
+[data-theme="dark"] body {
+  background: var(--bg);
+  color: var(--t);
 }
 
-/* Инпуты и textarea */
+/* Скроллбар */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(235,235,245,0.18);
+  border-radius: 99px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(235,235,245,0.28);
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Инпуты */
 [data-theme="dark"] input,
 [data-theme="dark"] textarea,
 [data-theme="dark"] select {
@@ -62,67 +79,82 @@
 
 /* Модалки — оверлей */
 [data-theme="dark"] .modal-bg {
-  background: rgba(0,0,0,.65);
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(6px);
 }
 
 /* Lightbox */
 [data-theme="dark"] .lightbox {
-  background: rgba(0,0,0,.92);
+  background: rgba(0,0,0,.95);
 }
 
-/* Skeleton/pulse */
+/* Skeleton */
 [data-theme="dark"] .skel-card,
 [data-theme="dark"] .skel-thumb,
-[data-theme="dark"] .skel-line {
-  background: #1A2420;
+[data-theme="dark"] .skel-line,
+[data-theme="dark"] .sl {
+  background: #2C2C2E;
 }
 
 /* Toast */
 [data-theme="dark"] .toast {
-  background: #0D1A10;
-  border: 1px solid var(--bdr);
+  background: #2C2C2E;
+  border: 1px solid rgba(84,84,88,0.45);
+  color: #FFFFFF;
 }
 [data-theme="dark"] .toast.ok {
-  background: #0D2E18;
-  border-color: var(--gb);
+  background: #1F4D2C;
+  border-color: #30D158;
 }
 
-/* Репост-дропдаун */
+/* Дропдауны (репост, профиль, календарь, шапка чата) */
 [data-theme="dark"] .repost-dd,
 [data-theme="dark"] .profile-dd,
-[data-theme="dark"] .cal-popup {
-  background: var(--w);
-  border-color: var(--bdr);
-  box-shadow: 0 12px 36px rgba(0,0,0,.5);
+[data-theme="dark"] .cal-popup,
+[data-theme="dark"] .pdd,
+[data-theme="dark"] .chip-dd {
+  background: #2C2C2E;
+  border-color: rgba(84,84,88,0.45);
+  box-shadow: 0 12px 36px rgba(0,0,0,.6);
 }
 
-/* Обложки-плейсхолдеры — затемняем немного */
+/* Кнопка «выход / удалить» — приглушённый красный фон */
+[data-theme="dark"] .pdd-item.logout:hover,
+[data-theme="dark"] .pdd-item.danger:hover {
+  background: rgba(255,69,58,0.12) !important;
+  color: #FF453A !important;
+}
+
+/* Обложки-плейсхолдеры */
 [data-theme="dark"] .proj-cover-ph,
 [data-theme="dark"] .nf-cover-ph,
 [data-theme="dark"] .ex-cover-ph {
-  filter: brightness(.85);
+  filter: brightness(.75);
 }
 
 /* Медиа-заглушки */
 [data-theme="dark"] .media-add {
-  background: #111A14;
-  border-color: #1F2E24;
+  background: #2C2C2E;
+  border-color: rgba(84,84,88,0.45);
+}
+
+/* Выделение текста */
+[data-theme="dark"] ::selection {
+  background: rgba(48,209,88,.32);
+  color: #FFFFFF;
 }
 
 
 /* ─────────────────────────────────────────────────────────────
    СЛОЙ 2 — Tailwind-страницы
-   (dashboard, index, settings, profile, forum, catalog…)
-   Класс body.dark-theme уже используется в проекте,
-   расширяем его для полного покрытия.
    ───────────────────────────────────────────────────────────── */
 
 body.dark-theme {
-  background: #0F1712 !important;
-  color: #E8F0EB !important;
+  background: #000000 !important;
+  color: #FFFFFF !important;
 }
 
-/* Белые и серые фоны → тёмные */
+/* Поверхности уровень 1 (карточки, секции) */
 body.dark-theme .bg-white,
 body.dark-theme .bg-white\/90,
 body.dark-theme .bg-gray-50,
@@ -141,32 +173,32 @@ body.dark-theme article,
 body.dark-theme section,
 body.dark-theme aside,
 body.dark-theme header {
-  background: #161E1A !important;
-  color: #E8F0EB !important;
+  background: #1C1C1E !important;
+  color: #FFFFFF !important;
 }
 
-/* Чуть темнее — для вложенных блоков */
+/* Поверхности уровень 2 (вложенные блоки, инпуты) */
 body.dark-theme .bg-\[\#f0f4f2\],
 body.dark-theme .bg-\[\#edf2ef\],
 body.dark-theme .bg-\[\#ecf2ee\],
 body.dark-theme .bg-\[\#f5f8f6\],
 body.dark-theme #feedScrollContainer > * {
-  background: #111A14 !important;
+  background: #2C2C2E !important;
 }
 
-/* Инпуты, textarea, select */
+/* Инпуты */
 body.dark-theme input,
 body.dark-theme textarea,
 body.dark-theme select {
-  background: #111A14 !important;
-  color: #E8F0EB !important;
-  border-color: #1F2E24 !important;
+  background: #2C2C2E !important;
+  color: #FFFFFF !important;
+  border-color: rgba(84,84,88,0.45) !important;
   color-scheme: dark;
 }
 
 body.dark-theme input::placeholder,
 body.dark-theme textarea::placeholder {
-  color: #5A7A6A !important;
+  color: rgba(235,235,245,0.35) !important;
 }
 
 /* Границы */
@@ -174,10 +206,10 @@ body.dark-theme .border,
 body.dark-theme [class*="border-\[#"],
 body.dark-theme [class*="border-gray"],
 body.dark-theme .divide-y > * {
-  border-color: #1F2E24 !important;
+  border-color: rgba(84,84,88,0.45) !important;
 }
 
-/* Текст — тёмные оттенки → светлые */
+/* Текст основной */
 body.dark-theme .text-black,
 body.dark-theme .text-\[\#000\],
 body.dark-theme .text-\[\#111111\],
@@ -193,10 +225,10 @@ body.dark-theme .text-\[\#445164\],
 body.dark-theme .text-\[\#4c5b6b\],
 body.dark-theme .text-\[\#51606f\],
 body.dark-theme .text-\[\#213246\] {
-  color: #E8F0EB !important;
+  color: #FFFFFF !important;
 }
 
-/* Приглушённый текст */
+/* Текст приглушённый — Apple secondary label */
 body.dark-theme .text-\[\#5d6978\],
 body.dark-theme .text-\[\#5f6b79\],
 body.dark-theme .text-\[\#7e8a97\],
@@ -207,10 +239,10 @@ body.dark-theme .text-gray-500,
 body.dark-theme .text-gray-600,
 body.dark-theme .text-slate-500,
 body.dark-theme .text-slate-600 {
-  color: #7AAA8A !important;
+  color: rgba(235,235,245,0.6) !important;
 }
 
-/* Зелёные акценты — НЕ трогаем */
+/* Зелёные акценты — Apple system green */
 body.dark-theme .text-green-500,
 body.dark-theme .text-green-600,
 body.dark-theme .text-green-700,
@@ -219,107 +251,110 @@ body.dark-theme .text-\[\#15803d\],
 body.dark-theme .text-\[\#22c55e\],
 body.dark-theme .text-\[\#1E8A4C\],
 body.dark-theme .text-\[\#22A05A\] {
-  color: #2EBF66 !important;
+  color: #30D158 !important;
 }
 
-/* Красные акценты */
+/* Красные акценты — Apple system red */
 body.dark-theme .text-red-500,
 body.dark-theme .text-red-600,
 body.dark-theme .text-\[\#E04040\],
 body.dark-theme .text-\[\#b91c1c\] {
-  color: #F06060 !important;
+  color: #FF453A !important;
 }
 
-/* Теги / бейджи светлого фона */
+/* Бейджи / теги — приглушённые фоны */
 body.dark-theme .bg-\[\#E8F5EE\],
 body.dark-theme .bg-\[\#F0FAF4\],
 body.dark-theme .bg-green-50,
 body.dark-theme .bg-green-100 {
-  background: #0D2016 !important;
-  color: #2EBF66 !important;
+  background: rgba(48,209,88,0.15) !important;
+  color: #30D158 !important;
 }
 
 body.dark-theme .bg-\[\#FEE2E2\],
 body.dark-theme .bg-red-50,
 body.dark-theme .bg-red-100 {
-  background: #2A0D0D !important;
-  color: #F06060 !important;
+  background: rgba(255,69,58,0.15) !important;
+  color: #FF453A !important;
 }
 
 body.dark-theme .bg-\[\#EDE8FA\],
 body.dark-theme .bg-purple-50,
 body.dark-theme .bg-purple-100 {
-  background: #1A1030 !important;
-  color: #A070E0 !important;
+  background: rgba(191,90,242,0.15) !important;
+  color: #BF5AF2 !important;
 }
 
 body.dark-theme .bg-\[\#E6F1FB\],
 body.dark-theme .bg-blue-50,
 body.dark-theme .bg-blue-100 {
-  background: #0D1A2A !important;
-  color: #5090D0 !important;
+  background: rgba(10,132,255,0.15) !important;
+  color: #0A84FF !important;
 }
 
 body.dark-theme .bg-\[\#FEF3C7\],
 body.dark-theme .bg-yellow-50,
 body.dark-theme .bg-amber-100 {
-  background: #2A1E0D !important;
-  color: #D09040 !important;
+  background: rgba(255,159,10,0.15) !important;
+  color: #FF9F0A !important;
 }
 
 /* Ховер-состояния */
 body.dark-theme .hover\:bg-\[\#f0f4f2\]:hover,
 body.dark-theme .hover\:bg-gray-50:hover,
 body.dark-theme .hover\:bg-gray-100:hover {
-  background: #0D2016 !important;
+  background: #2C2C2E !important;
 }
 
 /* Тени */
 body.dark-theme [class*="shadow"] {
-  --tw-shadow-color: rgba(0,0,0,.5);
+  --tw-shadow-color: rgba(0,0,0,.6);
 }
 
-/* Скроллбар */
+/* Скроллбар Tailwind-страниц */
 body.dark-theme ::-webkit-scrollbar-track {
-  background: #111A14;
+  background: transparent;
 }
 body.dark-theme ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #26A85A 0%, #1E8A4C 100%);
-  border-color: #111A14;
+  background: rgba(235,235,245,0.18);
+  border-radius: 99px;
+}
+body.dark-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(235,235,245,0.28);
 }
 
 /* Выделение текста */
 body.dark-theme ::selection {
-  background: rgba(38,168,90,.35);
-  color: #E8F0EB;
+  background: rgba(48,209,88,.32);
+  color: #FFFFFF;
 }
 
 /* Sidebar active item */
 body.dark-theme .global-sidebar__item--active,
 body.dark-theme .nav-item.active {
-  background: #0D2016 !important;
-  color: #2EBF66 !important;
+  background: rgba(48,209,88,0.18) !important;
+  color: #30D158 !important;
 }
 
 /* Hover на sidebar */
 body.dark-theme .global-sidebar__item:hover,
 body.dark-theme .nav-item:hover {
-  background: #111A14 !important;
-  color: #2EBF66 !important;
+  background: #2C2C2E !important;
+  color: #30D158 !important;
 }
 
-/* Tailwind toggle-трек */
+/* Tailwind toggle */
 body.dark-theme #themeToggle .theme-toggle-track {
-  background: #26A85A;
+  background: #30D158;
 }
 body.dark-theme #themeToggle .theme-toggle-thumb {
   transform: translateX(18px);
-  background: #0F1712;
+  background: #000000;
 }
 
 /* Sidebar кнопки-переключатели */
 body.dark-theme .sidebar-toggle {
-  background: #161E1A !important;
-  color: #E8F0EB !important;
-  border-color: #1F2E24 !important;
+  background: #1C1C1E !important;
+  color: #FFFFFF !important;
+  border-color: rgba(84,84,88,0.45) !important;
 }
