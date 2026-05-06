@@ -18321,13 +18321,74 @@ func isValidEmail(s string) bool {
 	return err == nil && addr.Address == s
 }
 
+// cspPolicy — Content-Security-Policy для платформы.
+// Используем 'unsafe-inline' для script/style — на платформе много inline-кода
+// и стилей. Это компромисс между удалить весь inline (большой рефакторинг) и
+// получить хоть какую-то защиту от XSS. После рефакторинга можно ужесточить.
+//
+// connect-src включает:
+//   'self'              — наш бэкенд (/api/*)
+//   wss: ws:            — WebSocket (/api/ws)
+//   https://api-maps.yandex.ru — Я.Карты JS API (для Этапа 7)
+//   https://mc.yandex.ru      — Я.Метрика (для Этапа 8)
+//   https://*.yandexcloud.net — S3-redirect для аватаров и медиа
+//   data:               — base64 в превью
+const cspPolicy = "default-src 'self'; " +
+	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://api-maps.yandex.ru https://mc.yandex.ru https://yastatic.net https://*.yandex.net; " +
+	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://yastatic.net; " +
+	"font-src 'self' data: https://fonts.gstatic.com https://yastatic.net; " +
+	"img-src 'self' data: blob: https: http:; " +
+	"media-src 'self' data: blob: https:; " +
+	"connect-src 'self' ws: wss: https://*.yandexcloud.net https://api-maps.yandex.ru https://mc.yandex.ru https://*.yandex.ru; " +
+	"frame-src 'self' https://yandex.ru https://*.yandex.ru; " +
+	"object-src 'none'; " +
+	"base-uri 'self'; " +
+	"form-action 'self'; " +
+	"frame-ancestors 'none'"
+
 func securityHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=()")
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+		// HSTS — обязывает браузер всегда использовать HTTPS на этом домене
+		// в течение года, включая поддомены. Включается только когда запрос реально
+		// пришёл по HTTPS (TLS либо X-Forwarded-Proto=https за прокси Railway).
+		isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+		if isHTTPS {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		// CSP применяем только к HTML-ответам — не нужно ставить на /uploads/*, /api/* и т.п.
+		// Точно определить тип ответа здесь нельзя, поэтому ориентируемся на путь.
+		if shouldApplyCSP(r.URL.Path) {
+			w.Header().Set("Content-Security-Policy", cspPolicy)
+		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+// shouldApplyCSP — true для HTML-страниц, false для API/uploads/static-ассетов.
+func shouldApplyCSP(path string) bool {
+	if strings.HasPrefix(path, "/api/") {
+		return false
+	}
+	if strings.HasPrefix(path, "/uploads/") {
+		return false
+	}
+	if strings.HasPrefix(path, "/assets/") {
+		return false
+	}
+	// Файлы со статичными расширениями — без CSP
+	if i := strings.LastIndex(path, "."); i > 0 {
+		ext := strings.ToLower(path[i:])
+		switch ext {
+		case ".js", ".css", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".otf":
+			return false
+		}
+	}
+	return true
 }
 
 // gzipResponseWriter оборачивает http.ResponseWriter и пишет в gzip.Writer.
