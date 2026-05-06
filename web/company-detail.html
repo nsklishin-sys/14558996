@@ -325,6 +325,7 @@ async function loadProfile(){
 }
 
 async function loadCompany(){
+  window.__company = null;
   try {
     const r = await fetch(API+'/companies/'+encodeURIComponent(identifier), { headers: authHeaders() });
     if (r.status === 404) {
@@ -370,7 +371,8 @@ function render(){
           '</div>'+
         '</div>'+
         '<div class="co-actions">'+
-          (c.viewer_is_member ? '<a class="btn btn-primary" href="/my-company.html"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>Управление</a>' : '')+
+          (c.viewer_is_member ? '<a class="btn btn-primary" href="/my-company.html"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>Управление</a>'
+                              : '<button class="btn btn-primary" onclick="writeToCompany()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать в компанию</button>')+
         '</div>'+
       '</div>'+
     '</div>';
@@ -388,6 +390,32 @@ function render(){
 }
 
 function setTab(key){ currentTab=key; render(); }
+
+async function writeToCompany(){
+  const c = window.__company;
+  if(!c || !c.public_id) return;
+  try {
+    const r = await fetch(API + '/chat/conversations/direct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
+      body: JSON.stringify({ target_company_public_id: c.public_id })
+    });
+    if(!r.ok){
+      const err = await r.json().catch(()=>({error:'Не удалось открыть чат'}));
+      alert(err.error || 'Не удалось открыть чат');
+      return;
+    }
+    const d = await r.json();
+    const convID = d.conversation && d.conversation.public_id;
+    if(convID){
+      location.href = '/chat.html?id=' + encodeURIComponent(convID);
+    } else {
+      location.href = '/chat.html';
+    }
+  } catch(e){
+    alert('Ошибка сети');
+  }
+}
 
 async function renderTab(){
   const wrap = document.getElementById('tabContent');

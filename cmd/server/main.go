@@ -486,7 +486,8 @@ type chatMessage struct {
 }
 
 type createDirectConversationRequest struct {
-	UserPublicID string `json:"user_public_id"`
+	UserPublicID          string `json:"user_public_id"`
+	TargetCompanyPublicID string `json:"target_company_public_id,omitempty"`
 }
 type createGroupConversationRequest struct {
 	Title     string   `json:"title"`
@@ -2621,6 +2622,30 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
+		// Ветка: чат с компанией
+		if req.TargetCompanyPublicID != "" {
+			var companyID, ownerID int64
+			if err := db.QueryRow(`SELECT id, owner_user_id FROM companies WHERE public_id = $1 AND deleted_at IS NULL AND status = 'active'`, req.TargetCompanyPublicID).Scan(&companyID, &ownerID); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Компания не найдена")
+				} else {
+					writeError(w, http.StatusInternalServerError, "Ошибка БД")
+				}
+				return
+			}
+			if ownerID == userID {
+				writeError(w, http.StatusBadRequest, "Нельзя написать в свою компанию")
+				return
+			}
+			item, err := findOrCreateDirectToCompany(db, r, userID, ownerID, companyID)
+			if err != nil {
+				handleChatError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"conversation": item})
+			return
+		}
+		// Ветка: чат с пользователем (как было)
 		targetID, err := getUserIDByPublicID(db, req.UserPublicID)
 		if err != nil {
 			handleChatError(w, err)
@@ -17382,6 +17407,66 @@ func findOrCreateDirectConversation(db *sql.DB, r *http.Request, userID int64, t
 	conv, err := getConversationByPublicID(db, userID, "")
 	if err == nil {
 		_ = conv
+	}
+	return getConversationByID(db, userID, convID)
+}
+
+// findOrCreateDirectToCompany создаёт (или находит) direct-диалог между userID
+// и владельцем компании, при этом для получателя (owner) сохраняется контекст
+// participant_kind='company', participant_id=companyID — то есть для него этот
+// диалог отображается под компанией, и ответы автоматически идут от компании.
+// Инициатор сохраняется со своим текущим активным контекстом.
+func findOrCreateDirectToCompany(db *sql.DB, r *http.Request, userID, targetOwnerID, companyID int64) (chatConversation, error) {
+	if targetOwnerID == userID {
+		return chatConversation{}, fmt.Errorf("%w: нельзя создать диалог с собой", errValidation)
+	}
+	// Контекст инициатора
+	initKind := "user"
+	initID := userID
+	if cid, _ := resolveActiveCompanyID(db, r, userID, 0); cid > 0 {
+		initKind = "company"
+		initID = cid
+	} else if cmid, _ := resolveActiveCommunityID(db, r, userID, 0); cmid > 0 {
+		initKind = "community"
+		initID = cmid
+	}
+	ids := []int64{userID, targetOwnerID}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	tx, err := db.Begin()
+	if err != nil {
+		return chatConversation{}, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock($1,$2)`, ids[0], ids[1]); err != nil {
+		return chatConversation{}, err
+	}
+	// Ищем существующий диалог: user→company (target — компания, инициатор — кто угодно)
+	var convID int64
+	err = tx.QueryRow(`
+		SELECT c.id FROM chat_conversations c
+		JOIN chat_participants p1 ON p1.conversation_id=c.id AND p1.user_id=$1 AND p1.participant_kind=$3 AND p1.participant_id=$4
+		JOIN chat_participants p2 ON p2.conversation_id=c.id AND p2.user_id=$2 AND p2.participant_kind='company' AND p2.participant_id=$5
+		WHERE c.type='direct' LIMIT 1
+	`, userID, targetOwnerID, initKind, initID, companyID).Scan(&convID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return chatConversation{}, err
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		pid, _ := newChatPublicID()
+		if err := tx.QueryRow(`INSERT INTO chat_conversations(public_id,type,created_by,owner_kind,owner_id,last_message_at) VALUES($1,'direct',$2,'company',$3,NOW()) RETURNING id`, pid, userID, companyID).Scan(&convID); err != nil {
+			return chatConversation{}, err
+		}
+		// Инициатор со своим контекстом, получатель — как компания
+		if _, err := tx.Exec(`
+			INSERT INTO chat_participants(conversation_id,user_id,role,participant_kind,participant_id) VALUES
+			  ($1,$2,'member',$3,$4),
+			  ($1,$5,'member','company',$6)
+		`, convID, userID, initKind, initID, targetOwnerID, companyID); err != nil {
+			return chatConversation{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return chatConversation{}, err
 	}
 	return getConversationByID(db, userID, convID)
 }
