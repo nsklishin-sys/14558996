@@ -369,10 +369,18 @@ body.dark-theme .sidebar-toggle {
   border-radius: 12px;
 }
 
-/* В тёмной теме — приглушённый фон + скрытие резкого края */
+/* В тёмной теме — input сливается с топбаром, без резкого контраста.
+   Подсвечивается только на focus. */
 [data-theme="dark"] .search-wrap input,
 [data-theme="dark"] .topbar input[type="search"],
 [data-theme="dark"] .topbar input[type="text"] {
-  background: #2C2C2E;
-  border-color: rgba(84,84,88,0.45);
+  background: transparent;
+  border-color: rgba(84,84,88,0.35);
+}
+
+[data-theme="dark"] .search-wrap input:focus,
+[data-theme="dark"] .topbar input[type="search"]:focus,
+[data-theme="dark"] .topbar input[type="text"]:focus {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(48,209,88,0.5);
 }
