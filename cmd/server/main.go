@@ -1325,7 +1325,8 @@ html.pt-ready body {
 <link rel="stylesheet" href="/assets/dark-theme.css">
 <script src="/assets/dark-theme-init.js"></script>
 <script src="/assets/global-settings.js" defer></script>
-<script src="/site-search.js" defer></script>`
+<script src="/site-search.js" defer></script>
+<script src="/assets/legal-links.js" defer></script>`
 
 func (r *statusRecorder) WriteHeader(status int) {
 	r.status = status
