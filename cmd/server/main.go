@@ -14,6 +14,8 @@ import (
 	"hash/fnv"
 	"io"
 	"log"
+	"log/slog"
+	"runtime/debug"
 	"math/big"
 	"net"
 	"net/http"
@@ -37,6 +39,7 @@ import (
 	"nhooyr.io/websocket"
 
 	"greeting-site/internal/captcha"
+	"greeting-site/internal/errtrack"
 	"greeting-site/internal/mailer"
 	"greeting-site/internal/storage"
 )
@@ -1681,7 +1684,32 @@ var store storage.Storage
 // cap — глобальная капча, инициализируется в main().
 var cap captcha.Captcha
 
+// errs — глобальный трекер ошибок, инициализируется в main().
+var errs errtrack.Tracker
+
 func main() {
+	// Структурированное логирование: переключаем глобальный log на slog (JSON или text).
+	// LOG_FORMAT=json (default в проде) — JSON-вывод, удобный для агрегаторов.
+	// LOG_FORMAT=text — человекочитаемый вывод (для локальной разработки).
+	logLevel := slog.LevelInfo
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL"))); v == "debug" {
+		logLevel = slog.LevelDebug
+	} else if v == "warn" {
+		logLevel = slog.LevelWarn
+	} else if v == "error" {
+		logLevel = slog.LevelError
+	}
+	var slogHandler slog.Handler
+	if strings.ToLower(strings.TrimSpace(os.Getenv("LOG_FORMAT"))) == "text" {
+		slogHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	} else {
+		slogHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	}
+	slogger := slog.New(slogHandler)
+	slog.SetDefault(slogger)
+	// Заворачиваем стандартный log.Printf в slog: каждый log.Printf станет JSON-строкой.
+	log.SetFlags(0)
+	log.SetOutput(slogWriter{logger: slogger})
 	db, err := initDBFromEnv()
 	if err != nil {
 		log.Fatal(err)
@@ -1691,6 +1719,8 @@ func main() {
 	mail = mailer.New()
 	store = storage.New()
 	cap = captcha.New()
+	errs = errtrack.New()
+	defer errs.Flush(2 * time.Second)
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore(db)
@@ -8310,7 +8340,7 @@ func main() {
 	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
 
 	addr := ":8080"
-	handler := gzipMiddleware(accessLog(securityHeaders(mux)))
+	handler := recoverPanic(gzipMiddleware(accessLog(securityHeaders(mux))))
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
@@ -18842,6 +18872,40 @@ const cspPolicy = "default-src 'self'; " +
 	"form-action 'self'; " +
 	"frame-ancestors 'none'"
 
+// recoverPanic — middleware, перехватывающий panic в хендлерах.
+// Без него любая panic в обработчике запроса свалит весь сервер.
+// Отправляет panic в errtrack (Sentry) для последующего разбора.
+func recoverPanic(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				// Не падаем на упавшем WebSocket-апгрейде или при Hijacked-соединении
+				stack := debug.Stack()
+				log.Printf("[panic] %v %s %s\n%s", rec, r.Method, r.URL.Path, string(stack))
+				if errs != nil {
+					var err error
+					switch v := rec.(type) {
+					case error:
+						err = v
+					default:
+						err = fmt.Errorf("panic: %v", v)
+					}
+					errs.Capture(err, map[string]string{
+						"path":   r.URL.Path,
+						"method": r.Method,
+					})
+				}
+				// Если ResponseWriter ещё не отправлен — отдаём 500. Иначе ничего не делаем.
+				defer func() { _ = recover() }() // если writer hijacked, http.Error может тоже паниковать
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"error":"Внутренняя ошибка сервера"}`))
+			}
+		}()
+		h.ServeHTTP(w, r)
+	})
+}
+
 func securityHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -19144,6 +19208,18 @@ func accessLog(next http.Handler) http.Handler {
 		next.ServeHTTP(rec, r)
 		log.Printf("%s %s status=%d duration=%s ip=%s", r.Method, r.URL.Path, rec.status, time.Since(start), clientIP(r))
 	})
+}
+
+// slogWriter направляет вывод стандартного log.Printf в slog как Info-сообщения.
+// Сохраняет совместимость со всеми существующими log.Printf в коде.
+type slogWriter struct {
+	logger *slog.Logger
+}
+
+func (s slogWriter) Write(p []byte) (int, error) {
+	msg := strings.TrimRight(string(p), "\n")
+	s.logger.Info(msg)
+	return len(p), nil
 }
 
 func clientIP(r *http.Request) string {
