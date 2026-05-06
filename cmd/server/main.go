@@ -36,6 +36,7 @@ import (
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
 
+	"greeting-site/internal/captcha"
 	"greeting-site/internal/mailer"
 	"greeting-site/internal/storage"
 )
@@ -65,12 +66,13 @@ type user struct {
 }
 
 type registerRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	FullName  string `json:"full_name"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	Terms     bool   `json:"terms"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	FullName     string `json:"full_name"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	Terms        bool   `json:"terms"`
+	CaptchaToken string `json:"captcha_token"`
 }
 
 type loginRequest struct {
@@ -1628,6 +1630,9 @@ var mail mailer.Mailer
 // store — глобальное хранилище файлов, инициализируется в main().
 var store storage.Storage
 
+// cap — глобальная капча, инициализируется в main().
+var cap captcha.Captcha
+
 func main() {
 	db, err := initDBFromEnv()
 	if err != nil {
@@ -1637,6 +1642,7 @@ func main() {
 
 	mail = mailer.New()
 	store = storage.New()
+	cap = captcha.New()
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore(db)
@@ -1693,6 +1699,21 @@ func main() {
 			return
 		}
 
+		if cap.Type() != "noop" {
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			ok, cErr := cap.Verify(ctx, req.CaptchaToken, clientIP(r))
+			cancel()
+			if cErr != nil {
+				log.Printf("[captcha] verify error: %v", cErr)
+				writeError(w, http.StatusBadRequest, "Не удалось проверить капчу. Попробуйте ещё раз.")
+				return
+			}
+			if !ok {
+				writeError(w, http.StatusBadRequest, "Капча не пройдена. Попробуйте ещё раз.")
+				return
+			}
+		}
+
 		createdUser, err := createUser(db, req, clientIP(r))
 		if err != nil {
 			if errors.Is(err, errValidation) {
@@ -1726,6 +1747,13 @@ func main() {
 		writeJSON(w, http.StatusCreated, authResponse{Token: token, User: createdUser})
 	})
 
+	mux.HandleFunc("/api/captcha/config", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"type":     cap.Type(),
+			"site_key": cap.SiteKey(),
+		})
+	})
+
 	forgotPasswordLimiter := newIPRateLimiter(3, time.Hour)
 	resetPasswordLimiter := newIPRateLimiter(5, time.Hour)
 	resendVerifyLimiter := newIPRateLimiter(3, time.Hour)
@@ -1740,11 +1768,21 @@ func main() {
 			return
 		}
 		var req struct {
-			Email string `json:"email"`
+			Email        string `json:"email"`
+			CaptchaToken string `json:"captcha_token"`
 		}
 		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
+		}
+		if cap.Type() != "noop" {
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			ok, cErr := cap.Verify(ctx, req.CaptchaToken, clientIP(r))
+			cancel()
+			if cErr != nil || !ok {
+				writeError(w, http.StatusBadRequest, "Капча не пройдена")
+				return
+			}
 		}
 		email := strings.ToLower(strings.TrimSpace(req.Email))
 		// Anti-enumeration: всегда отвечаем 200 одинаково, даже если юзера нет.
@@ -18553,12 +18591,13 @@ func isValidEmail(s string) bool {
 // получить хоть какую-то защиту от XSS. После рефакторинга можно ужесточить.
 //
 // connect-src включает:
-//   'self'              — наш бэкенд (/api/*)
-//   wss: ws:            — WebSocket (/api/ws)
-//   https://api-maps.yandex.ru — Я.Карты JS API (для Этапа 7)
-//   https://mc.yandex.ru      — Я.Метрика (для Этапа 8)
-//   https://*.yandexcloud.net — S3-redirect для аватаров и медиа
-//   data:               — base64 в превью
+//
+//	'self'              — наш бэкенд (/api/*)
+//	wss: ws:            — WebSocket (/api/ws)
+//	https://api-maps.yandex.ru — Я.Карты JS API (для Этапа 7)
+//	https://mc.yandex.ru      — Я.Метрика (для Этапа 8)
+//	https://*.yandexcloud.net — S3-redirect для аватаров и медиа
+//	data:               — base64 в превью
 const cspPolicy = "default-src 'self'; " +
 	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://api-maps.yandex.ru https://mc.yandex.ru https://yastatic.net https://*.yandex.net; " +
 	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://yastatic.net; " +
