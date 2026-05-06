@@ -36,6 +36,9 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   height:100dvh;
   gap:10px;padding:10px
 }
+.shell > .topbar{padding-left:0;padding-right:0;gap:10px}
+.shell > .topbar > .search-wrap{padding-left:16px}
+.shell > .topbar > .profile-dd-wrap{padding-right:16px}
 @supports (-webkit-touch-callout: none) and (not (height: 100dvh)){
   html{height:-webkit-fill-available}
   body{min-height:-webkit-fill-available}
@@ -48,7 +51,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
 
 /* ═══ TOPBAR — как на скриншоте ═══ */
-.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:grid;grid-template-columns:1fr 300px;align-items:center;gap:10px;padding:0;box-shadow:var(--sh);overflow:hidden}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:grid;grid-template-columns:1fr 300px;align-items:center;gap:10px;padding:0 16px;box-shadow:var(--sh);min-width:0}
 .search-wrap{position:relative;display:flex;align-items:center;min-width:0;padding:0 16px}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;pointer-events:none;flex-shrink:0}
 .search-icon svg{width:14px;height:14px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -416,7 +419,12 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 @media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
 @media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right,.profile-dd-wrap{display:none}.topbar{grid-template-columns:1fr}.search-wrap{max-width:100%}}
 @media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}}
-@media (min-width:1921px) and (min-height:1081px){html,body{font-size:16px}.shell{grid-template-columns:280px 1fr 360px;gap:12px;padding:12px}.topbar{grid-template-columns:1fr 360px}.nav{padding:14px 12px 12px}}
+@media (min-width:1921px) and (min-height:1081px){
+  html,body{font-size:15px}
+  .shell{grid-template-columns:280px 1fr 360px !important;gap:12px;padding:12px}
+  .topbar{grid-template-columns:1fr 360px !important}
+  .nav{padding:14px 12px 12px}
+}
 
 /* Unified hover effect for all card-like classes */
 [class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
