@@ -1222,7 +1222,12 @@ type statusRecorder struct {
 //     на клике "Главная".
 //  3. Редирект залогиненного юзера с /home-guest.html и /index.html
 //     сразу на /home-auth.html, без рендера гостевой.
-const htmlInject = `<script src="/assets/active-context.js"></script>
+const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1E8A4C">
+<script src="/assets/active-context.js"></script>
 <script src="/assets/ws.js" defer></script>
 <style>
 @view-transition { navigation: auto; }
@@ -1474,6 +1479,16 @@ func getUserStorage(db *sql.DB, userID int64) (userStorageInfo, error) {
 	return info, err
 }
 
+// sitemapBaseURL — базовый URL для sitemap. Берётся из env SITEMAP_BASE_URL,
+// иначе из PUBLIC_BASE_URL, иначе строится из request host.
+func sitemapBaseURL(r *http.Request) string {
+	if u := strings.TrimSpace(os.Getenv("SITEMAP_BASE_URL")); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	return publicBaseURL(r)
+}
+
+// publicBaseURL возвращает базовый URL платформы для генерации ссылок в письмах.
 func publicBaseURL(r *http.Request) string {
 	if u := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); u != "" {
 		return strings.TrimRight(u, "/")
@@ -8350,6 +8365,85 @@ func main() {
 	// Раздача загруженных файлов
 	mux.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
 		store.Serve(w, r)
+	})
+
+	mux.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
+		base := sitemapBaseURL(r)
+		var sb strings.Builder
+		sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
+		sb.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
+		// Статичные страницы
+		staticPaths := []struct {
+			path     string
+			priority string
+			freq     string
+		}{
+			{"/", "1.0", "daily"},
+			{"/companies.html", "0.9", "daily"},
+			{"/events.html", "0.9", "daily"},
+			{"/exhibitions.html", "0.9", "weekly"},
+			{"/projects.html", "0.8", "weekly"},
+			{"/jobs.html", "0.8", "daily"},
+			{"/forum.html", "0.7", "daily"},
+			{"/communities.html", "0.7", "weekly"},
+			{"/dashboard.html", "0.6", "daily"},
+		}
+		for _, p := range staticPaths {
+			sb.WriteString("  <url>\n")
+			sb.WriteString("    <loc>" + xmlEscape(base+p.path) + "</loc>\n")
+			sb.WriteString("    <changefreq>" + p.freq + "</changefreq>\n")
+			sb.WriteString("    <priority>" + p.priority + "</priority>\n")
+			sb.WriteString("  </url>\n")
+		}
+		// Динамические страницы — компании, события, выставки, проекты, темы форума.
+		// Лимит 1000 для каждой сущности — sitemap не должен быть огромным.
+		appendURLs := func(query, pathTpl, freq, priority string) {
+			rows, err := db.Query(query)
+			if err != nil {
+				log.Printf("[sitemap] query failed: %v", err)
+				return
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var publicID string
+				var updatedAt sql.NullTime
+				if err := rows.Scan(&publicID, &updatedAt); err != nil {
+					continue
+				}
+				sb.WriteString("  <url>\n")
+				sb.WriteString("    <loc>" + xmlEscape(base+strings.Replace(pathTpl, "{id}", publicID, 1)) + "</loc>\n")
+				if updatedAt.Valid {
+					sb.WriteString("    <lastmod>" + updatedAt.Time.UTC().Format("2006-01-02") + "</lastmod>\n")
+				}
+				sb.WriteString("    <changefreq>" + freq + "</changefreq>\n")
+				sb.WriteString("    <priority>" + priority + "</priority>\n")
+				sb.WriteString("  </url>\n")
+			}
+		}
+		appendURLs(
+			`SELECT public_id, updated_at FROM companies WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
+			"/company-detail.html?id={id}", "weekly", "0.7",
+		)
+		appendURLs(
+			`SELECT public_id, updated_at FROM events WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
+			"/event-detail.html?id={id}", "weekly", "0.7",
+		)
+		appendURLs(
+			`SELECT public_id, updated_at FROM exhibitions WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
+			"/exhibition-detail.html?id={id}", "weekly", "0.7",
+		)
+		appendURLs(
+			`SELECT public_id, updated_at FROM projects WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
+			"/project-detail.html?id={id}", "weekly", "0.6",
+		)
+		appendURLs(
+			`SELECT public_id, updated_at FROM forum_topics ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
+			"/forum-topic.html?id={id}", "weekly", "0.5",
+		)
+		sb.WriteString(`</urlset>` + "\n")
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_, _ = w.Write([]byte(sb.String()))
 	})
 
 	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
@@ -19238,6 +19332,18 @@ func (s slogWriter) Write(p []byte) (int, error) {
 	msg := strings.TrimRight(string(p), "\n")
 	s.logger.Info(msg)
 	return len(p), nil
+}
+
+// xmlEscape экранирует XML-спецсимволы для безопасной вставки в sitemap.xml.
+func xmlEscape(s string) string {
+	r := strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		`"`, "&quot;",
+		"'", "&apos;",
+	)
+	return r.Replace(s)
 }
 
 func clientIP(r *http.Request) string {
