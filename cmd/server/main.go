@@ -19056,7 +19056,7 @@ const cspPolicy = "default-src 'self'; " +
 	"img-src 'self' data: blob: https: http:; " +
 	"media-src 'self' data: blob: https:; " +
 	"connect-src 'self' ws: wss: https://*.yandexcloud.net https://api-maps.yandex.ru https://mc.yandex.ru https://*.yandex.ru; " +
-	"frame-src 'self' https://yandex.ru https://*.yandex.ru; " +
+	"frame-src 'self' https://yandex.ru https://*.yandex.ru https://yastatic.net; " +
 	"object-src 'none'; " +
 	"base-uri 'self'; " +
 	"form-action 'self'; " +

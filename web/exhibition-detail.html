@@ -725,19 +725,34 @@ function loadMap(){
   if(mapLoaded)return;mapLoaded=true;
   const ex=state.exhibition||{};
   const ph=document.getElementById('mapPlaceholder'),mc=document.getElementById('mapContainer');
-  const iframe=document.createElement('iframe');
-  // координаты выставки (или дефолтная Москва)
-  const lat=ex.latitude||55.755,lng=ex.longitude||37.620;
-  iframe.src=`https://yandex.ru/map-widget/v1/?ll=${lng}%2C${lat}&z=14&l=map&pt=${lng},${lat},pm2rdm`;
-  iframe.allowFullscreen=true;iframe.loading='lazy';
-  // фиксированная высота карты 280px, не растягивает родителя
-  iframe.style.cssText='width:100%;height:280px;border:none;display:block;border-radius:var(--rm)';
+  const lat=parseFloat(ex.latitude||0)||55.755;
+  const lng=parseFloat(ex.longitude||0)||37.620;
+  const ymapsLink='https://yandex.ru/maps/?ll='+lng+'%2C'+lat+'&z=15&pt='+lng+','+lat+',pm2rdm';
+  const widgetSrc='https://yandex.ru/map-widget/v1/?ll='+lng+'%2C'+lat+'&z=15&pt='+lng+','+lat+',pm2rdm';
   if(ph)ph.style.display='none';
-  // карта рендерится в контейнер места, без влияния на cover
-  mc.appendChild(iframe);
-  mc.style.height='280px';
-  mc.style.maxHeight='280px';
+  // Очищаем контейнер на случай повторного вызова
+  mc.innerHTML='';
+  mc.style.position='relative';
+  mc.style.height='320px';
+  mc.style.maxHeight='320px';
   mc.style.overflow='hidden';
+  mc.style.borderRadius='var(--rm)';
+  mc.style.border='1px solid var(--bdr)';
+  const iframe=document.createElement('iframe');
+  iframe.src=widgetSrc;
+  iframe.allowFullscreen=true;
+  iframe.loading='lazy';
+  iframe.referrerPolicy='no-referrer-when-downgrade';
+  iframe.style.cssText='width:100%;height:100%;border:0;display:block';
+  mc.appendChild(iframe);
+  // Кнопка «Открыть в Я.Картах» поверх карты
+  const link=document.createElement('a');
+  link.href=ymapsLink;
+  link.target='_blank';
+  link.rel='noopener';
+  link.textContent='Открыть в Я.Картах →';
+  link.style.cssText='position:absolute;top:10px;right:10px;background:#fff;color:var(--g);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid var(--bdr);box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:2';
+  mc.appendChild(link);
   toast('Карта загружена',true);
 }
 
