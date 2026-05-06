@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Подтверждение email — LASTOP GROUP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px
+}
+html,body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,var(--bg) 0%,var(--gp) 50%,var(--gl) 100%)}
+.card{width:100%;max-width:440px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:0 20px 60px rgba(30,138,76,.12);padding:36px 32px;text-align:center}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;text-decoration:none;justify-content:center}
+.logo-img{width:36px;height:36px;border-radius:10px;background:var(--g);display:grid;place-items:center;flex-shrink:0;font-size:14px;font-weight:800;color:#fff}
+.logo-text{display:flex;flex-direction:column;line-height:1.2;text-align:left}
+.logo-text-1{font-size:13px;font-weight:800;color:var(--g);letter-spacing:.04em}
+.logo-text-2{font-size:9px;font-weight:600;color:var(--gmt);letter-spacing:.12em;text-transform:uppercase}
+.icon-circle{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px}
+.icon-circle.ok{background:var(--gl);border:2px solid var(--gb)}
+.icon-circle.ok svg{stroke:var(--g)}
+.icon-circle.fail{background:#FFF1F1;border:2px solid #F4C0C0}
+.icon-circle.fail svg{stroke:var(--red)}
+.icon-circle.loading{background:var(--gp);border:2px solid var(--bdr)}
+.icon-circle.loading svg{stroke:var(--gmt);animation:spin 1.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.icon-circle svg{width:34px;height:34px;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.title{font-size:22px;font-weight:900;color:var(--t);margin-bottom:8px;letter-spacing:-.01em}
+.sub{font-size:13px;color:var(--tm);line-height:1.6;margin-bottom:22px}
+.btn-main{display:inline-flex;width:100%;height:46px;border:none;border-radius:var(--rm);background:var(--g);color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;align-items:center;justify-content:center;gap:8px;transition:background .15s;text-decoration:none}
+.btn-main:hover{background:var(--gm)}
+.btn-sec{display:inline-flex;width:100%;height:42px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;align-items:center;justify-content:center;gap:8px;transition:background .15s;text-decoration:none;margin-top:8px}
+.btn-sec:hover{background:var(--gp)}
+.state{display:none}
+.state.show{display:block}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+    <a class="logo" href="/">
+      <span class="logo-img">L</span>
+      <div class="logo-text"><span class="logo-text-1">LASTOP</span><span class="logo-text-2">GROUP</span></div>
+    </a>
+
+    <div class="state show" id="loadingState">
+      <div class="icon-circle loading"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>
+      <div class="title">Проверяем ссылку…</div>
+      <div class="sub">Подождите немного.</div>
+    </div>
+
+    <div class="state" id="okState">
+      <div class="icon-circle ok"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="title">Email подтверждён</div>
+      <div class="sub">Спасибо! Ваш адрес успешно подтверждён. Теперь вы получаете все уведомления и можете полностью пользоваться платформой.</div>
+      <a class="btn-main" href="/home-auth.html">Перейти на платформу</a>
+    </div>
+
+    <div class="state" id="failState">
+      <div class="icon-circle fail"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+      <div class="title">Ссылка недействительна</div>
+      <div class="sub" id="failMsg">Возможно, она устарела или уже была использована. Войдите в аккаунт и нажмите «Отправить письмо повторно» в баннере подтверждения.</div>
+      <a class="btn-main" href="/login.html">Войти в аккаунт</a>
+      <a class="btn-sec" href="/">На главную</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const token = (new URLSearchParams(location.search).get('token') || '').trim();
+function show(id) {
+  document.querySelectorAll('.state').forEach(s => s.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+}
+if (!token) {
+  show('failState');
+} else {
+  fetch('/api/auth/verify-email?token=' + encodeURIComponent(token))
+    .then(r => r.json().then(d => ({r, d})))
+    .then(({r, d}) => {
+      if (r.ok) { show('okState'); return; }
+      const msg = (d.error || '').toLowerCase();
+      if (msg.includes('истёк') || msg.includes('истек')) {
+        document.getElementById('failMsg').textContent = 'Срок действия ссылки истёк. Войдите в аккаунт и запросите новое письмо.';
+      }
+      show('failState');
+    })
+    .catch(() => show('failState'));
+}
+</script>
+</body>
+</html>
