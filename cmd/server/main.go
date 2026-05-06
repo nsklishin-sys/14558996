@@ -1227,6 +1227,14 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/favicon.svg">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E8A4C">
+<meta name="description" content="LASTOP GROUP — деловая платформа для логистики, ВЭД и таможни. Компании, проекты, мероприятия, специалисты.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LASTOP GROUP">
+<meta property="og:title" content="LASTOP GROUP — деловая платформа">
+<meta property="og:description" content="Компании, проекты, мероприятия и специалисты в сфере логистики, ВЭД и таможни.">
+<meta property="og:image" content="/assets/og-default.png">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
 <script src="/assets/active-context.js"></script>
 <script src="/assets/ws.js" defer></script>
 <style>
@@ -8365,6 +8373,72 @@ func main() {
 	// Раздача загруженных файлов
 	mux.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
 		store.Serve(w, r)
+	})
+
+	// SEO-инжектор: для страниц с динамическим контентом подменяем OG-теги
+	// до отдачи HTML, чтобы соцсети при шеринге видели правильное превью.
+	mux.HandleFunc("/company-detail.html", func(w http.ResponseWriter, r *http.Request) {
+		serveDetailWithOG(w, r, "./web/company-detail.html", func(publicID string) (ogMeta, bool) {
+			var m ogMeta
+			err := db.QueryRow(`
+				SELECT COALESCE(name, ''), COALESCE(description, ''), COALESCE(logo_url, ''), COALESCE(cover_url, '')
+				FROM companies WHERE public_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE
+			`, publicID).Scan(&m.Title, &m.Description, &m.Logo, &m.Cover)
+			if err != nil {
+				return ogMeta{}, false
+			}
+			m.URL = sitemapBaseURL(r) + "/company-detail.html?id=" + publicID
+			m.Type = "profile"
+			return m, true
+		})
+	})
+
+	mux.HandleFunc("/event-detail.html", func(w http.ResponseWriter, r *http.Request) {
+		serveDetailWithOG(w, r, "./web/event-detail.html", func(publicID string) (ogMeta, bool) {
+			var m ogMeta
+			err := db.QueryRow(`
+				SELECT COALESCE(title, ''), COALESCE(description, ''), '', COALESCE(cover_url, '')
+				FROM events WHERE public_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE
+			`, publicID).Scan(&m.Title, &m.Description, &m.Logo, &m.Cover)
+			if err != nil {
+				return ogMeta{}, false
+			}
+			m.URL = sitemapBaseURL(r) + "/event-detail.html?id=" + publicID
+			m.Type = "article"
+			return m, true
+		})
+	})
+
+	mux.HandleFunc("/exhibition-detail.html", func(w http.ResponseWriter, r *http.Request) {
+		serveDetailWithOG(w, r, "./web/exhibition-detail.html", func(publicID string) (ogMeta, bool) {
+			var m ogMeta
+			err := db.QueryRow(`
+				SELECT COALESCE(title, ''), COALESCE(description, ''), '', COALESCE(cover_url, '')
+				FROM exhibitions WHERE public_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE
+			`, publicID).Scan(&m.Title, &m.Description, &m.Logo, &m.Cover)
+			if err != nil {
+				return ogMeta{}, false
+			}
+			m.URL = sitemapBaseURL(r) + "/exhibition-detail.html?id=" + publicID
+			m.Type = "article"
+			return m, true
+		})
+	})
+
+	mux.HandleFunc("/project-detail.html", func(w http.ResponseWriter, r *http.Request) {
+		serveDetailWithOG(w, r, "./web/project-detail.html", func(publicID string) (ogMeta, bool) {
+			var m ogMeta
+			err := db.QueryRow(`
+				SELECT COALESCE(title, ''), COALESCE(description, ''), '', COALESCE(cover_url, '')
+				FROM projects WHERE public_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE
+			`, publicID).Scan(&m.Title, &m.Description, &m.Logo, &m.Cover)
+			if err != nil {
+				return ogMeta{}, false
+			}
+			m.URL = sitemapBaseURL(r) + "/project-detail.html?id=" + publicID
+			m.Type = "article"
+			return m, true
+		})
 	})
 
 	mux.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
@@ -19332,6 +19406,96 @@ func (s slogWriter) Write(p []byte) (int, error) {
 	msg := strings.TrimRight(string(p), "\n")
 	s.logger.Info(msg)
 	return len(p), nil
+}
+
+// ogMeta — данные для Open Graph-тегов одной страницы.
+type ogMeta struct {
+	Title       string
+	Description string
+	URL         string
+	Type        string // website / article / profile
+	Logo        string // относительный или абсолютный URL логотипа
+	Cover       string // относительный или абсолютный URL обложки
+}
+
+// serveDetailWithOG отдаёт HTML-файл с подменёнными OG-тегами на основе данных из fetcher'а.
+// Если query-параметр id отсутствует или сущность не найдена — отдаёт файл без подмены (статический OG).
+func serveDetailWithOG(w http.ResponseWriter, r *http.Request, filePath string, fetcher func(publicID string) (ogMeta, bool)) {
+	publicID := strings.TrimSpace(r.URL.Query().Get("id"))
+	htmlBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	html := string(htmlBytes)
+	if publicID != "" {
+		if meta, ok := fetcher(publicID); ok {
+			html = injectOGTags(html, meta, r)
+		}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(html))
+}
+
+// injectOGTags подменяет/добавляет OG-теги в HTML.
+// Простой подход: вставляем блок OG-тегов сразу после <head>.
+// Если в htmlInject уже есть статичный OG — это нормально, наши более конкретные
+// перебьют их в большинстве парсеров (последний выигрывает).
+func injectOGTags(html string, meta ogMeta, r *http.Request) string {
+	base := sitemapBaseURL(r)
+	cover := meta.Cover
+	if cover == "" {
+		cover = meta.Logo
+	}
+	if cover == "" {
+		cover = "/assets/og-default.png"
+	}
+	// Превратим относительный URL обложки в абсолютный
+	if strings.HasPrefix(cover, "/") {
+		cover = base + cover
+	}
+	// Description обрезаем до 200 символов и убираем HTML
+	desc := htmlSafe(meta.Description)
+	if len(desc) > 200 {
+		// безопасно: обрезаем по руне
+		runes := []rune(desc)
+		if len(runes) > 200 {
+			desc = string(runes[:197]) + "..."
+		}
+	}
+	title := htmlSafe(meta.Title)
+	if title == "" {
+		title = "LASTOP GROUP"
+	}
+	og := `<meta property="og:type" content="` + meta.Type + `">
+<meta property="og:title" content="` + title + ` — LASTOP GROUP">
+<meta property="og:description" content="` + desc + `">
+<meta property="og:url" content="` + meta.URL + `">
+<meta property="og:image" content="` + cover + `">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="LASTOP GROUP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="` + title + ` — LASTOP GROUP">
+<meta name="twitter:description" content="` + desc + `">
+<meta name="twitter:image" content="` + cover + `">
+<meta name="description" content="` + desc + `">
+`
+	// Вставляем сразу после открывающего <head>
+	headIdx := strings.Index(html, "<head>")
+	if headIdx == -1 {
+		// На всякий случай — пробуем head с атрибутами
+		if m := strings.Index(html, "<head "); m != -1 {
+			closeIdx := strings.Index(html[m:], ">")
+			if closeIdx != -1 {
+				headIdx = m + closeIdx - len("<head>") + 1
+			}
+		}
+	}
+	if headIdx != -1 {
+		insertAt := headIdx + len("<head>")
+		return html[:insertAt] + "\n" + og + html[insertAt:]
+	}
+	return html
 }
 
 // xmlEscape экранирует XML-спецсимволы для безопасной вставки в sitemap.xml.
