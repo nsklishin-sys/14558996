@@ -773,9 +773,14 @@ function loadMap(){
   const ph=document.getElementById('mapPlaceholder');
   const mc=document.getElementById('mapContainer');
   if(ph)ph.style.display='none';
-  const addr=[ev.city,ev.address].filter(Boolean).join(', ')||'Адрес уточняется';
-  const ymapsUrl='https://yandex.ru/maps/?ll='+lon+','+lat+'&z=16&pt='+lon+','+lat;
-  mc.innerHTML='<div style="width:100%;height:280px;border-radius:var(--rm);background:linear-gradient(135deg,#E8F5EE 0%,#C0DECA 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center"><svg viewBox="0 0 24 24" style="width:48px;height:48px;stroke:#1E8A4C;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><div style="font-size:15px;font-weight:800;color:#1E8A4C">'+addr.replace(/[<>]/g,'')+'</div><div style="font-size:12px;color:#3A5245">Координаты: '+lat.toFixed(4)+', '+lon.toFixed(4)+'</div><a href="'+ymapsUrl+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#1E8A4C;color:#fff;padding:10px 20px;border-radius:99px;text-decoration:none;font-size:13px;font-weight:700">Открыть на Я.Картах</a></div>';
+  const addr=[ev.city,ev.address].filter(Boolean).join(', ')||'';
+  const ymapsLink='https://yandex.ru/maps/?ll='+lon+'%2C'+lat+'&z=16&pt='+lon+','+lat+',pm2rdm';
+  const widgetSrc='https://yandex.ru/map-widget/v1/?ll='+lon+'%2C'+lat+'&z=16&pt='+lon+','+lat+',pm2rdm';
+  mc.innerHTML='<div style="position:relative;width:100%;height:300px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bdr)">'
+    +'<iframe src="'+widgetSrc+'" loading="lazy" allowfullscreen style="width:100%;height:100%;border:0;display:block" referrerpolicy="no-referrer-when-downgrade"></iframe>'
+    +'<a href="'+ymapsLink+'" target="_blank" rel="noopener" style="position:absolute;top:10px;right:10px;background:#fff;color:var(--g);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid var(--bdr);box-shadow:0 2px 8px rgba(0,0,0,.08)">Открыть в Я.Картах →</a>'
+    +'</div>'
+    +(addr?'<div style="margin-top:8px;font-size:12px;color:var(--gmt);text-align:center">'+addr.replace(/[<>]/g,'')+'</div>':'');
 }
 function openMapExternal(){const ev=state.currentEvent||{};const q=encodeURIComponent([ev.city,ev.address].filter(Boolean).join(' '));window.open('https://yandex.ru/maps/?text='+q,'_blank');}
 let currentTicket={name:'standard',price:0};
