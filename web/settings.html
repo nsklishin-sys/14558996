@@ -622,6 +622,20 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
         </div>
 
         <div class="panel-section">
+          <div class="ps-label">Хранилище файлов</div>
+          <div id="storageBlock" style="background:var(--gp);border:1px solid var(--bdr);border-radius:12px;padding:14px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+              <span style="font-size:13px;font-weight:700;color:var(--t)" id="storageHeader">Использовано —</span>
+              <span style="font-size:11px;color:var(--gmt)" id="storageFilesCount"></span>
+            </div>
+            <div style="height:8px;background:var(--bdr);border-radius:99px;overflow:hidden">
+              <div id="storageBar" style="height:100%;background:var(--g);width:0%;transition:width .3s,background .3s"></div>
+            </div>
+            <div style="font-size:11px;color:var(--gmt);margin-top:8px;line-height:1.5" id="storageHint">Сюда входят все ваши вложения: аватар, фото в постах, медиа в чатах.</div>
+          </div>
+        </div>
+
+        <div class="panel-section">
           <div class="ps-label">Опасная зона</div>
           <div class="security-item danger" onclick="confirmDelete()">
             <div class="si-icon"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
@@ -983,6 +997,7 @@ function populateUI(){
   document.getElementById('city').value=currentUser.location||currentUser.city||'';
   document.getElementById('emailField').value=currentUser.email||'';
   renderEmailVerifyStatus();
+  loadStorageInfo();
   document.getElementById('handleField').value=currentUser.handle||'';
   updateWebsiteField();
   pendingAvatarURL=currentUser.avatar_url||'';
@@ -1031,6 +1046,53 @@ function markThemeCard(theme){
   document.querySelectorAll('.theme-card').forEach((c)=>{
     c.classList.toggle('selected', c.dataset.themeCard===active);
   });
+}
+
+async function loadStorageInfo(){
+  try{
+    const r = await fetch(API+'/me/storage', {headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok) return;
+    const d = await r.json();
+    renderStorageInfo(d);
+  }catch{}
+}
+
+function fmtBytes(n){
+  if(!n || n < 0) n = 0;
+  const KB = 1024, MB = KB*1024, GB = MB*1024;
+  if(n >= GB) return (n/GB).toFixed(2) + ' ГБ';
+  if(n >= MB) return (n/MB).toFixed(1) + ' МБ';
+  if(n >= KB) return (n/KB).toFixed(0) + ' КБ';
+  return n + ' Б';
+}
+
+function renderStorageInfo(d){
+  const used = d.used_bytes || 0;
+  const quota = d.quota_bytes || 1;
+  const files = d.files_count || 0;
+  const pct = Math.min(100, Math.round((used / quota) * 100));
+  document.getElementById('storageHeader').textContent = `Использовано ${fmtBytes(used)} из ${fmtBytes(quota)}`;
+  document.getElementById('storageFilesCount').textContent = files === 0 ? 'нет файлов' : (files + ' ' + pluralFiles(files));
+  const bar = document.getElementById('storageBar');
+  bar.style.width = pct + '%';
+  if(pct >= 90){
+    bar.style.background = 'var(--red)';
+    document.getElementById('storageHint').textContent = 'Хранилище почти заполнено. Чтобы загружать новые файлы, удалите старые или обратитесь в поддержку для увеличения квоты.';
+  } else if(pct >= 70){
+    bar.style.background = '#EF9F27';
+    document.getElementById('storageHint').textContent = 'Хранилище заполнено более чем на 70%. Стоит навести порядок.';
+  } else {
+    bar.style.background = 'var(--g)';
+    document.getElementById('storageHint').textContent = 'Сюда входят все ваши вложения: аватар, фото в постах, медиа в чатах.';
+  }
+}
+
+function pluralFiles(n){
+  const v = n % 10, h = n % 100;
+  if(h >= 11 && h <= 19) return 'файлов';
+  if(v === 1) return 'файл';
+  if(v >= 2 && v <= 4) return 'файла';
+  return 'файлов';
 }
 
 function renderEmailVerifyStatus(){

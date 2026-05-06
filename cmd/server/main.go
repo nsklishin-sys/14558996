@@ -1409,6 +1409,25 @@ func createPasswordResetToken(db *sql.DB, userID int64, ip string) (string, erro
 	return token, nil
 }
 
+// userStorageInfo — данные о квоте файлов юзера.
+type userStorageInfo struct {
+	UsedBytes  int64 `json:"used_bytes"`
+	QuotaBytes int64 `json:"quota_bytes"`
+	FilesCount int64 `json:"files_count"`
+}
+
+// getUserStorage возвращает текущее использование и квоту юзера.
+func getUserStorage(db *sql.DB, userID int64) (userStorageInfo, error) {
+	var info userStorageInfo
+	err := db.QueryRow(`
+		SELECT COALESCE(storage_used_bytes, 0), COALESCE(storage_quota_bytes, 1073741824),
+		       (SELECT COUNT(*) FROM user_uploads WHERE user_id = $1 AND deleted_at IS NULL)
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&info.UsedBytes, &info.QuotaBytes, &info.FilesCount)
+	return info, err
+}
+
 func publicBaseURL(r *http.Request) string {
 	if u := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); u != "" {
 		return strings.TrimRight(u, "/")
@@ -2668,11 +2687,42 @@ func main() {
 			mimeType = "application/octet-stream"
 		}
 
+		// Проверяем квоту юзера ДО загрузки. Используем header.Size как ожидаемый размер.
+		userID, _ := authenticatedUserID(w, r, sessions)
+		expectedSize := header.Size
+		info, ierr := getUserStorage(db, userID)
+		if ierr == nil {
+			if info.UsedBytes+expectedSize > info.QuotaBytes {
+				freeMB := float64(info.QuotaBytes-info.UsedBytes) / (1024 * 1024)
+				writeError(w, http.StatusRequestEntityTooLarge,
+					fmt.Sprintf("Превышена квота хранилища. Доступно: %.1f МБ", freeMB))
+				return
+			}
+		}
+
 		publicURL, written, err := store.Put(r.Context(), key, file, mimeType)
 		if err != nil {
 			log.Printf("upload: storage.Put failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "Не удалось сохранить файл")
 			return
+		}
+
+		// Регистрируем загрузку и обновляем счётчик использования.
+		// Делаем в транзакции чтобы избежать рассинхрона.
+		tx, txErr := db.Begin()
+		if txErr == nil {
+			_, e1 := tx.Exec(`
+				INSERT INTO user_uploads(user_id, storage_key, public_url, file_name, content_type, size_bytes)
+				VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6)
+				ON CONFLICT (storage_key) DO NOTHING
+			`, userID, key, publicURL, header.Filename, mimeType, written)
+			_, e2 := tx.Exec(`UPDATE users SET storage_used_bytes = COALESCE(storage_used_bytes, 0) + $1 WHERE id = $2`, written, userID)
+			if e1 != nil || e2 != nil {
+				_ = tx.Rollback()
+				log.Printf("upload: register failed: e1=%v e2=%v", e1, e2)
+			} else if cerr := tx.Commit(); cerr != nil {
+				log.Printf("upload: commit failed: %v", cerr)
+			}
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -2681,6 +2731,87 @@ func main() {
 			"size": written,
 			"type": mimeType,
 		})
+	})
+
+	mux.HandleFunc("/api/me/storage", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		info, err := getUserStorage(db, userID)
+		if err != nil {
+			log.Printf("getUserStorage failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		writeJSON(w, http.StatusOK, info)
+	})
+
+	mux.HandleFunc("/api/me/uploads/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			URL string `json:"url"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		req.URL = strings.TrimSpace(req.URL)
+		if req.URL == "" {
+			writeError(w, http.StatusBadRequest, "URL обязателен")
+			return
+		}
+		var uploadID int64
+		var key string
+		var size int64
+		err := db.QueryRow(`
+			SELECT id, storage_key, size_bytes
+			FROM user_uploads
+			WHERE public_url = $1 AND user_id = $2 AND deleted_at IS NULL
+		`, req.URL, userID).Scan(&uploadID, &key, &size)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Файл не найден или вам не принадлежит")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		if derr := store.Delete(ctx, key); derr != nil {
+			log.Printf("[uploads/delete] storage.Delete %s: %v", key, derr)
+		}
+		tx, txErr := db.Begin()
+		if txErr != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		defer tx.Rollback()
+		if _, e := tx.Exec(`UPDATE user_uploads SET deleted_at = NOW() WHERE id = $1`, uploadID); e != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		if _, e := tx.Exec(`UPDATE users SET storage_used_bytes = GREATEST(COALESCE(storage_used_bytes, 0) - $1, 0) WHERE id = $2`, size, userID); e != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		if cerr := tx.Commit(); cerr != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
 
 	chatPresence = newChatPresenceStore()
@@ -7833,6 +7964,24 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_expires ON password_reset_tokens(expires_at);
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS storage_used_bytes BIGINT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS storage_quota_bytes BIGINT NOT NULL DEFAULT 1073741824;
+
+CREATE TABLE IF NOT EXISTS user_uploads (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    storage_key TEXT NOT NULL,
+    public_url TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    content_type TEXT,
+    size_bytes BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_user_uploads_user ON user_uploads(user_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_uploads_key ON user_uploads(storage_key);
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
     ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
