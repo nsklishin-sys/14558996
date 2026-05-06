@@ -1237,6 +1237,7 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="twitter:card" content="summary_large_image">
 <script src="/assets/active-context.js"></script>
 <script src="/assets/ws.js" defer></script>
+<script src="/assets/cookie-banner.js" defer></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
