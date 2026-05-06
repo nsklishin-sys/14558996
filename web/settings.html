@@ -800,15 +800,26 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
               <div class="tc-title">Светлая</div>
             </div>
             <div class="theme-card" data-theme-card="dark" onclick="selectTheme(this,'dark')">
-              <div class="theme-preview" style="background:#1A2A22">
-                <div style="width:28px;height:36px;background:#243830;border-radius:4px;border:1px solid #2D4035"></div>
+              <div class="theme-preview" style="background:#1C1C1E">
+                <div style="width:28px;height:36px;background:#2C2C2E;border-radius:4px;border:1px solid rgba(84,84,88,.45)"></div>
                 <div style="width:36px;display:flex;flex-direction:column;gap:3px">
-                  <div style="height:6px;background:#2D4035;border-radius:2px"></div>
-                  <div style="height:6px;background:#1E8A4C;border-radius:2px;opacity:.5"></div>
-                  <div style="height:6px;background:#2D4035;border-radius:2px;width:70%"></div>
+                  <div style="height:6px;background:#2C2C2E;border-radius:2px"></div>
+                  <div style="height:6px;background:#30D158;border-radius:2px;opacity:.5"></div>
+                  <div style="height:6px;background:#2C2C2E;border-radius:2px;width:70%"></div>
                 </div>
               </div>
               <div class="tc-title">Тёмная</div>
+            </div>
+            <div class="theme-card" data-theme-card="system" onclick="selectTheme(this,'system')">
+              <div class="theme-preview" style="background:linear-gradient(90deg,#F2F5F3 0%,#F2F5F3 50%,#1C1C1E 50%,#1C1C1E 100%)">
+                <div style="width:28px;height:36px;background:linear-gradient(90deg,#fff 0%,#fff 50%,#2C2C2E 50%,#2C2C2E 100%);border-radius:4px;border:1px solid rgba(128,128,128,.3)"></div>
+                <div style="width:36px;display:flex;flex-direction:column;gap:3px">
+                  <div style="height:6px;background:linear-gradient(90deg,#DDE8E2 0%,#DDE8E2 50%,#2C2C2E 50%,#2C2C2E 100%);border-radius:2px"></div>
+                  <div style="height:6px;background:linear-gradient(90deg,#E8F5EE 0%,#E8F5EE 50%,#30D158 50%,#30D158 100%);border-radius:2px;opacity:.6"></div>
+                  <div style="height:6px;background:linear-gradient(90deg,#DDE8E2 0%,#DDE8E2 50%,#2C2C2E 50%,#2C2C2E 100%);border-radius:2px;width:70%"></div>
+                </div>
+              </div>
+              <div class="tc-title">Системная</div>
             </div>
           </div>
         </div>
@@ -1014,16 +1025,28 @@ function setMsgPerm(row, val){
 
 /* ── ТЕМА ── */
 function markThemeCard(theme){
+  // Если активен режим 'system' — выделяем системную карточку
+  var source = localStorage.getItem('lastop-theme-source');
+  var active = (source === 'system') ? 'system' : theme;
   document.querySelectorAll('.theme-card').forEach((c)=>{
-    c.classList.toggle('selected', c.dataset.themeCard===theme);
+    c.classList.toggle('selected', c.dataset.themeCard===active);
   });
 }
 
 function selectTheme(card, theme){
   document.querySelectorAll('.theme-card').forEach(c=>c.classList.remove('selected'));
   card.classList.add('selected');
-  if(window.LastopTheme && typeof window.LastopTheme.set==='function')window.LastopTheme.set(theme);
-  else localStorage.setItem('lastop-theme', theme);
+  if(theme === 'system'){
+    if(window.LastopTheme && typeof window.LastopTheme.followSystem === 'function'){
+      window.LastopTheme.followSystem();
+    }
+  } else {
+    if(window.LastopTheme && typeof window.LastopTheme.set === 'function'){
+      window.LastopTheme.set(theme);
+    } else {
+      localStorage.setItem('lastop-theme', theme);
+    }
+  }
   fetch(API+'/settings/appearance',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({theme})}).catch(()=>{});
   showToast('Тема сохранена');
 }
