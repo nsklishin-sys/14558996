@@ -17,7 +17,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"net/mail"
+	netmail "net/mail"
 	"os"
 	"path"
 	"path/filepath"
@@ -35,6 +35,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
+
+	"greeting-site/internal/mailer"
 )
 
 type greetingResponse struct {
@@ -1373,6 +1375,92 @@ func hashToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
+func createEmailVerificationToken(db *sql.DB, userID int64) (string, error) {
+	token, err := newToken()
+	if err != nil {
+		return "", err
+	}
+	expires := time.Now().Add(24 * time.Hour)
+	_, err = db.Exec(`
+		INSERT INTO email_verification_tokens (token_hash, user_id, expires_at)
+		VALUES ($1, $2, $3)
+	`, hashToken(token), userID, expires)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func createPasswordResetToken(db *sql.DB, userID int64, ip string) (string, error) {
+	token, err := newToken()
+	if err != nil {
+		return "", err
+	}
+	expires := time.Now().Add(time.Hour)
+	_, err = db.Exec(`
+		INSERT INTO password_reset_tokens (token_hash, user_id, expires_at, request_ip)
+		VALUES ($1, $2, $3, NULLIF($4, ''))
+	`, hashToken(token), userID, expires, ip)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func publicBaseURL(r *http.Request) string {
+	if u := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	scheme := "https"
+	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host
+}
+
+func sendVerificationEmail(ctx context.Context, db *sql.DB, baseURL string, userID int64, toEmail, userName string) error {
+	token, err := createEmailVerificationToken(db, userID)
+	if err != nil {
+		return fmt.Errorf("create verification token: %w", err)
+	}
+	link := baseURL + "/verify-email.html?token=" + token
+	return mail.Send(ctx, toEmail, "Подтвердите ваш email — LASTOP GROUP", buildVerificationEmailHTML(userName, link))
+}
+
+func sendPasswordResetEmail(ctx context.Context, db *sql.DB, baseURL string, userID int64, toEmail, userName, ip string) error {
+	token, err := createPasswordResetToken(db, userID, ip)
+	if err != nil {
+		return fmt.Errorf("create reset token: %w", err)
+	}
+	link := baseURL + "/reset-password.html?token=" + token
+	return mail.Send(ctx, toEmail, "Восстановление пароля — LASTOP GROUP", buildPasswordResetEmailHTML(userName, link))
+}
+
+func buildVerificationEmailHTML(name, link string) string {
+	return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#F2F5F3;padding:30px;color:#1A2A22">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;padding:32px;border:1px solid #DDE8E2">
+<h2 style="margin:0 0 14px;color:#1E8A4C">Здравствуйте, ` + htmlSafe(name) + `!</h2>
+<p>Спасибо за регистрацию в LASTOP GROUP. Чтобы подтвердить email, перейдите по ссылке:</p>
+<p style="margin:24px 0"><a href="` + link + `" style="display:inline-block;padding:12px 24px;background:#1E8A4C;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Подтвердить email</a></p>
+<p style="font-size:12px;color:#5A8A6A">Ссылка действительна 24 часа. Если вы не регистрировались — просто проигнорируйте это письмо.</p>
+<p style="font-size:12px;color:#5A8A6A">Или скопируйте адрес: <a href="` + link + `" style="color:#1E8A4C">` + link + `</a></p>
+</div></body></html>`
+}
+func buildPasswordResetEmailHTML(name, link string) string {
+	return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#F2F5F3;padding:30px;color:#1A2A22">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;padding:32px;border:1px solid #DDE8E2">
+<h2 style="margin:0 0 14px;color:#1E8A4C">Восстановление пароля</h2>
+<p>Здравствуйте, ` + htmlSafe(name) + `! Кто-то (надеемся, вы) запросил восстановление пароля. Чтобы задать новый пароль, перейдите по ссылке:</p>
+<p style="margin:24px 0"><a href="` + link + `" style="display:inline-block;padding:12px 24px;background:#1E8A4C;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Сбросить пароль</a></p>
+<p style="font-size:12px;color:#5A8A6A">Ссылка действительна 1 час. Если запрос не от вас — просто проигнорируйте это письмо, пароль не изменится.</p>
+<p style="font-size:12px;color:#5A8A6A">Или скопируйте адрес: <a href="` + link + `" style="color:#1E8A4C">` + link + `</a></p>
+</div></body></html>`
+}
+func htmlSafe(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", "\"", "&quot;", "'", "&#39;")
+	return r.Replace(s)
+}
+
 func newSessionStore(db *sql.DB) *sessionStore {
 	s := &sessionStore{
 		db: db,
@@ -1513,12 +1601,17 @@ func (s *sessionStore) cleanupExpired() {
 	s.cache.mu.Unlock()
 }
 
+// mail — глобальный mailer, инициализируется в main().
+var mail mailer.Mailer
+
 func main() {
 	db, err := initDBFromEnv()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	mail = mailer.New()
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore(db)
@@ -1598,9 +1691,37 @@ func main() {
 		}
 
 		sessions.put(token, createdUser.ID)
+		go func(userID int64, toEmail, name string, baseURL string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := sendVerificationEmail(ctx, db, baseURL, userID, toEmail, name); err != nil {
+				log.Printf("[auth/register] sendVerificationEmail failed: %v", err)
+			}
+		}(createdUser.ID, createdUser.Email, createdUser.FullName, publicBaseURL(r))
 		writeJSON(w, http.StatusCreated, authResponse{Token: token, User: createdUser})
 	})
 
+	forgotPasswordLimiter := newIPRateLimiter(3, time.Hour)
+	resetPasswordLimiter := newIPRateLimiter(5, time.Hour)
+	resendVerifyLimiter := newIPRateLimiter(3, time.Hour)
+	mux.HandleFunc("/api/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "message": "Если email зарегистрирован, мы отправили на него письмо со ссылкой."})
+	})
+	mux.HandleFunc("/api/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+	})
+	mux.HandleFunc("/api/auth/verify-email", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+	})
+	mux.HandleFunc("/api/auth/resend-verification", func(w http.ResponseWriter, r *http.Request) {
+		if !resendVerifyLimiter.Allow("x") {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте через час")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+	})
+	_ = forgotPasswordLimiter
+	_ = resetPasswordLimiter
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -7700,7 +7821,29 @@ ALTER TABLE users
     ADD COLUMN IF NOT EXISTS layout_mode TEXT NOT NULL DEFAULT 'normal',
     ADD COLUMN IF NOT EXISTS compact_feed BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS terms_accepted_ip TEXT;
+    ADD COLUMN IF NOT EXISTS terms_accepted_ip TEXT,
+    ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    token_hash TEXT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_email_verification_user ON email_verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verification_expires ON email_verification_tokens(expires_at);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token_hash TEXT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    request_ip TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_expires ON password_reset_tokens(expires_at);
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
     ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
@@ -11770,7 +11913,7 @@ func validateEmail(s string) (string, error) {
 	if s == "" {
 		return "", nil
 	}
-	if _, err := mail.ParseAddress(s); err != nil {
+	if _, err := netmail.ParseAddress(s); err != nil {
 		return "", fmt.Errorf("%w: email некорректен", errValidation)
 	}
 	return s, nil
@@ -18034,7 +18177,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 }
 
 func isValidEmail(s string) bool {
-	addr, err := mail.ParseAddress(s)
+	addr, err := netmail.ParseAddress(s)
 	return err == nil && addr.Address == s
 }
 
