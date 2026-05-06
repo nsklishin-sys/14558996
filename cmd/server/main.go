@@ -1409,6 +1409,46 @@ func createPasswordResetToken(db *sql.DB, userID int64, ip string) (string, erro
 	return token, nil
 }
 
+// logAdminAction записывает действие админа в admin_audit_log.
+// Не возвращает ошибку — логирование не должно блокировать основное действие.
+func logAdminAction(db *sql.DB, adminID int64, action, entityType string, entityID int64, ip string, details map[string]any) {
+	var detailsJSON []byte
+	if details != nil {
+		if b, err := json.Marshal(details); err == nil {
+			detailsJSON = b
+		}
+	}
+	var entityIDPtr *int64
+	if entityID > 0 {
+		entityIDPtr = &entityID
+	}
+	var entityTypePtr *string
+	if entityType != "" {
+		entityTypePtr = &entityType
+	}
+	_, err := db.Exec(`
+		INSERT INTO admin_audit_log(admin_id, action, entity_type, entity_id, ip_address, details)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6)
+	`, adminID, action, entityTypePtr, entityIDPtr, ip, detailsJSON)
+	if err != nil {
+		log.Printf("[audit] не удалось записать действие %s: %v", action, err)
+	}
+}
+
+// adminAuditEntry — строка журнала для отдачи фронту.
+type adminAuditEntry struct {
+	ID         int64          `json:"id"`
+	AdminID    int64          `json:"admin_id"`
+	AdminName  string         `json:"admin_name"`
+	AdminEmail string         `json:"admin_email"`
+	Action     string         `json:"action"`
+	EntityType string         `json:"entity_type,omitempty"`
+	EntityID   int64          `json:"entity_id,omitempty"`
+	IPAddress  string         `json:"ip_address,omitempty"`
+	Details    map[string]any `json:"details,omitempty"`
+	CreatedAt  time.Time      `json:"created_at"`
+}
+
 // userStorageInfo — данные о квоте файлов юзера.
 type userStorageInfo struct {
 	UsedBytes  int64 `json:"used_bytes"`
@@ -3874,6 +3914,7 @@ func main() {
 				writeError(w, http.StatusInternalServerError, "Ошибка создания выставки")
 				return
 			}
+			logAdminAction(db, userID, "exhibition.create", "exhibition", item.ID, clientIP(r), map[string]any{"title": item.Title})
 			writeJSON(w, http.StatusCreated, map[string]any{"exhibition": item})
 		case http.MethodGet:
 			q := r.URL.Query()
@@ -3919,6 +3960,78 @@ func main() {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
+	})
+
+	mux.HandleFunc("/api/admin/audit-log", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		limit := 50
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
+		}
+		offset := 0
+		if v := r.URL.Query().Get("offset"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+				offset = n
+			}
+		}
+		action := strings.TrimSpace(r.URL.Query().Get("action"))
+		adminIDFilter := int64(0)
+		if v := r.URL.Query().Get("admin_id"); v != "" {
+			if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+				adminIDFilter = n
+			}
+		}
+		query := `
+			SELECT al.id, al.admin_id, COALESCE(u.full_name, ''), COALESCE(u.email, ''),
+			       al.action, COALESCE(al.entity_type, ''), COALESCE(al.entity_id, 0),
+			       COALESCE(al.ip_address, ''), al.details, al.created_at
+			FROM admin_audit_log al
+			LEFT JOIN users u ON u.id = al.admin_id
+			WHERE 1=1
+		`
+		args := []any{}
+		i := 1
+		if action != "" {
+			query += fmt.Sprintf(" AND al.action = $%d", i)
+			args = append(args, action)
+			i++
+		}
+		if adminIDFilter > 0 {
+			query += fmt.Sprintf(" AND al.admin_id = $%d", i)
+			args = append(args, adminIDFilter)
+			i++
+		}
+		query += fmt.Sprintf(" ORDER BY al.id DESC LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, limit, offset)
+		rows, err := db.Query(query, args...)
+		if err != nil {
+			log.Printf("[audit] list: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		entries := []adminAuditEntry{}
+		for rows.Next() {
+			var e adminAuditEntry
+			var detailsRaw []byte
+			if err := rows.Scan(&e.ID, &e.AdminID, &e.AdminName, &e.AdminEmail,
+				&e.Action, &e.EntityType, &e.EntityID, &e.IPAddress, &detailsRaw, &e.CreatedAt); err != nil {
+				continue
+			}
+			if len(detailsRaw) > 0 {
+				_ = json.Unmarshal(detailsRaw, &e.Details)
+			}
+			entries = append(entries, e)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
 	})
 
 	mux.HandleFunc("/api/exhibitions/", func(w http.ResponseWriter, r *http.Request) {
@@ -4115,6 +4228,7 @@ func main() {
 					writeError(w, http.StatusInternalServerError, "Ошибка")
 					return
 				}
+				logAdminAction(db, reviewerID, "exhibitor_application.review", "exhibitor_application", appID, clientIP(r), map[string]any{"decision": req.Action, "exhibition_id": exhibitionID})
 				writeJSON(w, http.StatusOK, map[string]any{"application": app})
 				return
 			}
@@ -4181,7 +4295,8 @@ func main() {
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
 		case http.MethodPatch:
-			if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			adminID, ok := requireAdmin(w, r, db, sessions)
+			if !ok {
 				return
 			}
 			if len(parts) != 1 {
@@ -4207,9 +4322,11 @@ func main() {
 				writeError(w, http.StatusInternalServerError, "Ошибка обновления")
 				return
 			}
+			logAdminAction(db, adminID, "exhibition.update", "exhibition", item.ID, clientIP(r), map[string]any{"title": item.Title})
 			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
 		case http.MethodDelete:
-			if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			adminID, ok := requireAdmin(w, r, db, sessions)
+			if !ok {
 				return
 			}
 			if len(parts) != 1 {
@@ -4225,6 +4342,7 @@ func main() {
 				writeError(w, http.StatusInternalServerError, "Ошибка удаления")
 				return
 			}
+			logAdminAction(db, adminID, "exhibition.delete", "exhibition", 0, clientIP(r), map[string]any{"public_id": publicID})
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -8208,6 +8326,20 @@ CREATE TABLE IF NOT EXISTS user_uploads (
 );
 CREATE INDEX IF NOT EXISTS idx_user_uploads_user ON user_uploads(user_id) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_uploads_key ON user_uploads(storage_key);
+
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id BIGINT,
+    ip_address TEXT,
+    details JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin ON admin_audit_log(admin_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created ON admin_audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_entity ON admin_audit_log(entity_type, entity_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
     ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
