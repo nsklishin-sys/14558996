@@ -369,18 +369,27 @@ body.dark-theme .sidebar-toggle {
   border-radius: 12px;
 }
 
-/* В тёмной теме — input сливается с топбаром, без резкого контраста.
-   Подсвечивается только на focus. */
+/* В тёмной теме — input сливается с топбаром (Apple Spotlight-стиль).
+   Подсвечивается лёгким фоном и зелёной рамкой только на focus. */
 [data-theme="dark"] .search-wrap input,
 [data-theme="dark"] .topbar input[type="search"],
-[data-theme="dark"] .topbar input[type="text"] {
-  background: transparent;
-  border-color: rgba(84,84,88,0.35);
+[data-theme="dark"] .topbar input[type="text"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] header input {
+  background: transparent !important;
+  border-color: rgba(84,84,88,0.35) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .search-wrap input::placeholder,
+[data-theme="dark"] .topbar input[type="search"]::placeholder,
+[data-theme="dark"] header input::placeholder {
+  color: rgba(235,235,245,0.45) !important;
 }
 
 [data-theme="dark"] .search-wrap input:focus,
 [data-theme="dark"] .topbar input[type="search"]:focus,
-[data-theme="dark"] .topbar input[type="text"]:focus {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(48,209,88,0.5);
+[data-theme="dark"] header input:focus {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(48,209,88,0.6) !important;
 }
