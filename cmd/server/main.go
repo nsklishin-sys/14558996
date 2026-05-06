@@ -50,6 +50,7 @@ type user struct {
 	LastName                  string `json:"last_name"`
 	FullName                  string `json:"full_name"`
 	Email                     string `json:"email"`
+	EmailVerified             bool   `json:"email_verified"`
 	Position                  string `json:"position,omitempty"`
 	CompanyName               string `json:"company_name,omitempty"`
 	Bio                       string `json:"bio,omitempty"`
@@ -9329,17 +9330,19 @@ func hasActiveSession(db *sql.DB, userID int64) bool {
 
 func getUserByID(db *sql.DB, userID int64) (user, error) {
 	var u user
+	var verifiedAt sql.NullTime
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
 			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE),
-			COALESCE(analytics_visible_in_viewers, TRUE)
+			COALESCE(analytics_visible_in_viewers, TRUE), email_verified_at
 		FROM users
 		WHERE id = $1 AND is_deleted = FALSE
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin, &u.AnalyticsVisibleInViewers)
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin, &u.AnalyticsVisibleInViewers, &verifiedAt)
 	if err != nil {
 		return user{}, err
 	}
+	u.EmailVerified = verifiedAt.Valid
 
 	return u, nil
 }
