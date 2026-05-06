@@ -1237,6 +1237,13 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="twitter:card" content="summary_large_image">
 <script src="/assets/active-context.js"></script>
 <script src="/assets/ws.js" defer></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
 <style>
 @view-transition { navigation: auto; }
 ::view-transition-old(root),
