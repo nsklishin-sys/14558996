@@ -37,6 +37,7 @@ import (
 	"nhooyr.io/websocket"
 
 	"greeting-site/internal/mailer"
+	"greeting-site/internal/storage"
 )
 
 type greetingResponse struct {
@@ -1605,6 +1606,9 @@ func (s *sessionStore) cleanupExpired() {
 // mail — глобальный mailer, инициализируется в main().
 var mail mailer.Mailer
 
+// store — глобальное хранилище файлов, инициализируется в main().
+var store storage.Storage
+
 func main() {
 	db, err := initDBFromEnv()
 	if err != nil {
@@ -1613,6 +1617,7 @@ func main() {
 	defer db.Close()
 
 	mail = mailer.New()
+	store = storage.New()
 
 	mux := http.NewServeMux()
 	sessions := newSessionStore(db)
@@ -2653,32 +2658,9 @@ func main() {
 		}
 		randName := hex.EncodeToString(randBytes) + ext
 
-		// Структура: /data/uploads/YYYY/MM/<random>.<ext>
+		// Структура ключа: YYYY/MM/<random>.<ext>
 		now := time.Now()
-		yearMonth := fmt.Sprintf("%04d/%02d", now.Year(), int(now.Month()))
-		dir := filepath.Join("/data/uploads", yearMonth)
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			log.Printf("upload: mkdir %s failed: %v", dir, err)
-			writeError(w, http.StatusInternalServerError, "Не удалось создать директорию")
-			return
-		}
-		fullPath := filepath.Join(dir, randName)
-
-		out, err := os.Create(fullPath)
-		if err != nil {
-			log.Printf("upload: create %s failed: %v", fullPath, err)
-			writeError(w, http.StatusInternalServerError, "Не удалось создать файл")
-			return
-		}
-		defer out.Close()
-
-		written, err := io.Copy(out, file)
-		if err != nil {
-			log.Printf("upload: copy failed: %v", err)
-			_ = os.Remove(fullPath)
-			writeError(w, http.StatusInternalServerError, "Не удалось сохранить файл")
-			return
-		}
+		key := fmt.Sprintf("%04d/%02d/%s", now.Year(), int(now.Month()), randName)
 
 		// Определяем MIME-type из заголовков формы (или fallback)
 		mimeType := header.Header.Get("Content-Type")
@@ -2686,11 +2668,15 @@ func main() {
 			mimeType = "application/octet-stream"
 		}
 
-		// URL для клиента
-		url := fmt.Sprintf("/uploads/%s/%s", yearMonth, randName)
+		publicURL, written, err := store.Put(r.Context(), key, file, mimeType)
+		if err != nil {
+			log.Printf("upload: storage.Put failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить файл")
+			return
+		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
-			"url":  url,
+			"url":  publicURL,
 			"name": header.Filename,
 			"size": written,
 			"type": mimeType,
@@ -7709,7 +7695,9 @@ func main() {
 	})
 
 	// Раздача загруженных файлов
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/data/uploads"))))
+	mux.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
+		store.Serve(w, r)
+	})
 
 	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
 
