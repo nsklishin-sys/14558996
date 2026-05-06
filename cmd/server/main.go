@@ -1729,24 +1729,251 @@ func main() {
 	forgotPasswordLimiter := newIPRateLimiter(3, time.Hour)
 	resetPasswordLimiter := newIPRateLimiter(5, time.Hour)
 	resendVerifyLimiter := newIPRateLimiter(3, time.Hour)
+
 	mux.HandleFunc("/api/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if !forgotPasswordLimiter.Allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте через час")
+			return
+		}
+		var req struct {
+			Email string `json:"email"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		email := strings.ToLower(strings.TrimSpace(req.Email))
+		// Anti-enumeration: всегда отвечаем 200 одинаково, даже если юзера нет.
+		// Реальная отправка — только если такой юзер существует.
+		if email != "" && strings.Contains(email, "@") {
+			var userID int64
+			var name string
+			err := db.QueryRow(`SELECT id, COALESCE(NULLIF(full_name, ''), email) FROM users WHERE LOWER(email) = $1 AND is_deleted = FALSE`, email).Scan(&userID, &name)
+			if err == nil {
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer cancel()
+					if err := sendPasswordResetEmail(ctx, db, publicBaseURL(r), userID, email, name, clientIP(r)); err != nil {
+						log.Printf("[auth/forgot] sendPasswordResetEmail failed: %v", err)
+					}
+				}()
+			} else if !errors.Is(err, sql.ErrNoRows) {
+				log.Printf("[auth/forgot] lookup error: %v", err)
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "message": "Если email зарегистрирован, мы отправили на него письмо со ссылкой."})
 	})
+
 	mux.HandleFunc("/api/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
-	})
-	mux.HandleFunc("/api/auth/verify-email", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
-	})
-	mux.HandleFunc("/api/auth/resend-verification", func(w http.ResponseWriter, r *http.Request) {
-		if !resendVerifyLimiter.Allow("x") {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if !resetPasswordLimiter.Allow(clientIP(r)) {
 			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте через час")
+			return
+		}
+		var req struct {
+			Token       string `json:"token"`
+			NewPassword string `json:"new_password"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		req.Token = strings.TrimSpace(req.Token)
+		if req.Token == "" {
+			writeError(w, http.StatusBadRequest, "Токен обязателен")
+			return
+		}
+		if len(req.NewPassword) < 8 {
+			writeError(w, http.StatusBadRequest, "Пароль должен быть не короче 8 символов")
+			return
+		}
+		// Поиск токена.
+		th := hashToken(req.Token)
+		var userID int64
+		var expiresAt time.Time
+		var usedAt sql.NullTime
+		err := db.QueryRow(`SELECT user_id, expires_at, used_at FROM password_reset_tokens WHERE token_hash = $1`, th).Scan(&userID, &expiresAt, &usedAt)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusBadRequest, "Ссылка недействительна")
+				return
+			}
+			log.Printf("[auth/reset] lookup token: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if usedAt.Valid {
+			writeError(w, http.StatusBadRequest, "Ссылка уже использована")
+			return
+		}
+		if time.Now().After(expiresAt) {
+			writeError(w, http.StatusBadRequest, "Срок действия ссылки истёк")
+			return
+		}
+		// Транзакция: меняем пароль, помечаем токен использованным, инвалидируем все сессии юзера.
+		newHash, hashErr := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+		if hashErr != nil {
+			log.Printf("[auth/reset] bcrypt: %v", hashErr)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		tx, txErr := db.Begin()
+		if txErr != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer tx.Rollback()
+		if _, e := tx.Exec(`UPDATE users SET password_hash = $1, last_password_change_at = NOW() WHERE id = $2`, string(newHash), userID); e != nil {
+			log.Printf("[auth/reset] update password: %v", e)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if _, e := tx.Exec(`UPDATE password_reset_tokens SET used_at = NOW() WHERE token_hash = $1`, th); e != nil {
+			log.Printf("[auth/reset] mark token used: %v", e)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if cerr := tx.Commit(); cerr != nil {
+			log.Printf("[auth/reset] commit: %v", cerr)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		// Инвалидируем все старые сессии и создаём новую (auto-login).
+		sessions.invalidateUser(userID)
+		newTok, terr := newToken()
+		if terr != nil {
+			log.Printf("[auth/reset] newToken: %v", terr)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		sessions.put(newTok, userID)
+		u, gErr := getUserByID(db, userID)
+		if gErr != nil {
+			log.Printf("[auth/reset] getUserByID: %v", gErr)
+			// Пароль сменили — отдадим хотя бы токен без user, фронт перенесёт на login
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "token": newTok})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "token": newTok, "user": u})
+	})
+
+	mux.HandleFunc("/api/auth/verify-email", func(w http.ResponseWriter, r *http.Request) {
+		// Поддерживаем GET (?token=) и POST {token}.
+		token := strings.TrimSpace(r.URL.Query().Get("token"))
+		if token == "" && r.Method == http.MethodPost {
+			var req struct {
+				Token string `json:"token"`
+			}
+			if err := decodeJSON(w, r, &req); err == nil {
+				token = strings.TrimSpace(req.Token)
+			}
+		}
+		if token == "" {
+			writeError(w, http.StatusBadRequest, "Токен обязателен")
+			return
+		}
+		th := hashToken(token)
+		var userID int64
+		var expiresAt time.Time
+		var usedAt sql.NullTime
+		err := db.QueryRow(`SELECT user_id, expires_at, used_at FROM email_verification_tokens WHERE token_hash = $1`, th).Scan(&userID, &expiresAt, &usedAt)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusBadRequest, "Ссылка недействительна")
+				return
+			}
+			log.Printf("[auth/verify] lookup: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		// Идемпотентность: если уже подтверждали — отвечаем 200 already_verified.
+		var alreadyVerified bool
+		_ = db.QueryRow(`SELECT email_verified_at IS NOT NULL FROM users WHERE id = $1`, userID).Scan(&alreadyVerified)
+		if alreadyVerified {
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "already_verified": true})
+			return
+		}
+		if usedAt.Valid {
+			// Токен использован, но email почему-то не отмечен — крайне маловероятно;
+			// просто скажем что уже подтверждён.
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "already_verified": true})
+			return
+		}
+		if time.Now().After(expiresAt) {
+			writeError(w, http.StatusBadRequest, "Срок действия ссылки истёк")
+			return
+		}
+		tx, txErr := db.Begin()
+		if txErr != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer tx.Rollback()
+		if _, e := tx.Exec(`UPDATE users SET email_verified_at = NOW() WHERE id = $1 AND email_verified_at IS NULL`, userID); e != nil {
+			log.Printf("[auth/verify] update user: %v", e)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if _, e := tx.Exec(`UPDATE email_verification_tokens SET used_at = NOW() WHERE token_hash = $1`, th); e != nil {
+			log.Printf("[auth/verify] mark token used: %v", e)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if cerr := tx.Commit(); cerr != nil {
+			log.Printf("[auth/verify] commit: %v", cerr)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
-	_ = forgotPasswordLimiter
-	_ = resetPasswordLimiter
+
+	mux.HandleFunc("/api/auth/resend-verification", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		// Лимит — на конкретного юзера, а не на IP (логично для авторизованной операции).
+		if !resendVerifyLimiter.Allow(strconv.FormatInt(userID, 10)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте через час")
+			return
+		}
+		// Если уже подтверждено — сообщаем, не отправляем повторно.
+		var verifiedAt sql.NullTime
+		var email, name string
+		err := db.QueryRow(`SELECT email_verified_at, email, COALESCE(NULLIF(full_name, ''), email) FROM users WHERE id = $1 AND is_deleted = FALSE`, userID).Scan(&verifiedAt, &email, &name)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			log.Printf("[auth/resend] lookup: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if verifiedAt.Valid {
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "already_verified": true})
+			return
+		}
+		go func(uid int64, toEmail, userName, baseURL string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := sendVerificationEmail(ctx, db, baseURL, uid, toEmail, userName); err != nil {
+				log.Printf("[auth/resend] sendVerificationEmail: %v", err)
+			}
+		}(userID, email, name, publicBaseURL(r))
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+	})
 	mux.HandleFunc("/api/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -2630,7 +2857,7 @@ func main() {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
-		_, ok := authenticatedUserID(w, r, sessions)
+		userID, ok := authenticatedUserID(w, r, sessions)
 		if !ok {
 			return
 		}
@@ -2688,7 +2915,6 @@ func main() {
 		}
 
 		// Проверяем квоту юзера ДО загрузки. Используем header.Size как ожидаемый размер.
-		userID, _ := authenticatedUserID(w, r, sessions)
 		expectedSize := header.Size
 		info, ierr := getUserStorage(db, userID)
 		if ierr == nil {
