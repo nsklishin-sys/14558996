@@ -1536,15 +1536,23 @@ func newSessionStore(db *sql.DB) *sessionStore {
 }
 
 func (s *sessionStore) put(token string, userID int64) {
+	s.putWithMeta(token, userID, "", "")
+}
+
+func (s *sessionStore) putWithMeta(token string, userID int64, userAgent, ipAddress string) {
 	th := hashToken(token)
 	expires := time.Now().Add(sessionLifetime)
-
+	if len(userAgent) > 500 {
+		userAgent = userAgent[:500]
+	}
 	_, err := s.db.Exec(`
-		INSERT INTO sessions (token_hash, user_id, expires_at, last_seen_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO sessions (token_hash, user_id, expires_at, last_seen_at, user_agent, ip_address)
+		VALUES ($1, $2, $3, NOW(), NULLIF($4, ''), NULLIF($5, ''))
 		ON CONFLICT (token_hash) DO UPDATE
-		SET last_seen_at = NOW(), expires_at = EXCLUDED.expires_at
-	`, th, userID, expires)
+		SET last_seen_at = NOW(), expires_at = EXCLUDED.expires_at,
+		    user_agent = COALESCE(EXCLUDED.user_agent, sessions.user_agent),
+		    ip_address = COALESCE(EXCLUDED.ip_address, sessions.ip_address)
+	`, th, userID, expires, userAgent, ipAddress)
 	if err != nil {
 		log.Printf("[sessions] put failed: %v", err)
 	}
@@ -1776,7 +1784,7 @@ func main() {
 			return
 		}
 
-		sessions.put(token, createdUser.ID)
+		sessions.putWithMeta(token, createdUser.ID, r.UserAgent(), clientIP(r))
 		go func(userID int64, toEmail, name string, baseURL string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
@@ -2090,7 +2098,7 @@ func main() {
 			return
 		}
 
-		sessions.put(token, authUser.ID)
+		sessions.putWithMeta(token, authUser.ID, r.UserAgent(), clientIP(r))
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
 	})
 
@@ -3035,6 +3043,93 @@ func main() {
 			"size": written,
 			"type": mimeType,
 		})
+	})
+
+	mux.HandleFunc("/api/me/sessions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		currentTokenHash := hashToken(tokenFromRequest(r))
+		rows, err := db.Query(`
+			SELECT token_hash, COALESCE(user_agent, ''), COALESCE(ip_address, ''),
+			       created_at, last_seen_at, expires_at
+			FROM sessions
+			WHERE user_id = $1 AND expires_at > NOW()
+			ORDER BY last_seen_at DESC
+			LIMIT 50
+		`, userID)
+		if err != nil {
+			log.Printf("[sessions] list: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type sessionInfo struct {
+			ID         string    `json:"id"`
+			UserAgent  string    `json:"user_agent,omitempty"`
+			IPAddress  string    `json:"ip_address,omitempty"`
+			CreatedAt  time.Time `json:"created_at"`
+			LastSeenAt time.Time `json:"last_seen_at"`
+			ExpiresAt  time.Time `json:"expires_at"`
+			IsCurrent  bool      `json:"is_current"`
+		}
+		list := []sessionInfo{}
+		for rows.Next() {
+			var s sessionInfo
+			var th string
+			if err := rows.Scan(&th, &s.UserAgent, &s.IPAddress, &s.CreatedAt, &s.LastSeenAt, &s.ExpiresAt); err != nil {
+				continue
+			}
+			s.ID = th
+			s.IsCurrent = th == currentTokenHash
+			list = append(list, s)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"sessions": list})
+	})
+
+	mux.HandleFunc("/api/me/sessions/revoke", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			TokenHash string `json:"token_hash"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		req.TokenHash = strings.TrimSpace(req.TokenHash)
+		if req.TokenHash == "" {
+			writeError(w, http.StatusBadRequest, "token_hash обязателен")
+			return
+		}
+		if hashToken(tokenFromRequest(r)) == req.TokenHash {
+			writeError(w, http.StatusBadRequest, "Нельзя отозвать текущую сессию. Используйте «Выход».")
+			return
+		}
+		res, err := db.Exec(`DELETE FROM sessions WHERE token_hash = $1 AND user_id = $2`, req.TokenHash, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			writeError(w, http.StatusNotFound, "Сессия не найдена")
+			return
+		}
+		sessions.cache.mu.Lock()
+		delete(sessions.cache.items, req.TokenHash)
+		sessions.cache.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
 
 	mux.HandleFunc("/api/me/storage", func(w http.ResponseWriter, r *http.Request) {
@@ -8396,6 +8491,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 days')
 );
+
+ALTER TABLE sessions
+    ADD COLUMN IF NOT EXISTS user_agent TEXT,
+    ADD COLUMN IF NOT EXISTS ip_address TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);

@@ -622,6 +622,12 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
         </div>
 
         <div class="panel-section">
+          <div class="ps-label">Активные сессии</div>
+          <div id="sessionsList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="field-hint" style="margin-top:8px">Здесь видно все устройства, на которых вы вошли. Если видите подозрительную сессию — завершите её.</div>
+        </div>
+
+        <div class="panel-section">
           <div class="ps-label">Хранилище файлов</div>
           <div id="storageBlock" style="background:var(--gp);border:1px solid var(--bdr);border-radius:12px;padding:14px 16px">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-wrap:wrap;gap:6px">
@@ -998,6 +1004,7 @@ function populateUI(){
   document.getElementById('emailField').value=currentUser.email||'';
   renderEmailVerifyStatus();
   loadStorageInfo();
+  loadSessions();
   document.getElementById('handleField').value=currentUser.handle||'';
   updateWebsiteField();
   pendingAvatarURL=currentUser.avatar_url||'';
@@ -1046,6 +1053,96 @@ function markThemeCard(theme){
   document.querySelectorAll('.theme-card').forEach((c)=>{
     c.classList.toggle('selected', c.dataset.themeCard===active);
   });
+}
+
+async function loadSessions(){
+  try{
+    const r = await fetch(API+'/me/sessions', {headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok) return;
+    const d = await r.json();
+    renderSessions(d.sessions || []);
+  }catch{}
+}
+
+function parseUserAgent(ua){
+  if(!ua) return {device:'Неизвестное устройство', browser:'', icon:'desktop'};
+  let device = 'Компьютер', icon = 'desktop', browser = '';
+  if(/iPhone|iPad/.test(ua)){ device = /iPad/.test(ua)?'iPad':'iPhone'; icon='mobile'; }
+  else if(/Android/.test(ua)){ device = 'Android'; icon='mobile'; }
+  else if(/Mac OS X/.test(ua)){ device = 'Mac'; }
+  else if(/Windows/.test(ua)){ device = 'Windows'; }
+  else if(/Linux/.test(ua)){ device = 'Linux'; }
+  if(/Firefox\//.test(ua)) browser = 'Firefox';
+  else if(/Edg\//.test(ua)) browser = 'Edge';
+  else if(/Chrome\//.test(ua)) browser = 'Chrome';
+  else if(/Safari\//.test(ua)) browser = 'Safari';
+  return {device, browser, icon};
+}
+
+function fmtSessionTime(iso){
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  if(diffMin < 1) return 'только что';
+  if(diffMin < 60) return diffMin + ' мин назад';
+  const diffH = Math.floor(diffMin / 60);
+  if(diffH < 24) return diffH + ' ч назад';
+  const diffD = Math.floor(diffH / 24);
+  if(diffD < 7) return diffD + ' дн назад';
+  return d.toLocaleDateString('ru-RU', {day:'numeric', month:'short', year:'numeric'});
+}
+
+function renderSessions(list){
+  const root = document.getElementById('sessionsList');
+  if(!root) return;
+  if(!list.length){
+    root.innerHTML = '<div style="font-size:12px;color:var(--gmt)">Активных сессий не найдено</div>';
+    return;
+  }
+  root.innerHTML = list.map(s => {
+    const ua = parseUserAgent(s.user_agent);
+    const iconSVG = ua.icon === 'mobile'
+      ? '<rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>'
+      : '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>';
+    const subParts = [];
+    if(ua.browser) subParts.push(ua.browser);
+    if(s.ip_address) subParts.push(s.ip_address);
+    subParts.push(fmtSessionTime(s.last_seen_at));
+    const subText = subParts.join(' · ');
+    const cur = s.is_current
+      ? '<span style="font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.05em">Текущая</span>'
+      : `<button onclick="revokeSession('${s.id}')" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--bdr);background:#fff;color:var(--red);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">Завершить</button>`;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:10px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gmt)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${iconSVG}</svg>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--t)">${ua.device}</div>
+          <div style="font-size:11px;color:var(--gmt);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subText}</div>
+        </div>
+        ${cur}
+      </div>
+    `;
+  }).join('');
+}
+
+async function revokeSession(tokenHash){
+  if(!confirm('Завершить эту сессию? Устройство выйдет из аккаунта при следующем запросе.')) return;
+  try{
+    const r = await fetch(API+'/me/sessions/revoke', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', Authorization:'Bearer '+tk()},
+      body: JSON.stringify({token_hash: tokenHash})
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){
+      showToast(d.error || 'Не удалось завершить сессию', 'error');
+      return;
+    }
+    showToast('Сессия завершена');
+    loadSessions();
+  }catch{
+    showToast('Ошибка соединения', 'error');
+  }
 }
 
 async function loadStorageInfo(){
