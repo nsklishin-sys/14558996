@@ -1575,7 +1575,7 @@ func main() {
 			return
 		}
 
-		createdUser, err := createUser(db, req)
+		createdUser, err := createUser(db, req, clientIP(r))
 		if err != nil {
 			if errors.Is(err, errValidation) {
 				writeError(w, http.StatusBadRequest, err.Error())
@@ -7698,7 +7698,9 @@ ALTER TABLE users
     ADD COLUMN IF NOT EXISTS date_format TEXT NOT NULL DEFAULT 'DD.MM.YYYY',
     ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'light',
     ADD COLUMN IF NOT EXISTS layout_mode TEXT NOT NULL DEFAULT 'normal',
-    ADD COLUMN IF NOT EXISTS compact_feed BOOLEAN NOT NULL DEFAULT FALSE;
+    ADD COLUMN IF NOT EXISTS compact_feed BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS terms_accepted_ip TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
     ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
@@ -8927,7 +8929,7 @@ var (
 	}
 )
 
-func createUser(db *sql.DB, req registerRequest) (user, error) {
+func createUser(db *sql.DB, req registerRequest, clientIPAddr string) (user, error) {
 	if strings.TrimSpace(req.FirstName) == "" {
 		return user{}, fmt.Errorf("%w: имя обязательно", errValidation)
 	}
@@ -8963,12 +8965,12 @@ func createUser(db *sql.DB, req registerRequest) (user, error) {
 
 		var created user
 		err = db.QueryRow(`
-			INSERT INTO users(public_id, first_name, last_name, full_name, email, password_hash)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO users(public_id, first_name, last_name, full_name, email, password_hash, terms_accepted_at, terms_accepted_ip)
+			VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULLIF($7, ''))
 			RETURNING id, public_id, first_name, last_name, full_name, email,
 				COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
 				COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')
-		`, publicID, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash)).
+		`, publicID, strings.TrimSpace(req.FirstName), strings.TrimSpace(req.LastName), fullName, email, string(hash), clientIPAddr).
 			Scan(&created.ID, &created.PublicID, &created.FirstName, &created.LastName, &created.FullName, &created.Email, &created.Position, &created.CompanyName, &created.Bio, &created.Phone, &created.Location, &created.City, &created.AvatarURL, &created.Handle)
 		if err == nil {
 			return created, nil
