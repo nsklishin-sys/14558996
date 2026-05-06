@@ -1235,9 +1235,11 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta property="og:image" content="/assets/og-default.png">
 <meta property="og:locale" content="ru_RU">
 <meta name="twitter:card" content="summary_large_image">
+<script>window.LASTOP_YA_METRIKA_ID=__YA_METRIKA_ID__;</script>
 <script src="/assets/active-context.js"></script>
 <script src="/assets/ws.js" defer></script>
 <script src="/assets/cookie-banner.js" defer></script>
+<script src="/assets/yandex-metrica.js" defer></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
@@ -19312,6 +19314,28 @@ func injectHTML(next http.Handler) http.Handler {
 	})
 }
 
+// renderHTMLInject возвращает htmlInject с подставленным counter ID Я.Метрики.
+// Если YA_METRIKA_ID не задан в env — подставляется null, и Метрика не активируется.
+func renderHTMLInject() string {
+	id := strings.TrimSpace(os.Getenv("YA_METRIKA_ID"))
+	literal := "null"
+	if id != "" {
+		clean := ""
+		for _, c := range id {
+			if c >= '0' && c <= '9' {
+				clean += string(c)
+			}
+		}
+		if clean != "" {
+			literal = clean
+		}
+	}
+	return strings.ReplaceAll(htmlInject, "__YA_METRIKA_ID__", literal)
+}
+
+// inj — закешированный результат renderHTMLInject(), вычисляется один раз при первом обращении.
+var inj = renderHTMLInject()
+
 // htmlInjectWriter буферизует ответ, чтобы мы могли решить, HTML это или нет,
 // и при необходимости вставить htmlInject перед </head>.
 type htmlInjectWriter struct {
@@ -19376,9 +19400,9 @@ func (w *htmlInjectWriter) flush() {
 	}
 
 	var out bytes.Buffer
-	out.Grow(len(body) + len(htmlInject))
+	out.Grow(len(body) + len(inj))
 	out.Write(body[:idx])
-	out.WriteString(htmlInject)
+	out.WriteString(inj)
 	out.Write(body[idx:])
 
 	w.ResponseWriter.Header().Del("Content-Length")
