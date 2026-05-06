@@ -580,6 +580,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
           <div class="field-row">
             <label class="field-label">Email</label>
             <input class="field-input" id="emailField" type="email" placeholder="email@company.com">
+            <div id="emailVerifyStatus" style="display:none;margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5"></div>
             <div class="field-hint">Используется для входа и уведомлений</div>
           </div>
         </div>
@@ -981,6 +982,7 @@ function populateUI(){
   document.getElementById('phone').value=currentUser.phone||'';
   document.getElementById('city').value=currentUser.location||currentUser.city||'';
   document.getElementById('emailField').value=currentUser.email||'';
+  renderEmailVerifyStatus();
   document.getElementById('handleField').value=currentUser.handle||'';
   updateWebsiteField();
   pendingAvatarURL=currentUser.avatar_url||'';
@@ -1029,6 +1031,69 @@ function markThemeCard(theme){
   document.querySelectorAll('.theme-card').forEach((c)=>{
     c.classList.toggle('selected', c.dataset.themeCard===active);
   });
+}
+
+function renderEmailVerifyStatus(){
+  const box = document.getElementById('emailVerifyStatus');
+  if(!box) return;
+  if(currentUser.email_verified){
+    box.style.display = 'flex';
+    box.style.alignItems = 'center';
+    box.style.gap = '8px';
+    box.style.background = 'var(--gl)';
+    box.style.border = '1px solid var(--gb)';
+    box.style.color = 'var(--g)';
+    box.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>'
+      + '<span style="font-weight:600">Email подтверждён</span>';
+  } else {
+    box.style.display = 'flex';
+    box.style.alignItems = 'center';
+    box.style.gap = '10px';
+    box.style.flexWrap = 'wrap';
+    box.style.background = '#FFF7E6';
+    box.style.border = '1px solid #F5D27A';
+    box.style.color = '#7A5300';
+    box.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>'
+      + '<span style="font-weight:600;flex:1;min-width:140px">Email не подтверждён</span>'
+      + '<button type="button" id="resendVerifyBtn" onclick="resendVerifyEmail()" style="padding:6px 12px;border-radius:8px;border:1.5px solid #F5D27A;background:#fff;color:#7A5300;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Отправить повторно</button>';
+  }
+}
+
+async function resendVerifyEmail(){
+  const btn = document.getElementById('resendVerifyBtn');
+  if(!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Отправка…';
+  try{
+    const r = await fetch(API+'/auth/resend-verification', {
+      method:'POST',
+      headers:{Authorization:'Bearer '+tk()}
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){
+      btn.disabled = false;
+      btn.textContent = 'Отправить повторно';
+      showToast(d.error || 'Не удалось отправить письмо', 'error');
+      return;
+    }
+    if(d.already_verified){
+      // Email подтверждён за время сессии — обновим UI
+      currentUser.email_verified = true;
+      renderEmailVerifyStatus();
+      showToast('Email уже подтверждён');
+      return;
+    }
+    btn.textContent = '✓ Письмо отправлено';
+    showToast('Письмо отправлено. Проверьте почту.');
+    setTimeout(()=>{
+      const b = document.getElementById('resendVerifyBtn');
+      if(b){ b.disabled=false; b.textContent='Отправить повторно'; }
+    }, 60000);
+  }catch{
+    btn.disabled = false;
+    btn.textContent = 'Отправить повторно';
+    showToast('Ошибка соединения', 'error');
+  }
 }
 
 function selectTheme(card, theme){
