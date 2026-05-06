@@ -41,6 +41,7 @@ import (
 	"greeting-site/internal/captcha"
 	"greeting-site/internal/errtrack"
 	"greeting-site/internal/mailer"
+	"greeting-site/internal/metrics"
 	"greeting-site/internal/storage"
 )
 
@@ -1686,6 +1687,9 @@ var cap captcha.Captcha
 
 // errs — глобальный трекер ошибок, инициализируется в main().
 var errs errtrack.Tracker
+
+// metricsReg — глобальный реестр метрик.
+var metricsReg = metrics.New()
 
 func main() {
 	// Структурированное логирование: переключаем глобальный log на slog (JSON или text).
@@ -4123,6 +4127,17 @@ func main() {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
+	})
+
+	mux.HandleFunc("/api/admin/metrics", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
 	})
 
 	mux.HandleFunc("/api/admin/audit-log", func(w http.ResponseWriter, r *http.Request) {
@@ -18879,6 +18894,7 @@ func recoverPanic(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
+				metricsReg.RecordPanic()
 				// Не падаем на упавшем WebSocket-апгрейде или при Hijacked-соединении
 				stack := debug.Stack()
 				log.Printf("[panic] %v %s %s\n%s", rec, r.Method, r.URL.Path, string(stack))
@@ -19206,7 +19222,9 @@ func accessLog(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		log.Printf("%s %s status=%d duration=%s ip=%s", r.Method, r.URL.Path, rec.status, time.Since(start), clientIP(r))
+		dur := time.Since(start)
+		metricsReg.RecordRequest(r.URL.Path, rec.status, dur)
+		log.Printf("%s %s status=%d duration=%s ip=%s", r.Method, r.URL.Path, rec.status, dur, clientIP(r))
 	})
 }
 
