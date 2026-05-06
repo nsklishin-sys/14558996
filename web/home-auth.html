@@ -31,7 +31,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   display:grid;
   grid-template-columns:240px 1fr 300px;
   grid-template-rows:56px 1fr;
-  grid-template-areas:"logo topbar profilebar""nav main right";
+  grid-template-areas:"logo topbar topbar""nav main right";
   height:100vh;
   height:100dvh;
   gap:10px;padding:10px
@@ -68,7 +68,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .tp-arrow{width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s}
 
 /* ═══ ДРОПДАУН ПРОФИЛЯ ═══ */
-.profile-dd-wrap{grid-area:profilebar;position:relative;display:flex;align-items:center;justify-content:flex-end;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:0 12px;box-shadow:var(--sh);min-width:0}
+.profile-dd-wrap{position:relative;flex:0 0 auto;display:flex;justify-content:flex-end}
 .profile-dd{
   position:absolute;top:calc(100% + 8px);right:0;
   width:280px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);
@@ -414,7 +414,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
-@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right,.profile-dd-wrap{display:none}.search-wrap{max-width:100%}}
+@media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}.search-wrap{max-width:100%}}
 @media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}}
 @media (min-width:1921px) and (min-height:1081px){html{zoom:1.18}.shell{grid-template-columns:250px 1fr 340px;gap:12px;padding:12px;height:calc(100vh / 1.18)}.nav{padding:14px 12px 12px}}
 
@@ -437,60 +437,59 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     <span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
     <input type="search" id="searchInput" placeholder="Поиск пользователей, компаний, форума…" autocomplete="off">
   </div>
-</header>
-
-<div class="profile-dd-wrap">
-  <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
-    <div class="tp-av" id="topbarAv">?</div>
-    <div class="tp-info">
-      <span class="tp-name" id="topbarName">Загрузка…</span>
-      <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+  <div class="profile-dd-wrap">
+    <div class="topbar-profile" id="topbarProfile" onclick="toggleProfileDD(event)">
+      <div class="tp-av" id="topbarAv">?</div>
+      <div class="tp-info">
+        <span class="tp-name" id="topbarName">Загрузка…</span>
+        <span class="tp-role" id="topbarRole">Участник LASTOP</span>
+      </div>
+      <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <svg class="tp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-  </div>
 
-  <div class="profile-dd" id="profileDD">
-    <div class="pdd-head">
-      <div class="pdd-av" id="pddAv">?</div>
-      <div class="pdd-info">
-        <div class="pdd-name" id="pddName">Загрузка…</div>
-        <div class="pdd-role" id="pddRole">Участник LASTOP</div>
+    <div class="profile-dd" id="profileDD">
+      <div class="pdd-head">
+        <div class="pdd-av" id="pddAv">?</div>
+        <div class="pdd-info">
+          <div class="pdd-name" id="pddName">Загрузка…</div>
+          <div class="pdd-role" id="pddRole">Участник LASTOP</div>
+        </div>
+      </div>
+      <a href="/profile.html" class="pdd-view">Открыть профиль</a>
+      <div class="pdd-body">
+        <a href="/friends.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="pdd-item-label">Друзья</span>
+          <span class="pdd-count" id="pddFriends">24</span>
+        </a>
+        <a class="pdd-item" href="/saved.html">
+          <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          Сохранённое
+        </a>
+        <a href="/my-company.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span class="pdd-item-label">Моя компания</span>
+        </a>
+        <a href="/communities.html?filter=my" class="pdd-item">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="pdd-item-label">Мои сообщества</span>
+          <span class="pdd-count" id="pddComm">3</span>
+        </a>
+        <a href="/analytics.html" class="pdd-item">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="pdd-item-label">Аналитика</span>
+        </a>
+
+        <div id="profileContextSlot"></div>
+
+        <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="pdd-item-label">Выход</span>
+        </a>
       </div>
     </div>
-    <a href="/profile.html" class="pdd-view">Открыть профиль</a>
-    <div class="pdd-body">
-      <a href="/friends.html" class="pdd-item">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span class="pdd-item-label">Друзья</span>
-        <span class="pdd-count" id="pddFriends">24</span>
-      </a>
-      <a class="pdd-item" href="/saved.html">
-        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        Сохранённое
-      </a>
-      <a href="/my-company.html" class="pdd-item">
-        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-        <span class="pdd-item-label">Моя компания</span>
-      </a>
-      <a href="/communities.html?filter=my" class="pdd-item">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        <span class="pdd-item-label">Мои сообщества</span>
-        <span class="pdd-count" id="pddComm">3</span>
-      </a>
-      <a href="/analytics.html" class="pdd-item">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        <span class="pdd-item-label">Аналитика</span>
-      </a>
-
-      <div id="profileContextSlot"></div>
-
-      <a href="javascript:void(0)" class="pdd-item logout" onclick="logout()">
-        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        <span class="pdd-item-label">Выход</span>
-      </a>
-    </div>
   </div>
-</div>
+</header>
 
 <!-- ── NAV — группы как на скриншоте ── -->
 <nav class="nav">
