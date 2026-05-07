@@ -660,6 +660,70 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </div>
 
 </div><!-- /shell -->
+<div class="modal-bg" id="modalBgEvent" onclick="if(event.target===this)closeEventModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="eventModalTitle">Редактировать мероприятие</span>
+      <button class="modal-close" onclick="closeEventModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div><label class="mf-label">Название *</label><input class="mf-input" id="mTitle" placeholder="Вебинар по таможенному оформлению…"></div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Тип</label>
+          <select class="mf-select" id="mType">
+            <option value="webinar">Вебинар</option>
+            <option value="conference">Конференция</option>
+            <option value="workshop">Воркшоп</option>
+            <option value="networking">Нетворкинг</option>
+            <option value="roundtable">Круглый стол</option>
+          </select></div>
+        <div><label class="mf-label">Формат</label>
+          <select class="mf-select" id="mFormat">
+            <option value="online">Онлайн</option>
+            <option value="offline">Офлайн</option>
+            <option value="hybrid">Гибрид</option>
+          </select></div>
+      </div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Дата *</label><input class="mf-input" id="mDate" type="date"></div>
+        <div><label class="mf-label">Город (для офлайн)</label><input class="mf-input" id="mCity" placeholder="Москва"></div>
+      </div>
+      <div><label class="mf-label">Адрес (для офлайн)</label><input class="mf-input" id="mAddress" placeholder="ул. Тверская, 5"></div>
+      <div class="mf-row3">
+        <div><label class="mf-label">Начало</label><input class="mf-input" id="mTimeStart" type="time" value="10:00"></div>
+        <div><label class="mf-label">Конец</label><input class="mf-input" id="mTimeEnd" type="time" value="12:00"></div>
+        <div><label class="mf-label">Стоимость (₽)</label><input class="mf-input" id="mFee" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div class="mf-row2">
+        <div><label class="mf-label">Ссылка онлайн</label><input class="mf-input" id="mOnlineURL" placeholder="https://..."></div>
+        <div><label class="mf-label">Лимит мест</label><input class="mf-input" id="mSeats" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div><label class="mf-label">Категория</label><select class="mf-select" id="mCat"><option value="">Выбрать…</option><option>ВЭД и таможня</option></select></div>
+      <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Подробно о программе…"></textarea></div>
+      <div class="mf-section">
+        <span>Спикеры</span>
+        <button type="button" class="mf-section-add" onclick="addSpeaker()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить спикера</button>
+      </div>
+      <div class="mf-list" id="speakersList"></div>
+      <div class="mf-section">
+        <span>Программа</span>
+        <button type="button" class="mf-section-add" onclick="addProgramItem()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить пункт</button>
+      </div>
+      <div class="mf-list" id="programList"></div>
+      <div class="mf-section">
+        <span>Билеты</span>
+        <button type="button" class="mf-section-add" onclick="addTicket()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить тариф</button>
+      </div>
+      <div class="mf-list" id="ticketsList"></div>
+      <div><label class="mf-label">Теги через запятую</label><input class="mf-input" id="mTags" placeholder="таможня, вэд…"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeEventModal()">Отмена</button>
+      <button class="btn-submit" id="submitEventBtn" onclick="submitEventEdit()">Сохранить изменения</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1078,9 +1142,130 @@ function openOrganizerProfile(){
   else if(ev.author_company_slug)location.href=`/company-detail.html?slug=${ev.author_company_slug}`;
   else if(ev.organizer_public_id)location.href=`/profile.html?id=${ev.organizer_public_id}`;
 }
+const YANDEX_KEY_EVT='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
+let speakerCounter=0,programCounter=0,ticketCounter=0;
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function buildRemoveBtn(fn,id){return '<button type="button" class="mf-list-remove" onclick="'+fn+'(\''+id+'\')" title="Удалить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'}
+function addSpeaker(prefill){
+  speakerCounter++;const id='sp'+speakerCounter;const wrap=document.getElementById('speakersList');if(!wrap)return;
+  const data=prefill||{};const item=document.createElement('div');
+  item.className='mf-list-item';item.id=id;item.dataset.kind='speaker';
+  item.innerHTML='<div class="mf-list-item-header"><span class="mf-list-item-num">'+speakerCounter+'</span><span>Спикер</span></div>'+buildRemoveBtn('removeSpeaker',id)+'<div class="mf-row3"><div><label class="mf-label">Имя</label><input class="mf-input" data-field="name" placeholder="Иван Иванов" value="'+escAttr(data.name||'')+'"></div><div><label class="mf-label">Должность</label><input class="mf-input" data-field="role" placeholder="CEO" value="'+escAttr(data.role||'')+'"></div><div><label class="mf-label">Компания</label><input class="mf-input" data-field="company" placeholder="ООО Лого" value="'+escAttr(data.company||'')+'"></div></div>';
+  wrap.appendChild(item);
+}
+function removeSpeaker(id){const el=document.getElementById(id);if(el)el.remove()}
+function addProgramItem(prefill){
+  programCounter++;const id='prg'+programCounter;const wrap=document.getElementById('programList');if(!wrap)return;
+  const data=prefill||{};const item=document.createElement('div');
+  item.className='mf-list-item';item.id=id;item.dataset.kind='program';
+  item.innerHTML='<div class="mf-list-item-header"><span class="mf-list-item-num">'+programCounter+'</span><span>Пункт программы</span></div>'+buildRemoveBtn('removeProgramItem',id)+'<div class="mf-row2"><div><label class="mf-label">Время</label><input class="mf-input" data-field="time" placeholder="10:00" value="'+escAttr(data.time||'')+'"></div><div><label class="mf-label">Спикер</label><input class="mf-input" data-field="speaker" placeholder="Иван Иванов" value="'+escAttr(data.speaker||'')+'"></div></div><div><label class="mf-label">Название</label><input class="mf-input" data-field="title" placeholder="Открытие. Тренды отрасли" value="'+escAttr(data.title||'')+'"></div><div><label class="mf-label">Описание</label><textarea class="mf-textarea" data-field="description" style="height:60px" placeholder="Кейсы, обзор рынка...">'+escAttr(data.description||'')+'</textarea></div>';
+  wrap.appendChild(item);
+}
+function removeProgramItem(id){const el=document.getElementById(id);if(el)el.remove()}
+function addTicket(prefill){
+  ticketCounter++;const id='tk'+ticketCounter;const wrap=document.getElementById('ticketsList');if(!wrap)return;
+  const data=prefill||{};const item=document.createElement('div');
+  item.className='mf-list-item'+(data.featured?' featured':'');item.id=id;item.dataset.kind='ticket';
+  item.innerHTML='<div class="mf-list-item-header"><span class="mf-list-item-num">'+ticketCounter+'</span><span>Тариф</span></div>'+buildRemoveBtn('removeTicket',id)+'<div class="mf-row2"><div><label class="mf-label">Название</label><input class="mf-input" data-field="name" placeholder="Стандарт" value="'+escAttr(data.name||'')+'"></div><div><label class="mf-label">Цена (₽)</label><input class="mf-input" data-field="price" type="number" min="0" placeholder="0" value="'+escAttr(String(data.price||''))+'"></div></div><div><label class="mf-label">Описание</label><input class="mf-input" data-field="description" placeholder="Очное участие" value="'+escAttr(data.description||'')+'"></div><div><label class="mf-label">Лимит</label><input class="mf-input" data-field="limit" type="number" min="0" placeholder="0" value="'+escAttr(String(data.limit||''))+'"></div><div><label class="mf-label">Преимущества (по строкам)</label><textarea class="mf-textarea" data-field="perks" style="height:80px" placeholder="Очное участие\nКофе-брейки">'+escAttr((data.perks||[]).join('\n'))+'</textarea></div><label class="mf-checkbox-row"><input type="checkbox" data-field="featured"'+(data.featured?' checked':'')+' onchange="this.closest(\'.mf-list-item\').classList.toggle(\'featured\',this.checked)">Отметить как «Популярный»</label>';
+  wrap.appendChild(item);
+}
+function removeTicket(id){const el=document.getElementById(id);if(el)el.remove()}
+function collectListData(listId){
+  const wrap=document.getElementById(listId);if(!wrap)return [];
+  const items=Array.from(wrap.querySelectorAll('.mf-list-item'));
+  return items.map(function(item){
+    const obj={};
+    item.querySelectorAll('[data-field]').forEach(function(input){
+      const field=input.dataset.field;
+      if(input.type==='checkbox')obj[field]=input.checked;
+      else if(input.type==='number'){const v=parseInt(input.value||'0',10);obj[field]=isNaN(v)?0:v}
+      else obj[field]=(input.value||'').trim();
+    });
+    if(typeof obj.perks==='string')obj.perks=obj.perks.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    return obj;
+  }).filter(o=>(o.title||o.name||o.time));
+}
+function resetEventModal(){['speakersList','programList','ticketsList'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=''});speakerCounter=0;programCounter=0;ticketCounter=0}
+async function geocodeAddressEvt(addr){
+  if(!addr||!addr.trim())return null;
+  try{
+    const r=await fetch('https://geocode-maps.yandex.ru/v1/?apikey='+YANDEX_KEY_EVT+'&geocode='+encodeURIComponent(addr)+'&format=json&results=1');
+    if(!r.ok)return null;
+    const d=await r.json();const member=d?.response?.GeoObjectCollection?.featureMember?.[0];if(!member)return null;
+    const pos=member.GeoObject?.Point?.pos;if(!pos)return null;
+    const parts=pos.split(' ');return{latitude:parseFloat(parts[1]),longitude:parseFloat(parts[0])};
+  }catch{return null}
+}
 function openEditEventModal(){
-  if(!state.currentEvent||!state.currentEvent.public_id)return;
-  location.href='/events.html?edit='+encodeURIComponent(state.currentEvent.public_id);
+  const ev=state.currentEvent;if(!ev||!ev.public_id)return;
+  resetEventModal();
+  document.getElementById('mTitle').value=ev.title||'';
+  document.getElementById('mType').value=ev.type||'webinar';
+  document.getElementById('mFormat').value=ev.format||'online';
+  if(ev.starts_at){
+    const d=new Date(ev.starts_at);
+    document.getElementById('mDate').value=d.toISOString().slice(0,10);
+    document.getElementById('mTimeStart').value=d.toTimeString().slice(0,5);
+  }
+  if(ev.ends_at){const d=new Date(ev.ends_at);document.getElementById('mTimeEnd').value=d.toTimeString().slice(0,5)}
+  document.getElementById('mCity').value=ev.city||'';
+  document.getElementById('mAddress').value=ev.address||'';
+  document.getElementById('mOnlineURL').value=ev.online_url||'';
+  document.getElementById('mFee').value=ev.fee_cents?Math.round(ev.fee_cents/100):'';
+  document.getElementById('mSeats').value=ev.seats_total||'';
+  document.getElementById('mCat').value=ev.category||'';
+  document.getElementById('mDesc').value=ev.description||'';
+  document.getElementById('mTags').value=(ev.tags||[]).join(', ');
+  (ev.speakers||[]).forEach(s=>addSpeaker(s));
+  (ev.program||[]).forEach(p=>addProgramItem(p));
+  (ev.tickets||[]).forEach(t=>addTicket(t));
+  document.getElementById('modalBgEvent').classList.add('open');
+}
+function closeEventModal(){document.getElementById('modalBgEvent').classList.remove('open')}
+async function submitEventEdit(){
+  const ev=state.currentEvent;if(!ev||!ev.public_id)return;
+  const title=(document.getElementById('mTitle').value||'').trim();
+  if(!title){toast('Введите название');return}
+  const date=document.getElementById('mDate').value;
+  if(!date){toast('Укажите дату');return}
+  const tS=document.getElementById('mTimeStart').value||'10:00';
+  const tE=document.getElementById('mTimeEnd').value||'12:00';
+  const tagsRaw=(document.getElementById('mTags').value||'').trim();
+  const tags=tagsRaw?tagsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
+  const body={
+    title,
+    description:(document.getElementById('mDesc').value||'').trim(),
+    type:document.getElementById('mType').value,
+    format:document.getElementById('mFormat').value,
+    category:document.getElementById('mCat').value||'',
+    city:(document.getElementById('mCity').value||'').trim(),
+    address:(document.getElementById('mAddress').value||'').trim(),
+    online_url:(document.getElementById('mOnlineURL').value||'').trim(),
+    starts_at:new Date(date+'T'+tS+':00').toISOString(),
+    ends_at:new Date(date+'T'+tE+':00').toISOString(),
+    timezone:'Europe/Moscow',
+    fee_cents:(parseInt(document.getElementById('mFee').value||'0',10)||0)*100,
+    currency:'RUB',
+    seats_total:parseInt(document.getElementById('mSeats').value||'0',10)||0,
+    tags
+  };
+  const btn=document.getElementById('submitEventBtn');
+  btn.disabled=true;btn.textContent='Сохранение…';
+  try{
+    const r=await fetch(API+'/events/'+encodeURIComponent(ev.public_id),{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      body:JSON.stringify(body)
+    });
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'не удалось сохранить')}
+    closeEventModal();
+    toast('Изменения сохранены ✓',true);
+    await loadEvent();
+  }catch(e){
+    toast('Ошибка: '+e.message);
+  }finally{
+    btn.disabled=false;btn.textContent='Сохранить изменения';
+  }
 }
 async function deleteCurrentEvent(){
   if(!state.currentEvent||!state.currentEvent.public_id)return;
