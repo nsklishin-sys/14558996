@@ -114,9 +114,16 @@
   function interceptActionClicks(){
     var BLOCK_SEL=[
       '.nc-action',           // лайк/комментарий в карточке поста
-      '.btn-save',            // сохранить (мероприятие, вакансия и т.д.)
+      '.act-btn',             // news-detail: лайк/коммент/сохранить/репост
+      '.btn-save',            // сохранить (мероприятие, вакансия, проект)
+      '.btn-save-ex',         // сохранить выставку
+      '.btn-share',           // поделиться (event, project)
+      '.btn-share-co',        // поделиться сообществом
       '.btn-reg',             // записаться на мероприятие
       '.btn-respond',         // откликнуться на вакансию
+      '.ci-btn-send',         // отправить комментарий (news-detail)
+      '.ci-textarea',         // фокус на поле комментария (news-detail)
+      '[data-share]',         // универсальная кнопка share через share.js
       '[data-guest-block]'    // явно помеченные элементы
     ].join(',');
     document.addEventListener('click', function(e){
@@ -129,6 +136,15 @@
       e.stopPropagation();
       showGuestModal();
     }, true); // capture phase — срабатывает до встроенного onclick
+
+    // Перехват фокуса на полях комментариев — гость не должен
+    // даже начать набирать текст, сразу модалка
+    document.addEventListener('focusin', function(e){
+      var el=e.target.closest('.ci-textarea,[data-guest-block-focus]');
+      if(!el)return;
+      el.blur();
+      showGuestModal();
+    }, true);
   }
 
   if(document.readyState==='loading'){
