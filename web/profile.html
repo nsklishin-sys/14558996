@@ -650,7 +650,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- Друзья онлайн -->
   <div class="card">
-    <div class="block-title">Друзья · онлайн</div>
+    <div class="block-title">Друзья онлайн</div>
     <div id="profileFriendsOnline"></div>
   </div>
 
@@ -857,9 +857,65 @@ async function loadOwnProjects(){const grid=document.getElementById('profileProj
 
 async function loadOwnFriends(){const grid=document.getElementById('profileFriendsGrid');if(!grid)return;try{const r=await fetch(`${API}/friends`,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw 0;const d=await r.json();const friends=d.friends||[];document.getElementById('psFriends').textContent=String(friends.length);const cnt=document.getElementById('ptabCntFriends');if(cnt)cnt.textContent=String(friends.length);if(!friends.length){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У вас пока нет друзей. <a href="/friends.html" style="color:var(--g);font-weight:700">Найти →</a></div>';return;}grid.innerHTML=friends.slice(0,12).map(f=>{const name=f.full_name||f.friend_name||'Участник';const pid=f.public_id||f.friend_id||'';return `<a href="/profile_user.html?id=${encodeURIComponent(pid)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;text-decoration:none;color:var(--t);transition:border-color .15s"><div style="width:36px;height:36px;border-radius:10px;background:${colorFor(name)};color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0">${esc(letter(name))}</div><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div></div></a>`;}).join('');const onlineBlock=document.getElementById('profileFriendsOnline');if(onlineBlock){const online=friends.filter(f=>f.is_online).slice(0,5);onlineBlock.innerHTML=!online.length?'<div style="padding:8px;text-align:center;color:var(--gmt);font-size:11px">Никто не онлайн</div>':online.map(f=>{const name=f.full_name||f.friend_name||'Участник';const pid=f.public_id||f.friend_id||'';return `<a href="/profile_user.html?id=${encodeURIComponent(pid)}" style="display:flex;align-items:center;gap:8px;padding:6px 0;text-decoration:none;color:var(--t)"><div style="position:relative;width:28px;height:28px;border-radius:8px;background:${colorFor(name)};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">${esc(letter(name))}<div style="position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)"></div></div><div style="font-size:12px;font-weight:600">${esc(name)}</div></a>`;}).join('');}}catch(e){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">Не удалось загрузить друзей</div>';}}
 
-async function loadOwnEventsAndCommunitiesCount(){try{const r=await fetch(`${API}/events?mode=mine&limit=100`,{headers:{Authorization:'Bearer '+tk()}});if(r.ok){const d=await r.json();document.getElementById('psEvents').textContent=String((d.events||[]).length);}}catch{}try{const me=JSON.parse(localStorage.getItem('user')||'{}');if(!me.public_id)return;const r=await fetch(`${API}/users/${encodeURIComponent(me.public_id)}/communities`,{headers:{Authorization:'Bearer '+tk()}});if(r.ok){const d=await r.json();document.getElementById('psCommunities').textContent=String((d.communities||[]).length);}}catch{}}
+async function loadAllProfileCounts(){
+  const me=JSON.parse(localStorage.getItem('user')||'{}');
+  const headers=tk()?{Authorization:'Bearer '+tk()}:{};
+  // Параллельно тянем все 5 счётчиков
+  const safe=async(url)=>{
+    try{
+      const r=await fetch(API+url,{headers});
+      if(!r.ok)return null;
+      return await r.json();
+    }catch{return null;}
+  };
+  const setN=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=String(v);};
+  // 1) Публикации
+  if(me.public_id){
+    const d=await safe(`/users/${encodeURIComponent(me.public_id)}/posts?limit=100`);
+    const c=(d?.posts||[]).length;
+    setN('psPublications',c);
+    setN('ptabCntPubs',c);
+  }
+  // 2) Проекты
+  const dProj=await safe('/projects?owner_only=1&limit=100');
+  const cProj=(dProj?.projects||[]).length;
+  setN('psProjects',cProj);
+  setN('ptabCntProjs',cProj);
+  // 3) Друзья
+  const dFr=await safe('/friends');
+  const friends=dFr?.friends||[];
+  setN('psFriends',friends.length);
+  setN('ptabCntFriends',friends.length);
+  // Сразу рендерим сайдбар "Друзья онлайн"
+  const onlineBlock=document.getElementById('profileFriendsOnline');
+  if(onlineBlock){
+    const online=friends.filter(f=>f.is_online);
+    if(!friends.length){
+      onlineBlock.innerHTML='<div style="padding:14px 6px;text-align:center;color:var(--gmt);font-size:11px">У вас пока нет друзей</div>';
+    } else if(!online.length){
+      onlineBlock.innerHTML='<div style="padding:14px 6px;text-align:center;color:var(--gmt);font-size:11px">Сейчас никого онлайн</div>';
+    } else {
+      onlineBlock.innerHTML=online.slice(0,5).map(f=>{
+        const name=f.full_name||f.friend_name||'Участник';
+        const pid=f.public_id||f.friend_id||'';
+        return `<a href="/profile_user.html?id=${encodeURIComponent(pid)}" style="display:flex;align-items:center;gap:8px;padding:6px 0;text-decoration:none;color:var(--t)">
+          <div style="position:relative;width:28px;height:28px;border-radius:8px;background:${colorFor(name)};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">${esc(letter(name))}<div style="position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)"></div></div>
+          <div style="font-size:12px;font-weight:600">${esc(name)}</div>
+        </a>`;
+      }).join('');
+    }
+  }
+  // 4) Сообщества
+  if(me.public_id){
+    const d=await safe(`/users/${encodeURIComponent(me.public_id)}/communities`);
+    setN('psCommunities',(d?.communities||[]).length);
+  }
+  // 5) Мероприятия
+  const dEv=await safe('/events?mode=mine&limit=100');
+  setN('psEvents',(dEv?.events||[]).length);
+}
 
-window.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{const me=JSON.parse(localStorage.getItem('user')||'{}');if(me.public_id){try{const r=await fetch(`${API}/users/${encodeURIComponent(me.public_id)}/posts?limit=100`,{headers:{Authorization:'Bearer '+tk()}});if(r.ok){const d=await r.json();const c=(d.posts||[]).length;document.getElementById('psPublications').textContent=String(c);const t=document.getElementById('ptabCntPubs');if(t)t.textContent=String(c);}}catch{}}void loadOwnFriends();void loadOwnProjects();void loadOwnEventsAndCommunitiesCount();},300);});
+window.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{ void loadAllProfileCounts(); },300);});
 
 </script>
 <script src="/site-search.js" defer></script>
