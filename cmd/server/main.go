@@ -2621,7 +2621,7 @@ func main() {
 		const previewLimit = 5
 
 		var cPosts, cProjects, cJobs, cResumes, cCatalog int
-		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_posts WHERE user_id=$1`, userID).Scan(&cPosts)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM post_saves WHERE user_id=$1`, userID).Scan(&cPosts)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_projects WHERE user_id=$1`, userID).Scan(&cProjects)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_jobs WHERE user_id=$1`, userID).Scan(&cJobs)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_resumes WHERE user_id=$1`, userID).Scan(&cResumes)
@@ -8523,7 +8523,7 @@ func main() {
 		serveDetailWithOG(w, r, "./web/project-detail.html", func(publicID string) (ogMeta, bool) {
 			var m ogMeta
 			err := db.QueryRow(`
-				SELECT COALESCE(title, ''), COALESCE(description, ''), '', COALESCE(cover_url, '')
+				SELECT COALESCE(title, ''), COALESCE(description, ''), '', ''
 				FROM projects WHERE public_id = $1 AND COALESCE(is_deleted, FALSE) = FALSE
 			`, publicID).Scan(&m.Title, &m.Description, &m.Logo, &m.Cover)
 			if err != nil {
@@ -9375,6 +9375,21 @@ CREATE TABLE IF NOT EXISTS user_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (privacy_who_can_message IN ('all', 'contacts', 'nobody'))
 );
+
+-- Миграция: гарантируем наличие notif-колонок и privacy-колонок
+-- на старых установках (CREATE TABLE IF NOT EXISTS не добавляет
+-- колонки если таблица уже существовала).
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_friend_requests BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_chat_messages BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_mentions BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_reactions BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_new_jobs BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_events BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_news_digest BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_platform_updates BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_show_online BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_show_last_seen BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_who_can_message TEXT NOT NULL DEFAULT 'all';
 
 CREATE TABLE IF NOT EXISTS user_mentions (
     id BIGSERIAL PRIMARY KEY,
@@ -16363,7 +16378,7 @@ func listExhibitions(db *sql.DB, viewerID int64, hasAuth bool, f listExhibitions
 	where := strings.Join(conds, " AND ")
 
 	var total int64
-	if err := db.QueryRow(`SELECT COUNT(*) FROM exhibitions e WHERE `+where, args[1:]...).Scan(&total); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM exhibitions e WHERE `+where, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
