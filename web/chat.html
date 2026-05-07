@@ -1064,7 +1064,7 @@ async function chatFriendClick(){
       if (!r.ok) throw new Error('failed');
       _chatPeerFriendStatus = 'friends';
     } else if (_chatPeerFriendStatus === 'friends') {
-      if (!confirm('Удалить из друзей?')) { if (btn) btn.disabled = false; return; }
+      if (!await lastopConfirm({title:'Удалить из друзей?',danger:true})) { if (btn) btn.disabled = false; return; }
       const r = await fetch('/api/friends/' + encodeURIComponent(_chatPeerPublicID), { method: 'DELETE', headers });
       if (!r.ok) throw new Error('failed');
       _chatPeerFriendStatus = 'none';
@@ -1484,7 +1484,7 @@ function switchInfoTab(tab, btn){
 async function confirmDeleteChat(){
   const c=state.activeConversation;
   if(!c)return;
-  if(!confirm('Удалить чат? Сообщения у вас исчезнут, у собеседника останутся.'))return;
+  if(!await lastopConfirm({title:'Удалить чат?',message:'Сообщения у вас исчезнут, у собеседника останутся.',danger:true}))return;
   try{
     const r=await fetch(`/api/chat/conversations/${encodeURIComponent(c.public_id)}`,{
       method:'DELETE',

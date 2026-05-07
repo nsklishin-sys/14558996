@@ -1084,7 +1084,7 @@ function openEditEventModal(){
 }
 async function deleteCurrentEvent(){
   if(!state.currentEvent||!state.currentEvent.public_id)return;
-  if(!confirm(`Удалить мероприятие «${state.currentEvent.title}»? Это действие необратимо.`))return;
+  if(!await lastopConfirm({title:'Удалить мероприятие?',message:`«${state.currentEvent.title}» — действие необратимо.`,danger:true}))return;
   try{
     const r=await fetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}`,{
       method:'DELETE',

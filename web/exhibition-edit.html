@@ -912,7 +912,7 @@ async function saveSpeaker(speakerID){
 }
 
 async function deleteSpeaker(speakerID){
-  if(!confirm('Удалить спикера? Сессии с этим спикером сохранятся, но без привязки.'))return;
+  if(!await lastopConfirm({title:'Удалить спикера?',message:'Сессии с этим спикером сохранятся, но без привязки.',danger:true}))return;
   try{
     const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers/'+speakerID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
@@ -1044,7 +1044,7 @@ async function saveDay(dayID){
 }
 
 async function deleteDay(dayID){
-  if(!confirm('Удалить день? Все сессии этого дня будут удалены.'))return;
+  if(!await lastopConfirm({title:'Удалить день?',message:'Все сессии этого дня будут удалены.',danger:true}))return;
   try{
     const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/days/'+dayID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
@@ -1160,7 +1160,7 @@ async function saveSession(dayID,sessionID){
 }
 
 async function deleteSession(sessionID){
-  if(!confirm('Удалить сессию?'))return;
+  if(!await lastopConfirm({title:'Удалить сессию?',danger:true}))return;
   try{
     const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/sessions/'+sessionID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
@@ -1293,7 +1293,7 @@ async function saveTicket(ticketID){
 }
 
 async function deleteTicket(ticketID){
-  if(!confirm('Удалить билет?'))return;
+  if(!await lastopConfirm({title:'Удалить билет?',danger:true}))return;
   try{
     const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets/'+ticketID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
@@ -1385,7 +1385,7 @@ async function saveZone(zoneID){
 }
 
 async function deleteZone(zoneID){
-  if(!confirm('Удалить зону?'))return;
+  if(!await lastopConfirm({title:'Удалить зону?',danger:true}))return;
   try{
     const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/zones/'+zoneID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
@@ -1493,7 +1493,7 @@ async function reviewApp(appID,action){
 
 async function deleteExhibition(){
   if(!state.publicID)return;
-  if(!confirm('Удалить выставку «'+(state.exhibition?.title||'')+'»? Это действие необратимо.'))return;
+  if(!await lastopConfirm({title:'Удалить выставку?',message:`«${state.exhibition?.title||''}» — действие необратимо.`,danger:true}))return;
   try{
     const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}

@@ -2068,7 +2068,7 @@ async function submitStage(){
 }
 
 async function deleteStage(stageID, title){
-  if (!confirm(`Удалить этап «${title}»? Все его подзадачи также удалятся.`)) return;
+  if (!await lastopConfirm({title:'Удалить этап?',message:`«${title}» — все подзадачи также удалятся.`,danger:true})) return;
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
     const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}`, {

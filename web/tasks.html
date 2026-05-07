@@ -1229,8 +1229,8 @@ function attachKanbanDnD(){
     });
   });
 }
-function quickAddInCol(col){
-  const title=prompt('Название задачи:');
+async function quickAddInCol(col){
+  const title=await lastopPrompt({title:'Новая задача',placeholder:'Название задачи'});
   if(!title||!title.trim())return;
   tasks.unshift({id:newId(),title:title.trim(),desc:'',due:'',time:'',pri:'md',tags:[],done:col==='done',checklist:[],status:col,created:Date.now(),updated:Date.now()});
   saveTasks();render();updateStats();showToast('Задача добавлена ✓');
