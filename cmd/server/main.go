@@ -2492,6 +2492,220 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"user": usr})
 	})
 
+	// ═════ /api/me/experience ═════
+	// POST — создать запись опыта работы (для своего профиля)
+	mux.HandleFunc("/api/me/experience", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			Position    string `json:"position"`
+			Company     string `json:"company"`
+			Description string `json:"description"`
+			StartYear   int    `json:"start_year"`
+			StartMonth  int    `json:"start_month"`
+			EndYear     *int   `json:"end_year"`
+			EndMonth    *int   `json:"end_month"`
+			IsCurrent   bool   `json:"is_current"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректные данные")
+			return
+		}
+		req.Position = strings.TrimSpace(req.Position)
+		req.Company = strings.TrimSpace(req.Company)
+		req.Description = strings.TrimSpace(req.Description)
+		if req.Position == "" || len(req.Position) > 200 {
+			writeError(w, http.StatusBadRequest, "Должность обязательна (1-200 символов)")
+			return
+		}
+		if len(req.Company) > 200 {
+			writeError(w, http.StatusBadRequest, "Компания не должна превышать 200 символов")
+			return
+		}
+		if len(req.Description) > 2000 {
+			writeError(w, http.StatusBadRequest, "Описание не должно превышать 2000 символов")
+			return
+		}
+		if req.StartYear < 1950 || req.StartYear > 2100 {
+			writeError(w, http.StatusBadRequest, "Некорректный год начала")
+			return
+		}
+		if req.StartMonth < 1 || req.StartMonth > 12 {
+			req.StartMonth = 1
+		}
+		if req.IsCurrent {
+			req.EndYear = nil
+			req.EndMonth = nil
+		} else if req.EndYear != nil {
+			if *req.EndYear < 1950 || *req.EndYear > 2100 {
+				writeError(w, http.StatusBadRequest, "Некорректный год окончания")
+				return
+			}
+			if req.EndMonth == nil || *req.EndMonth < 1 || *req.EndMonth > 12 {
+				m := 12
+				req.EndMonth = &m
+			}
+		}
+		publicID := generateExperiencePublicID()
+		_, err := db.Exec(`
+			INSERT INTO user_experience
+				(public_id, user_id, position, company, description,
+				 start_year, start_month, end_year, end_month, is_current)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`, publicID, userID, req.Position, req.Company, req.Description,
+			req.StartYear, req.StartMonth, req.EndYear, req.EndMonth, req.IsCurrent)
+		if err != nil {
+			log.Printf("create user_experience: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка сохранения")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"public_id": publicID})
+	})
+
+	// PATCH /api/me/experience/{xp_id} и DELETE /api/me/experience/{xp_id}
+	mux.HandleFunc("/api/me/experience/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		xpID := strings.TrimSpace(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/me/experience/"), "/"))
+		if xpID == "" || !strings.HasPrefix(xpID, "xp_") {
+			writeError(w, http.StatusBadRequest, "Некорректный id записи")
+			return
+		}
+		var ownerID int64
+		err := db.QueryRow(`SELECT user_id FROM user_experience WHERE public_id = $1`, xpID).Scan(&ownerID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "Запись не найдена")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+			return
+		}
+		if ownerID != userID {
+			writeError(w, http.StatusForbidden, "Доступ запрещён")
+			return
+		}
+		switch r.Method {
+		case http.MethodDelete:
+			if _, err := db.Exec(`DELETE FROM user_experience WHERE public_id = $1`, xpID); err != nil {
+				log.Printf("delete user_experience: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка удаления")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		case http.MethodPatch:
+			var req struct {
+				Position    *string `json:"position"`
+				Company     *string `json:"company"`
+				Description *string `json:"description"`
+				StartYear   *int    `json:"start_year"`
+				StartMonth  *int    `json:"start_month"`
+				EndYear     *int    `json:"end_year"`
+				EndMonth    *int    `json:"end_month"`
+				IsCurrent   *bool   `json:"is_current"`
+				ClearEnd    bool    `json:"clear_end"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректные данные")
+				return
+			}
+			updates := []string{}
+			args := []any{}
+			add := func(col string, val any) {
+				args = append(args, val)
+				updates = append(updates, fmt.Sprintf("%s = $%d", col, len(args)))
+			}
+			if req.Position != nil {
+				v := strings.TrimSpace(*req.Position)
+				if v == "" || len(v) > 200 {
+					writeError(w, http.StatusBadRequest, "Должность обязательна (1-200 символов)")
+					return
+				}
+				add("position", v)
+			}
+			if req.Company != nil {
+				v := strings.TrimSpace(*req.Company)
+				if len(v) > 200 {
+					writeError(w, http.StatusBadRequest, "Компания не должна превышать 200 символов")
+					return
+				}
+				add("company", v)
+			}
+			if req.Description != nil {
+				v := strings.TrimSpace(*req.Description)
+				if len(v) > 2000 {
+					writeError(w, http.StatusBadRequest, "Описание не должно превышать 2000 символов")
+					return
+				}
+				add("description", v)
+			}
+			if req.StartYear != nil {
+				if *req.StartYear < 1950 || *req.StartYear > 2100 {
+					writeError(w, http.StatusBadRequest, "Некорректный год начала")
+					return
+				}
+				add("start_year", *req.StartYear)
+			}
+			if req.StartMonth != nil {
+				m := *req.StartMonth
+				if m < 1 || m > 12 {
+					m = 1
+				}
+				add("start_month", m)
+			}
+			if req.IsCurrent != nil {
+				add("is_current", *req.IsCurrent)
+				if *req.IsCurrent {
+					add("end_year", nil)
+					add("end_month", nil)
+				}
+			}
+			if req.ClearEnd {
+				add("end_year", nil)
+				add("end_month", nil)
+			} else {
+				if req.EndYear != nil {
+					if *req.EndYear < 1950 || *req.EndYear > 2100 {
+						writeError(w, http.StatusBadRequest, "Некорректный год окончания")
+						return
+					}
+					add("end_year", *req.EndYear)
+				}
+				if req.EndMonth != nil {
+					m := *req.EndMonth
+					if m < 1 || m > 12 {
+						m = 12
+					}
+					add("end_month", m)
+				}
+			}
+			if len(updates) == 0 {
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+				return
+			}
+			updates = append(updates, "updated_at = NOW()")
+			args = append(args, xpID)
+			query := fmt.Sprintf(`UPDATE user_experience SET %s WHERE public_id = $%d`,
+				strings.Join(updates, ", "), len(args))
+			if _, err := db.Exec(query, args...); err != nil {
+				log.Printf("update user_experience: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сохранения")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.HandleFunc("/api/me", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -8455,6 +8669,26 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"friends": items})
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/experience") {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			publicID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/users/"), "/experience")
+			publicID = strings.TrimSpace(strings.Trim(publicID, "/"))
+			if !isValidUserPublicID(publicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id пользователя")
+				return
+			}
+			items, err := listUserExperiences(db, publicID)
+			if err != nil {
+				log.Printf("listUserExperiences: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"experience": items})
+			return
+		}
 		if strings.HasSuffix(r.URL.Path, "/events") {
 			if r.Method != http.MethodGet {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -9456,6 +9690,26 @@ ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notif_platform_updates BOOLEA
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_show_online BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_show_last_seen BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_who_can_message TEXT NOT NULL DEFAULT 'all';
+
+CREATE TABLE IF NOT EXISTS user_experience (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    position TEXT NOT NULL CHECK (char_length(position) BETWEEN 1 AND 200),
+    company TEXT NOT NULL DEFAULT '' CHECK (char_length(company) <= 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 2000),
+    start_year INT NOT NULL CHECK (start_year BETWEEN 1950 AND 2100),
+    start_month INT NOT NULL DEFAULT 1 CHECK (start_month BETWEEN 1 AND 12),
+    end_year INT CHECK (end_year IS NULL OR (end_year BETWEEN 1950 AND 2100)),
+    end_month INT CHECK (end_month IS NULL OR (end_month BETWEEN 1 AND 12)),
+    is_current BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS user_experience_user_idx
+    ON user_experience (user_id, start_year DESC, start_month DESC);
 
 CREATE TABLE IF NOT EXISTS user_mentions (
     id BIGSERIAL PRIMARY KEY,
@@ -12182,7 +12436,6 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 	return result, rows.Err()
 }
 
-
 func listUserFriends(db *sql.DB, publicID string) ([]friendDTO, error) {
 	var userID int64
 	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, publicID).Scan(&userID); err != nil {
@@ -12257,6 +12510,64 @@ func listUserEventsPublic(db *sql.DB, publicID string) ([]event, error) {
 		items = []event{}
 	}
 	return items, nil
+}
+
+type userExperience struct {
+	PublicID    string `json:"public_id"`
+	Position    string `json:"position"`
+	Company     string `json:"company"`
+	Description string `json:"description,omitempty"`
+	StartYear   int    `json:"start_year"`
+	StartMonth  int    `json:"start_month"`
+	EndYear     *int   `json:"end_year,omitempty"`
+	EndMonth    *int   `json:"end_month,omitempty"`
+	IsCurrent   bool   `json:"is_current"`
+}
+
+func generateExperiencePublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "xp_" + hex.EncodeToString(b)
+}
+
+func listUserExperiences(db *sql.DB, publicID string) ([]userExperience, error) {
+	var userID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1 AND is_deleted = FALSE`, publicID).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []userExperience{}, nil
+		}
+		return nil, err
+	}
+	rows, err := db.Query(`
+		SELECT public_id, position, company, description,
+		       start_year, start_month, end_year, end_month, is_current
+		FROM user_experience
+		WHERE user_id = $1
+		ORDER BY is_current DESC, start_year DESC, start_month DESC, id DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []userExperience{}
+	for rows.Next() {
+		var xp userExperience
+		var endY, endM sql.NullInt64
+		if err := rows.Scan(&xp.PublicID, &xp.Position, &xp.Company, &xp.Description,
+			&xp.StartYear, &xp.StartMonth, &endY, &endM, &xp.IsCurrent); err != nil {
+			return nil, err
+		}
+		if endY.Valid {
+			v := int(endY.Int64)
+			xp.EndYear = &v
+		}
+		if endM.Valid {
+			v := int(endM.Int64)
+			xp.EndMonth = &v
+		}
+		result = append(result, xp)
+	}
+	return result, rows.Err()
 }
 
 func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
