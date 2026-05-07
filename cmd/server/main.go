@@ -209,6 +209,7 @@ type friendDTO struct {
 	Email       string `json:"email"`
 	Position    string `json:"position,omitempty"`
 	CompanyName string `json:"company_name,omitempty"`
+	IsOnline    bool   `json:"is_online"`
 }
 
 type friendCandidateDTO struct {
@@ -12091,7 +12092,12 @@ func handleProjectActionError(w http.ResponseWriter, err error) {
 
 func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 	rows, err := db.Query(`
-		SELECT u.public_id, u.full_name, u.email
+		SELECT u.public_id, u.full_name, u.email,
+		  EXISTS(
+		    SELECT 1 FROM sessions s
+		    WHERE s.user_id = u.id
+		      AND s.last_seen_at >= NOW() - INTERVAL '5 minutes'
+		  ) AS is_online
 		FROM friend_requests fr
 		JOIN users u ON u.id = CASE
 			WHEN fr.requester_id = $1 THEN fr.addressee_id
@@ -12108,7 +12114,7 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 	var result []friendDTO
 	for rows.Next() {
 		var dto friendDTO
-		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email); scanErr != nil {
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.IsOnline); scanErr != nil {
 			return nil, scanErr
 		}
 		result = append(result, dto)
