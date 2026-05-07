@@ -8636,9 +8636,10 @@ func initDBFromEnv() (*sql.DB, error) {
 		return nil, fmt.Errorf("open postgres db: %w", err)
 	}
 
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	if err := waitForDB(db, 30*time.Second); err != nil {
 		_ = db.Close()
