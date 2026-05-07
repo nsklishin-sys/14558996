@@ -601,7 +601,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       Проекты <span class="ptab-count" id="ptabCntViewedProjs">0</span>
     </button>
-    <button class="ptab" onclick="switchTab('experience', this)" style="display:none">
+    <button class="ptab" onclick="switchTab('experience', this)">
       <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
       Опыт
     </button>
@@ -638,38 +638,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="sec-head">
         <div class="sec-title"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Опыт работы</div>
       </div>
-      <div class="xp-item">
-        <div class="xp-logo" style="background:#1A8A6A">N</div>
-        <div class="xp-body">
-          <div class="xp-role">Продуктовый логист<span class="xp-current">Текущая</span></div>
-          <div class="xp-company">NorthBridge Logistics</div>
-          <div class="xp-period">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Январь 2022 — настоящее время · 2 года 3 мес.
-          </div>
-        </div>
-      </div>
-      <div class="xp-item">
-        <div class="xp-logo" style="background:#3A90C0">G</div>
-        <div class="xp-body">
-          <div class="xp-role">Старший логист ВЭД</div>
-          <div class="xp-company">GlobalFreight</div>
-          <div class="xp-period">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Март 2019 — Декабрь 2021 · 2 года 10 мес.
-          </div>
-        </div>
-      </div>
-      <div class="xp-item">
-        <div class="xp-logo" style="background:#C07030">В</div>
-        <div class="xp-body">
-          <div class="xp-role">Специалист по таможенному оформлению</div>
-          <div class="xp-company">Volga Industrial Group</div>
-          <div class="xp-period">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Сентябрь 2016 — Февраль 2019 · 2 года 5 мес.
-          </div>
-        </div>
+      <div id="viewedExperience">
+        <div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px">Загрузка…</div>
       </div>
     </div>
   </div>
@@ -874,6 +844,12 @@ async function onFriendButtonClick(){
 }
 
 function applyViewedUserProfile(u){
+  // Если это сам пользователь — мгновенный редирект на личный профиль
+  // (на profile_user.html нет кнопки «Редактировать» и блока обложки)
+  if(u && u.is_self){
+    location.replace('/profile.html');
+    return;
+  }
   const fullName=(u.full_name||`${u.first_name||''} ${u.last_name||''}`.trim()||'Пользователь').trim();
   const role=u.position||u.role||'Участник LASTOP';
   const company=u.company_name||'';
@@ -993,6 +969,7 @@ function switchTab(tab, btn){
   if(tab==='publications'){void loadViewedPublications();}
   if(tab==='projects'){void loadViewedProjects();}
   if(tab==='friends'){void loadViewedFriends();}
+  if(tab==='experience'){void loadViewedExperience();}
   document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function goToChat(){const uid=getViewedUid();location.href='/chat.html'+(uid?`?uid=${encodeURIComponent(uid)}`:'');}
@@ -1018,6 +995,68 @@ loadViewedUser();
 const VIEWED_COLORS=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
 function viewedColor(s){return VIEWED_COLORS[(String(s||'').charCodeAt(0)||0)%VIEWED_COLORS.length];}
 function viewedLetter(s){return String(s||'?').trim().slice(0,1).toUpperCase()||'?';}
+
+const VIEWED_XP_MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function fmtViewedXpPeriod(xp){
+  const sm=VIEWED_XP_MONTHS[(xp.start_month||1)-1]||'';
+  const start=`${sm} ${xp.start_year}`;
+  let end='настоящее время';
+  if(!xp.is_current && xp.end_year){
+    const em=VIEWED_XP_MONTHS[(xp.end_month||12)-1]||'';
+    end=`${em} ${xp.end_year}`;
+  }
+  const sY=xp.start_year, sM=xp.start_month||1;
+  let eY, eM;
+  if(xp.is_current||!xp.end_year){
+    const now=new Date();
+    eY=now.getFullYear(); eM=now.getMonth()+1;
+  } else { eY=xp.end_year; eM=xp.end_month||12; }
+  const total=Math.max(0,(eY-sY)*12+(eM-sM)+1);
+  const yy=Math.floor(total/12), mm=total%12;
+  const pY=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'лет';if(v===1)return'год';if(v>=2&&v<=4)return'года';return'лет';};
+  const pM=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'мес.';if(v===1)return'мес.';if(v>=2&&v<=4)return'мес.';return'мес.';};
+  let dur='';
+  if(yy>0) dur+=yy+' '+pY(yy);
+  if(mm>0) dur+=(dur?' ':'')+mm+' '+pM(mm);
+  if(!dur) dur='менее месяца';
+  return `${start} — ${end} · ${dur}`;
+}
+
+async function loadViewedExperience(){
+  const uid=getViewedUid(); if(!uid)return;
+  const box=document.getElementById('viewedExperience');
+  if(!box)return;
+  try{
+    const r=await fetch(`${API}/users/${encodeURIComponent(uid)}/experience`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const items=d.experience||[];
+    if(!items.length){
+      box.innerHTML='<div style="padding:30px 12px;text-align:center;color:var(--gmt);font-size:13px">Пользователь пока не указал опыт работы</div>';
+      return;
+    }
+    box.innerHTML=items.map(xp=>{
+      const co=esc(xp.company||'—');
+      const ltr=esc(viewedLetter(xp.company||xp.position||'?'));
+      const color=viewedColor(xp.company||xp.position||'');
+      const desc=xp.description?`<div style="font-size:11px;color:var(--tm);line-height:1.5;margin-top:6px;white-space:pre-wrap">${esc(xp.description)}</div>`:'';
+      return `<div class="xp-item">
+        <div class="xp-logo" style="background:${color}">${ltr}</div>
+        <div class="xp-body">
+          <div class="xp-role">${esc(xp.position||'')}${xp.is_current?'<span class="xp-current">Текущая</span>':''}</div>
+          <div class="xp-company">${co}</div>
+          <div class="xp-period">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${esc(fmtViewedXpPeriod(xp))}
+          </div>
+          ${desc}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML='<div style="padding:24px 12px;text-align:center;color:var(--gmt);font-size:12px">Не удалось загрузить опыт работы</div>';
+  }
+}
 
 async function safeFetch(url){
   try{
