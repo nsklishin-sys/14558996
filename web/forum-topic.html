@@ -641,7 +641,7 @@ async function toggleClosedTopic(){
 }
 
 async function deleteTopic(){
-  if (!confirm('Удалить тему «' + currentTopic.title + '»? Это действие нельзя отменить.')) return;
+  if (!await lastopConfirm({title:'Удалить тему?',message:`«${currentTopic.title}» — действие нельзя отменить.`,danger:true})) return;
   try {
     const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       method: 'DELETE',
