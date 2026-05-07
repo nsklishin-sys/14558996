@@ -439,7 +439,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">Создать мероприятие</span>
+      <span class="modal-title" id="eventModalTitle">Создать мероприятие</span>
       <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
@@ -500,7 +500,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-submit" onclick="submitEvent()">Создать мероприятие</button>
+      <button class="btn-submit" id="submitEventBtn" onclick="submitEvent()">Создать мероприятие</button>
     </div>
   </div>
 </div>
@@ -714,7 +714,7 @@ async function toggleSave(publicID,btn){
   }
 }
 function openEvent(publicID){if(!publicID)return;location.href='/event-detail.html?id='+encodeURIComponent(publicID)}
-function openModal(){resetEventModal();document.getElementById('mDate').value=NOW.toISOString().slice(0,10);document.getElementById('modalBg').classList.add('open')}
+function openModal(){resetEventModal();document.getElementById('mDate').value=NOW.toISOString().slice(0,10);const submitBtn=document.getElementById('submitEventBtn');if(submitBtn)submitBtn.textContent='Создать мероприятие';const modalTitle=document.getElementById('eventModalTitle');if(modalTitle)modalTitle.textContent='Создать мероприятие';document.getElementById('modalBg').classList.add('open')}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
 const YANDEX_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
@@ -949,6 +949,8 @@ async function submitEvent(){
       return;
     }
     window.__editEventID=null;
+    const submitBtn = document.getElementById('submitEventBtn');
+    if (submitBtn) submitBtn.textContent = 'Создать мероприятие';
     closeModal();
     toast(isEditMode?'Мероприятие обновлено ✓':'Мероприятие создано ✓',true);
     await loadEvents();
@@ -1008,6 +1010,11 @@ function applyCurrentUser(user){
         setVal('mSeats',ev.seats_total);
         setVal('mTags',Array.isArray(ev.tags)?ev.tags.join(', '):'');
         window.__editEventID=editId;
+        const submitBtn = document.getElementById('submitEventBtn');
+        if (submitBtn) submitBtn.textContent = 'Сохранить изменения';
+        // Заголовок модалки тоже меняем
+        const modalTitle = document.querySelector('.modal-bg.open .modal-head h3, #eventModalTitle');
+        if (modalTitle) modalTitle.textContent = 'Редактировать мероприятие';
       });
   }
   renderSidebarCalendar();
