@@ -635,6 +635,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 
 <script>
 const API='/api', tk=()=>localStorage.getItem('token');
+const authHeaders=(extra)=>{const t=tk();const h=Object.assign({},extra||{});if(t)h.Authorization='Bearer '+t;return h;};
 const postPublicID=new URLSearchParams(location.search).get('id');
 if(!postPublicID){location.href='/dashboard.html';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -670,7 +671,7 @@ function applyLikeButtonState(){
 async function toggleLike(){
   if (!postPublicID) return;
   try {
-    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/like`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/like`, { method: 'POST', headers: authHeaders() });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || 'Не удалось поставить лайк');
@@ -709,7 +710,7 @@ function applySaveButtonState(){
 async function toggleSave(){
   if (!postPublicID) return;
   try {
-    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/save`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/save`, { method: 'POST', headers: authHeaders() });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || 'Не удалось сохранить');
@@ -737,7 +738,7 @@ async function doRepost(target){
   try {
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/repost`, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ comment: '' })
     });
     if (!r.ok) {
@@ -746,7 +747,7 @@ async function doRepost(target){
       return;
     }
     // Бэк создал новый пост-репост. Перечитываем оригинал чтобы получить актуальные счётчики.
-    const refresh = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: { Authorization: 'Bearer ' + tk() } });
+    const refresh = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: authHeaders() });
     if (refresh.ok) {
       const data = await refresh.json();
       const p = data.post || {};
@@ -891,7 +892,7 @@ async function sendComment(){
   try {
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`, {
       method: 'POST',
-      headers: window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }),
+      headers: window.withActiveContextHeaders(authHeaders({ 'Content-Type': 'application/json' })),
       body: JSON.stringify({ content: text })
     });
     if (!r.ok) {
@@ -942,7 +943,7 @@ async function sendComment(){
 async function loadPostAndComments(){
   let post = null;
   try {
-    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: authHeaders() });
     if (r.status === 404) {
       const container = document.querySelector('.news-card');
       if (container) container.innerHTML = '<h2 style="padding:40px;text-align:center;color:var(--gmt)">Публикация не найдена или удалена</h2>';
@@ -957,7 +958,7 @@ async function loadPostAndComments(){
   }
   if (!post || !post.public_id) return;
 
-  fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/view`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk() } })
+  fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/view`, { method: 'POST', headers: authHeaders() })
     .then(r => r.ok ? r.json() : null)
     .then(d => {
       if (d && typeof d.views_count === 'number') {
@@ -972,7 +973,7 @@ async function loadPostAndComments(){
   renderPost(post);
 
   try {
-    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments?limit=100`, { headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments?limit=100`, { headers: authHeaders() });
     if (r.ok) {
       const d = await r.json();
       comments = (d.comments || []).map(c => {
