@@ -122,12 +122,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ex-counter-sep{width:1px;height:30px;background:var(--bdr);flex-shrink:0}
 
 /* CTA — две кнопки регистрации */
-.ex-cta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--bdr)}
-.btn-visitor{padding:11px 20px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 10px rgba(30,138,76,.25);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.ex-cta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--bdr);min-width:0}
+.btn-visitor{padding:11px 20px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 10px rgba(30,138,76,.25);display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;max-width:100%}
 .btn-visitor:hover{background:var(--gm)}
 .btn-visitor svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
 .btn-visitor.done{background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none}
-.btn-exhibitor{padding:11px 20px;border-radius:var(--rm);background:var(--w);border:1.5px solid var(--g);color:var(--g);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-exhibitor{padding:11px 20px;border-radius:var(--rm);background:var(--w);border:1.5px solid var(--g);color:var(--g);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;max-width:100%}
 .btn-exhibitor:hover{background:var(--gl)}
 .btn-exhibitor svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .btn-exhibitor.done{background:var(--gp);color:var(--gmt);border-color:var(--bdr)}
@@ -267,10 +267,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* АДАПТИВНОСТЬ */
 @media(max-width:1400px){.shell{grid-template-columns:220px 1fr 280px}}
-@media(max-width:1200px){.shell{grid-template-columns:200px 1fr 260px};.tickets-grid{grid-template-columns:repeat(2,1fr)};.exp-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:1000px){.shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"};.right{display:none};.ex-section{padding:16px 18px}}
-@media(max-width:840px){.shell{grid-template-columns:180px 1fr};.ex-cover{height:220px};.ex-header{padding:16px};.ex-title{font-size:18px};.tickets-grid{grid-template-columns:1fr 1fr};.ex-counters{gap:10px}}
-@media(max-width:740px){.shell{grid-template-columns:52px 1fr};.nav-item span,.nav-group{display:none};.nav-item{justify-content:center;padding:10px};.ex-cover{height:180px};.ex-title{font-size:16px};.tickets-grid{grid-template-columns:1fr};.exp-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:1200px){.shell{grid-template-columns:200px 1fr 260px}.tickets-grid{grid-template-columns:repeat(2,1fr)}.exp-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1000px){.shell{grid-template-columns:200px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}.ex-section{padding:16px 18px}}
+@media(max-width:840px){.shell{grid-template-columns:180px 1fr}.ex-cover{height:220px}.ex-header{padding:16px}.ex-title{font-size:18px}.tickets-grid{grid-template-columns:1fr 1fr}.ex-counters{gap:10px}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.ex-cover{height:180px}.ex-title{font-size:16px}.tickets-grid{grid-template-columns:1fr}.exp-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.shell{grid-template-columns:1fr;grid-template-rows:56px auto 1fr;grid-template-areas:"topbar""nav""main";padding:8px;gap:8px}.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}}
 
 /* Unified hover effect for all card-like classes */
@@ -477,7 +477,7 @@ a.sb-org-card:hover{border-color:var(--gb);text-decoration:none!important}
         </button>
         <button class="btn-exhibitor" id="btnExhibitor" onclick="openExhibitorModal()">
           <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-          Стать экспонентом
+          Стать участником
         </button>
         <button class="btn-save-ex" id="btnSave" data-guest-block onclick="toggleSave()">
           <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -1070,7 +1070,7 @@ function renderTickets(ex){
     const soldOut=seatsLeft!==null && seatsLeft<=0;
     const perks=(t.perks||[]).map(p=>`<div class="tic-perk">${escD(p)}</div>`).join('');
     const isExhibitor=t.role==='exhibitor';
-    const btnText=isExhibitor?'Стать экспонентом':(soldOut?'Места кончились':(ex.is_registered?'Вы зарегистрированы':(isFree?'Зарегистрироваться':'Купить билет')));
+    const btnText=isExhibitor?'Стать участником':(soldOut?'Места кончились':(ex.is_registered?'Вы зарегистрированы':(isFree?'Зарегистрироваться':'Купить билет')));
     return `<div class="tic-card">
       <span class="tic-role-badge ${cls}">${lbl}</span>
       <div class="tic-title">${escD(t.title||'')}</div>
