@@ -83,7 +83,7 @@
 
   // ───── действия ─────
   async function repostToFeed(wrap){
-    const url = location.href;
+    const url = wrap.dataset.shareUrl || location.href;
     const titleAttr = wrap.dataset.shareTitle || document.title || 'Публикация';
     const labelAttr = wrap.dataset.shareLabel || 'публикацией';
     try {
@@ -104,7 +104,7 @@
 
   async function repostToFriend(wrap, friendPID, friendName){
     if (!friendPID){ toast('Не удалось определить получателя'); return; }
-    const url = location.href;
+    const url = wrap.dataset.shareUrl || location.href;
     const titleAttr = wrap.dataset.shareTitle || document.title || 'Публикация';
     const emoji = wrap.dataset.shareEmoji || '🔗';
     const message = `${emoji} ${titleAttr}\n${url}`;

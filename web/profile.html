@@ -536,7 +536,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
             <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
             Редактировать
           </button>
-          <button class="btn-sec" onclick="showToast('Ссылка скопирована')">
+          <button type="button" class="btn-sec" id="btnShareMyProfile" data-share data-share-label="профилем" data-share-emoji="👤">
             <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
             Поделиться
           </button>
@@ -752,6 +752,15 @@ async function loadCurrentUser(){
 async function applyCurrentUserProfile(){
   const currentUser=await loadCurrentUser();
   if(!currentUser || (!currentUser.id && !currentUser.public_id && !currentUser.email && !currentUser.full_name && !currentUser.first_name)) return;
+  // Прокидываем публичный URL для кнопки «Поделиться»
+  setTimeout(() => {
+    const btn = document.getElementById('btnShareMyProfile');
+    if (btn && currentUser.public_id){
+      const wrap = btn.closest('.lp-share-wrap') || btn;
+      wrap.dataset.shareUrl = location.origin + '/profile_user.html?id=' + encodeURIComponent(currentUser.public_id);
+      wrap.dataset.shareTitle = currentUser.full_name || currentUser.first_name || 'Мой профиль';
+    }
+  }, 0);
 
   const legacyKey=profileStorageKey(currentUser);
   const legacyProfile=legacyKey?JSON.parse(localStorage.getItem(legacyKey)||'{}'):{};
