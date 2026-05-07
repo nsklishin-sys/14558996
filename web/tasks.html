@@ -1079,10 +1079,18 @@ function filterByDate(iso){
 /* ═══ RENDER LIST ═══ */
 function render(){
   const root=document.getElementById('boardRoot');
+
+  // На канбане фильтры по статусу не применяются —
+  // пользователь видит все 4 колонки одновременно.
+  if(state.view==='kanban'){
+    const sortedAll=sortTasks(tasks.slice());
+    renderKanban(sortedAll,root);
+    updateAux();
+    return;
+  }
+
   const filtered=tasks.filter(passesFilter);
   const sorted=sortTasks(filtered);
-
-  if(state.view==='kanban'){renderKanban(sorted,root);return;}
 
   if(!sorted.length){
     root.innerHTML=`<section class="t-empty">
@@ -1270,6 +1278,9 @@ function setSort(s){state.sort=s;render();}
 function setView(v,btn){
   state.view=v;
   document.querySelectorAll('.t-view-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  // Скрываем строку вкладок-фильтров в режиме канбан
+  const tabsRow=document.querySelector('.t-tabs')||document.querySelector('[class*="t-tab"]')?.parentElement;
+  if(tabsRow) tabsRow.style.display = (v==='kanban') ? 'none' : '';
   render();
 }
 
@@ -1452,6 +1463,7 @@ function updateAux(){updateStats();renderTagsCloud();renderCalMini();}
   renderTagsCloud();
   renderCalMini();
 })();
+;(()=>{const tabsRow=document.querySelector('.t-tabs')||document.querySelector('[class*="t-tab"]')?.parentElement;if(tabsRow&&state.view==='kanban')tabsRow.style.display='none';})();
 </script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
