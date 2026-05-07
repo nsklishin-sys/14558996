@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	netmail "net/mail"
+	neturl "net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -8530,6 +8531,31 @@ func main() {
 			m.URL = sitemapBaseURL(r) + "/project-detail.html?id=" + publicID
 			m.Type = "article"
 			return m, true
+		})
+	})
+
+	// ═════ /api/link-preview ═════
+	// GET ?url=<url> — возвращает {ok, preview:{type,title,subtitle,image,badge,url}}
+	// для внутренних URL платформы резолвит из БД, для http(s):// — Open Graph.
+	mux.HandleFunc("/api/link-preview", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+			return
+		}
+		urlStr := strings.TrimSpace(r.URL.Query().Get("url"))
+		if urlStr == "" || len(urlStr) > 2000 {
+			writeError(w, http.StatusBadRequest, "url обязателен")
+			return
+		}
+		preview, ok := resolveLinkPreview(db, urlStr)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "private, max-age=300")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":      ok,
+			"preview": preview,
 		})
 	})
 
@@ -21302,6 +21328,396 @@ func getCatalogItemByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (
 		ci.ViewerIsAuthor = true
 	}
 	return &ci, nil
+}
+
+// ═════ Link Preview ═════
+
+// resolveLinkPreview принимает URL (относительный путь /xxx.html?id=..., либо
+// абсолютный http(s)://). Для внутренних путей читает данные из БД.
+// Для внешних — парсит Open Graph через fetchExternalPreview.
+// Возвращает (map с полями preview, ok). При ok=false — превью не построено.
+func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
+	parsed, err := neturl.Parse(urlStr)
+	if err != nil {
+		return nil, false
+	}
+
+	// Внешний URL — через OG
+	if parsed.Scheme == "http" || parsed.Scheme == "https" {
+		return fetchExternalPreview(urlStr)
+	}
+
+	// Внутренний — определяем по path
+	path := parsed.Path
+	q := parsed.Query()
+	idParam := q.Get("id")
+
+	switch path {
+	case "/product-detail.html", "/service-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, desc, cover, itemType string
+		var price sql.NullInt64
+		var currency string
+		err := db.QueryRow(`
+			SELECT title, description, cover_image, type, price, currency
+			FROM catalog_items WHERE public_id = $1 AND deleted_at IS NULL`,
+			idParam,
+		).Scan(&title, &desc, &cover, &itemType, &price, &currency)
+		if err != nil {
+			return nil, false
+		}
+		badge := "Товар"
+		if itemType == "service" {
+			badge = "Услуга"
+		}
+		subtitle := previewExcerpt(desc, 90)
+		if price.Valid && price.Int64 > 0 {
+			subtitle = formatPrice(price.Int64, currency)
+			if d := previewExcerpt(desc, 60); d != "" {
+				subtitle += " · " + d
+			}
+		}
+		return map[string]any{
+			"type": itemType, "title": title, "subtitle": subtitle,
+			"image": cover, "badge": badge, "url": urlStr,
+		}, true
+
+	case "/event-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, city, format, cover string
+		var startsAt time.Time
+		err := db.QueryRow(`
+			SELECT title, city, format, cover_url, starts_at
+			FROM events WHERE public_id = $1 AND is_deleted = FALSE`,
+			idParam,
+		).Scan(&title, &city, &format, &cover, &startsAt)
+		if err != nil {
+			return nil, false
+		}
+		parts := []string{startsAt.Format("02.01.2006")}
+		if city != "" {
+			parts = append(parts, city)
+		}
+		if format == "online" {
+			parts = append(parts, "онлайн")
+		}
+		return map[string]any{
+			"type": "event", "title": title, "subtitle": strings.Join(parts, " · "),
+			"image": cover, "badge": "Мероприятие", "url": urlStr,
+		}, true
+
+	case "/exhibition-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, city, cover string
+		var startsAt time.Time
+		err := db.QueryRow(`
+			SELECT title, city, cover_url, starts_at
+			FROM exhibitions WHERE public_id = $1 AND is_deleted = FALSE`,
+			idParam,
+		).Scan(&title, &city, &cover, &startsAt)
+		if err != nil {
+			return nil, false
+		}
+		sub := startsAt.Format("02.01.2006")
+		if city != "" {
+			sub += " · " + city
+		}
+		return map[string]any{
+			"type": "exhibition", "title": title, "subtitle": sub,
+			"image": cover, "badge": "Выставка", "url": urlStr,
+		}, true
+
+	case "/news-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, content, cover, postType string
+		err := db.QueryRow(`
+			SELECT title, content, COALESCE(cover_url,''), type
+			FROM posts WHERE public_id = $1 AND is_deleted = FALSE`,
+			idParam,
+		).Scan(&title, &content, &cover, &postType)
+		if err != nil {
+			return nil, false
+		}
+		badge := "Новость"
+		switch postType {
+		case "project":
+			badge = "Проект"
+		case "case":
+			badge = "Кейс"
+		case "note":
+			badge = "Заметка"
+		}
+		return map[string]any{
+			"type": "news", "title": title, "subtitle": previewExcerpt(content, 120),
+			"image": cover, "badge": badge, "url": urlStr,
+		}, true
+
+	case "/project-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, desc, status string
+		err := db.QueryRow(`
+			SELECT title, description, status
+			FROM projects WHERE public_id = $1 AND is_deleted = FALSE`,
+			idParam,
+		).Scan(&title, &desc, &status)
+		if err != nil {
+			return nil, false
+		}
+		return map[string]any{
+			"type": "project", "title": title, "subtitle": previewExcerpt(desc, 120),
+			"image": "", "badge": "Проект", "url": urlStr,
+		}, true
+
+	case "/forum-topic.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, category string
+		var replies int
+		err := db.QueryRow(`
+			SELECT title, category_key, replies_count
+			FROM forum_topics WHERE public_id = $1 AND deleted_at IS NULL`,
+			idParam,
+		).Scan(&title, &category, &replies)
+		if err != nil {
+			return nil, false
+		}
+		sub := category
+		if replies > 0 {
+			sub += fmt.Sprintf(" · %d ответов", replies)
+		}
+		return map[string]any{
+			"type": "forum_topic", "title": title, "subtitle": sub,
+			"image": "", "badge": "Форум", "url": urlStr,
+		}, true
+
+	case "/community-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		commID, err := strconv.ParseInt(idParam, 10, 64)
+		if err != nil {
+			return nil, false
+		}
+		var name, descr, avatar string
+		err = db.QueryRow(`
+			SELECT name, description, COALESCE(avatar_url,'')
+			FROM communities WHERE id = $1 AND is_deleted = FALSE`,
+			commID,
+		).Scan(&name, &descr, &avatar)
+		if err != nil {
+			return nil, false
+		}
+		return map[string]any{
+			"type": "community", "title": name, "subtitle": previewExcerpt(descr, 120),
+			"image": avatar, "badge": "Сообщество", "url": urlStr,
+		}, true
+
+	case "/company-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var name, descr, logo, city string
+		err := db.QueryRow(`
+			SELECT name, description, COALESCE(logo_image,''), COALESCE(city,'')
+			FROM companies WHERE (slug = $1 OR public_id = $1) AND deleted_at IS NULL`,
+			idParam,
+		).Scan(&name, &descr, &logo, &city)
+		if err != nil {
+			return nil, false
+		}
+		sub := previewExcerpt(descr, 100)
+		if city != "" && sub == "" {
+			sub = city
+		}
+		return map[string]any{
+			"type": "company", "title": name, "subtitle": sub,
+			"image": logo, "badge": "Компания", "url": urlStr,
+		}, true
+
+	case "/profile_user.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var name, position, avatar string
+		err := db.QueryRow(`
+			SELECT COALESCE(full_name, email), COALESCE(position,''), COALESCE(avatar_url,'')
+			FROM users WHERE public_id = $1`,
+			idParam,
+		).Scan(&name, &position, &avatar)
+		if err != nil {
+			return nil, false
+		}
+		return map[string]any{
+			"type": "profile", "title": name, "subtitle": position,
+			"image": avatar, "badge": "Профиль", "url": urlStr,
+		}, true
+
+	case "/job-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, city, workFormat string
+		var salaryFrom, salaryTo sql.NullInt64
+		err := db.QueryRow(`
+			SELECT title, city, work_format, salary_from, salary_to
+			FROM jobs WHERE public_id = $1 AND deleted_at IS NULL`,
+			idParam,
+		).Scan(&title, &city, &workFormat, &salaryFrom, &salaryTo)
+		if err != nil {
+			return nil, false
+		}
+		var parts []string
+		if city != "" {
+			parts = append(parts, city)
+		}
+		if salaryFrom.Valid && salaryFrom.Int64 > 0 {
+			parts = append(parts, "от "+formatPrice(salaryFrom.Int64, "RUB"))
+		}
+		return map[string]any{
+			"type": "job", "title": title, "subtitle": strings.Join(parts, " · "),
+			"image": "", "badge": "Вакансия", "url": urlStr,
+		}, true
+
+	case "/resume-detail.html":
+		if idParam == "" {
+			return nil, false
+		}
+		var title, city string
+		var expYears int
+		err := db.QueryRow(`
+			SELECT title, city, experience_years
+			FROM resumes WHERE public_id = $1 AND deleted_at IS NULL`,
+			idParam,
+		).Scan(&title, &city, &expYears)
+		if err != nil {
+			return nil, false
+		}
+		var parts []string
+		if city != "" {
+			parts = append(parts, city)
+		}
+		if expYears > 0 {
+			parts = append(parts, fmt.Sprintf("опыт %d", expYears))
+		}
+		return map[string]any{
+			"type": "resume", "title": title, "subtitle": strings.Join(parts, " · "),
+			"image": "", "badge": "Резюме", "url": urlStr,
+		}, true
+	}
+
+	return nil, false
+}
+
+// previewExcerpt — обрезает текст до n рун, добавляет «…».
+func previewExcerpt(s string, n int) string {
+	s = strings.TrimSpace(s)
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+	runes := []rune(s)
+	return strings.TrimSpace(string(runes[:n])) + "…"
+}
+
+// formatPrice — простое форматирование цены.
+func formatPrice(amount int64, currency string) string {
+	sym := "₽"
+	switch currency {
+	case "USD":
+		sym = "$"
+	case "EUR":
+		sym = "€"
+	case "CNY":
+		sym = "¥"
+	}
+	return fmt.Sprintf("%d %s", amount, sym)
+}
+
+// fetchExternalPreview — Open Graph для внешних URL.
+// SSRF-защита: только http/https, блок private IP, лимит body 1MB, таймаут 4с.
+var ogTitleRE = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']`)
+var ogDescRE = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']`)
+var ogImageRE = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`)
+var titleTagRE = regexp.MustCompile(`(?is)<title[^>]*>([^<]+)</title>`)
+
+func fetchExternalPreview(urlStr string) (map[string]any, bool) {
+	parsed, err := neturl.Parse(urlStr)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return nil, false
+	}
+	// SSRF: резолв и проверка private IP
+	host := parsed.Hostname()
+	ips, err := net.LookupIP(host)
+	if err != nil || len(ips) == 0 {
+		return nil, false
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
+			return nil, false
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
+	if err != nil {
+		return nil, false
+	}
+	req.Header.Set("User-Agent", "LASTOP-LinkPreview/1.0")
+	req.Header.Set("Accept", "text/html")
+	client := &http.Client{Timeout: 4 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
+		if len(via) >= 3 {
+			return errors.New("too many redirects")
+		}
+		return nil
+	}}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, false
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	if err != nil {
+		return nil, false
+	}
+	html := string(body)
+	title := ""
+	if m := ogTitleRE.FindStringSubmatch(html); len(m) > 1 {
+		title = m[1]
+	} else if m := titleTagRE.FindStringSubmatch(html); len(m) > 1 {
+		title = strings.TrimSpace(m[1])
+	}
+	if title == "" {
+		return nil, false
+	}
+	desc := ""
+	if m := ogDescRE.FindStringSubmatch(html); len(m) > 1 {
+		desc = m[1]
+	}
+	image := ""
+	if m := ogImageRE.FindStringSubmatch(html); len(m) > 1 {
+		image = m[1]
+	}
+	return map[string]any{
+		"type":     "external",
+		"title":    previewExcerpt(title, 120),
+		"subtitle": previewExcerpt(desc, 140),
+		"image":    image,
+		"badge":    parsed.Hostname(),
+		"url":      urlStr,
+	}, true
 }
 
 // applyToCatalogItem — заявка на товар/услугу. Создаёт запись в
