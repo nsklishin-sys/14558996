@@ -3759,7 +3759,7 @@ func main() {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
-			_, err := db.Exec(`UPDATE chat_messages SET content=$1,is_edited=TRUE,edited_at=NOW() WHERE id=$2 AND author_id=$3 AND created_at >= NOW()-INTERVAL '24 hours'`, strings.TrimSpace(req.Content), msgID, userID)
+			_, err := db.Exec(`UPDATE chat_messages SET content=$1,is_edited=TRUE,edited_at=NOW() WHERE id=$2 AND author_id=$3 AND created_at >= NOW()-INTERVAL '15 minutes'`, strings.TrimSpace(req.Content), msgID, userID)
 			if err != nil {
 				handleChatError(w, err)
 				return
@@ -5872,11 +5872,16 @@ func main() {
 					writeError(w, http.StatusBadRequest, "Длина сообщения 1-10000 символов")
 					return
 				}
-				if _, err := db.Exec(
-					`UPDATE forum_messages SET content = $1, edited_at = NOW() WHERE id = $2`,
+				res, err := db.Exec(
+					`UPDATE forum_messages SET content = $1, edited_at = NOW() WHERE id = $2 AND created_at >= NOW() - INTERVAL '15 minutes'`,
 					content, messageID,
-				); err != nil {
+				)
+				if err != nil {
 					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				if rows, _ := res.RowsAffected(); rows == 0 {
+					writeError(w, http.StatusForbidden, "Срок редактирования истёк (15 минут)")
 					return
 				}
 				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
