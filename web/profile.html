@@ -665,13 +665,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- ═══ Таб: ДРУЗЬЯ ═══ -->
   <div class="tab-content" id="tab-friends">
     <div class="section">
-      <div class="sec-head">
-        <div class="sec-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Друзья и контакты</div>
-        <button class="sec-more">Все (247) →</button>
+      <div class="block-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Друзья и контакты</span>
+        <a href="/friends.html" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
       </div>
-      <div class="friends-grid" id="profileFriendsGrid">
-        <div style="grid-column:1/-1;padding:24px 12px;text-align:center;color:var(--gmt);font-size:12px">Раздел в разработке</div>
-      </div>
+      <div id="profileFriendsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding-top:10px"></div>
     </div>
   </div>
 
@@ -811,6 +809,36 @@ async function applyCurrentUserProfile(){
   websiteNode.href=email?`mailto:${email}`:'#';
 }
 void applyCurrentUserProfile();
+void loadProfileFriends();
+
+async function loadProfileFriends(){
+  const el = document.getElementById('profileFriendsList');
+  if (!el) return;
+  try {
+    const t = localStorage.getItem('token');
+    const r = await fetch('/api/friends', {
+      headers: t ? {Authorization: 'Bearer ' + t} : {}
+    });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const friends = d.friends || [];
+    if (!friends.length) {
+      el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gmt);padding:30px;font-size:13px">У вас пока нет друзей. <a href="/friends.html" style="color:var(--g);font-weight:700">Найти →</a></div>';
+      return;
+    }
+    el.innerHTML = friends.slice(0,12).map(function(f){
+      var name = f.full_name || f.friend_name || 'Участник';
+      var pid = f.public_id || f.friend_id || '';
+      var letter = (name[0] || '?').toUpperCase();
+      return '<a href="/profile_user.html?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;text-decoration:none;color:var(--t);transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'">'
+        + '<div style="width:36px;height:36px;border-radius:10px;background:var(--g);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0">' + letter + '</div>'
+        + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div></div>'
+        + '</a>';
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gmt);padding:30px;font-size:13px">Не удалось загрузить друзей</div>';
+  }
+}
 
 async function loadOwnPublications(force=false){
   if(profilePosts.length && !force)return;
@@ -870,6 +898,7 @@ function switchTab(tab, btn){
   if(content)content.classList.add('active');
   if(btn)btn.classList.add('active');
   if(tab==='publications'){void loadOwnPublications();}
+  if(tab==='friends'){void loadProfileFriends();}
   /* Прокрутка к табам */
   document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }

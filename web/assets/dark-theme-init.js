@@ -141,9 +141,20 @@
     var settingsLink = document.querySelector(
       '.nav .nav-item[href="/settings.html"], '
       + '.global-sidebar a[href="/settings.html"], '
-      + '.nav .nav-item[data-guest-locked][href*="settings"], '
-      + '.nav .nav-item:last-of-type'
+      + '.nav .nav-item[href*="settings"], '
+      + '.nav .nav-item[data-guest-locked][href*="settings"]'
     );
+    // У гостя href переписан на javascript:void(0) — 
+    // ищем по тексту "Настройки"
+    if (!settingsLink) {
+      var allItems = document.querySelectorAll('.nav .nav-item');
+      for (var i = 0; i < allItems.length; i++) {
+        if ((allItems[i].textContent || '').trim().indexOf('Настройки') === 0) {
+          settingsLink = allItems[i];
+          break;
+        }
+      }
+    }
     var fab = createThemeButton();
 
     if (settingsLink && settingsLink.parentNode) {
