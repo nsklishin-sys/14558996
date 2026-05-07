@@ -579,11 +579,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
     <!-- Статистика -->
     <div class="prof-stats">
-      <div class="ps-item" onclick="switchTab('publications')"><div class="ps-n">38</div><div class="ps-l">Публикаций</div></div>
-      <div class="ps-item" onclick="switchTab('projects')"><div class="ps-n">12</div><div class="ps-l">Проектов</div></div>
-      <div class="ps-item" onclick="switchTab('friends')"><div class="ps-n">247</div><div class="ps-l">Друзей</div></div>
-      <div class="ps-item" onclick="showToast('Подписки')"><div class="ps-n">89</div><div class="ps-l">Подписок</div></div>
-      <div class="ps-item" onclick="showToast('Мероприятия')"><div class="ps-n">14</div><div class="ps-l">Мероприятий</div></div>
+      <div class="ps-item" onclick="switchTab('publications')"><div class="ps-n" id="psViewedPubs">0</div><div class="ps-l">Публикаций</div></div>
+      <div class="ps-item" onclick="switchTab('projects')"><div class="ps-n" id="psViewedProjs">0</div><div class="ps-l">Проектов</div></div>
+      <div class="ps-item" onclick="switchTab('friends')"><div class="ps-n" id="psViewedFriends">0</div><div class="ps-l">Друзей</div></div>
+      <div class="ps-item"><div class="ps-n" id="psViewedComms">0</div><div class="ps-l">Сообществ</div></div>
+      <div class="ps-item"><div class="ps-n" id="psViewedEvents">0</div><div class="ps-l">Мероприятий</div></div>
     </div>
   </div>
 
@@ -595,11 +595,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </button>
     <button class="ptab" onclick="switchTab('publications', this)">
       <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Публикации <span class="ptab-count">38</span>
+      Публикации <span class="ptab-count" id="ptabCntViewedPubs">0</span>
     </button>
     <button class="ptab" onclick="switchTab('projects', this)">
       <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      Проекты <span class="ptab-count">12</span>
+      Проекты <span class="ptab-count" id="ptabCntViewedProjs">0</span>
     </button>
     <button class="ptab" onclick="switchTab('experience', this)">
       <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
@@ -607,7 +607,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </button>
     <button class="ptab" onclick="switchTab('friends', this)">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
-      Друзья <span class="ptab-count">247</span>
+      Друзья <span class="ptab-count" id="ptabCntViewedFriends">0</span>
     </button>
   </div>
 
@@ -629,58 +629,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- ═══ Таб: ПРОЕКТЫ ═══ -->
   <div class="tab-content" id="tab-projects">
-    <div class="proj-grid">
-      <div class="proj-card" onclick="showToast('Открываем проект')">
-        <span class="proj-status active">Активный</span>
-        <div class="proj-title">Маршрут СНГ–ЕС · Q2 2026</div>
-        <div class="proj-desc">Мультимодальные перевозки оборудования с таможенным сопровождением. Партнёры: NorthBridge, GlobalFreight.</div>
-        <div class="proj-foot">
-          <div class="proj-team">
-            <div class="proj-team-av" style="background:#5AB080">М</div>
-            <div class="proj-team-av" style="background:#3A90C0">А</div>
-            <div class="proj-team-av" style="background:#9060C0">С</div>
-          </div>
-          <div class="proj-meta">8 участников</div>
-        </div>
-      </div>
-      <div class="proj-card" onclick="showToast('Открываем проект')">
-        <span class="proj-status active">Активный</span>
-        <div class="proj-title">TMS-интеграция NorthBridge</div>
-        <div class="proj-desc">Внедрение единой TMS-платформы для управления мультимодальными перевозками.</div>
-        <div class="proj-foot">
-          <div class="proj-team">
-            <div class="proj-team-av" style="background:#1A8A6A">Н</div>
-            <div class="proj-team-av" style="background:#C07030">Д</div>
-          </div>
-          <div class="proj-meta">5 участников</div>
-        </div>
-      </div>
-      <div class="proj-card" onclick="showToast('Открываем проект')">
-        <span class="proj-status planned">Планируется</span>
-        <div class="proj-title">Экспорт фармпродукции в ЕАЭС</div>
-        <div class="proj-desc">Построение цепочки поставок с контролем холодовой цепи и сертификацией.</div>
-        <div class="proj-foot">
-          <div class="proj-team">
-            <div class="proj-team-av" style="background:#185FA5">В</div>
-            <div class="proj-team-av" style="background:#B05090">Е</div>
-          </div>
-          <div class="proj-meta">Старт 15 мая</div>
-        </div>
-      </div>
-      <div class="proj-card" onclick="showToast('Открываем проект')">
-        <span class="proj-status done">Завершён</span>
-        <div class="proj-title">Автоматизация декларирования</div>
-        <div class="proj-desc">Сокращение времени оформления на 40% через электронное декларирование.</div>
-        <div class="proj-foot">
-          <div class="proj-team">
-            <div class="proj-team-av" style="background:#5AB080">М</div>
-            <div class="proj-team-av" style="background:#3B6D11">П</div>
-            <div class="proj-team-av" style="background:#208090">К</div>
-          </div>
-          <div class="proj-meta">Завершён Q1 2026</div>
-        </div>
-      </div>
-    </div>
+    <div class="proj-grid" id="viewedProjectsGrid"></div>
   </div>
 
   <!-- ═══ Таб: ОПЫТ ═══ -->
@@ -730,16 +679,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="section">
       <div class="sec-head">
         <div class="sec-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Друзья и контакты</div>
-        <button class="sec-more">Все (247) →</button>
+        <button class="sec-more" id="viewedFriendsAllBtn">Все →</button>
       </div>
-      <div class="friends-grid">
-        <div class="friend-card" onclick="location.href='/profile.html?id=1'"><div class="friend-av" style="background:#5AB080">М</div><div class="friend-name">Мария Захарова</div><div class="friend-role">NorthBridge</div></div>
-        <div class="friend-card" onclick="location.href='/profile.html?id=2'"><div class="friend-av" style="background:#3A90C0">А</div><div class="friend-name">Алексей Петров</div><div class="friend-role">Специалист ВЭД</div></div>
-        <div class="friend-card" onclick="location.href='/profile.html?id=3'"><div class="friend-av" style="background:#9060C0">С</div><div class="friend-name">Сергей Иванов</div><div class="friend-role">SGL Logistics</div></div>
-        <div class="friend-card" onclick="location.href='/profile.html?id=4'"><div class="friend-av" style="background:#C07030">Д</div><div class="friend-name">Дмитрий Орлов</div><div class="friend-role">Экспедитор</div></div>
-        <div class="friend-card" onclick="location.href='/profile.html?id=5'"><div class="friend-av" style="background:#1A8A6A">А</div><div class="friend-name">Анна Лебедева</div><div class="friend-role">Product · LASTOP</div></div>
-        <div class="friend-card" onclick="location.href='/profile.html?id=6'"><div class="friend-av" style="background:#B05090">Е</div><div class="friend-name">Елена Морозова</div><div class="friend-role">Таможенный брокер</div></div>
-      </div>
+      <div class="friends-grid" id="viewedFriendsGrid"></div>
     </div>
   </div>
 
@@ -771,19 +713,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- Друзья онлайн -->
   <div class="card">
-    <div class="block-title">Друзья · онлайн</div>
-    <div class="fmini" onclick="location.href='/profile.html?id=1'">
-      <div class="fmini-av" style="background:#5AB080">М<div class="fmini-online"></div></div>
-      <div style="min-width:0;flex:1"><div class="fmini-name">Мария Захарова</div><div class="fmini-role">NorthBridge Logistics</div></div>
-    </div>
-    <div class="fmini" onclick="location.href='/profile.html?id=2'">
-      <div class="fmini-av" style="background:#3A90C0">А<div class="fmini-online"></div></div>
-      <div style="min-width:0;flex:1"><div class="fmini-name">Алексей Петров</div><div class="fmini-role">Специалист ВЭД</div></div>
-    </div>
-    <div class="fmini" onclick="location.href='/profile.html?id=5'">
-      <div class="fmini-av" style="background:#1A8A6A">А<div class="fmini-online"></div></div>
-      <div style="min-width:0;flex:1"><div class="fmini-name">Анна Лебедева</div><div class="fmini-role">Product · LASTOP</div></div>
-    </div>
+    <div class="block-title">Друзья онлайн</div>
+    <div id="viewedFriendsOnline"></div>
   </div>
 
 </aside>
@@ -1052,7 +983,18 @@ function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarP
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/';}
-function switchTab(tab, btn){if(!btn){btn=document.querySelector(`.ptab[onclick*="'${tab}'"]`);}document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));const content=document.getElementById('tab-'+tab);if(content)content.classList.add('active');if(btn)btn.classList.add('active');if(tab==='publications'){void loadViewedPublications();}document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});}
+function switchTab(tab, btn){
+  if(!btn){btn=document.querySelector(`.ptab[onclick*="'${tab}'"]`);}
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+  const content=document.getElementById('tab-'+tab);
+  if(content)content.classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(tab==='publications'){void loadViewedPublications();}
+  if(tab==='projects'){void loadViewedProjects();}
+  if(tab==='friends'){void loadViewedFriends();}
+  document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function goToChat(){const uid=getViewedUid();location.href='/chat.html'+(uid?`?uid=${encodeURIComponent(uid)}`:'');}
 async function loadViewedPublications(){
   const uid=getViewedUid(); if(!uid)return;
@@ -1072,6 +1014,109 @@ async function loadViewedPublications(){
 
 applyTopbarUser();
 loadViewedUser();
+
+const VIEWED_COLORS=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
+function viewedColor(s){return VIEWED_COLORS[(String(s||'').charCodeAt(0)||0)%VIEWED_COLORS.length];}
+function viewedLetter(s){return String(s||'?').trim().slice(0,1).toUpperCase()||'?';}
+
+async function safeFetch(url){
+  try{
+    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
+    const r=await fetch(API+url,{headers});
+    if(!r.ok)return null;
+    return await r.json();
+  }catch{return null;}
+}
+
+async function loadViewedProjects(){
+  const uid=getViewedUid(); if(!uid)return;
+  const grid=document.getElementById('viewedProjectsGrid');
+  if(!grid)return;
+  const d=await safeFetch(`/users/${encodeURIComponent(uid)}/projects`);
+  const projects=d?.projects||[];
+  document.getElementById('psViewedProjs').textContent=String(projects.length);
+  const cnt=document.getElementById('ptabCntViewedProjs'); if(cnt)cnt.textContent=String(projects.length);
+  if(!projects.length){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У этого пользователя нет проектов</div>';return;}
+  grid.innerHTML=projects.map(p=>{
+    const status=p.status||'active';
+    const statusLbl={active:'Активный',planned:'Планируется',done:'Завершён',completed:'Завершён',paused:'На паузе'}[status]||status;
+    const team=(p.members||p.team||[]).slice(0,3);
+    const memberCount=p.members_count||p.team_count||team.length||0;
+    const teamHtml=team.map(m=>{
+      const name=m.full_name||m.name||'?';
+      return `<div class="proj-team-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>`;
+    }).join('');
+    return `<div class="proj-card" onclick="location.href='/project-detail.html?id=${encodeURIComponent(p.public_id||p.id)}'">
+      <span class="proj-status ${esc(status)}">${esc(statusLbl)}</span>
+      <div class="proj-title">${esc(p.title||p.name||'Проект')}</div>
+      <div class="proj-desc">${esc(p.short_description||p.description||'')}</div>
+      <div class="proj-foot">
+        <div class="proj-team">${teamHtml}</div>
+        <div class="proj-meta">${memberCount?memberCount+' участник'+(memberCount===1?'':(memberCount<5?'а':'ов')):''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadViewedFriends(){
+  const uid=getViewedUid(); if(!uid)return;
+  const grid=document.getElementById('viewedFriendsGrid');
+  const onlineBlock=document.getElementById('viewedFriendsOnline');
+  const d=await safeFetch(`/users/${encodeURIComponent(uid)}/friends`);
+  const friends=d?.friends||[];
+  document.getElementById('psViewedFriends').textContent=String(friends.length);
+  const cnt=document.getElementById('ptabCntViewedFriends'); if(cnt)cnt.textContent=String(friends.length);
+  if(grid){
+    if(!friends.length){
+      grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У этого пользователя нет друзей</div>';
+    }else{
+      grid.innerHTML=friends.slice(0,12).map(f=>{
+        const name=f.full_name||f.friend_name||'Участник';
+        const pid=f.public_id||f.friend_id||'';
+        return `<div class="friend-card" onclick="location.href='/profile_user.html?id=${encodeURIComponent(pid)}'">
+          <div class="friend-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>
+          <div class="friend-name">${esc(name)}</div>
+          <div class="friend-role">${esc(f.position||f.company_name||'')}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+  if(onlineBlock){
+    const online=friends.filter(f=>f.is_online);
+    if(!friends.length){
+      onlineBlock.innerHTML='<div style="padding:14px 6px;text-align:center;color:var(--gmt);font-size:11px">Нет друзей</div>';
+    } else if(!online.length){
+      onlineBlock.innerHTML='<div style="padding:14px 6px;text-align:center;color:var(--gmt);font-size:11px">Сейчас никого онлайн</div>';
+    } else {
+      onlineBlock.innerHTML=online.slice(0,5).map(f=>{
+        const name=f.full_name||f.friend_name||'Участник';
+        const pid=f.public_id||f.friend_id||'';
+        return `<a class="fmini" href="/profile_user.html?id=${encodeURIComponent(pid)}" style="text-decoration:none;color:inherit">
+          <div class="fmini-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}<div class="fmini-online"></div></div>
+          <div style="min-width:0;flex:1"><div class="fmini-name">${esc(name)}</div><div class="fmini-role">${esc(f.position||f.company_name||'')}</div></div>
+        </a>`;
+      }).join('');
+    }
+  }
+  const allBtn=document.getElementById('viewedFriendsAllBtn');
+  if(allBtn)allBtn.textContent=`Все (${friends.length}) →`;
+}
+
+async function loadViewedCounts(){
+  const uid=getViewedUid(); if(!uid)return;
+  const dPubs=await safeFetch(`/users/${encodeURIComponent(uid)}/posts?limit=100`);
+  const pubsCount=(dPubs?.posts||[]).length;
+  document.getElementById('psViewedPubs').textContent=String(pubsCount);
+  const t1=document.getElementById('ptabCntViewedPubs'); if(t1)t1.textContent=String(pubsCount);
+  const dComms=await safeFetch(`/users/${encodeURIComponent(uid)}/communities`);
+  document.getElementById('psViewedComms').textContent=String((dComms?.communities||[]).length);
+  const dEvs=await safeFetch(`/users/${encodeURIComponent(uid)}/events`);
+  document.getElementById('psViewedEvents').textContent=String((dEvs?.events||[]).length);
+  void loadViewedProjects();
+  void loadViewedFriends();
+}
+
+setTimeout(()=>{ void loadViewedCounts(); }, 400);
 </script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/copy-helper.js" defer></script>
