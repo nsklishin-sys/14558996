@@ -15,7 +15,6 @@ import (
 	"io"
 	"log"
 	"log/slog"
-	"runtime/debug"
 	"math/big"
 	"net"
 	"net/http"
@@ -24,6 +23,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -17633,10 +17633,12 @@ func validateEvent(req *createEventRequest, userID int64, db *sql.DB) (time.Time
 	if req.Timezone == "" {
 		req.Timezone = "Europe/Moscow"
 	}
-	if len(req.Title) < 3 || len(req.Title) > 200 {
+	titleLen := utf8.RuneCountInString(req.Title)
+	if titleLen < 3 || titleLen > 200 {
 		return time.Time{}, time.Time{}, fmt.Errorf("%w: название 3..200 символов", errValidation)
 	}
-	if len(req.Description) > 10000 {
+	descriptionLen := utf8.RuneCountInString(req.Description)
+	if descriptionLen > 10000 {
 		return time.Time{}, time.Time{}, fmt.Errorf("%w: описание слишком длинное", errValidation)
 	}
 	if req.Type == "" {
@@ -17662,7 +17664,8 @@ func validateEvent(req *createEventRequest, userID int64, db *sql.DB) (time.Time
 	if endsAt.Before(startsAt) {
 		return time.Time{}, time.Time{}, fmt.Errorf("%w: ends_at должен быть >= starts_at", errValidation)
 	}
-	if req.Format != "online" && len(req.City) < 1 {
+	cityLen := utf8.RuneCountInString(req.City)
+	if req.Format != "online" && cityLen < 1 {
 		return time.Time{}, time.Time{}, fmt.Errorf("%w: для офлайн/гибрид нужен city", errValidation)
 	}
 	if req.Format != "offline" {
