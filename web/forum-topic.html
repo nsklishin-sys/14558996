@@ -515,6 +515,9 @@ function renderTopicHeader(){
         '<span class="th-btn-text-on">Подписаться</span>' +
       '</button>'
     : '';
+  const shareBtn = '<button type="button" class="th-btn" data-share data-share-title="' + esc(t.title || 'Тема форума') + '" data-share-label="темой" data-share-emoji="💬">' +
+    '<svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>' +
+    'Поделиться</button>';
 
   const ownerActions = isAuthorOfTopic
     ? '<button class="th-btn" onclick="toggleClosedTopic()">' +
@@ -536,6 +539,7 @@ function renderTopicHeader(){
         (t.is_pinned ? '<span class="th-pinned-icon" title="Закреплено"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-3V5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v9z"/></svg></span>' : '') +
         closedTag +
         '<div class="th-actions">' +
+          shareBtn +
           subscribeBtn +
           ownerActions +
         '</div>' +
@@ -550,6 +554,7 @@ function renderTopicHeader(){
         '</div>' +
       '</div>' +
     '</div>';
+  window.LASTOPShareInit?.();
 }
 
 function renderTopicSidebar(){
