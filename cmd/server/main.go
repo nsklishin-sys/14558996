@@ -19551,6 +19551,13 @@ func serveDetailWithOG(w http.ResponseWriter, r *http.Request, filePath string, 
 			html = injectOGTags(html, meta, r)
 		}
 	}
+	// Применяем общий inj (cookie-banner, confirm-modal, sw-register, метрика и т.д.)
+	// перед </head>. Без этого деталки лишены общих ассетов.
+	if idx := strings.Index(html, "</head>"); idx >= 0 {
+		html = html[:idx] + inj + html[idx:]
+	} else if idx := strings.Index(html, "</HEAD>"); idx >= 0 {
+		html = html[:idx] + inj + html[idx:]
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(html))
 }
