@@ -108,6 +108,10 @@
       // Просто скрываем — на публичных страницах для гостя они не нужны
       btn.style.display='none';
     });
+    // Скрываем все элементы помеченные data-auth-only
+    document.querySelectorAll('[data-auth-only]').forEach(function(el){
+      el.style.display='none';
+    });
   }
 
   // Перехват кликов на действия в карточках (лайк, сохранить, откликнуться, записаться)
