@@ -8415,6 +8415,66 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"communities": items})
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/projects") {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			publicID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/users/"), "/projects")
+			publicID = strings.TrimSpace(strings.Trim(publicID, "/"))
+			if !isValidUserPublicID(publicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id пользователя")
+				return
+			}
+			items, err := listUserProjects(db, publicID)
+			if err != nil {
+				log.Printf("listUserProjects: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"projects": items})
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/friends") {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			publicID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/users/"), "/friends")
+			publicID = strings.TrimSpace(strings.Trim(publicID, "/"))
+			if !isValidUserPublicID(publicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id пользователя")
+				return
+			}
+			items, err := listUserFriends(db, publicID)
+			if err != nil {
+				log.Printf("listUserFriends: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"friends": items})
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/events") {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			publicID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/users/"), "/events")
+			publicID = strings.TrimSpace(strings.Trim(publicID, "/"))
+			if !isValidUserPublicID(publicID) {
+				writeError(w, http.StatusBadRequest, "Некорректный id пользователя")
+				return
+			}
+			items, err := listUserEventsPublic(db, publicID)
+			if err != nil {
+				log.Printf("listUserEventsPublic: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"events": items})
+			return
+		}
 		if !strings.HasSuffix(r.URL.Path, "/posts") {
 			if r.Method != http.MethodGet {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -12120,6 +12180,83 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 		result = append(result, dto)
 	}
 	return result, rows.Err()
+}
+
+
+func listUserFriends(db *sql.DB, publicID string) ([]friendDTO, error) {
+	var userID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, publicID).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []friendDTO{}, nil
+		}
+		return nil, err
+	}
+	rows, err := db.Query(`
+		SELECT u.public_id, u.full_name, u.email,
+		  EXISTS(
+		    SELECT 1 FROM sessions s
+		    WHERE s.user_id = u.id
+		      AND s.last_seen_at >= NOW() - INTERVAL '5 minutes'
+		  ) AS is_online
+		FROM friend_requests fr
+		JOIN users u ON u.id = CASE
+			WHEN fr.requester_id = $1 THEN fr.addressee_id
+			ELSE fr.requester_id
+		END
+		WHERE fr.status = 'accepted'
+		  AND ($1 IN (fr.requester_id, fr.addressee_id))
+		ORDER BY LOWER(u.full_name)
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []friendDTO
+	for rows.Next() {
+		var dto friendDTO
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.IsOnline); scanErr != nil {
+			return nil, scanErr
+		}
+		result = append(result, dto)
+	}
+	if result == nil {
+		result = []friendDTO{}
+	}
+	return result, rows.Err()
+}
+
+func listUserProjects(db *sql.DB, publicID string) ([]project, error) {
+	var userID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, publicID).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []project{}, nil
+		}
+		return nil, err
+	}
+	// Используем существующую listProjects с фильтром owner_only,
+	// передав userID как viewerID
+	return listProjects(db, userID, map[string]string{"owner_only": "1", "limit": "50"})
+}
+
+func listUserEventsPublic(db *sql.DB, publicID string) ([]event, error) {
+	var userID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE public_id = $1`, publicID).Scan(&userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []event{}, nil
+		}
+		return nil, err
+	}
+	items, _, err := listEvents(db, userID, true, listEventsFilter{
+		Mode:  "mine",
+		Limit: 50,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = []event{}
+	}
+	return items, nil
 }
 
 func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
