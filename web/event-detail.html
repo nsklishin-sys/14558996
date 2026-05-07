@@ -82,8 +82,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .bc-sep{color:var(--bdr);font-size:12px}
 
 /* ═══ ОБЛОЖКА ═══ */
-.ev-cover-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);animation:fadeUp .3s ease both;flex-shrink:0;position:relative;z-index:5;overflow:hidden}
-.ev-cover{position:relative;height:260px;overflow:hidden}
+.ev-cover-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);animation:fadeUp .3s ease both;flex-shrink:0;position:relative;z-index:5}
+.ev-cover{position:relative;height:260px;overflow:hidden;border-radius:var(--rxl) var(--rxl) 0 0}
 .ev-cover img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
 .ev-cover:hover img{transform:scale(1.02)}
 .ev-cover-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
@@ -130,8 +130,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .btn-save:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
 .btn-save.saved{border-color:var(--gb);background:var(--gl);color:var(--g)}
 .btn-save svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
-.repost-wrap{position:relative}
-.repost-dd{position:fixed;top:0;left:0;width:280px;max-height:60vh;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;z-index:1000;overflow-y:auto}
+.repost-wrap{position:relative;z-index:50}
+.repost-dd{position:absolute;top:calc(100% + 8px);left:0;width:280px;max-height:60vh;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;z-index:1000;overflow-y:auto}
 .repost-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .repost-dd-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bdr)}
 .repost-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .12s}
@@ -753,25 +753,13 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 let _repostFriendsLoaded=false;
 async function toggleRepost(e){
   e.stopPropagation();
-  const dd=document.getElementById('repostDD');
-  const btn=document.getElementById('btnRepost');
-  if(dd.classList.contains('open')){dd.classList.remove('open');return;}
-  const r=btn.getBoundingClientRect();
-  const ddW=280;
-  let left=r.left;
-  if(left+ddW>window.innerWidth-12)left=window.innerWidth-ddW-12;
-  if(left<12)left=12;
-  dd.style.left=left+'px';
-  dd.style.top=(r.bottom+8)+'px';
-  dd.classList.add('open');
+  document.getElementById('repostDD').classList.toggle('open');
   if(!_repostFriendsLoaded) await loadRepostFriends();
 }
 document.addEventListener('click',e=>{
   const rd=document.getElementById('repostDD'),rb=document.getElementById('btnRepost');
   if(rd&&rb&&!rd.contains(e.target)&&!rb.contains(e.target))rd.classList.remove('open');
 });
-window.addEventListener('scroll',()=>{document.getElementById('repostDD')?.classList.remove('open');},true);
-window.addEventListener('resize',()=>{document.getElementById('repostDD')?.classList.remove('open');});
 async function loadRepostFriends(){
   const list=document.getElementById('repostFriendsList');
   if(!list)return;
