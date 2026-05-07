@@ -938,7 +938,11 @@ async function submitEvent(){
     const isEditMode=!!window.__editEventID;
     const url=isEditMode?`${API}/events/${encodeURIComponent(window.__editEventID)}`:API+'/events';
     const method=isEditMode?'PATCH':'POST';
-    const r=await fetch(url,{method,headers,body:JSON.stringify(body)});
+    // PATCH не принимает speakers/program/tickets/latitude/longitude
+    const payload=isEditMode
+      ?(({speakers,program,tickets,latitude,longitude,...rest})=>rest)(body)
+      :body;
+    const r=await fetch(url,{method,headers,body:JSON.stringify(payload)});
     if(!r.ok){
       const d=await r.json().catch(()=>null);
       toast('Ошибка: '+(d?.error||r.status));
