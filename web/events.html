@@ -935,14 +935,18 @@ async function submitEvent(){
   const headers=(typeof window.withActiveContextHeaders==='function')?window.withActiveContextHeaders(baseH):baseH;
 
   try{
-    const r=await fetch(API+'/events',{method:'POST',headers,body:JSON.stringify(body)});
+    const isEditMode=!!window.__editEventID;
+    const url=isEditMode?`${API}/events/${encodeURIComponent(window.__editEventID)}`:API+'/events';
+    const method=isEditMode?'PATCH':'POST';
+    const r=await fetch(url,{method,headers,body:JSON.stringify(body)});
     if(!r.ok){
       const d=await r.json().catch(()=>null);
       toast('Ошибка: '+(d?.error||r.status));
       return;
     }
+    window.__editEventID=null;
     closeModal();
-    toast('Мероприятие создано ✓',true);
+    toast(isEditMode?'Мероприятие обновлено ✓':'Мероприятие создано ✓',true);
     await loadEvents();
   }catch(err){
     toast('Сеть: '+err.message);
@@ -973,7 +977,35 @@ function applyCurrentUser(user){
     }
   }catch{}
   applyFilters();
-  loadEvents();
+  await loadEvents();
+  const editId=new URLSearchParams(location.search).get('edit');
+  if(editId){
+    fetch(`${API}/events/${encodeURIComponent(editId)}`,{
+      headers:{Authorization:'Bearer '+tk()}
+    })
+      .then(r=>r.json())
+      .then(data=>{
+        const ev=data.event;
+        if(!ev)return;
+        openModal();
+        const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
+        setVal('mTitle',ev.title);
+        setVal('mDesc',ev.description);
+        setVal('mCity',ev.city);
+        setVal('mAddress',ev.address);
+        setVal('mOnlineURL',ev.online_url);
+        setVal('mDate',ev.starts_at?String(ev.starts_at).slice(0,10):'');
+        setVal('mTimeStart',ev.starts_at?new Date(ev.starts_at).toISOString().slice(11,16):'');
+        setVal('mTimeEnd',ev.ends_at?new Date(ev.ends_at).toISOString().slice(11,16):'');
+        setVal('mType',ev.type);
+        setVal('mFormat',ev.format);
+        setVal('mCat',ev.category);
+        setVal('mFee',ev.fee_cents?Math.round(ev.fee_cents/100):0);
+        setVal('mSeats',ev.seats_total);
+        setVal('mTags',Array.isArray(ev.tags)?ev.tags.join(', '):'');
+        window.__editEventID=editId;
+      });
+  }
   renderSidebarCalendar();
 })();
 </script>
