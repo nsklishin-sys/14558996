@@ -266,6 +266,40 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   background:var(--gl);border:1px solid var(--gb);
   color:var(--g);font-size:9px;font-weight:700;margin-left:6px
 }
+.xp-actions{display:flex;gap:6px;align-items:flex-start;flex-shrink:0}
+.xp-act-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--bdr);background:var(--w);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
+.xp-act-btn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.xp-act-btn.del:hover{background:#FCEBEB;color:var(--red);border-color:#F2C0C0}
+.xp-act-btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Модалка опыта работы ── */
+.xpm-bg{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.xpm-bg.open{opacity:1;pointer-events:all}
+.xpm{background:var(--w);border-radius:18px;border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .22s}
+.xpm-bg.open .xpm{transform:translateY(0)}
+.xpm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.xpm-head h3{font-size:16px;font-weight:800;color:var(--t)}
+.xpm-x{width:30px;height:30px;border-radius:8px;background:var(--gp);border:none;cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:background .15s;flex-shrink:0}
+.xpm-x:hover{background:var(--gl);color:var(--g)}
+.xpm-x svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.xpm-row{margin-bottom:14px}
+.xpm-row:last-child{margin-bottom:0}
+.xpm-lbl{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:5px}
+.xpm-input{width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
+.xpm-input:focus{border-color:var(--gm)}
+textarea.xpm-input{resize:vertical;min-height:70px;line-height:1.5}
+select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
+.xpm-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.xpm-grid3{display:grid;grid-template-columns:1.5fr 1fr;gap:10px}
+.xpm-check{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t);padding:8px 12px;background:var(--gp);border:1.5px solid var(--bdr);border-radius:10px;transition:all .15s}
+.xpm-check:hover{background:var(--gl);border-color:var(--gb)}
+.xpm-check input{cursor:pointer;accent-color:var(--g);width:14px;height:14px;margin:0}
+.xpm-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)}
+.xpm-btn-sec{padding:8px 18px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer;transition:background .15s}
+.xpm-btn-sec:hover{background:var(--gp)}
+.xpm-btn-pri{padding:8px 22px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;transition:opacity .15s}
+.xpm-btn-pri:hover{opacity:.88}
+.xpm-btn-pri:disabled{opacity:.55;cursor:not-allowed}
 
 /* ── Образование ── */
 .edu-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--bdr)}
@@ -568,7 +602,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       Проекты <span class="ptab-count" id="ptabCntProjs">0</span>
     </button>
-    <button class="ptab" onclick="switchTab('experience', this)" style="display:none">
+    <button class="ptab" onclick="switchTab('experience', this)">
       <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
       Опыт
     </button>
@@ -604,9 +638,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="section">
       <div class="sec-head">
         <div class="sec-title"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Опыт работы</div>
+        <button class="sec-more" onclick="openXpModal()" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:var(--gl);border:1px solid var(--gb);color:var(--g);border-radius:99px;font-size:11px;font-weight:700;cursor:pointer">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Добавить
+        </button>
       </div>
       <div id="profileExperience">
-        <div style="padding:24px 12px;text-align:center;color:var(--gmt);font-size:12px">Раздел в разработке</div>
+        <div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px">Загрузка…</div>
       </div>
     </div>
   </div>
@@ -658,6 +696,51 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 </div><!-- /shell -->
 <div class="toast" id="toast"></div>
+
+<!-- Модалка добавления/редактирования опыта работы -->
+<div class="xpm-bg" id="xpmBg">
+  <div class="xpm">
+    <div class="xpm-head">
+      <h3 id="xpmTitle">Добавить опыт работы</h3>
+      <button class="xpm-x" onclick="closeXpModal()" type="button"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="xpm-row">
+      <label class="xpm-lbl">Должность *</label>
+      <input class="xpm-input" id="xpmPosition" maxlength="200" placeholder="Логист-экспедитор">
+    </div>
+    <div class="xpm-row">
+      <label class="xpm-lbl">Компания</label>
+      <input class="xpm-input" id="xpmCompany" maxlength="200" placeholder="Название компании">
+    </div>
+    <div class="xpm-row">
+      <label class="xpm-lbl">Период начала *</label>
+      <div class="xpm-grid3">
+        <select class="xpm-input" id="xpmStartMonth"></select>
+        <input class="xpm-input" id="xpmStartYear" type="number" min="1950" max="2100" placeholder="2022">
+      </div>
+    </div>
+    <div class="xpm-row">
+      <label class="xpm-check">
+        <input type="checkbox" id="xpmIsCurrent" onchange="toggleXpEnd(this.checked)"> Я работаю здесь сейчас
+      </label>
+    </div>
+    <div class="xpm-row" id="xpmEndRow">
+      <label class="xpm-lbl">Период окончания</label>
+      <div class="xpm-grid3">
+        <select class="xpm-input" id="xpmEndMonth"></select>
+        <input class="xpm-input" id="xpmEndYear" type="number" min="1950" max="2100" placeholder="2024">
+      </div>
+    </div>
+    <div class="xpm-row">
+      <label class="xpm-lbl">Описание (необязательно)</label>
+      <textarea class="xpm-input" id="xpmDescription" maxlength="2000" placeholder="Чем занимались, ключевые проекты, достижения…"></textarea>
+    </div>
+    <div class="xpm-foot">
+      <button class="xpm-btn-sec" type="button" onclick="closeXpModal()">Отмена</button>
+      <button class="xpm-btn-pri" type="button" id="xpmSubmitBtn" onclick="submitXpForm()">Сохранить</button>
+    </div>
+  </div>
+</div>
 
 <script>
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
@@ -846,6 +929,7 @@ function switchTab(tab, btn){
   if(btn)btn.classList.add('active');
   if(tab==='publications'){void loadOwnPublications();}
   if(tab==='friends'){void loadProfileFriends();}
+  if(tab==='experience'){void loadOwnExperience();}
   /* Прокрутка к табам */
   document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -916,6 +1000,200 @@ async function loadAllProfileCounts(){
 }
 
 window.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{ void loadAllProfileCounts(); },300);});
+
+/* ═══════════ ОПЫТ РАБОТЫ ═══════════ */
+const XP_MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+let _xpEditPid=null;
+
+function fmtXpPeriod(xp){
+  const sm=XP_MONTHS[(xp.start_month||1)-1]||'';
+  const start=`${sm} ${xp.start_year}`;
+  let end='настоящее время';
+  if(!xp.is_current && xp.end_year){
+    const em=XP_MONTHS[(xp.end_month||12)-1]||'';
+    end=`${em} ${xp.end_year}`;
+  }
+  // Длительность
+  const sY=xp.start_year, sM=xp.start_month||1;
+  let eY, eM;
+  if(xp.is_current||!xp.end_year){
+    const now=new Date();
+    eY=now.getFullYear(); eM=now.getMonth()+1;
+  } else { eY=xp.end_year; eM=xp.end_month||12; }
+  const total=Math.max(0,(eY-sY)*12+(eM-sM)+1);
+  const yy=Math.floor(total/12), mm=total%12;
+  const pluralY=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'лет';if(v===1)return'год';if(v>=2&&v<=4)return'года';return'лет';};
+  const pluralM=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'мес.';if(v===1)return'мес.';if(v>=2&&v<=4)return'мес.';return'мес.';};
+  let dur='';
+  if(yy>0) dur+=yy+' '+pluralY(yy);
+  if(mm>0) dur+=(dur?' ':'')+mm+' '+pluralM(mm);
+  if(!dur) dur='менее месяца';
+  return `${start} — ${end} · ${dur}`;
+}
+
+async function loadOwnExperience(){
+  const me=JSON.parse(localStorage.getItem('user')||'{}');
+  const box=document.getElementById('profileExperience');
+  if(!me.public_id||!box)return;
+  try{
+    const r=await fetch(`${API}/users/${encodeURIComponent(me.public_id)}/experience`,{headers:{Authorization:'Bearer '+tk()}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const items=d.experience||[];
+    if(!items.length){
+      box.innerHTML='<div style="padding:30px 12px;text-align:center;color:var(--gmt);font-size:13px">У вас пока нет записей. Нажмите «Добавить», чтобы рассказать о своём опыте.</div>';
+      return;
+    }
+    box.innerHTML=items.map(xp=>{
+      const co=esc(xp.company||'—');
+      const ltr=esc((xp.company||xp.position||'?').charAt(0).toUpperCase());
+      const color=colorFor(xp.company||xp.position||'');
+      const desc=xp.description?`<div style="font-size:11px;color:var(--tm);line-height:1.5;margin-top:6px;white-space:pre-wrap">${esc(xp.description)}</div>`:'';
+      return `<div class="xp-item">
+        <div class="xp-logo" style="background:${color}">${ltr}</div>
+        <div class="xp-body">
+          <div class="xp-role">${esc(xp.position||'')}${xp.is_current?'<span class="xp-current">Текущая</span>':''}</div>
+          <div class="xp-company">${co}</div>
+          <div class="xp-period">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${esc(fmtXpPeriod(xp))}
+          </div>
+          ${desc}
+        </div>
+        <div class="xp-actions">
+          <button class="xp-act-btn" type="button" title="Редактировать" onclick='openXpModal(${JSON.stringify(xp).replace(/'/g,"&#39;")})'>
+            <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          </button>
+          <button class="xp-act-btn del" type="button" title="Удалить" onclick="deleteXp('${esc(xp.public_id)}')">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML='<div style="padding:24px 12px;text-align:center;color:var(--gmt);font-size:12px">Не удалось загрузить опыт работы</div>';
+  }
+}
+
+function openXpModal(xp){
+  // Заполнить селекты месяцев
+  const sM=document.getElementById('xpmStartMonth'), eM=document.getElementById('xpmEndMonth');
+  sM.innerHTML=XP_MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  eM.innerHTML=XP_MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  if(xp&&xp.public_id){
+    _xpEditPid=xp.public_id;
+    document.getElementById('xpmTitle').textContent='Редактировать опыт работы';
+    document.getElementById('xpmPosition').value=xp.position||'';
+    document.getElementById('xpmCompany').value=xp.company||'';
+    document.getElementById('xpmDescription').value=xp.description||'';
+    document.getElementById('xpmStartYear').value=xp.start_year||'';
+    sM.value=String(xp.start_month||1);
+    document.getElementById('xpmIsCurrent').checked=!!xp.is_current;
+    document.getElementById('xpmEndYear').value=xp.end_year||'';
+    eM.value=String(xp.end_month||12);
+  } else {
+    _xpEditPid=null;
+    document.getElementById('xpmTitle').textContent='Добавить опыт работы';
+    document.getElementById('xpmPosition').value='';
+    document.getElementById('xpmCompany').value='';
+    document.getElementById('xpmDescription').value='';
+    document.getElementById('xpmStartYear').value='';
+    sM.value='1';
+    document.getElementById('xpmIsCurrent').checked=false;
+    document.getElementById('xpmEndYear').value='';
+    eM.value='12';
+  }
+  toggleXpEnd(document.getElementById('xpmIsCurrent').checked);
+  document.getElementById('xpmBg').classList.add('open');
+  setTimeout(()=>document.getElementById('xpmPosition').focus(),120);
+}
+function closeXpModal(){document.getElementById('xpmBg').classList.remove('open');}
+function toggleXpEnd(isCurrent){document.getElementById('xpmEndRow').style.display=isCurrent?'none':'';}
+
+async function submitXpForm(){
+  const pos=document.getElementById('xpmPosition').value.trim();
+  if(!pos){showToast&&showToast('Введите должность');document.getElementById('xpmPosition').focus();return;}
+  const sy=parseInt(document.getElementById('xpmStartYear').value);
+  if(!sy||sy<1950||sy>2100){showToast&&showToast('Укажите год начала');return;}
+  const isCurrent=document.getElementById('xpmIsCurrent').checked;
+  const body={
+    position:pos,
+    company:document.getElementById('xpmCompany').value.trim(),
+    description:document.getElementById('xpmDescription').value.trim(),
+    start_year:sy,
+    start_month:parseInt(document.getElementById('xpmStartMonth').value)||1,
+    is_current:isCurrent
+  };
+  if(!isCurrent){
+    const ey=parseInt(document.getElementById('xpmEndYear').value);
+    if(ey){
+      body.end_year=ey;
+      body.end_month=parseInt(document.getElementById('xpmEndMonth').value)||12;
+    }
+  }
+  const btn=document.getElementById('xpmSubmitBtn');
+  btn.disabled=true; const oldText=btn.textContent; btn.textContent='Сохранение…';
+  try{
+    let r;
+    if(_xpEditPid){
+      if(isCurrent){body.clear_end=true;}
+      r=await fetch(`${API}/me/experience/${encodeURIComponent(_xpEditPid)}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+        body:JSON.stringify(body)
+      });
+    } else {
+      r=await fetch(`${API}/me/experience`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+        body:JSON.stringify(body)
+      });
+    }
+    if(!r.ok){
+      const d=await r.json().catch(()=>({}));
+      showToast&&showToast(d.error||'Не удалось сохранить');
+      btn.disabled=false; btn.textContent=oldText;
+      return;
+    }
+    closeXpModal();
+    void loadOwnExperience();
+  }catch(e){
+    showToast&&showToast('Ошибка сети');
+  } finally {
+    btn.disabled=false; btn.textContent=oldText;
+  }
+}
+
+async function deleteXp(pid){
+  if(!pid)return;
+  let confirmed=true;
+  if(window.lastopConfirm){
+    confirmed=await lastopConfirm({title:'Удалить запись опыта?',message:'Действие необратимо.',danger:true,okLabel:'Удалить'});
+  } else {
+    confirmed=window.confirm('Удалить запись опыта? Действие необратимо.');
+  }
+  if(!confirmed)return;
+  try{
+    const r=await fetch(`${API}/me/experience/${encodeURIComponent(pid)}`,{
+      method:'DELETE',
+      headers:{Authorization:'Bearer '+tk()}
+    });
+    if(r.ok){void loadOwnExperience();}
+    else {showToast&&showToast('Не удалось удалить');}
+  }catch{showToast&&showToast('Ошибка сети');}
+}
+
+// Закрытие модалки по клику на бэкдроп / Escape
+document.addEventListener('click',e=>{
+  const bg=document.getElementById('xpmBg');
+  if(bg&&e.target===bg){closeXpModal();}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const bg=document.getElementById('xpmBg');
+    if(bg&&bg.classList.contains('open'))closeXpModal();
+  }
+});
 
 </script>
 <script src="/site-search.js" defer></script>
