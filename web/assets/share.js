@@ -7,7 +7,7 @@
 .lp-share-btn{padding:9px 14px;border-radius:12px;border:1.5px solid #DDE8E2;background:#F0FAF4;color:#5A8A6A;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
 .lp-share-btn:hover{border-color:#C0DECA;color:#1E8A4C;background:#E8F5EE}
 .lp-share-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
-.lp-share-dd{position:absolute;top:calc(100% + 8px);left:0;width:280px;max-height:60vh;background:#fff;border:1px solid #DDE8E2;border-radius:18px;box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;z-index:1000;overflow-y:auto}
+.lp-share-dd{position:fixed;top:0;left:0;width:280px;max-height:60vh;background:#fff;border:1px solid #DDE8E2;border-radius:18px;box-shadow:0 12px 36px rgba(30,138,76,.15);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s;z-index:9000;overflow-y:auto}
 .lp-share-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .lp-share-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #DDE8E2}
 .lp-share-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .12s}
@@ -164,12 +164,14 @@
       }
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        let dd = wrap.querySelector('.lp-share-dd');
+        let dd = wrap._dd;
         if (!dd){
           dd = document.createElement('div');
           dd.className = 'lp-share-dd';
-          wrap.appendChild(dd);
           dd.innerHTML = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:#5A8A6A">Загрузка…</div>';
+          document.body.appendChild(dd);
+          wrap._dd = dd;
+          dd._wrap = wrap;
           dd.innerHTML = await buildDD(wrap);
           dd.addEventListener('click', async (ev) => {
             const item = ev.target.closest('.lp-share-item');
@@ -182,7 +184,19 @@
             }
           });
         }
-        dd.classList.toggle('open');
+        if (dd.classList.contains('open')){
+          dd.classList.remove('open');
+          return;
+        }
+        // позиционируем относительно кнопки
+        const r = btn.getBoundingClientRect();
+        const ddW = 280;
+        let left = r.left;
+        if (left + ddW > window.innerWidth - 12) left = window.innerWidth - ddW - 12;
+        if (left < 12) left = 12;
+        dd.style.left = left + 'px';
+        dd.style.top = (r.bottom + 8) + 'px';
+        dd.classList.add('open');
       });
     });
   }
@@ -190,9 +204,17 @@
   // глобальный закрыватель
   document.addEventListener('click', (e) => {
     document.querySelectorAll('.lp-share-dd.open').forEach(dd => {
-      const wrap = dd.closest('.lp-share-wrap');
-      if (wrap && !wrap.contains(e.target)) dd.classList.remove('open');
+      const wrap = dd._wrap;
+      if (dd.contains(e.target)) return;
+      if (wrap && wrap.contains(e.target)) return;
+      dd.classList.remove('open');
     });
+  });
+  window.addEventListener('scroll', () => {
+    document.querySelectorAll('.lp-share-dd.open').forEach(dd => dd.classList.remove('open'));
+  }, true);
+  window.addEventListener('resize', () => {
+    document.querySelectorAll('.lp-share-dd.open').forEach(dd => dd.classList.remove('open'));
   });
 
   if (document.readyState === 'loading'){
