@@ -16344,44 +16344,61 @@ func listExhibitions(db *sql.DB, viewerID int64, hasAuth bool, f listExhibitions
 	if hasAuth {
 		currentUser = sql.NullInt64{Int64: viewerID, Valid: true}
 	}
-	args := []any{currentUser}
+
+	// Собираем фильтры и плейсхолдеры ОТДЕЛЬНО — для COUNT они начинаются с $1,
+	// а для основного SELECT добавляем currentUser в самое начало (это станет $1
+	// в JOIN-ах) и сдвигаем все фильтры на +1.
+	var filterArgs []any
 	var conds []string
 	conds = append(conds, "e.is_deleted = FALSE")
 	if f.Category != "" {
-		args = append(args, f.Category)
-		conds = append(conds, fmt.Sprintf("e.category = $%d", len(args)))
+		filterArgs = append(filterArgs, f.Category)
+		conds = append(conds, fmt.Sprintf("e.category = $%d", len(filterArgs)))
 	}
 	if f.Format != "" {
-		args = append(args, f.Format)
-		conds = append(conds, fmt.Sprintf("e.format = $%d", len(args)))
+		filterArgs = append(filterArgs, f.Format)
+		conds = append(conds, fmt.Sprintf("e.format = $%d", len(filterArgs)))
 	}
 	if f.Status != "" {
-		args = append(args, f.Status)
-		conds = append(conds, fmt.Sprintf("e.status = $%d", len(args)))
+		filterArgs = append(filterArgs, f.Status)
+		conds = append(conds, fmt.Sprintf("e.status = $%d", len(filterArgs)))
 	}
 	if f.City != "" {
-		args = append(args, f.City)
-		conds = append(conds, fmt.Sprintf("e.city = $%d", len(args)))
+		filterArgs = append(filterArgs, f.City)
+		conds = append(conds, fmt.Sprintf("e.city = $%d", len(filterArgs)))
 	}
 	if f.From != nil {
-		args = append(args, *f.From)
-		conds = append(conds, fmt.Sprintf("e.starts_at >= $%d", len(args)))
+		filterArgs = append(filterArgs, *f.From)
+		conds = append(conds, fmt.Sprintf("e.starts_at >= $%d", len(filterArgs)))
 	}
 	if f.To != nil {
-		args = append(args, *f.To)
-		conds = append(conds, fmt.Sprintf("e.ends_at <= $%d", len(args)))
+		filterArgs = append(filterArgs, *f.To)
+		conds = append(conds, fmt.Sprintf("e.ends_at <= $%d", len(filterArgs)))
 	}
 	if strings.TrimSpace(f.Query) != "" {
-		args = append(args, "%"+strings.ToLower(strings.TrimSpace(f.Query))+"%")
-		conds = append(conds, fmt.Sprintf("(LOWER(e.title) LIKE $%d OR LOWER(e.short_description) LIKE $%d)", len(args), len(args)))
+		filterArgs = append(filterArgs, "%"+strings.ToLower(strings.TrimSpace(f.Query))+"%")
+		conds = append(conds, fmt.Sprintf("(LOWER(e.title) LIKE $%d OR LOWER(e.short_description) LIKE $%d)", len(filterArgs), len(filterArgs)))
 	}
-	where := strings.Join(conds, " AND ")
+	whereCount := strings.Join(conds, " AND ")
 
+	// COUNT — без currentUser, плейсхолдеры $1..$N
 	var total int64
-	if err := db.QueryRow(`SELECT COUNT(*) FROM exhibitions e WHERE `+where, args...).Scan(&total); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM exhibitions e WHERE `+whereCount, filterArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
+	// Для основного SELECT: currentUser=$1, фильтры сдвигаем на +1
+	args := []any{currentUser}
+	whereSelect := "e.is_deleted = FALSE"
+	for _, c := range conds[1:] {
+		// Заменяем $N на $(N+1) в каждом доп. условии
+		shifted := c
+		for j := len(filterArgs); j >= 1; j-- {
+			shifted = strings.ReplaceAll(shifted, fmt.Sprintf("$%d", j), fmt.Sprintf("$%d", j+1))
+		}
+		whereSelect += " AND " + shifted
+	}
+	args = append(args, filterArgs...)
 	args = append(args, f.Limit, f.Offset)
 	query := `
 		SELECT e.id, e.public_id, e.slug, e.title, e.short_description, e.description, e.category, e.format, e.status,
@@ -16398,7 +16415,7 @@ func listExhibitions(db *sql.DB, viewerID int64, hasAuth bool, f listExhibitions
 		LEFT JOIN companies oc ON oc.id = e.organizer_company_id
 		LEFT JOIN exhibition_saves es ON es.exhibition_id = e.id AND es.user_id = $1::bigint
 		LEFT JOIN exhibition_visitor_registrations evr ON evr.exhibition_id = e.id AND evr.user_id = $1::bigint AND evr.status = 'registered'
-		WHERE ` + where + `
+		WHERE ` + whereSelect + `
 		ORDER BY e.starts_at ASC, e.id ASC
 		LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
 	rows, err := db.Query(query, args...)
