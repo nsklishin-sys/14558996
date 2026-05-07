@@ -792,7 +792,7 @@ type respondToNeedRequest struct {
 type event struct {
 	ID                int64           `json:"id"`
 	PublicID          string          `json:"public_id"`
-	OrganizerID       int64           `json:"-"`
+	OrganizerID       int64           `json:"organizer_id"`
 	OrganizerPublic   string          `json:"organizer_public_id"`
 	OrganizerName     string          `json:"organizer_name"`
 	CommunityID       *int64          `json:"community_id,omitempty"`

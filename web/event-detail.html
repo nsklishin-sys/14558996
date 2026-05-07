@@ -453,14 +453,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
           <span id="evOrganizer"></span>
         </span>
-        <div id="organizerActions" style="display:none;gap:8px;margin-top:12px">
-          <button class="btn-save" onclick="openEditEventModal()">
-            Редактировать
-          </button>
-          <button class="btn-save" style="color:var(--red);border-color:#f3caca;background:#fff5f5" onclick="deleteCurrentEvent()">
-            Удалить
-          </button>
-        </div>
         <span class="ev-meta-sep"></span>
         <span class="ev-meta-item">
           <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -611,14 +603,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Организатор -->
   <div class="card">
     <div class="block-title">Организатор</div>
-    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);cursor:pointer;transition:border-color .15s;margin-bottom:8px" onclick="toast('Открываем профиль…')">
-      <div style="width:42px;height:42px;border-radius:11px;background:#1E8A4C;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">N</div>
+    <div id="organizerCard" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border-radius:var(--rm);border:1px solid var(--bdr);cursor:pointer;transition:border-color .15s;margin-bottom:8px" onclick="openOrganizerProfile()">
+      <div id="organizerAvatar" style="width:42px;height:42px;border-radius:11px;background:#1E8A4C;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">?</div>
       <div>
-        <div style="font-size:13px;font-weight:800;color:var(--t)">NorthBridge Logistics</div>
-        <div style="font-size:11px;color:var(--gmt);margin-top:1px">3 100 подписчиков · Логистика</div>
+        <div id="organizerName" style="font-size:13px;font-weight:800;color:var(--t)">—</div>
+        <div id="organizerSubtitle" style="font-size:11px;color:var(--gmt);margin-top:1px"></div>
       </div>
     </div>
     <button style="width:100%;padding:7px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'" onclick="messageOrganizer()">Написать организатору</button>
+    <div id="organizerActions" style="display:none;gap:8px;margin-top:10px">
+      <button style="flex:1;padding:7px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);color:var(--t);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="openEditEventModal()">Редактировать</button>
+      <button style="flex:1;padding:7px;border-radius:var(--rm);background:#FDEAEA;border:1px solid #E04040;color:#E04040;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="deleteCurrentEvent()">Удалить</button>
+    </div>
   </div>
 
   <!-- Похожие -->
@@ -1047,12 +1043,36 @@ function applyEvent(ev){
     }
   }
 
+  const orgName=ev.community_name||ev.author_company_name||ev.organizer_name||'Организатор';
+  const orgLetter=(orgName[0]||'?').toUpperCase();
+  const orgAvUrl=ev.community_avatar||ev.author_company_logo||'';
+  document.getElementById('organizerName').textContent=orgName;
+  const orgAv=document.getElementById('organizerAvatar');
+  if(orgAvUrl){
+    orgAv.style.background='transparent';
+    orgAv.innerHTML=`<img src="${orgAvUrl}" style="width:100%;height:100%;border-radius:11px;object-fit:cover">`;
+  }else{
+    orgAv.textContent=orgLetter;
+  }
+  let subtitle='';
+  if(ev.community_id)subtitle='Сообщество';
+  else if(ev.author_company_id)subtitle='Компания';
+  else subtitle='Участник LASTOP';
+  document.getElementById('organizerSubtitle').textContent=subtitle;
+
   const me=JSON.parse(localStorage.getItem('user')||'{}');
-  const isOrganizer=me.id && state.currentEvent.organizer_id===me.id;
+  const isOrganizer=me.id && ev.organizer_id===me.id;
   const actionsBlock=document.getElementById('organizerActions');
   if(actionsBlock){
     actionsBlock.style.display=isOrganizer?'flex':'none';
   }
+}
+function openOrganizerProfile(){
+  const ev=state.currentEvent;
+  if(!ev)return;
+  if(ev.community_id)location.href=`/community-detail.html?id=${ev.community_id}`;
+  else if(ev.author_company_slug)location.href=`/company-detail.html?slug=${ev.author_company_slug}`;
+  else if(ev.organizer_public_id)location.href=`/profile.html?id=${ev.organizer_public_id}`;
 }
 function openEditEventModal(){
   if(!state.currentEvent||!state.currentEvent.public_id)return;
