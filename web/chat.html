@@ -998,7 +998,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';const tk=()=>localStorage.getItem('token');
-const state={conversations:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[],uploading:false,myCompanies:[],myCommunities:[]};
+const state={conversations:[],allConversationsForCounts:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[],uploading:false,myCompanies:[],myCommunities:[]};
 // ── Кнопка дружбы в шапке диалога ───────────────────────
 let _chatPeerPublicID = '';
 let _chatPeerFriendStatus = 'none';
@@ -1298,6 +1298,16 @@ async function loadCurrentUser(){
 async function loadConversations(){
   try{
     const d = await api(`/chat/conversations?filter=${encodeURIComponent(state.activeFilter)}&q=${encodeURIComponent(state.searchQuery)}`);
+    // Если активный фильтр = all, то это и есть полный список
+    if(state.activeFilter==='all' && !state.searchQuery){
+      state.allConversationsForCounts = d.conversations || [];
+    } else if(!state.allConversationsForCounts.length){
+      // Иначе — догружаем полный список фоном для счётчиков
+      try{
+        const full = await api(`/chat/conversations?filter=all&q=`);
+        state.allConversationsForCounts = full.conversations || [];
+      }catch(e){}
+    }
     state.conversations = sortConversationsByLastMessage(d.conversations || []);
     saveCachedConversations();
     renderConversations();
@@ -1310,7 +1320,11 @@ async function loadConversations(){
   }
 }
 function updateTabCounts(){
-  const conv=state.conversations||[];
+  // Считаем по полному списку, не по отфильтрованному
+  const conv = state.allConversationsForCounts && state.allConversationsForCounts.length
+    ? state.allConversationsForCounts
+    : (state.activeFilter === 'all' ? (state.conversations||[]) : []);
+  if(!conv.length && state.activeFilter !== 'all') return; // не сбрасываем счётчики
   const all=conv.length;
   const unread=conv.filter(c=>c.unread_count>0).length;
   const companies=conv.filter(c=>{const r=(c.display_role||'').toString();return r.includes('·');}).length;
