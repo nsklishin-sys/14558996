@@ -1216,9 +1216,15 @@ function openEditEventModal(){
   document.getElementById('mCat').value=ev.category||'';
   document.getElementById('mDesc').value=ev.description||'';
   document.getElementById('mTags').value=(ev.tags||[]).join(', ');
-  (ev.speakers||[]).forEach(s=>addSpeaker(s));
-  (ev.program||[]).forEach(p=>addProgramItem(p));
-  (ev.tickets||[]).forEach(t=>addTicket(t));
+  const _parseList=(v)=>{
+    if(!v)return [];
+    if(Array.isArray(v))return v;
+    if(typeof v==='string'){try{const p=JSON.parse(v);return Array.isArray(p)?p:[]}catch{return []}}
+    return [];
+  };
+  _parseList(ev.speakers).forEach(s=>addSpeaker(s));
+  _parseList(ev.program).forEach(p=>addProgramItem(p));
+  _parseList(ev.tickets).forEach(t=>addTicket(t));
   document.getElementById('modalBgEvent').classList.add('open');
 }
 function closeEventModal(){document.getElementById('modalBgEvent').classList.remove('open')}
