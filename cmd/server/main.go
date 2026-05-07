@@ -21358,12 +21358,10 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 		return nil, false
 	}
 
-	// Внешний URL — через OG
-	if parsed.Scheme == "http" || parsed.Scheme == "https" {
-		return fetchExternalPreview(urlStr)
-	}
-
-	// Внутренний — определяем по path
+	// Сначала пробуем как ВНУТРЕННИЙ — по path. Это работает и для
+	// относительных путей (/job-detail.html?id=...) и для абсолютных
+	// (https://наш-домен/job-detail.html?id=...). Если path не из
+	// списка известных страниц — упадём в fallback на OG ниже.
 	path := parsed.Path
 	q := parsed.Query()
 	idParam := q.Get("id")
@@ -21632,6 +21630,10 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 		}, true
 	}
 
+	// Path не покрыт — если это внешний URL, пробуем OG
+	if parsed.Scheme == "http" || parsed.Scheme == "https" {
+		return fetchExternalPreview(urlStr)
+	}
 	return nil, false
 }
 
