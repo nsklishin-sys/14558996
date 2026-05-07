@@ -633,6 +633,12 @@ function renderHero(){
   '</div>';
 }
 
+
+const _shareObserver = new MutationObserver(() => window.LASTOPShareInit?.());
+document.addEventListener('DOMContentLoaded', () => {
+  const target = document.getElementById('mainContent') || document.body;
+  _shareObserver.observe(target, { childList: true, subtree: true });
+});
 function renderSaveBtn(){
   if (!RES) return '';
   const saved = !!RES.viewer_has_saved;

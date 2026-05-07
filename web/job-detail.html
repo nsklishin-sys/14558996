@@ -682,7 +682,8 @@ function renderHero(){
   } else {
     actions =
       '<button class="btn-primary" data-guest-block onclick="openApplyModal()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Откликнуться</button>' +
-      renderSaveBtn();
+      renderSaveBtn() +
+      '<button type="button" class="btn-ghost" data-share data-share-title="' + esc(j.title || 'Вакансия') + '" data-share-label="вакансией" data-share-emoji="💼"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Поделиться</button>';
   }
 
   const salary = (j.salary_from || j.salary_to)
@@ -713,6 +714,11 @@ function renderHero(){
   '</div>';
 }
 
+const _shareObserverJ = new MutationObserver(() => window.LASTOPShareInit?.());
+document.addEventListener('DOMContentLoaded', () => {
+  const target = document.getElementById('mainContent') || document.body;
+  _shareObserverJ.observe(target, { childList: true, subtree: true });
+});
 function renderSaveBtn(){
   if (!JOB) return '';
   const saved = !!JOB.viewer_has_saved;
