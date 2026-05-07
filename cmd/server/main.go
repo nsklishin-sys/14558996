@@ -21357,8 +21357,16 @@ func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[
 		return nil, err
 	}
 
-	// Отправляем сообщение с маркером
-	fullMessage := "🛒 Заявка на «" + itemTitle + "»\n\n" + message
+	// public_id товара/услуги для ссылки в сообщении
+	var itemPublicIDForLink string
+	_ = db.QueryRow(`SELECT public_id FROM catalog_items WHERE id = $1`, itemID).Scan(&itemPublicIDForLink)
+	itemPath := "/service-detail.html?id="
+	if itemType == "product" {
+		itemPath = "/product-detail.html?id="
+	}
+
+	// Отправляем сообщение с маркером и ссылкой на товар/услугу
+	fullMessage := "🛒 Заявка на «" + itemTitle + "»\n" + itemPath + itemPublicIDForLink + "\n\n" + message
 	if _, err := sendMessage(db, buyerID, chatPublicID, sendMessageRequest{Content: fullMessage}); err != nil {
 		return nil, fmt.Errorf("сообщение: %v", err)
 	}
@@ -21377,9 +21385,7 @@ func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[
 	// Инкремент счётчика заявок
 	_, _ = db.Exec(`UPDATE catalog_items SET orders_count = orders_count + 1 WHERE id = $1`, itemID)
 
-	// Уведомление автору товара/услуги
-	var itemPublicID string
-	_ = db.QueryRow(`SELECT public_id FROM catalog_items WHERE id = $1`, itemID).Scan(&itemPublicID)
+	// Уведомление автору товара/услуги (public_id уже получен выше)
 	if shouldCreateNotificationForType(db, authorID, "catalog_order") {
 		buyerName := getUserDisplayName(db, buyerID)
 		preview := message
@@ -21393,7 +21399,7 @@ func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[
 			Type:           "catalog_order",
 			SourceType:     "catalog_item",
 			SourceID:       itemID,
-			SourcePublicID: itemPublicID,
+			SourcePublicID: itemPublicIDForLink,
 			Title:          buyerName + " подал заявку на «" + itemTitle + "»",
 			Preview:        preview,
 		})
