@@ -1241,6 +1241,7 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/assets/ws.js" defer></script>
 <script src="/assets/cookie-banner.js" defer></script>
 <script src="/assets/confirm-modal.js" defer></script>
+<script src="/assets/share.js" defer></script>
 <script src="/assets/yandex-metrica.js" defer></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
