@@ -21629,7 +21629,7 @@ func previewExcerpt(s string, n int) string {
 	return strings.TrimSpace(string(runes[:n])) + "…"
 }
 
-// formatPrice — простое форматирование цены.
+// formatPrice — форматирование цены: 72000000 → "72 000 000 ₽".
 func formatPrice(amount int64, currency string) string {
 	sym := "₽"
 	switch currency {
@@ -21640,7 +21640,29 @@ func formatPrice(amount int64, currency string) string {
 	case "CNY":
 		sym = "¥"
 	}
-	return fmt.Sprintf("%d %s", amount, sym)
+	s := strconv.FormatInt(amount, 10)
+	n := len(s)
+	if n <= 3 {
+		return s + " " + sym
+	}
+	var b strings.Builder
+	b.Grow(n + n/3 + 2)
+	rem := n % 3
+	if rem > 0 {
+		b.WriteString(s[:rem])
+		if n > rem {
+			b.WriteByte(' ')
+		}
+	}
+	for i := rem; i < n; i += 3 {
+		b.WriteString(s[i : i+3])
+		if i+3 < n {
+			b.WriteByte(' ')
+		}
+	}
+	b.WriteByte(' ')
+	b.WriteString(sym)
+	return b.String()
 }
 
 // fetchExternalPreview — Open Graph для внешних URL.
