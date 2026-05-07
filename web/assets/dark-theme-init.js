@@ -138,7 +138,12 @@
     if (document.body.dataset.darkNoFab !== undefined) return;
     if (document.getElementById('darkFab')) return;
 
-    var settingsLink = document.querySelector('.nav .nav-item[href="/settings.html"], .global-sidebar a[href="/settings.html"]');
+    var settingsLink = document.querySelector(
+      '.nav .nav-item[href="/settings.html"], '
+      + '.global-sidebar a[href="/settings.html"], '
+      + '.nav .nav-item[data-guest-locked][href*="settings"], '
+      + '.nav .nav-item:last-of-type'
+    );
     var fab = createThemeButton();
 
     if (settingsLink && settingsLink.parentNode) {
