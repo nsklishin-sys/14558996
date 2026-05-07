@@ -83,10 +83,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* Изображение обложки */
 .ex-cover-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
 .ex-cover:hover .ex-cover-img{transform:scale(1.02)}
-.ex-cover-upload{position:absolute;top:14px;right:14px;z-index:3}
-.ex-upload-btn{padding:6px 12px;border-radius:var(--rm);background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border:none;font-family:inherit;font-size:11px;font-weight:700;color:var(--t);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(0,0,0,.14)}
-.ex-upload-btn:hover{background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.18)}
-.ex-upload-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 /* Выделение названия */
 .ex-title{font-size:22px;font-weight:900;color:var(--t);line-height:1.3;letter-spacing:-.02em;margin-bottom:12px;padding-left:14px;border-left:4px solid var(--g)}
 /* Кнопка открыть выставку */
@@ -441,14 +437,6 @@ a.sb-org-card:hover{border-color:var(--gb);text-decoration:none!important}
       <img id="coverImg" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="">
       <div class="ex-cover-overlay"></div>
       <div class="ex-cover-badges" id="coverBadges"></div>
-      <!-- Кнопка загрузки фото -->
-      <div class="ex-cover-upload">
-        <button class="ex-upload-btn" onclick="document.getElementById('coverUpload').click()">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><line x1="14" y1="3" x2="14" y2="7"/><line x1="12" y1="5" x2="16" y2="5"/></svg>
-          Загрузить фото
-        </button>
-        <input type="file" id="coverUpload" accept="image/*" style="display:none" onchange="handleCoverUpload(this)">
-      </div>
       <div class="ex-cover-bottom">
         <div class="ex-date-pill">
           <div class="ex-date-range" id="exDateRange">—</div>
@@ -697,20 +685,6 @@ function logout(){localStorage.removeItem('token');location.href='/'}
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-
-/* ЗАГРУЗКА ОБЛОЖКИ */
-function handleCoverUpload(input){
-  const file=input.files[0];
-  if(!file)return;
-  const url=URL.createObjectURL(file);
-  const img=document.getElementById('coverImg');
-  const ph=document.getElementById('coverPh');
-  img.src=url;
-  img.style.display='block';
-  ph.style.display='none';
-  toast('Обложка обновлена ✓',true);
-  input.value='';
-}
 
 /* СОХРАНИТЬ */
 let saved=false;
