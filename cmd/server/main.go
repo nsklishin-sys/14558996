@@ -6057,7 +6057,7 @@ func main() {
 			var newID int64
 			err = db.QueryRow(`
 				INSERT INTO jobs (public_id, author_user_id, author_company_id, author_community_id, title, description, category, city, address, work_format, salary_from, salary_to, salary_currency, experience_min_years, employment_type, status, responsibilities, requirements, conditions, tags, responsible_user_id)
-				VALUES ($1,$2,NULLIF($3,0),NULLIF($4,0),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+				VALUES ($1,$2,NULLIF($3,0),NULLIF($4,0),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NULLIF($21,0))
 				RETURNING id
 			`, publicID, userID, resolvedCompanyID, resolvedCommunityID, req.Title, req.Description, req.Category, req.City, req.Address, req.WorkFormat,
 				req.SalaryFrom, req.SalaryTo, req.SalaryCurrency, req.ExperienceMinYears, req.EmploymentType, req.Status,
