@@ -318,7 +318,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .tic-price{font-size:18px;font-weight:800;color:var(--g)}
 .tic-price.free{color:var(--gmt);font-size:14px}
 .tic-seats{font-size:10px;color:var(--gmt);margin-top:1px}
-.tic-buy{padding:8px 16px;border-radius:99px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s;flex-shrink:0;white-space:nowrap}
+.tic-buy{padding:8px 16px;border-radius:18px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s;flex-shrink:0;white-space:normal;line-height:1.2;text-align:center}
 .tic-buy:hover{background:var(--gm)}
 .tic-buy.disabled{background:var(--bdr);cursor:not-allowed;color:var(--gmt)}
 
@@ -1071,7 +1071,7 @@ function renderTickets(ex){
     const soldOut=seatsLeft!==null && seatsLeft<=0;
     const perks=(t.perks||[]).map(p=>`<div class="tic-perk">${escD(p)}</div>`).join('');
     const isExhibitor=t.role==='exhibitor';
-    const btnText=soldOut?'Места кончились':(isExhibitor?'Зарегистрироваться':(ex.is_registered?'Вы зарегистрированы':'Купить билет'));
+    const btnText=soldOut?'Места кончились':(isExhibitor?'Принять участие':(ex.is_registered?'Вы зарегистрированы':'Купить билет'));
     return `<div class="tic-card">
       <span class="tic-role-badge ${cls}">${lbl}</span>
       <div class="tic-title">${escD(t.title||'')}</div>
