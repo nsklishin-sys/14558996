@@ -256,6 +256,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .msg.me .msg-av{display:none}
 .msg-group{display:flex;flex-direction:column;gap:2px;min-width:0}
+.msg-link{color:inherit;text-decoration:underline;text-underline-offset:2px;word-break:break-all}
+.msg-link:hover{opacity:.75}
+.msg.me .msg-link{color:#fff}
+.lp-slot{margin-top:8px;min-height:0}
+.lp-card{display:flex;align-items:stretch;gap:10px;padding:10px;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.08);border-radius:12px;text-decoration:none;color:inherit;max-width:380px;transition:transform .12s,box-shadow .12s}
+.lp-card:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(30,138,76,.12)}
+.msg.me .lp-card{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);color:#fff}
+.lp-img{width:56px;height:56px;border-radius:8px;background-size:cover;background-position:center;flex-shrink:0;background-color:#E8F5EE}
+.lp-img-ph{display:grid;place-items:center;font-size:18px;font-weight:800;color:#1E8A4C;background:#E8F5EE}
+.msg.me .lp-img-ph{background:rgba(255,255,255,.15);color:#fff}
+.lp-body{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.lp-badge{font-size:10px;font-weight:700;color:#1E8A4C;text-transform:uppercase;letter-spacing:.05em}
+.msg.me .lp-badge{color:rgba(255,255,255,.85)}
+.lp-title{font-size:13px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lp-sub{font-size:11px;opacity:.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .msg-bubble{
   padding:9px 14px;border-radius:var(--rl);
   font-size:13px;line-height:1.5;color:var(--t);
@@ -1081,6 +1096,80 @@ const renderCache={conversationsSig:'',messagesSig:'',typingSig:''};
 function makeSig(obj){try{return JSON.stringify(obj)}catch{return''}}
 const CHAT_CACHE_NS='chat-cache-v1';
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')} function letter(s){return((s||'?')[0]||'?').toUpperCase()}
+
+const _linkPreviewCache = new Map();
+const _linkPreviewPending = new Map();
+const URL_RE = /(?:^|\s)(\/[a-z][a-z0-9\-]*\.html\?[^\s<]+|https?:\/\/[^\s<]+)/gi;
+
+function linkifyContent(s){
+  return esc(s).replace(/(^|\s)(\/[a-z][a-z0-9\-]*\.html\?[^\s<]+|https?:\/\/[^\s<]+)/gi,
+    (_,p,u)=>{
+      const isInternal = u.startsWith('/');
+      const target = isInternal ? '' : ' target="_blank" rel="noopener"';
+      return `${p}<a href="${u}" class="msg-link"${target}>${u}</a>`;
+    });
+}
+
+function extractURLs(content){
+  const out = [];
+  const re = /(\/[a-z][a-z0-9\-]*\.html\?[^\s<]+|https?:\/\/[^\s<]+)/gi;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    if (out.length >= 3) break; // максимум 3 превью на сообщение
+    if (!out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
+}
+
+async function loadLinkPreview(url){
+  if (_linkPreviewCache.has(url)) return _linkPreviewCache.get(url);
+  if (_linkPreviewPending.has(url)) return _linkPreviewPending.get(url);
+  const p = (async () => {
+    try {
+      const r = await fetch('/api/link-preview?url=' + encodeURIComponent(url),
+        { headers: { Authorization: 'Bearer ' + tk() } });
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d.ok || !d.preview) return null;
+      _linkPreviewCache.set(url, d.preview);
+      return d.preview;
+    } catch { return null; }
+  })();
+  _linkPreviewPending.set(url, p);
+  const result = await p;
+  _linkPreviewPending.delete(url);
+  if (result) _linkPreviewCache.set(url, result);
+  return result;
+}
+
+function renderLinkPreviewCard(p){
+  if (!p) return '';
+  const img = p.image
+    ? `<div class="lp-img" style="background-image:url('${esc(p.image)}')"></div>`
+    : `<div class="lp-img lp-img-ph">${esc((p.badge||'?')[0])}</div>`;
+  const sub = p.subtitle ? `<div class="lp-sub">${esc(p.subtitle)}</div>` : '';
+  const target = p.url.startsWith('/') ? '' : ' target="_blank" rel="noopener"';
+  return `<a href="${esc(p.url)}" class="lp-card"${target}>
+    ${img}
+    <div class="lp-body">
+      <div class="lp-badge">${esc(p.badge||'')}</div>
+      <div class="lp-title">${esc(p.title||'')}</div>
+      ${sub}
+    </div>
+  </a>`;
+}
+
+async function hydrateLinkPreviews(msgEl, urls){
+  for (const url of urls) {
+    const preview = await loadLinkPreview(url);
+    if (!preview || !msgEl.isConnected) continue;
+    const slot = msgEl.querySelector(`.lp-slot[data-url="${CSS.escape(url)}"]`);
+    if (slot && !slot.dataset.loaded) {
+      slot.innerHTML = renderLinkPreviewCard(preview);
+      slot.dataset.loaded = '1';
+    }
+  }
+}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
 async function api(path,opt={}){
   const h={...(opt.headers||{}),Authorization:`Bearer ${tk()}`};
@@ -1329,7 +1418,9 @@ function renderMessages(){
     const mine=m.author_public_id===state.currentUser.public_id;
     const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     const attachHTML = renderAttachment(m);
-    const contentHTML = m.content ? esc(m.content) : '';
+    const contentHTML = m.content ? linkifyContent(m.content).replace(/\n/g,'<br>') : '';
+    const _urls = m.content ? extractURLs(m.content) : [];
+    const previewSlotsHTML = _urls.map(u=>`<div class="lp-slot" data-url="${esc(u)}"></div>`).join('');
     const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
     const replyHTML = m.reply_to ? `<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>` : '';
 
@@ -1361,6 +1452,7 @@ function renderMessages(){
           <div class='msg-bubble'>
             ${replyHTML}
             ${contentHTML}${deletedNote}
+            ${previewSlotsHTML}
             ${attachHTML}
             <span class='msg-action-reply' onclick='openReply(${m.id})'>↩</span>
           </div>
@@ -1370,6 +1462,10 @@ function renderMessages(){
           </div>
         </div>
       </div>`);
+    if (_urls.length) {
+      const justAdded = el.lastElementChild;
+      if (justAdded) hydrateLinkPreviews(justAdded, _urls);
+    }
   });
   // typing теперь отображается в шапке (#chatStatus), здесь не дублируем
   if(el){
