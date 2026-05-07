@@ -82,7 +82,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .bc-sep{color:var(--bdr);font-size:12px}
 
 /* ═══ ОБЛОЖКА ═══ */
-.ev-cover-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);animation:fadeUp .3s ease both;flex-shrink:0}
+.ev-cover-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);animation:fadeUp .3s ease both;flex-shrink:0;position:relative;z-index:5}
 .ev-cover{position:relative;height:260px;overflow:hidden}
 .ev-cover img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
 .ev-cover:hover img{transform:scale(1.02)}
@@ -460,16 +460,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </span>
       </div>
       <!-- Участники -->
-      <div class="ev-participants" style="margin-bottom:16px">
-        <div class="ep-avatars">
-          <div class="ep-av" style="background:#1E8A4C">АП</div>
-          <div class="ep-av" style="background:#3A90C0">МЗ</div>
-          <div class="ep-av" style="background:#9060C0">ДК</div>
-          <div class="ep-av" style="background:#B45309">ОП</div>
-          <div class="ep-av" style="background:#E04040">+</div>
-        </div>
-        <span class="ep-count"><strong id="regCount">1 840</strong> зарегистрированы</span>
-        <span style="margin-left:6px;font-size:11px;color:var(--gmt)">· осталось <strong style="color:var(--g)" id="seatsLeft">160</strong> мест</span>
+      <div class="ev-participants" id="evParticipants" style="margin-bottom:16px;display:none">
+        <div class="ep-avatars" id="epAvatars"></div>
+        <span class="ep-count"><strong id="regCount">0</strong> зарегистрированы</span>
+        <span id="seatsLeftWrap" style="margin-left:6px;font-size:11px;color:var(--gmt);display:none">· осталось <strong style="color:var(--g)" id="seatsLeft">0</strong> мест</span>
       </div>
       <!-- CTA -->
       <div class="ev-cta">
@@ -937,6 +931,52 @@ function applyEvent(ev){
   set('evLocation',ev.format==='online'?'Онлайн':(ev.city||'Офлайн'));
   set('evOrganizer',ev.organizer_name||'');
   set('regCount',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
+  const partWrap=document.getElementById('evParticipants');
+  const avWrap=document.getElementById('epAvatars');
+  const regCount=ev.registered_count||0;
+  if(partWrap){
+    partWrap.style.display=regCount>0?'':'none';
+  }
+  if(avWrap){
+    avWrap.innerHTML='';
+    // Если бэк отдаёт ev.participants — рисуем реальные аватарки;
+    // иначе — нейтральные кружки по числу регистраций (макс 5).
+    const list=Array.isArray(ev.participants)?ev.participants.slice(0,4):[];
+    const COL=['#1E8A4C','#3A90C0','#9060C0','#B45309','#1A8A6A'];
+    if(list.length){
+      list.forEach((p,i)=>{
+        const ltr=((p.full_name||p.name||'?')[0]||'?').toUpperCase();
+        const div=document.createElement('div');
+        div.className='ep-av';
+        div.style.background=COL[i%COL.length];
+        div.textContent=ltr;
+        avWrap.appendChild(div);
+      });
+      if(regCount>list.length){
+        const more=document.createElement('div');
+        more.className='ep-av';
+        more.style.background='#E04040';
+        more.textContent='+'+(regCount-list.length);
+        avWrap.appendChild(more);
+      }
+    } else if(regCount>0){
+      // Нет деталей участников — показываем нейтральные кружки
+      const n=Math.min(regCount,4);
+      for(let i=0;i<n;i++){
+        const div=document.createElement('div');
+        div.className='ep-av';
+        div.style.background=COL[i%COL.length];
+        div.textContent='';
+        avWrap.appendChild(div);
+      }
+    }
+  }
+  // Управление "осталось N мест"
+  const seatsTotal2=ev.seats_total||0;
+  const seatsLeftWrap=document.getElementById('seatsLeftWrap');
+  if(seatsLeftWrap){
+    seatsLeftWrap.style.display=seatsTotal2>0?'':'none';
+  }
   set('rightRegCount',new Intl.NumberFormat('ru-RU').format(ev.registered_count||0));
   const btnReg=document.getElementById('btnReg');
   if(btnReg){btnReg.textContent=ev.is_registered?'✓ Вы записаны':'Записаться';btnReg.classList.toggle('registered',!!ev.is_registered);btnReg.setAttribute('onclick','clickReg()');}
