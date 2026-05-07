@@ -620,7 +620,7 @@ async function toggleSubscribe(){
 async function toggleClosedTopic(){
   if (!currentTopic) return;
   const newClosed = !currentTopic.is_closed;
-  if (!confirm(newClosed ? 'Закрыть тему? Никто не сможет писать новые ответы.' : 'Открыть тему?')) return;
+  if (!await lastopConfirm(newClosed ? {title:'Закрыть тему?',message:'Никто не сможет писать новые ответы.',danger:true} : {title:'Открыть тему?'})) return;
   try {
     const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       method: 'PATCH',
