@@ -1341,9 +1341,25 @@ function rebuildMediaGrid(){
 setTimeout(()=>{const f=document.getElementById('progressFill');if(f)f.style.width='65%'},200);
 
 /* СОХРАНИТЬ */
-let saved=false;
-function toggleSave(){
-  showToast('Сохранение проектов появится в следующей версии');
+async function toggleSave(){
+  if(!currentProject||!currentProject.public_id)return;
+  const btn=document.getElementById('btnSave');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch(API+'/projects/'+encodeURIComponent(currentProject.public_id)+'/save',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+tk()}
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){showToast(d.error||'Не удалось сохранить');return;}
+    currentProject.is_saved=!!d.saved;
+    if(btn)btn.classList.toggle('saved',currentProject.is_saved);
+    showToast(currentProject.is_saved?'Сохранено ✓':'Убрано из сохранённых');
+  }catch{
+    showToast('Ошибка сети');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
 }
 
 /* МОДАЛКА */
@@ -1461,6 +1477,8 @@ async function loadProject(){
     }
     const data = await r.json();
     currentProject = data.project;
+    const _btnSaveInit=document.getElementById('btnSave');
+    if(_btnSaveInit)_btnSaveInit.classList.toggle('saved',!!currentProject.is_saved);
     currentMembers = data.members || [];
     viewerIsOwner = !!currentProject.is_owner;
 
