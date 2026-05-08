@@ -574,6 +574,15 @@ function goChat(id,name){
     ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
   }catch{}
   await loadData();
+  // Поддержка ?tab=incoming|outgoing|search — переключение после загрузки данных
+  try{
+    const params=new URLSearchParams(location.search);
+    const tab=params.get('tab');
+    if(tab && ['friends','incoming','outgoing','search'].includes(tab)){
+      const btn=document.querySelector(`.tab-btn[onclick*=\"'${tab}'\"]`);
+      switchTab(tab, btn);
+    }
+  }catch{}
 })();
 </script>
 <script src="/assets/guest-nav.js" defer></script>

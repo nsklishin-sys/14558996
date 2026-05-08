@@ -739,6 +739,9 @@ function itemHTML(n){
 }
 
 function buildHref(n){
+  // Приоритет по типу уведомления — для friend_request ведём на страницу заявок
+  if(n.type==='friend_request')return '/friends.html?tab=incoming';
+  if(n.type==='friend_accepted')return '/friends.html';
   switch(n.source_type){
     case 'post':
     case 'comment':
