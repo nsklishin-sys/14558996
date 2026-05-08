@@ -457,6 +457,8 @@ type chatConversation struct {
 	LastMessageSenderCompanyName   string     `json:"last_message_sender_company_name,omitempty"`
 	LastMessageSenderCommunityName string     `json:"last_message_sender_community_name,omitempty"`
 	UnreadCount                    int        `json:"unread_count"`
+	OtherLastReadMessageID         int64      `json:"other_last_read_message_id,omitempty"`
+	OtherLastReadAt                *time.Time `json:"other_last_read_at,omitempty"`
 	MembersCount                   int        `json:"members_count"`
 	IsOnline                       bool       `json:"is_online"`
 	Pinned                         bool       `json:"pinned"`
@@ -3834,6 +3836,34 @@ func main() {
 				writeJSON(w, http.StatusOK, map[string]any{"users": items})
 				return
 			}
+		}
+		if len(parts) == 2 && parts[1] == "read" && r.Method == http.MethodPost {
+			var req struct {
+				MessageID int64 `json:"message_id"`
+			}
+			_ = decodeJSON(w, r, &req)
+			// Если message_id не указан — берём максимальный из чата
+			if req.MessageID == 0 {
+				_ = db.QueryRow(`SELECT COALESCE(MAX(m.id),0) FROM chat_messages m JOIN chat_conversations c ON c.id=m.conversation_id WHERE c.public_id=$1 AND m.is_deleted=FALSE`, publicID).Scan(&req.MessageID)
+			}
+			if req.MessageID == 0 {
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				return
+			}
+			_, err := db.Exec(`
+				UPDATE chat_participants
+				SET last_read_message_id = GREATEST(last_read_message_id, $1),
+				    last_read_at = NOW()
+				WHERE user_id = $2
+				  AND conversation_id = (SELECT id FROM chat_conversations WHERE public_id=$3)
+			`, req.MessageID, userID, publicID)
+			if err != nil {
+				log.Printf("[chat] mark read: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
 		}
 		if len(parts) == 2 && parts[1] == "attachments" && r.Method == http.MethodGet {
 			// Проверка — юзер участник чата
@@ -9943,6 +9973,7 @@ CREATE TABLE IF NOT EXISTS chat_participants (
 
 ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS participant_kind TEXT NOT NULL DEFAULT 'user';
 ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS participant_id BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ;
 
 -- Бэкфилл: ставим participant из owner_kind/owner_id для creator, остальные = user
 UPDATE chat_participants p
@@ -19227,6 +19258,8 @@ func getConversationByPublicID(db *sql.DB, userID int64, publicID string) (chatC
 	var otherUID sql.NullInt64
 	var ownerKind string
 	var ownerID int64
+	var otherLastReadMsgID int64
+	var otherLastReadAt sql.NullTime
 	var ownerCompanyName, ownerCommunityName, ownerCompanyLogo, ownerCommunityAvatar string
 	err := db.QueryRow(`
 SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,c.last_message_at,c.owner_kind,c.owner_id,
@@ -19244,11 +19277,13 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
        COALESCE((SELECT u2.position FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT u2.company_name FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT u2.avatar_url FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
+       COALESCE((SELECT cp2.last_read_message_id FROM chat_participants cp2 WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),0),
+       (SELECT cp2.last_read_at FROM chat_participants cp2 WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),
        COALESCE(co.name,''), COALESCE(cm.name,''), COALESCE(co.logo_image,''), COALESCE(cm.avatar_url,'')
 FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
-WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
+WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &otherLastReadMsgID, &otherLastReadAt, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c, errNotFound
@@ -19257,6 +19292,11 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 	}
 	c.Pinned, c.Muted, c.MyRole = pinned, muted, role
 	c.OwnerKind, c.OwnerID = ownerKind, ownerID
+	c.OtherLastReadMessageID = otherLastReadMsgID
+	if otherLastReadAt.Valid {
+		t := otherLastReadAt.Time
+		c.OtherLastReadAt = &t
+	}
 	if c.Type == "direct" {
 		// Имя/аватар в шапке берутся из participant противоположной стороны.
 		var otherKind string
