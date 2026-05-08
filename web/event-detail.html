@@ -600,6 +600,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
   </div>
 
+  <!-- Превью обсуждения -->
+  <div class="card" id="evDiscCard" style="animation-delay:.18s">
+    <div class="block-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Обсуждение<span id="evDiscCount" style="font-weight:600;color:var(--gmt);margin-left:6px;text-transform:none;letter-spacing:0"></span></span>
+      <a href="#" id="evDiscOpenLink" style="font-size:10px;font-weight:700;color:var(--g);text-decoration:none;text-transform:none;letter-spacing:0">Открыть →</a>
+    </div>
+    <div id="evDiscList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+      <div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
+    </div>
+    <button id="evDiscOpenBtn" style="width:100%;padding:8px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'">Открыть полное обсуждение</button>
+  </div>
+
   <!-- Похожие -->
   <div class="card" id="similarBlock" style="display:none">
     <div class="block-title">Похожие события</div>
@@ -1491,6 +1503,10 @@ document.addEventListener('DOMContentLoaded', function(){
     if (pid) _initEventDiscussion(pid);
   } catch {}
 });
+
+// ─── Обсуждение мероприятия (превью в сайдбаре, Спринт 10.3) ───
+function _initEventDiscussion(eventPublicID){const fullURL='/event-discussion.html?id='+encodeURIComponent(eventPublicID);const lnk=document.getElementById('evDiscOpenLink');if(lnk)lnk.setAttribute('href',fullURL);const btn=document.getElementById('evDiscOpenBtn');if(btn)btn.addEventListener('click',function(){location.href=fullURL;});}
+document.addEventListener('DOMContentLoaded',function(){try{const params=new URLSearchParams(location.search);const pid=params.get('id')||params.get('public_id');if(pid)_initEventDiscussion(pid);}catch{}});
 
 </script>
 </body>

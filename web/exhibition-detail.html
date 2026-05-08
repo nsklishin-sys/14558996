@@ -505,6 +505,17 @@ a.sb-org-card:hover{border-color:var(--gb);text-decoration:none!important}
     <div id="sidebarOrg"></div>
   </div>
 
+  <div class="card" id="exhDiscCard">
+    <div class="block-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Обсуждение<span id="exhDiscCount" style="font-weight:600;color:var(--gmt);margin-left:6px;text-transform:none;letter-spacing:0"></span></span>
+      <a href="#" id="exhDiscOpenLink" style="font-size:10px;font-weight:700;color:var(--g);text-decoration:none;text-transform:none;letter-spacing:0">Открыть →</a>
+    </div>
+    <div id="exhDiscList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+      <div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
+    </div>
+    <button id="exhDiscOpenBtn" style="width:100%;padding:8px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'">Открыть полное обсуждение</button>
+  </div>
+
   <div class="card" id="sidebarSimilarCard" style="display:none">
     <div class="block-title">Похожие выставки</div>
     <div id="sidebarSimilar"></div>
@@ -1347,6 +1358,10 @@ window.submitExhibitor=async function(){
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
-<script src="/assets/profile-context.js" defer></script>
+<script src="/assets/profile-context.js" defer>// ─── Обсуждение выставки (превью в сайдбаре, Спринт 10.3) ───
+function _initExhibitionDiscussion(exhPublicID){const fullURL='/exhibition-discussion.html?id='+encodeURIComponent(exhPublicID);const lnk=document.getElementById('exhDiscOpenLink');if(lnk)lnk.setAttribute('href',fullURL);const btn=document.getElementById('exhDiscOpenBtn');if(btn)btn.addEventListener('click',function(){location.href=fullURL;});}
+document.addEventListener('DOMContentLoaded',function(){try{const params=new URLSearchParams(location.search);const pid=params.get('id')||params.get('public_id');if(pid)_initExhibitionDiscussion(pid);}catch{}});
+
+</script>
 </body>
 </html>

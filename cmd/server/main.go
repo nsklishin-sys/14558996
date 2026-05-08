@@ -4879,6 +4879,88 @@ func main() {
 			return
 		}
 
+		// Сообщения обсуждения выставки (Спринт 10.2)
+		if len(parts) >= 2 && parts[1] == "messages" {
+			if len(parts) == 2 {
+				if r.Method == http.MethodGet {
+					token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+					viewerID, _ := sessions.getUserID(token)
+					items, err := listExhibitionMessages(db, publicID, viewerID)
+					if err != nil {
+						if err == sql.ErrNoRows {
+							writeError(w, http.StatusNotFound, "Выставка не найдена")
+							return
+						}
+						log.Printf("[exhibitions] list messages: %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"messages": items})
+					return
+				}
+				if r.Method == http.MethodPost {
+					userID, ok := authenticatedUserID(w, r, sessions)
+					if !ok {
+						return
+					}
+					if !chatMessageRateLimiter.Allow(fmt.Sprintf("exh-msg:%d", userID)) {
+						writeError(w, http.StatusTooManyRequests, "Слишком часто")
+						return
+					}
+					var req struct {
+						Content string `json:"content"`
+					}
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					content := strings.TrimSpace(req.Content)
+					if utf8.RuneCountInString(content) < 1 || utf8.RuneCountInString(content) > 4000 {
+						writeError(w, http.StatusBadRequest, "Сообщение от 1 до 4000 символов")
+						return
+					}
+					msg, err := createExhibitionMessage(db, publicID, userID, content)
+					if err != nil {
+						if err == sql.ErrNoRows {
+							writeError(w, http.StatusNotFound, "Выставка не найдена")
+							return
+						}
+						log.Printf("[exhibitions] create message: %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					writeJSON(w, http.StatusCreated, map[string]any{"message": msg})
+					return
+				}
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			if len(parts) == 3 && r.Method == http.MethodDelete {
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				msgID, _ := strconv.ParseInt(parts[2], 10, 64)
+				if msgID == 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный id")
+					return
+				}
+				if err := deleteExhibitionMessage(db, publicID, msgID, userID); err != nil {
+					if err == sql.ErrNoRows {
+						writeError(w, http.StatusNotFound, "Сообщение не найдено")
+						return
+					}
+					log.Printf("[exhibitions] delete message: %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				return
+			}
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
 		// Заявки экспонентов — список и review (только админ)
 		if len(parts) >= 2 && parts[1] == "exhibitor-applications" {
 			reviewerID, ok := requireAdmin(w, r, db, sessions)
@@ -10266,6 +10348,23 @@ CREATE INDEX IF NOT EXISTS event_messages_event_idx
 
 CREATE INDEX IF NOT EXISTS event_messages_author_idx
     ON event_messages (author_id);
+
+-- ── Обсуждения выставок (Спринт 10.2/10.3) ──────────────
+CREATE TABLE IF NOT EXISTS exhibition_messages (
+    id BIGSERIAL PRIMARY KEY,
+    exhibition_id BIGINT NOT NULL REFERENCES exhibitions(id) ON DELETE CASCADE,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 4000),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS exhibition_messages_exh_idx
+    ON exhibition_messages (exhibition_id, id DESC) WHERE is_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS exhibition_messages_author_idx
+    ON exhibition_messages (author_id);
 
 -- Лайки сообщений
 CREATE TABLE IF NOT EXISTS forum_message_likes (
@@ -18816,6 +18915,94 @@ func deleteEventMessage(db *sql.DB, eventPublicID string, msgID, userID int64) e
 	n, _ := res.RowsAffected()
 	if n == 0 {
 		return errNotFound
+	}
+	return nil
+}
+
+// ── Обсуждения выставок (Спринт 10.2/10.3) ──────────────────
+type exhibitionMessage struct {
+	ID             int64     `json:"id"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author_name"`
+	AuthorAvatar   string    `json:"author_avatar,omitempty"`
+	Content        string    `json:"content"`
+	IsMine         bool      `json:"is_mine"`
+	IsDeleted      bool      `json:"is_deleted"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func listExhibitionMessages(db *sql.DB, exhPublicID string, viewerID int64) ([]exhibitionMessage, error) {
+	var exhID int64
+	if err := db.QueryRow(`SELECT id FROM exhibitions WHERE public_id=$1`, exhPublicID).Scan(&exhID); err != nil {
+		return nil, err
+	}
+	rows, err := db.Query(`
+		SELECT m.id, u.public_id, u.full_name, COALESCE(u.avatar_url,''), m.content, m.is_deleted, m.created_at, m.author_id
+		FROM exhibition_messages m
+		JOIN users u ON u.id = m.author_id
+		WHERE m.exhibition_id = $1
+		ORDER BY m.id DESC
+		LIMIT 200
+	`, exhID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]exhibitionMessage, 0)
+	for rows.Next() {
+		var m exhibitionMessage
+		var authorID int64
+		if err := rows.Scan(&m.ID, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.Content, &m.IsDeleted, &m.CreatedAt, &authorID); err != nil {
+			return nil, err
+		}
+		m.IsMine = (viewerID > 0 && authorID == viewerID)
+		if m.IsDeleted {
+			m.Content = ""
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func createExhibitionMessage(db *sql.DB, exhPublicID string, userID int64, content string) (exhibitionMessage, error) {
+	var exhID int64
+	if err := db.QueryRow(`SELECT id FROM exhibitions WHERE public_id=$1`, exhPublicID).Scan(&exhID); err != nil {
+		return exhibitionMessage{}, err
+	}
+	var msgID int64
+	var createdAt time.Time
+	if err := db.QueryRow(`
+		INSERT INTO exhibition_messages (exhibition_id, author_id, content)
+		VALUES ($1, $2, $3)
+		RETURNING id, created_at
+	`, exhID, userID, content).Scan(&msgID, &createdAt); err != nil {
+		return exhibitionMessage{}, err
+	}
+	var m exhibitionMessage
+	m.ID = msgID
+	m.Content = content
+	m.IsMine = true
+	m.CreatedAt = createdAt
+	if err := db.QueryRow(`SELECT public_id, full_name, COALESCE(avatar_url,'') FROM users WHERE id=$1`, userID).
+		Scan(&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+		return m, nil
+	}
+	return m, nil
+}
+
+func deleteExhibitionMessage(db *sql.DB, exhPublicID string, msgID, userID int64) error {
+	res, err := db.Exec(`
+		UPDATE exhibition_messages SET is_deleted = TRUE
+		WHERE id = $1
+		  AND author_id = $2
+		  AND exhibition_id = (SELECT id FROM exhibitions WHERE public_id = $3)
+	`, msgID, userID, exhPublicID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
 	}
 	return nil
 }
