@@ -176,6 +176,10 @@
   }
 
   function populateUserFromCache() {
+    // Гость — не заполняем (guest-nav.js сам подставит «Войти/Регистрация»)
+    let token = '';
+    try { token = localStorage.getItem('token') || ''; } catch {}
+    if (!token) return;
     let u = {};
     try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
     const name = u.full_name || u.name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || 'Пользователь';
