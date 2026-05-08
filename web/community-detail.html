@@ -1001,10 +1001,19 @@ function renderCommunityProfile(c){
   const banner=document.getElementById('heroBannerBg');if(banner)banner.style.background=persona.gradient;
   const tagsWrap=document.getElementById('communityTags');
   if(tagsWrap){tagsWrap.innerHTML=tags.length?tags.map(t=>`<span class="hero-tag">${esc(t)}</span>`).join(''):'<span class="hero-tag">без тегов</span>'}
+  const membersCount=Number.isFinite(Number(c.members_count))?Math.max(0,Number(c.members_count)):0;
   const membersNode=document.getElementById('statMembers');
   if(membersNode){
-    const membersCount=Number.isFinite(Number(c.members_count))?Math.max(0,Number(c.members_count)):0;
     membersNode.textContent=membersCount.toLocaleString('ru-RU');
+  }
+  const sidebarMembers=document.getElementById('communityMembersCount');
+  if(sidebarMembers){
+    sidebarMembers.textContent=membersCount.toLocaleString('ru-RU');
+  }
+  const postsCount=Number.isFinite(Number(c.posts_count))?Math.max(0,Number(c.posts_count)):0;
+  const sidebarPosts=document.getElementById('communityPostsCount');
+  if(sidebarPosts){
+    sidebarPosts.textContent=postsCount.toLocaleString('ru-RU');
   }
   joined=Boolean(c.is_member);
   setJoinButtonState(joined);
