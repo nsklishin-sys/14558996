@@ -23351,14 +23351,19 @@ type wsConn struct {
 	c      *websocket.Conn
 	send   chan []byte
 	userID int64
+	rooms  map[string]struct{} // комнаты на которые подписан этот коннект
 }
 
 type wsHubT struct {
 	mu    sync.RWMutex
 	conns map[int64]map[*wsConn]struct{}
+	rooms map[string]map[*wsConn]struct{} // room → set of connections
 }
 
-var wsHub = &wsHubT{conns: map[int64]map[*wsConn]struct{}{}}
+var wsHub = &wsHubT{
+	conns: map[int64]map[*wsConn]struct{}{},
+	rooms: map[string]map[*wsConn]struct{}{},
+}
 
 func (h *wsHubT) add(c *wsConn) {
 	h.mu.Lock()
@@ -23376,6 +23381,90 @@ func (h *wsHubT) remove(c *wsConn) {
 		delete(set, c)
 		if len(set) == 0 {
 			delete(h.conns, c.userID)
+		}
+	}
+	// Авто-отписка от всех комнат при разрыве коннекта
+	if c.rooms != nil {
+		for room := range c.rooms {
+			if rset, ok := h.rooms[room]; ok {
+				delete(rset, c)
+				if len(rset) == 0 {
+					delete(h.rooms, room)
+				}
+			}
+		}
+		c.rooms = nil
+	}
+}
+
+// Subscribe подписывает коннект на комнату.
+// Безопасен для повторного вызова. Сама строка комнаты не валидируется здесь —
+// валидацию надо делать в обработчике входящего "subscribe" сообщения.
+func (h *wsHubT) Subscribe(c *wsConn, room string) {
+	if room == "" {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if c.rooms == nil {
+		c.rooms = map[string]struct{}{}
+	}
+	if _, ok := c.rooms[room]; ok {
+		return
+	}
+	c.rooms[room] = struct{}{}
+	if h.rooms[room] == nil {
+		h.rooms[room] = map[*wsConn]struct{}{}
+	}
+	h.rooms[room][c] = struct{}{}
+}
+
+// Unsubscribe отписывает коннект от комнаты.
+func (h *wsHubT) Unsubscribe(c *wsConn, room string) {
+	if room == "" {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if c.rooms != nil {
+		delete(c.rooms, room)
+	}
+	if rset, ok := h.rooms[room]; ok {
+		delete(rset, c)
+		if len(rset) == 0 {
+			delete(h.rooms, room)
+		}
+	}
+}
+
+// BroadcastRoom отправляет JSON-событие всем коннектам в комнате.
+// Безопасен для вызова из любой горутины. Не блокирует.
+// excludeUserID — если > 0, события не получит этот юзер (используется чтобы не слать самому себе своё же событие).
+func (h *wsHubT) BroadcastRoom(room, eventType string, data any, excludeUserID int64) {
+	if room == "" {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{"type": eventType, "data": data})
+	if err != nil {
+		log.Printf("[ws] broadcast room marshal: %v", err)
+		return
+	}
+	h.mu.RLock()
+	rset := h.rooms[room]
+	conns := make([]*wsConn, 0, len(rset))
+	for c := range rset {
+		if excludeUserID > 0 && c.userID == excludeUserID {
+			continue
+		}
+		conns = append(conns, c)
+	}
+	h.mu.RUnlock()
+	for _, c := range conns {
+		select {
+		case c.send <- payload:
+		default:
+			log.Printf("[ws] drop slow conn (room=%s) user=%d", room, c.userID)
+			_ = c.c.Close(websocket.StatusPolicyViolation, "slow consumer")
 		}
 	}
 }
@@ -23489,6 +23578,35 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionSt
 		switch t {
 		case "ping":
 			conn.send <- []byte(`{"type":"pong"}`)
+		case "subscribe":
+			room, _ := msg["room"].(string)
+			room = strings.TrimSpace(room)
+			// Валидация: разрешены только конкретные префиксы и допустимые символы
+			if room == "" || len(room) > 200 {
+				continue
+			}
+			validPrefix := false
+			for _, prefix := range []string{"event:", "exhibition:", "post:"} {
+				if strings.HasPrefix(room, prefix) {
+					validPrefix = true
+					break
+				}
+			}
+			if !validPrefix {
+				continue
+			}
+			// Доп. защита от спама подписок: лимит 50 комнат на коннект
+			if conn.rooms != nil && len(conn.rooms) >= 50 {
+				continue
+			}
+			wsHub.Subscribe(conn, room)
+		case "unsubscribe":
+			room, _ := msg["room"].(string)
+			room = strings.TrimSpace(room)
+			if room == "" {
+				continue
+			}
+			wsHub.Unsubscribe(conn, room)
 		case "chat:typing":
 			data, _ := msg["data"].(map[string]any)
 			if data == nil {
