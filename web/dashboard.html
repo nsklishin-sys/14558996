@@ -98,6 +98,12 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .c-input:focus{border-color:var(--gm);background:var(--w);cursor:text}
 .c-input::placeholder{color:var(--gmt)}
 .compose-actions{display:flex;align-items:center;gap:6px}
+.compose-cover{position:relative;margin-bottom:10px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bdr);background:var(--gp);max-height:300px}
+.compose-cover img{width:100%;height:auto;display:block;max-height:300px;object-fit:cover}
+.compose-cover-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .15s}
+.compose-cover-remove:hover{background:rgba(0,0,0,.85)}
+.compose-cover-remove svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+.compose-cover-uploading{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
 .c-action{
   display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
   border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);
@@ -403,6 +409,16 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       onfocus="this.style.borderColor='var(--gm)';this.style.background='var(--w)'"
       onblur="this.style.borderColor='var(--bdr)';this.style.background='var(--gp)'"></textarea>
 
+    <!-- Preview обложки -->
+    <div class="compose-cover" id="composeCoverPreview" style="display:none">
+      <img id="composeCoverImg" alt="">
+      <button type="button" class="compose-cover-remove" onclick="removeComposeCover()" title="Удалить обложку">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="compose-cover-uploading" id="composeCoverUploading" style="display:none">Загрузка…</div>
+    </div>
+    <input type="file" id="composeCoverInput" accept="image/*" style="display:none" onchange="onComposeCoverSelected(event)">
+
     <!-- Счётчик символов -->
     <div id="composeCounter" style="font-size:11px;color:var(--gmt);text-align:right;margin-bottom:10px;font-variant-numeric:tabular-nums">0 / 20000</div>
 
@@ -422,8 +438,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     </div>
 
     <div class="compose-actions">
-      <button class="c-action" onclick="showToast('Прикрепление файлов будет добавлено позже')"><svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Файл</button>
-      <button class="c-action" onclick="showToast('Прикрепление изображений будет добавлено позже')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Фото</button>
+      <button class="c-action" onclick="document.getElementById('composeCoverInput').click()"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Фото</button>
       <button class="c-action" onclick="toggleComposeTags()" id="composeTagsBtn"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Тег</button>
       <button class="c-action" onclick="closeCompose()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Отмена</button>
       <button class="c-submit" onclick="submitPost()">Опубликовать</button>
@@ -847,6 +862,7 @@ function openCompose(){
   updateComposeCounter();
 }
 function closeCompose(){
+  removeComposeCover();
   document.getElementById('composeBox').style.display='none';
   document.getElementById('composeTitleInput').value='';
   document.getElementById('composeTextInput').value='';
@@ -879,6 +895,63 @@ function updateComposeCounter(){
 
 // ── Теги: состояние и операции ─────────────────────────────────────
 let composeTags = [];
+let composeCoverUrl = '';
+
+async function onComposeCoverSelected(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    showToast('Можно загрузить только изображение');
+    e.target.value = '';
+    return;
+  }
+  if(file.size > 25 * 1024 * 1024){
+    showToast('Файл слишком большой (макс. 25 МБ)');
+    e.target.value = '';
+    return;
+  }
+  // Локальный preview немедленно
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const img = document.getElementById('composeCoverImg');
+    if(img) img.src = ev.target.result;
+    document.getElementById('composeCoverPreview').style.display = 'block';
+    document.getElementById('composeCoverUploading').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+
+  // Загрузка на сервер
+  try{
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(API + '/upload',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+tk()},
+      body:fd
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.url){
+      showToast(d.error || 'Не удалось загрузить файл');
+      removeComposeCover();
+      return;
+    }
+    composeCoverUrl = d.url;
+    document.getElementById('composeCoverUploading').style.display = 'none';
+  }catch(err){
+    showToast('Ошибка сети при загрузке');
+    removeComposeCover();
+  }finally{
+    e.target.value = '';
+  }
+}
+
+function removeComposeCover(){
+  composeCoverUrl = '';
+  document.getElementById('composeCoverPreview').style.display = 'none';
+  document.getElementById('composeCoverImg').src = '';
+  document.getElementById('composeCoverUploading').style.display = 'none';
+  document.getElementById('composeCoverInput').value = '';
+}
 
 function toggleComposeTags(){
   const block = document.getElementById('composeTagsBlock');
@@ -962,7 +1035,7 @@ async function submitPost(){
   const btn=document.querySelector('.c-submit');
   if(btn)btn.disabled=true;
   try{
-    const r=await fetch(API+'/posts',{method:'POST',headers:window.withActiveContextHeaders ? window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}) : {'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags})});
+    const r=await fetch(API+'/posts',{method:'POST',headers:window.withActiveContextHeaders ? window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}) : {'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags,cover_url:composeCoverUrl})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.post){showToast(d.error||'Не удалось опубликовать');return;}
     const p=d.post;
@@ -976,6 +1049,7 @@ async function submitPost(){
         author_company_logo:p.author_company_logo||'',
         role:p.author_role||'Участник LASTOP',
       title:p.title||'',text:p.text||p.content||'',
+      img:p.cover_url||composeCoverUrl||'',
       views:p.views_count||0,likes:p.likes_count||0,comments:p.comments_count||0,shares:0,
       ts:p.created_at||new Date().toISOString(),src:'LASTOP',type:p.type||'news',tags:p.tags||[]
     });
@@ -1132,6 +1206,7 @@ function toggleFollow(btn){
           role: displayRole,
           title: n.title || '',
           text: n.text || n.content || '',
+          img: n.cover_url || '',
           views: n.views_count || 0,
           likes: n.likes_count || 0,
           comments: n.comments_count || 0,
