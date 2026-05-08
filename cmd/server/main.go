@@ -12419,6 +12419,7 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 		END
 		WHERE fr.status = 'accepted'
 		  AND ($1 IN (fr.requester_id, fr.addressee_id))
+		  AND u.is_deleted = FALSE
 		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
@@ -12458,6 +12459,7 @@ func listUserFriends(db *sql.DB, publicID string) ([]friendDTO, error) {
 		END
 		WHERE fr.status = 'accepted'
 		  AND ($1 IN (fr.requester_id, fr.addressee_id))
+		  AND u.is_deleted = FALSE
 		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
