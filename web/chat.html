@@ -383,6 +383,42 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .reply-close svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 
 /* Инпут */
+/* Голосовые сообщения */
+.voice-rec-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gp);border-top:1px solid var(--bdr);flex-shrink:0}
+.voice-rec-cancel,.voice-rec-stop,.voice-rec-send{width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:background .12s,transform .1s}
+.voice-rec-cancel{background:#FCE8E8;color:var(--red)}
+.voice-rec-cancel:hover{background:#F7CACA;transform:scale(1.05)}
+.voice-rec-stop{background:var(--g);color:#fff;animation:vrPulse 1.4s ease-in-out infinite}
+.voice-rec-stop:hover{background:var(--gm);transform:scale(1.05)}
+.voice-rec-send{background:var(--g);color:#fff}
+.voice-rec-send:hover{background:var(--gm);transform:scale(1.05)}
+.voice-rec-cancel svg,.voice-rec-stop svg,.voice-rec-send svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes vrPulse{0%,100%{box-shadow:0 0 0 0 rgba(30,138,76,.4)}50%{box-shadow:0 0 0 8px rgba(30,138,76,0)}}
+.voice-rec-time{font-size:13px;font-weight:700;color:var(--t);font-variant-numeric:tabular-nums;min-width:48px;text-align:center}
+.voice-rec-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:vrBlink 1s ease-in-out infinite;flex-shrink:0}
+@keyframes vrBlink{0%,100%{opacity:1}50%{opacity:.3}}
+.voice-rec-wave{flex:1;height:32px;display:flex;align-items:center;gap:2px;overflow:hidden}
+.voice-rec-wave .vw-bar{flex:1;min-width:2px;max-width:3px;background:var(--g);border-radius:99px;transition:height .08s ease-out}
+
+/* Preview плеер голосового перед отправкой */
+.voice-prev-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gp);border-top:1px solid var(--bdr);flex-shrink:0}
+.voice-prev-play{width:36px;height:36px;border-radius:50%;background:var(--g);color:#fff;border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0}
+.voice-prev-play:hover{background:var(--gm)}
+.voice-prev-play svg{width:14px;height:14px;fill:currentColor}
+.voice-prev-track{flex:1;height:4px;background:var(--bdr);border-radius:99px;cursor:pointer;position:relative;overflow:hidden}
+.voice-prev-progress{height:100%;background:var(--g);border-radius:99px;width:0%;transition:width .05s linear}
+.voice-prev-time{font-size:12px;font-weight:600;color:var(--t);font-variant-numeric:tabular-nums;min-width:42px;text-align:right}
+
+/* Audio плеер ВНУТРИ сообщения (компактный) */
+.msg-voice{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:14px;background:var(--gp);border:1px solid var(--bdr);max-width:280px;margin-top:6px}
+.msg.me .msg-voice{background:#fff;border-color:var(--gb)}
+.msg-voice-play{width:32px;height:32px;border-radius:50%;background:var(--g);color:#fff;border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0}
+.msg-voice-play:hover{background:var(--gm)}
+.msg-voice-play svg{width:12px;height:12px;fill:currentColor}
+.msg-voice-track{flex:1;height:3px;background:var(--bdr);border-radius:99px;cursor:pointer;position:relative}
+.msg-voice-progress{position:absolute;top:0;left:0;height:100%;background:var(--g);border-radius:99px;width:0%}
+.msg-voice-time{font-size:11px;font-weight:600;color:var(--gmt);font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
+
 .chat-input-wrap{
   padding:12px 16px;border-top:1px solid var(--bdr);
   display:flex;align-items:flex-end;gap:8px;flex-shrink:0;background:var(--w)
@@ -832,7 +868,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <button class="ci-inline" onclick="toggleEmojiPicker()" title="Эмодзи">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
           </button>
-          <button class="ci-inline" onclick="showToast('Голосовые сообщения будут доступны в следующей версии')" title="Голосовое">
+          <button class="ci-inline" onclick="startVoiceRecord()" title="Голосовое сообщение">
             <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
         </div>
@@ -1352,7 +1388,7 @@ function applyConversation(c){
   }
   state.activeConversation=c;
 }
-async function selectConversation(pid){state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){if(typeof cancelVoiceRecord==='function'&&_voiceRec&&_voiceRec.mediaRecorder)cancelVoiceRecord();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
@@ -1483,8 +1519,15 @@ function renderAttachment(m){
     </div>`;
   }
   if (isAudio) {
-    return `<div style='margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--gp);max-width:320px'>
-      <audio controls preload='metadata' style='width:100%' src='${esc(url)}'></audio>
+    return `<div class='msg-voice'>
+      <button class='msg-voice-play' onclick='_voicePlay(this)' type='button'>
+        <svg viewBox='0 0 24 24'><polygon points='5 3 19 12 5 21 5 3'/></svg>
+      </button>
+      <div class='msg-voice-track' onclick='_voiceSeek(event,this)'>
+        <div class='msg-voice-progress'></div>
+      </div>
+      <span class='msg-voice-time'>00:00</span>
+      <audio preload='metadata' src='${esc(url)}' style='display:none'></audio>
     </div>`;
   }
 
@@ -2153,6 +2196,166 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
 })
+// ─── Голосовые сообщения ────────────────────────────────────────
+let _voiceRec = {
+  mediaRecorder: null,
+  stream: null,
+  chunks: [],
+  startTime: 0,
+  timerInterval: null,
+  audioContext: null,
+  analyser: null,
+  rafId: null,
+  blob: null,
+  blobUrl: null,
+  duration: 0,
+  previewAudio: null
+};
+
+function pickVoiceMime(){
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  for (const m of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return '';
+}
+
+async function startVoiceRecord(){
+  if (state.uploading || _voiceRec.mediaRecorder) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Микрофон не поддерживается в этом браузере');
+    return;
+  }
+  if (!window.MediaRecorder) {
+    showToast('Запись не поддерживается в этом браузере');
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    showToast('Доступ к микрофону отклонён');
+    return;
+  }
+  const mime = pickVoiceMime();
+  let recorder;
+  try {
+    recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  } catch (e) {
+    stream.getTracks().forEach(t => t.stop());
+    showToast('Не удалось запустить запись');
+    return;
+  }
+  _voiceRec.mediaRecorder = recorder;
+  _voiceRec.stream = stream;
+  _voiceRec.chunks = [];
+  _voiceRec.startTime = Date.now();
+
+  recorder.ondataavailable = e => { if (e.data && e.data.size > 0) _voiceRec.chunks.push(e.data); };
+  recorder.onstop = () => {
+    const type = recorder.mimeType || mime || 'audio/webm';
+    const blob = new Blob(_voiceRec.chunks, { type });
+    _voiceRec.blob = blob;
+    _voiceRec.blobUrl = URL.createObjectURL(blob);
+    _voiceRec.duration = Math.max(1, Math.round((Date.now() - _voiceRec.startTime) / 1000));
+    if (_voiceRec.stream) _voiceRec.stream.getTracks().forEach(t => t.stop());
+    if (_voiceRec.audioContext) try { _voiceRec.audioContext.close(); } catch {}
+    if (_voiceRec.rafId) cancelAnimationFrame(_voiceRec.rafId);
+    if (_voiceRec.timerInterval) clearInterval(_voiceRec.timerInterval);
+    _voiceRec.audioContext = null;
+    _voiceRec.analyser = null;
+    _voiceRec.rafId = null;
+    _voiceRec.timerInterval = null;
+    _voiceRec.stream = null;
+    _voiceRec.mediaRecorder = null;
+    showVoicePreview();
+  };
+
+  recorder.start(200);
+  showVoiceRecBar();
+
+  // Real-time waveform через AnalyserNode
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ac.createMediaStreamSource(stream);
+    const analyser = ac.createAnalyser();
+    analyser.fftSize = 64;
+    src.connect(analyser);
+    _voiceRec.audioContext = ac;
+    _voiceRec.analyser = analyser;
+    drawVoiceWave();
+  } catch {}
+
+  // Таймер
+  _voiceRec.timerInterval = setInterval(() => {
+    const sec = Math.floor((Date.now() - _voiceRec.startTime) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    const t = document.getElementById('voiceRecTime');
+    if (t) t.textContent = (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+    // Лимит 5 минут
+    if (sec >= 300) stopVoiceRecord();
+  }, 250);
+}
+
+function drawVoiceWave(){
+  if (!_voiceRec.analyser) return;
+  const bars = document.querySelectorAll('#voiceRecWave .vw-bar');
+  if (!bars.length) { _voiceRec.rafId = requestAnimationFrame(drawVoiceWave); return; }
+  const buf = new Uint8Array(_voiceRec.analyser.frequencyBinCount);
+  _voiceRec.analyser.getByteFrequencyData(buf);
+  // Усредним по группам
+  const step = Math.max(1, Math.floor(buf.length / bars.length));
+  bars.forEach((b, i) => {
+    let sum = 0;
+    for (let k = 0; k < step; k++) sum += buf[i * step + k] || 0;
+    const avg = sum / step;
+    const h = Math.max(3, (avg / 255) * 28);
+    b.style.height = h + 'px';
+  });
+  _voiceRec.rafId = requestAnimationFrame(drawVoiceWave);
+}
+
+function showVoiceRecBar(){
+  // Скрыть старый preview/attach если были
+  hidePreview();
+  const old = document.getElementById('voiceRecBar');
+  if (old) old.remove();
+  const oldPrev = document.getElementById('voicePrevBar');
+  if (oldPrev) oldPrev.remove();
+  const wrap = document.querySelector('.chat-input-wrap');
+  if (!wrap || !wrap.parentNode) return;
+  const bar = document.createElement('div');
+  bar.id = 'voiceRecBar';
+  bar.className = 'voice-rec-bar';
+  bar.innerHTML = `
+    <button class="voice-rec-cancel" onclick="cancelVoiceRecord()" title="Отменить">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <span class="voice-rec-dot"></span>
+    <span class="voice-rec-time" id="voiceRecTime">00:00</span>
+    <div class="voice-rec-wave" id="voiceRecWave">
+      ${Array.from({length: 24}).map(() => '<div class="vw-bar" style="height:3px"></div>').join('')}
+    </div>
+    <button class="voice-rec-stop" onclick="stopVoiceRecord()" title="Остановить">
+      <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+    </button>`;
+  wrap.parentNode.insertBefore(bar, wrap);
+  wrap.style.display = 'none';
+}
+
+function cancelVoiceRecord(){if(_voiceRec.mediaRecorder&&_voiceRec.mediaRecorder.state!=='inactive'){try{_voiceRec.mediaRecorder.onstop=null;_voiceRec.mediaRecorder.stop()}catch{}}if(_voiceRec.stream)_voiceRec.stream.getTracks().forEach(t=>t.stop());if(_voiceRec.audioContext)try{_voiceRec.audioContext.close()}catch{}if(_voiceRec.rafId)cancelAnimationFrame(_voiceRec.rafId);if(_voiceRec.timerInterval)clearInterval(_voiceRec.timerInterval);if(_voiceRec.blobUrl)URL.revokeObjectURL(_voiceRec.blobUrl);_voiceRec={mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};const bar=document.getElementById('voiceRecBar');if(bar)bar.remove();const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display='';}
+function stopVoiceRecord(){if(!_voiceRec.mediaRecorder||_voiceRec.mediaRecorder.state==='inactive')return;try{_voiceRec.mediaRecorder.stop()}catch{}const bar=document.getElementById('voiceRecBar');if(bar)bar.remove();}
+function showVoicePreview(){if(!_voiceRec.blobUrl)return;const wrap=document.querySelector('.chat-input-wrap');if(!wrap||!wrap.parentNode)return;const bar=document.createElement('div');bar.id='voicePrevBar';bar.className='voice-prev-bar';const m=Math.floor(_voiceRec.duration/60);const s=_voiceRec.duration%60;const dur=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);bar.innerHTML=`<button class="voice-rec-cancel" onclick="cancelVoiceRecord()" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button><button class="voice-prev-play" onclick="toggleVoicePreviewPlay()" id="voicePrevPlayBtn" title="Прослушать"><svg viewBox="0 0 24 24" id="voicePrevPlayIcon"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="voice-prev-track" onclick="seekVoicePreview(event)" id="voicePrevTrack"><div class="voice-prev-progress" id="voicePrevProgress"></div></div><span class="voice-prev-time" id="voicePrevTime">${dur}</span><button class="voice-rec-send" onclick="sendVoiceMessage()" title="Отправить"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>`;wrap.parentNode.insertBefore(bar,wrap);wrap.style.display='none';_voiceRec.previewAudio=new Audio(_voiceRec.blobUrl);_voiceRec.previewAudio.addEventListener('timeupdate',updateVoicePreviewTime);_voiceRec.previewAudio.addEventListener('ended',()=>{const ic=document.getElementById('voicePrevPlayIcon');if(ic)ic.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';const pr=document.getElementById('voicePrevProgress');if(pr)pr.style.width='0%';});}
+function toggleVoicePreviewPlay(){const a=_voiceRec.previewAudio;if(!a)return;const ic=document.getElementById('voicePrevPlayIcon');if(a.paused){a.play();if(ic)ic.innerHTML='<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';}else{a.pause();if(ic)ic.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';}}
+function updateVoicePreviewTime(){const a=_voiceRec.previewAudio;if(!a||!isFinite(a.duration)||a.duration===0)return;const pr=document.getElementById('voicePrevProgress');if(pr)pr.style.width=((a.currentTime/a.duration)*100)+'%';}
+function seekVoicePreview(ev){const a=_voiceRec.previewAudio;if(!a||!isFinite(a.duration)||a.duration===0)return;const tr=document.getElementById('voicePrevTrack');if(!tr)return;const rect=tr.getBoundingClientRect();const x=ev.clientX-rect.left;const pct=Math.max(0,Math.min(1,x/rect.width));a.currentTime=a.duration*pct;updateVoicePreviewTime();}
+async function sendVoiceMessage(){if(!_voiceRec.blob||state.uploading)return;state.uploading=true;try{const ext=(_voiceRec.blob.type||'').includes('mp4')?'m4a':(_voiceRec.blob.type||'').includes('ogg')?'ogg':'webm';const ts=new Date();const filename='Voice_'+ts.toISOString().replace(/[:.]/g,'-').slice(0,19)+'.'+ext;const fd=new FormData();fd.append('file',new File([_voiceRec.blob],filename,{type:_voiceRec.blob.type||'audio/webm'}));const r=await fetch('/api/upload',{method:'POST',headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')},body:fd});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Не удалось загрузить голосовое');}const data=await r.json();pendingAttachment={url:data.url,name:'Голосовое сообщение ('+Math.floor(_voiceRec.duration/60)+':'+String(_voiceRec.duration%60).padStart(2,'0')+')',size:data.size,type:data.type||_voiceRec.blob.type||'audio/webm'};const bar=document.getElementById('voicePrevBar');if(bar)bar.remove();const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display='';if(_voiceRec.blobUrl)URL.revokeObjectURL(_voiceRec.blobUrl);_voiceRec={mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};await submitMessage();}catch(e){showToast(e.message||'Не удалось отправить голосовое');}finally{state.uploading=false;}}
+function _voicePlay(btn){const wrap=btn.closest('.msg-voice');if(!wrap)return;const audio=wrap.querySelector('audio');if(!audio)return;const icon=btn.querySelector('svg');if(audio.paused){document.querySelectorAll('.msg-voice audio').forEach(a=>{if(a!==audio)a.pause();});audio.play();if(icon)icon.innerHTML='<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';}else{audio.pause();if(icon)icon.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';}}
+function _voiceSeek(ev,track){const wrap=track.closest('.msg-voice');const audio=wrap?.querySelector('audio');if(!audio||!isFinite(audio.duration)||audio.duration===0)return;const rect=track.getBoundingClientRect();const pct=Math.max(0,Math.min(1,(ev.clientX-rect.left)/rect.width));audio.currentTime=audio.duration*pct;}
+document.addEventListener('timeupdate',function(e){if(!e.target||e.target.tagName!=='AUDIO')return;const wrap=e.target.closest('.msg-voice');if(!wrap)return;const pr=wrap.querySelector('.msg-voice-progress');const tm=wrap.querySelector('.msg-voice-time');const dur=isFinite(e.target.duration)&&e.target.duration>0?e.target.duration:0;const cur=e.target.currentTime||0;if(pr&&dur)pr.style.width=((cur/dur)*100)+'%';if(tm){const remain=Math.max(0,dur-cur);const m=Math.floor(remain/60);const s=Math.floor(remain%60);tm.textContent=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);}},true);
+document.addEventListener('ended',function(e){if(!e.target||e.target.tagName!=='AUDIO')return;const wrap=e.target.closest('.msg-voice');if(!wrap)return;const ic=wrap.querySelector('.msg-voice-play svg');if(ic)ic.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';const pr=wrap.querySelector('.msg-voice-progress');if(pr)pr.style.width='0%';},true);
+
 </script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
