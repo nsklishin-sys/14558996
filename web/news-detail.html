@@ -455,6 +455,11 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
           <span class="act-count" id="btnRepostCount">0</span>
         </button>
 
+        <button class="act-btn share" id="btnCopyLink" onclick="copyPostLink()">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span>Ссылка</span>
+        </button>
+
       </div><!-- /news-actions -->
 
       <!-- Секция комментариев -->
@@ -623,7 +628,7 @@ async function toggleSave(){
     saveCount = Number(d.saves_count || 0);
     applySaveButtonState();
     ['btnSaveCount', 'statSaves'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = Number(saveCount).toLocaleString('ru-RU'); });
-    toast(saved ? 'Добавлено в избранное ✓' : 'Убрано из избранного');
+    toast(saved ? 'Сохранено ✓' : 'Убрано из сохранённого');
   } catch (err) {
     toast('Сеть недоступна');
   }
@@ -1284,6 +1289,20 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 })();
 
+async function copyPostLink(){
+  const url = location.origin + '/news-detail.html?id=' + encodeURIComponent(postPublicID);
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Ссылка скопирована');
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('Ссылка скопирована'); }
+    catch { toast('Не удалось скопировать'); }
+    document.body.removeChild(ta);
+  }
+}
 </script>
 </body>
 </html>

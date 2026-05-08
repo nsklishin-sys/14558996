@@ -14950,8 +14950,11 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 	}
 	coverURL := strings.TrimSpace(req.CoverURL)
 	if coverURL != "" {
-		if utf8.RuneCountInString(coverURL) > 500 || (!strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://")) {
-			return post{}, fmt.Errorf("%w: cover_url должен начинаться с http:// или https:// и быть не длиннее 500 символов", errValidation)
+		if utf8.RuneCountInString(coverURL) > 500 {
+			return post{}, fmt.Errorf("%w: cover_url слишком длинный (макс. 500 символов)", errValidation)
+		}
+		if !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") && !strings.HasPrefix(coverURL, "/uploads/") {
+			return post{}, fmt.Errorf("%w: cover_url должен начинаться с http://, https:// или /uploads/", errValidation)
 		}
 	}
 	tags := make([]string, 0, len(req.Tags))
