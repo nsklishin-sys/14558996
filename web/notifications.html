@@ -739,7 +739,7 @@ function itemHTML(n){
 }
 
 function buildHref(n){
-  // Приоритет по типу уведомления — для friend_request ведём на страницу заявок
+  // Приоритет по типу события (n.type), не по source_type
   if(n.type==='friend_request')return '/friends.html?tab=incoming';
   if(n.type==='friend_accepted')return '/friends.html';
   switch(n.source_type){
@@ -756,7 +756,8 @@ function buildHref(n){
       return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id):'/forum.html';
     case 'user':
       return n.actor_public_id?'/profile_user.html?id='+encodeURIComponent(n.actor_public_id):'/friends.html';
-    case 'chat': return '/chat.html';
+    case 'chat':
+      return n.source_public_id?'/chat.html?conv='+encodeURIComponent(n.source_public_id):'/chat.html';
     default: return '#';
   }
 }
