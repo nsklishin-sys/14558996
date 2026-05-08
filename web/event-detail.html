@@ -554,19 +554,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div id="evTags" style="display:flex;flex-wrap:wrap;gap:8px"></div>
   </div>
 
-  <!-- ── ОБСУЖДЕНИЕ (превью) ── -->
-  <div class="ev-section" id="evDiscussionSection" style="animation-delay:.3s">
-    <div class="sec-title">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Обсуждение<span class="disc-count" id="evDiscCount"></span>
-      <a href="#" id="evDiscOpenLink" style="margin-left:auto;font-size:12px;font-weight:600;color:var(--g);text-decoration:none">Открыть обсуждение →</a>
-    </div>
-    <div class="disc-list" id="evDiscList">
-      <div class="disc-loading">Загрузка превью…</div>
-    </div>
-    <button class="disc-send" style="width:100%;margin-top:10px;background:var(--gl);color:var(--g);border:1px solid var(--gb)" id="evDiscOpenBtn">Открыть полное обсуждение</button>
-  </div>
-
 </div><!-- /main -->
 
 <!-- RIGHT -->
@@ -598,6 +585,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button style="flex:1;padding:7px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);color:var(--t);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="openEditEventModal()">Редактировать</button>
       <button style="flex:1;padding:7px;border-radius:var(--rm);background:#FDEAEA;border:1px solid #E04040;color:#E04040;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="deleteCurrentEvent()">Удалить</button>
     </div>
+  </div>
+
+  <!-- Превью обсуждения -->
+  <div class="card" id="evDiscCard">
+    <div class="block-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Обсуждение<span id="evDiscCount" style="font-weight:600;color:var(--gmt);margin-left:6px;text-transform:none;letter-spacing:0"></span></span>
+      <a href="#" id="evDiscOpenLink" style="font-size:10px;font-weight:700;color:var(--g);text-decoration:none;text-transform:none;letter-spacing:0">Открыть →</a>
+    </div>
+    <div id="evDiscList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+      <div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
+    </div>
+    <button id="evDiscOpenBtn" style="width:100%;padding:8px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'">Открыть полное обсуждение</button>
   </div>
 
   <!-- Похожие -->
@@ -1400,10 +1399,9 @@ async function deleteCurrentEvent(){
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
 <script>
-// ─── Обсуждение мероприятия (превью) ───
+// ─── Обсуждение мероприятия (превью в сайдбаре, Спринт 10.3-A) ───
 let _evDiscMessages = [];
 let _evDiscPublicID = '';
-let _evDiscPollTimer = null; // не используется здесь, но может пригодиться
 
 function _evDiscEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function _evDiscLetter(s){return ((s||'?').trim()[0]||'?').toUpperCase();}
@@ -1440,7 +1438,7 @@ function renderEventMessages(){
   if (!list) return;
   if (counter) counter.textContent = _evDiscMessages.length ? '· ' + _evDiscMessages.length : '';
   if (!_evDiscMessages.length) {
-    list.innerHTML = '<div class="disc-empty">Пока никто не оставил сообщений. Будьте первым!</div>';
+    list.innerHTML = '<div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px;line-height:1.5">Сообщений пока нет.<br>Будьте первым!</div>';
     return;
   }
   // На превью показываем только 3 последних (массив отсортирован DESC по id)
@@ -1450,23 +1448,20 @@ function renderEventMessages(){
     const pid = _evDiscEsc(m.author_public_id || '');
     const ltr = _evDiscLetter(m.author_name);
     const bg = m.author_avatar
-      ? 'background-image:url("' + _evDiscEsc(m.author_avatar) + '")'
+      ? 'background-image:url(\'' + _evDiscEsc(m.author_avatar) + '\');background-size:cover;background-position:center'
       : 'background:' + _evDiscColor(m.author_name);
     const time = _evDiscAgo(m.created_at);
     const content = m.is_deleted
-      ? '<div class="disc-msg-content deleted-text">[сообщение удалено]</div>'
-      : '<div class="disc-msg-content">' + _evDiscEsc(m.content || '') + '</div>';
-    return '<div class="disc-msg' + (m.is_deleted ? ' deleted' : '') + '" data-msg-id="' + m.id + '">' 
-      + '<a href="/profile_user.html?id=' + pid + '" class="disc-av" style="' + bg + ';text-decoration:none">'
+      ? '<div style="font-size:11px;color:var(--gmt);font-style:italic">[удалено]</div>'
+      : '<div style="font-size:11px;color:var(--t);line-height:1.45;white-space:pre-wrap;word-wrap:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + _evDiscEsc(m.content || '') + '</div>';
+    return '<div style="display:flex;gap:8px;padding:8px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp)' + (m.is_deleted ? ';opacity:.55' : '') + '">'
+      + '<a href="/profile_user.html?id=' + pid + '" style="width:24px;height:24px;border-radius:6px;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;text-decoration:none;' + bg + '">'
       + (m.author_avatar ? '' : ltr) + '</a>'
-      + '<div class="disc-msg-body">'
-      + '<div class="disc-msg-head">'
-      + '<a href="/profile_user.html?id=' + pid + '" class="disc-msg-name">' + name + '</a>'
-      + '<span class="disc-msg-time">' + _evDiscEsc(time) + '</span>'
-      + '</div>'
-      + content
-      + '</div>'
-      + '</div>';
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">'
+      + '<a href="/profile_user.html?id=' + pid + '" style="font-size:11px;font-weight:700;color:var(--t);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</a>'
+      + '<span style="font-size:10px;color:var(--gmt);flex-shrink:0">' + _evDiscEsc(time) + '</span>'
+      + '</div>' + content + '</div></div>';
   }).join('');
 }
 
