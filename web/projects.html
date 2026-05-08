@@ -480,6 +480,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <div style="margin-bottom:12px">
+        <label class="mf-label" style="display:block;font-size:12px;font-weight:700;color:var(--gmt);margin-bottom:6px">Обложка проекта (опционально)</label>
+        <div id="prjCoverPreview" style="display:none;position:relative;margin-bottom:8px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bdr);max-height:200px">
+          <img id="prjCoverImg" alt="" style="width:100%;height:auto;display:block;max-height:200px;object-fit:cover">
+          <button type="button" onclick="removePrjCover()" title="Удалить" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div id="prjCoverUploading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">Загрузка…</div>
+        </div>
+        <button type="button" class="btn-cancel" onclick="document.getElementById('prjCoverInput').click()" style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Загрузить обложку
+        </button>
+        <input type="file" id="prjCoverInput" accept="image/*" style="display:none" onchange="onPrjCoverSelected(event)">
+      </div>
       <button class="btn-submit" onclick="submitProject()">Создать проект</button>
     </div>
   </div>
@@ -746,6 +761,7 @@ function joinProject(btn){
 
 /* ── МОДАЛКА ── */
 function openModal(){
+  if(typeof removePrjCover==='function')removePrjCover();
   const mCat = document.getElementById('mCat');
   if (mCat && window.renderProjectCategoriesInto) {
     window.renderProjectCategoriesInto(mCat, 'Выберите категорию');
@@ -764,6 +780,41 @@ function openModal(){
   document.getElementById('modalBg').classList.add('open');
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
+let prjCoverUrl = '';
+
+async function onPrjCoverSelected(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ if(window.showToast)showToast('Только изображения');else alert('Только изображения'); e.target.value=''; return; }
+  if(file.size > 25*1024*1024){ if(window.showToast)showToast('Макс. 25 МБ');else alert('Макс. 25 МБ'); e.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('prjCoverImg').src = ev.target.result;
+    document.getElementById('prjCoverPreview').style.display = 'block';
+    document.getElementById('prjCoverUploading').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+  try{
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.url){ if(window.showToast)showToast(d.error||'Не удалось');else alert(d.error||'Не удалось'); removePrjCover(); return; }
+    prjCoverUrl = d.url;
+    document.getElementById('prjCoverUploading').style.display = 'none';
+  }catch{
+    if(window.showToast)showToast('Ошибка сети');else alert('Ошибка сети');
+    removePrjCover();
+  }finally{ e.target.value=''; }
+}
+
+function removePrjCover(){
+  prjCoverUrl = '';
+  const p=document.getElementById('prjCoverPreview'); if(p) p.style.display='none';
+  const i=document.getElementById('prjCoverImg'); if(i) i.src='';
+  const u=document.getElementById('prjCoverUploading'); if(u) u.style.display='none';
+  const f=document.getElementById('prjCoverInput'); if(f) f.value='';
+}
+
 async function submitProject(){
   const title=document.getElementById('mTitle').value.trim();
   const desc=document.getElementById('mDesc').value.trim();
@@ -781,7 +832,7 @@ async function submitProject(){
     .filter(Boolean)
     .slice(0,10);
 
-  const body={title,description:desc,category:cat,status,tags,cover_color:'#1E8A4C'};
+  const body={title,description:desc,category:cat,status,tags,cover_color:'#1E8A4C',cover_url:prjCoverUrl};
   if(deadline){
     body.deadline=new Date(deadline+'T00:00:00Z').toISOString();
   }
