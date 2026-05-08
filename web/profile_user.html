@@ -866,17 +866,25 @@ async function loadViewedUser(){
     const d=await r.json().catch(()=>({}));
     const fallback=enrichViewedUser({},uid);
     if(!r.ok||!d.user){
-      if(Object.keys(fallback).length===0){throw new Error(d.error||'Пользователь не найден');}
-      applyViewedUserProfile(fallback);
+      renderUserNotFound();
       return;
     }
     applyViewedUserProfile(enrichViewedUser(d.user,uid));
   }catch(e){
     console.error(e);
-    const fallback=enrichViewedUser({},uid);
-    if(Object.keys(fallback).length){applyViewedUserProfile(fallback);showToast('Профиль загружен из фронтенд-заглушки');return;}
-    showToast('Не удалось загрузить профиль пользователя');
+    renderUserNotFound();
   }
+}
+
+function renderUserNotFound(){
+  const main=document.querySelector('.main')||document.body;
+  if(!main)return;
+  main.innerHTML='<div style="padding:80px 20px;text-align:center;color:var(--gmt)">'
+    +'<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="margin-bottom:16px;opacity:.5"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>'
+    +'<div style="font-size:18px;font-weight:800;color:var(--t);margin-bottom:8px">Пользователь не найден</div>'
+    +'<div style="font-size:13px;line-height:1.55;max-width:340px;margin:0 auto 18px">Возможно, аккаунт был удалён или ссылка устарела.</div>'
+    +'<a href="/" style="display:inline-block;padding:9px 22px;border-radius:99px;background:var(--g);color:#fff;font-weight:700;text-decoration:none;font-size:13px">На главную</a>'
+    +'</div>';
 }
 
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}

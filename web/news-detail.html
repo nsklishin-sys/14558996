@@ -465,7 +465,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
         </div>
 
         <!-- Поле ввода -->
-        <div class="comment-input-wrap">
+        <div class="comment-input-wrap" data-auth-only>
           <div class="ci-av" id="ciAv">НК</div>
           <div class="ci-box">
             <textarea class="ci-textarea" id="commentInput" placeholder="Напишите комментарий…" rows="1"></textarea>
@@ -476,8 +476,13 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
           </div>
         </div>
 
+        <!-- Призыв к регистрации (только для гостя) -->
+        <div data-guest-only style="display:none;padding:16px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;margin-bottom:16px;text-align:center">
+          <div style="font-size:13px;color:var(--tm);margin-bottom:10px"><a href="/login.html" style="color:var(--g);font-weight:700">Войдите</a> или <a href="/register.html" style="color:var(--g);font-weight:700">зарегистрируйтесь</a>, чтобы оставить комментарий и поставить лайк</div>
+        </div>
+
         <!-- Список комментариев -->
-        <div id="commentsList"></div>
+        <div class="comments-list" id="commentsList">
       </div>
 
     </div><!-- /news-body -->
