@@ -520,33 +520,8 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
   <!-- Похожие новости -->
   <div class="card">
     <div class="block-title">Похожие новости</div>
-    <div class="rel-item" onclick="location.href='/news-detail.html'">
-      <div class="rel-img-ph" style="background:linear-gradient(135deg,#185FA5,#3A90C0)"></div>
-      <div class="rel-body">
-        <div class="rel-title">Изменения в ставках НДС при экспорте в страны ЕАЭС</div>
-        <div class="rel-meta">21 апр · 1 840 просм.</div>
-      </div>
-    </div>
-    <div class="rel-item" onclick="location.href='/news-detail.html'">
-      <div class="rel-img-ph" style="background:linear-gradient(135deg,#6040A0,#9060C0)"></div>
-      <div class="rel-body">
-        <div class="rel-title">ФТС запускает новую электронную платформу для брокеров</div>
-        <div class="rel-meta">18 апр · 3 120 просм.</div>
-      </div>
-    </div>
-    <div class="rel-item" onclick="location.href='/news-detail.html'">
-      <div class="rel-img-ph" style="background:linear-gradient(135deg,#B45309,#E09030)"></div>
-      <div class="rel-body">
-        <div class="rel-title">Казахстан открыл новые КПП на границе с Россией</div>
-        <div class="rel-meta">15 апр · 2 560 просм.</div>
-      </div>
-    </div>
-    <div class="rel-item" onclick="location.href='/news-detail.html'">
-      <div class="rel-img-ph" style="background:linear-gradient(135deg,#3B6D11,#5AB080)"></div>
-      <div class="rel-body">
-        <div class="rel-title">Тарифы на грузовые железнодорожные перевозки вырастут с июня</div>
-        <div class="rel-meta">12 апр · 1 230 просм.</div>
-      </div>
+    <div id="similarList">
+      <div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
     </div>
   </div>
 
@@ -1197,6 +1172,62 @@ if(commentInputEl){
   }
   loadPostAndComments();
 })();
+
+// ─── Похожие новости (Спринт 12-B-2) ───
+function _ndlEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _ndlAgo(ts){
+  if(!ts)return '';
+  const d = new Date(ts);
+  const m = Math.floor((Date.now()-d)/60000);
+  if (m < 1440) return 'сегодня';
+  if (m < 2880) return 'вчера';
+  if (m < 10080) return Math.floor(m/1440) + ' д. назад';
+  return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});
+}
+function _ndlFmtViews(n){
+  if (n >= 1000) return (n/1000).toFixed(n>=10000?0:1).replace('.0','') + 'к';
+  return String(n);
+}
+
+async function loadSimilarNews(){
+  const list = document.getElementById('similarList');
+  if (!list) return;
+  const pid = new URLSearchParams(location.search).get('id');
+  if (!pid) return;
+  try {
+    const r = await fetch('/api/posts/similar/' + encodeURIComponent(pid));
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = d.similar || [];
+    if (!items.length) {
+      list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Похожих публикаций пока нет</div>';
+      return;
+    }
+    const colors = [
+      'linear-gradient(135deg,#185FA5,#3A90C0)',
+      'linear-gradient(135deg,#6040A0,#9060C0)',
+      'linear-gradient(135deg,#B45309,#E09030)',
+      'linear-gradient(135deg,#3B6D11,#5AB080)'
+    ];
+    list.innerHTML = items.map(function(it, i){
+      const title = _ndlEsc(it.title || 'Без названия');
+      const cover = it.cover_url
+        ? '<div class="rel-img-ph" style="background-image:url(\'' + _ndlEsc(it.cover_url) + '\');background-size:cover;background-position:center"></div>'
+        : '<div class="rel-img-ph" style="background:' + colors[i % colors.length] + '"></div>';
+      const meta = _ndlAgo(it.created_at) + ' · ' + _ndlFmtViews(it.views_count || 0) + ' просм.';
+      return '<div class="rel-item" onclick="location.href=\'/news-detail.html?id=' + encodeURIComponent(it.public_id) + '\'">'
+        + cover
+        + '<div class="rel-body"><div class="rel-title">' + title + '</div><div class="rel-meta">' + _ndlEsc(meta) + '</div></div>'
+        + '</div>';
+    }).join('');
+  } catch {
+    list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Не удалось загрузить</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(loadSimilarNews, 200);
+});
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
