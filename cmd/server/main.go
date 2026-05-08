@@ -12804,6 +12804,7 @@ func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 		JOIN users u ON u.id = fr.requester_id
 		WHERE fr.addressee_id = $1
 		  AND fr.status = 'pending'
+		  AND u.is_deleted = FALSE
 		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
@@ -12828,6 +12829,7 @@ func listOutgoingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 		JOIN users u ON u.id = fr.addressee_id
 		WHERE fr.requester_id = $1
 		  AND fr.status = 'pending'
+		  AND u.is_deleted = FALSE
 		ORDER BY LOWER(u.full_name)
 	`, userID)
 	if err != nil {
