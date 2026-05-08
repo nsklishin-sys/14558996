@@ -382,13 +382,13 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 
       <!-- Мета -->
       <div class="news-meta">
-        <div class="news-author">
+        <a class="news-author" id="newsAuthorLink" href="javascript:void(0)" style="text-decoration:none;color:inherit">
           <div class="news-author-av" id="newsAuthorAv"></div>
           <div>
             <div class="news-author-name" id="newsAuthorName"></div>
             <div class="news-author-role" id="newsAuthorRole"></div>
           </div>
-        </div>
+        </a>
         <span class="news-meta-sep"></span>
         <span class="news-date" id="newsDate"></span>
         <span class="news-date" id="newsReadingTime">
@@ -1030,6 +1030,21 @@ function renderPost(p){
 
   set('newsAuthorName', authorName);
   set('newsAuthorRole', authorRole);
+  // Кликабельный автор: на профиль/сообщество/компанию
+  const newsAuthorLink = document.getElementById('newsAuthorLink');
+  if (newsAuthorLink) {
+    let authorHref = '';
+    if (fromCommunity && (author.community_public_id || author.community_id)) {
+      authorHref = '/community-detail.html?id=' + encodeURIComponent(author.community_public_id || author.community_id);
+    } else if (fromCompany && (author.company_slug || author.company_public_id)) {
+      authorHref = '/company-detail.html?slug=' + encodeURIComponent(author.company_slug || author.company_public_id);
+    } else if (authorPublicID) {
+      authorHref = '/profile_user.html?id=' + encodeURIComponent(authorPublicID);
+    }
+    if (authorHref) {
+      newsAuthorLink.setAttribute('href', authorHref);
+    }
+  }
   const newsAuthorAv = document.getElementById('newsAuthorAv');
   if (newsAuthorAv) {
     if (authorAvatar) {
