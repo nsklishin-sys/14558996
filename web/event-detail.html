@@ -1305,6 +1305,8 @@ async function submitEventEdit(){
       body:JSON.stringify(body)
     });
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'не удалось сохранить')}
+    const saved=await r.json().catch(()=>({}));
+    if(saved && saved.event){state.currentEvent=saved.event;}
     closeEventModal();
     toast('Изменения сохранены ✓',true);
     await loadEvent();
