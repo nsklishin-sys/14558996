@@ -965,13 +965,7 @@ async function submitDelete(){
   }
 }
 
-// ─── Поиск topbar (заглушка → /search.html) ───
-document.getElementById('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter'){
-    const q = e.target.value.trim();
-    if (q) location.href = '/search.html?q=' + encodeURIComponent(q);
-  }
-});
+// ─── Поиск topbar — обрабатывается глобально в shell-injector.js ───
 
 // ─── Bootstrap ───
 (async () => {

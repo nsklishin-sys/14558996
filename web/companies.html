@@ -397,10 +397,18 @@ function renderRecom(){
   }).join('');
 }
 
-document.getElementById('searchInput').addEventListener('input',e=>{
-  searchQuery=e.target.value.trim();
-  renderFeed();
-});
+// searchInput создаётся асинхронно в shell-injector.js — ждём его появления
+function bindCompaniesSearch(){
+  const inp = document.getElementById('searchInput');
+  if (!inp) { setTimeout(bindCompaniesSearch, 50); return; }
+  if (inp.dataset.companiesSearchBound) return;
+  inp.dataset.companiesSearchBound = '1';
+  inp.addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    renderFeed();
+  });
+}
+bindCompaniesSearch();
 
 document.addEventListener('DOMContentLoaded',async()=>{
   await loadProfile();
