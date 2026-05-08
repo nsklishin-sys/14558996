@@ -900,12 +900,20 @@ async function loadMyProj(){
     list.innerHTML = items.map(function(p){
       const st = statusMap[p.status] || ['s-active','Активный'];
       const color = p.cover_color || 'var(--g)';
-      return '<div class="my-proj-item" onclick="location.href='/project-detail.html?id=' + _prjEsc(p.public_id) + ''" style="cursor:pointer">'
+      return '<div class="my-proj-item" data-pid="' + _prjEsc(p.public_id) + '" style="cursor:pointer">'
         + '<div class="mpi-ico" style="background:' + _prjEsc(color) + '22;border:1px solid ' + _prjEsc(color) + '44"><svg viewBox="0 0 24 24" style="stroke:' + _prjEsc(color) + '"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>'
         + '<span class="mpi-name">' + _prjEsc(p.title) + '</span>'
         + '<span class="mpi-status ' + st[0] + '">' + st[1] + '</span>'
         + '</div>';
-    }).join('') + '<div style="padding:8px 6px 0;text-align:center"><a href="#" onclick="setTab('my');return false" style="font-size:11px;font-weight:700;color:var(--g);text-decoration:none">Все мои проекты →</a></div>';
+    }).join('') + '<div style="padding:8px 6px 0;text-align:center"><a href="#" data-action="all-my" style="font-size:11px;font-weight:700;color:var(--g);text-decoration:none">Все мои проекты →</a></div>';
+    list.querySelectorAll('.my-proj-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        const pid = item.getAttribute('data-pid');
+        if (pid) location.href = '/project-detail.html?id=' + encodeURIComponent(pid);
+      });
+    });
+    const moreLink = list.querySelector('a[data-action="all-my"]');
+    if (moreLink) moreLink.addEventListener('click', function(e){ e.preventDefault(); if (typeof setTab === 'function') setTab('my'); });
   } catch {
     list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Не удалось загрузить</div>';
   }
@@ -963,11 +971,17 @@ async function loadProjRec(){
     list.innerHTML = items.map(function(p){
       const color = p.cover_color || 'var(--g)';
       const meta = (p.category ? _prjEsc(p.category) : 'Проект') + ' · ' + (p.members_count || 0) + ' уч.';
-      return '<div class="rec-proj" onclick="location.href='/project-detail.html?id=' + _prjEsc(p.public_id) + ''" style="cursor:pointer">'
+      return '<div class="rec-proj" data-pid="' + _prjEsc(p.public_id) + '" style="cursor:pointer">'
         + '<div class="rp-ico" style="background:' + _prjEsc(color) + '22;border:1px solid ' + _prjEsc(color) + '44"><svg viewBox="0 0 24 24" style="stroke:' + _prjEsc(color) + '"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>'
         + '<div class="rp-body"><div class="rp-title">' + _prjEsc(p.title) + '</div><div class="rp-meta">' + meta + '</div></div>'
         + '</div>';
     }).join('');
+    list.querySelectorAll('.rec-proj').forEach(function(item){
+      item.addEventListener('click', function(){
+        const pid = item.getAttribute('data-pid');
+        if (pid) location.href = '/project-detail.html?id=' + encodeURIComponent(pid);
+      });
+    });
   } catch {
     if (card) card.style.display = 'none';
   }
