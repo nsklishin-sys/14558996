@@ -722,8 +722,10 @@ async function applyCurrentUserProfile(){
   const profileAvatar=document.querySelector('.prof-av');
   if(mergedUser.avatar_url){
     profileAvatar.innerHTML=`<img src="${mergedUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
+    profileAvatar.style.background='';
   }else{
     document.getElementById('profileAvatarText').textContent=initials;
+    profileAvatar.style.background = (typeof colorFor === 'function' ? colorFor(fullName) : (typeof userColor === 'function' ? userColor(fullName) : 'var(--g)'));
   }
   document.getElementById('profileFullName').textContent=fullName;
   const _shareBtnSelf = document.getElementById('btnShareMyProfile');
