@@ -815,11 +815,103 @@ function _exDaysLeft(d){const ms=new Date(d)-new Date();const days=Math.ceil(ms/
 function _exFmtDateRange(s,e){const sd=new Date(s),ed=new Date(e);const sM=_exMonShort(sd).toLowerCase(),eM=_exMonShort(ed).toLowerCase();if(sd.getMonth()===ed.getMonth()){return sd.getDate()+'–'+ed.getDate()+' '+sM+' '+ed.getFullYear();}return sd.getDate()+' '+sM+' – '+ed.getDate()+' '+eM+' '+ed.getFullYear();}
 
 async function loadExhHero(){ const block = document.getElementById('heroBlock'); if (!block) return; }
-async function loadExhStats(){}
-async function loadExhNear(){}
-async function loadExhCities(){}
-async function loadMyExhApps(){}
-async function loadExhSelectOptions(){}
+async function loadExhStats(){ return; }
+async function loadExhNear(){ return; }
+async function loadExhCities(){
+  const list = document.getElementById('citiesList');
+  const card = document.getElementById('citiesCard');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/exhibitions/by-cities');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const cities = d.cities || [];
+    if (!cities.length) { if (card) card.style.display = 'none'; return; }
+    const colors = ['#1E8A4C','#3A90C0','#9060C0','#C07030','#B05090','#208090'];
+    list.innerHTML = cities.map(function(c, i){
+      return '<div class="city-item" data-city-name="' + _exEsc(c.name) + '">'
+        + '<div class="city-dot" style="background:' + colors[i % colors.length] + '"></div>'
+        + '<span class="city-name">' + _exEsc(c.name) + '</span>'
+        + '<span class="city-count">' + c.count + '</span>'
+        + '</div>';
+    }).join('');
+    list.querySelectorAll('.city-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        const name = item.getAttribute('data-city-name') || '';
+        const f = document.getElementById('filterCity');
+        if (f) { f.value = name; if (typeof applyFilters === 'function') applyFilters(); }
+      });
+    });
+  } catch {
+    if (card) card.style.display = 'none';
+  }
+}
+async function loadMyExhApps(){
+  const list = document.getElementById('myAppsList');
+  const card = document.getElementById('myAppsCard');
+  if (!list) return;
+  const tk = localStorage.getItem('token');
+  if (!tk) { if (card) card.style.display = 'none'; return; }
+  try {
+    const r = await fetch('/api/me/exhibition-applications', { headers: { Authorization: 'Bearer ' + tk } });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = d.applications || [];
+    if (!items.length) {
+      list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Заявок пока нет</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(a){
+      const cover = a.cover_url
+        ? 'background-image:url(\'' + _exEsc(a.cover_url) + '\');background-size:cover;background-position:center'
+        : 'background:linear-gradient(135deg,#3A90C0,#185FA5)';
+      const date = new Date(a.starts_at);
+      const dt = date.getDate() + ' ' + _exMonShort(date).toLowerCase();
+      const detail = (a.kind === 'exhibitor' ? (a.detail || 'Стенд') : 'Посетитель') + ' · ' + dt;
+      const statusMap = {
+        registered: { cls: 'mri-confirmed', txt: 'Подтверждено' },
+        pending:    { cls: 'mri-pending',   txt: 'На рассмотрении' },
+        approved:   { cls: 'mri-confirmed', txt: 'Подтверждено' }
+      };
+      const st = statusMap[a.status] || { cls: 'mri-pending', txt: a.status };
+      return '<div class="my-reg-item" data-pid="' + _exEsc(a.public_id) + '" style="cursor:pointer">'
+        + '<div class="mri-cover"><div style="position:absolute;inset:0;' + cover + '"></div></div>'
+        + '<div class="mri-body"><div class="mri-name">' + _exEsc(a.title) + '</div><div class="mri-meta">' + _exEsc(detail) + '</div></div>'
+        + '<span class="mri-status ' + st.cls + '">' + st.txt + '</span>'
+        + '</div>';
+    }).join('');
+    list.querySelectorAll('.my-reg-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        const pid = item.getAttribute('data-pid');
+        if (pid) location.href = '/exhibition-detail.html?id=' + encodeURIComponent(pid);
+      });
+    });
+  } catch {
+    if (card) card.style.display = 'none';
+  }
+}
+async function loadExhSelectOptions(){
+  const sel = document.getElementById('mExpo');
+  if (!sel) return;
+  try {
+    const r = await fetch('/api/exhibitions/upcoming?limit=20');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = d.upcoming || [];
+    if (!items.length) {
+      sel.innerHTML = '<option value="">Нет доступных выставок</option>';
+      return;
+    }
+    sel.innerHTML = items.map(function(it){
+      const date = new Date(it.starts_at);
+      const dt = date.getDate() + ' ' + _exMonShort(date).toLowerCase();
+      const city = it.city ? ', ' + it.city : '';
+      return '<option value="' + _exEsc(it.public_id) + '">' + _exEsc(it.title) + ' — ' + _exEsc(dt) + _exEsc(city) + '</option>';
+    }).join('');
+  } catch {
+    sel.innerHTML = '<option value="">Не удалось загрузить</option>';
+  }
+}
 document.addEventListener('DOMContentLoaded', function(){
   loadExhHero(); loadExhStats(); loadExhNear(); loadExhCities(); loadMyExhApps(); loadExhSelectOptions();
 });

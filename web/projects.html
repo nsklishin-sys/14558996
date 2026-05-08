@@ -931,11 +931,18 @@ async function loadProjCats(){
     const max = Math.max.apply(null, cats.map(function(c){return c.count;}));
     list.innerHTML = cats.map(function(c){
       const w = Math.max(8, Math.round((c.count / max) * 60));
-      return '<div class="cat-item" onclick="(function(){var f=document.getElementById('filterCat');if(f){f.value='' + _prjEsc(c.name).replace(/'/g, '\'') + '';if(typeof applyFilters==='function')applyFilters();}})()">'
+      return '<div class="cat-item" data-cat-name="' + _prjEsc(c.name) + '">'
         + '<span class="cat-name">' + _prjEsc(c.name) + '</span>'
         + '<div class="cat-bar"><div class="cat-fill" style="width:' + w + 'px"></div><span class="cat-num">' + c.count + '</span></div>'
         + '</div>';
     }).join('');
+    list.querySelectorAll('.cat-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        const name = item.getAttribute('data-cat-name') || '';
+        const f = document.getElementById('filterCat');
+        if (f) { f.value = name; if (typeof applyFilters === 'function') applyFilters(); }
+      });
+    });
   } catch {
     if (card) card.style.display = 'none';
   }
