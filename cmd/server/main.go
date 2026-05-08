@@ -665,6 +665,7 @@ type project struct {
 	Deadline       *time.Time `json:"deadline,omitempty"`
 	Budget         *int64     `json:"budget,omitempty"`
 	CoverColor     string     `json:"cover_color"`
+	CoverURL       string     `json:"cover_url"`
 	Tags           []string   `json:"tags"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
@@ -694,6 +695,7 @@ type createProjectRequest struct {
 	Deadline    *time.Time `json:"deadline,omitempty"`
 	Budget      *int64     `json:"budget,omitempty"`
 	CoverColor  string     `json:"cover_color"`
+	CoverURL    string     `json:"cover_url"`
 	Tags        []string   `json:"tags"`
 	CompanyID   int64      `json:"company_id"`
 }
@@ -706,6 +708,7 @@ type updateProjectRequest struct {
 	Deadline    *time.Time `json:"deadline,omitempty"`
 	Budget      *int64     `json:"budget,omitempty"`
 	CoverColor  *string    `json:"cover_color,omitempty"`
+	CoverURL    *string    `json:"cover_url,omitempty"`
 	Tags        *[]string  `json:"tags,omitempty"`
 }
 
@@ -6029,8 +6032,9 @@ func main() {
 					return
 				}
 				var req struct {
-					Content        string `json:"content"`
-					ParentPublicID string `json:"parent_public_id,omitempty"`
+					Content        string   `json:"content"`
+					ParentPublicID string   `json:"parent_public_id,omitempty"`
+					Attachments    []string `json:"attachments,omitempty"`
 				}
 				if err := decodeJSON(w, r, &req); err != nil {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -6042,7 +6046,7 @@ func main() {
 				} else if cmid, _ := resolveActiveCommunityID(db, r, actorID, 0); cmid > 0 {
 					senderCommunityID = cmid
 				}
-				msg, err := addForumMessage(db, topicID, actorID, req.Content, req.ParentPublicID, senderCompanyID, senderCommunityID)
+				msg, err := addForumMessage(db, topicID, actorID, req.Content, req.ParentPublicID, senderCompanyID, senderCommunityID, req.Attachments)
 				if err != nil {
 					if err.Error() == "topic closed" {
 						writeError(w, http.StatusForbidden, "Тема закрыта для ответов")
@@ -9662,6 +9666,8 @@ CREATE INDEX IF NOT EXISTS projects_status_idx
 CREATE INDEX IF NOT EXISTS projects_tags_gin_idx
     ON projects USING GIN(tags) WHERE is_deleted = FALSE;
 
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
+
 CREATE TABLE IF NOT EXISTS project_members (
     project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -9992,6 +9998,8 @@ CREATE INDEX IF NOT EXISTS forum_messages_topic_idx
 
 CREATE INDEX IF NOT EXISTS forum_messages_author_idx
     ON forum_messages (author_id);
+
+ALTER TABLE forum_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 -- Лайки сообщений
 CREATE TABLE IF NOT EXISTS forum_message_likes (
@@ -11741,6 +11749,7 @@ type forumMessage struct {
 	AuthorPublicID        string     `json:"author_public_id"`
 	AuthorName            string     `json:"author_name"`
 	Content               string     `json:"content"`
+	Attachments           []string   `json:"attachments,omitempty"`
 	ParentID              *int64     `json:"parent_id,omitempty"`
 	ParentPublicID        string     `json:"parent_public_id,omitempty"`
 	ParentAuthor          string     `json:"parent_author,omitempty"`
@@ -11765,7 +11774,7 @@ func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessag
 		SELECT
 			m.id, m.public_id, m.topic_id, m.author_id,
 			COALESCE(au.public_id, ''), COALESCE(au.full_name, au.handle, ''),
-			m.content, m.parent_id, m.likes_count, m.created_at, m.edited_at,
+			m.content, m.attachments, m.parent_id, m.likes_count, m.created_at, m.edited_at,
 			pm.public_id, COALESCE(pu.full_name, pu.handle, ''), COALESCE(SUBSTRING(pm.content, 1, 200), ''),
 			COALESCE(m.sender_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''), COALESCE(co.logo_image, ''),
 			COALESCE(m.sender_community_id, 0), COALESCE(cm.name, ''), COALESCE(cm.avatar_url, '')
@@ -11789,15 +11798,19 @@ func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessag
 	for rows.Next() {
 		var m forumMessage
 		var parentPublicID, parentAuthor, parentSnippet sql.NullString
+		var attJSON []byte
 		if err := rows.Scan(
 			&m.ID, &m.PublicID, &m.TopicID, &m.AuthorID,
 			&m.AuthorPublicID, &m.AuthorName,
-			&m.Content, &m.ParentID, &m.LikesCount, &m.CreatedAt, &m.EditedAt,
+			&m.Content, &attJSON, &m.ParentID, &m.LikesCount, &m.CreatedAt, &m.EditedAt,
 			&parentPublicID, &parentAuthor, &parentSnippet,
 			&m.SenderCompanyID, &m.SenderCompanyName, &m.SenderCompanySlug, &m.SenderCompanyLogo,
 			&m.SenderCommunityID, &m.SenderCommunityName, &m.SenderCommunityAvatar,
 		); err != nil {
 			return nil, err
+		}
+		if len(attJSON) > 0 {
+			_ = json.Unmarshal(attJSON, &m.Attachments)
 		}
 		if m.ParentID != nil && parentPublicID.Valid {
 			m.ParentPublicID = parentPublicID.String
@@ -11971,7 +11984,7 @@ func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content st
 
 // addForumMessage — добавляет ответ в существующую тему. Возвращает новое сообщение.
 // parentPublicID — пустая строка если без цитирования.
-func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicID string, senderCompanyID, senderCommunityID int64) (forumMessage, error) {
+func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicID string, senderCompanyID, senderCommunityID int64, attachments []string) (forumMessage, error) {
 	content = strings.TrimSpace(content)
 	if content == "" || len(content) > 5000 {
 		return forumMessage{}, fmt.Errorf("content length")
@@ -12009,11 +12022,16 @@ func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicI
 		return forumMessage{}, err
 	}
 
+	attachmentsJSON, _ := json.Marshal(attachments)
+	if attachments == nil {
+		attachmentsJSON = []byte("[]")
+	}
+
 	var msgID int64
 	if err := tx.QueryRow(
-		`INSERT INTO forum_messages (public_id, topic_id, author_id, content, parent_id, sender_company_id, sender_community_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		msgPublicID, topicID, authorID, content, parentID, sqlNullInt64(senderCompanyID), sqlNullInt64(senderCommunityID),
+		`INSERT INTO forum_messages (public_id, topic_id, author_id, content, parent_id, sender_company_id, sender_community_id, attachments)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		msgPublicID, topicID, authorID, content, parentID, sqlNullInt64(senderCompanyID), sqlNullInt64(senderCommunityID), string(attachmentsJSON),
 	).Scan(&msgID); err != nil {
 		return forumMessage{}, err
 	}
@@ -14431,7 +14449,7 @@ func listProjects(db *sql.DB, viewerID int64, filters map[string]string) ([]proj
 
 	query := fmt.Sprintf(`
 		SELECT p.id, p.public_id, p.owner_id, p.title, p.description, p.category, p.status,
-		       p.deadline, p.budget, p.cover_color, COALESCE(array_to_json(p.tags), '[]'::json),
+		       p.deadline, p.budget, p.cover_color, p.cover_url, COALESCE(array_to_json(p.tags), '[]'::json),
 		       p.created_at, p.updated_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
 		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
@@ -14457,7 +14475,7 @@ func listProjects(db *sql.DB, viewerID int64, filters map[string]string) ([]proj
 		var isMember bool
 		var viewerHasSaved bool
 		if err := rows.Scan(&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
-			&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
+			&p.Deadline, &p.Budget, &p.CoverColor, &p.CoverURL, &tagsJSON,
 			&p.CreatedAt, &p.UpdatedAt,
 			&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
 			&membersCount, &isMember, &viewerHasSaved); err != nil {
@@ -14488,7 +14506,7 @@ func getProject(db *sql.DB, viewerID int64, publicID string) (project, error) {
 	var tagsJSON []byte
 	err := db.QueryRow(`
 		SELECT p.id, p.public_id, p.owner_id, p.title, p.description, p.category, p.status,
-		       p.deadline, p.budget, p.cover_color, COALESCE(array_to_json(p.tags), '[]'::json),
+		       p.deadline, p.budget, p.cover_color, p.cover_url, COALESCE(array_to_json(p.tags), '[]'::json),
 		       p.created_at, p.updated_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
 		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
@@ -14498,7 +14516,7 @@ func getProject(db *sql.DB, viewerID int64, publicID string) (project, error) {
 		LEFT JOIN users u ON u.id = p.owner_id
 		WHERE p.public_id = $2 AND p.is_deleted = FALSE`, viewerID, publicID).Scan(
 		&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
-		&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
+		&p.Deadline, &p.Budget, &p.CoverColor, &p.CoverURL, &tagsJSON,
 		&p.CreatedAt, &p.UpdatedAt,
 		&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
 		&p.MembersCount, &p.IsMember, &p.ViewerHasSaved,
@@ -15778,7 +15796,7 @@ func listSavedProjects(db *sql.DB, userID int64, limit int) ([]project, error) {
 	}
 	q := `
 		SELECT p.id, p.public_id, p.owner_id, p.title, p.description, p.category, p.status,
-		       p.deadline, p.budget, p.cover_color, COALESCE(array_to_json(p.tags), '[]'::json),
+		       p.deadline, p.budget, p.cover_color, p.cover_url, COALESCE(array_to_json(p.tags), '[]'::json),
 		       p.created_at, p.updated_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, ''),
 		       (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS members_count,
@@ -15800,7 +15818,7 @@ func listSavedProjects(db *sql.DB, userID int64, limit int) ([]project, error) {
 		var tagsJSON []byte
 		if err := rows.Scan(
 			&p.ID, &p.PublicID, &p.OwnerID, &p.Title, &p.Description, &p.Category, &p.Status,
-			&p.Deadline, &p.Budget, &p.CoverColor, &tagsJSON,
+			&p.Deadline, &p.Budget, &p.CoverColor, &p.CoverURL, &tagsJSON,
 			&p.CreatedAt, &p.UpdatedAt,
 			&p.OwnerPublicID, &p.OwnerName, &p.OwnerAvatar,
 			&p.MembersCount, &p.IsMember,
