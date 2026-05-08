@@ -2074,15 +2074,42 @@ async function _voiceLoadWaveform(wrap, audio){
   }catch{}
 }
 
-function _voicePlay(btn){
+function _fixAudioDuration(audio){
+  return new Promise(resolve=>{
+    if(audio.duration && isFinite(audio.duration) && audio.duration>0){resolve();return;}
+    if(audio.dataset.durationFixed==='1'){resolve();return;}
+    const onChange=()=>{
+      if(isFinite(audio.duration)&&audio.duration>0){
+        audio.removeEventListener('durationchange',onChange);
+        audio.currentTime=0;
+        audio.dataset.durationFixed='1';
+        resolve();
+      }
+    };
+    audio.addEventListener('durationchange',onChange);
+    // Trigger seek to "very long" — браузер вычислит реальную длительность
+    try{audio.currentTime=1e7;}catch{}
+    // Fallback timeout — если duration не появилась
+    setTimeout(()=>{audio.removeEventListener('durationchange',onChange);resolve();},2000);
+  });
+}
+
+async function _voicePlay(btn){
   const wrap=btn.closest('.msg-voice');if(!wrap)return;
   const audio=wrap.querySelector('audio');if(!audio)return;
   const icon=btn.querySelector('svg');
   if(audio.paused){
     document.querySelectorAll('.msg-voice audio').forEach(a=>{if(a!==audio)a.pause();});
-    if(wrap.dataset.voiceInit!=='1')_voiceLoadWaveform(wrap,audio);
-    audio.play();
-    if(icon)icon.innerHTML='<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
+    // Сначала фиксим duration, потом запускаем play и waveform
+    await _fixAudioDuration(audio);
+    try{
+      await audio.play();
+      if(icon)icon.innerHTML='<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
+      if(wrap.dataset.voiceInit!=='1') _voiceLoadWaveform(wrap,audio);
+    }catch(e){
+      console.warn('voice play failed:',e);
+      showToast('Не удалось воспроизвести голосовое');
+    }
   }else{
     audio.pause();
     if(icon)icon.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';
@@ -2126,7 +2153,18 @@ document.addEventListener('loadedmetadata',function(e){
   const wrap=e.target.closest('.msg-voice');if(!wrap)return;
   const dur=isFinite(e.target.duration)&&e.target.duration>0?e.target.duration:0;
   const tm=wrap.querySelector('.msg-voice-time');
-  if(tm&&dur){const m=Math.floor(dur/60),s=Math.floor(dur%60);tm.textContent=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);} 
+  if(tm&&dur){const m=Math.floor(dur/60),s=Math.floor(dur%60);tm.textContent=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);}
+},true);
+
+document.addEventListener('durationchange',function(e){
+  if(!e.target||e.target.tagName!=='AUDIO')return;
+  const wrap=e.target.closest('.msg-voice');if(!wrap)return;
+  const dur=isFinite(e.target.duration)&&e.target.duration>0?e.target.duration:0;
+  const tm=wrap.querySelector('.msg-voice-time');
+  if(tm&&dur&&!e.target.paused===false){
+    const m=Math.floor(dur/60),s=Math.floor(dur%60);
+    tm.textContent=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);
+  }
 },true);
 const emojis=['😀','😁','😂','🤣','😊','😍','😘','😎','🤝','👍','👏','🙏','🔥','✅','📦','🚚','📍','📄','💼','📊','📞','💬','🧠','⚙️','🎯','⏰','🌍','🧾','📌','💡','❤️','😅','😢','😡','😴','🤔','🙌','🎉','🚀','👀'];
 function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button onclick="insertEmoji('${e}')">${e}</button>`).join('');
