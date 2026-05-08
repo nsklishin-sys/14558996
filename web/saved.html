@@ -247,17 +247,18 @@ const API = '/api';
 const tk = () => localStorage.getItem('token');
 
 const TABS = [
-  { key: 'all',      label: 'Все',      countKey: 'total' },
-  { key: 'posts',    label: 'Новости',  countKey: 'posts' },
-  { key: 'projects', label: 'Проекты',  countKey: 'projects' },
-  { key: 'jobs',     label: 'Вакансии', countKey: 'jobs' },
-  { key: 'resumes',  label: 'Резюме',   countKey: 'resumes' },
-  { key: 'catalog',  label: 'Каталог',  countKey: 'catalog' },
+  { key: 'all',      label: 'Все',          countKey: 'total' },
+  { key: 'posts',    label: 'Новости',      countKey: 'posts' },
+  { key: 'projects', label: 'Проекты',      countKey: 'projects' },
+  { key: 'jobs',     label: 'Вакансии',     countKey: 'jobs' },
+  { key: 'resumes',  label: 'Резюме',       countKey: 'resumes' },
+  { key: 'catalog',  label: 'Каталог',      countKey: 'catalog' },
+  { key: 'events',   label: 'Мероприятия',  countKey: 'events' },
 ];
 
 let currentTab = 'all';
-let counts = { posts:0, projects:0, jobs:0, resumes:0, catalog:0, total:0 };
-let allData = { posts:[], projects:[], jobs:[], resumes:[], catalog:[] };
+let counts = { posts:0, projects:0, jobs:0, resumes:0, catalog:0, events:0, total:0 };
+let allData = { posts:[], projects:[], jobs:[], resumes:[], catalog:[], events:[] };
 
 // HELPERS
 function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -342,6 +343,7 @@ async function loadAll(){
       projects: d.projects || [],
       jobs:     d.jobs     || [],
       resumes:  d.resumes  || [],
+      events:   d.events   || [],
       catalog:  d.catalog  || [],
     };
     renderTabs();
@@ -447,14 +449,30 @@ function renderCard(type, i){
   if (type === 'jobs') return renderJobCard(i);
   if (type === 'resumes') return renderResumeCard(i);
   if (type === 'catalog') return renderCatalogCard(i);
+  if (type === 'events') return renderEventCard(i);
   return '';
+}
+
+function renderEventCard(e){
+  const url = '/event-detail.html?id=' + encodeURIComponent(e.public_id || '');
+  const title = e.title || 'Мероприятие';
+  const stripe = stableColor(e.type || e.title || '?');
+  const dateStr = e.starts_at ? new Date(e.starts_at).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}) : '';
+  const fmt = e.format === 'online' ? 'онлайн' : 'офлайн';
+  return '<a class="gc" href="' + escAttr(url) + '">' +
+    '<div class="gc-stripe" style="background:' + esc(stripe) + '"></div>' +
+    '<div class="gc-body">' +
+      '<div class="gc-head"><span class="gc-mini">Мероприятие</span></div>' +
+      '<div class="gc-title">' + esc(title) + '</div>' +
+      '<div class="gc-meta"><span class="gc-meta-item">' + esc(dateStr) + '</span><span class="gc-meta-item">' + esc(fmt) + '</span></div>' +
+    '</div></a>';
 }
 
 function renderPostCard(p){
   let author = p.author_name || p.author || 'Без имени';
   if (p.author_company_id && p.author_company_name) author = p.author_company_name;
   else if (p.author_community_id && p.author_community_name) author = p.author_community_name;
-  const url = p.public_id ? '/post.html?id=' + encodeURIComponent(p.public_id) : '#';
+  const url = p.public_id ? '/news-detail.html?id=' + encodeURIComponent(p.public_id) : '#';
   const text = p.content || p.text || p.title || '';
   const preview = text.length > 200 ? text.slice(0, 200) + '…' : text;
   return '<a class="gc" href="' + escAttr(url) + '">' +
@@ -558,10 +576,11 @@ function renderCatalogCard(c){
 function renderEmpty(tabKey){
   const map = {
     all:      { text: 'Ты пока ничего не сохранил.', link: 'Перейти на главную', href: '/' },
-    posts:    { text: 'Сохранённых новостей пока нет.', link: 'Перейти к новостям →', href: '/dashboard.html' },
-    projects: { text: 'Сохранённых проектов пока нет.', link: 'Перейти к проектам →', href: '/projects.html' },
-    jobs:     { text: 'Сохранённых вакансий пока нет.', link: 'Перейти к вакансиям →', href: '/jobs.html' },
-    resumes:  { text: 'Сохранённых резюме пока нет.',  link: 'Перейти к резюме →', href: '/jobs.html' },
+    posts:    { text: 'Сохранённых новостей пока нет.',     link: 'Перейти к новостям →',      href: '/dashboard.html' },
+    projects: { text: 'Сохранённых проектов пока нет.',     link: 'Перейти к проектам →',      href: '/projects.html' },
+    jobs:     { text: 'Сохранённых вакансий пока нет.',     link: 'Перейти к вакансиям →',     href: '/jobs.html' },
+    resumes:  { text: 'Сохранённых резюме пока нет.',       link: 'Перейти к резюме →',         href: '/jobs.html' },
+    events:   { text: 'Сохранённых мероприятий пока нет.',  link: 'Перейти к мероприятиям →',  href: '/events.html' },
     catalog:  { text: 'Сохранённых товаров и услуг пока нет.', link: 'Перейти в каталог →', href: '/catalog.html' },
   };
   const m = map[tabKey] || map.all;

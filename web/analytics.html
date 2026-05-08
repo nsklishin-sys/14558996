@@ -859,7 +859,7 @@ function renderTopPosts(posts){
   if(!posts.length)return '<div class="panel-empty">Нет постов с активностью за период.</div>';
   return `<table class="an-table">
     <thead><tr><th>Пост</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Лайки</th><th class="an-td-num">Комментарии</th></tr></thead>
-    <tbody>${posts.map(p=>`<tr class="an-row-link" onclick="location.href='/post.html?id=${encodeURIComponent(p.public_id)}'">
+    <tbody>${posts.map(p=>`<tr class="an-row-link" onclick="location.href='/news-detail.html?id=${encodeURIComponent(p.public_id)}'">
       <td><div class="an-name">${esc(p.title||'(без заголовка)')}</div></td>
       <td class="an-td-num">${fmtNum(p.views)}</td>
       <td class="an-td-num">${fmtNum(p.likes)}</td>

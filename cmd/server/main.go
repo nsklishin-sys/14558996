@@ -2831,24 +2831,41 @@ func main() {
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"catalog": items})
 			return
+		case "events":
+			items, _, err := listEvents(db, userID, true, listEventsFilter{Mode: "saved", Limit: limit})
+			if err != nil {
+				log.Printf("listSavedEvents: %v", err)
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if items == nil {
+				items = []event{}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"events": items})
+			return
 		}
 
 		const previewLimit = 5
 
-		var cPosts, cProjects, cJobs, cResumes, cCatalog int
+		var cPosts, cProjects, cJobs, cResumes, cCatalog, cEvents int
 		_ = db.QueryRow(`SELECT COUNT(*) FROM post_saves WHERE user_id=$1`, userID).Scan(&cPosts)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_projects WHERE user_id=$1`, userID).Scan(&cProjects)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_jobs WHERE user_id=$1`, userID).Scan(&cJobs)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_resumes WHERE user_id=$1`, userID).Scan(&cResumes)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM saved_catalog_items WHERE user_id=$1`, userID).Scan(&cCatalog)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM event_saves WHERE user_id=$1`, userID).Scan(&cEvents)
 
 		posts, _ := listSavedPosts(db, userID, previewLimit)
 		projects, _ := listSavedProjects(db, userID, previewLimit)
 		jobs, _ := listJobs(db, listJobsFilters{Tab: "saved", ViewerID: userID, Limit: previewLimit})
 		resumes, _ := listSavedResumes(db, userID, previewLimit)
 		catalog, _ := listCatalogItems(db, listCatalogFilters{Tab: "saved", ViewerID: userID, Limit: previewLimit})
+		events, _, _ := listEvents(db, userID, true, listEventsFilter{Mode: "saved", Limit: previewLimit})
 		if catalog == nil {
 			catalog = []catalogItem{}
+		}
+		if events == nil {
+			events = []event{}
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -2858,13 +2875,15 @@ func main() {
 				"jobs":     cJobs,
 				"resumes":  cResumes,
 				"catalog":  cCatalog,
-				"total":    cPosts + cProjects + cJobs + cResumes + cCatalog,
+				"events":   cEvents,
+				"total":    cPosts + cProjects + cJobs + cResumes + cCatalog + cEvents,
 			},
 			"posts":    posts,
 			"projects": projects,
 			"jobs":     jobs,
 			"resumes":  resumes,
 			"catalog":  catalog,
+			"events":   events,
 		})
 	})
 
