@@ -4208,6 +4208,146 @@ func main() {
 				return
 			}
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		case "projects":
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			limit := parseLimit(r.URL.Query().Get("limit"), 30, 100)
+			rows, err := db.Query(`
+				SELECT p.public_id, p.title, p.description, p.category, p.status,
+				       COALESCE(p.cover_color, ''), COALESCE(p.cover_url, ''),
+				       p.created_at, p.updated_at,
+				       u.public_id, COALESCE(u.full_name, u.handle, '')
+				FROM projects p
+				JOIN users u ON u.id = p.owner_id
+				WHERE p.community_id = $1 AND p.is_deleted = FALSE
+				ORDER BY p.created_at DESC
+				LIMIT $2`, communityID, limit)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка БД")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var pid, title, desc, cat, status, coverColor, coverURL, ownerPid, ownerName string
+				var createdAt, updatedAt time.Time
+				if err := rows.Scan(&pid, &title, &desc, &cat, &status, &coverColor, &coverURL, &createdAt, &updatedAt, &ownerPid, &ownerName); err != nil {
+					continue
+				}
+				items = append(items, map[string]any{
+					"public_id":   pid,
+					"title":       title,
+					"description": desc,
+					"category":    cat,
+					"status":      status,
+					"cover_color": coverColor,
+					"cover_url":   coverURL,
+					"created_at":  createdAt,
+					"updated_at":  updatedAt,
+					"owner_public_id": ownerPid,
+					"owner_name":      ownerName,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"projects": items})
+			return
+		case "events":
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			limit := parseLimit(r.URL.Query().Get("limit"), 30, 100)
+			rows, err := db.Query(`
+				SELECT e.public_id, e.title, COALESCE(e.description, ''),
+				       e.format, e.starts_at, e.ends_at,
+				       COALESCE(e.city, ''), COALESCE(e.cover_url, ''),
+				       e.views_count, e.attendees_count
+				FROM events e
+				WHERE e.community_id = $1 AND e.is_deleted = FALSE
+				ORDER BY e.starts_at DESC
+				LIMIT $2`, communityID, limit)
+			if err != nil {
+				log.Printf("[community/events] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка БД")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var pid, title, desc, format, city, coverURL string
+				var startsAt, endsAt time.Time
+				var viewsCount, attendeesCount int
+				if err := rows.Scan(&pid, &title, &desc, &format, &startsAt, &endsAt, &city, &coverURL, &viewsCount, &attendeesCount); err != nil {
+					continue
+				}
+				items = append(items, map[string]any{
+					"public_id":       pid,
+					"title":           title,
+					"description":     desc,
+					"format":          format,
+					"starts_at":       startsAt,
+					"ends_at":         endsAt,
+					"city":            city,
+					"cover_url":       coverURL,
+					"views_count":     viewsCount,
+					"attendees_count": attendeesCount,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"events": items})
+			return
+		case "resumes":
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			limit := parseLimit(r.URL.Query().Get("limit"), 30, 100)
+			rows, err := db.Query(`
+				SELECT r.public_id, r.title, COALESCE(r.about, ''),
+				       r.category, r.city, r.work_format,
+				       r.salary_from, r.experience_years,
+				       r.created_at,
+				       u.public_id, COALESCE(u.full_name, u.handle, '')
+				FROM resumes r
+				JOIN users u ON u.id = r.author_user_id
+				WHERE r.community_id = $1 AND r.deleted_at IS NULL
+				ORDER BY r.created_at DESC
+				LIMIT $2`, communityID, limit)
+			if err != nil {
+				log.Printf("[community/resumes] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка БД")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var pid, title, about, cat, city, workFormat, authorPid, authorName string
+				var salaryFrom sql.NullInt64
+				var expYears int
+				var createdAt time.Time
+				if err := rows.Scan(&pid, &title, &about, &cat, &city, &workFormat, &salaryFrom, &expYears, &createdAt, &authorPid, &authorName); err != nil {
+					continue
+				}
+				salary := int64(0)
+				if salaryFrom.Valid {
+					salary = salaryFrom.Int64
+				}
+				items = append(items, map[string]any{
+					"public_id":         pid,
+					"title":             title,
+					"about":             about,
+					"category":          cat,
+					"city":              city,
+					"work_format":       workFormat,
+					"salary_from":       salary,
+					"experience_years":  expYears,
+					"created_at":        createdAt,
+					"author_public_id":  authorPid,
+					"author_name":       authorName,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"resumes": items})
+			return
 		case "members":
 			// PATCH /api/communities/{id}/members/{user_id} — смена role
 			if len(parts) == 3 && r.Method == http.MethodPatch {
@@ -10250,6 +10390,10 @@ CREATE INDEX IF NOT EXISTS company_invites_code_idx ON company_invites(code) WHE
 
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS author_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS projects_community_idx ON projects(community_id) WHERE is_deleted = FALSE AND community_id IS NOT NULL;
+ALTER TABLE resumes ADD COLUMN IF NOT EXISTS community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS resumes_community_idx ON resumes(community_id) WHERE deleted_at IS NULL AND community_id IS NOT NULL;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS responsible_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE company_members ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE company_members ADD COLUMN IF NOT EXISTS can_edit_profile BOOLEAN NOT NULL DEFAULT FALSE;
