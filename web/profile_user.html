@@ -929,6 +929,14 @@ function enrichViewedUser(baseUser,uid){
 
 async function loadViewedUser(){
   let uid=getViewedUid();
+  try{
+    const me=getCurrentUser();
+    const myPid=String(me?.public_id||'').trim();
+    if(uid && myPid && String(uid).trim()===myPid){
+      location.replace('/profile.html');
+      return;
+    }
+  }catch{}
   if(!uid&&getViewedHandle()){
     try{
       const r=await fetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
