@@ -250,13 +250,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   border-bottom-right-radius:6px
 }
 .msg.them .msg-bubble{border-bottom-left-radius:6px}
-.msg-meta{
-  display:flex;align-items:center;gap:4px;padding:0 4px;
-  font-size:10px;color:var(--gmt)
-}
+.msg-meta{font-size:10px;color:var(--gmt);margin-top:2px;display:flex;align-items:center;gap:6px}
+.msg.them .msg-meta{justify-content:flex-start}
 .msg.me .msg-meta{justify-content:flex-end}
-.msg-status{color:var(--g);display:inline-flex;align-items:center}
-.msg-status svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.msg-status{display:inline-flex;align-items:center;gap:1px;cursor:default;position:relative}
+.msg-status svg{width:14px;height:10px;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.msg-status.sent svg{stroke:var(--gmt)}
+.msg-status.delivered svg{stroke:var(--gmt)}
+.msg-status.read svg{stroke:var(--g)}
+.msg-status[data-tip]:hover::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);right:0;
+  background:var(--t);color:#fff;padding:4px 8px;border-radius:6px;
+  font-size:10px;white-space:nowrap;pointer-events:none;z-index:10
+}
 
 /* === A2.1 multi-context: имя автора-компании/сообщества и подпись «От: ...» === */
 .msg-as-name{font-size:11px;font-weight:700;color:var(--g);padding:0 4px;margin-bottom:2px;line-height:1.2}
@@ -1418,6 +1424,7 @@ function renderMessages(){
           <div class='msg-meta'>
             <span>${msgTime}</span>
             ${m.is_edited ? '<span>(изм.)</span>' : ''}
+            ${mine && !m.is_deleted ? renderMsgStatus(m) : ''}
           </div>
         </div>
       </div>`);
@@ -1439,6 +1446,29 @@ function renderMessages(){
     }
   }
 }
+function renderMsgStatus(m){
+  // Получаем last_read_message_id собеседника из текущей беседы
+  const conv = state.conversations.find(c => c.public_id === state.activeConvPublicID) || {};
+  const otherReadID = conv.other_last_read_message_id || 0;
+  const otherReadAt = conv.other_last_read_at || null;
+  const isRead = otherReadID >= m.id;
+  if (isRead) {
+    let tip = 'Прочитано';
+    if (otherReadAt) {
+      const t = new Date(otherReadAt);
+      const tStr = window.LastopFormat ? window.LastopFormat.time(otherReadAt) : t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+      tip = 'Прочитано в ' + tStr;
+    }
+    return `<span class='msg-status read' data-tip='${esc(tip)}' title='${esc(tip)}'>
+      <svg viewBox='0 0 16 12'><polyline points='1 6 5 10 11 2'/><polyline points='5 10 9 6'/><polyline points='8 9 14 2'/></svg>
+    </span>`;
+  }
+  // Доставлено (сообщение в БД, но не прочитано) — двойная серая галочка
+  return `<span class='msg-status delivered' title='Отправлено'>
+    <svg viewBox='0 0 16 12'><polyline points='1 6 5 10 11 2'/><polyline points='8 9 14 2'/></svg>
+  </span>`;
+}
+
 function renderAttachment(m){
   if (!m.attachment_url) return '';
   const url = m.attachment_url;
