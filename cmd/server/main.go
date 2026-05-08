@@ -2712,6 +2712,57 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/me/exhibition-applications", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		rows, err := db.Query(`
+			SELECT e.public_id, e.title, COALESCE(e.cover_url,''), e.starts_at,
+			       'visitor' AS kind, evr.status, COALESCE(t.title, '') AS detail
+			FROM exhibition_visitor_registrations evr
+			JOIN exhibitions e ON e.id = evr.exhibition_id AND e.is_deleted = FALSE
+			LEFT JOIN exhibition_tickets t ON t.id = evr.ticket_id
+			WHERE evr.user_id = $1 AND evr.status IN ('registered','pending')
+			UNION ALL
+			SELECT e.public_id, e.title, COALESCE(e.cover_url,''), e.starts_at,
+			       'exhibitor' AS kind, eea.status, 'Стенд' AS detail
+			FROM exhibition_exhibitor_applications eea
+			JOIN exhibitions e ON e.id = eea.exhibition_id AND e.is_deleted = FALSE
+			WHERE eea.submitted_by_user_id = $1 AND eea.status IN ('pending','approved')
+			ORDER BY 4 ASC
+			LIMIT 10
+		`, userID)
+		if err != nil {
+			log.Printf("[my-applications] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type app struct {
+			PublicID string    `json:"public_id"`
+			Title    string    `json:"title"`
+			CoverURL string    `json:"cover_url,omitempty"`
+			StartsAt time.Time `json:"starts_at"`
+			Kind     string    `json:"kind"`
+			Status   string    `json:"status"`
+			Detail   string    `json:"detail,omitempty"`
+		}
+		out := make([]app, 0)
+		for rows.Next() {
+			var a app
+			if err := rows.Scan(&a.PublicID, &a.Title, &a.CoverURL, &a.StartsAt, &a.Kind, &a.Status, &a.Detail); err != nil {
+				continue
+			}
+			out = append(out, a)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"applications": out})
+	})
+
 	mux.HandleFunc("/api/me", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -4584,6 +4635,154 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/exhibitions/featured", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT public_id, title, COALESCE(description,''), COALESCE(city,''), COALESCE(venue,''),
+			       starts_at, ends_at, COALESCE(cover_url,''),
+			       COALESCE(visitors_count, 0), COALESCE(exhibitors_count, 0)
+			FROM exhibitions
+			WHERE is_deleted = FALSE AND is_featured = TRUE
+			  AND ends_at >= NOW()
+			ORDER BY starts_at ASC
+			LIMIT 1
+		`)
+		if err != nil {
+			log.Printf("[featured-exh] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type item struct {
+			PublicID        string    `json:"public_id"`
+			Title           string    `json:"title"`
+			Description     string    `json:"description,omitempty"`
+			City            string    `json:"city,omitempty"`
+			Venue           string    `json:"venue,omitempty"`
+			StartsAt        time.Time `json:"starts_at"`
+			EndsAt          time.Time `json:"ends_at"`
+			CoverURL        string    `json:"cover_url,omitempty"`
+			VisitorsCount   int       `json:"visitors_count"`
+			ExhibitorsCount int       `json:"exhibitors_count"`
+		}
+		out := make([]item, 0)
+		for rows.Next() {
+			var it item
+			if err := rows.Scan(&it.PublicID, &it.Title, &it.Description, &it.City, &it.Venue,
+				&it.StartsAt, &it.EndsAt, &it.CoverURL, &it.VisitorsCount, &it.ExhibitorsCount); err != nil {
+				continue
+			}
+			out = append(out, it)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"featured": out})
+	})
+
+	mux.HandleFunc("/api/exhibitions/upcoming", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		limit := 4
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n >= 1 && n <= 20 {
+				limit = n
+			}
+		}
+		rows, err := db.Query(`
+			SELECT public_id, title, COALESCE(city,''), COALESCE(venue,''), starts_at
+			FROM exhibitions
+			WHERE is_deleted = FALSE AND starts_at >= NOW()
+			ORDER BY starts_at ASC
+			LIMIT $1
+		`, limit)
+		if err != nil {
+			log.Printf("[upcoming-exh] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type item struct {
+			PublicID string    `json:"public_id"`
+			Title    string    `json:"title"`
+			City     string    `json:"city,omitempty"`
+			Venue    string    `json:"venue,omitempty"`
+			StartsAt time.Time `json:"starts_at"`
+		}
+		out := make([]item, 0)
+		for rows.Next() {
+			var it item
+			if err := rows.Scan(&it.PublicID, &it.Title, &it.City, &it.Venue, &it.StartsAt); err != nil {
+				continue
+			}
+			out = append(out, it)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"upcoming": out})
+	})
+
+	mux.HandleFunc("/api/exhibitions/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+		var total, upcoming, intl, my int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM exhibitions WHERE is_deleted=FALSE`).Scan(&total)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM exhibitions WHERE is_deleted=FALSE AND starts_at >= NOW()`).Scan(&upcoming)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM exhibitions WHERE is_deleted=FALSE AND COALESCE(country,'') NOT IN ('','Россия','Russia','RU')`).Scan(&intl)
+		if viewerID > 0 {
+			_ = db.QueryRow(`
+				SELECT COUNT(DISTINCT exhibition_id) FROM (
+					SELECT exhibition_id FROM exhibition_visitor_registrations WHERE user_id=$1 AND status='registered'
+					UNION
+					SELECT exhibition_id FROM exhibition_exhibitor_applications WHERE submitted_by_user_id=$1 AND status IN ('pending','approved')
+				) t
+			`, viewerID).Scan(&my)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"total":         total,
+			"upcoming":      upcoming,
+			"international": intl,
+			"my":            my,
+		})
+	})
+
+	mux.HandleFunc("/api/exhibitions/by-cities", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT city, COUNT(*) AS cnt
+			FROM exhibitions
+			WHERE is_deleted = FALSE AND COALESCE(city,'') <> ''
+			GROUP BY city
+			ORDER BY cnt DESC
+			LIMIT 6
+		`)
+		if err != nil {
+			log.Printf("[by-cities] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type city struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		}
+		out := make([]city, 0)
+		for rows.Next() {
+			var c city
+			if err := rows.Scan(&c.Name, &c.Count); err != nil {
+				continue
+			}
+			out = append(out, c)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"cities": out})
+	})
+
 	mux.HandleFunc("/api/exhibitions", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -5416,6 +5615,55 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/posts/similar/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		publicID := strings.TrimPrefix(r.URL.Path, "/api/posts/similar/")
+		publicID = strings.TrimSuffix(publicID, "/")
+		if publicID == "" {
+			writeError(w, http.StatusBadRequest, "ID не задан")
+			return
+		}
+		rows, err := db.Query(`
+			WITH src AS (
+				SELECT id, tags FROM posts WHERE public_id=$1 AND is_deleted=FALSE
+			)
+			SELECT p.public_id, p.title, COALESCE(p.cover_url,''), p.views_count, p.created_at,
+			       cardinality(ARRAY(SELECT unnest(p.tags) INTERSECT SELECT unnest((SELECT tags FROM src)))) AS overlap
+			FROM posts p, src
+			WHERE p.id <> src.id
+			  AND p.is_deleted = FALSE
+			  AND cardinality(ARRAY(SELECT unnest(p.tags) INTERSECT SELECT unnest(src.tags))) > 0
+			ORDER BY overlap DESC, p.views_count DESC, p.created_at DESC
+			LIMIT 4
+		`, publicID)
+		if err != nil {
+			log.Printf("[similar] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type sim struct {
+			PublicID  string    `json:"public_id"`
+			Title     string    `json:"title"`
+			CoverURL  string    `json:"cover_url,omitempty"`
+			Views     int       `json:"views_count"`
+			CreatedAt time.Time `json:"created_at"`
+		}
+		out := make([]sim, 0)
+		for rows.Next() {
+			var s sim
+			var overlap int
+			if err := rows.Scan(&s.PublicID, &s.Title, &s.CoverURL, &s.Views, &s.CreatedAt, &overlap); err != nil {
+				continue
+			}
+			out = append(out, s)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"similar": out})
+	})
+
 	mux.HandleFunc("/api/posts/", func(w http.ResponseWriter, r *http.Request) {
 		publicID, ok := extractPathParam(r.URL.Path, "/api/posts/")
 		if !ok {
@@ -5602,6 +5850,88 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
+	})
+
+	mux.HandleFunc("/api/posts/trends", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT tag, COUNT(*) AS cnt
+			FROM (
+				SELECT unnest(tags) AS tag
+				FROM posts
+				WHERE is_deleted = FALSE
+				  AND created_at >= NOW() - INTERVAL '30 days'
+			) t
+			WHERE tag IS NOT NULL AND length(trim(tag)) > 0
+			GROUP BY tag
+			ORDER BY cnt DESC
+			LIMIT 5
+		`)
+		if err != nil {
+			log.Printf("[trends] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type trend struct {
+			Tag   string `json:"tag"`
+			Count int    `json:"count"`
+		}
+		out := make([]trend, 0)
+		for rows.Next() {
+			var t trend
+			if err := rows.Scan(&t.Tag, &t.Count); err != nil {
+				continue
+			}
+			out = append(out, t)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"trends": out})
+	})
+
+	mux.HandleFunc("/api/posts/top-authors", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+		rows, err := db.Query(`
+			SELECT u.public_id, u.full_name, COALESCE(u.avatar_url,''),
+			       COUNT(p.id) AS posts_count,
+			       EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.requester_id=$1 AND fr.recipient_id=u.id AND fr.status='accepted')
+			       OR EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.recipient_id=$1 AND fr.requester_id=u.id AND fr.status='accepted') AS is_following
+			FROM users u
+			JOIN posts p ON p.author_id = u.id
+			WHERE p.is_deleted = FALSE AND u.is_deleted = FALSE
+			  AND p.created_at >= NOW() - INTERVAL '90 days'
+			GROUP BY u.id, u.public_id, u.full_name, u.avatar_url
+			ORDER BY posts_count DESC
+			LIMIT 5
+		`, viewerID)
+		if err != nil {
+			log.Printf("[top-authors] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type author struct {
+			PublicID    string `json:"public_id"`
+			Name        string `json:"name"`
+			Avatar      string `json:"avatar,omitempty"`
+			PostsCount  int    `json:"posts_count"`
+			IsFollowing bool   `json:"is_following"`
+		}
+		out := make([]author, 0)
+		for rows.Next() {
+			var a author
+			if err := rows.Scan(&a.PublicID, &a.Name, &a.Avatar, &a.PostsCount, &a.IsFollowing); err != nil {
+				continue
+			}
+			out = append(out, a)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"authors": out})
 	})
 
 	mux.HandleFunc("/api/posts/top", func(w http.ResponseWriter, r *http.Request) {
