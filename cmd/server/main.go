@@ -4828,10 +4828,12 @@ func main() {
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
 		case http.MethodPatch:
-			adminID, ok := requireAdmin(w, r, db, sessions)
+			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
 				return
 			}
+			var isAdmin bool
+			_ = db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&isAdmin)
 			if len(parts) != 1 {
 				writeError(w, http.StatusNotFound, "Не найдено")
 				return
@@ -4841,10 +4843,14 @@ func main() {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
-			item, err := updateExhibition(db, publicID, req)
+			item, err := updateExhibition(db, userID, isAdmin, publicID, req)
 			if err != nil {
 				if strings.HasPrefix(err.Error(), "validation:") {
 					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				if strings.HasPrefix(err.Error(), "forbidden:") {
+					writeError(w, http.StatusForbidden, "Только создатель выставки или администратор могут редактировать")
 					return
 				}
 				if err == sql.ErrNoRows {
@@ -4855,18 +4861,24 @@ func main() {
 				writeError(w, http.StatusInternalServerError, "Ошибка обновления")
 				return
 			}
-			logAdminAction(db, adminID, "exhibition.update", "exhibition", item.ID, clientIP(r), map[string]any{"title": item.Title})
+			logAdminAction(db, userID, "exhibition.update", "exhibition", item.ID, clientIP(r), map[string]any{"title": item.Title})
 			writeJSON(w, http.StatusOK, map[string]any{"exhibition": item})
 		case http.MethodDelete:
-			adminID, ok := requireAdmin(w, r, db, sessions)
+			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
 				return
 			}
+			var isAdmin bool
+			_ = db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&isAdmin)
 			if len(parts) != 1 {
 				writeError(w, http.StatusNotFound, "Не найдено")
 				return
 			}
-			if err := deleteExhibition(db, publicID); err != nil {
+			if err := deleteExhibition(db, userID, isAdmin, publicID); err != nil {
+				if strings.HasPrefix(err.Error(), "forbidden:") {
+					writeError(w, http.StatusForbidden, "Только создатель выставки или администратор могут удалить")
+					return
+				}
 				if err == sql.ErrNoRows {
 					writeError(w, http.StatusNotFound, "Выставка не найдена")
 					return
@@ -4875,7 +4887,7 @@ func main() {
 				writeError(w, http.StatusInternalServerError, "Ошибка удаления")
 				return
 			}
-			logAdminAction(db, adminID, "exhibition.delete", "exhibition", 0, clientIP(r), map[string]any{"public_id": publicID})
+			logAdminAction(db, userID, "exhibition.delete", "exhibition", 0, clientIP(r), map[string]any{"public_id": publicID})
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -16942,7 +16954,18 @@ func listExhibitions(db *sql.DB, viewerID int64, hasAuth bool, f listExhibitions
 	return items, total, rows.Err()
 }
 
-func updateExhibition(db *sql.DB, publicID string, req updateExhibitionRequest) (*exhibition, error) {
+func updateExhibition(db *sql.DB, userID int64, isAdmin bool, publicID string, req updateExhibitionRequest) (*exhibition, error) {
+	// Проверка прав: автор или admin
+	var ownerID int64
+	if err := db.QueryRow(`SELECT created_by_user_id FROM exhibitions WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&ownerID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, err
+	}
+	if ownerID != userID && !isAdmin {
+		return nil, fmt.Errorf("forbidden: only exhibition owner or admin can edit")
+	}
 	if strings.TrimSpace(req.Title) == "" {
 		return nil, fmt.Errorf("validation: title required")
 	}
@@ -16995,7 +17018,14 @@ func updateExhibition(db *sql.DB, publicID string, req updateExhibitionRequest) 
 	return getExhibitionByPublicID(db, publicID, 0, false)
 }
 
-func deleteExhibition(db *sql.DB, publicID string) error {
+func deleteExhibition(db *sql.DB, userID int64, isAdmin bool, publicID string) error {
+	var ownerID int64
+	if err := db.QueryRow(`SELECT created_by_user_id FROM exhibitions WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&ownerID); err != nil {
+		return err
+	}
+	if ownerID != userID && !isAdmin {
+		return fmt.Errorf("forbidden: only exhibition owner or admin can delete")
+	}
 	res, err := db.Exec(`UPDATE exhibitions SET is_deleted=TRUE, updated_at=NOW() WHERE public_id=$1 AND is_deleted=FALSE`, publicID)
 	if err != nil {
 		return err
