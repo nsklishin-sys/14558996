@@ -825,7 +825,7 @@ async function onFriendButtonClick(){
       _profileFriendStatus = 'friends';
       showToast('Заявка принята');
     } else if (_profileFriendStatus === 'friends') {
-      if (!confirm('Удалить из друзей?')) {
+      if (!await lastopConfirm({title:'Удалить из друзей?',danger:true})) {
         if (btn) btn.disabled = false;
         return;
       }

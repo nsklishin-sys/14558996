@@ -883,7 +883,7 @@ async function saveAbout(){
 }
 
 async function deleteCompany(){
-  if (!confirm('Удалить компанию? Все приглашения и связи с сотрудниками будут отменены.')) return;
+  if (!await lastopConfirm({title:'Удалить компанию?',message:'Все приглашения и связи с сотрудниками будут отменены.',danger:true})) return;
   try {
     const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id), {
       method: 'DELETE',
@@ -1068,7 +1068,7 @@ async function submitRights(){
 }
 
 async function removeMember(userID, name){
-  if (!confirm('Удалить ' + name + ' из компании?')) return;
+  if (!await lastopConfirm({title:'Удалить из компании?',message:name,danger:true})) return;
   try {
     const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + userID, {
       method: 'DELETE',
@@ -1115,7 +1115,7 @@ async function renderInvites(wrap){
 function copyText(s){ lastopCopy(s,'Ссылка скопирована','Не удалось скопировать ссылку'); }
 
 async function deactivateInvite(id){
-  if (!confirm('Деактивировать ссылку? Новые регистрации по ней будут невозможны.')) return;
+  if (!await lastopConfirm({title:'Деактивировать ссылку?',message:'Новые регистрации по ней будут невозможны.',danger:true})) return;
   try {
     const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites/' + id, {
       method: 'DELETE',

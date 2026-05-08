@@ -610,7 +610,7 @@ async function cancelRequest(id,name,btn){
 }
 
 async function removeFriend(id,name,btn){
-  if(!confirm('Удалить '+name+' из друзей?'))return;
+  if(!await lastopConfirm({title:'Удалить из друзей?',message:name,danger:true}))return;
   try{
     await apiFetch('/friends/'+id,'DELETE');
     toast(name+' удалён из друзей');

@@ -1128,7 +1128,7 @@ function renderSessions(list){
 }
 
 async function revokeSession(tokenHash){
-  if(!confirm('Завершить эту сессию? Устройство выйдет из аккаунта при следующем запросе.')) return;
+  if(!await lastopConfirm({title:'Завершить сессию?',message:'Устройство выйдет из аккаунта при следующем запросе.',danger:true})) return;
   try{
     const r = await fetch(API+'/me/sessions/revoke', {
       method:'POST',

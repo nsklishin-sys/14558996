@@ -843,7 +843,7 @@ async function saveEditMessage(msgPublicID){
 }
 
 async function deleteMessage(msgPublicID){
-  if (!confirm('Удалить это сообщение?')) return;
+  if (!await lastopConfirm({title:'Удалить сообщение?',danger:true})) return;
   try {
     const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
       method: 'DELETE',

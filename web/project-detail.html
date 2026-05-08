@@ -1677,7 +1677,7 @@ function openProjectAuthor(){
 
 async function confirmDeleteProject(){
   if (!currentProject || !viewerIsOwner) return;
-  if (!confirm('Удалить проект «' + currentProject.title + '»? Это действие нельзя отменить.')) return;
+  if (!await lastopConfirm({title:'Удалить проект?',message:'«' + currentProject.title + '» — действие необратимо.',danger:true})) return;
 
   try {
     const r = await fetch(API + '/projects/' + encodeURIComponent(currentProject.public_id), {
@@ -2193,7 +2193,7 @@ async function submitNeed(){
 }
 
 async function deleteNeed(needID, title){
-  if (!confirm(`Удалить потребность «${title}»? Это действие нельзя отменить.`)) return;
+  if (!await lastopConfirm({title:'Удалить потребность?',message:`«${title}» — действие необратимо.`,danger:true})) return;
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
     const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}`, {

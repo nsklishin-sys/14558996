@@ -506,7 +506,7 @@ function closeContactPicker(){
   if(modal)modal.style.display='none';
 }
 async function setContactPerson(userPublicID,name){
-  if(!confirm('Назначить '+name+' контактным лицом сообщества?'))return;
+  if(!await lastopConfirm({title:'Назначить контактным лицом?',message:name}))return;
   try{
     const r=await fetch(API+'/communities/'+currentCommunityID,{
       method:'PATCH',
@@ -526,7 +526,7 @@ async function setContactPerson(userPublicID,name){
   }
 }
 async function clearContactPerson(){
-  if(!confirm('Убрать контактное лицо?'))return;
+  if(!await lastopConfirm({title:'Убрать контактное лицо?',danger:true}))return;
   try{
     const r=await fetch(API+'/communities/'+currentCommunityID,{
       method:'PATCH',
@@ -648,8 +648,8 @@ async function loadPosts(){
   }catch{wrap.innerHTML='<div class="section-card">Ошибка загрузки постов.</div>'}
 }
 async function openCompose(){
-  const title=(prompt('Заголовок поста:','')||'').trim();if(!title)return;
-  const content=(prompt('Текст поста:','')||'').trim();if(!content)return;
+  const title=((await lastopPrompt({title:'Новый пост',message:'Заголовок',placeholder:'Введите заголовок'}))||'').trim();if(!title)return;
+  const content=((await lastopPrompt({title:'Новый пост',message:'Текст',placeholder:'Введите текст поста'}))||'').trim();if(!content)return;
   try{
     const r=await fetch(API+'/communities/'+currentCommunityID+'/posts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title,content,tags:[]})});
     if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.error||'Не удалось создать пост')}
@@ -707,7 +707,7 @@ async function loadMembers(){
 
 async function changeMemberRole(userPublicID,newRole,name){
   const verb=newRole==='moderator'?'назначить модератором':'снять с модераторства';
-  if(!confirm(verb.charAt(0).toUpperCase()+verb.slice(1)+' пользователя '+name+'?'))return;
+  if(!await lastopConfirm({title:verb.charAt(0).toUpperCase()+verb.slice(1)+'?',message:name}))return;
   try{
     const r=await fetch(API+'/communities/'+currentCommunityID+'/members/'+encodeURIComponent(userPublicID)+'/role',{
       method:'PUT',

@@ -465,7 +465,7 @@ async function renderMembers(wrap){
 async function toggleModerator(userPublicID, makeMod, name){
   const newRole = makeMod ? 'moderator' : 'member';
   const verb = makeMod ? 'назначить '+name+' модератором' : 'снять модератора с '+name;
-  if (!confirm('Вы уверены что хотите '+verb+'?')) return;
+  if (!await lastopConfirm({title:'Вы уверены что хотите '+verb+'?',danger:true})) return;
   try {
     const r = await fetch(API+'/communities/'+currentCommunity.id+'/members/'+userPublicID+'/role', {
       method: 'PUT',
@@ -479,7 +479,7 @@ async function toggleModerator(userPublicID, makeMod, name){
 }
 
 async function kickMember(userPublicID, name){
-  if (!confirm('Исключить '+name+' из сообщества?')) return;
+  if (!await lastopConfirm({title:'Исключить '+name+' из сообщества?',danger:true})) return;
   try {
     const r = await fetch(API+'/communities/'+currentCommunity.id+'/members/'+userPublicID, {
       method: 'DELETE',
