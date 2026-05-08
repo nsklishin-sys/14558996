@@ -351,6 +351,28 @@ document.addEventListener('DOMContentLoaded', function(){
   initComposer();
   loadEvent();
   loadMessages();
+  // Подписка на realtime-обновления
+  function trySubscribe(){
+    if (!_publicID || !window.wsClient) return false;
+    window.wsClient.subscribe('event:' + _publicID);
+    window.wsClient.on('discussion:event_new', function(d){
+      if (!d || d.event_public_id !== _publicID || !d.message) return;
+      // Не дублировать если уже есть
+      if (_messages.find(function(x){ return x.id === d.message.id; })) return;
+      _messages.unshift(d.message);
+      renderMessages();
+    });
+    window.wsClient.on('discussion:event_deleted', function(d){
+      if (!d || d.event_public_id !== _publicID) return;
+      const m = _messages.find(function(x){ return x.id === d.message_id; });
+      if (m) { m.is_deleted = true; m.content = ''; renderMessages(); }
+    });
+    return true;
+  }
+  if (!trySubscribe()) setTimeout(trySubscribe, 500);
+});
+window.addEventListener('beforeunload', function(){
+  try { if (window.wsClient && _publicID) window.wsClient.unsubscribe('event:' + _publicID); } catch {}
 });
 </script>
 <script src="/assets/guest-nav.js" defer></script>
