@@ -415,7 +415,7 @@ function forceRelogin(message){
   setTimeout(()=>{location.href='/login.html'},400);
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function ltr(s){return((s||'?')[0]).toUpperCase()}
+function ltr(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.length)return '?';if(p.length>=2)return (p[0][0]+p[1][0]).toUpperCase();return p[0][0].toUpperCase();}
 function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
 function num(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0)}
 function membersLabel(n,{compact=false}={}){
