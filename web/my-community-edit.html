@@ -234,7 +234,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&am
 function ltr(name){ if(!name)return '?'; return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase(); }
 function avc(s){ const palette=['#1E8A4C','#2D5BB7','#7C3AED','#EA580C','#0891B2','#BE185D','#15803D','#9333EA','#DC2626','#0284C7','#65A30D','#7E22CE']; let h=0; const str=String(s||'?'); for(let i=0;i<str.length;i++)h=str.charCodeAt(i)+((h<<5)-h); return palette[Math.abs(h)%palette.length]; }
 function toast(msg, ok){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(ok?' success':''); requestAnimationFrame(()=>t.classList.add('show')); setTimeout(()=>t.classList.remove('show'),2500); }
-function logout(){ localStorage.removeItem('token'); location.href='/'; }
+function logout(){ localStorage.removeItem('token'); location.href='/home-guest.html'; }
 
 function toggleProfileDD(e){
   e.stopPropagation();
