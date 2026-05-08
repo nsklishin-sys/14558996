@@ -374,49 +374,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="pf-count" id="resultsCount">7 выставок</span>
   </div>
 
-  <!-- Hero — главная выставка -->
-  <div class="ex-hero" onclick="openExhibition(1)">
-    <div class="eh-cover">
-      <div class="eh-badges">
-        <span class="eh-badge">🏆 Главное событие сезона</span>
-        <span class="eh-badge">14–16 мая 2026</span>
-      </div>
-    </div>
-    <div class="eh-body">
-      <div class="eh-cat">Логистика · Транспорт · Цепочки поставок</div>
-      <div class="eh-title">LogisticsPro 2026 — крупнейшая отраслевая выставка России</div>
-      <div class="eh-desc">МВЦ «Крокус Экспо», Москва. Три дня деловой программы, нетворкинга и демонстрации решений от 280+ экспонентов.</div>
-      <div class="eh-meta">
-        <span class="eh-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва · МВЦ «Крокус Экспо»</span>
-        <span class="eh-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>14–16 мая 2026</span>
-        <span class="eh-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>До начала: 22 дня</span>
-      </div>
-      <div class="eh-foot">
-        <div class="eh-stats">
-          <div class="eh-stat"><div class="eh-stat-n">280</div><div class="eh-stat-l">Экспонентов</div></div>
-          <div class="eh-stat-div"></div>
-          <div class="eh-stat"><div class="eh-stat-n">10к+</div><div class="eh-stat-l">Посетителей</div></div>
-          <div class="eh-stat-div"></div>
-          <div class="eh-stat"><div class="eh-stat-n">48</div><div class="eh-stat-l">Докладов</div></div>
-          <div class="eh-stat-div"></div>
-          <div class="eh-stat"><div class="eh-stat-n">3</div><div class="eh-stat-l">Дня</div></div>
-        </div>
-        <div class="eh-actions">
-          <button class="btn-fav" id="heroFav" onclick="event.stopPropagation();toggleFav('heroFav',this)" title="В избранное">
-            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          </button>
-          <button class="btn-sec" onclick="event.stopPropagation();showToast('Ссылка скопирована')">
-            <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            Поделиться
-          </button>
-          <button class="btn-reg" id="heroRegBtn" onclick="event.stopPropagation();registerExhibition(1,'heroRegBtn')">
-            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            Зарегистрироваться
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Hero — главная выставка (динамика, рендерится только если есть featured) -->
+  <div id="heroBlock" style="display:none"></div>
 
   <!-- Лента выставок -->
   <div id="exFeed"></div>
@@ -429,56 +388,34 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Статистика -->
   <div class="card">
     <div class="block-title">Статистика</div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>Выставок в базе</span><span class="stat-val">184</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Предстоящих</span><span class="stat-val" style="color:var(--g)">47</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Международных</span><span class="stat-val">23</span></div>
-    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Мои заявки</span><span class="stat-val">2</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>Выставок в базе</span><span class="stat-val" id="exhStatTotal">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Предстоящих</span><span class="stat-val" style="color:var(--g)" id="exhStatUpcoming">—</span></div>
+    <div class="stat-row"><span class="stat-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Международных</span><span class="stat-val" id="exhStatIntl">—</span></div>
+    <div class="stat-row" data-auth-only><span class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Мои заявки</span><span class="stat-val" id="exhStatMy">—</span></div>
   </div>
 
   <!-- Ближайшие -->
   <div class="card">
     <div class="block-title">Ближайшие события</div>
-    <div class="near-item" onclick="openExhibition(1)">
-      <div class="near-date"><div class="near-d">14</div><div class="near-m">Май</div></div>
-      <div class="near-body"><div class="near-title">LogisticsPro 2026</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва · Крокус Экспо</div></div>
-    </div>
-    <div class="near-item" onclick="openExhibition(2)">
-      <div class="near-date"><div class="near-d">2</div><div class="near-m">Июн</div></div>
-      <div class="near-body"><div class="near-title">BuildExpo Russia 2026</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Санкт-Петербург</div></div>
-    </div>
-    <div class="near-item" onclick="openExhibition(3)">
-      <div class="near-date"><div class="near-d">11</div><div class="near-m">Июн</div></div>
-      <div class="near-body"><div class="near-title">Digital Freight Forum</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Москва · Экспоцентр</div></div>
-    </div>
-    <div class="near-item" onclick="openExhibition(5)">
-      <div class="near-date"><div class="near-d">18</div><div class="near-m">Сен</div></div>
-      <div class="near-body"><div class="near-title">IndustrialTech 2026</div><div class="near-meta"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Екатеринбург</div></div>
+    <div id="nearList">
+      <div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
     </div>
   </div>
 
   <!-- Мои заявки -->
-  <div class="card" data-auth-only>
+  <div class="card" data-auth-only id="myAppsCard">
     <div class="block-title">Мои заявки</div>
-    <div class="my-reg-item" onclick="openExhibition(1)">
-      <div class="mri-cover"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#3A90C0,#185FA5)"></div></div>
-      <div class="mri-body"><div class="mri-name">LogisticsPro 2026</div><div class="mri-meta">Стенд 12м² · 14 мая</div></div>
-      <span class="mri-status mri-confirmed">Подтверждено</span>
-    </div>
-    <div class="my-reg-item" onclick="openExhibition(3)">
-      <div class="mri-cover"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#1E8A4C,#22A05A)"></div></div>
-      <div class="mri-body"><div class="mri-name">Digital Freight Forum</div><div class="mri-meta">Посетитель · 11 июня</div></div>
-      <span class="mri-status mri-pending">На рассмотрении</span>
+    <div id="myAppsList">
+      <div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
     </div>
   </div>
 
   <!-- Города -->
-  <div class="card">
+  <div class="card" id="citiesCard">
     <div class="block-title">По городам</div>
-    <div class="city-item" onclick="document.getElementById('filterCity').value='Москва';applyFilters()"><div class="city-dot" style="background:#1E8A4C"></div><span class="city-name">Москва</span><span class="city-count">28</span></div>
-    <div class="city-item" onclick="document.getElementById('filterCity').value='Санкт-Петербург';applyFilters()"><div class="city-dot" style="background:#3A90C0"></div><span class="city-name">Санкт-Петербург</span><span class="city-count">11</span></div>
-    <div class="city-item" onclick="document.getElementById('filterCity').value='Екатеринбург';applyFilters()"><div class="city-dot" style="background:#9060C0"></div><span class="city-name">Екатеринбург</span><span class="city-count">7</span></div>
-    <div class="city-item" onclick="document.getElementById('filterCity').value='Новосибирск';applyFilters()"><div class="city-dot" style="background:#C07030"></div><span class="city-name">Новосибирск</span><span class="city-count">5</span></div>
-    <div class="city-item" onclick="document.getElementById('filterCity').value='Казань';applyFilters()"><div class="city-dot" style="background:#B05090"></div><span class="city-name">Казань</span><span class="city-count">4</span></div>
+    <div id="citiesList">
+      <div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
+    </div>
   </div>
 
 </aside>
@@ -493,12 +430,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="modal-body">
       <label class="mf-label">Выставка</label>
       <select class="mf-select" id="mExpo">
-        <option>LogisticsPro 2026 — 14–16 мая, Москва</option>
-        <option>BuildExpo Russia 2026 — 2–5 июня, СПб</option>
-        <option>Digital Freight Forum 2026 — 11–12 июня, Москва</option>
-        <option>AgroLogistics 2026 — 3–5 июля, Новосибирск</option>
-        <option>IndustrialTech 2026 — 18–20 сентября, Екатеринбург</option>
-        <option>PharmaLogistica 2026 — 8–9 октября, Казань</option>
+        <option value="">Загрузка…</option>
       </select>
 
       <label class="mf-label">Тип участия</label>
@@ -874,6 +806,24 @@ function submitStand(){
   loadExhibitions();
   checkAdminAndShowCreateBtn();
 })();
+
+// ─── Динамические блоки выставок (Спринт 12-B-3) ───
+function _exEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _exFmt(n){if (n >= 1000) return (n/1000).toFixed(n>=10000?0:1).replace('.0','') + 'к'; return String(n);}
+function _exMonShort(d){const M=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];return M[d.getMonth()];}
+function _exDaysLeft(d){const ms=new Date(d)-new Date();const days=Math.ceil(ms/86400000);if(days<0)return 'Завершено';if(days===0)return 'Сегодня';if(days===1)return 'Завтра';return 'До начала: '+days+' '+(days%10===1&&days%100!==11?'день':(days%10>=2&&days%10<=4&&(days%100<10||days%100>=20)?'дня':'дней'));}
+function _exFmtDateRange(s,e){const sd=new Date(s),ed=new Date(e);const sM=_exMonShort(sd).toLowerCase(),eM=_exMonShort(ed).toLowerCase();if(sd.getMonth()===ed.getMonth()){return sd.getDate()+'–'+ed.getDate()+' '+sM+' '+ed.getFullYear();}return sd.getDate()+' '+sM+' – '+ed.getDate()+' '+eM+' '+ed.getFullYear();}
+
+async function loadExhHero(){ const block = document.getElementById('heroBlock'); if (!block) return; }
+async function loadExhStats(){}
+async function loadExhNear(){}
+async function loadExhCities(){}
+async function loadMyExhApps(){}
+async function loadExhSelectOptions(){}
+document.addEventListener('DOMContentLoaded', function(){
+  loadExhHero(); loadExhStats(); loadExhNear(); loadExhCities(); loadMyExhApps(); loadExhSelectOptions();
+});
+
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>

@@ -268,21 +268,34 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- 2. Тикер -->
   <div class="ticker-wrap">
     <span class="ticker-label">Сейчас</span><div class="ticker-div"></div>
-    <div class="ticker-track-wrap"><div class="ticker-track">
-      <div class="chip"><span class="chip-dot" style="background:#22CC66"></span>NorthBridge открыл маршрут СНГ–ЕС</div>
-      <div class="chip"><span class="chip-dot" style="background:#3A90C0"></span>Форум «Логистика 2026» · 24 апреля</div>
-      <div class="chip"><span class="chip-dot" style="background:#1E8A4C"></span>18 новых вакансий сегодня</div>
-      <div class="chip"><span class="chip-dot" style="background:#C07030"></span>GlobalFreight ищет декларанта</div>
-      <div class="chip"><span class="chip-dot" style="background:#9060C0"></span>Обновление платформы v2.4</div>
-      <div class="chip"><span class="chip-dot" style="background:#185FA5"></span>Вебинар по таможне · 26 апреля</div>
-      <div class="chip"><span class="chip-dot" style="background:#22CC66"></span>NorthBridge открыл маршрут СНГ–ЕС</div>
-      <div class="chip"><span class="chip-dot" style="background:#3A90C0"></span>Форум «Логистика 2026» · 24 апреля</div>
-      <div class="chip"><span class="chip-dot" style="background:#1E8A4C"></span>18 новых вакансий сегодня</div>
-      <div class="chip"><span class="chip-dot" style="background:#C07030"></span>GlobalFreight ищет декларанта</div>
-      <div class="chip"><span class="chip-dot" style="background:#9060C0"></span>Обновление платформы v2.4</div>
-      <div class="chip"><span class="chip-dot" style="background:#185FA5"></span>Вебинар по таможне · 26 апреля</div>
-    </div></div>
+    <div class="ticker-track-wrap"><div class="ticker-track" id="tickerTrack" style="display:none"></div></div>
   </div>
+  <script>
+  (async function(){
+    try {
+      const r = await fetch('/api/exhibitions/upcoming?limit=6');
+      if (!r.ok) return;
+      const d = await r.json();
+      const items = d.upcoming || [];
+      if (!items.length) return;
+      const colors = ['#22CC66','#3A90C0','#1E8A4C','#C07030','#9060C0','#185FA5'];
+      const _esc = function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+      const _mon = function(d){const M=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];return M[d.getMonth()];};
+      // Дублируем массив для бесшовной прокрутки
+      const doubled = items.concat(items);
+      const html = doubled.map(function(it, i){
+        const date = new Date(it.starts_at);
+        const label = _esc(it.title) + ' · ' + date.getDate() + ' ' + _mon(date);
+        return '<div class="chip"><span class="chip-dot" style="background:' + colors[i % colors.length] + '"></span>' + label + '</div>';
+      }).join('');
+      const track = document.getElementById('tickerTrack');
+      if (track) {
+        track.innerHTML = html;
+        track.style.display = '';
+      }
+    } catch {}
+  })();
+  </script>
 
   <!-- 3. Возможности -->
   <div class="section-header"><span class="section-title">Возможности платформы</span><a href="/register.html" class="section-link">Зарегистрироваться →</a></div>
