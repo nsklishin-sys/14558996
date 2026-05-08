@@ -801,7 +801,6 @@ let state={
 
 function loadTasks(){
   try{const raw=localStorage.getItem(storageKey());if(raw){tasks=JSON.parse(raw)||[];}}catch{tasks=[];}
-  if(!tasks.length){tasks=defaultTasks();saveTasks();}
 }
 function saveTasks(){
   localStorage.setItem(storageKey(),JSON.stringify(tasks));
