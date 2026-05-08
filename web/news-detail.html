@@ -974,6 +974,30 @@ function renderPost(p){
   const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? ''; };
 
   set('newsTitle', p.title || '');
+
+  // Обложка поста: если есть cover_url — заменяем плейсхолдер на картинку
+  const imgWrap = document.querySelector('.news-img-wrap');
+  if (imgWrap) {
+    if (p.cover_url) {
+      const placeholder = imgWrap.querySelector('.news-img-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+      let img = imgWrap.querySelector('img.news-img-real');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'news-img-real';
+        img.alt = '';
+        img.style.cssText = 'width:100%;height:auto;display:block;object-fit:cover;max-height:480px';
+        imgWrap.insertBefore(img, imgWrap.firstChild);
+      }
+      img.src = p.cover_url;
+    } else {
+      const existingImg = imgWrap.querySelector('img.news-img-real');
+      if (existingImg) existingImg.remove();
+      const placeholder = imgWrap.querySelector('.news-img-placeholder');
+      if (placeholder) placeholder.style.display = '';
+    }
+  }
+
   const leadEl = document.getElementById('newsLead');
   if (leadEl) {
     const leadSrc = String(p.content || p.text || '').replace(/\s+/g, ' ').trim();
