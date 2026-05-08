@@ -105,12 +105,18 @@
   function blockActionButtons(){
     var sel='.btn-create,.btn-write';
     document.querySelectorAll(sel).forEach(function(btn){
-      // Просто скрываем — на публичных страницах для гостя они не нужны
       btn.style.display='none';
     });
-    // Скрываем все элементы помеченные data-auth-only
     document.querySelectorAll('[data-auth-only]').forEach(function(el){
       el.style.display='none';
+    });
+    document.querySelectorAll('[data-guest-only]').forEach(function(el){
+      el.style.display='';
+    });
+    // Снять inline onclick с action-кнопок чтобы не было двойного срабатывания
+    var actionSel='.act-btn,.btn-save,.btn-save-ex,.btn-share,.btn-share-co,.btn-reg,.btn-respond,.btn-follow,.btn-msg,.ci-btn-send';
+    document.querySelectorAll(actionSel).forEach(function(btn){
+      if(btn.hasAttribute('onclick')) btn.removeAttribute('onclick');
     });
   }
 
