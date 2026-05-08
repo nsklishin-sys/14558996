@@ -16304,6 +16304,12 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 	if err := tx.Commit(); err != nil {
 		return false, 0, err
 	}
+	go wsHub.BroadcastRoom("post:"+publicID, "post:like_update", map[string]any{
+		"post_public_id": publicID,
+		"likes_count":    likesCount,
+		"is_liked":       isLiked,
+		"user_id":        userID,
+	}, userID)
 
 	if isLiked && postAuthorID != 0 && postAuthorID != userID {
 		actorName := getUserDisplayName(db, userID)
@@ -16421,6 +16427,10 @@ func createComment(db *sql.DB, r *http.Request, postPublicID string, authorID in
 	}
 
 	go notifyOnComment(db, postID, postPublicID, created.ID, created.ParentID, authorID, content)
+	go wsHub.BroadcastRoom("post:"+postPublicID, "post:comment_new", map[string]any{
+		"post_public_id": postPublicID,
+		"comment":        created,
+	}, authorID)
 
 	_ = saveMentions(db, "comment", created.ID, authorID, content, content)
 	recordEvent(db, "comment_added", authorID, "post", postID, 0, 0, 0, nil)
@@ -18899,6 +18909,11 @@ func createEventMessage(db *sql.DB, eventPublicID string, userID int64, content 
 		Scan(&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
 		return m, nil
 	}
+	// Broadcast другим подписчикам комнаты (не самому себе — он уже видит сообщение через ответ POST)
+	go wsHub.BroadcastRoom("event:"+eventPublicID, "discussion:event_new", map[string]any{
+		"event_public_id": eventPublicID,
+		"message":         m,
+	}, userID)
 	return m, nil
 }
 
@@ -18916,6 +18931,10 @@ func deleteEventMessage(db *sql.DB, eventPublicID string, msgID, userID int64) e
 	if n == 0 {
 		return errNotFound
 	}
+	go wsHub.BroadcastRoom("event:"+eventPublicID, "discussion:event_deleted", map[string]any{
+		"event_public_id": eventPublicID,
+		"message_id":      msgID,
+	}, userID)
 	return nil
 }
 
@@ -18988,6 +19007,10 @@ func createExhibitionMessage(db *sql.DB, exhPublicID string, userID int64, conte
 		Scan(&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
 		return m, nil
 	}
+	go wsHub.BroadcastRoom("exhibition:"+exhPublicID, "discussion:exhibition_new", map[string]any{
+		"exhibition_public_id": exhPublicID,
+		"message":              m,
+	}, userID)
 	return m, nil
 }
 
@@ -19005,6 +19028,10 @@ func deleteExhibitionMessage(db *sql.DB, exhPublicID string, msgID, userID int64
 	if n == 0 {
 		return errNotFound
 	}
+	go wsHub.BroadcastRoom("exhibition:"+exhPublicID, "discussion:exhibition_deleted", map[string]any{
+		"exhibition_public_id": exhPublicID,
+		"message_id":           msgID,
+	}, userID)
 	return nil
 }
 

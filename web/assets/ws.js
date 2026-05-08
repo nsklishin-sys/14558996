@@ -49,6 +49,14 @@
       return;
     }
     ws.onopen = function () {
+      // Re-subscribe ко всем комнатам после reconnect
+      try {
+        if (window._wsRooms && window._wsRooms.size) {
+          window._wsRooms.forEach(function(room){
+            try { ws.send(JSON.stringify({ type: 'subscribe', room: room })); } catch {}
+          });
+        }
+      } catch {}
       connected = true;
       reconnectAttempts = 0;
       emit('_open', null);
@@ -87,6 +95,16 @@
   }
 
   window.wsClient = {
+    subscribe: function(room){
+      try { ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: 'subscribe', room: room })); } catch {}
+      // Запоминаем для повторной подписки при reconnect
+      if (!window._wsRooms) window._wsRooms = new Set();
+      window._wsRooms.add(room);
+    },
+    unsubscribe: function(room){
+      try { ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: 'unsubscribe', room: room })); } catch {}
+      if (window._wsRooms) window._wsRooms.delete(room);
+    },
     on: function (type, cb) {
       if (!handlers[type]) handlers[type] = new Set();
       handlers[type].add(cb);

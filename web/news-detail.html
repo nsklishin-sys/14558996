@@ -1201,5 +1201,53 @@ if(commentInputEl){
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script>
+// ─── WebSocket: realtime для лайков и комментов ───
+(function(){
+  function getPostPublicID(){
+    try {
+      const params = new URLSearchParams(location.search);
+      return params.get('id') || params.get('public_id') || '';
+    } catch { return ''; }
+  }
+  function trySubscribe(){
+    const pid = getPostPublicID();
+    if (!pid || !window.wsClient) return false;
+    window.wsClient.subscribe('post:' + pid);
+    window.wsClient.on('post:like_update', function(d){
+      if (!d || d.post_public_id !== pid) return;
+      // Обновить счётчик лайков в UI
+      document.querySelectorAll('[data-likes-count]').forEach(function(el){
+        el.textContent = String(d.likes_count);
+      });
+    });
+    window.wsClient.on('post:comment_new', function(d){
+      if (!d || d.post_public_id !== pid || !d.comment) return;
+      // Если на странице есть функция обновления комментов — дёрнем её
+      if (typeof window.reloadComments === 'function') {
+        try { window.reloadComments(); } catch {}
+      } else if (typeof loadComments === 'function') {
+        try { loadComments(); } catch {}
+      }
+      // Обновить счётчик
+      document.querySelectorAll('[data-comments-count]').forEach(function(el){
+        const n = parseInt(el.textContent, 10) || 0;
+        el.textContent = String(n + 1);
+      });
+    });
+    return true;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (!trySubscribe()) setTimeout(trySubscribe, 500);
+  });
+  window.addEventListener('beforeunload', function(){
+    try {
+      const pid = getPostPublicID();
+      if (window.wsClient && pid) window.wsClient.unsubscribe('post:' + pid);
+    } catch {}
+  });
+})();
+
+</script>
 </body>
 </html>
