@@ -814,9 +814,99 @@ function _exMonShort(d){const M=['Янв','Фев','Мар','Апр','Май','�
 function _exDaysLeft(d){const ms=new Date(d)-new Date();const days=Math.ceil(ms/86400000);if(days<0)return 'Завершено';if(days===0)return 'Сегодня';if(days===1)return 'Завтра';return 'До начала: '+days+' '+(days%10===1&&days%100!==11?'день':(days%10>=2&&days%10<=4&&(days%100<10||days%100>=20)?'дня':'дней'));}
 function _exFmtDateRange(s,e){const sd=new Date(s),ed=new Date(e);const sM=_exMonShort(sd).toLowerCase(),eM=_exMonShort(ed).toLowerCase();if(sd.getMonth()===ed.getMonth()){return sd.getDate()+'–'+ed.getDate()+' '+sM+' '+ed.getFullYear();}return sd.getDate()+' '+sM+' – '+ed.getDate()+' '+eM+' '+ed.getFullYear();}
 
-async function loadExhHero(){ const block = document.getElementById('heroBlock'); if (!block) return; }
-async function loadExhStats(){ return; }
-async function loadExhNear(){ return; }
+async function loadExhHero(){
+  const block = document.getElementById('heroBlock');
+  if (!block) return;
+  try {
+    const r = await fetch('/api/exhibitions/featured');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const item = (d.featured || [])[0];
+    if (!item) { block.style.display = 'none'; return; }
+    const dateRange = _exFmtDateRange(item.starts_at, item.ends_at);
+    const days = _exDaysLeft(item.starts_at);
+    const cityVenue = [item.city, item.venue].filter(Boolean).join(' · ');
+    const coverStyle = item.cover_url
+      ? 'background-image:url('' + _exEsc(item.cover_url) + '');background-size:cover;background-position:center'
+      : 'background:linear-gradient(135deg,#3A90C0,#185FA5)';
+    block.style.display = '';
+    block.innerHTML = '<div class="ex-hero" data-pid="' + _exEsc(item.public_id) + '" style="cursor:pointer">'
+      + '<div class="eh-cover" style="' + coverStyle + '">'
+      + '<div class="eh-badges"><span class="eh-badge">🏆 Главное событие сезона</span><span class="eh-badge">' + _exEsc(dateRange) + '</span></div>'
+      + '</div>'
+      + '<div class="eh-body">'
+      + '<div class="eh-title">' + _exEsc(item.title) + '</div>'
+      + (item.description ? '<div class="eh-desc">' + _exEsc(item.description) + '</div>' : '')
+      + '<div class="eh-meta">'
+      + (cityVenue ? '<span class="eh-meta-item">📍 ' + _exEsc(cityVenue) + '</span>' : '')
+      + '<span class="eh-meta-item">📅 ' + _exEsc(dateRange) + '</span>'
+      + '<span class="eh-meta-item">⏱ ' + _exEsc(days) + '</span>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+    const hero = block.querySelector('.ex-hero');
+    if (hero) hero.addEventListener('click', function(){
+      const pid = hero.getAttribute('data-pid');
+      if (pid) location.href = '/exhibition-detail.html?id=' + encodeURIComponent(pid);
+    });
+  } catch {
+    block.style.display = 'none';
+  }
+}
+
+async function loadExhStats(){
+  try {
+    const tk = localStorage.getItem('token');
+    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const r = await fetch('/api/exhibitions/stats', { headers });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const map = {
+      exhStatTotal: d.total || 0,
+      exhStatUpcoming: d.upcoming || 0,
+      exhStatIntl: d.international || 0,
+      exhStatMy: d.my || 0
+    };
+    Object.keys(map).forEach(function(id){
+      const el = document.getElementById(id);
+      if (el) el.textContent = _exFmt(map[id]);
+    });
+  } catch {}
+}
+
+async function loadExhNear(){
+  const list = document.getElementById('nearList');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/exhibitions/upcoming?limit=4');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const items = d.upcoming || [];
+    if (!items.length) {
+      list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Нет предстоящих выставок</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(it){
+      const date = new Date(it.starts_at);
+      const day = date.getDate();
+      const mon = _exMonShort(date);
+      const cityVenue = [it.city, it.venue].filter(Boolean).join(' · ');
+      return '<div class="near-item" data-pid="' + _exEsc(it.public_id) + '" style="cursor:pointer">'
+        + '<div class="near-date"><div class="near-d">' + day + '</div><div class="near-m">' + mon + '</div></div>'
+        + '<div class="near-body"><div class="near-title">' + _exEsc(it.title) + '</div>'
+        + (cityVenue ? '<div class="near-meta">📍 ' + _exEsc(cityVenue) + '</div>' : '')
+        + '</div></div>';
+    }).join('');
+    list.querySelectorAll('.near-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        const pid = item.getAttribute('data-pid');
+        if (pid) location.href = '/exhibition-detail.html?id=' + encodeURIComponent(pid);
+      });
+    });
+  } catch {
+    list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Не удалось загрузить</div>';
+  }
+}
 async function loadExhCities(){
   const list = document.getElementById('citiesList');
   const card = document.getElementById('citiesCard');
