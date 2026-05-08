@@ -1171,9 +1171,9 @@ function toggleFollow(btn){
     const color=avc(name);const ltr=letter(name);
     ['topbarAv','pddAv','composeAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
     document.getElementById('topbarName').textContent=name;
-    document.getElementById('topbarRole').textContent=user.role||user.position||'Участник LASTOP';
+    document.getElementById('topbarRole').textContent=(({owner:'Владелец',admin:'Админ',moderator:'Модератор',member:'Участник'})[user.role]||user.position||user.role||'Участник LASTOP');
     document.getElementById('pddName').textContent=name;
-    document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
+    document.getElementById('pddRole').textContent=(({owner:'Владелец',admin:'Админ',moderator:'Модератор',member:'Участник'})[user.role]||user.position||user.role||'Участник LASTOP');
   }catch{}}
 
   /* Загрузка с API */

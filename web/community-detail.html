@@ -492,7 +492,7 @@ async function openContactPicker(){
         <div style="width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;flex-shrink:0;overflow:hidden;background:${avc(name)}">${av}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:700;color:var(--t)">${esc(name)}</div>
-          ${m.role&&m.role!=='member'?`<div style="font-size:10px;color:var(--gmt);text-transform:capitalize">${esc(m.role==='owner'?'Владелец':m.role==='moderator'?'Модератор':m.role)}</div>`:''}
+          ${m.role&&m.role!=='member'?`<div style="font-size:10px;color:var(--gmt)">${esc(m.role==='owner'?'Владелец':m.role==='admin'?'Админ':m.role==='moderator'?'Модератор':'Участник')}</div>`:''}
         </div>
         ${isCurrent?'<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:2.5;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>':''}
       </button>`;
@@ -679,6 +679,7 @@ async function loadMembers(){
       const roleBadge=role==='owner'?'<span class="member-role-badge owner">Владелец</span>'
         :role==='admin'?'<span class="member-role-badge admin">Админ</span>'
         :role==='moderator'?'<span class="member-role-badge moderator">Модератор</span>'
+        :role&&role!=='member'?'<span class="member-role-badge">Участник</span>'
         :'';
       // Кнопки управления — только owner и только для не-owner-ов и не себя
       let actions='';
