@@ -366,6 +366,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="modal-body">
       <div><label class="mf-label">Название *</label><input class="mf-input" id="mTitle" placeholder="Вебинар по таможенному оформлению…"></div>
+      <div>
+        <label class="mf-label">Обложка мероприятия</label>
+        <div id="evCoverPreview" style="display:none;position:relative;margin-bottom:8px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bdr);max-height:200px">
+          <img id="evCoverImg" alt="" style="width:100%;height:auto;display:block;max-height:200px;object-fit:cover">
+          <button type="button" onclick="removeEvCover()" title="Удалить" style="position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div id="evCoverUploading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">Загрузка…</div>
+        </div>
+        <button type="button" class="mf-section-add" onclick="document.getElementById('evCoverInput').click()" style="cursor:pointer">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Загрузить обложку
+        </button>
+        <input type="file" id="evCoverInput" accept="image/*" style="display:none" onchange="onEvCoverSelected(event)">
+      </div>
       <div class="mf-row2">
         <div><label class="mf-label">Тип</label>
           <select class="mf-select" id="mType">
@@ -776,6 +791,7 @@ function resetEventModal(){
   speakerCounter=0;
   programCounter=0;
   ticketCounter=0;
+  removeEvCover();
 }
 
 
@@ -796,6 +812,39 @@ async function geocodeAddress(addr){
     console.error('geocode',err);
     return null;
   }
+}
+
+let evCoverUrl = '';
+
+async function onEvCoverSelected(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value=''; return; }
+  if(file.size > 25*1024*1024){ toast('Макс. 25 МБ'); e.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('evCoverImg').src = ev.target.result;
+    document.getElementById('evCoverPreview').style.display = 'block';
+    document.getElementById('evCoverUploading').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+  try{
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.url){ toast(d.error||'Не удалось'); removeEvCover(); return; }
+    evCoverUrl = d.url;
+    document.getElementById('evCoverUploading').style.display = 'none';
+  }catch{ toast('Ошибка сети'); removeEvCover(); }
+  finally{ e.target.value=''; }
+}
+
+function removeEvCover(){
+  evCoverUrl = '';
+  const p=document.getElementById('evCoverPreview'); if(p) p.style.display='none';
+  const i=document.getElementById('evCoverImg'); if(i) i.src='';
+  const u=document.getElementById('evCoverUploading'); if(u) u.style.display='none';
+  const f=document.getElementById('evCoverInput'); if(f) f.value='';
 }
 
 async function submitEvent(){
@@ -836,6 +885,7 @@ async function submitEvent(){
     fee_cents: fee*100,
     currency: 'RUB',
     seats_total: seats,
+    cover_url: evCoverUrl,
     tags,
     speakers: JSON.stringify(speakers),
     program: JSON.stringify(program),
