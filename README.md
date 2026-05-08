@@ -1,26 +1,54 @@
-# Greeting site (Go + TypeScript)
+# LASTOP GROUP — Платформа
 
-Небольшой проект: Go-сервер отдает API и статику, а страницы регистрации/входа работают с PostgreSQL.
+B2B-платформа для логистической отрасли: новости, проекты, мероприятия, выставки, резюме/вакансии, каталог товаров и услуг, форум, сообщества и компании.
 
-## Запуск
+## Стек
+
+- **Backend**: Go 1.25, `cmd/server/main.go` (HTTP-сервер + WebSocket для realtime)
+- **БД**: PostgreSQL (через `pgx/v5`)
+- **Storage**: локальная файловая система (с переключением на S3/Yandex Object Storage через `STORAGE_TYPE=s3`)
+- **Frontend**: vanilla JS, без сборщиков, статика из `web/`
+- **Деплой**: Railway
+
+## Запуск локально
 
 ```bash
 export DATABASE_URL='postgresql://user:password@host:5432/dbname?sslmode=require'
 go run ./cmd/server
 ```
 
-`DATABASE_URL` обязателен, без него сервер завершится с ошибкой.
+После старта откройте http://localhost:8080.
 
-После старта откройте: http://localhost:8080
+## Структура
 
-## Что внутри
+- `cmd/server/main.go` — основной HTTP-сервер, ~24 500 строк
+- `internal/storage/` — абстракция над файловым хранилищем (локальное / S3)
+- `internal/mailer/` — отправка писем (verify email, восстановление пароля)
+- `internal/captcha/` — защита от ботов
+- `internal/errtrack/` — Sentry-интеграция
+- `internal/metrics/` — slog/runtime метрики
+- `web/` — фронтенд (45 HTML-страниц + assets)
+- `scripts/` — backup/restore Postgres + миграция файлов в S3
 
-- `cmd/server/main.go` — HTTP-сервер, endpoint `/api/greeting`, `/health` и auth API:
-  - `POST /api/auth/register` — регистрация пользователя в PostgreSQL
-  - `POST /api/auth/login` — вход по email/паролю из PostgreSQL
-  - `GET /health` — проверка статуса БД (возвращает `database: up`, если соединение доступно)
-- `web/register.html` — UI регистрации
-- `web/login.html` — UI авторизации
-- `web/index.html` — стартовая страница
+## Переменные окружения
 
-При старте сервер подключается только к PostgreSQL (SQLite полностью не используется) и автоматически создает таблицу `users` через `CREATE TABLE IF NOT EXISTS`.
+Основные:
+- `DATABASE_URL` (обязательно)
+- `PORT` (по умолчанию 8080)
+- `JWT_SECRET` — секрет для подписи токенов сессий
+- `STORAGE_TYPE` — `local` (по умолчанию) или `s3`
+- `S3_*` — настройки S3 (см. `internal/storage/s3.go`)
+- `SMTP_*` — отправка писем
+- `SENTRY_DSN` — отслеживание ошибок (опционально)
+
+См. `internal/storage/s3.go`, `internal/mailer/mailer.go` для полного списка.
+
+## Бэкапы
+
+Скрипты в `scripts/`:
+- `backup.sh` — полный дамп Postgres в S3
+- `restore.sh` — восстановление из бэкапа
+- `cleanup-old-backups.sh` — удаление старых дампов
+- `migrate-to-s3/` — миграция файлов из `/uploads` в S3
+
+См. `BACKUP.md` для подробностей настройки.
