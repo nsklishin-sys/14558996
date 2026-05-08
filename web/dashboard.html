@@ -539,62 +539,18 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   </div>
 
   <!-- Тренды -->
-  <div class="card">
+  <div class="card" id="trendsCard">
     <div class="block-title">Тренды</div>
-    <div class="trend-item" onclick="setTab('Логистика')">
-      <span class="trend-num">1</span>
-      <div class="trend-body"><div class="trend-tag" data-cat="logistics">#экспорт_2026</div><div class="trend-count">2 340 публикаций</div></div>
-      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
-    </div>
-    <div class="trend-item" onclick="setTab('ВЭД')">
-      <span class="trend-num">2</span>
-      <div class="trend-body"><div class="trend-tag" data-cat="ved">#таможня_ЕАЭС</div><div class="trend-count">1 820 публикаций</div></div>
-      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
-    </div>
-    <div class="trend-item" onclick="showToast('Тренд: мультимодальные перевозки')">
-      <span class="trend-num">3</span>
-      <div class="trend-body"><div class="trend-tag" data-cat="multimodal">#мультимодал</div><div class="trend-count">1 104 публикации</div></div>
-      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
-    </div>
-    <div class="trend-item" onclick="showToast('Тренд: фармлогистика')">
-      <span class="trend-num">4</span>
-      <div class="trend-body"><div class="trend-tag" data-cat="pharma">#фармлогистика</div><div class="trend-count">873 публикации</div></div>
-      <div class="trend-arrow trend-down"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
-    </div>
-    <div class="trend-item" onclick="showToast('Тренд: TMS')">
-      <span class="trend-num">5</span>
-      <div class="trend-body"><div class="trend-tag" data-cat="tms">#TMS_2026</div><div class="trend-count">651 публикация</div></div>
-      <div class="trend-arrow trend-up"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></div>
+    <div id="trendsList">
+      <div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
     </div>
   </div>
 
   <!-- Источники -->
-  <div class="card">
+  <div class="card" id="sourcesCard">
     <div class="block-title">Источники</div>
-    <div class="source-item">
-      <div class="src-av" style="background:#1E8A4C">L</div>
-      <div class="src-body"><div class="src-name">LASTOP Digital</div><div class="src-count">48 публикаций</div></div>
-      <button class="src-follow following" onclick="toggleFollow(this)">Читаю</button>
-    </div>
-    <div class="source-item">
-      <div class="src-av" style="background:#3A90C0">G</div>
-      <div class="src-body"><div class="src-name">GlobalFreight</div><div class="src-count">31 публикация</div></div>
-      <button class="src-follow" onclick="toggleFollow(this)">Читать</button>
-    </div>
-    <div class="source-item">
-      <div class="src-av" style="background:#C07030">РБ</div>
-      <div class="src-body"><div class="src-name">РБК Логистика</div><div class="src-count">124 публикации</div></div>
-      <button class="src-follow following" onclick="toggleFollow(this)">Читаю</button>
-    </div>
-    <div class="source-item">
-      <div class="src-av" style="background:#9060C0">Т</div>
-      <div class="src-body"><div class="src-name">Таможня.ру</div><div class="src-count">87 публикаций</div></div>
-      <button class="src-follow" onclick="toggleFollow(this)">Читать</button>
-    </div>
-    <div class="source-item">
-      <div class="src-av" style="background:#1A8A6A">N</div>
-      <div class="src-body"><div class="src-name">NorthBridge</div><div class="src-count">22 публикации</div></div>
-      <button class="src-follow" onclick="toggleFollow(this)">Читать</button>
+    <div id="sourcesList">
+      <div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Загрузка…</div>
     </div>
   </div>
 
@@ -1216,6 +1172,78 @@ function toggleFollow(btn){
     }
   } catch (_) {}
 })();
+
+// ─── Тренды и Источники (Спринт 12-B-2) ───
+function _dashFmt(n){
+  if (n >= 1000) return (n/1000).toFixed(n>=10000?0:1).replace('.0','') + 'к';
+  return String(n);
+}
+function _dashLetter(s){return ((s||'?').trim()[0]||'?').toUpperCase();}
+function _dashColor(s){const C=['#1E8A4C','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(String(s||'').charCodeAt(0)||0)%C.length];}
+function _dashEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function loadTrends(){
+  const list = document.getElementById('trendsList');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/posts/trends');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const trends = d.trends || [];
+    if (!trends.length) {
+      list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Пока нет популярных тегов</div>';
+      return;
+    }
+    list.innerHTML = trends.map(function(t, i){
+      const tag = _dashEsc(t.tag);
+      const tagDisplay = tag.startsWith('#') ? tag : '#' + tag;
+      const count = _dashFmt(t.count) + ' ' + (t.count === 1 ? 'публикация' : t.count < 5 ? 'публикации' : 'публикаций');
+      return '<div class="trend-item" onclick="location.href=\'/dashboard.html?tag=' + encodeURIComponent(t.tag) + '\'">'
+        + '<span class="trend-num">' + (i+1) + '</span>'
+        + '<div class="trend-body"><div class="trend-tag">' + tagDisplay + '</div><div class="trend-count">' + count + '</div></div>'
+        + '</div>';
+    }).join('');
+  } catch {
+    list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Не удалось загрузить тренды</div>';
+  }
+}
+
+async function loadTopSources(){
+  const list = document.getElementById('sourcesList');
+  if (!list) return;
+  try {
+    const tk = localStorage.getItem('token');
+    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const r = await fetch('/api/posts/top-authors', { headers });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const authors = d.authors || [];
+    if (!authors.length) {
+      list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Пока нет активных авторов</div>';
+      return;
+    }
+    list.innerHTML = authors.map(function(a){
+      const name = _dashEsc(a.name || 'Автор');
+      const pid = _dashEsc(a.public_id || '');
+      const count = a.posts_count + ' ' + (a.posts_count === 1 ? 'публикация' : a.posts_count < 5 ? 'публикации' : 'публикаций');
+      const ltr = _dashLetter(a.name);
+      const bg = a.avatar
+        ? 'background-image:url(\'' + _dashEsc(a.avatar) + '\');background-size:cover;background-position:center'
+        : 'background:' + _dashColor(a.name);
+      return '<div class="source-item">'
+        + '<div class="src-av" style="' + bg + '">' + (a.avatar ? '' : ltr) + '</div>'
+        + '<div class="src-body"><div class="src-name" onclick="location.href=\'/profile_user.html?id=' + pid + '\'" style="cursor:pointer">' + name + '</div><div class="src-count">' + count + '</div></div>'
+        + '</div>';
+    }).join('');
+  } catch {
+    list.innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--gmt);font-size:11px">Не удалось загрузить</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  loadTrends();
+  loadTopSources();
+});
 
 </script>
 <script src="/assets/copy-helper.js" defer></script>
