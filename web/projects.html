@@ -92,7 +92,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .pf-search{position:relative;flex:1;min-width:180px}
 .pf-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--gmt);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
-.pf-search input{width:100%;height:34px;padding:0 12px 0 32px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--gp);font-family:inherit;font-size:12px;color:var(--t);outline:none;transition:border-color .2s}
+.pf-search input{width:100%;height:34px;padding:0 12px 0 32px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--w);font-family:inherit;font-size:12px;color:var(--t);outline:none;transition:border-color .2s}
 .pf-search input:focus{border-color:var(--gm);background:var(--w)}
 .pf-search input::placeholder{color:var(--gmt)}
 .pf-label{font-size:11px;font-weight:700;color:var(--gmt);white-space:nowrap}
@@ -129,7 +129,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .s-done{background:#E6F1FB;color:#185FA5;border:1px solid #C9DDEF}
 .s-planned{background:#FAEEDA;color:#633806;border:1px solid #E0D0A8}
 .pc-title{font-size:14px;font-weight:800;color:var(--t);line-height:1.3;letter-spacing:-.005em}
-.pc-desc{font-size:11px;color:var(--gmt);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc-desc{font-size:11px;color:var(--gmt);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px}
 .pc-tags{display:flex;flex-wrap:wrap;gap:4px}
 .pc-tag-chip{padding:2px 8px;border-radius:99px;background:var(--gp);border:1px solid var(--bdr);font-size:9px;font-weight:600;color:var(--gmt)}
 .pc-meta{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--bdr)}
@@ -236,6 +236,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   padding:6px 6px;border-radius:var(--rm);cursor:pointer;transition:background .15s
 }
 .cat-item:hover{background:var(--gp)}
+.cat-item.active{background:var(--gl);border:1px solid var(--gb)}
+.cat-item.active .cat-name{color:var(--g);font-weight:700}
 .cat-name{font-size:12px;font-weight:600;color:var(--t)}
 .cat-bar{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .cat-fill{height:4px;border-radius:2px;background:var(--g);opacity:.4;transition:width .3s}
@@ -393,23 +395,23 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <!-- Популярные категории -->
   <div class="card">
     <div class="block-title">Категории</div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='Логистика и перевозки';applyFilters()">
+    <div class="cat-item" onclick="toggleCat('Логистика и перевозки', this)">
       <span class="cat-name">Логистика и перевозки</span>
       <div class="cat-bar"><div class="cat-fill" style="width:56px"></div><span class="cat-num">18</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='ВЭД и таможня';applyFilters()">
+    <div class="cat-item" onclick="toggleCat('ВЭД и таможня', this)">
       <span class="cat-name">ВЭД и таможня</span>
       <div class="cat-bar"><div class="cat-fill" style="width:44px"></div><span class="cat-num">14</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='IT и разработка ПО';applyFilters()">
+    <div class="cat-item" onclick="toggleCat('IT и разработка ПО', this)">
       <span class="cat-name">IT и разработка ПО</span>
       <div class="cat-bar"><div class="cat-fill" style="width:36px"></div><span class="cat-num">8</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='Автоматизация и цифровизация';applyFilters()">
+    <div class="cat-item" onclick="toggleCat('Автоматизация и цифровизация', this)">
       <span class="cat-name">Автоматизация и цифровизация</span>
       <div class="cat-bar"><div class="cat-fill" style="width:22px"></div><span class="cat-num">5</span></div>
     </div>
-    <div class="cat-item" onclick="document.getElementById('filterCat').value='Складская логистика';applyFilters()">
+    <div class="cat-item" onclick="toggleCat('Складская логистика', this)">
       <span class="cat-name">Складская логистика</span>
       <div class="cat-bar"><div class="cat-fill" style="width:14px"></div><span class="cat-num">3</span></div>
     </div>

@@ -590,7 +590,7 @@ function renderCard(it){
   const isProduct = it.type === 'product';
   const detailUrl = isProduct ? '/product-detail.html?id=' : '/service-detail.html?id=';
   const cover = (isProduct && it.cover_image) ? it.cover_image : '';
-  const stripeColor = stableColor(it.category || it.title || '?');
+  const stripeColor = stableColor(it.category_group || it.category || '?');
   const priceHtml = it.price != null
     ? '<span class="cat-price">' + esc(fmtPrice(it.price, it.currency)) + '</span>'
     : '<span class="cat-price-empty">По запросу</span>';
@@ -604,7 +604,7 @@ function renderCard(it){
   const groupLabel = it.category_group || '';
   const catLabel = it.category_label || '';
   const catTag = groupLabel
-    ? '<span class="cat-cat-tag" style="background:' + esc(stableColor(it.category||'?')) + '">' + esc(groupLabel) + '</span>'
+    ? '<span class="cat-cat-tag" style="background:' + esc(stableColor(it.category_group||it.category||'?')) + '">' + esc(groupLabel) + '</span>'
     : '';
   const typeTag = '<span class="cat-type-tag">' + (isProduct ? 'Товар' : 'Услуга') + '</span>';
 
