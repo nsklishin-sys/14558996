@@ -1199,7 +1199,7 @@ function loadCachedConversations(){const cached=cacheRead(cacheKeyConversations(
 function saveCachedConversations(){cacheWrite(cacheKeyConversations(),sortConversationsByLastMessage(state.conversations||[]))}
 function loadCachedMessages(pid){const cached=cacheRead(cacheKeyMessages(pid),[]);if(Array.isArray(cached)&&cached.length){state.messages=cached;renderMessages();return true}return false}
 function saveCachedMessages(pid){if(pid)cacheWrite(cacheKeyMessages(pid),state.messages||[])}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
 // ════════════════════════════════════════════

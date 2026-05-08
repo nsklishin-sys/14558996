@@ -748,7 +748,7 @@ function skels(n,h=50){return Array(n).fill(0).map(()=>`
 /* ── АВТОРИЗАЦИЯ ── */
 let currentUser={};
 (async()=>{
-  if(!tk()){location.href='/login.html';return;}
+  if(!tk()){location.href='/home-guest.html';return;}
   try{
     const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
@@ -761,7 +761,7 @@ let currentUser={};
     localStorage.setItem('user',JSON.stringify(user));
   }catch{
     currentUser=JSON.parse(localStorage.getItem('user')||'{}');
-    if(!currentUser.id){location.href='/login.html';return;}
+    if(!currentUser.id){location.href='/home-guest.html';return;}
   }
   populateUser();
 })();
@@ -812,7 +812,7 @@ document.addEventListener('keydown',e=>{
 function logout(){
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  location.href='/';
+  location.href='/home-guest.html';
 }
 
 /* ── ИНИЦИАЛИЗАЦИЯ ── */

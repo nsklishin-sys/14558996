@@ -356,7 +356,7 @@ function fmtNum(n){
 function fmtPct(n){if(!n)return '0%';return (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,'')+'%';}
 function ago(ts){if(!ts)return'';const d=new Date(ts);if(isNaN(d))return'';const m=Math.max(1,Math.floor((Date.now()-d)/60000));if(m<60)return m+' мин';if(m<1440)return Math.floor(m/60)+' ч';if(m<10080)return Math.floor(m/1440)+' д';return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/login.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');dd.classList.toggle('open');tp.classList.toggle('open');}
 document.addEventListener('click',(e)=>{const dd=document.getElementById('profileDD');if(dd&&!dd.contains(e.target)&&!document.getElementById('topbarProfile').contains(e.target)){dd.classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 
