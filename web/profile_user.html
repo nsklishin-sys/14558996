@@ -771,6 +771,9 @@ function applyViewedUserProfile(u){
   const color=userColor(fullName);
   document.querySelectorAll('.pc-av').forEach((av)=>{av.textContent=initials;av.style.background=color;});
   document.getElementById('profileAvatarText').textContent=initials;
+  const _profAv = document.querySelector('.prof-av');
+  if (_profAv && !u.avatar_url) _profAv.style.background = color;
+  if (_profAv && u.avatar_url) _profAv.style.background = '';
   document.getElementById('profileFullName').textContent=fullName;
   const _shareBtnViewed = document.getElementById('btnShareViewedProfile');
   if (_shareBtnViewed) {

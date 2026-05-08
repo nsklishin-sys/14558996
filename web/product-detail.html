@@ -191,6 +191,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:2000;padding:30px;cursor:zoom-out}
 .lightbox.open{display:flex}
 .lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:var(--rm);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(8px);transition:background .12s,transform .15s}
+.lb-nav:hover{background:rgba(255,255,255,.28);transform:translateY(-50%) scale(1.05)}
+.lb-nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lb-prev{left:24px}
+.lb-next{right:24px}
+.lb-counter{position:absolute;top:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;font-weight:600;background:rgba(0,0,0,.5);padding:6px 14px;border-radius:99px;backdrop-filter:blur(8px)}
+.pd-cover{position:relative}
+.pd-cover-nav{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.85);border:1px solid var(--bdr);cursor:pointer;display:grid;place-items:center;color:var(--t);transition:background .12s,transform .15s;z-index:2;opacity:0}
+.pd-cover:hover .pd-cover-nav{opacity:1}
+.pd-cover-nav:hover{background:#fff;transform:translateY(-50%) scale(1.08)}
+.pd-cover-nav svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pd-cover-prev{left:10px}
+.pd-cover-next{right:10px}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:2500;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
@@ -384,8 +397,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </div>
 
 <!-- ===== Lightbox ===== -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <img id="lightboxImg" src="" alt="">
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <span class="lb-counter" id="lbCounter" style="display:none"></span>
+  <button class="lb-nav lb-prev" id="lbPrev" onclick="event.stopPropagation();lbStep(-1)" style="display:none">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+  <button class="lb-nav lb-next" id="lbNext" onclick="event.stopPropagation();lbStep(1)" style="display:none">
+    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -578,9 +598,14 @@ function renderHero(){
     galleryHtml =
       '<div class="pd-cover pd-cover-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg></div>';
   } else {
+    const navArrows = allPhotos.length > 1
+      ? '<button class="pd-cover-nav pd-cover-prev" onclick="event.stopPropagation();stepCoverPhoto(-1)"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>'
+        + '<button class="pd-cover-nav pd-cover-next" onclick="event.stopPropagation();stepCoverPhoto(1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>'
+      : '';
     galleryHtml =
-      '<div class="pd-cover" id="pdCover" onclick="openLightbox(0)">' +
+      '<div class="pd-cover" id="pdCover" data-current="0" onclick="openLightbox(parseInt(this.dataset.current||0,10))">' +
       '<img src="' + escAttr(allPhotos[0]) + '" alt="" id="pdCoverImg">' +
+      navArrows +
       '</div>';
     if (allPhotos.length > 1) {
       galleryHtml += '<div class="pd-thumbs">' +
@@ -671,28 +696,72 @@ function renderHero(){
   window.LASTOPShareInit?.();
 }
 
+function _allPhotos(){
+  const list = [];
+  if (item.cover_image) list.push(item.cover_image);
+  (item.photos || []).forEach(p => { if (p) list.push(p); });
+  return list;
+}
 function setActivePhoto(idx){
-  const allPhotos = [];
-  if (item.cover_image) allPhotos.push(item.cover_image);
-  (item.photos || []).forEach(p => { if (p) allPhotos.push(p); });
+  const all = _allPhotos();
+  if (!all.length) return;
+  const safeIdx = ((idx % all.length) + all.length) % all.length;
   const img = document.getElementById('pdCoverImg');
-  if (img && allPhotos[idx]) img.src = allPhotos[idx];
-  document.querySelectorAll('.pd-thumb').forEach(el => el.classList.toggle('active', el.dataset.idx === String(idx)));
-  document.getElementById('pdCover').onclick = () => openLightbox(idx);
+  if (img && all[safeIdx]) img.src = all[safeIdx];
+  document.querySelectorAll('.pd-thumb').forEach(el => el.classList.toggle('active', el.dataset.idx === String(safeIdx)));
+  const cover = document.getElementById('pdCover');
+  if (cover) cover.dataset.current = String(safeIdx);
+}
+function stepCoverPhoto(delta){
+  const all = _allPhotos();
+  if (!all.length) return;
+  const cover = document.getElementById('pdCover');
+  const cur = parseInt((cover && cover.dataset.current) || '0', 10);
+  setActivePhoto(cur + delta);
 }
 
 // ─── Lightbox ───
+let _lbIdx = 0;
 function openLightbox(idx){
-  const allPhotos = [];
-  if (item.cover_image) allPhotos.push(item.cover_image);
-  (item.photos || []).forEach(p => { if (p) allPhotos.push(p); });
-  if (!allPhotos[idx]) return;
-  document.getElementById('lightboxImg').src = allPhotos[idx];
+  const all = _allPhotos();
+  if (!all.length) return;
+  _lbIdx = ((idx % all.length) + all.length) % all.length;
+  document.getElementById('lightboxImg').src = all[_lbIdx];
+  const counter = document.getElementById('lbCounter');
+  const prevBtn = document.getElementById('lbPrev');
+  const nextBtn = document.getElementById('lbNext');
+  if (all.length > 1) {
+    if (counter) { counter.style.display = ''; counter.textContent = (_lbIdx + 1) + ' / ' + all.length; }
+    if (prevBtn) prevBtn.style.display = '';
+    if (nextBtn) nextBtn.style.display = '';
+  } else {
+    if (counter) counter.style.display = 'none';
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
+  }
   document.getElementById('lightbox').classList.add('open');
 }
-function closeLightbox(){
+function lbStep(delta){
+  const all = _allPhotos();
+  if (!all.length) return;
+  _lbIdx = ((_lbIdx + delta) % all.length + all.length) % all.length;
+  document.getElementById('lightboxImg').src = all[_lbIdx];
+  const counter = document.getElementById('lbCounter');
+  if (counter) counter.textContent = (_lbIdx + 1) + ' / ' + all.length;
+  // Синхронизируем главную обложку
+  setActivePhoto(_lbIdx);
+}
+function closeLightbox(ev){
+  if (ev && ev.target && ev.target.id !== 'lightbox') return;
   document.getElementById('lightbox').classList.remove('open');
 }
+document.addEventListener('keydown', function(e){
+  const lb = document.getElementById('lightbox');
+  if (!lb || !lb.classList.contains('open')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); lbStep(1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); lbStep(-1); }
+  else if (e.key === 'Escape') { e.preventDefault(); lb.classList.remove('open'); }
+});
 
 // ─── Render: Sections ───
 function renderSections(){
