@@ -477,7 +477,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
             <span id="btnFriendLabel">Добавить в друзья</span>
           </button>
 
-          <button type="button" class="btn-sec" data-share data-share-label="профилем" data-share-emoji="👤">
+          <button type="button" class="btn-sec" id="btnShareViewedProfile" data-share data-share-label="профилем" data-share-emoji="👤" data-share-url="" data-share-title="">
             <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
             Поделиться
           </button>
@@ -772,6 +772,11 @@ function applyViewedUserProfile(u){
   document.querySelectorAll('.pc-av').forEach((av)=>{av.textContent=initials;av.style.background=color;});
   document.getElementById('profileAvatarText').textContent=initials;
   document.getElementById('profileFullName').textContent=fullName;
+  const _shareBtnViewed = document.getElementById('btnShareViewedProfile');
+  if (_shareBtnViewed) {
+    _shareBtnViewed.setAttribute('data-share-title', 'Профиль ' + fullName);
+    _shareBtnViewed.setAttribute('data-share-url', location.origin + location.pathname + location.search);
+  }
   const h=(u.handle||'').trim(),hh=document.getElementById('profileHandle');
   if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
