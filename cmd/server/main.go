@@ -5147,6 +5147,72 @@ func main() {
 		}
 
 		switch parts[1] {
+		case "messages":
+			// GET /api/events/{public_id}/messages — список (публично, любой может читать)
+			// POST /api/events/{public_id}/messages — создание (только auth)
+			// DELETE /api/events/{public_id}/messages/{id} — удаление своего сообщения
+			if len(parts) == 2 {
+				if r.Method == http.MethodGet {
+					authUserID, _ := optionalAuthenticatedUserID(r, sessions)
+					items, err := listEventMessages(db, publicID, authUserID)
+					if err != nil {
+						handleEventError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"messages": items})
+					return
+				}
+				if r.Method == http.MethodPost {
+					userID, ok := authenticatedUserID(w, r, sessions)
+					if !ok {
+						return
+					}
+					if !chatMessageRateLimiter.Allow(fmt.Sprintf("event-msg:%d", userID)) {
+						writeError(w, http.StatusTooManyRequests, "Слишком часто")
+						return
+					}
+					var req struct {
+						Content string `json:"content"`
+					}
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					content := strings.TrimSpace(req.Content)
+					if utf8.RuneCountInString(content) < 1 || utf8.RuneCountInString(content) > 4000 {
+						writeError(w, http.StatusBadRequest, "Сообщение от 1 до 4000 символов")
+						return
+					}
+					msg, err := createEventMessage(db, publicID, userID, content)
+					if err != nil {
+						handleEventError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusCreated, map[string]any{"message": msg})
+					return
+				}
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			if len(parts) == 3 && r.Method == http.MethodDelete {
+				userID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				msgID, _ := strconv.ParseInt(parts[2], 10, 64)
+				if msgID == 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный id")
+					return
+				}
+				if err := deleteEventMessage(db, publicID, msgID, userID); err != nil {
+					handleEventError(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				return
+			}
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
 		case "register":
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -10183,6 +10249,23 @@ CREATE INDEX IF NOT EXISTS forum_messages_author_idx
     ON forum_messages (author_id);
 
 ALTER TABLE forum_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+-- ── Обсуждения мероприятий (Спринт 10) ─────────────────────
+CREATE TABLE IF NOT EXISTS event_messages (
+    id BIGSERIAL PRIMARY KEY,
+    event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 4000),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    edited_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS event_messages_event_idx
+    ON event_messages (event_id, id DESC) WHERE is_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS event_messages_author_idx
+    ON event_messages (author_id);
 
 -- Лайки сообщений
 CREATE TABLE IF NOT EXISTS forum_message_likes (
@@ -18648,6 +18731,93 @@ func createEvent(db *sql.DB, organizerID int64, req createEventRequest) (event, 
 		return event{}, err
 	}
 	return event{}, fmt.Errorf("failed to allocate event public_id")
+}
+
+type eventMessage struct {
+	ID             int64     `json:"id"`
+	AuthorPublicID string    `json:"author_public_id"`
+	AuthorName     string    `json:"author_name"`
+	AuthorAvatar   string    `json:"author_avatar,omitempty"`
+	Content        string    `json:"content"`
+	IsMine         bool      `json:"is_mine"`
+	IsDeleted      bool      `json:"is_deleted"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func listEventMessages(db *sql.DB, eventPublicID string, viewerID int64) ([]eventMessage, error) {
+	rows, err := db.Query(`
+		SELECT m.id, u.public_id, u.full_name, COALESCE(u.avatar_url,''), m.content, m.is_deleted, m.created_at, m.author_id
+		FROM event_messages m
+		JOIN events e ON e.id = m.event_id
+		JOIN users u ON u.id = m.author_id
+		WHERE e.public_id = $1 AND e.is_deleted = FALSE
+		ORDER BY m.id DESC
+		LIMIT 200
+	`, eventPublicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]eventMessage, 0)
+	for rows.Next() {
+		var m eventMessage
+		var authorID int64
+		if err := rows.Scan(&m.ID, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.Content, &m.IsDeleted, &m.CreatedAt, &authorID); err != nil {
+			return nil, err
+		}
+		m.IsMine = (viewerID > 0 && authorID == viewerID)
+		if m.IsDeleted {
+			m.Content = ""
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func createEventMessage(db *sql.DB, eventPublicID string, userID int64, content string) (eventMessage, error) {
+	var eventID int64
+	if err := db.QueryRow(`SELECT id FROM events WHERE public_id=$1 AND is_deleted=FALSE`, eventPublicID).Scan(&eventID); err != nil {
+		if err == sql.ErrNoRows {
+			return eventMessage{}, errNotFound
+		}
+		return eventMessage{}, err
+	}
+	var msgID int64
+	var createdAt time.Time
+	if err := db.QueryRow(`
+		INSERT INTO event_messages (event_id, author_id, content)
+		VALUES ($1, $2, $3)
+		RETURNING id, created_at
+	`, eventID, userID, content).Scan(&msgID, &createdAt); err != nil {
+		return eventMessage{}, err
+	}
+	var m eventMessage
+	m.ID = msgID
+	m.Content = content
+	m.IsMine = true
+	m.CreatedAt = createdAt
+	if err := db.QueryRow(`SELECT public_id, full_name, COALESCE(avatar_url,'') FROM users WHERE id=$1`, userID).
+		Scan(&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar); err != nil {
+		return m, nil
+	}
+	return m, nil
+}
+
+func deleteEventMessage(db *sql.DB, eventPublicID string, msgID, userID int64) error {
+	res, err := db.Exec(`
+		UPDATE event_messages SET is_deleted = TRUE
+		WHERE id = $1
+		  AND author_id = $2
+		  AND event_id = (SELECT id FROM events WHERE public_id = $3 AND is_deleted = FALSE)
+	`, msgID, userID, eventPublicID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errNotFound
+	}
+	return nil
 }
 
 func getEvent(db *sql.DB, publicID string, viewerID int64, hasAuth bool) (event, error) {
