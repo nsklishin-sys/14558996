@@ -110,7 +110,7 @@
     <span>Форум</span>
   </a>
   <a class="nav-item" href="/companies.html" data-match="^/companies|^/company-detail|^/my-company">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
     <span>Компании</span>
   </a>
   <a class="nav-item" href="/communities.html" data-match="^/communities|^/community-detail|^/my-community">

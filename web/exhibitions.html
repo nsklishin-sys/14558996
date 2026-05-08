@@ -827,23 +827,23 @@ async function loadExhHero(){
     const days = _exDaysLeft(item.starts_at);
     const cityVenue = [item.city, item.venue].filter(Boolean).join(' · ');
     const coverStyle = item.cover_url
-      ? 'background-image:url('' + _exEsc(item.cover_url) + '');background-size:cover;background-position:center'
+      ? `background-image:url("${_exEsc(item.cover_url)}");background-size:cover;background-position:center`
       : 'background:linear-gradient(135deg,#3A90C0,#185FA5)';
     block.style.display = '';
-    block.innerHTML = '<div class="ex-hero" data-pid="' + _exEsc(item.public_id) + '" style="cursor:pointer">'
-      + '<div class="eh-cover" style="' + coverStyle + '">'
-      + '<div class="eh-badges"><span class="eh-badge">🏆 Главное событие сезона</span><span class="eh-badge">' + _exEsc(dateRange) + '</span></div>'
-      + '</div>'
-      + '<div class="eh-body">'
-      + '<div class="eh-title">' + _exEsc(item.title) + '</div>'
-      + (item.description ? '<div class="eh-desc">' + _exEsc(item.description) + '</div>' : '')
-      + '<div class="eh-meta">'
-      + (cityVenue ? '<span class="eh-meta-item">📍 ' + _exEsc(cityVenue) + '</span>' : '')
-      + '<span class="eh-meta-item">📅 ' + _exEsc(dateRange) + '</span>'
-      + '<span class="eh-meta-item">⏱ ' + _exEsc(days) + '</span>'
-      + '</div>'
-      + '</div>'
-      + '</div>';
+    block.innerHTML = `<div class="ex-hero" data-pid="${_exEsc(item.public_id)}" style="cursor:pointer">
+      <div class="eh-cover" style="${coverStyle}">
+        <div class="eh-badges"><span class="eh-badge">🏆 Главное событие сезона</span><span class="eh-badge">${_exEsc(dateRange)}</span></div>
+      </div>
+      <div class="eh-body">
+        <div class="eh-title">${_exEsc(item.title)}</div>
+        ${item.description ? `<div class="eh-desc">${_exEsc(item.description)}</div>` : ''}
+        <div class="eh-meta">
+          ${cityVenue ? `<span class="eh-meta-item">📍 ${_exEsc(cityVenue)}</span>` : ''}
+          <span class="eh-meta-item">📅 ${_exEsc(dateRange)}</span>
+          <span class="eh-meta-item">⏱ ${_exEsc(days)}</span>
+        </div>
+      </div>
+    </div>`;
     const hero = block.querySelector('.ex-hero');
     if (hero) hero.addEventListener('click', function(){
       const pid = hero.getAttribute('data-pid');
@@ -853,6 +853,7 @@ async function loadExhHero(){
     block.style.display = 'none';
   }
 }
+
 
 async function loadExhStats(){
   try {
