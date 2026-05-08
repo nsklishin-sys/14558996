@@ -391,9 +391,9 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
         </div>
         <span class="news-meta-sep"></span>
         <span class="news-date" id="newsDate"></span>
-        <span class="news-date">
+        <span class="news-date" id="newsReadingTime">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          5 мин чтения
+          <span id="readingTimeText">— мин чтения</span>
         </span>
         <span class="news-views" id="newsViews"></span>
       </div>
@@ -703,7 +703,8 @@ function toggleFollow(){
   const btn=document.getElementById('btnFollow');
   btn.classList.toggle('following',following);
   btn.textContent=following?'✓ Подписаны':'+ Подписаться';
-  toast(following?'Вы подписались на NorthBridge Logistics ✓':'Вы отписались',following);
+  const authorName = (document.getElementById('newsAuthorName')?.textContent || '').trim() || 'автора';
+  toast(following?('Вы подписались на ' + authorName + ' ✓'):'Вы отписались',following);
 }
 
 /* ── КОММЕНТАРИИ ── */
@@ -974,6 +975,12 @@ function renderPost(p){
   const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? ''; };
 
   set('newsTitle', p.title || '');
+  // Расчёт времени чтения: ~200 слов в минуту
+  const fullText = (p.title || '') + ' ' + (p.lead || '') + ' ' + (p.text || p.content || '');
+  const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(wordCount / 200));
+  const rt = document.getElementById('readingTimeText');
+  if (rt) rt.textContent = minutes + ' мин чтения';
 
   // Обложка поста: если есть cover_url — заменяем плейсхолдер на картинку
   const imgWrap = document.querySelector('.news-img-wrap');
