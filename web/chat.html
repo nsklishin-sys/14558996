@@ -1507,8 +1507,9 @@ function renderAttachment(m){
   const type = m.attachment_type || '';
   const size = m.attachment_size || 0;
   const isImage = type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
-  const isVideo = type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(url);
-  const isAudio = type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a)$/i.test(url);
+  // ВАЖНО: audio проверяется ПЕРЕД video, чтобы .webm от MediaRecorder (голосовые) попадали в audio-ветку
+  const isAudio = type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|webm)$/i.test(url);
+  const isVideo = !isAudio && (type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(url));
 
   if (isImage) {
     return `<div class='msg-image' onclick="window.open('${esc(url)}', '_blank')">
