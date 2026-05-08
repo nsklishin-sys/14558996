@@ -1508,7 +1508,7 @@ function renderAttachment(m){
   const size = m.attachment_size || 0;
   const isImage = type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
   // ВАЖНО: audio проверяется ПЕРЕД video, чтобы .webm от MediaRecorder (голосовые) попадали в audio-ветку
-  const isAudio = type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|webm)$/i.test(url);
+  const isAudio = type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|webm|mp4|aac|opus)$/i.test(url);
   const isVideo = !isAudio && (type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(url));
 
   if (isImage) {
@@ -1916,7 +1916,9 @@ function formatFileSize(bytes){
 let _voiceRec = {mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};
 
 function pickVoiceMime(){
-  const candidates=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
+  // ВАЖНО: audio/mp4 ПЕРВЫЙ — он поддерживается Safari (webm там не работает)
+  // На Chrome/Firefox audio/mp4 в MediaRecorder обычно недоступен → fallback на webm/opus
+  const candidates=['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'];
   for(const m of candidates){if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))return m;}
   return '';
 }
