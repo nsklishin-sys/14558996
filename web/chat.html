@@ -890,6 +890,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 </div><!-- /shell -->
 
+<!-- Lightbox для картинок чата (12-D) -->
+<div class="chat-lightbox" id="chatLightbox" onclick="closeChatLightbox(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:2000;padding:40px;cursor:zoom-out">
+  <button class="cl-nav cl-prev" id="clPrev" onclick="event.stopPropagation();clStep(-1)" style="display:none;position:absolute;left:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">‹</button>
+  <img id="chatLightboxImg" src="" alt="" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+  <button class="cl-nav cl-next" id="clNext" onclick="event.stopPropagation();clStep(1)" style="display:none;position:absolute;right:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">›</button>
+  <div id="chatLightboxCount" style="position:absolute;top:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;font-weight:600;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:99px;backdrop-filter:blur(10px);display:none"></div>
+  <button onclick="closeChatLightbox(event)" style="position:absolute;top:24px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;backdrop-filter:blur(10px);font-size:18px">✕</button>
+</div>
+
 <!-- ═══ ВЫПАДАЮЩАЯ ПАНЕЛЬ СВЕДЕНИЙ ═══ -->
 <div class="info-overlay" id="infoOverlay" onclick="closeInfoPanel()"></div>
 <aside class="info-panel" id="infoPanel">
@@ -1514,7 +1523,7 @@ function renderAttachment(m){
   const isVideo = !isAudio && (type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(url));
 
   if (isImage) {
-    return `<div class='msg-image' onclick="window.open('${esc(url)}', '_blank')">
+    return `<div class='msg-image' data-img-url='${esc(url)}'>
       <img src='${esc(url)}' alt='${esc(name)}' loading='lazy'>
     </div>`;
   }
@@ -2461,6 +2470,73 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
 })
+// ─── Lightbox для картинок чата (12-D) ───
+let _clImages = [];
+let _clIdx = 0;
+
+function _collectChatImages(){
+  const imgs = document.querySelectorAll('.msg-image[data-img-url]');
+  _clImages = Array.from(imgs).map(function(el){ return el.getAttribute('data-img-url'); });
+}
+
+function openChatLightbox(url){
+  _collectChatImages();
+  _clIdx = Math.max(0, _clImages.indexOf(url));
+  if (_clIdx === -1) { _clImages = [url]; _clIdx = 0; }
+  _renderClFrame();
+  const lb = document.getElementById('chatLightbox');
+  if (lb) lb.style.display = 'flex';
+}
+
+function closeChatLightbox(e){
+  if (e && e.target && e.target.id !== 'chatLightbox' && !e.target.closest('button')) return;
+  const lb = document.getElementById('chatLightbox');
+  if (lb) lb.style.display = 'none';
+}
+
+function clStep(dir){
+  if (!_clImages.length) return;
+  _clIdx = (_clIdx + dir + _clImages.length) % _clImages.length;
+  _renderClFrame();
+}
+
+function _renderClFrame(){
+  const img = document.getElementById('chatLightboxImg');
+  const prev = document.getElementById('clPrev');
+  const next = document.getElementById('clNext');
+  const cnt = document.getElementById('chatLightboxCount');
+  if (!img) return;
+  img.src = _clImages[_clIdx] || '';
+  const multi = _clImages.length > 1;
+  if (prev) prev.style.display = multi ? '' : 'none';
+  if (next) next.style.display = multi ? '' : 'none';
+  if (cnt) {
+    if (multi) {
+      cnt.style.display = '';
+      cnt.textContent = (_clIdx + 1) + ' / ' + _clImages.length;
+    } else {
+      cnt.style.display = 'none';
+    }
+  }
+}
+
+// Делегирование: клик на любую .msg-image в чате
+document.addEventListener('click', function(e){
+  const wrap = e.target.closest('.msg-image[data-img-url]');
+  if (!wrap) return;
+  e.preventDefault();
+  const url = wrap.getAttribute('data-img-url');
+  if (url) openChatLightbox(url);
+});
+
+// Клавиши ←/→/Esc
+document.addEventListener('keydown', function(e){
+  const lb = document.getElementById('chatLightbox');
+  if (!lb || lb.style.display !== 'flex') return;
+  if (e.key === 'Escape') { lb.style.display = 'none'; }
+  else if (e.key === 'ArrowLeft') { clStep(-1); }
+  else if (e.key === 'ArrowRight') { clStep(1); }
+});
 </script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
