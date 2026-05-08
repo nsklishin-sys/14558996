@@ -321,7 +321,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="ex-tabs" id="exTabs">
       <button class="etab active" onclick="setTab('all',this)">Все</button>
       <button class="etab" onclick="setTab('upcoming',this)">Предстоящие</button>
-      <button class="etab" onclick="setTab('registered',this)">Мои заявки</button>
+      <button class="etab" data-auth-only onclick="setTab('registered',this)">Мои заявки</button>
       <button class="etab" onclick="setTab('past',this)">Прошедшие</button>
     </div>
     <div class="toolbar-right">
@@ -457,7 +457,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 
   <!-- Мои заявки -->
-  <div class="card">
+  <div class="card" data-auth-only>
     <div class="block-title">Мои заявки</div>
     <div class="my-reg-item" onclick="openExhibition(1)">
       <div class="mri-cover"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#3A90C0,#185FA5)"></div></div>

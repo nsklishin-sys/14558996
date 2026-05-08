@@ -125,6 +125,9 @@
       '.btn-share-co',        // поделиться сообществом
       '.btn-reg',             // записаться на мероприятие
       '.btn-respond',         // откликнуться на вакансию
+      '.btn-follow',          // подписаться (news-detail)
+      '.btn-write',           // написать (community/profile/event)
+      '.btn-msg',             // написать (вариант)
       '.ci-btn-send',         // отправить комментарий (news-detail)
       '.ci-textarea',         // фокус на поле комментария (news-detail)
       '[data-share]',         // универсальная кнопка share через share.js
