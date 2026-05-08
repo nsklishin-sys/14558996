@@ -183,6 +183,17 @@
     const ltr = letter(name);
     const color = colorFor(name);
     setText('topbarName', name);
+    // Глобальный обработчик Enter в поиске → /search.html
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && !searchInput.dataset.searchBound) {
+      searchInput.dataset.searchBound = '1';
+      searchInput.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') {
+          const q = e.target.value.trim();
+          if (q) location.href = '/search.html?q=' + encodeURIComponent(q);
+        }
+      });
+    }
     setText('topbarRole', role);
     setText('pddName', name);
     setText('pddRole', role);
