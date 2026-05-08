@@ -915,63 +915,6 @@ async function onComposeCoverSelected(e){
   try{ const fd = new FormData(); fd.append('file', file); const r = await fetch(API + '/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd}); const d = await r.json().catch(()=>({})); if(!r.ok || !d.url){ showToast(d.error || 'Не удалось загрузить'); removeComposeCover(); return; } composeCoverUrl = d.url; document.getElementById('composeCoverUploading').style.display = 'none'; }catch(err){ showToast('Ошибка сети при загрузке'); removeComposeCover(); }finally{ e.target.value = ''; }}
 
 function removeComposeCover(){ composeCoverUrl = ''; const prev = document.getElementById('composeCoverPreview'); if(prev) prev.style.display = 'none'; const img = document.getElementById('composeCoverImg'); if(img) img.src = ''; const up = document.getElementById('composeCoverUploading'); if(up) up.style.display = 'none'; const inp = document.getElementById('composeCoverInput'); if(inp) inp.value = ''; }
-let composeCoverUrl = '';
-
-async function onComposeCoverSelected(e){
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  if(!file.type.startsWith('image/')){
-    showToast('Можно загрузить только изображение');
-    e.target.value = '';
-    return;
-  }
-  if(file.size > 25 * 1024 * 1024){
-    showToast('Файл слишком большой (макс. 25 МБ)');
-    e.target.value = '';
-    return;
-  }
-  // Локальный preview немедленно
-  const reader = new FileReader();
-  reader.onload = (ev)=>{
-    const img = document.getElementById('composeCoverImg');
-    if(img) img.src = ev.target.result;
-    document.getElementById('composeCoverPreview').style.display = 'block';
-    document.getElementById('composeCoverUploading').style.display = 'flex';
-  };
-  reader.readAsDataURL(file);
-
-  // Загрузка на сервер
-  try{
-    const fd = new FormData();
-    fd.append('file', file);
-    const r = await fetch(API + '/upload',{
-      method:'POST',
-      headers:{Authorization:'Bearer '+tk()},
-      body:fd
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok || !d.url){
-      showToast(d.error || 'Не удалось загрузить файл');
-      removeComposeCover();
-      return;
-    }
-    composeCoverUrl = d.url;
-    document.getElementById('composeCoverUploading').style.display = 'none';
-  }catch(err){
-    showToast('Ошибка сети при загрузке');
-    removeComposeCover();
-  }finally{
-    e.target.value = '';
-  }
-}
-
-function removeComposeCover(){
-  composeCoverUrl = '';
-  document.getElementById('composeCoverPreview').style.display = 'none';
-  document.getElementById('composeCoverImg').src = '';
-  document.getElementById('composeCoverUploading').style.display = 'none';
-  document.getElementById('composeCoverInput').value = '';
-}
 
 function toggleComposeTags(){
   const block = document.getElementById('composeTagsBlock');
