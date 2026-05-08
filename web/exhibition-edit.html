@@ -1469,10 +1469,10 @@ async function reviewApp(appID,action){
   let boothNumber='';
   let pavilion='';
   if(action==='approve'){
-    boothNumber=prompt('Номер стенда (опционально):','')||'';
-    pavilion=prompt('Павильон (опционально):','')||'';
+    boothNumber=(await lastopPrompt({title:'Одобрение заявки',message:'Номер стенда (опционально)',placeholder:'A-12'}))||'';
+    pavilion=(await lastopPrompt({title:'Одобрение заявки',message:'Павильон (опционально)',placeholder:'Павильон 1'}))||'';
   }else{
-    reviewMessage=prompt('Причина отклонения (опционально):','')||'';
+    reviewMessage=(await lastopPrompt({title:'Отклонение заявки',message:'Причина (опционально)',placeholder:'Введите причину'}))||'';
   }
   const body={action,review_message:reviewMessage,booth_number:boothNumber,pavilion};
   try{

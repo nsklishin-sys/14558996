@@ -1252,8 +1252,8 @@ function toggleDone(id,e){
   if(t.done)t.status='done';else if(t.status==='done')t.status='todo';
   saveTasks();render();updateStats();
 }
-function removeTask(id){
-  if(!confirm('Удалить задачу?'))return;
+async function removeTask(id){
+  if(!await lastopConfirm({title:'Удалить задачу?',danger:true}))return;
   tasks=tasks.filter(x=>x.id!==id);
   saveTasks();render();updateStats();showToast('Задача удалена');
 }
@@ -1359,9 +1359,9 @@ function saveTask(){
   }
   saveTasks();render();updateStats();closeModal();showToast(state.editingId?'Задача сохранена ✓':'Задача создана ✓');
 }
-function deleteEditing(){
+async function deleteEditing(){
   if(!state.editingId)return;
-  if(!confirm('Удалить задачу?'))return;
+  if(!await lastopConfirm({title:'Удалить задачу?',danger:true}))return;
   tasks=tasks.filter(x=>x.id!==state.editingId);
   saveTasks();render();updateStats();closeModal();showToast('Задача удалена');
 }
