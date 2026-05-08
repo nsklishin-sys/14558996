@@ -5969,6 +5969,141 @@ func main() {
 		})
 	})
 
+	mux.HandleFunc("/api/projects/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+		var total, active, my, joined int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE`).Scan(&total)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status = 'active'`).Scan(&active)
+		if viewerID > 0 {
+			_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND owner_id = $1`, viewerID).Scan(&my)
+			_ = db.QueryRow(`
+				SELECT COUNT(DISTINCT p.id) FROM projects p
+				JOIN project_members pm ON pm.project_id = p.id
+				WHERE p.is_deleted = FALSE AND pm.user_id = $1 AND p.owner_id <> $1
+			`, viewerID).Scan(&joined)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"total":  total,
+			"active": active,
+			"my":     my,
+			"joined": joined,
+		})
+	})
+
+	mux.HandleFunc("/api/projects/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT category, COUNT(*) AS cnt
+			FROM projects
+			WHERE is_deleted = FALSE AND COALESCE(category, '') <> ''
+			GROUP BY category
+			ORDER BY cnt DESC
+			LIMIT 6
+		`)
+		if err != nil {
+			log.Printf("[projects-cats] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type cat struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		}
+		out := make([]cat, 0)
+		for rows.Next() {
+			var c cat
+			if err := rows.Scan(&c.Name, &c.Count); err != nil {
+				continue
+			}
+			out = append(out, c)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"categories": out})
+	})
+
+	mux.HandleFunc("/api/projects/recommended", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+		var rows *sql.Rows
+		var err error
+		if viewerID > 0 {
+			// Активные проекты, в которых юзер не участник и не владелец
+			rows, err = db.Query(`
+				SELECT p.public_id, p.title, COALESCE(p.category, ''), p.cover_color, p.status,
+				       (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id) AS members_count
+				FROM projects p
+				WHERE p.is_deleted = FALSE AND p.status = 'active'
+				  AND p.owner_id <> $1
+				  AND NOT EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1)
+				ORDER BY p.created_at DESC
+				LIMIT 4
+			`, viewerID)
+		} else {
+			rows, err = db.Query(`
+				SELECT p.public_id, p.title, COALESCE(p.category, ''), p.cover_color, p.status,
+				       (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id) AS members_count
+				FROM projects p
+				WHERE p.is_deleted = FALSE AND p.status = 'active'
+				ORDER BY p.created_at DESC
+				LIMIT 4
+			`)
+		}
+		if err != nil {
+			log.Printf("[projects-rec] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type rec struct {
+			PublicID     string `json:"public_id"`
+			Title        string `json:"title"`
+			Category     string `json:"category,omitempty"`
+			CoverColor   string `json:"cover_color"`
+			Status       string `json:"status"`
+			MembersCount int    `json:"members_count"`
+		}
+		out := make([]rec, 0)
+		for rows.Next() {
+			var r rec
+			if err := rows.Scan(&r.PublicID, &r.Title, &r.Category, &r.CoverColor, &r.Status, &r.MembersCount); err != nil {
+				continue
+			}
+			out = append(out, r)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"recommended": out})
+	})
+
+	mux.HandleFunc("/api/events/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+		var total, upcoming, today, my int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM events WHERE is_deleted = FALSE`).Scan(&total)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM events WHERE is_deleted = FALSE AND starts_at >= NOW()`).Scan(&upcoming)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM events WHERE is_deleted = FALSE AND starts_at >= date_trunc('day', NOW()) AND starts_at < date_trunc('day', NOW()) + INTERVAL '1 day'`).Scan(&today)
+		if viewerID > 0 {
+			_ = db.QueryRow(`SELECT COUNT(*) FROM event_registrations WHERE user_id = $1`, viewerID).Scan(&my)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"total":    total,
+			"upcoming": upcoming,
+			"today":    today,
+			"my":       my,
+		})
+	})
+
 	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:

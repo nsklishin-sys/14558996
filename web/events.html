@@ -344,10 +344,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
   <div class="card">
     <div class="block-title">Статистика</div>
-    <div class="stat-row"><span class="stat-lbl">Всего событий</span><span class="stat-val">318</span></div>
-    <div class="stat-row"><span class="stat-lbl">Предстоящих</span><span class="stat-val" style="color:var(--g)">124</span></div>
-    <div class="stat-row"><span class="stat-lbl">Сегодня</span><span class="stat-val">3</span></div>
-    <div class="stat-row"><span class="stat-lbl">Мои записи</span><span class="stat-val" id="statMyReg">2</span></div>
+    <div class="stat-row"><span class="stat-lbl">Всего событий</span><span class="stat-val" id="evStatTotal">—</span></div>
+    <div class="stat-row"><span class="stat-lbl">Предстоящих</span><span class="stat-val" style="color:var(--g)" id="evStatUpcoming">—</span></div>
+    <div class="stat-row"><span class="stat-lbl">Сегодня</span><span class="stat-val" id="evStatToday">—</span></div>
+    <div class="stat-row"><span class="stat-lbl">Мои записи</span><span class="stat-val" id="statMyReg">—</span></div>
   </div>
   <div class="card">
     <div class="block-title">Скоро</div>
@@ -993,6 +993,24 @@ function applyCurrentUser(user){
 })();
 </script>
 <script src="/assets/guest-nav.js" defer></script>
-<script src="/assets/profile-context.js" defer></script>
+<script src="/assets/profile-context.js" defer>// ─── Статистика событий (Спринт 12-B-4) ───
+(async function(){
+  try {
+    const tk = localStorage.getItem('token');
+    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const r = await fetch('/api/events/stats', { headers });
+    if (!r.ok) return;
+    const d = await r.json();
+    const total = document.getElementById('evStatTotal');
+    const upc = document.getElementById('evStatUpcoming');
+    const today = document.getElementById('evStatToday');
+    const my = document.getElementById('statMyReg');
+    if (total) total.textContent = String(d.total || 0);
+    if (upc) upc.textContent = String(d.upcoming || 0);
+    if (today) today.textContent = String(d.today || 0);
+    if (my && tk) my.textContent = String(d.my || 0);
+  } catch {}
+})();
+</script>
 </body>
 </html>
