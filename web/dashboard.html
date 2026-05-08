@@ -104,6 +104,12 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .compose-cover-remove:hover{background:rgba(0,0,0,.85)}
 .compose-cover-remove svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
 .compose-cover-uploading{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
+.compose-cover{position:relative;margin-bottom:10px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bdr);background:var(--gp);max-height:300px}
+.compose-cover img{width:100%;height:auto;display:block;max-height:300px;object-fit:cover}
+.compose-cover-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .15s}
+.compose-cover-remove:hover{background:rgba(0,0,0,.85)}
+.compose-cover-remove svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
+.compose-cover-uploading{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
 .c-action{
   display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
   border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--gp);
@@ -863,6 +869,7 @@ function openCompose(){
 }
 function closeCompose(){
   removeComposeCover();
+  removeComposeCover();
   document.getElementById('composeBox').style.display='none';
   document.getElementById('composeTitleInput').value='';
   document.getElementById('composeTextInput').value='';
@@ -895,6 +902,19 @@ function updateComposeCounter(){
 
 // ── Теги: состояние и операции ─────────────────────────────────────
 let composeTags = [];
+let composeCoverUrl = '';
+
+async function onComposeCoverSelected(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('Можно загрузить только изображение'); e.target.value = ''; return; }
+  if(file.size > 25 * 1024 * 1024){ showToast('Файл слишком большой (макс. 25 МБ)'); e.target.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = (ev)=>{ const img = document.getElementById('composeCoverImg'); if(img) img.src = ev.target.result; document.getElementById('composeCoverPreview').style.display = 'block'; document.getElementById('composeCoverUploading').style.display = 'flex'; };
+  reader.readAsDataURL(file);
+  try{ const fd = new FormData(); fd.append('file', file); const r = await fetch(API + '/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd}); const d = await r.json().catch(()=>({})); if(!r.ok || !d.url){ showToast(d.error || 'Не удалось загрузить'); removeComposeCover(); return; } composeCoverUrl = d.url; document.getElementById('composeCoverUploading').style.display = 'none'; }catch(err){ showToast('Ошибка сети при загрузке'); removeComposeCover(); }finally{ e.target.value = ''; }}
+
+function removeComposeCover(){ composeCoverUrl = ''; const prev = document.getElementById('composeCoverPreview'); if(prev) prev.style.display = 'none'; const img = document.getElementById('composeCoverImg'); if(img) img.src = ''; const up = document.getElementById('composeCoverUploading'); if(up) up.style.display = 'none'; const inp = document.getElementById('composeCoverInput'); if(inp) inp.value = ''; }
 let composeCoverUrl = '';
 
 async function onComposeCoverSelected(e){
