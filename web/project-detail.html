@@ -1457,7 +1457,13 @@ function renderProject(){
 
   const grad = COVER_GRADIENTS[p.status] || COVER_GRADIENTS.active;
   const cover = document.getElementById('projCoverBg');
-  if (cover) cover.style.background = grad;
+  if (cover) {
+    if (p.cover_url) {
+      cover.style.background = `url('${p.cover_url}') center/cover no-repeat`;
+    } else {
+      cover.style.background = grad;
+    }
+  }
 
   const stMeta = STATUS_MAP[p.status] || STATUS_MAP.active;
   const statusBadge = document.getElementById('projStatusBadge');
