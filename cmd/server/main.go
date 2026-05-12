@@ -10476,6 +10476,7 @@ func main() {
 			{"/", "1.0", "daily"},
 			{"/companies.html", "0.9", "daily"},
 			{"/events.html", "0.9", "daily"},
+			{"/calendar.html", "0.9", "daily"},
 			{"/exhibitions.html", "0.9", "weekly"},
 			{"/projects.html", "0.8", "weekly"},
 			{"/jobs.html", "0.8", "daily"},
