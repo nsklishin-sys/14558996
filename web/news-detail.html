@@ -227,25 +227,32 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .ci-btn-cancel:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
 
 /* Комментарий */
-.comment{display:flex;gap:10px;animation:fadeUp .25s ease both}
-.comment+.comment{margin-top:14px}
-.com-av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.comment{display:flex;gap:10px;animation:fadeUp .25s ease both;padding:12px;background:var(--w);border:1px solid var(--bdr);border-radius:14px;transition:border-color .15s}
+.comment:hover{border-color:var(--gb)}
+.comment+.comment{margin-top:10px}
+.com-av{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.com-av img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .com-body{flex:1;min-width:0}
-.com-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
-.com-name{font-size:13px;font-weight:700;color:var(--t);cursor:pointer;transition:color .15s}
+.com-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.com-name{font-size:13px;font-weight:800;color:var(--t);cursor:pointer;transition:color .15s}
 .com-name:hover{color:var(--g)}
-.com-role{font-size:10px;color:var(--gmt)}
+.com-role{font-size:10px;color:var(--gmt);background:var(--gp);padding:1px 7px;border-radius:99px}
 .com-time{font-size:11px;color:var(--gmt);margin-left:auto}
-.com-text{font-size:13px;color:var(--tm);line-height:1.6}
+.com-quote{display:block;background:var(--gp);border-left:2.5px solid var(--g);border-radius:6px;padding:5px 9px;margin-bottom:6px;cursor:pointer;text-decoration:none}
+.com-quote:hover{background:var(--gl)}
+.com-quote-author{font-size:11px;font-weight:700;color:var(--g);margin-bottom:1px}
+.com-quote-text{font-size:11px;color:var(--gmt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.com-text{font-size:13px;color:var(--t);line-height:1.6;word-wrap:break-word}
 .com-text .mention{color:var(--g);font-weight:600;cursor:pointer}
-.com-actions{display:flex;align-items:center;gap:10px;margin-top:6px}
-.com-act{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--gmt);cursor:pointer;background:none;border:none;font-family:inherit;padding:0;transition:color .15s}
+.com-actions{display:flex;align-items:center;gap:14px;margin-top:8px}
+.com-act{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--gmt);cursor:pointer;background:none;border:none;font-family:inherit;padding:0;transition:color .15s}
 .com-act:hover{color:var(--g)}
-.com-act svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.com-act svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
 .com-act.liked{color:var(--red)}
-.com-act.liked svg{stroke:var(--red)}
-/* Ответ */
-.com-reply{margin-top:10px;margin-left:0;padding-left:14px;border-left:2px solid var(--bdr)}
+.com-act.liked svg{stroke:var(--red);fill:var(--red)}
+/* Вложенные ответы */
+.com-reply{margin-top:10px;padding-left:14px;border-left:3px solid var(--gb);display:flex;flex-direction:column;gap:8px}
+.com-reply .comment{background:var(--gp)}
 
 /* RIGHT */
 .right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;min-height:0}
@@ -776,14 +783,18 @@ function renderComments(){
   const commentsList=document.getElementById('commentsList');
   if(!commentsList)return;
   commentsList.innerHTML=comments.map((c,i)=>`
-    <div class="comment" style="animation-delay:${i*.06}s">
+    <div class="comment" id="comment-${c.id}" style="animation-delay:${i*.06}s">
       <div class="com-av" style="background:${c.color}">${c.av}</div>
       <div class="com-body">
         <div class="com-head">
           <span class="com-name">${esc(c.name)}</span>
-          <span class="com-role">${esc(c.role)}</span>
+          ${c.role?`<span class="com-role">${esc(c.role)}</span>`:''}
           <span class="com-time">${window.LastopFormat ? window.LastopFormat.dateTime(c.ts) : ago(c.ts)}</span>
         </div>
+        ${c.quoted?`<a class="com-quote" href="#comment-${c.quoted.id}" onclick="document.getElementById('comment-${c.quoted.id}')?.scrollIntoView({behavior:'smooth',block:'center'});return false">
+          <div class="com-quote-author">↳ ${esc(c.quoted.name)}</div>
+          <div class="com-quote-text">${esc((c.quoted.text||'').slice(0,80))}</div>
+        </a>`:''}
         <div class="com-text">${esc(c.text)}</div>
         <div class="com-actions">
           <button class="com-act${c.liked?' liked':''}" onclick="likeComment(${c.id})">
@@ -796,14 +807,18 @@ function renderComments(){
           </button>
         </div>
         ${c.replies&&c.replies.length?`<div class="com-reply">`+c.replies.map(r=>`
-          <div class="comment" style="margin-top:10px">
-            <div class="com-av" style="background:${r.color};width:28px;height:28px;font-size:10px">${r.av}</div>
+          <div class="comment" id="comment-${c.id}-${r.id}">
+            <div class="com-av" style="background:${r.color};width:30px;height:30px;font-size:11px">${r.av}</div>
             <div class="com-body">
               <div class="com-head">
                 <span class="com-name">${esc(r.name)}</span>
-                <span class="com-role">${esc(r.role)}</span>
+                ${r.role?`<span class="com-role">${esc(r.role)}</span>`:''}
                 <span class="com-time">${window.LastopFormat ? window.LastopFormat.dateTime(r.ts) : ago(r.ts)}</span>
               </div>
+              <a class="com-quote" href="#comment-${c.id}" onclick="document.getElementById('comment-${c.id}')?.scrollIntoView({behavior:'smooth',block:'center'});return false">
+                <div class="com-quote-author">↳ ${esc(c.name)}</div>
+                <div class="com-quote-text">${esc((c.text||'').slice(0,80))}</div>
+              </a>
               <div class="com-text">${esc(r.text)}</div>
               <div class="com-actions">
                 <button class="com-act${r.liked?' liked':''}" onclick="likeReply(${c.id},${r.id})">
