@@ -14420,8 +14420,8 @@ func validateAvatarURL(s string) (string, error) {
 	if s == "" {
 		return "", nil
 	}
-	if len(s) > 500 || !(strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")) {
-		return "", fmt.Errorf("%w: avatar_url должен начинаться с http:// или https:// и быть не длиннее 500", errValidation)
+	if len(s) > 500 || !(strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "/uploads/")) {
+		return "", fmt.Errorf("%w: avatar_url должен начинаться с http://, https:// или /uploads/", errValidation)
 	}
 	return s, nil
 }
