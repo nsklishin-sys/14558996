@@ -414,4 +414,84 @@
   } else {
     inject();
   }
+
+  // ════════════════════════════════════════════════════════════
+  //  ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ КОЛЕСОМ МЫШИ — глобально для платформы
+  // ════════════════════════════════════════════════════════════
+  // Преобразует вертикальное колесо мыши (deltaY) в горизонтальный
+  // скролл для контейнеров, где overflow-x = auto|scroll.
+  // Тачпад с реальным горизонтальным жестом (deltaX != 0) не трогаем —
+  // он работает нативно.
+  function lastopBindHorizWheel(el){
+    if (!el || el.dataset.hwBound) return;
+    const cs = window.getComputedStyle(el);
+    const ox = cs.overflowX;
+    if (ox !== 'auto' && ox !== 'scroll') return;
+    // Подключаем только если действительно есть что скроллить (или может появиться позже).
+    el.dataset.hwBound = '1';
+    el.dataset.hw = '1';
+    el.addEventListener('wheel', function(e){
+      // Реальный горизонтальный жест (тачпад) — не вмешиваемся
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      // Нечего скроллить — пусть событие идёт родителю
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    }, { passive: false });
+  }
+
+  // Сканер: ищет все потенциально-горизонтальные контейнеры на странице
+  function lastopScanHorizContainers(root){
+    if (!root || !root.querySelectorAll) return;
+    // Ограничиваем поиск разумным набором — все элементы с inline/computed overflow-x
+    // были бы дороги, поэтому идём по селекторам с обозначенным горизонтальным
+    // скроллом + общая маркировка data-horiz-scroll для опт-ин.
+    const SELECTORS = [
+      '[data-horiz-scroll]',
+      '.d-tabs', '.ip-tabs',           // chat
+      '.proj-tabs',                     // projects
+      '.comm-tabs',                     // communities
+      '.s-tabs-row',                    // search
+      '.filter-tabs',                   // jobs/events/forum
+      '.tabs-row',                      // jobs
+      '.nav-pills',                     // generic
+      '.scroll-x'                       // generic
+    ];
+    let nodes;
+    try { nodes = root.querySelectorAll(SELECTORS.join(',')); }
+    catch (e) { return; }
+    for (let i = 0; i < nodes.length; i++) lastopBindHorizWheel(nodes[i]);
+  }
+
+  // Начальное сканирование + наблюдение за новыми элементами
+  function lastopStartHorizWatcher(){
+    lastopScanHorizContainers(document.body);
+    if (window.MutationObserver && !window.__lastopHWObs){
+      try {
+        const obs = new MutationObserver(function(muts){
+          for (let i = 0; i < muts.length; i++){
+            const added = muts[i].addedNodes;
+            for (let j = 0; j < added.length; j++){
+              const n = added[j];
+              if (n.nodeType !== 1) continue;
+              lastopScanHorizContainers(n);
+              // Если сам добавленный узел подходит — обработаем напрямую
+              try { lastopBindHorizWheel(n); } catch(e){}
+            }
+          }
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+        window.__lastopHWObs = obs;
+      } catch (e) {}
+    }
+  }
+
+  // Экспорт хелпера для опт-ин из страничного кода
+  window.LASTOP_attachHorizWheel = lastopBindHorizWheel;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', lastopStartHorizWatcher);
+  } else {
+    lastopStartHorizWatcher();
+  }
 })();
