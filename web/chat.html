@@ -1007,9 +1007,12 @@ async function loadChatPeerStatus(peerPublicID){
     const d = await r.json();
     _chatPeerFriendStatus = (d.user && d.user.friend_status) || 'none';
     applyChatFriendButton();
+    // Обновляем кнопку в инфо-панели (она использует тот же _chatPeerFriendStatus)
+    if (state.activeConversation) renderInfoPanel();
   } catch {
     _chatPeerFriendStatus = 'none';
     applyChatFriendButton();
+    if (state.activeConversation) renderInfoPanel();
   }
 }
 
