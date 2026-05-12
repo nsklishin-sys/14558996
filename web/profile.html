@@ -815,8 +815,11 @@ async function loadProfileFriends(){
           var pid = f.public_id || f.friend_id || '';
           var ltr = (name[0] || '?').toUpperCase();
           var bg = colorFor(name);
+          var av = f.avatar_url
+            ? '<div style="width:36px;height:36px;border-radius:10px;background:url(\'' + f.avatar_url + '\') center/cover, ' + bg + ';flex-shrink:0"></div>'
+            : '<div style="width:36px;height:36px;border-radius:10px;background:' + bg + ';color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0">' + ltr + '</div>';
           return '<a href="/profile_user.html?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;text-decoration:none;color:var(--t);transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'">'
-            + '<div style="width:36px;height:36px;border-radius:10px;background:' + bg + ';color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0">' + ltr + '</div>'
+            + av
             + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div></div>'
             + '</a>';
         }).join('');
@@ -832,8 +835,11 @@ async function loadProfileFriends(){
           var pid = f.public_id || f.friend_id || '';
           var ltr = (name[0] || '?').toUpperCase();
           var bg = colorFor(name);
+          var avInner = f.avatar_url
+            ? '<div style="position:relative;width:28px;height:28px;border-radius:8px;background:url(\'' + f.avatar_url + '\') center/cover, ' + bg + '">'
+            : '<div style="position:relative;width:28px;height:28px;border-radius:8px;background:' + bg + ';color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">' + ltr;
           return '<a href="/profile_user.html?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:8px;padding:6px 0;text-decoration:none;color:var(--t)">'
-            + '<div style="position:relative;width:28px;height:28px;border-radius:8px;background:' + bg + ';color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">' + ltr
+            + avInner
             + '<div style="position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)"></div></div>'
             + '<div style="font-size:12px;font-weight:600">' + name + '</div>'
             + '</a>';

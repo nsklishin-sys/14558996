@@ -1098,8 +1098,11 @@ async function loadViewedFriends(){
       grid.innerHTML=friends.slice(0,12).map(f=>{
         const name=f.full_name||f.friend_name||'Участник';
         const pid=f.public_id||f.friend_id||'';
+        const avInner=f.avatar_url
+          ? `<div class="friend-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${viewedColor(name)}"></div>`
+          : `<div class="friend-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>`;
         return `<div class="friend-card" onclick="location.href='/profile_user.html?id=${encodeURIComponent(pid)}'">
-          <div class="friend-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>
+          ${avInner}
           <div class="friend-name">${esc(name)}</div>
           <div class="friend-role">${esc(f.position||f.company_name||'')}</div>
         </div>`;
@@ -1116,8 +1119,11 @@ async function loadViewedFriends(){
       onlineBlock.innerHTML=online.slice(0,5).map(f=>{
         const name=f.full_name||f.friend_name||'Участник';
         const pid=f.public_id||f.friend_id||'';
+        const av=f.avatar_url
+          ? `<div class="fmini-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${viewedColor(name)}"><div class="fmini-online"></div></div>`
+          : `<div class="fmini-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}<div class="fmini-online"></div></div>`;
         return `<a class="fmini" href="/profile_user.html?id=${encodeURIComponent(pid)}" style="text-decoration:none;color:inherit">
-          <div class="fmini-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}<div class="fmini-online"></div></div>
+          ${av}
           <div style="min-width:0;flex:1"><div class="fmini-name">${esc(name)}</div><div class="fmini-role">${esc(f.position||f.company_name||'')}</div></div>
         </a>`;
       }).join('');
