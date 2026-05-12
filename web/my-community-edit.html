@@ -289,8 +289,28 @@ function renderAbout(wrap){
         '<div class="fld"><label class="fld-label">Цвет (HEX)</label><input class="fld-input" id="fColor" value="'+esc(c.color||'')+'" placeholder="#5AB080" maxlength="9"></div>'+
       '</div>'+
       '<div class="fld-row">'+
-        '<div class="fld"><label class="fld-label">URL аватара</label><input class="fld-input" id="fAvatar" value="'+esc(c.avatar_url||'')+'" placeholder="https://..."></div>'+
-        '<div class="fld"><label class="fld-label">URL обложки</label><input class="fld-input" id="fCover" value="'+esc(c.cover_url||'')+'" placeholder="https://..."></div>'+
+        '<div class="fld">'+
+          '<label class="fld-label">Аватарка</label>'+
+          '<input type="hidden" id="fAvatar" value="'+esc(c.avatar_url||'')+'">'+
+          '<div id="fAvatarPreview" style="'+(c.avatar_url?'':'display:none;')+'position:relative;margin-bottom:8px;width:80px;height:80px;border-radius:14px;overflow:hidden;border:1px solid var(--bdr)">'+
+            '<img id="fAvatarImg" src="'+esc(c.avatar_url||'')+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">'+
+            '<button type="button" onclick="removeEditAvatar()" title="Удалить" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
+            '<div id="fAvatarUploading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">Загрузка…</div>'+
+          '</div>'+
+          '<button type="button" class="btn" onclick="document.getElementById(\'fAvatarInput\').click()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--bdr);background:var(--gp);border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);cursor:pointer"><svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Загрузить</button>'+
+          '<input type="file" id="fAvatarInput" accept="image/*" style="display:none" onchange="onEditAvatarSelected(event)">'+
+        '</div>'+
+        '<div class="fld">'+
+          '<label class="fld-label">Обложка</label>'+
+          '<input type="hidden" id="fCover" value="'+esc(c.cover_url||'')+'">'+
+          '<div id="fCoverPreview" style="'+(c.cover_url?'':'display:none;')+'position:relative;margin-bottom:8px;width:100%;max-width:240px;aspect-ratio:3/1;border-radius:10px;overflow:hidden;border:1px solid var(--bdr)">'+
+            '<img id="fCoverImg" src="'+esc(c.cover_url||'')+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">'+
+            '<button type="button" onclick="removeEditCover()" title="Удалить" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
+            '<div id="fCoverUploading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">Загрузка…</div>'+
+          '</div>'+
+          '<button type="button" class="btn" onclick="document.getElementById(\'fCoverInput\').click()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--bdr);background:var(--gp);border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);cursor:pointer"><svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Загрузить</button>'+
+          '<input type="file" id="fCoverInput" accept="image/*" style="display:none" onchange="onEditCoverSelected(event)">'+
+        '</div>'+
       '</div>'+
       '<div class="fld-row3">'+
         '<div class="fld"><label class="fld-label">Сайт</label><input class="fld-input" id="fWebsite" value="'+esc(c.website||'')+'" placeholder="https://..."></div>'+
@@ -306,6 +326,49 @@ function renderAbout(wrap){
         '<p style="font-size:12px;color:var(--tm);line-height:1.5">Удаление сообщества — необратимое действие. Все посты, обсуждения и связанные данные будут удалены навсегда. Восстановить сообщество после удаления невозможно.</p>'+
         '<div><button class="btn btn-danger" onclick="deleteCommunity()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Удалить сообщество</button></div>'+
       '</div>' : '');
+}
+
+async function _uploadEditImage(file, hiddenID, imgID, previewID, uploadingID){
+  if(!file || !file.type.startsWith('image/')){ toast('Только изображения'); return; }
+  if(file.size > 10*1024*1024){ toast('Макс. 10 МБ'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById(imgID).src = ev.target.result;
+    document.getElementById(previewID).style.display = 'block';
+    document.getElementById(uploadingID).style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+  try{
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.url){ toast(d.error||'Не удалось'); document.getElementById(previewID).style.display='none'; return; }
+    document.getElementById(hiddenID).value = d.url;
+    document.getElementById(uploadingID).style.display = 'none';
+  }catch{
+    toast('Ошибка сети');
+    document.getElementById(previewID).style.display = 'none';
+  }
+}
+async function onEditAvatarSelected(e){
+  const f = e.target.files && e.target.files[0]; e.target.value='';
+  if(f) await _uploadEditImage(f,'fAvatar','fAvatarImg','fAvatarPreview','fAvatarUploading');
+}
+async function onEditCoverSelected(e){
+  const f = e.target.files && e.target.files[0]; e.target.value='';
+  if(f) await _uploadEditImage(f,'fCover','fCoverImg','fCoverPreview','fCoverUploading');
+}
+function removeEditAvatar(){
+  document.getElementById('fAvatar').value = '';
+  document.getElementById('fAvatarImg').src = '';
+  document.getElementById('fAvatarPreview').style.display = 'none';
+  document.getElementById('fAvatarUploading').style.display = 'none';
+}
+function removeEditCover(){
+  document.getElementById('fCover').value = '';
+  document.getElementById('fCoverImg').src = '';
+  document.getElementById('fCoverPreview').style.display = 'none';
+  document.getElementById('fCoverUploading').style.display = 'none';
 }
 
 async function saveAbout(){
