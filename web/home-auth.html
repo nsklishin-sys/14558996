@@ -111,6 +111,8 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .cb-btn:hover{background:var(--gm)}
 
 .widgets-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0;align-items:stretch}
+@media(max-width:1400px){.widgets-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:800px){.widgets-row{grid-template-columns:1fr}}
 .widget{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);display:flex;flex-direction:column;min-width:0;overflow:hidden;min-height:350px}
 .wh{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-shrink:0}
 .wt{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--t)}
@@ -289,10 +291,10 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .ev-info{flex:1;min-width:0}
 .ev-title{
   font-size:12px;font-weight:700;color:var(--t);line-height:1.3;
-  display:flex;align-items:center;gap:6px;min-width:0
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0
 }
 .ev-title-text{
-  flex:1;min-width:0;
+  flex:1 1 100%;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .ev-tag{
