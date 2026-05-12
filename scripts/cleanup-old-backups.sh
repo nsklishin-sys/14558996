@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 #
-# LASTOP — удаление дампов старше KEEP_DAYS дней из S3.
-# Запускается по cron'у раз в неделю/день рядом с backup.sh.
+# LASTOP — remove old backups from S3.
+# Keeps backups for last N days (default: 30).
 #
-# ИСПОЛЬЗОВАНИЕ:
+# USAGE:
 #   KEEP_DAYS=30 ./scripts/cleanup-old-backups.sh
-#
-# Без KEEP_DAYS — по умолчанию 30 дней.
 #
 set -euo pipefail
 
 require_env() {
   local name=$1
   if [ -z "${!name:-}" ]; then
-    echo "ОШИБКА: переменная $name не задана" >&2
+    echo "ERROR: env variable $name is not set" >&2
     exit 1
   fi
 }
@@ -22,58 +20,38 @@ require_env S3_ENDPOINT
 require_env S3_ACCESS_KEY
 require_env S3_SECRET_KEY
 
-KEEP_DAYS="${KEEP_DAYS:-30}"
 REGION="${S3_REGION:-ru-central1}"
+PREFIX="${S3_PREFIX:-backups}"
+KEEP_DAYS="${KEEP_DAYS:-30}"
 
-echo "═══ LASTOP cleanup ═══"
-echo "Удаляем бэкапы старше ${KEEP_DAYS} дней"
+CUTOFF_DATE=$(date -u -d "${KEEP_DAYS} days ago" +%Y-%m-%d 2>/dev/null || date -u -v-"${KEEP_DAYS}"d +%Y-%m-%d)
+
+echo "=== LASTOP cleanup ==="
+echo "Cutoff: keeping backups newer than ${CUTOFF_DATE}"
 echo
-
-# Граница даты в формате YYYY-MM-DD (UTC)
-if [ "$(uname)" = "Darwin" ]; then
-  CUTOFF=$(date -u -v-"${KEEP_DAYS}"d +"%Y-%m-%d")
-else
-  CUTOFF=$(date -u -d "${KEEP_DAYS} days ago" +"%Y-%m-%d")
-fi
-echo "Граница: ${CUTOFF}"
-echo
-
-# Получаем список бэкапов
-LIST=$(AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" \
-  AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
-  aws s3api list-objects-v2 \
-    --bucket "${S3_BUCKET}" \
-    --prefix "backups/" \
-    --endpoint-url "${S3_ENDPOINT}" \
-    --region "${REGION}" \
-    --query "Contents[].Key" \
-    --output text)
-
-if [ -z "${LIST}" ] || [ "${LIST}" = "None" ]; then
-  echo "Бэкапов в S3 не найдено."
-  exit 0
-fi
 
 DELETED=0
-TOTAL=0
-for KEY in ${LIST}; do
-  TOTAL=$((TOTAL+1))
-  # Извлекаем дату из имени: backups/lastop-backup-2026-05-06-1530.sql.gz → 2026-05-06
-  DATE=$(echo "${KEY}" | sed -E 's|.*lastop-backup-([0-9]{4}-[0-9]{2}-[0-9]{2})-.*|\1|')
-  if [ -z "${DATE}" ] || [ "${DATE}" = "${KEY}" ]; then
-    echo "  [skip] не распознана дата в имени: ${KEY}"
-    continue
-  fi
-  if [[ "${DATE}" < "${CUTOFF}" ]]; then
-    echo "  [del] ${KEY} (от ${DATE})"
-    AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" \
-    AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
-    aws s3 rm "s3://${S3_BUCKET}/${KEY}" \
-      --endpoint-url "${S3_ENDPOINT}" \
-      --region "${REGION}" > /dev/null
-    DELETED=$((DELETED+1))
-  fi
+AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" \
+AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
+aws s3 ls "s3://${S3_BUCKET}/${PREFIX}/" \
+  --endpoint-url "${S3_ENDPOINT}" \
+  --region "${REGION}" \
+  | while read -r line; do
+    FILE_DATE=$(echo "$line" | awk '{print $1}')
+    FILE_NAME=$(echo "$line" | awk '{print $NF}')
+    if [ -z "${FILE_NAME}" ] || [ "${FILE_NAME}" = "PRE" ]; then
+      continue
+    fi
+    if [[ "${FILE_DATE}" < "${CUTOFF_DATE}" ]]; then
+      echo "  delete: ${FILE_NAME} (${FILE_DATE})"
+      AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" \
+      AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
+      aws s3 rm "s3://${S3_BUCKET}/${PREFIX}/${FILE_NAME}" \
+        --endpoint-url "${S3_ENDPOINT}" \
+        --region "${REGION}" > /dev/null
+      DELETED=$((DELETED+1))
+    fi
 done
 
 echo
-echo "✓ Готово. Всего бэкапов: ${TOTAL}, удалено: ${DELETED}"
+echo "OK: cleanup done"

@@ -1,31 +1,27 @@
 #!/usr/bin/env bash
 #
-# LASTOP — снятие резервной копии PostgreSQL и заливка в S3-хранилище.
+# LASTOP — PostgreSQL backup to S3.
 #
-# ИСПОЛЬЗОВАНИЕ:
-#   ./scripts/backup.sh
+# USAGE (with .env.backup):
+#   source .env.backup && bash scripts/backup.sh
 #
-# ТРЕБУЕТ env-переменные:
-#   DATABASE_URL — postgres URL (например postgresql://user:pass@host:5432/db)
-#   S3_BUCKET    — имя bucket
-#   S3_ENDPOINT  — endpoint URL (например https://storage.yandexcloud.net)
-#   S3_REGION    — регион (например ru-central1)
-#   S3_ACCESS_KEY и S3_SECRET_KEY — ключи доступа
+# REQUIRED ENV:
+#   DATABASE_URL   — Postgres connection string
+#   S3_BUCKET      — S3 bucket name
+#   S3_ENDPOINT    — S3 endpoint URL (e.g. https://storage.yandexcloud.net)
+#   S3_ACCESS_KEY  — S3 access key
+#   S3_SECRET_KEY  — S3 secret key
 #
-# ЗАВИСИМОСТИ:
-#   - pg_dump (установить: apt install postgresql-client / brew install postgresql)
-#   - aws CLI (установить: pip install awscli)
-#   - gzip (стандартный)
-#
-# ВЫХОД: 0 при успехе, ненулевой код при ошибке.
+# OPTIONAL ENV:
+#   S3_REGION      — S3 region (default: ru-central1)
+#   S3_PREFIX      — prefix in bucket (default: backups)
 #
 set -euo pipefail
 
-# Проверка обязательных env
 require_env() {
   local name=$1
   if [ -z "${!name:-}" ]; then
-    echo "ОШИБКА: переменная $name не задана" >&2
+    echo "ERROR: env variable $name is not set" >&2
     exit 1
   fi
 }
@@ -36,41 +32,38 @@ require_env S3_ACCESS_KEY
 require_env S3_SECRET_KEY
 
 REGION="${S3_REGION:-ru-central1}"
+PREFIX="${S3_PREFIX:-backups}"
+TIMESTAMP=$(date -u +%Y-%m-%d-%H%M)
+FILENAME="lastop-backup-${TIMESTAMP}.sql.gz"
+LOCAL_PATH="/tmp/${FILENAME}"
+S3_KEY="${PREFIX}/${FILENAME}"
 
-# Имя файла бэкапа: backups/2026-05-06-1530.sql.gz
-TIMESTAMP=$(date -u +"%Y-%m-%d-%H%M")
-BACKUP_NAME="lastop-backup-${TIMESTAMP}.sql.gz"
-S3_KEY="backups/${BACKUP_NAME}"
-LOCAL_PATH="/tmp/${BACKUP_NAME}"
-
-echo "═══ LASTOP backup ═══"
-echo "Дата:        ${TIMESTAMP}"
-echo "S3 bucket:   ${S3_BUCKET}"
-echo "S3 endpoint: ${S3_ENDPOINT}"
-echo "S3 ключ:     ${S3_KEY}"
+echo "=== LASTOP backup ==="
+echo "Started:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "S3 bucket: ${S3_BUCKET}"
+echo "S3 key:    ${S3_KEY}"
 echo
 
-# 1. Снимаем дамп и сразу сжимаем
-echo "[1/3] Снимаем дамп Postgres..."
-pg_dump --no-owner --no-acl --clean --if-exists "${DATABASE_URL}" | gzip -9 > "${LOCAL_PATH}"
+# 1. pg_dump + gzip
+echo "[1/3] Dumping database..."
+pg_dump --no-owner --no-privileges --clean --if-exists "${DATABASE_URL}" \
+  | gzip > "${LOCAL_PATH}"
 DUMP_SIZE=$(du -h "${LOCAL_PATH}" | cut -f1)
-echo "      готово, размер: ${DUMP_SIZE}"
+echo "      done, size: ${DUMP_SIZE}"
 
-# 2. Заливаем в S3
-echo "[2/3] Заливаем в S3..."
+# 2. Upload to S3
+echo "[2/3] Uploading to S3..."
 AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}" \
 AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}" \
 aws s3 cp "${LOCAL_PATH}" "s3://${S3_BUCKET}/${S3_KEY}" \
   --endpoint-url "${S3_ENDPOINT}" \
   --region "${REGION}"
-echo "      готово"
+echo "      done"
 
-# 3. Удаляем локальный файл (бэкап теперь в S3)
-echo "[3/3] Удаляем локальный файл..."
+# 3. Cleanup local file
+echo "[3/3] Removing local file..."
 rm -f "${LOCAL_PATH}"
-echo "      готово"
+echo "      done"
 
 echo
-echo "✓ Бэкап успешно создан: s3://${S3_BUCKET}/${S3_KEY}"
-echo "  Восстановление:"
-echo "  S3_KEY=${S3_KEY} ./scripts/restore.sh"
+echo "OK: backup uploaded: ${S3_KEY}"
