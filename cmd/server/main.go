@@ -13490,6 +13490,7 @@ func listUserFriends(db *sql.DB, publicID string) ([]friendDTO, error) {
 	}
 	rows, err := db.Query(`
 		SELECT u.public_id, u.full_name, u.email,
+		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,''),
 		  EXISTS(
 		    SELECT 1 FROM sessions s
 		    WHERE s.user_id = u.id
@@ -13512,7 +13513,7 @@ func listUserFriends(db *sql.DB, publicID string) ([]friendDTO, error) {
 	var result []friendDTO
 	for rows.Next() {
 		var dto friendDTO
-		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.IsOnline); scanErr != nil {
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.Position, &dto.CompanyName, &dto.AvatarURL, &dto.IsOnline); scanErr != nil {
 			return nil, scanErr
 		}
 		result = append(result, dto)
