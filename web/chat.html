@@ -2003,7 +2003,9 @@ chatHiddenFile?.addEventListener('change', async (e) => {
   e.target.value = '';
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
-  showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
+  console.log('[upload] before showToast');
+  try { showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…'); } catch(e){ console.error('[upload] showToast failed', e); }
+  console.log('[upload] before loop');
   try {
     for (const f of files) { console.log('[upload] processing file:', f.name); await uploadAndSendFile(f); }
   } catch (e) {
