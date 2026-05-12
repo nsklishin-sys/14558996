@@ -6040,8 +6040,8 @@ func main() {
 		rows, err := db.Query(`
 			SELECT u.public_id, u.full_name, COALESCE(u.avatar_url,''),
 			       COUNT(p.id) AS posts_count,
-			       EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.requester_id=$1 AND fr.recipient_id=u.id AND fr.status='accepted')
-			       OR EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.recipient_id=$1 AND fr.requester_id=u.id AND fr.status='accepted') AS is_following
+			       (EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.requester_id=$1 AND fr.addressee_id=u.id AND fr.status='accepted')
+			        OR EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.addressee_id=$1 AND fr.requester_id=u.id AND fr.status='accepted')) AS is_following
 			FROM users u
 			JOIN posts p ON p.author_id = u.id
 			WHERE p.is_deleted = FALSE AND u.is_deleted = FALSE
@@ -16702,12 +16702,30 @@ func createRepost(db *sql.DB, originalPublicID string, userID int64, comment str
 		return post{}, err
 	}
 
+	// Получаем оригинальный заголовок для подстановки в title репоста
+	// (posts.title имеет CHECK char_length BETWEEN 1 AND 200, поэтому пустую строку дать нельзя)
+	var origTitle string
+	if err := tx.QueryRow(`SELECT COALESCE(NULLIF(title,''), 'Репост') FROM posts WHERE id = $1`, origID).Scan(&origTitle); err != nil {
+		origTitle = "Репост"
+	}
+	if utf8.RuneCountInString(origTitle) > 200 {
+		runes := []rune(origTitle)
+		origTitle = string(runes[:200])
+	}
+	// content тоже не может быть пустым (CHECK BETWEEN 1 AND 20000).
+	// Если пользователь не написал комментарий — кладём специальный маркер,
+	// фронт по reposted_from_id и пустому content определит что это «чистый» репост.
+	contentToInsert := strings.TrimSpace(comment)
+	if contentToInsert == "" {
+		contentToInsert = "↪"
+	}
+
 	var insertedID int64
 	if err := tx.QueryRow(`
 		INSERT INTO posts (public_id, author_id, type, title, content, tags, cover_url, privacy_level, reposted_from_id, created_at, updated_at)
-		VALUES ($1, $2, 'news', '', $3, $4::text[], NULLIF($5, ''), 'public', $6, NOW(), NOW())
+		VALUES ($1, $2, 'news', $3, $4, $5::text[], NULLIF($6, ''), 'public', $7, NOW(), NOW())
 		RETURNING id
-	`, newPublicID, userID, comment, origTags, origCoverURL, origID).Scan(&insertedID); err != nil {
+	`, newPublicID, userID, origTitle, contentToInsert, origTags, origCoverURL, origID).Scan(&insertedID); err != nil {
 		return post{}, err
 	}
 	_ = insertedID
