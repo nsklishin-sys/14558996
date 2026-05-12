@@ -1448,7 +1448,7 @@ function renderMessages(){
     const _urls = m.content ? extractURLs(m.content) : [];
     const previewSlotsHTML = _urls.map(u=>`<div class="lp-slot" data-url="${esc(u)}"></div>`).join('');
     const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
-    const replyHTML = m.reply_to ? `<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview)}</div>` : '';
+    const replyHTML = m.reply_to ? `<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview||'—')}</div>` : '';
 
     // A2.1: вычисляем effective автора и аватар с учётом контекста
     let avatarHtml = '';

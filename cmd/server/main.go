@@ -20566,20 +20566,36 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 		}
 		var rp chatReplyPreview
 		var content string
+		var attachmentName, attachmentType string
 		if err := db.QueryRow(`
-			SELECT m.id, COALESCE(u.full_name,''), COALESCE(m.content,'')
+			SELECT m.id, COALESCE(u.full_name,''), COALESCE(m.content,''),
+			       COALESCE(m.attachment_name,''), COALESCE(m.attachment_type,'')
 			FROM chat_messages m
 			JOIN users u ON u.id = m.author_id
 			WHERE m.id = $1
-		`, parentID.Int64).Scan(&rp.ID, &rp.AuthorName, &content); err != nil {
+		`, parentID.Int64).Scan(&rp.ID, &rp.AuthorName, &content, &attachmentName, &attachmentType); err != nil {
 			continue
 		}
-		// Превью контента — первые 80 символов
-		runes := []rune(content)
+		// Превью: текст, иначе имя вложения, иначе тип ("[голосовое]" / "[картинка]")
+		preview := content
+		if preview == "" {
+			if attachmentName != "" {
+				preview = "📎 " + attachmentName
+			} else if strings.HasPrefix(attachmentType, "audio/") {
+				preview = "🎤 Голосовое"
+			} else if strings.HasPrefix(attachmentType, "image/") {
+				preview = "🖼 Изображение"
+			} else if attachmentType != "" {
+				preview = "📎 Вложение"
+			} else {
+				preview = "—"
+			}
+		}
+		runes := []rune(preview)
 		if len(runes) > 80 {
 			rp.ContentPreview = string(runes[:80]) + "…"
 		} else {
-			rp.ContentPreview = content
+			rp.ContentPreview = preview
 		}
 		out[i].ReplyTo = &rp
 	}
