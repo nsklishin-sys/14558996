@@ -330,6 +330,8 @@
     window.dispatchEvent(new CustomEvent('lastop:context-changed'));
   }
 
+  window.__pcxApplyTopbar = applyContextToTopbar;
+
   window.__pcxSwitchPersonal = function () {
     setActiveCompanyID(null);
     setActiveCommunityID(null);
