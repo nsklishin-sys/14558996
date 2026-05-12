@@ -738,6 +738,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .nd-overlay{position:fixed;inset:0;background:rgba(10,20,16,.35);backdrop-filter:blur(2px);z-index:300;opacity:0;pointer-events:none;transition:.2s}
 .nd-overlay.open{opacity:1;pointer-events:auto}.nd-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);width:min(560px,92vw);background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--shm);z-index:301;opacity:0;pointer-events:none;transition:.2s}.nd-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
 .nd-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--bdr);font-weight:800}.nd-close{border:0;background:transparent;cursor:pointer}.nd-tabs{display:flex;gap:8px;padding:12px}.nd-tab{padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);cursor:pointer}.nd-tab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.nd-item.nd-pickable{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:8px;transition:background .12s}
+.nd-item.nd-pickable:hover{background:var(--gp)}
+.nd-item.nd-pickable.selected{background:var(--gl);border:1px solid var(--gb)}
+.nd-check{width:18px;height:18px;border:1.8px solid var(--bdr);border-radius:5px;flex-shrink:0;display:grid;place-items:center;transition:all .12s;background:#fff}
+.nd-item.nd-pickable.selected .nd-check{background:var(--g);border-color:var(--g)}
+.nd-check svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .12s}
+.nd-item.nd-pickable.selected .nd-check svg{opacity:1}
+.nd-pickable-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.nd-pickable-name{font-size:13px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd-pickable-sub{font-size:11px;color:var(--gmt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nd-body{padding:0 12px 12px}.nd-pane{display:none}.nd-pane.active{display:block}.nd-search,.nd-input{width:100%;height:34px;margin-bottom:8px;padding:0 10px;border:1px solid var(--bdr);border-radius:8px}.nd-list{max-height:240px;overflow:auto;border:1px solid var(--bdr);border-radius:10px}.nd-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--bdr);cursor:pointer}.nd-item:last-child{border-bottom:none}.nd-selected{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.nd-chip{padding:4px 8px;border-radius:99px;background:var(--gl);border:1px solid var(--gb);font-size:11px}.nd-submit{height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--g);background:var(--g);color:#fff;cursor:pointer}
 .msg-actions{position:absolute;top:-14px;right:6px;display:none;background:var(--w);border:1px solid var(--bdr);border-radius:99px;box-shadow:var(--sh);padding:2px;gap:1px;z-index:5}
 .msg-bubble:hover .msg-actions{display:flex}
@@ -2496,16 +2506,28 @@ async function ndSearchForGroup(q){
   let users=(d&&d.friends)||[];
   if(query){
     const ql=query.toLowerCase();
-    users=users.filter(u=>(u.full_name||'').toLowerCase().includes(ql));
+    users=users.filter(u=>{
+      const name=(u.full_name||u.friend_name||'').toLowerCase();
+      const handle=(u.handle||'').toLowerCase();
+      return name.includes(ql)||handle.includes(ql);
+    });
   }
   if(!users.length){
-    ndGroupList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">У вас нет друзей для добавления в группу</div>';
+    ndGroupList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">'+(query?'Никого не найдено':'У вас нет друзей для добавления в группу')+'</div>';
     return;
   }
   ndGroupList.innerHTML=users.map(u=>{
-    const pid=u.public_id||u.id||'';
+    const pid=u.public_id||u.friend_id||u.id||'';
+    const name=u.full_name||u.friend_name||'';
+    const sub=u.position||u.company_name||(u.handle?'@'+u.handle:'');
     const sel=state.groupSelected.find(x=>x.id===pid);
-    return `<div class='nd-item' onclick="ndToggleGroupMember('${esc(pid)}','${esc(u.full_name||'')}')"><span>${esc(u.full_name||'')}</span><small>${sel?'✓':''}</small></div>`;
+    return `<div class='nd-item nd-pickable${sel?' selected':''}' onclick="ndToggleGroupMember('${esc(pid)}','${esc(name)}')">
+      <div class='nd-check'><svg viewBox='0 0 14 14'><polyline points='2,7 6,11 12,3'/></svg></div>
+      <div class='nd-pickable-body'>
+        <div class='nd-pickable-name'>${esc(name)}</div>
+        ${sub?`<div class='nd-pickable-sub'>${esc(sub)}</div>`:''}
+      </div>
+    </div>`;
   }).join('');
 }
 
