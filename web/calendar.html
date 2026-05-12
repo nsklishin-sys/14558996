@@ -461,11 +461,21 @@ window.addEventListener('DOMContentLoaded',()=>{
     viewDay=new Date(t.getFullYear(),t.getMonth(),t.getDate());
     void refresh();
   });
-  document.getElementById('createBtn').addEventListener('click',()=>openModal(null,null));
+  document.getElementById('createBtn').addEventListener('click',()=>{
+    if(window.openCalendarEventModal){
+      window.openCalendarEventModal({onSaved:()=>refresh()});
+    } else {
+      openModal(null,null);
+    }
+  });
   document.getElementById('dayCreateBtn').addEventListener('click',()=>{
     const d=dayModalDate;
     closeDayModal();
-    openModal(null,d);
+    if(window.openCalendarEventModal){
+      window.openCalendarEventModal({defaultDate:d,onSaved:()=>refresh()});
+    } else {
+      openModal(null,d);
+    }
   });
   // Mode switch
   document.querySelectorAll('.cal-mode-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -863,7 +873,13 @@ let modalAllDay=false;
 function openEventFromChip(id, source){
   if(source==='personal'){
     const ev=allEvents.find(e=>e.id===id && e.source==='personal');
-    if(ev)openModal(ev,null);
+    if(ev){
+      if(window.openCalendarEventModal){
+        window.openCalendarEventModal({event:ev,onSaved:()=>refresh()});
+      } else {
+        openModal(ev,null);
+      }
+    }
     return;
   }
   // Не личное — открыть детальную страницу через link
