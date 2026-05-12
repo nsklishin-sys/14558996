@@ -563,7 +563,8 @@ function readParams(){
   state.type=p.get('type')||'all';
   state.sort=p.get('sort')||'relevance';
   state.page=Math.max(1,parseInt(p.get('page')||'1',10)||1);
-  document.getElementById('searchInput').value=state.query;
+  const inp=document.getElementById('searchInput');
+  if(inp)inp.value=state.query;
 }
 function writeParams(){
   const p=new URLSearchParams();
@@ -596,7 +597,7 @@ function clearSearch(){
   state.query='';state.type='all';state.sort='relevance';state.page=1;
   state.total=0;state.groups={users:[],posts:[],communities:[],events:[],companies:[],forum:[],jobs:[],resumes:[],catalog:[],chats:[],sections:[]};
   state.perCategory={users:0,posts:0,communities:0,events:0,companies:0,forum:0,jobs:0,resumes:0,catalog:0,chats:0,sections:0};
-  document.getElementById('searchInput').value='';
+  const inp2=document.getElementById('searchInput');if(inp2)inp2.value='';
   writeParams();render();
 }
 
@@ -1152,13 +1153,25 @@ function formatDate(iso){
 }
 
 /* === Init === */
+async function waitForSearchInput(timeoutMs){
+  const start=Date.now();
+  while(Date.now()-start<timeoutMs){
+    const el=document.getElementById('searchInput');
+    if(el)return el;
+    await new Promise(r=>setTimeout(r,40));
+  }
+  return document.getElementById('searchInput');
+}
 (async()=>{
   readParams();
   await loadMe();
   renderRecent();
   if(state.query){runSearch();}else{render();}
-  // Подключаем поисковую строку — Enter обновляет ?q=, ввод запускает live-search с debounce
-  const inp=document.getElementById('searchInput');
+  // shell-injector рендерит #searchInput после парсинга HTML (defer). Ждём появления.
+  const inp=await waitForSearchInput(3000);
+  if(!inp)return;
+  // Восстанавливаем значение из URL (shell-injector мог отрендерить уже после readParams)
+  if(state.query&&!inp.value)inp.value=state.query;
   let liveSearchTimer = null;
   inp.addEventListener('keydown',e=>{
     if(e.key==='Enter'){
