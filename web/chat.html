@@ -1450,7 +1450,9 @@ function renderMessages(){
         ? `<div class='msg-av' style='background-image:url("${esc(m.sender_community_avatar)}");background-color:${color}'></div>`
         : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
     } else {
-      avatarHtml = `<div class='msg-av' style='background:${m.author_color}'>${esc(letter(m.author_name))}</div>`;
+      avatarHtml = m.author_avatar
+        ? `<div class='msg-av' style='background-image:url("${esc(m.author_avatar)}");background-color:${m.author_color}'></div>`
+        : `<div class='msg-av' style='background:${m.author_color}'>${esc(letter(m.author_name))}</div>`;
     }
     const showName = !mine && (m.sender_company_id || m.sender_community_id);
     const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` : '';

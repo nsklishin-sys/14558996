@@ -201,8 +201,9 @@
     setText('topbarRole', role);
     setText('pddName', name);
     setText('pddRole', role);
-    setAv('topbarAv', ltr, color);
-    setAv('pddAv', ltr, color);
+    const avatarUrl = u.avatar_url || '';
+    setAv('topbarAv', ltr, color, avatarUrl);
+    setAv('pddAv', ltr, color, avatarUrl);
   }
 
   async function refreshUserFromServer() {
@@ -223,11 +224,16 @@
     const el = document.getElementById(id);
     if (el) el.textContent = v;
   }
-  function setAv(id, ltr, color) {
+  function setAv(id, ltr, color, avatarUrl) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = ltr;
-    el.style.background = color;
+    if (avatarUrl) {
+      el.textContent = '';
+      el.style.background = `center/cover no-repeat url("${avatarUrl}")`;
+    } else {
+      el.textContent = ltr;
+      el.style.background = color;
+    }
   }
 
   function bindDropdownHandlers() {

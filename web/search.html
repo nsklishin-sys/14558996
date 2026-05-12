@@ -1157,16 +1157,35 @@ function formatDate(iso){
   await loadMe();
   renderRecent();
   if(state.query){runSearch();}else{render();}
-  // Подключаем поисковую строку этой же страницы — Enter обновляет ?q=
+  // Подключаем поисковую строку — Enter обновляет ?q=, ввод запускает live-search с debounce
   const inp=document.getElementById('searchInput');
+  let liveSearchTimer = null;
   inp.addEventListener('keydown',e=>{
     if(e.key==='Enter'){
       e.preventDefault();
+      clearTimeout(liveSearchTimer);
       const v=inp.value.trim();
       const url=new URL(location.pathname,location.origin);
       if(v)url.searchParams.set('q',v);
       location.href=url.toString();
     }
+  });
+  inp.addEventListener('input', e => {
+    clearTimeout(liveSearchTimer);
+    const v = e.target.value.trim();
+    if (v.length < 2) {
+      // Слишком короткий запрос — показываем prompt
+      state.query = '';
+      render();
+      return;
+    }
+    // Debounce 300ms перед запуском поиска
+    liveSearchTimer = setTimeout(() => {
+      state.query = v;
+      state.page = 1;
+      writeParams();
+      runSearch();
+    }, 300);
   });
 })();
 </script>
