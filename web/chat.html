@@ -1806,7 +1806,29 @@ async function renderInfoPanel(){
   ipName.textContent=c.display_name;
   ipRole.textContent=c.display_role||c.type;
   ipOpenProfileBtn.style.display=c.other_public_id?'inline-flex':'none';
-  document.getElementById('ipAddFriendBtn').style.display=c.other_public_id?'inline-flex':'none';
+  // Кнопка "В друзья" — показываем только если есть peer и НЕ являемся уже друзьями.
+  // Текст и поведение зависят от _chatPeerFriendStatus.
+  const fb=document.getElementById('ipAddFriendBtn');
+  if(fb){
+    if(!c.other_public_id || _chatPeerFriendStatus==='self'){
+      fb.style.display='none';
+    }else{
+      fb.style.display='inline-flex';
+      const lbl=fb.querySelector(':scope') || fb;
+      const setLabel=(text,disabled)=>{
+        // Сохраняем svg, меняем только текст
+        const svg=fb.querySelector('svg');
+        fb.innerHTML='';
+        if(svg)fb.appendChild(svg);
+        fb.appendChild(document.createTextNode(' '+text));
+        fb.disabled=!!disabled;
+      };
+      if(_chatPeerFriendStatus==='friends')setLabel('Уже в друзьях',true);
+      else if(_chatPeerFriendStatus==='outgoing')setLabel('Запрос отправлен',true);
+      else if(_chatPeerFriendStatus==='incoming')setLabel('Принять заявку',false);
+      else setLabel('В друзья',false);
+    }
+  }
   const fieldsEl=document.getElementById('ipUserFields');
   const sectionEl=document.getElementById('ipUserInfoSection');
   if(!fieldsEl||!sectionEl)return;
@@ -1833,14 +1855,22 @@ async function sendFriendRequest(){
   const id=state.activeConversation?.other_public_id;
   if(!id){showToast('Не удалось определить пользователя');return;}
   try{
-    await api(`/friends/request/${id}`,{method:'POST'});
-    const btn=document.getElementById('ipAddFriendBtn');
-    if(btn){btn.textContent='✓ Заявка отправлена';btn.disabled=true;}
-    showToast('Заявка отправлена');
+    if(_chatPeerFriendStatus==='friends'){showToast('Вы уже в друзьях');return;}
+    if(_chatPeerFriendStatus==='outgoing'){showToast('Заявка уже отправлена');return;}
+    if(_chatPeerFriendStatus==='incoming'){
+      await api(`/friends/accept/${id}`,{method:'POST'});
+      _chatPeerFriendStatus='friends';
+      showToast('Заявка принята');
+    }else{
+      await api(`/friends/request/${id}`,{method:'POST'});
+      _chatPeerFriendStatus='outgoing';
+      showToast('Заявка отправлена');
+    }
+    // Обновим кнопку
+    const c=state.activeConversation;
+    if(c)renderInfoPanel();
   }catch(e){
-    const msg=String(e.message||e);
-    if(msg.includes('уже')||msg.includes('already')) showToast('Заявка уже отправлена или вы уже друзья');
-    else showToast('Не удалось отправить заявку');
+    showToast('Не удалось выполнить действие');
   }
 }
 // ── Вложения ─────────────────────────────────────────────────────
@@ -2500,6 +2530,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
 })
+// ─── Дополнительный listener Enter для стабильности (T2b) ───
+window.addEventListener('DOMContentLoaded', function(){
+  const inp = document.getElementById('msgInput');
+  if (!inp) return;
+  inp.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof submitMessage === 'function') submitMessage();
+    }
+  }, true); // capture-phase: ловим до всех других listener'ов
+});
 // ─── Lightbox для картинок чата (12-D) ───
 let _clImages = [];
 let _clIdx = 0;
