@@ -330,6 +330,7 @@ function buildCard(user, type){
   const id=user.friend_id||user.user_id||user.id||'';
   const color=avc(name);
   const letter=ltr(name);
+  const avatarURL=user.avatar_url||'';
   const pos=user.position||user.role||user.email||'';
   const company=user.company_name||'';
   const online=user.is_online||false;
@@ -362,9 +363,9 @@ function buildCard(user, type){
       </button>`;
   }
 
-  return `<div class="friend-card${type==='incoming'?' incoming':''}" data-id="${esc(id)}">
+  return `<div class="friend-card${type==='incoming'?' incoming':''}" data-id="${esc(id)}" data-uid="${esc(id)}" onclick="if(!event.target.closest('button'))location.href='/profile_user.html?id=${encodeURIComponent(id)}'">
     <div class="fc-av-wrap">
-      <div class="fc-av" style="background:${color}">${letter}</div>
+      <div class="fc-av" style="background:${color}${avatarURL?`;background-image:url('${esc(avatarURL)}');background-size:cover;background-position:center`:''}">${avatarURL?'':letter}</div>
       ${online?'<span class="fc-online"></span>':''}
     </div>
     <div class="fc-body">
@@ -454,13 +455,14 @@ function renderRecommendations(){
     const name=u.full_name||u.friend_name||'Пользователь';
     const id=u.id||u.friend_id||'';
     const color=avc(name);
-    return`<div class="rec-item">
-      <div class="rec-av" style="background:${color}">${ltr(name)}</div>
+    const avatarURL=u.avatar_url||'';
+    return`<div class="rec-item" style="cursor:pointer" onclick="if(!event.target.closest('button'))location.href='/profile_user.html?id=${encodeURIComponent(id)}'">
+      <div class="rec-av" style="background:${color}${avatarURL?`;background-image:url('${esc(avatarURL)}');background-size:cover;background-position:center`:''}">${avatarURL?'':ltr(name)}</div>
       <div class="rec-body">
         <div class="rec-name">${esc(name)}</div>
         <div class="rec-meta">${esc(u.position||u.company_name||'Участник LASTOP')}</div>
       </div>
-      <button class="rec-add" onclick="addFriend('${esc(id)}','${esc(name)}',this)">+ Добавить</button>
+      <button class="rec-add" onclick="event.stopPropagation();addFriend('${esc(id)}','${esc(name)}',this)">+ Добавить</button>
     </div>`;
   }).join('');
 }
