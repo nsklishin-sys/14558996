@@ -1388,49 +1388,47 @@ async function loadProject(){
     return;
   }
 
+  const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
+
   try {
-    const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
-    const r = await fetch(API + '/projects/' + encodeURIComponent(pid), { headers });
-    if (!r.ok) {
-      if (r.status === 404) {
+    // Параллельно: данные проекта + текущий пользователь
+    const [projRes, meRes] = await Promise.all([
+      fetch(API + '/projects/' + encodeURIComponent(pid), { headers }),
+      tk() ? fetch(API + '/me', { headers }).catch(() => null) : Promise.resolve(null)
+    ]);
+
+    if (!projRes.ok) {
+      if (projRes.status === 404) {
         showProjectError('Проект не найден или удалён');
       } else {
         showProjectError('Не удалось загрузить проект');
       }
       return;
     }
-    const data = await r.json();
+
+    const data = await projRes.json();
     currentProject = data.project;
-    const _btnSaveInit=document.getElementById('btnSave');
-    if(_btnSaveInit)_btnSaveInit.classList.toggle('saved',!!currentProject.is_saved);
+    const _btnSaveInit = document.getElementById('btnSave');
+    if (_btnSaveInit) _btnSaveInit.classList.toggle('saved', !!currentProject.is_saved);
     currentMembers = data.members || [];
     viewerIsOwner = !!currentProject.is_owner;
 
-    // Определяем роль текущего юзера в проекте
+    // Определяем роль текущего юзера
     if (viewerIsOwner) {
       viewerCanManage = true;
-    } else {
-      // Получаем public_id текущего юзера и ищем себя в members
+    } else if (meRes && meRes.ok) {
       try {
-        const meR = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
-        if (meR.ok) {
-          const me = await meR.json();
-          viewerUserPublicID = (me.user && me.user.public_id) || '';
-          const myMember = currentMembers.find(m => m.user_public_id === viewerUserPublicID);
-          if (myMember && (myMember.role === 'owner' || myMember.role === 'admin')) {
-            viewerCanManage = true;
-          }
+        const me = await meRes.json();
+        viewerUserPublicID = (me.user && me.user.public_id) || '';
+        const myMember = currentMembers.find(m => m.user_public_id === viewerUserPublicID);
+        if (myMember && (myMember.role === 'owner' || myMember.role === 'admin')) {
+          viewerCanManage = true;
         }
       } catch {}
     }
 
-    // Права определены — показываем кнопки управления и перерисовываем секции
-    applyManageButtonsVisibility();
-    loadStages();
-    loadNeeds();
-
+    // Рендер + права + дочерние секции (один раз)
     renderProject();
-    // Права определены — показываем кнопки и перерисовываем секции
     applyManageButtonsVisibility();
     applyEditButtonVisibility();
     loadStages();
