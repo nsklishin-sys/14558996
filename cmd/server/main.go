@@ -81,8 +81,9 @@ type registerRequest struct {
 }
 
 type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	CaptchaToken string `json:"captcha_token,omitempty"`
 }
 
 type profileUpdateRequest struct {
