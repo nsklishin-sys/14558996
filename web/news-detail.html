@@ -884,7 +884,8 @@ function renderReplyChip(){
 }
 
 function replyTo(id,name,text){
-  replyState={replyToId:id,replyToName:name||'Участник',replyToText:text||''};
+  const numId=Number(id);
+  replyState={replyToId:Number.isFinite(numId)&&numId>0?numId:null,replyToName:name||'Участник',replyToText:text||''};
   renderReplyChip();
   const ta=document.getElementById('commentInput');
   if(!ta)return;
@@ -923,7 +924,7 @@ async function sendComment(){
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`, {
       method: 'POST',
       headers: window.withActiveContextHeaders(authHeaders({ 'Content-Type': 'application/json' })),
-      body: JSON.stringify({ content: text, parent_id: replyState.replyToId, quoted: replyState.replyToId ? { id: replyState.replyToId, name: replyState.replyToName, text: replyState.replyToText } : null })
+      body: JSON.stringify(replyState.replyToId ? { content: text, parent_id: replyState.replyToId, quoted: { id: replyState.replyToId, name: replyState.replyToName, text: replyState.replyToText } } : { content: text })
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
