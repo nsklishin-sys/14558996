@@ -608,6 +608,7 @@ let visibleNews=[];
 let currentTab='all';
 let currentSort='new';
 let likedSet=new Set();
+let savedSet=new Set();
 let page=1;
 const PAGE_SIZE=5;
 
@@ -724,8 +725,8 @@ function renderCard(n,idx){
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         ${n.shares}
       </button>
-      <button class="nc-action" onclick="event.stopPropagation();toggleSave('${escAttr(postKey)}',this)">
-        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <button class="nc-action ${savedSet.has(postKey)?'saved':''}" onclick="event.stopPropagation();toggleSave('${escAttr(postKey)}',this)">
+        <svg viewBox="0 0 24 24" ${savedSet.has(postKey)?'fill="var(--g)" stroke="var(--g)"':''}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       </button>
       ${n.src?`<span class="nc-source">${esc(n.src)}</span>`:''}
       <span class="nc-views" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${num(n.views)}</span>
@@ -825,8 +826,17 @@ async function toggleSave(postKey,btn){
     const r=await fetch(`${API}/posts/${encodeURIComponent(n.public_id)}/save`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){showToast(d.error||'Не удалось сохранить');return;}
-    if(d.is_saved){btn.classList.add('saved');btn.querySelector('svg path')?.setAttribute('fill','var(--g)');showToast('Сохранено в закладки');}
-    else{btn.classList.remove('saved');btn.querySelector('svg path')?.removeAttribute('fill');showToast('Убрано из закладок');}
+    if(d.is_saved){
+      savedSet.add(postKey);
+      btn.classList.add('saved');
+      btn.querySelector('svg')?.setAttribute('fill','var(--g)');
+      showToast('Сохранено в закладки');
+    } else {
+      savedSet.delete(postKey);
+      btn.classList.remove('saved');
+      btn.querySelector('svg')?.removeAttribute('fill');
+      showToast('Убрано из закладок');
+    }
   }catch{showToast('Не удалось сохранить');}
 }
 function sharePost(postKey){
@@ -1021,7 +1031,7 @@ async function loadHeroNews(){
       return;
     }
 
-    document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + (post.author || 'LASTOP');
+    document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + (post.author ? ' · ' + post.author : '');
     // A2.6 — устанавливаем фоновую картинку hero из cover_url если есть
     const heroImg = document.getElementById('heroImg') || (function(){
       const img = document.createElement('div');
@@ -1038,7 +1048,7 @@ async function loadHeroNews(){
     }
     document.getElementById('heroTitle').textContent = post.title || '(без заголовка)';
     document.getElementById('heroText').textContent = (post.text || post.content || '').slice(0, 240);
-    document.getElementById('heroName').textContent = post.author || 'LASTOP';
+    document.getElementById('heroName').textContent = post.author || 'Пользователь';
     const av = document.getElementById('heroAv');
     if (av) {
       av.textContent = letter(post.author || 'L');
@@ -1091,7 +1101,7 @@ function renderTopList(posts){
   const medals = ['gold', 'silver', 'bronze', '', ''];
   list.innerHTML = posts.map((n, i) => {
     const title = esc(n.title || '(без заголовка)');
-    const author = esc(n.author || 'LASTOP');
+    const author = esc(n.author || 'Пользователь');
     const cat = (n.tags && n.tags.length ? '#' + esc(n.tags[0]) : 'Публикация');
     const views = num(n.views_count || 0);
     const pid = n.public_id || '';
@@ -1164,11 +1174,31 @@ function toggleFollow(btn){
           views: n.views_count || 0,
           likes: n.likes_count || 0,
           comments: n.comments_count || 0,
-          shares: 0,
+          shares: n.reposts_count || 0,
           ts: n.created_at || new Date().toISOString(),
           src: '',
-          type: n.type || 'news'
+          type: n.type || 'news',
+          // Дополнительные поля для pickPostAuthor и переходов
+          author_public_id: n.author_public_id || '',
+          author_avatar: n.author_avatar || '',
+          author_role: n.author_role || '',
+          community_id: n.community_id || 0,
+          community_name: n.community_name || '',
+          community_avatar: n.community_avatar || '',
+          community_color: n.community_color || '',
+          author_company_id: n.author_company_id || 0,
+          author_company_name: n.author_company_name || '',
+          author_company_slug: n.author_company_slug || '',
+          author_company_logo: n.author_company_logo || '',
+          is_liked: !!n.is_liked,
+          is_saved: !!n.is_saved
         };
+      });
+      // Восстанавливаем состояние лайков и закладок из бэка
+      allNews.forEach(n=>{
+        const key=n.public_id||String(n.id||'');
+        if(n.is_liked)likedSet.add(key);
+        if(n.is_saved)savedSet.add(key);
       });
     }else{
       allNews=[];
