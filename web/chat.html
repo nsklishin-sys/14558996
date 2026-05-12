@@ -1923,37 +1923,74 @@ function triggerAttach(){
 }
 
 async function uploadAndSendFile(file){
-  // Лимит: видео — 100 МБ, остальное — 25 МБ
+  console.log('[upload] start', file?.name, file?.size, file?.type);
+  if (!file) { console.log('[upload] no file'); return; }
+  if (!state.activeConvPublicID) {
+    console.log('[upload] no active conv');
+    showToast('Сначала откройте диалог');
+    return;
+  }
   const isVideo = (file.type||'').startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
   const maxBytes = isVideo ? 100*1024*1024 : 25*1024*1024;
   if (file.size > maxBytes) {
-    showToast(isVideo ? `${file.name}: видео слишком большое (макс. 100 МБ)` : `${file.name}: файл слишком большой (макс. 25 МБ)`);
+    showToast(`${file.name}: слишком большой файл`);
     return;
   }
+  let uploadedUrl = '';
+  // ── 1. Аплоад файла на /api/upload ──
   try {
+    console.log('[upload] sending FormData to /api/upload');
     const fd = new FormData();
     fd.append('file', file);
+    const token = localStorage.getItem('token') || '';
     const r = await fetch('/api/upload', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') },
+      headers: { Authorization: 'Bearer ' + token },
       body: fd
     });
+    console.log('[upload] response status', r.status);
     if (!r.ok) {
-      const errData = await r.json().catch(() => ({}));
-      throw new Error(errData.error || 'Загрузка не удалась');
+      const txt = await r.text().catch(()=>r.status);
+      console.log('[upload] error body', txt);
+      showToast(`Ошибка загрузки: ${r.status}`);
+      return;
     }
     const data = await r.json();
-    // Отправляем сообщение сразу с этим вложением (без захода в pendingAttachment)
-    await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method:'POST', body:{
-      content: '',
-      attachment_url: data.url || data.file_url || '',
-      attachment_name: file.name,
-      attachment_type: file.type || '',
-      attachment_size: file.size,
-      reply_to_id: null
-    }});
+    console.log('[upload] data', data);
+    uploadedUrl = data.url || data.file_url || '';
+    if (!uploadedUrl) {
+      showToast('Сервер не вернул URL файла');
+      return;
+    }
   } catch(e) {
-    showToast(`Не удалось отправить ${file.name}: ${e.message||e}`);
+    console.error('[upload] fetch failed', e);
+    showToast(`Ошибка сети: ${e.message||e}`);
+    return;
+  }
+  // ── 2. Отправка сообщения с вложением ──
+  try {
+    console.log('[upload] sending message');
+    const token = localStorage.getItem('token') || '';
+    const r2 = await fetch(`/api/chat/conversations/${state.activeConvPublicID}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        content: '',
+        attachment_url: uploadedUrl,
+        attachment_name: file.name,
+        attachment_type: file.type || '',
+        attachment_size: file.size
+      })
+    });
+    console.log('[upload] message status', r2.status);
+    if (!r2.ok) {
+      const txt = await r2.text().catch(()=>r2.status);
+      console.log('[upload] message error body', txt);
+      showToast(`Ошибка отправки: ${r2.status}`);
+    }
+  } catch(e) {
+    console.error('[upload] message failed', e);
+    showToast(`Ошибка сети: ${e.message||e}`);
   }
 }
 
