@@ -909,7 +909,7 @@ function renderCommunityProfile(c){
   const descNode=document.getElementById('communityDescription');if(descNode)descNode.textContent=desc;
   const avatar=document.getElementById('communityAvatar');if(avatar){
     avatar.style.background=(c.color||persona.avatar);
-    if((c.avatar_url||'').startsWith('http://')||(c.avatar_url||'').startsWith('https://')){
+    if((c.avatar_url||'').startsWith('http://')||(c.avatar_url||'').startsWith('https://')||(c.avatar_url||'').startsWith('/uploads/')){
       avatar.innerHTML=`<img src="${esc(c.avatar_url)}" alt="" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
     }else{
       avatar.textContent=persona.icon;
