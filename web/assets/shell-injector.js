@@ -323,7 +323,7 @@
 
   // Запускаем наблюдатель сразу при загрузке (без ожидания /api/me)
   function bootstrapAvatarWatchers() {
-    const ids = ['topbarAv', 'pddAv', 'composeAv', 'profileAv', 'heroAv', 'ipAv'];
+    const ids = ['topbarAv', 'pddAv', 'composeAv', 'profileAv', 'heroAv'];
     ids.forEach(watchAvatar);
     // Если в localStorage уже есть user — мгновенно ставим аватарку без ожидания /me
     try {
