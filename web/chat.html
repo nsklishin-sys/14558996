@@ -1574,7 +1574,7 @@ function renderAttachment(m){
     </a>
   </div>`;
 }
-function openReply(id){const m=state.messages.find(x=>x.id===id);if(!m)return;state.replyTo={id:m.id,author_name:m.author_name,content_preview:(m.content||'').slice(0,60)};replyBar.classList.add('active');document.getElementById('replyName').textContent=m.author_name;document.getElementById('replyText').textContent=(m.content||'').slice(0,100)}
+function openReply(id){const m=state.messages.find(x=>x.id===id);if(!m)return;state.replyTo={id:m.id,author_name:m.author_name,content_preview:(m.content||'').slice(0,60)};replyBar.classList.add('active');const rn=document.getElementById('replyToTitle');if(rn)rn.textContent='Ответ '+m.author_name;const rt=document.getElementById('replyText');if(rt)rt.textContent=(m.content||'').slice(0,100)}
 function closeReply(){
   state.replyTo=null;
   if(state.editing){
