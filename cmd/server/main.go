@@ -1251,7 +1251,7 @@ const (
 	rateLimitCommunityJoinReqWindow = time.Hour
 
 	// Events
-	rateLimitEventCreate         = 5
+	rateLimitEventCreate         = 30
 	rateLimitEventCreateWindow   = time.Hour
 	rateLimitEventRegister       = 30
 	rateLimitEventRegisterWindow = time.Minute

@@ -415,7 +415,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div><label class="mf-label">Ссылка онлайн</label><input class="mf-input" id="mOnlineURL" placeholder="https://..."></div>
         <div><label class="mf-label">Лимит мест</label><input class="mf-input" id="mSeats" type="number" min="0" placeholder="0"></div>
       </div>
-      <div><label class="mf-label">Категория</label><select class="mf-select" id="mCat"><option value="">Выбрать…</option><option>ВЭД и таможня</option></select></div>
+      <div><label class="mf-label">Категория</label><select class="mf-select" id="mCat" data-category-picker><option value="">Выберите категорию</option></select></div>
       <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Подробно о программе, спикерах и целевой аудитории…"></textarea></div>
       <div class="mf-section">
         <span>Спикеры</span>
@@ -658,7 +658,16 @@ async function toggleSave(publicID,btn){
   }
 }
 function openEvent(publicID){if(!publicID)return;location.href='/event-detail.html?id='+encodeURIComponent(publicID)}
-function openModal(){resetEventModal();document.getElementById('mDate').value=NOW.toISOString().slice(0,10);const submitBtn=document.getElementById('submitEventBtn');if(submitBtn)submitBtn.textContent='Создать мероприятие';const modalTitle=document.getElementById('eventModalTitle');if(modalTitle)modalTitle.textContent='Создать мероприятие';document.getElementById('modalBg').classList.add('open')}
+function openModal(){
+  resetEventModal();
+  document.getElementById('mDate').value=NOW.toISOString().slice(0,10);
+  const submitBtn=document.getElementById('submitEventBtn');if(submitBtn)submitBtn.textContent='Создать мероприятие';
+  const modalTitle=document.getElementById('eventModalTitle');if(modalTitle)modalTitle.textContent='Создать мероприятие';
+  const mCat=document.getElementById('mCat');
+  if(mCat&&window.renderProjectCategoriesInto)window.renderProjectCategoriesInto(mCat,'Выберите категорию');
+  if(window.lastopClearAllErrors)window.lastopClearAllErrors(document.getElementById('modalBg'));
+  document.getElementById('modalBg').classList.add('open');
+}
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
 const YANDEX_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
@@ -855,14 +864,29 @@ function removeEvCover(){
 }
 
 async function submitEvent(){
-  const title=(document.getElementById('mTitle').value||'').trim();
-  if(!title){toast('Введите название');return}
-  const date=document.getElementById('mDate').value;
-  if(!date){toast('Укажите дату');return}
-  const timeStart=document.getElementById('mTimeStart').value||'10:00';
-  const timeEnd=document.getElementById('mTimeEnd').value||'12:00';
   const format=document.getElementById('mFormat').value;
   const address=(document.getElementById('mAddress')?.value||'').trim();
+  // Сбрасываем все предыдущие подсветки ошибок
+  if(window.lastopClearAllErrors)window.lastopClearAllErrors(document.getElementById('modalBg'));
+  // Валидация обязательных полей: подсветка + скролл к первому невалидному
+  if(window.lastopValidate){
+    const ok=window.lastopValidate([
+      {id:'mTitle',required:true,message:'Введите название мероприятия'},
+      {id:'mDate',required:true,message:'Укажите дату проведения'},
+      {id:'mCat',required:true,message:'Выберите категорию'},
+      {id:'mAddress',required:format!=='online',message:'Адрес обязателен для офлайн/гибрид мероприятий'},
+    ]);
+    if(!ok)return;
+  } else {
+    // Fallback на случай если confirm-modal.js ещё не загружен
+    const t=(document.getElementById('mTitle').value||'').trim();
+    if(!t){toast('Введите название');return}
+    if(!document.getElementById('mDate').value){toast('Укажите дату');return}
+  }
+  const title=(document.getElementById('mTitle').value||'').trim();
+  const date=document.getElementById('mDate').value;
+  const timeStart=document.getElementById('mTimeStart').value||'10:00';
+  const timeEnd=document.getElementById('mTimeEnd').value||'12:00';
   const city=(document.getElementById('mCity').value||'').trim();
   const fee=parseInt(document.getElementById('mFee').value||'0',10);
   const seats=parseInt(document.getElementById('mSeats').value||'0',10);
@@ -923,8 +947,16 @@ async function submitEvent(){
       :body;
     const r=await fetch(url,{method,headers,body:JSON.stringify(payload)});
     if(!r.ok){
-      const d=await r.json().catch(()=>null);
-      toast('Ошибка: '+(d?.error||r.status));
+      const d=await r.json().catch(()=>({}));
+      if(r.status===429 && window.lastopAlert){
+        await window.lastopAlert({
+          title:'Слишком много попыток',
+          message:d.error||'Превышен лимит создания мероприятий. Попробуйте через час.',
+          type:'warn'
+        });
+      } else {
+        toast(d.error||'Не удалось создать мероприятие');
+      }
       return;
     }
     window.__editEventID=null;
@@ -999,6 +1031,7 @@ function applyCurrentUser(user){
   renderSidebarCalendar();
 })();
 </script>
+<script src="/assets/project-categories.js" defer></script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
 <script>
