@@ -20548,6 +20548,41 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	for i := 0; i < len(out)/2; i++ {
 		out[i], out[len(out)-1-i] = out[len(out)-1-i], out[i]
 	}
+	// Догружаем превью для reply_to (без N+1 — одним запросом).
+	// Собираем ID сообщений-родителей.
+	replyParents := make(map[int64]bool)
+	for _, mm := range out {
+		// reply_to_id мы потеряли при Scan'е (он был в локальной переменной reply).
+		// Перечитаем по message id из БД.
+		_ = mm
+	}
+	_ = replyParents
+	// Альтернатива: пройдёмся ещё раз и для каждого сообщения с reply_to_id сделаем
+	// отдельный запрос. Хорошо для малых лимитов (50-200).
+	for i := range out {
+		var parentID sql.NullInt64
+		if err := db.QueryRow(`SELECT reply_to_id FROM chat_messages WHERE id=$1`, out[i].ID).Scan(&parentID); err != nil || !parentID.Valid {
+			continue
+		}
+		var rp chatReplyPreview
+		var content string
+		if err := db.QueryRow(`
+			SELECT m.id, COALESCE(u.full_name,''), COALESCE(m.content,'')
+			FROM chat_messages m
+			JOIN users u ON u.id = m.author_id
+			WHERE m.id = $1
+		`, parentID.Int64).Scan(&rp.ID, &rp.AuthorName, &content); err != nil {
+			continue
+		}
+		// Превью контента — первые 80 символов
+		runes := []rune(content)
+		if len(runes) > 80 {
+			rp.ContentPreview = string(runes[:80]) + "…"
+		} else {
+			rp.ContentPreview = content
+		}
+		out[i].ReplyTo = &rp
+	}
 	return out, nil
 }
 

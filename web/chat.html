@@ -1808,27 +1808,7 @@ async function renderInfoPanel(){
   ipOpenProfileBtn.style.display=c.other_public_id?'inline-flex':'none';
   // Кнопка "В друзья" — показываем только если есть peer и НЕ являемся уже друзьями.
   // Текст и поведение зависят от _chatPeerFriendStatus.
-  const fb=document.getElementById('ipAddFriendBtn');
-  if(fb){
-    if(!c.other_public_id || _chatPeerFriendStatus==='self'){
-      fb.style.display='none';
-    }else{
-      fb.style.display='inline-flex';
-      const lbl=fb.querySelector(':scope') || fb;
-      const setLabel=(text,disabled)=>{
-        // Сохраняем svg, меняем только текст
-        const svg=fb.querySelector('svg');
-        fb.innerHTML='';
-        if(svg)fb.appendChild(svg);
-        fb.appendChild(document.createTextNode(' '+text));
-        fb.disabled=!!disabled;
-      };
-      if(_chatPeerFriendStatus==='friends')setLabel('Уже в друзьях',true);
-      else if(_chatPeerFriendStatus==='outgoing')setLabel('Запрос отправлен',true);
-      else if(_chatPeerFriendStatus==='incoming')setLabel('Принять заявку',false);
-      else setLabel('В друзья',false);
-    }
-  }
+  (function(){const fb=document.getElementById('ipAddFriendBtn');if(!fb)return;if(!c.other_public_id||_chatPeerFriendStatus==='self'){fb.style.display='none';return;}fb.style.display='inline-flex';const svg=fb.querySelector('svg');const setLabel=(text,disabled)=>{fb.innerHTML='';if(svg)fb.appendChild(svg);fb.appendChild(document.createTextNode(' '+text));fb.disabled=!!disabled;};if(_chatPeerFriendStatus==='friends')setLabel('Уже в друзьях',true);else if(_chatPeerFriendStatus==='outgoing')setLabel('Запрос отправлен',true);else if(_chatPeerFriendStatus==='incoming')setLabel('Принять заявку',false);else setLabel('В друзья',false);})();
   const fieldsEl=document.getElementById('ipUserFields');
   const sectionEl=document.getElementById('ipUserInfoSection');
   if(!fieldsEl||!sectionEl)return;
@@ -1866,9 +1846,7 @@ async function sendFriendRequest(){
       _chatPeerFriendStatus='outgoing';
       showToast('Заявка отправлена');
     }
-    // Обновим кнопку
-    const c=state.activeConversation;
-    if(c)renderInfoPanel();
+    if(state.activeConversation)renderInfoPanel();
   }catch(e){
     showToast('Не удалось выполнить действие');
   }
