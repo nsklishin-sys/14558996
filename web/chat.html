@@ -1816,7 +1816,20 @@ async function renderInfoPanel(){
   if(c && c.public_id) loadInfoAttachments(c.public_id);
 }
 function openPeerProfile(){const id=state.activeConversation?.other_public_id;if(id)location.href='/profile_user.html?id='+encodeURIComponent(id)}
-async function sendFriendRequest(){const id=state.activeConversation?.other_public_id;if(!id)return;await api(`/friends/request/${id}`,{method:'POST'});ipAddFriendBtn.textContent='Заявка отправлена';ipAddFriendBtn.disabled=true}
+async function sendFriendRequest(){
+  const id=state.activeConversation?.other_public_id;
+  if(!id){showToast('Не удалось определить пользователя');return;}
+  try{
+    await api(`/friends/request/${id}`,{method:'POST'});
+    const btn=document.getElementById('ipAddFriendBtn');
+    if(btn){btn.textContent='✓ Заявка отправлена';btn.disabled=true;}
+    showToast('Заявка отправлена');
+  }catch(e){
+    const msg=String(e.message||e);
+    if(msg.includes('уже')||msg.includes('already')) showToast('Заявка уже отправлена или вы уже друзья');
+    else showToast('Не удалось отправить заявку');
+  }
+}
 // ── Вложения ─────────────────────────────────────────────────────
 let pendingAttachment = null; // {url, name, size, type} — файл готов к отправке
 
