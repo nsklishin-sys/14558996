@@ -1823,8 +1823,12 @@ async function loadInfoAttachments(publicID){
 async function renderInfoPanel(){
   const c=state.activeConversation;
   if(!c)return;
-  ipAv.style.background=c.display_color;
-  ipAv.innerHTML=letter(c.display_name)+(c.is_online?'<div class="ip-online"></div>':'');
+  ipAv.style.background=c.display_color||avc(c.display_name||'?');
+  if(c.display_avatar){
+    ipAv.innerHTML=`<img src="${esc(c.display_avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`+(c.is_online?'<div class="ip-online"></div>':'');
+  }else{
+    ipAv.innerHTML=`<span style="font-size:24px;font-weight:800;color:#fff">${esc(letter(c.display_name||'?'))}</span>`+(c.is_online?'<div class="ip-online"></div>':'');
+  }
   ipName.textContent=c.display_name;
   ipRole.textContent=c.display_role||c.type;
   ipOpenProfileBtn.style.display=c.other_public_id?'inline-flex':'none';
