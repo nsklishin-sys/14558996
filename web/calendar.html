@@ -73,6 +73,66 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cal-day-cell.today .cal-day-num{position:relative}
 .cal-day-cell.today .cal-day-num::before{content:'';position:absolute;right:0;width:22px;height:22px;border-radius:50%;background:var(--g);z-index:0}
 .cal-day-cell.today .cal-day-num span{position:relative;z-index:1;color:#fff;font-weight:800;width:22px;text-align:center}
+/* ═══════════ WEEK / DAY VIEW ═══════════ */
+.cal-time-wrap{display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden}
+.cal-time-wrap.active{display:flex}
+.cal-time-dow-row{display:grid;border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--gp);padding-left:60px}
+.cal-time-dow-row.week{grid-template-columns:repeat(7,1fr)}
+.cal-time-dow-row.day{grid-template-columns:1fr}
+.cal-time-dow-cell{padding:10px 8px;text-align:center;border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;gap:2px}
+.cal-time-dow-cell:last-child{border-right:none}
+.cal-time-dow-cell.today{background:var(--gl)}
+.cal-time-dow-lbl{font-size:10px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.06em}
+.cal-time-dow-cell.weekend .cal-time-dow-lbl{color:#A04040}
+.cal-time-dow-num{font-size:16px;font-weight:800;color:var(--t)}
+.cal-time-dow-cell.today .cal-time-dow-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--g),var(--gm));color:#fff;
+  box-shadow:0 4px 10px rgba(30,138,76,.30)
+}
+.cal-time-scroll{flex:1;overflow-y:auto;min-height:0}
+.cal-time-scroll::-webkit-scrollbar{width:4px}
+.cal-time-scroll::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.cal-time-grid{display:grid;grid-template-columns:60px 1fr;position:relative}
+.cal-time-hours{display:flex;flex-direction:column;border-right:1px solid var(--bdr);background:var(--w)}
+.cal-time-hour-lbl{height:60px;font-size:10px;font-weight:700;color:var(--gmt);padding:4px 8px 0;text-align:right;border-bottom:1px solid var(--bdr);box-sizing:border-box}
+.cal-time-days{display:grid;position:relative}
+.cal-time-days.week{grid-template-columns:repeat(7,1fr)}
+.cal-time-days.day{grid-template-columns:1fr}
+.cal-time-col{position:relative;border-right:1px solid var(--bdr);min-height:840px}
+.cal-time-col:last-child{border-right:none}
+.cal-time-col.today{background:rgba(30,138,76,.04)}
+.cal-time-col.weekend{background:#FAFCFB}
+.cal-time-col.today.weekend{background:rgba(30,138,76,.04)}
+.cal-time-hourline{height:60px;border-bottom:1px solid var(--bdr);box-sizing:border-box}
+.cal-time-event{
+  position:absolute;left:4px;right:4px;
+  border-radius:6px;padding:4px 6px;
+  font-size:10.5px;font-weight:700;
+  background:rgba(30,138,76,.12);color:#1E8A4C;
+  border-left:3px solid #1E8A4C;
+  overflow:hidden;cursor:pointer;
+  display:flex;flex-direction:column;gap:1px;line-height:1.2;
+  transition:filter .12s,transform .12s;z-index:1
+}
+.cal-time-event:hover{filter:brightness(.93);transform:translateX(1px);z-index:2}
+.cal-time-event-time{font-size:9px;opacity:.8;font-weight:800;flex-shrink:0}
+.cal-time-event-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-time-allday-row{display:grid;background:var(--gp);border-bottom:1px solid var(--bdr);padding-left:60px;min-height:32px}
+.cal-time-allday-row.week{grid-template-columns:repeat(7,1fr)}
+.cal-time-allday-row.day{grid-template-columns:1fr}
+.cal-time-allday-cell{padding:4px;border-right:1px solid var(--bdr);display:flex;flex-direction:column;gap:2px;min-width:0}
+.cal-time-allday-cell:last-child{border-right:none}
+.cal-time-allday-chip{
+  padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;
+  background:rgba(30,138,76,.12);color:#1E8A4C;border-left:3px solid #1E8A4C;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer
+}
+.cal-time-allday-chip:hover{filter:brightness(.93)}
+/* Линия «сейчас» */
+.cal-time-now{position:absolute;left:60px;right:0;height:2px;background:#E04040;z-index:3;pointer-events:none;box-shadow:0 0 6px rgba(224,64,64,.4)}
+.cal-time-now::before{content:'';position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:#E04040;box-shadow:0 0 0 2px var(--w),0 0 8px rgba(224,64,64,.5)}
 .cal-event-chip{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:5px;font-size:10.5px;font-weight:700;line-height:1.2;cursor:pointer;background:rgba(30,138,76,.1);color:#1E8A4C;border-left:3px solid #1E8A4C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:filter .12s}
 .cal-event-chip:hover{filter:brightness(.92)}
 .cal-event-time{font-size:9px;opacity:.75;font-weight:800;flex-shrink:0}
@@ -194,8 +254,8 @@ textarea.form-input{resize:vertical;min-height:70px;line-height:1.5}
     <button class="btn-create-event" id="createBtn"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать событие</button>
   </div>
 
-  <!-- MONTH GRID -->
-  <div class="cal-grid-wrap">
+  <!-- MONTH VIEW -->
+  <div class="cal-grid-wrap" id="monthView">
     <div class="cal-dow-row">
       <div class="cal-dow-cell">Пн</div>
       <div class="cal-dow-cell">Вт</div>
@@ -206,6 +266,30 @@ textarea.form-input{resize:vertical;min-height:70px;line-height:1.5}
       <div class="cal-dow-cell weekend">Вс</div>
     </div>
     <div class="cal-month-grid" id="monthGrid"></div>
+  </div>
+
+  <!-- WEEK VIEW -->
+  <div class="cal-time-wrap" id="weekView" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh)">
+    <div class="cal-time-dow-row week" id="weekDowRow"></div>
+    <div class="cal-time-allday-row week" id="weekAllDayRow"></div>
+    <div class="cal-time-scroll" id="weekScroll">
+      <div class="cal-time-grid">
+        <div class="cal-time-hours" id="weekHours"></div>
+        <div class="cal-time-days week" id="weekDays"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY VIEW -->
+  <div class="cal-time-wrap" id="dayView" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh)">
+    <div class="cal-time-dow-row day" id="dayDowRow"></div>
+    <div class="cal-time-allday-row day" id="dayAllDayRow"></div>
+    <div class="cal-time-scroll" id="dayScroll">
+      <div class="cal-time-grid">
+        <div class="cal-time-hours" id="dayHours"></div>
+        <div class="cal-time-days day" id="dayDays"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -332,8 +416,11 @@ if(!tk()){location.href='/login.html';}
 
 /* ─── State ─── */
 const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-let viewYear, viewMonth;            // текущий просматриваемый месяц
-let allEvents=[];                   // все события из /api/calendar
+let viewMode='month';                       // 'month' | 'week' | 'day'
+let viewYear, viewMonth;                    // для месяца
+let viewWeekAnchor=null;                    // Date понедельника текущей недели (week-mode)
+let viewDay=null;                           // Date конкретного дня (day-mode)
+let allEvents=[];                           // все события из /api/calendar
 const SOURCE_META = {
   personal:    {label:'Личные события', color:'var(--src-personal)',  hex:'#1E8A4C'},
   event:       {label:'Мероприятия',    color:'var(--src-event)',     hex:'#185FA5'},
@@ -357,6 +444,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   // ?date=YYYY-MM-DD позволяет открыть конкретный месяц
   const p=new URLSearchParams(location.search);
   const dateParam=p.get('date');
+  const viewParam=p.get('view');
   if(dateParam){
     const d=new Date(dateParam+'T00:00:00');
     if(!isNaN(d)){viewYear=d.getFullYear();viewMonth=d.getMonth();}
@@ -364,10 +452,14 @@ window.addEventListener('DOMContentLoaded',()=>{
   } else {
     viewYear=now.getFullYear();viewMonth=now.getMonth();
   }
-  document.getElementById('prevBtn').addEventListener('click',()=>navigateMonth(-1));
-  document.getElementById('nextBtn').addEventListener('click',()=>navigateMonth(1));
+  document.getElementById('prevBtn').addEventListener('click',()=>navigate(-1));
+  document.getElementById('nextBtn').addEventListener('click',()=>navigate(1));
   document.getElementById('todayBtn').addEventListener('click',()=>{
-    const t=new Date();viewYear=t.getFullYear();viewMonth=t.getMonth();void refresh();
+    const t=new Date();
+    viewYear=t.getFullYear();viewMonth=t.getMonth();
+    viewWeekAnchor=startOfWeek(t);
+    viewDay=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+    void refresh();
   });
   document.getElementById('createBtn').addEventListener('click',()=>openModal(null,null));
   document.getElementById('dayCreateBtn').addEventListener('click',()=>{
@@ -375,12 +467,9 @@ window.addEventListener('DOMContentLoaded',()=>{
     closeDayModal();
     openModal(null,d);
   });
-  // Mode switch (только месяц активен; неделя/день — заглушки до CAL-5)
+  // Mode switch
   document.querySelectorAll('.cal-mode-btn').forEach(b=>b.addEventListener('click',()=>{
-    if(b.dataset.mode!=='month'){
-      if(window.lastopToast)window.lastopToast('Режимы «Неделя» и «День» появятся в следующем обновлении','info');
-      return;
-    }
+    setMode(b.dataset.mode);
   }));
   // Колесо мыши на навигации
   document.getElementById('monthGrid').addEventListener('wheel',e=>{
@@ -390,34 +479,100 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){closeModal();closeDayModal();}
   });
-  void refresh();
+  // Применяем начальный режим если задан в URL (?view=week|day)
+  if(viewParam==='week'||viewParam==='day'){
+    setMode(viewParam);
+  } else {
+    void refresh();
+  }
 });
 
-function navigateMonth(delta){
-  viewMonth+=delta;
-  while(viewMonth<0){viewMonth+=12;viewYear--;}
-  while(viewMonth>11){viewMonth-=12;viewYear++;}
+function navigate(delta){
+  if(viewMode==='month'){
+    viewMonth+=delta;
+    while(viewMonth<0){viewMonth+=12;viewYear--;}
+    while(viewMonth>11){viewMonth-=12;viewYear++;}
+  } else if(viewMode==='week'){
+    if(!viewWeekAnchor)viewWeekAnchor=startOfWeek(new Date());
+    viewWeekAnchor=new Date(viewWeekAnchor.getTime()+delta*7*86400000);
+  } else if(viewMode==='day'){
+    if(!viewDay)viewDay=new Date();
+    viewDay=new Date(viewDay.getTime()+delta*86400000);
+  }
+  void refresh();
+}
+// Обратная совместимость
+function navigateMonth(delta){navigate(delta);} 
+
+function startOfWeek(d){
+  const x=new Date(d);x.setHours(0,0,0,0);
+  const dow=(x.getDay()+6)%7;  // Пн=0
+  x.setDate(x.getDate()-dow);
+  return x;
+}
+
+function setMode(mode){
+  if(mode!=='month'&&mode!=='week'&&mode!=='day')return;
+  viewMode=mode;
+  document.querySelectorAll('.cal-mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  // Показать нужный view, скрыть остальные
+  document.getElementById('monthView').style.display = mode==='month'?'':'none';
+  document.getElementById('weekView').classList.toggle('active',mode==='week');
+  document.getElementById('dayView').classList.toggle('active',mode==='day');
+  // Установить anchor для нового режима если ещё не выставлен
+  if(mode==='week'){
+    if(!viewWeekAnchor){
+      // По умолчанию — неделя содержащая текущий viewYear/viewMonth, 15 число
+      const base=new Date(viewYear, viewMonth, Math.min(15, new Date(viewYear,viewMonth+1,0).getDate()));
+      viewWeekAnchor=startOfWeek(base);
+    }
+  } else if(mode==='day'){
+    if(!viewDay){
+      const today=new Date();
+      if(today.getFullYear()===viewYear && today.getMonth()===viewMonth){
+        viewDay=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+      } else {
+        viewDay=new Date(viewYear, viewMonth, 1);
+      }
+    }
+  }
   void refresh();
 }
 
 /* ─── LOAD & RENDER ─── */
 async function refresh(){
-  document.getElementById('currentLabel').textContent=`${MONTHS[viewMonth]} ${viewYear}`;
-  // Загружаем окно ±1 месяц (чтобы хвосты соседних месяцев тоже были подсвечены)
-  const from=new Date(viewYear,viewMonth-1,1).toISOString().slice(0,10);
-  const to=new Date(viewYear,viewMonth+2,0).toISOString().slice(0,10);
+  // Обновляем заголовок и окно загрузки в зависимости от режима
+  let from, to, label;
+  if(viewMode==='month'){
+    label=`${MONTHS[viewMonth]} ${viewYear}`;
+    from=new Date(viewYear,viewMonth-1,1).toISOString().slice(0,10);
+    to=new Date(viewYear,viewMonth+2,0).toISOString().slice(0,10);
+  } else if(viewMode==='week'){
+    const wa=viewWeekAnchor||startOfWeek(new Date());
+    const we=new Date(wa.getTime()+6*86400000);
+    const sameMonth=wa.getMonth()===we.getMonth();
+    label=sameMonth
+      ? `${wa.getDate()}–${we.getDate()} ${MONTHS[wa.getMonth()].toLowerCase()} ${we.getFullYear()}`
+      : `${wa.getDate()} ${MONTHS[wa.getMonth()].toLowerCase()} – ${we.getDate()} ${MONTHS[we.getMonth()].toLowerCase()} ${we.getFullYear()}`;
+    const start=new Date(wa.getTime()-7*86400000);
+    const end=new Date(we.getTime()+7*86400000);
+    from=start.toISOString().slice(0,10); to=end.toISOString().slice(0,10);
+  } else {
+    const dv=viewDay||new Date();
+    label=dv.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const start=new Date(dv.getTime()-86400000);
+    const end=new Date(dv.getTime()+86400000);
+    from=start.toISOString().slice(0,10); to=end.toISOString().slice(0,10);
+  }
+  document.getElementById('currentLabel').textContent=label;
   try{
     const r=await fetch(`${API}/calendar?from=${from}&to=${to}`,{headers:{Authorization:'Bearer '+tk()}});
-    if(r.ok){
-      const d=await r.json();
-      allEvents=d.events||[];
-    } else {
-      allEvents=[];
-    }
-  }catch{
-    allEvents=[];
-  }
-  renderMonth();
+    if(r.ok){const d=await r.json();allEvents=d.events||[];} else {allEvents=[];}
+  }catch{allEvents=[];}
+  // Рендер активного режима
+  if(viewMode==='month')renderMonth();
+  else if(viewMode==='week')renderWeek();
+  else renderDay();
   renderFilters();
   renderUpcoming();
 }
@@ -492,6 +647,112 @@ function renderMonth(){
   }).join('');
 }
 
+function renderWeek(){
+  const anchor=viewWeekAnchor||startOfWeek(new Date());
+  const days=[];
+  for(let i=0;i<7;i++){
+    days.push(new Date(anchor.getTime()+i*86400000));
+  }
+  renderTimeView('week',days);
+}
+
+function renderDay(){
+  const day=viewDay||new Date();
+  renderTimeView('day',[day]);
+}
+
+function renderTimeView(mode, days){
+  const today=new Date();today.setHours(0,0,0,0);
+  // DOW row
+  const dowEl=document.getElementById(mode==='week'?'weekDowRow':'dayDowRow');
+  const DOWS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  dowEl.innerHTML=days.map(d=>{
+    const dow=(d.getDay()+6)%7;
+    const isToday=d.getTime()===today.getTime();
+    const isWeekend=dow===5||dow===6;
+    return `<div class="cal-time-dow-cell${isToday?' today':''}${isWeekend?' weekend':''}">
+      <div class="cal-time-dow-lbl">${DOWS[dow]}</div>
+      <div class="cal-time-dow-num">${d.getDate()}</div>
+    </div>`;
+  }).join('');
+  const hoursEl=document.getElementById(mode==='week'?'weekHours':'dayHours');
+  let hoursHTML='';
+  for(let h=8;h<=22;h++)hoursHTML+=`<div class="cal-time-hour-lbl">${String(h).padStart(2,'0')}:00</div>`;
+  hoursEl.innerHTML=hoursHTML;
+  const daysEl=document.getElementById(mode==='week'?'weekDays':'dayDays');
+  const dayStart=8, dayEnd=23, hourPx=60;
+  const colHeight=(dayEnd-dayStart)*hourPx;
+  daysEl.innerHTML=days.map(d=>{
+    const isToday=d.getTime()===today.getTime();
+    const dow=(d.getDay()+6)%7;
+    const isWeekend=dow===5||dow===6;
+    let html=`<div class="cal-time-col${isToday?' today':''}${isWeekend?' weekend':''}" style="min-height:${colHeight}px">`;
+    for(let h=dayStart;h<dayEnd;h++)html+='<div class="cal-time-hourline"></div>';
+    if(isToday){
+      const now=new Date();
+      const minsFromStart=(now.getHours()-dayStart)*60+now.getMinutes();
+      if(minsFromStart>=0 && minsFromStart<=(dayEnd-dayStart)*60){
+        const topPx=minsFromStart*hourPx/60;
+        html+=`<div class="cal-time-now" style="left:0;right:0;top:${topPx}px"></div>`;
+      }
+    }
+    const dayMs=d.getTime();
+    const nextDayMs=dayMs+86400000;
+    const evs=allEvents.filter(ev=>{
+      const grp=groupForSource(ev.source);
+      if(!filterOn[grp])return false;
+      if(ev.is_all_day)return false;
+      const sa=new Date(ev.starts_at).getTime();
+      const ea=new Date(ev.ends_at).getTime();
+      return sa<nextDayMs && ea>dayMs;
+    }).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    evs.forEach(ev=>{
+      const sa=new Date(ev.starts_at);
+      const ea=new Date(ev.ends_at);
+      let startMin=Math.max(0,(sa.getHours()-dayStart)*60+sa.getMinutes());
+      let endMin=(ea.getHours()-dayStart)*60+ea.getMinutes();
+      if(sa.getTime()<dayMs)startMin=0;
+      if(ea.getTime()>nextDayMs)endMin=(dayEnd-dayStart)*60;
+      const top=startMin*hourPx/60;
+      const height=Math.max(20,(endMin-startMin)*hourPx/60);
+      if(top>(dayEnd-dayStart)*hourPx || top+height<0)return;
+      const bg=hexToBg(ev.color);
+      const timeStr=`${String(sa.getHours()).padStart(2,'0')}:${String(sa.getMinutes()).padStart(2,'0')}`;
+      html+=`<div class="cal-time-event" style="top:${top}px;height:${height}px;background:${bg};color:${ev.color};border-left-color:${ev.color}" onclick="event.stopPropagation();openEventFromChip('${esc(ev.id)}','${esc(ev.source)}')">
+        <span class="cal-time-event-time">${timeStr}</span>
+        <span class="cal-time-event-title">${esc(ev.title)}</span>
+      </div>`;
+    });
+    html+='</div>';
+    return html;
+  }).join('');
+  const allDayEl=document.getElementById(mode==='week'?'weekAllDayRow':'dayAllDayRow');
+  allDayEl.innerHTML=days.map(d=>{
+    const dayMs=d.getTime();
+    const nextDayMs=dayMs+86400000;
+    const evs=allEvents.filter(ev=>{
+      const grp=groupForSource(ev.source);
+      if(!filterOn[grp])return false;
+      if(!ev.is_all_day)return false;
+      const sa=new Date(ev.starts_at).getTime();
+      const ea=new Date(ev.ends_at).getTime();
+      return sa<nextDayMs && ea>dayMs;
+    });
+    return `<div class="cal-time-allday-cell">${evs.map(ev=>{const bg=hexToBg(ev.color);return `<div class="cal-time-allday-chip" style="background:${bg};color:${ev.color};border-left-color:${ev.color}" onclick="event.stopPropagation();openEventFromChip('${esc(ev.id)}','${esc(ev.source)}')">${esc(ev.title)}</div>`;}).join('')}</div>`;
+  }).join('');
+  setTimeout(()=>{
+    const scrollEl=document.getElementById(mode==='week'?'weekScroll':'dayScroll');
+    if(scrollEl){
+      const now=new Date();
+      const isToday=days.some(d=>d.getTime()===today.getTime());
+      if(isToday && now.getHours()>=8 && now.getHours()<=22){
+        const minsFromStart=(now.getHours()-8)*60+now.getMinutes();
+        scrollEl.scrollTop=Math.max(0, minsFromStart - 100);
+      } else scrollEl.scrollTop=0;
+    }
+  },50);
+}
+
 function hexToBg(hex){
   // делает полупрозрачный фон из hex
   if(!hex||hex[0]!=='#')return 'rgba(30,138,76,.1)';
@@ -520,7 +781,10 @@ function renderFilters(){
 }
 function toggleFilter(key){
   filterOn[key]=!filterOn[key];
-  renderMonth();renderFilters();renderUpcoming();
+  if(viewMode==='month')renderMonth();
+  else if(viewMode==='week')renderWeek();
+  else renderDay();
+  renderFilters();renderUpcoming();
 }
 
 /* ─── UPCOMING ─── */
