@@ -15573,11 +15573,11 @@ func createProject(db *sql.DB, ownerID int64, req createProjectRequest) (project
 	publicID := generateProjectPublicID()
 	var pid int64
 	err := db.QueryRow(`
-		INSERT INTO projects (public_id, owner_id, author_company_id, title, description, category, status, deadline, budget, cover_color, tags)
-		VALUES ($1, $2, NULLIF($3, 0)::bigint, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO projects (public_id, owner_id, author_company_id, title, description, category, status, deadline, budget, cover_color, cover_url, tags)
+		VALUES ($1, $2, NULLIF($3, 0)::bigint, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id`,
 		publicID, ownerID, req.CompanyID, title, description, strings.TrimSpace(req.Category), status,
-		req.Deadline, req.Budget, coverColor, tags,
+		req.Deadline, req.Budget, coverColor, strings.TrimSpace(req.CoverURL), tags,
 	).Scan(&pid)
 	if err != nil {
 		return project{}, err
@@ -15662,6 +15662,11 @@ func updateProject(db *sql.DB, viewerID int64, publicID string, req updateProjec
 		}
 		sets = append(sets, fmt.Sprintf("cover_color = $%d", argIdx))
 		args = append(args, cc)
+		argIdx++
+	}
+	if req.CoverURL != nil {
+		sets = append(sets, fmt.Sprintf("cover_url = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.CoverURL))
 		argIdx++
 	}
 	if req.Tags != nil {

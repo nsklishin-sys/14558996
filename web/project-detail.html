@@ -1763,7 +1763,10 @@ async function loadStages(){
       }).join('');
 
       const addSubtaskInput = viewerCanManage
-        ? `<input class="subtask-add-input" placeholder="+ добавить подзадачу (Enter)" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask(${s.id}, this)}">`
+        ? `<div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+            <input class="subtask-add-input" placeholder="+ добавить подзадачу" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask(${s.id}, this)}">
+            <button type="button" onclick="addSubtask(${s.id}, this.previousElementSibling)" style="padding:7px 12px;border-radius:8px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Добавить</button>
+          </div>`
         : '';
 
       const subtasksHTML = (subtasks.length || viewerCanManage)
@@ -2242,8 +2245,8 @@ function openProjectEditModal(){
   document.getElementById('peDescription').value = currentProject.description || '';
   if (cat) cat.value = currentProject.category || '';
   document.getElementById('peStatus').value = currentProject.status || 'planned';
-  document.getElementById('peDeadline').value = currentProject.deadline_date
-    ? String(currentProject.deadline_date).slice(0, 10)
+  document.getElementById('peDeadline').value = currentProject.deadline
+    ? String(currentProject.deadline).slice(0, 10)
     : '';
   document.getElementById('peTags').value = Array.isArray(currentProject.tags)
     ? currentProject.tags.join(', ')
@@ -2270,12 +2273,13 @@ async function submitProjectEdit(){
   const tagsRaw = document.getElementById('peTags').value;
   const tags = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
 
+  const _dl = document.getElementById('peDeadline').value;
   const body = {
     title: title,
     description: document.getElementById('peDescription').value.trim(),
     category: document.getElementById('peCategory').value || '',
     status: document.getElementById('peStatus').value || 'planned',
-    deadline_date: document.getElementById('peDeadline').value || null,
+    deadline: _dl ? new Date(_dl + 'T00:00:00Z').toISOString() : null,
     tags: tags
   };
 
