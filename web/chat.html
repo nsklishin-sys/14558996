@@ -149,6 +149,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 
 /* Шапка чата */
+.chat-dropzone{position:absolute;inset:0;background:rgba(30,138,76,.12);border:3px dashed var(--g);border-radius:14px;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--g);pointer-events:none;z-index:50}
+.chat-dropzone.active{display:flex}
 .chat-head{
   padding:12px 16px;border-bottom:1px solid var(--bdr);
   display:flex;align-items:center;gap:12px;flex-shrink:0;background:var(--w)
@@ -279,7 +281,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .msg-as-user{font-size:10px;color:var(--gmt);margin-top:3px;padding:0 4px;font-style:italic;opacity:.85;line-height:1.2}
 .msg.me .msg-as-user{text-align:right}
 .msg-av{background-size:cover;background-position:center}
-.compose-as-banner{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--gp);border-top:1px solid var(--bdr);font-size:11px;color:var(--gmt);flex-shrink:0}
+.compose-as-banner{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--gp);border-top:1px solid var(--bdr);font-size:11px;color:var(--gmt);flex-shrink:0;overflow:hidden;min-width:0}
+.compose-as-banner > span,.compose-as-banner > div:not(.cab-av):not(.cab-reset){min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .compose-as-banner .cab-av{width:20px;height:20px;border-radius:6px;flex-shrink:0;background-size:cover;background-position:center;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:800}
 .compose-as-banner b{color:var(--t);font-weight:700}
 .compose-as-banner .cab-reset{margin-left:auto;background:transparent;border:1px solid var(--bdr);border-radius:6px;padding:3px 9px;font-family:inherit;font-size:10px;font-weight:600;color:var(--gmt);cursor:pointer}
@@ -590,7 +593,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* Табы вложений */
 .ip-tabs{
   display:flex;gap:4px;padding:10px 16px 0;border-bottom:1px solid var(--bdr);
-  overflow-x:auto;scrollbar-width:none
+  overflow-x:auto;scrollbar-width:none;flex-shrink:0;min-width:0;max-width:100%
 }
 .ip-tabs::-webkit-scrollbar{display:none}
 .ip-tab{
@@ -993,7 +996,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="nd-pane" id="nd-group"><input class="nd-input" id="ndGroupTitle" placeholder="Название группы"><input class="nd-search" id="ndGroupSearch" placeholder="Добавить участников…" oninput="ndSearchForGroup(this.value)"><div class="nd-list" id="ndGroupList"></div><div class="nd-selected" id="ndGroupSelected"></div><button class="nd-submit" onclick="ndCreateGroup()">Создать группу</button></div>
   </div>
 </div>
-<input id="chatHiddenFile" type="file" hidden accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt">
+<input id="chatHiddenFile" type="file" hidden multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt">
 <div class="emoji-picker" id="emojiPicker"></div>
 <div class="toast" id="toast"></div>
 
@@ -1697,7 +1700,14 @@ async function doForward(targetPublicID){
   const m=state.messages.find(x=>x.id===_fwdMsgId);
   if(!m){closeForward();return;}
   try{
-    const body={content:m.content||''};
+    // Добавляем указание автора оригинального сообщения в виде префикса.
+    const author = m.author_name || 'Пользователь';
+    const origContent = m.content || '';
+    const content = origContent
+      ? `↪ Переслано от ${author}:
+${origContent}`
+      : `↪ Переслано от ${author}`;
+    const body={content};
     if(m.attachment_url){
       body.attachment_url=m.attachment_url;
       body.attachment_name=m.attachment_name;
@@ -1863,6 +1873,47 @@ async function sendFriendRequest(){
     showToast('Не удалось выполнить действие');
   }
 }
+// ── Drag-n-drop файлов в чат ─────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const chatArea = document.querySelector('.chat');
+  if (!chatArea) return;
+  // Overlay
+  const dz = document.createElement('div');
+  dz.className = 'chat-dropzone';
+  dz.textContent = '📎 Отпустите файлы здесь';
+  chatArea.style.position = 'relative';
+  chatArea.appendChild(dz);
+  let dragCounter = 0;
+  chatArea.addEventListener('dragenter', e => {
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types||[]).includes('Files')) return;
+    e.preventDefault();
+    dragCounter++;
+    dz.classList.add('active');
+  });
+  chatArea.addEventListener('dragover', e => {
+    if (!Array.from(e.dataTransfer?.types||[]).includes('Files')) return;
+    e.preventDefault();
+  });
+  chatArea.addEventListener('dragleave', e => {
+    dragCounter--;
+    if (dragCounter <= 0) {dragCounter = 0; dz.classList.remove('active');}
+  });
+  chatArea.addEventListener('drop', async e => {
+    e.preventDefault();
+    dragCounter = 0;
+    dz.classList.remove('active');
+    if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
+    const files = Array.from(e.dataTransfer?.files || []);
+    if (!files.length) return;
+    state.uploading = true;
+    showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
+    for (const f of files) await uploadAndSendFile(f);
+    state.uploading = false;
+    await loadMessages();
+    await loadConversations();
+  });
+});
+
 // ── Вложения ─────────────────────────────────────────────────────
 let pendingAttachment = null; // {url, name, size, type} — файл готов к отправке
 
@@ -1871,11 +1922,56 @@ function triggerAttach(){
   chatHiddenFile.click();
 }
 
+async function uploadAndSendFile(file){
+  // Лимит: видео — 100 МБ, остальное — 25 МБ
+  const isVideo = (file.type||'').startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+  const maxBytes = isVideo ? 100*1024*1024 : 25*1024*1024;
+  if (file.size > maxBytes) {
+    showToast(isVideo ? `${file.name}: видео слишком большое (макс. 100 МБ)` : `${file.name}: файл слишком большой (макс. 25 МБ)`);
+    return;
+  }
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') },
+      body: fd
+    });
+    if (!r.ok) {
+      const errData = await r.json().catch(() => ({}));
+      throw new Error(errData.error || 'Загрузка не удалась');
+    }
+    const data = await r.json();
+    // Отправляем сообщение сразу с этим вложением (без захода в pendingAttachment)
+    await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method:'POST', body:{
+      content: '',
+      attachment_url: data.url || data.file_url || '',
+      attachment_name: file.name,
+      attachment_type: file.type || '',
+      attachment_size: file.size,
+      reply_to_id: null
+    }});
+  } catch(e) {
+    showToast(`Не удалось отправить ${file.name}: ${e.message||e}`);
+  }
+}
+
 chatHiddenFile?.addEventListener('change', async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  // Сбрасываем input чтобы можно было выбрать тот же файл повторно
+  const files = e.target.files;
+  if (!files || !files.length) return;
   e.target.value = '';
+  if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
+  state.uploading = true;
+  showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
+  // Последовательная загрузка (надёжнее чем параллельно при больших файлах)
+  for (const f of files) await uploadAndSendFile(f);
+  state.uploading = false;
+  await loadMessages();
+  await loadConversations();
+  return;
+  // ↓ старая логика (одиночный файл с превью) оставлена ниже, не выполняется
+  const file = files[0];
 
   // Лимит: видео — 100 МБ, остальное — 25 МБ
   const isVideo = (file.type||'').startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
