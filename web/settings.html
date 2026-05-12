@@ -1171,16 +1171,32 @@ function updateWebsiteField(){
   websiteInput.value=(document.getElementById('emailField')?.value||'').trim();
 }
 
-function previewAvatar(input){
+async function previewAvatar(input){
   const file=input.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    pendingAvatarURL=String(reader.result||'');
-    const av=document.getElementById('avatarPreview');
+  if(file.size>5*1024*1024){showToast('Файл слишком большой (макс 5 МБ)','error');return;}
+  if(!file.type.startsWith('image/')){showToast('Можно загружать только изображения','error');return;}
+  // Локальный превью пока идёт upload
+  const localPreview=URL.createObjectURL(file);
+  const av=document.getElementById('avatarPreview');
+  av.innerHTML=`<img src="${localPreview}" alt="avatar">`;
+  av.style.background='transparent';
+  // Реальный upload в /api/upload
+  try{
+    const fd=new FormData();
+    fd.append('file',file);
+    const r=await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    if(!r.ok){throw new Error(await r.text()||'Upload error');}
+    const d=await r.json();
+    pendingAvatarURL=d.url||d.file_url||'';
+    if(!pendingAvatarURL)throw new Error('Сервер не вернул URL файла');
+    URL.revokeObjectURL(localPreview);
     av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;
-    av.style.background='transparent';
-  };
-  reader.readAsDataURL(file);
+  }catch(e){
+    URL.revokeObjectURL(localPreview);
+    showToast('Не удалось загрузить файл: '+(e.message||e),'error');
+    pendingAvatarURL=currentUser.avatar_url||'';
+    if(pendingAvatarURL){av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;}else{av.innerHTML='';av.textContent=initials(currentUser.full_name||'?');av.style.background=avc(currentUser.full_name||'?');}
+  }
 }
 
 /* ── ДРОПДАУН ПРОФИЛЯ ── */
