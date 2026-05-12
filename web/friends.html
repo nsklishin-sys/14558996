@@ -377,7 +377,7 @@ function renderAll(){
   document.getElementById('sideStatFriends').textContent=friends.length||'0';
   document.getElementById('sideStatIncoming').textContent=incoming.length||'0';
   document.getElementById('sideStatOutgoing').textContent=outgoing.length||'0';
-  document.getElementById('ddFriendsCount').textContent=friends.length||'0';
+  const ddFr=document.getElementById('pddFriends');if(ddFr)ddFr.textContent=friends.length||'0';
 
   // Подсветка входящих если есть
   if(incoming.length>0){
@@ -537,7 +537,7 @@ async function removeFriend(id,name,btn){
     friends=friends.filter(f=>(f.friend_id||f.user_id)!==id);
     document.getElementById('cntFriends').textContent=friends.length;
     document.getElementById('sideStatFriends').textContent=friends.length;
-    document.getElementById('ddFriendsCount').textContent=friends.length;
+    const ddFr=document.getElementById('pddFriends');if(ddFr)ddFr.textContent=friends.length;
   }catch(e){toast(e.message,'err')}
 }
 

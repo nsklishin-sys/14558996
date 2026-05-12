@@ -204,6 +204,32 @@
     const avatarUrl = u.avatar_url || '';
     setAv('topbarAv', ltr, color, avatarUrl);
     setAv('pddAv', ltr, color, avatarUrl);
+    loadDropdownCounters();
+  }
+
+  async function loadDropdownCounters() {
+    let token = '';
+    try { token = localStorage.getItem('token') || ''; } catch {}
+    if (!token) return;
+    const headers = { Authorization: 'Bearer ' + token };
+    try {
+      const r = await fetch('/api/friends', { headers });
+      if (r.ok) {
+        const d = await r.json();
+        const n = (d.friends || []).length;
+        const el = document.getElementById('pddFriends');
+        if (el) el.textContent = String(n);
+      }
+    } catch {}
+    try {
+      const r = await fetch('/api/communities?filter=my', { headers });
+      if (r.ok) {
+        const d = await r.json();
+        const n = (d.communities || []).length;
+        const el = document.getElementById('pddComm');
+        if (el) el.textContent = String(n);
+      }
+    } catch {}
   }
 
   async function refreshUserFromServer() {
