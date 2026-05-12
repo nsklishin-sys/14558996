@@ -6555,6 +6555,7 @@ func main() {
 			}
 
 			if len(parts) == 4 && parts[3] == "respond" {
+				_ = r // для совместимости, r нужен в respondToNeed
 				needID, err := strconv.ParseInt(parts[2], 10, 64)
 				if err != nil {
 					writeError(w, http.StatusBadRequest, "Некорректный id потребности")
@@ -6573,7 +6574,7 @@ func main() {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
 					return
 				}
-				resp, err := respondToNeed(db, needID, responderID, req)
+				resp, err := respondToNeed(db, r, needID, responderID, req)
 				if err != nil {
 					handleProjectActionError(w, err)
 					return
@@ -16275,7 +16276,7 @@ func deleteProjectNeed(db *sql.DB, projectID, needID, actorID int64) error {
 	return nil
 }
 
-func respondToNeed(db *sql.DB, needID, responderID int64, req respondToNeedRequest) (needResponse, error) {
+func respondToNeed(db *sql.DB, r *http.Request, needID, responderID int64, req respondToNeedRequest) (needResponse, error) {
 	message := strings.TrimSpace(req.Message)
 	if utf8.RuneCountInString(message) < 1 || utf8.RuneCountInString(message) > 2000 {
 		return needResponse{}, fmt.Errorf("%w: сообщение 1..2000 символов", errValidation)
@@ -16317,15 +16318,18 @@ func respondToNeed(db *sql.DB, needID, responderID int64, req respondToNeedReque
 		return needResponse{}, err
 	}
 
-	chatID, err := findOrCreateDirectChat(db, responderID, ownerID)
+	// Получаем public_id владельца, чтобы переиспользовать обычный create-диалог,
+	// который правильно заполняет participant_kind/participant_id/owner_kind/owner_id.
+	var ownerPublicID string
+	if err := db.QueryRow(`SELECT public_id FROM users WHERE id = $1`, ownerID).Scan(&ownerPublicID); err != nil {
+		return needResponse{}, fmt.Errorf("владелец: %v", err)
+	}
+	conv, err := findOrCreateDirectConversation(db, r, responderID, ownerPublicID)
 	if err != nil {
 		return needResponse{}, fmt.Errorf("чат: %v", err)
 	}
-
-	var chatPublicID string
-	if err := db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id = $1`, chatID).Scan(&chatPublicID); err != nil {
-		return needResponse{}, err
-	}
+	chatID := conv.ID
+	chatPublicID := conv.PublicID
 
 	fullMessage := "📋 Отклик на «" + needTitle + "»\n\n" + message
 	_, err = sendMessage(db, responderID, chatPublicID, sendMessageRequest{Content: fullMessage})
