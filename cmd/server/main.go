@@ -5879,6 +5879,75 @@ func main() {
 				return
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"post": item})
+		case http.MethodPatch:
+			userID, hasAuth := authenticatedUserID(w, r, sessions)
+			if !hasAuth {
+				return
+			}
+			var req struct {
+				Title    *string  `json:"title"`
+				Content  *string  `json:"content"`
+				CoverURL *string  `json:"cover_url"`
+				Tags     []string `json:"tags"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				return
+			}
+			// Проверка: только автор может редактировать
+			var authorID int64
+			if err := db.QueryRow(`SELECT author_id FROM posts WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&authorID); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Публикация не найдена")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if authorID != userID {
+				writeError(w, http.StatusForbidden, "Можно редактировать только свои публикации")
+				return
+			}
+			// Обновляем только переданные поля
+			sets := []string{}
+			args := []any{}
+			argN := 1
+			if req.Title != nil {
+				sets = append(sets, fmt.Sprintf("title=$%d", argN))
+				args = append(args, strings.TrimSpace(*req.Title))
+				argN++
+			}
+			if req.Content != nil {
+				sets = append(sets, fmt.Sprintf("content=$%d", argN))
+				args = append(args, strings.TrimSpace(*req.Content))
+				argN++
+			}
+			if req.CoverURL != nil {
+				sets = append(sets, fmt.Sprintf("cover_url=NULLIF($%d,'')", argN))
+				args = append(args, *req.CoverURL)
+				argN++
+			}
+			if req.Tags != nil {
+				sets = append(sets, fmt.Sprintf("tags=$%d::text[]", argN))
+				args = append(args, pgtype.FlatArray[string](req.Tags))
+				argN++
+			}
+			if len(sets) == 0 {
+				writeError(w, http.StatusBadRequest, "Нечего обновлять")
+				return
+			}
+			sets = append(sets, "updated_at=NOW()")
+			args = append(args, publicID)
+			query := fmt.Sprintf(`UPDATE posts SET %s WHERE public_id=$%d`, strings.Join(sets, ", "), argN)
+			if _, err := db.Exec(query, args...); err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось обновить")
+				return
+			}
+			item, err := getPostByID(db, publicID, userID, true, false)
+			if err != nil {
+				handlePostActionError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"post": item})
 		case http.MethodDelete:
 			userID, hasAuth := authenticatedUserID(w, r, sessions)
 			if !hasAuth {
