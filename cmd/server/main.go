@@ -7664,9 +7664,19 @@ func main() {
 				Skills          []string `json:"skills"`
 				Education       string   `json:"education"`
 				Contacts        string   `json:"contacts"`
+				CommunityID     *int64   `json:"community_id,omitempty"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			reqCommID := int64(0)
+			if req.CommunityID != nil {
+				reqCommID = *req.CommunityID
+			}
+			resolvedCommunityID, err := resolveActiveCommunityID(db, r, userID, reqCommID)
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не можете публиковать от лица этого сообщества"})
 				return
 			}
 			req.Title = strings.TrimSpace(req.Title)
@@ -7704,10 +7714,10 @@ func main() {
 			publicID := generateResumePublicID()
 			var newID int64
 			err = db.QueryRow(`
-				INSERT INTO resumes (public_id, author_user_id, title, about, category, city, work_format, salary_from, salary_currency, experience_years, employment_type, status, skills, education, contacts)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+				INSERT INTO resumes (public_id, author_user_id, community_id, title, about, category, city, work_format, salary_from, salary_currency, experience_years, employment_type, status, skills, education, contacts)
+				VALUES ($1,$2,NULLIF($3,0)::bigint,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 				RETURNING id
-			`, publicID, userID, req.Title, req.About, req.Category, req.City, req.WorkFormat,
+			`, publicID, userID, resolvedCommunityID, req.Title, req.About, req.Category, req.City, req.WorkFormat,
 				req.SalaryFrom, req.SalaryCurrency, req.ExperienceYears, req.EmploymentType, req.Status,
 				pgtype.FlatArray[string](req.Skills), req.Education, req.Contacts,
 			).Scan(&newID)
