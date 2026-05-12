@@ -915,7 +915,15 @@ function renderCommunityProfile(c){
       avatar.textContent=persona.icon;
     }
   }
-  const banner=document.getElementById('heroBannerBg');if(banner)banner.style.background=persona.gradient;
+  const banner=document.getElementById('heroBannerBg');
+  if(banner){
+    const cu=c.cover_url||'';
+    if(cu && (cu.startsWith('http://')||cu.startsWith('https://')||cu.startsWith('/uploads/'))){
+      banner.style.background=`url('${esc(cu)}') center/cover no-repeat`;
+    }else{
+      banner.style.background=persona.gradient;
+    }
+  }
   const tagsWrap=document.getElementById('communityTags');
   if(tagsWrap){tagsWrap.innerHTML=tags.length?tags.map(t=>`<span class="hero-tag">${esc(t)}</span>`).join(''):'<span class="hero-tag">без тегов</span>'}
   const membersCount=Number.isFinite(Number(c.members_count))?Math.max(0,Number(c.members_count)):0;
