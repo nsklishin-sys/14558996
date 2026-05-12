@@ -1172,8 +1172,15 @@ type postComment struct {
 }
 
 type createCommentRequest struct {
-	Content  string `json:"content"`
-	ParentID *int64 `json:"parent_id,omitempty"`
+	Content  string                `json:"content"`
+	ParentID *int64                `json:"parent_id,omitempty"`
+	Quoted   *quotedCommentPayload `json:"quoted,omitempty"`
+}
+
+type quotedCommentPayload struct {
+	ID   *int64 `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+	Text string `json:"text,omitempty"`
 }
 
 type sessionStore struct {
@@ -1207,58 +1214,58 @@ const sessionLifetime = 30 * 24 * time.Hour
 // Centralized here so they can be tuned in one place.
 const (
 	// Auth & account
-	rateLimitAuth                  = 10
-	rateLimitAuthWindow            = time.Minute
-	rateLimitForgotPassword        = 3
-	rateLimitForgotPasswordWindow  = time.Hour
-	rateLimitResetPassword         = 5
-	rateLimitResetPasswordWindow   = time.Hour
-	rateLimitResendVerify          = 3
-	rateLimitResendVerifyWindow    = time.Hour
-	rateLimitAccountChange         = 5
-	rateLimitAccountChangeWindow   = time.Hour
-	rateLimitAccountDelete         = 3
-	rateLimitAccountDeleteWindow   = 24 * time.Hour
-	rateLimitHandleCheck           = 30
-	rateLimitHandleCheckWindow     = time.Minute
-	rateLimitHandleUpdate          = 5
-	rateLimitHandleUpdateWindow    = 24 * time.Hour
+	rateLimitAuth                 = 10
+	rateLimitAuthWindow           = time.Minute
+	rateLimitForgotPassword       = 3
+	rateLimitForgotPasswordWindow = time.Hour
+	rateLimitResetPassword        = 5
+	rateLimitResetPasswordWindow  = time.Hour
+	rateLimitResendVerify         = 3
+	rateLimitResendVerifyWindow   = time.Hour
+	rateLimitAccountChange        = 5
+	rateLimitAccountChangeWindow  = time.Hour
+	rateLimitAccountDelete        = 3
+	rateLimitAccountDeleteWindow  = 24 * time.Hour
+	rateLimitHandleCheck          = 30
+	rateLimitHandleCheckWindow    = time.Minute
+	rateLimitHandleUpdate         = 5
+	rateLimitHandleUpdateWindow   = 24 * time.Hour
 
 	// Content
-	rateLimitPost                  = 10
-	rateLimitPostWindow            = time.Minute
-	rateLimitComment               = 30
-	rateLimitCommentWindow         = time.Minute
+	rateLimitPost          = 10
+	rateLimitPostWindow    = time.Minute
+	rateLimitComment       = 30
+	rateLimitCommentWindow = time.Minute
 
 	// Communities
-	rateLimitCommunityCreate       = 5
-	rateLimitCommunityCreateWindow = time.Hour
-	rateLimitCommunityPost         = 20
-	rateLimitCommunityPostWindow   = time.Hour
-	rateLimitCommunityJoinReq      = 10
+	rateLimitCommunityCreate        = 5
+	rateLimitCommunityCreateWindow  = time.Hour
+	rateLimitCommunityPost          = 20
+	rateLimitCommunityPostWindow    = time.Hour
+	rateLimitCommunityJoinReq       = 10
 	rateLimitCommunityJoinReqWindow = time.Hour
 
 	// Events
-	rateLimitEventCreate           = 5
-	rateLimitEventCreateWindow     = time.Hour
-	rateLimitEventRegister         = 30
-	rateLimitEventRegisterWindow   = time.Minute
-	rateLimitEventSave             = 60
-	rateLimitEventSaveWindow       = time.Minute
-	rateLimitEventPatch            = 30
-	rateLimitEventPatchWindow      = time.Hour
-	rateLimitEventDelete           = 10
-	rateLimitEventDeleteWindow     = 24 * time.Hour
+	rateLimitEventCreate         = 5
+	rateLimitEventCreateWindow   = time.Hour
+	rateLimitEventRegister       = 30
+	rateLimitEventRegisterWindow = time.Minute
+	rateLimitEventSave           = 60
+	rateLimitEventSaveWindow     = time.Minute
+	rateLimitEventPatch          = 30
+	rateLimitEventPatchWindow    = time.Hour
+	rateLimitEventDelete         = 10
+	rateLimitEventDeleteWindow   = 24 * time.Hour
 
 	// Search & chat
-	rateLimitSearch                = 60
-	rateLimitSearchWindow          = time.Minute
-	rateLimitChatMessage           = 60
-	rateLimitChatMessageWindow     = time.Minute
-	rateLimitChatTyping            = 20
-	rateLimitChatTypingWindow      = time.Minute
-	rateLimitChatCreate            = 10
-	rateLimitChatCreateWindow      = time.Minute
+	rateLimitSearch            = 60
+	rateLimitSearchWindow      = time.Minute
+	rateLimitChatMessage       = 60
+	rateLimitChatMessageWindow = time.Minute
+	rateLimitChatTyping        = 20
+	rateLimitChatTypingWindow  = time.Minute
+	rateLimitChatCreate        = 10
+	rateLimitChatCreateWindow  = time.Minute
 )
 
 var globalStatsCache = &statsCache{}
@@ -4377,15 +4384,15 @@ func main() {
 					continue
 				}
 				items = append(items, map[string]any{
-					"public_id":   pid,
-					"title":       title,
-					"description": desc,
-					"category":    cat,
-					"status":      status,
-					"cover_color": coverColor,
-					"cover_url":   coverURL,
-					"created_at":  createdAt,
-					"updated_at":  updatedAt,
+					"public_id":       pid,
+					"title":           title,
+					"description":     desc,
+					"category":        cat,
+					"status":          status,
+					"cover_color":     coverColor,
+					"cover_url":       coverURL,
+					"created_at":      createdAt,
+					"updated_at":      updatedAt,
 					"owner_public_id": ownerPid,
 					"owner_name":      ownerName,
 				})
@@ -4473,17 +4480,17 @@ func main() {
 					salary = salaryFrom.Int64
 				}
 				items = append(items, map[string]any{
-					"public_id":         pid,
-					"title":             title,
-					"about":             about,
-					"category":          cat,
-					"city":              city,
-					"work_format":       workFormat,
-					"salary_from":       salary,
-					"experience_years":  expYears,
-					"created_at":        createdAt,
-					"author_public_id":  authorPid,
-					"author_name":       authorName,
+					"public_id":        pid,
+					"title":            title,
+					"about":            about,
+					"category":         cat,
+					"city":             city,
+					"work_format":      workFormat,
+					"salary_from":      salary,
+					"experience_years": expYears,
+					"created_at":       createdAt,
+					"author_public_id": authorPid,
+					"author_name":      authorName,
 				})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"resumes": items})
@@ -19533,7 +19540,6 @@ func deleteEventMessage(db *sql.DB, eventPublicID string, msgID, userID int64) e
 	}, userID)
 	return nil
 }
-
 
 // ── Обсуждения выставок (Спринт 10.3-Б) ─────────────────────
 type exhibitionMessage struct {
