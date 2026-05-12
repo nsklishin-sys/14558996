@@ -1998,13 +1998,14 @@ async function uploadAndSendFile(file){
 chatHiddenFile?.addEventListener('change', async (e) => {
   console.log('[upload] change event fired');
   const files = e.target.files;
+  console.log('[upload] files count:', files?.length, 'activeConv:', state.activeConvPublicID);
   if (!files || !files.length) { console.log('[upload] no files'); return; }
   e.target.value = '';
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
   showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
   try {
-    for (const f of files) await uploadAndSendFile(f);
+    for (const f of files) { console.log('[upload] processing file:', f.name); await uploadAndSendFile(f); }
   } catch (e) {
     console.error('[upload] handler crashed', e);
   } finally {
