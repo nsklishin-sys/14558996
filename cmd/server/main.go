@@ -701,6 +701,7 @@ type createProjectRequest struct {
 	CoverURL    string     `json:"cover_url"`
 	Tags        []string   `json:"tags"`
 	CompanyID   int64      `json:"company_id"`
+	CommunityID int64      `json:"community_id"`
 }
 
 type updateProjectRequest struct {
@@ -6275,6 +6276,12 @@ func main() {
 				return
 			}
 			req.CompanyID = resolvedCompanyID
+			resolvedCommunityID, err := resolveActiveCommunityID(db, r, userID, req.CommunityID)
+			if err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "вы не состоите в этом сообществе"})
+				return
+			}
+			req.CommunityID = resolvedCommunityID
 			p, err := createProject(db, userID, req)
 			if err != nil {
 				if errors.Is(err, errValidation) {
@@ -15573,10 +15580,10 @@ func createProject(db *sql.DB, ownerID int64, req createProjectRequest) (project
 	publicID := generateProjectPublicID()
 	var pid int64
 	err := db.QueryRow(`
-		INSERT INTO projects (public_id, owner_id, author_company_id, title, description, category, status, deadline, budget, cover_color, cover_url, tags)
-		VALUES ($1, $2, NULLIF($3, 0)::bigint, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO projects (public_id, owner_id, author_company_id, community_id, title, description, category, status, deadline, budget, cover_color, cover_url, tags)
+		VALUES ($1, $2, NULLIF($3, 0)::bigint, NULLIF($4, 0)::bigint, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id`,
-		publicID, ownerID, req.CompanyID, title, description, strings.TrimSpace(req.Category), status,
+		publicID, ownerID, req.CompanyID, req.CommunityID, title, description, strings.TrimSpace(req.Category), status,
 		req.Deadline, req.Budget, coverColor, strings.TrimSpace(req.CoverURL), tags,
 	).Scan(&pid)
 	if err != nil {
