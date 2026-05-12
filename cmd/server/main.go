@@ -8927,6 +8927,12 @@ func main() {
 				if req.MaxUses < 0 || req.MaxUses > 1000 {
 					req.MaxUses = 1
 				}
+				// Лимит 10 активных приглашений на компанию
+				var activeCount int
+				if err := db.QueryRow(`SELECT COUNT(*) FROM company_invites WHERE company_id=$1 AND is_active=TRUE`, companyID).Scan(&activeCount); err == nil && activeCount >= 10 {
+					writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "Достигнут лимит — не более 10 активных приглашений. Деактивируйте старые."})
+					return
+				}
 				code := generateCompanyInviteCode()
 				var expiresAt sql.NullTime
 				if req.ExpiresInDays > 0 && req.ExpiresInDays <= 365 {
@@ -9293,6 +9299,12 @@ func main() {
 			log.Printf("acceptInvite update count: %v", err)
 			http.Error(w, "internal", http.StatusInternalServerError)
 			return
+		}
+		// Если лимит использований достигнут — деактивируем приглашение
+		if maxUses > 0 && usedCount+1 >= maxUses {
+			if _, err := tx.Exec(`UPDATE company_invites SET is_active=FALSE WHERE id=$1`, inviteID); err != nil {
+				log.Printf("acceptInvite auto-deactivate: %v", err)
+			}
 		}
 		if err := tx.Commit(); err != nil {
 			http.Error(w, "internal", http.StatusInternalServerError)
