@@ -1964,11 +1964,13 @@ chatHiddenFile?.addEventListener('change', async (e) => {
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
   showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
-  // Последовательная загрузка (надёжнее чем параллельно при больших файлах)
-  for (const f of files) await uploadAndSendFile(f);
-  state.uploading = false;
-  await loadMessages();
-  await loadConversations();
+  try {
+    for (const f of files) await uploadAndSendFile(f);
+  } finally {
+    state.uploading = false;
+  }
+  try { await loadMessages(); } catch {}
+  try { await loadConversations(); } catch {}
   return;
   // ↓ старая логика (одиночный файл с превью) оставлена ниже, не выполняется
   const file = files[0];
