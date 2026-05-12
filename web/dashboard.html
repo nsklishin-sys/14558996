@@ -1113,12 +1113,16 @@ function toggleFollow(btn){
   else{btn.classList.add('following');btn.textContent='Читаю';showToast('Подписались на источник ✓');}
 }
 
-/* ── АВТОРИЗАЦИЯ ── */
+/* ── АВТОРИЗАЦИЯ + ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА ── */
 (async()=>{
-  if(tk()){try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok)throw 0;
-    const{user={}}=await r.json();
+  // Запускаем оба запроса параллельно, не блокируем рендер ленты ожиданием /me
+  const mePromise = tk() ? fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}}).then(r=>r.ok?r.json():null).catch(()=>null) : Promise.resolve(null);
+  const feedPromise = fetch(API+'/feed?limit=30&type=news',{headers:{Authorization:'Bearer '+tk()}}).then(r=>r.ok?r.json():null).catch(()=>null);
+
+  // Обработка /me — обновляем юзера в топбаре когда придёт (не блокирует ленту)
+  mePromise.then(meData=>{
+    if(!meData)return;
+    const user=meData.user||{};
     const name=user.full_name||user.name||'Пользователь';
     const color=avc(name);const ltr=letter(name);
     ['topbarAv','pddAv','composeAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
@@ -1126,14 +1130,12 @@ function toggleFollow(btn){
     document.getElementById('topbarRole').textContent=(({owner:'Владелец',admin:'Админ',moderator:'Модератор',member:'Участник'})[user.role]||user.position||user.role||'Участник LASTOP');
     document.getElementById('pddName').textContent=name;
     document.getElementById('pddRole').textContent=(({owner:'Владелец',admin:'Админ',moderator:'Модератор',member:'Участник'})[user.role]||user.position||user.role||'Участник LASTOP');
-  }catch{}}
+  });
 
-  /* Загрузка с API */
+  // Ждём только feed (его блокировать нет смысла /me — топбар отрисуется когда сможет)
+  const d = await feedPromise;
   try{
-    const r=await fetch(API+'/feed?limit=30&type=news',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    if(d.posts&&d.posts.length){
+    if(d&&d.posts&&d.posts.length){
       allNews=d.posts.map(n=>{
         // Приоритет автора: community > company > user.
         // Если пост от лица сообщества или компании — имя автора-юзера
@@ -1149,7 +1151,7 @@ function toggleFollow(btn){
           displayAuthor = n.author_company_name;
           displayRole = 'Компания';
         } else {
-          displayAuthor = n.author || 'LASTOP';
+          displayAuthor = n.author || 'Пользователь';
           displayRole = n.author_role || '';
         }
         return {
@@ -1270,10 +1272,9 @@ async function loadTopSources(){
   }
 }
 
-document.addEventListener('DOMContentLoaded', function(){
-  loadTrends();
-  loadTopSources();
-});
+// Запускаем сразу, не ждём DOMContentLoaded — функции сами проверяют существование DOM-элементов
+loadTrends();
+loadTopSources();
 
 </script>
 <script src="/assets/copy-helper.js" defer></script>
