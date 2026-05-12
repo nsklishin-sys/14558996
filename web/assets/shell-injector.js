@@ -205,6 +205,24 @@
     setAv('topbarAv', ltr, color, avatarUrl);
     setAv('pddAv', ltr, color, avatarUrl);
     loadDropdownCounters();
+    // Если активен контекст компании/сообщества — применить его поверх личного
+    // (profile-context.js может ещё не догрузиться — повторяем через RAF несколько раз)
+    let _ctxTries = 0;
+    function tryApplyCtx(){
+      if (typeof window.__pcxApplyTopbar === 'function'){
+        window.__pcxApplyTopbar();
+      } else if (_ctxTries++ < 20){
+        setTimeout(tryApplyCtx, 60);
+      }
+    }
+    tryApplyCtx();
+    // Подписка на изменения контекста — обновлять топбар без перезагрузки
+    if (!window.__shellCtxBound){
+      window.__shellCtxBound = true;
+      window.addEventListener('lastop:context-changed', function(){
+        if (typeof window.__pcxApplyTopbar === 'function') window.__pcxApplyTopbar();
+      });
+    }
   }
 
   async function loadDropdownCounters() {
