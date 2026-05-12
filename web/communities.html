@@ -377,7 +377,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div><label class="mf-label">Email сообщества</label><input class="mf-input" id="mEmail" placeholder="team@example.com"></div>
         <div><label class="mf-label">Телефон</label><input class="mf-input" id="mPhone" placeholder="+7 ..."></div>
       </div>
-      <div><label class="mf-label">Аватар сообщества (URL)</label><input class="mf-input" id="mAvatarURL" placeholder="https://.../avatar.png"></div>
+      <div>
+        <label class="mf-label">Аватар сообщества (опционально)</label>
+        <div id="mAvatarPreview" style="display:none;position:relative;margin-bottom:8px;width:80px;height:80px;border-radius:14px;overflow:hidden;border:1px solid var(--bdr)">
+          <img id="mAvatarImg" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+          <button type="button" onclick="removeCommunityAvatar()" title="Удалить" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer">
+            <svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div id="mAvatarUploading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.55);align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">Загрузка…</div>
+        </div>
+        <button type="button" class="btn-cancel" onclick="document.getElementById('mAvatarInput').click()" style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Загрузить аватарку
+        </button>
+        <input type="file" id="mAvatarInput" accept="image/*" style="display:none" onchange="onCommunityAvatarSelected(event)">
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
@@ -645,7 +659,7 @@ function openCommunity(c){if(!c)return;location.href='/community-detail.html?id=
 
 /* ── МОДАЛКА СОЗДАНИЯ ── */
 function openModal(){document.getElementById('modalBg').classList.add('open')}
-function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');removeCommunityAvatar();}
 function closeJoinRequestModal(){document.getElementById('joinReqBg').classList.remove('open')}
 function selectPriv(type,card){
   selectedPriv=type;
@@ -753,6 +767,39 @@ function syncSidebar(){
       <button class="rc-btn" onclick="joinRec(${c.id})">Вступить</button>
     </div>`).join(''):'<div style="font-size:12px;color:var(--gmt);padding:6px 4px">Нет рекомендаций.</div>';
 }
+let communityAvatarUrl = '';
+async function onCommunityAvatarSelected(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value=''; return; }
+  if(file.size > 10*1024*1024){ toast('Макс. 10 МБ'); e.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('mAvatarImg').src = ev.target.result;
+    document.getElementById('mAvatarPreview').style.display = 'block';
+    document.getElementById('mAvatarUploading').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+  try{
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.url){ toast(d.error||'Не удалось загрузить'); removeCommunityAvatar(); return; }
+    communityAvatarUrl = d.url;
+    document.getElementById('mAvatarUploading').style.display = 'none';
+  }catch{
+    toast('Ошибка сети');
+    removeCommunityAvatar();
+  }finally{ e.target.value=''; }
+}
+function removeCommunityAvatar(){
+  communityAvatarUrl = '';
+  const p=document.getElementById('mAvatarPreview'); if(p) p.style.display='none';
+  const i=document.getElementById('mAvatarImg'); if(i) i.src='';
+  const u=document.getElementById('mAvatarUploading'); if(u) u.style.display='none';
+  const f=document.getElementById('mAvatarInput'); if(f) f.value='';
+}
+
 async function submitCommunity(){
   if(isCreatingCommunity)return;
   const name=(document.getElementById('mName')?.value||'').trim();
@@ -763,7 +810,7 @@ async function submitCommunity(){
   const website=(document.getElementById('mWebsite')?.value||'').trim();
   const email=(document.getElementById('mEmail')?.value||'').trim();
   const phone=(document.getElementById('mPhone')?.value||'').trim();
-  const avatar_url=(document.getElementById('mAvatarURL')?.value||'').trim();
+  const avatar_url=communityAvatarUrl||'';
   const tags=(document.getElementById('mTags')?.value||'').split(',').map(t=>t.trim()).filter(Boolean);
   const color=document.getElementById('mColor')?.value||selectedColor;
   const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
