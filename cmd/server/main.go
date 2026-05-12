@@ -1262,6 +1262,14 @@ const (
 	rateLimitEventDelete         = 10
 	rateLimitEventDeleteWindow   = 24 * time.Hour
 
+	// Personal calendar
+	rateLimitPersonalCalCreate       = 20
+	rateLimitPersonalCalCreateWindow = time.Hour
+	rateLimitPersonalCalPatch        = 60
+	rateLimitPersonalCalPatchWindow  = time.Hour
+	rateLimitPersonalCalDelete       = 20
+	rateLimitPersonalCalDeleteWindow = time.Hour
+
 	// Search & chat
 	rateLimitSearch            = 60
 	rateLimitSearchWindow      = time.Minute
@@ -1917,6 +1925,9 @@ func main() {
 	eventRegisterLimiter := newIPRateLimiter(rateLimitEventRegister, rateLimitEventRegisterWindow)
 	eventSaveLimiter := newIPRateLimiter(rateLimitEventSave, rateLimitEventSaveWindow)
 	eventPatchLimiter := newIPRateLimiter(rateLimitEventPatch, rateLimitEventPatchWindow)
+	personalCalCreateLimiter := newIPRateLimiter(rateLimitPersonalCalCreate, rateLimitPersonalCalCreateWindow)
+	personalCalPatchLimiter := newIPRateLimiter(rateLimitPersonalCalPatch, rateLimitPersonalCalPatchWindow)
+	personalCalDeleteLimiter := newIPRateLimiter(rateLimitPersonalCalDelete, rateLimitPersonalCalDeleteWindow)
 	eventDeleteLimiter := newIPRateLimiter(rateLimitEventDelete, rateLimitEventDeleteWindow)
 	searchLimiter := newIPRateLimiter(rateLimitSearch, rateLimitSearchWindow)
 
@@ -9657,6 +9668,369 @@ func main() {
 			"from":   from.Format(time.RFC3339),
 			"to":     to.Format(time.RFC3339),
 		})
+	})
+
+	// ═══════════════════════════════════════════════════════════════
+	// T13-CAL-3: CRUD личных событий календаря
+	// POST   /api/calendar/events           — создать
+	// GET    /api/calendar/events/{pcal_id} — получить одно
+	// PATCH  /api/calendar/events/{pcal_id} — изменить
+	// DELETE /api/calendar/events/{pcal_id} — soft delete
+	// ═══════════════════════════════════════════════════════════════
+	type personalCalEventDTO struct {
+		ID              string `json:"id"`
+		Title           string `json:"title"`
+		Description     string `json:"description"`
+		Kind            string `json:"kind"`
+		StartsAt        string `json:"starts_at"`
+		EndsAt          string `json:"ends_at"`
+		IsAllDay        bool   `json:"is_all_day"`
+		Color           string `json:"color"`
+		Location        string `json:"location"`
+		ReminderMinutes *int   `json:"reminder_minutes,omitempty"`
+		CreatedAt       string `json:"created_at"`
+		UpdatedAt       string `json:"updated_at"`
+	}
+
+	validKinds := map[string]bool{"personal": true, "meeting": true, "reminder": true, "deadline": true, "note": true}
+
+	parsePersonalCalTime := func(s string) (time.Time, error) {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return time.Time{}, fmt.Errorf("пустая дата")
+		}
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			return t, nil
+		}
+		if t, err := time.Parse("2006-01-02T15:04:05", s); err == nil {
+			return t, nil
+		}
+		if t, err := time.Parse("2006-01-02T15:04", s); err == nil {
+			return t, nil
+		}
+		if t, err := time.Parse("2006-01-02 15:04:05", s); err == nil {
+			return t, nil
+		}
+		if t, err := time.Parse("2006-01-02", s); err == nil {
+			return t, nil
+		}
+		return time.Time{}, fmt.Errorf("неверный формат даты")
+	}
+
+	scanPersonalCalEvent := func(row scanner, dto *personalCalEventDTO) error {
+		var pid, title, descr, kind, color, loc string
+		var sa, ea, created, updated time.Time
+		var allDay bool
+		var reminder sql.NullInt32
+		if err := row.Scan(&pid, &title, &descr, &kind, &sa, &ea, &allDay, &color, &loc, &reminder, &created, &updated); err != nil {
+			return err
+		}
+		dto.ID = pid
+		dto.Title = title
+		dto.Description = descr
+		dto.Kind = kind
+		dto.StartsAt = sa.Format(time.RFC3339)
+		dto.EndsAt = ea.Format(time.RFC3339)
+		dto.IsAllDay = allDay
+		dto.Color = color
+		dto.Location = loc
+		if reminder.Valid {
+			v := int(reminder.Int32)
+			dto.ReminderMinutes = &v
+		}
+		dto.CreatedAt = created.Format(time.RFC3339)
+		dto.UpdatedAt = updated.Format(time.RFC3339)
+		return nil
+	}
+
+	mux.HandleFunc("/api/calendar/events", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if !personalCalCreateLimiter.Allow(fmt.Sprintf("pcal-create:%d", userID)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток создания событий")
+			return
+		}
+		var req struct {
+			Title           string `json:"title"`
+			Description     string `json:"description"`
+			Kind            string `json:"kind"`
+			StartsAt        string `json:"starts_at"`
+			EndsAt          string `json:"ends_at"`
+			IsAllDay        bool   `json:"is_all_day"`
+			Color           string `json:"color"`
+			Location        string `json:"location"`
+			ReminderMinutes *int   `json:"reminder_minutes"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		title := strings.TrimSpace(req.Title)
+		if utf8.RuneCountInString(title) < 1 || utf8.RuneCountInString(title) > 200 {
+			writeError(w, http.StatusBadRequest, "Название: 1..200 символов")
+			return
+		}
+		descr := strings.TrimSpace(req.Description)
+		if utf8.RuneCountInString(descr) > 5000 {
+			writeError(w, http.StatusBadRequest, "Описание не более 5000 символов")
+			return
+		}
+		kind := strings.TrimSpace(req.Kind)
+		if kind == "" {
+			kind = "personal"
+		}
+		if !validKinds[kind] {
+			writeError(w, http.StatusBadRequest, "Недопустимый kind")
+			return
+		}
+		sa, err := parsePersonalCalTime(req.StartsAt)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректная дата начала")
+			return
+		}
+		ea, err := parsePersonalCalTime(req.EndsAt)
+		if err != nil {
+			ea = sa.Add(time.Hour)
+		}
+		if ea.Before(sa) {
+			ea = sa.Add(time.Hour)
+		}
+		color := strings.TrimSpace(req.Color)
+		if color == "" {
+			color = "#1E8A4C"
+		}
+		if len(color) > 16 {
+			color = color[:16]
+		}
+		loc := strings.TrimSpace(req.Location)
+		if utf8.RuneCountInString(loc) > 500 {
+			loc = string([]rune(loc)[:500])
+		}
+		var pid string
+		for i := 0; i < 5; i++ {
+			candidate, err := newPersonalCalendarID()
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			var reminderArg sql.NullInt32
+			if req.ReminderMinutes != nil && *req.ReminderMinutes >= 0 {
+				reminderArg = sql.NullInt32{Int32: int32(*req.ReminderMinutes), Valid: true}
+			}
+			_, err = db.Exec(`INSERT INTO personal_calendar_events (public_id, user_id, title, description, kind, starts_at, ends_at, is_all_day, color, location, reminder_minutes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, candidate, userID, title, descr, kind, sa, ea, req.IsAllDay, color, loc, reminderArg)
+			if err == nil {
+				pid = candidate
+				break
+			}
+			if strings.Contains(strings.ToLower(err.Error()), "unique") {
+				continue
+			}
+			log.Printf("calendar create: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось создать событие")
+			return
+		}
+		if pid == "" {
+			writeError(w, http.StatusInternalServerError, "Не удалось сгенерировать ID")
+			return
+		}
+		var dto personalCalEventDTO
+		row := db.QueryRow(`SELECT public_id, title, description, kind, starts_at, ends_at, is_all_day, color, location, reminder_minutes, created_at, updated_at FROM personal_calendar_events WHERE public_id=$1 AND user_id=$2`, pid, userID)
+		if err := scanPersonalCalEvent(row, &dto); err != nil {
+			log.Printf("calendar create read-back: %v", err)
+			writeError(w, http.StatusInternalServerError, "Создано, но не удалось прочитать")
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"event": dto})
+	})
+
+	mux.HandleFunc("/api/calendar/events/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/calendar/events/"), "/")
+		if rest == "" || !isValidPersonalCalendarID(rest) {
+			writeError(w, http.StatusBadRequest, "Некорректный id события")
+			return
+		}
+		publicID := rest
+		switch r.Method {
+		case http.MethodGet:
+			var dto personalCalEventDTO
+			row := db.QueryRow(`SELECT public_id, title, description, kind, starts_at, ends_at, is_all_day, color, location, reminder_minutes, created_at, updated_at FROM personal_calendar_events WHERE public_id=$1 AND user_id=$2 AND is_deleted=FALSE`, publicID, userID)
+			if err := scanPersonalCalEvent(row, &dto); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Событие не найдено")
+					return
+				}
+				log.Printf("calendar get: %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"event": dto})
+		case http.MethodPatch:
+			if !personalCalPatchLimiter.Allow(fmt.Sprintf("pcal-patch:%d", userID)) {
+				writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+				return
+			}
+			var ownerID int64
+			err := db.QueryRow(`SELECT user_id FROM personal_calendar_events WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&ownerID)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeError(w, http.StatusNotFound, "Событие не найдено")
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if ownerID != userID {
+				writeError(w, http.StatusForbidden, "Это не ваше событие")
+				return
+			}
+			var req struct {
+				Title           *string `json:"title"`
+				Description     *string `json:"description"`
+				Kind            *string `json:"kind"`
+				StartsAt        *string `json:"starts_at"`
+				EndsAt          *string `json:"ends_at"`
+				IsAllDay        *bool   `json:"is_all_day"`
+				Color           *string `json:"color"`
+				Location        *string `json:"location"`
+				ReminderMinutes *int    `json:"reminder_minutes"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			sets := []string{"updated_at = NOW()"}
+			args := []any{publicID, userID}
+			n := 3
+			if req.Title != nil {
+				t := strings.TrimSpace(*req.Title)
+				if utf8.RuneCountInString(t) < 1 || utf8.RuneCountInString(t) > 200 {
+					writeError(w, http.StatusBadRequest, "Название: 1..200 символов")
+					return
+				}
+				sets = append(sets, fmt.Sprintf("title = $%d", n))
+				args = append(args, t)
+				n++
+			}
+			if req.Description != nil {
+				d := strings.TrimSpace(*req.Description)
+				if utf8.RuneCountInString(d) > 5000 {
+					writeError(w, http.StatusBadRequest, "Описание не более 5000 символов")
+					return
+				}
+				sets = append(sets, fmt.Sprintf("description = $%d", n))
+				args = append(args, d)
+				n++
+			}
+			if req.Kind != nil {
+				k := strings.TrimSpace(*req.Kind)
+				if !validKinds[k] {
+					writeError(w, http.StatusBadRequest, "Недопустимый kind")
+					return
+				}
+				sets = append(sets, fmt.Sprintf("kind = $%d", n))
+				args = append(args, k)
+				n++
+			}
+			if req.StartsAt != nil {
+				sa, err := parsePersonalCalTime(*req.StartsAt)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректная дата начала")
+					return
+				}
+				sets = append(sets, fmt.Sprintf("starts_at = $%d", n))
+				args = append(args, sa)
+				n++
+			}
+			if req.EndsAt != nil {
+				ea, err := parsePersonalCalTime(*req.EndsAt)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректная дата окончания")
+					return
+				}
+				sets = append(sets, fmt.Sprintf("ends_at = $%d", n))
+				args = append(args, ea)
+				n++
+			}
+			if req.IsAllDay != nil {
+				sets = append(sets, fmt.Sprintf("is_all_day = $%d", n))
+				args = append(args, *req.IsAllDay)
+				n++
+			}
+			if req.Color != nil {
+				c := strings.TrimSpace(*req.Color)
+				if len(c) > 16 {
+					c = c[:16]
+				}
+				sets = append(sets, fmt.Sprintf("color = $%d", n))
+				args = append(args, c)
+				n++
+			}
+			if req.Location != nil {
+				loc := strings.TrimSpace(*req.Location)
+				if utf8.RuneCountInString(loc) > 500 {
+					loc = string([]rune(loc)[:500])
+				}
+				sets = append(sets, fmt.Sprintf("location = $%d", n))
+				args = append(args, loc)
+				n++
+			}
+			if req.ReminderMinutes != nil {
+				if *req.ReminderMinutes < 0 {
+					sets = append(sets, "reminder_minutes = NULL")
+				} else {
+					sets = append(sets, fmt.Sprintf("reminder_minutes = $%d", n))
+					args = append(args, *req.ReminderMinutes)
+					n++
+				}
+			}
+			query := "UPDATE personal_calendar_events SET " + strings.Join(sets, ", ") + " WHERE public_id=$1 AND user_id=$2 AND is_deleted=FALSE"
+			if _, err := db.Exec(query, args...); err != nil {
+				if strings.Contains(strings.ToLower(err.Error()), "check") {
+					writeError(w, http.StatusBadRequest, "Дата окончания должна быть >= даты начала")
+					return
+				}
+				log.Printf("calendar patch: %v", err)
+				writeError(w, http.StatusInternalServerError, "Не удалось обновить")
+				return
+			}
+			var dto personalCalEventDTO
+			row := db.QueryRow(`SELECT public_id, title, description, kind, starts_at, ends_at, is_all_day, color, location, reminder_minutes, created_at, updated_at FROM personal_calendar_events WHERE public_id=$1 AND user_id=$2`, publicID, userID)
+			if err := scanPersonalCalEvent(row, &dto); err != nil {
+				log.Printf("calendar patch read-back: %v", err)
+				writeError(w, http.StatusInternalServerError, "Обновлено, но не удалось прочитать")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"event": dto})
+		case http.MethodDelete:
+			if !personalCalDeleteLimiter.Allow(fmt.Sprintf("pcal-delete:%d", userID)) {
+				writeError(w, http.StatusTooManyRequests, "Слишком много попыток")
+				return
+			}
+			res, err := db.Exec(`UPDATE personal_calendar_events SET is_deleted=TRUE, updated_at=NOW() WHERE public_id=$1 AND user_id=$2 AND is_deleted=FALSE`, publicID, userID)
+			if err != nil {
+				log.Printf("calendar delete: %v", err)
+				writeError(w, http.StatusInternalServerError, "Не удалось удалить")
+				return
+			}
+			affected, _ := res.RowsAffected()
+			if affected == 0 {
+				writeError(w, http.StatusNotFound, "Событие не найдено")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
 	})
 
 	mux.HandleFunc("/api/users/search", func(w http.ResponseWriter, r *http.Request) {
