@@ -772,8 +772,28 @@ function applyViewedUserProfile(u){
   document.querySelectorAll('.pc-av').forEach((av)=>{av.textContent=initials;av.style.background=color;});
   document.getElementById('profileAvatarText').textContent=initials;
   const _profAv = document.querySelector('.prof-av');
-  if (_profAv && !u.avatar_url) _profAv.style.background = color;
-  if (_profAv && u.avatar_url) _profAv.style.background = '';
+  if (_profAv) {
+    // Удаляем старый img (если перерисовываем)
+    _profAv.querySelectorAll('img.prof-av-img').forEach(i=>i.remove());
+    if (u.avatar_url) {
+      _profAv.style.background = '';
+      const img = document.createElement('img');
+      img.className = 'prof-av-img';
+      img.src = u.avatar_url;
+      img.alt = '';
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:0';
+      _profAv.style.position = _profAv.style.position || 'relative';
+      _profAv.style.overflow = 'hidden';
+      _profAv.insertBefore(img, _profAv.firstChild);
+      // Буквы прячем когда есть фото
+      const txt = document.getElementById('profileAvatarText');
+      if (txt) txt.style.display = 'none';
+    } else {
+      _profAv.style.background = color;
+      const txt = document.getElementById('profileAvatarText');
+      if (txt) txt.style.display = '';
+    }
+  }
   document.getElementById('profileFullName').textContent=fullName;
   const _shareBtnViewed = document.getElementById('btnShareViewedProfile');
   if (_shareBtnViewed) {
