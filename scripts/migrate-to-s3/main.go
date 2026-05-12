@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"greeting-site/internal/storage"
+	"lastop/internal/storage"
 )
 
 func main() {
