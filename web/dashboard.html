@@ -398,7 +398,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       <button class="ntab" onclick="setTab('Регуляторика',this)">Регуляторика</button>
       <button class="ntab" onclick="setTab('Технологии',this)">Технологии</button>
       <button class="ntab" onclick="setTab('Компании',this)">Компании</button>
-      <button class="ntab" onclick="setTab('Форум',this)">Форум</button>
+      <!-- A2.12: фильтр "Форум" убран из новостей -->
     </div>
     <button class="btn-write" onclick="openCompose()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -716,7 +716,7 @@ function renderCard(n,idx){
         <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isLiked?'fill="var(--red)"':''}></path></svg>
         <span id="lc-${escAttr(postKey)}">${n.likes+(isLiked?1:0)}</span>
       </button>
-      <button class="nc-action" onclick="showToast('Открываем комментарии…')">
+      <button class="nc-action" onclick="event.stopPropagation();openComments('${escAttr(postKey)}')">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         ${n.comments}
       </button>
@@ -724,10 +724,10 @@ function renderCard(n,idx){
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         ${n.shares}
       </button>
-      <button class="nc-action" onclick="showToast('Сохранено в закладки')">
+      <button class="nc-action" onclick="event.stopPropagation();toggleSave('${escAttr(postKey)}',this)">
         <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       </button>
-      <span class="nc-source">${esc(n.src)}</span>
+      ${n.src?`<span class="nc-source">${esc(n.src)}</span>`:''}
       <span class="nc-views" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${num(n.views)}</span>
     </div>
   </div>`;
@@ -812,6 +812,22 @@ async function toggleLike(postKey,btn){
   }catch{
     showToast('Не удалось поставить лайк');
   }
+}
+function openComments(postKey){
+  const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
+  if(!n||!n.public_id){showToast('Публикация недоступна');return;}
+  location.href='/news-detail.html?id='+encodeURIComponent(n.public_id)+'#comments';
+}
+async function toggleSave(postKey,btn){
+  const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
+  if(!n||!n.public_id){showToast('Публикация недоступна');return;}
+  try{
+    const r=await fetch(`${API}/posts/${encodeURIComponent(n.public_id)}/save`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){showToast(d.error||'Не удалось сохранить');return;}
+    if(d.is_saved){btn.classList.add('saved');btn.querySelector('svg path')?.setAttribute('fill','var(--g)');showToast('Сохранено в закладки');}
+    else{btn.classList.remove('saved');btn.querySelector('svg path')?.removeAttribute('fill');showToast('Убрано из закладок');}
+  }catch{showToast('Не удалось сохранить');}
 }
 function sharePost(postKey){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
@@ -975,7 +991,7 @@ async function submitPost(){
       title:p.title||'',text:p.text||p.content||'',
       img:p.cover_url||composeCoverUrl||'',
       views:p.views_count||0,likes:p.likes_count||0,comments:p.comments_count||0,shares:0,
-      ts:p.created_at||new Date().toISOString(),src:'LASTOP',type:p.type||'news',tags:p.tags||[]
+      ts:p.created_at||new Date().toISOString(),src:'',type:p.type||'news',tags:p.tags||[]
     });
     closeCompose();
     applyFilters();
@@ -1006,6 +1022,20 @@ async function loadHeroNews(){
     }
 
     document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + (post.author || 'LASTOP');
+    // A2.6 — устанавливаем фоновую картинку hero из cover_url если есть
+    const heroImg = document.getElementById('heroImg') || (function(){
+      const img = document.createElement('div');
+      img.id = 'heroImg';
+      img.style.cssText = 'width:100%;height:200px;border-radius:12px 12px 0 0;background-size:cover;background-position:center;margin-bottom:14px';
+      heroCard.insertBefore(img, heroCard.firstChild);
+      return img;
+    })();
+    if (post.cover_url) {
+      heroImg.style.backgroundImage = `url("${post.cover_url}")`;
+      heroImg.style.display = 'block';
+    } else {
+      heroImg.style.display = 'none';
+    }
     document.getElementById('heroTitle').textContent = post.title || '(без заголовка)';
     document.getElementById('heroText').textContent = (post.text || post.content || '').slice(0, 240);
     document.getElementById('heroName').textContent = post.author || 'LASTOP';
@@ -1136,7 +1166,7 @@ function toggleFollow(btn){
           comments: n.comments_count || 0,
           shares: 0,
           ts: n.created_at || new Date().toISOString(),
-          src: 'LASTOP',
+          src: '',
           type: n.type || 'news'
         };
       });

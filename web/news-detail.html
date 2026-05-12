@@ -965,7 +965,10 @@ function renderPost(p){
   const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
   const minutes = Math.max(1, Math.round(wordCount / 200));
   const rt = document.getElementById('readingTimeText');
-  if (rt) rt.textContent = minutes + ' мин чтения';
+  // Считаем по объёму контента (русский ~180 слов/мин). Минимум 1 минута.
+  const wordsCount = String(p.content || p.text || '').trim().split(/\s+/).filter(Boolean).length;
+  const calculatedMin = Math.max(1, Math.round(wordsCount / 180));
+  if (rt) rt.textContent = calculatedMin + ' мин чтения';
 
   // Обложка поста: если есть cover_url — заменяем плейсхолдер на картинку
   const imgWrap = document.querySelector('.news-img-wrap');
