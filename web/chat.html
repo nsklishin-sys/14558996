@@ -1391,9 +1391,14 @@ function refreshChatHeaderStatus(){
 
 function applyConversation(c){
   if(!c)return;
-  chatName.textContent=c.display_name;
-  chatAv.style.background=c.display_color;
-  chatAv.innerHTML=c.display_avatar?`<img src="${esc(c.display_avatar)}">`:letter(c.display_name);
+  chatName.textContent=c.display_name||'Диалог';
+  const color=c.display_color||avc(c.display_name||'?');
+  chatAv.style.background=color;
+  if(c.display_avatar){
+    chatAv.innerHTML=`<img src="${esc(c.display_avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`;
+  }else{
+    chatAv.innerHTML=`<span style="font-size:18px;font-weight:800;color:#fff">${esc(letter(c.display_name||'?'))}</span>`;
+  }
   const dot=document.getElementById('chatOnlineDot');
   if(dot)dot.style.display=(c.type==='direct'&&c.is_online)?'block':'none';
   if(c.type==='direct'){
