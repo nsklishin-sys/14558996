@@ -250,26 +250,84 @@
     const el = document.getElementById(id);
     if (el) el.textContent = v;
   }
-  function setAv(id, ltr, color, avatarUrl) {
+  // Глобальный helper — может вызываться и из shell-injector, и из страничных applyMe.
+  // Хранит avatar URL для каждого id чтобы переживать перезаписи textContent.
+  window.LASTOP_AVATARS = window.LASTOP_AVATARS || {};
+
+  window.LASTOP_SET_AV = function (id, ltr, color, avatarUrl) {
     const el = document.getElementById(id);
     if (!el) return;
-    // Всегда выставляем букву и цвет на родитель — даже если есть аватарка
-    // (страничные applyMe могут перезаписать background, но img внутри останется).
-    el.textContent = ltr;
-    el.style.background = color;
-    // Удаляем старый img если был
+    // Запоминаем актуальный avatar_url для этого элемента
+    if (avatarUrl !== undefined) {
+      window.LASTOP_AVATARS[id] = avatarUrl || '';
+    }
+    const url = window.LASTOP_AVATARS[id] || '';
+    // Базовая буква и цвет
+    if (ltr !== undefined && ltr !== null) {
+      // Записываем букву через textContent; если img снесут страничные скрипты,
+      // восстановим его через MutationObserver ниже.
+      el.textContent = ltr;
+    }
+    if (color) el.style.background = color;
+    // Удаляем старый img
     const old = el.querySelector('img.lastop-av-img');
     if (old) old.remove();
-    if (avatarUrl) {
+    if (url) {
       el.style.position = el.style.position || 'relative';
       el.style.overflow = 'hidden';
       const img = document.createElement('img');
       img.className = 'lastop-av-img';
-      img.src = avatarUrl;
+      img.src = url;
       img.alt = '';
       img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
       el.appendChild(img);
     }
+  };
+
+  // Локальная обёртка для совместимости
+  function setAv(id, ltr, color, avatarUrl) {
+    window.LASTOP_SET_AV(id, ltr, color, avatarUrl);
+  }
+
+  // Наблюдатель: если страничный applyMe перезаписал textContent (убив img),
+  // восстанавливаем img из LASTOP_AVATARS.
+  function watchAvatar(id) {
+    const el = document.getElementById(id);
+    if (!el || el._lastopWatched) return;
+    el._lastopWatched = true;
+    const observer = new MutationObserver(() => {
+      const url = window.LASTOP_AVATARS[id] || '';
+      if (!url) return;
+      if (!el.querySelector('img.lastop-av-img')) {
+        const img = document.createElement('img');
+        img.className = 'lastop-av-img';
+        img.src = url;
+        img.alt = '';
+        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
+        el.style.position = el.style.position || 'relative';
+        el.style.overflow = 'hidden';
+        el.appendChild(img);
+      }
+    });
+    observer.observe(el, { childList: true, characterData: true, subtree: true });
+  }
+
+  // Запускаем наблюдатель сразу при загрузке (без ожидания /api/me)
+  function bootstrapAvatarWatchers() {
+    ['topbarAv', 'pddAv'].forEach(watchAvatar);
+    // Если в localStorage уже есть user — мгновенно ставим аватарку без ожидания /me
+    try {
+      const cached = JSON.parse(localStorage.getItem('user') || 'null');
+      if (cached && cached.avatar_url) {
+        window.LASTOP_AVATARS['topbarAv'] = cached.avatar_url;
+        window.LASTOP_AVATARS['pddAv'] = cached.avatar_url;
+      }
+    } catch {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapAvatarWatchers);
+  } else {
+    bootstrapAvatarWatchers();
   }
 
   function bindDropdownHandlers() {
