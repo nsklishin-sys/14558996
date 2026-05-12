@@ -314,13 +314,15 @@
 
   // Запускаем наблюдатель сразу при загрузке (без ожидания /api/me)
   function bootstrapAvatarWatchers() {
-    ['topbarAv', 'pddAv'].forEach(watchAvatar);
+    ['topbarAv', 'pddAv', 'composeAv', 'profileAv'].forEach(watchAvatar);
     // Если в localStorage уже есть user — мгновенно ставим аватарку без ожидания /me
     try {
       const cached = JSON.parse(localStorage.getItem('user') || 'null');
       if (cached && cached.avatar_url) {
         window.LASTOP_AVATARS['topbarAv'] = cached.avatar_url;
         window.LASTOP_AVATARS['pddAv'] = cached.avatar_url;
+        window.LASTOP_AVATARS['composeAv'] = cached.avatar_url;
+        window.LASTOP_AVATARS['profileAv'] = cached.avatar_url;
       }
     } catch {}
   }

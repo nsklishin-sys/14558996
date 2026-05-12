@@ -869,13 +869,11 @@ function populateUI(){
   const name=currentUser.name||currentUser.full_name||'Пользователь';
   const color=avc(name);const ltr=letter(name);
   /* Топбар */
-  document.getElementById('topbarAv').textContent=ltr;
-  document.getElementById('topbarAv').style.background=color;
+  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{document.getElementById("topbarAv").textContent=ltr;document.getElementById("topbarAv").style.background=color;}
   document.getElementById('topbarName').textContent=name;
   document.getElementById('topbarRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
   /* Дропдаун профиля */
-  document.getElementById('pddAv').textContent=ltr;
-  document.getElementById('pddAv').style.background=color;
+  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{document.getElementById("pddAv").textContent=ltr;document.getElementById("pddAv").style.background=color;}
   document.getElementById('pddName').textContent=name;
   document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
   const selfProfileHref=profileHref(currentUser);

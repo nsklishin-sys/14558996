@@ -846,7 +846,7 @@ async function fetchCommunitiesByRegion(region){
     const name=user.full_name||user.name||'Пользователь';
     const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
     const color=C[name.charCodeAt(0)%C.length];const L=ltr(name);
-    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
+    ["topbarAv","pddAv"].forEach(id=>{if(window.LASTOP_SET_AV)window.LASTOP_SET_AV(id,L,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||"")); else{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color;}}});
     ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});
     const role=user.role||user.position||'Участник LASTOP';
     myRegion=(user.city||'').trim();

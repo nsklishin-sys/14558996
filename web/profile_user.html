@@ -660,7 +660,7 @@ function applyTopbarUser(){
   const role=u.position||u.role||'Участник LASTOP';
   const initials=avatarLetters(fullName);
   const color=userColor(fullName);
-  ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=initials;el.style.background=color;}});
+  ["topbarAv","pddAv"].forEach(id=>{if(window.LASTOP_SET_AV)window.LASTOP_SET_AV(id,initials,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||"")); else{const el=document.getElementById(id);if(el){el.textContent=initials;el.style.background=color;}}});
   ['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fullName;});
   ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role;});
 }
