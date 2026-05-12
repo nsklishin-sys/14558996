@@ -1138,23 +1138,25 @@ async function doRepostToFriend(friendPublicID, friendName){
   document.getElementById('repostDD')?.classList.remove('open');
   document.getElementById('repostDDBottom')?.classList.remove('open');
   if(!friendPublicID){toast('Не удалось определить получателя');return;}
-  const project = state.project || window.currentProject || null;
+  const project = window.currentProject || currentProject || null;
   const title = (project && project.title) || document.getElementById('projTitle')?.textContent || 'Проект';
   const url = location.href;
   const message = `📎 Делюсь проектом: ${title}
 ${url}`;
   try{
-    // Получаем/создаём direct-чат
     const dc = await fetch('/api/chat/conversations/direct', {
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
       body: JSON.stringify({user_public_id: friendPublicID})
     });
-    if(!dc.ok){toast('Не удалось открыть чат');return;}
+    if(!dc.ok){
+      const e = await dc.json().catch(()=>({}));
+      toast(e.error || 'Не удалось открыть чат');
+      return;
+    }
     const dd = await dc.json();
     const convPID = dd.conversation && dd.conversation.public_id;
     if(!convPID){toast('Не удалось открыть чат');return;}
-    // Шлём сообщение
     const r = await fetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
