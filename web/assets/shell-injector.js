@@ -323,15 +323,28 @@
 
   // Запускаем наблюдатель сразу при загрузке (без ожидания /api/me)
   function bootstrapAvatarWatchers() {
-    ['topbarAv', 'pddAv', 'composeAv', 'profileAv', 'heroAv', 'ipAv'].forEach(watchAvatar);
+    const ids = ['topbarAv', 'pddAv', 'composeAv', 'profileAv', 'heroAv', 'ipAv'];
+    ids.forEach(watchAvatar);
     // Если в localStorage уже есть user — мгновенно ставим аватарку без ожидания /me
     try {
       const cached = JSON.parse(localStorage.getItem('user') || 'null');
       if (cached && cached.avatar_url) {
-        window.LASTOP_AVATARS['topbarAv'] = cached.avatar_url;
-        window.LASTOP_AVATARS['pddAv'] = cached.avatar_url;
-        window.LASTOP_AVATARS['composeAv'] = cached.avatar_url;
-        window.LASTOP_AVATARS['profileAv'] = cached.avatar_url;
+        ids.forEach(id => {
+          window.LASTOP_AVATARS[id] = cached.avatar_url;
+          // Принудительно вставляем img сразу — даже если страничный applyMe
+          // уже отработал и стёр содержимое (textContent='НК').
+          const el = document.getElementById(id);
+          if (el && !el.querySelector('img.lastop-av-img')) {
+            const img = document.createElement('img');
+            img.className = 'lastop-av-img';
+            img.src = cached.avatar_url;
+            img.alt = '';
+            img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
+            el.style.position = el.style.position || 'relative';
+            el.style.overflow = 'hidden';
+            el.appendChild(img);
+          }
+        });
       }
     } catch {}
   }
