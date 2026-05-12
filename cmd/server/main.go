@@ -210,13 +210,17 @@ type friendDTO struct {
 	Email       string `json:"email"`
 	Position    string `json:"position,omitempty"`
 	CompanyName string `json:"company_name,omitempty"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
 	IsOnline    bool   `json:"is_online"`
 }
 
 type friendCandidateDTO struct {
-	ID       string `json:"id"`
-	FullName string `json:"full_name"`
-	Email    string `json:"email"`
+	ID          string `json:"id"`
+	FullName    string `json:"full_name"`
+	Email       string `json:"email"`
+	Position    string `json:"position,omitempty"`
+	CompanyName string `json:"company_name,omitempty"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
 type community struct {
@@ -13444,6 +13448,7 @@ func handleProjectActionError(w http.ResponseWriter, err error) {
 func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 	rows, err := db.Query(`
 		SELECT u.public_id, u.full_name, u.email,
+		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,''),
 		  EXISTS(
 		    SELECT 1 FROM sessions s
 		    WHERE s.user_id = u.id
@@ -13466,7 +13471,7 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 	var result []friendDTO
 	for rows.Next() {
 		var dto friendDTO
-		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.IsOnline); scanErr != nil {
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.Position, &dto.CompanyName, &dto.AvatarURL, &dto.IsOnline); scanErr != nil {
 			return nil, scanErr
 		}
 		result = append(result, dto)
@@ -13611,7 +13616,8 @@ func listUserExperiences(db *sql.DB, publicID string) ([]userExperience, error) 
 
 func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 	rows, err := db.Query(`
-		SELECT u.public_id, u.full_name, u.email
+		SELECT u.public_id, u.full_name, u.email,
+		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,'')
 		FROM friend_requests fr
 		JOIN users u ON u.id = fr.requester_id
 		WHERE fr.addressee_id = $1
@@ -13626,7 +13632,7 @@ func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 	var result []friendDTO
 	for rows.Next() {
 		var dto friendDTO
-		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email); scanErr != nil {
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.Position, &dto.CompanyName, &dto.AvatarURL); scanErr != nil {
 			return nil, scanErr
 		}
 		result = append(result, dto)
@@ -13636,7 +13642,8 @@ func listIncomingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 
 func listOutgoingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 	rows, err := db.Query(`
-		SELECT u.public_id, u.full_name, u.email
+		SELECT u.public_id, u.full_name, u.email,
+		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,'')
 		FROM friend_requests fr
 		JOIN users u ON u.id = fr.addressee_id
 		WHERE fr.requester_id = $1
@@ -13651,7 +13658,7 @@ func listOutgoingFriendRequests(db *sql.DB, userID int64) ([]friendDTO, error) {
 	var result []friendDTO
 	for rows.Next() {
 		var dto friendDTO
-		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email); scanErr != nil {
+		if scanErr := rows.Scan(&dto.FriendID, &dto.FriendName, &dto.Email, &dto.Position, &dto.CompanyName, &dto.AvatarURL); scanErr != nil {
 			return nil, scanErr
 		}
 		result = append(result, dto)
@@ -13667,9 +13674,11 @@ func listFriendCandidates(db *sql.DB, userID int64, query string) ([]friendCandi
 	)
 	if trimmed == "" {
 		rows, err = db.Query(`
-		SELECT u.public_id, u.full_name, u.email
+		SELECT u.public_id, u.full_name, u.email,
+		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,'')
 		FROM users u
 		WHERE u.id <> $1
+		  AND u.is_deleted = FALSE
 		  AND NOT EXISTS (
 		      SELECT 1
 		      FROM friend_requests fr
@@ -13686,9 +13695,11 @@ func listFriendCandidates(db *sql.DB, userID int64, query string) ([]friendCandi
 		esc := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(trimmed))
 		search := "%" + esc + "%"
 		rows, err = db.Query(`
-		SELECT u.public_id, u.full_name, u.email
+		SELECT u.public_id, u.full_name, u.email,
+		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,'')
 		FROM users u
 		WHERE u.id <> $1
+		  AND u.is_deleted = FALSE
 		  AND (
 		      LOWER(u.full_name) LIKE $2 ESCAPE '\'
 		      OR LOWER(u.email) LIKE $2 ESCAPE '\'
@@ -13713,7 +13724,7 @@ func listFriendCandidates(db *sql.DB, userID int64, query string) ([]friendCandi
 	var result []friendCandidateDTO
 	for rows.Next() {
 		var dto friendCandidateDTO
-		if scanErr := rows.Scan(&dto.ID, &dto.FullName, &dto.Email); scanErr != nil {
+		if scanErr := rows.Scan(&dto.ID, &dto.FullName, &dto.Email, &dto.Position, &dto.CompanyName, &dto.AvatarURL); scanErr != nil {
 			return nil, scanErr
 		}
 		result = append(result, dto)
@@ -13875,7 +13886,9 @@ func createFriendRequest(db *sql.DB, requesterID int64, targetPublicID string) e
 				SourceID:    requesterID,
 				Title:       title,
 			}); err != nil {
-				log.Printf("notif friend_request: %v", err)
+				log.Printf("notif friend_request FAILED for user %d (actor %d): %v", notifyTargetID, requesterID, err)
+			} else {
+				log.Printf("notif friend_request created: recipient=%d actor=%d", notifyTargetID, requesterID)
 			}
 		case "auto_accepted":
 			title := actorName + " принял вашу заявку в друзья"
