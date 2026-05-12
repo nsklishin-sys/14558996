@@ -220,6 +220,12 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .ci-textarea{width:100%;min-height:44px;max-height:160px;padding:10px 14px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:none;line-height:1.55;transition:border-color .2s,min-height .2s}
 .ci-textarea:focus{border-color:var(--gm);background:var(--w);min-height:80px}
 .ci-textarea::placeholder{color:var(--gmt)}
+.reply-chip{display:flex;align-items:center;gap:8px;background:var(--gp);border-left:2.5px solid var(--g);border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:11px}
+.reply-chip-body{flex:1;min-width:0}
+.reply-chip-author{font-weight:700;color:var(--g);font-size:11px}
+.reply-chip-text{color:var(--gmt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reply-chip-close{background:none;border:none;cursor:pointer;color:var(--gmt);font-size:14px;padding:0 4px}
+.reply-chip-close:hover{color:var(--red)}
 .ci-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
 .ci-btn-send{padding:7px 18px;border-radius:var(--rm);background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s;box-shadow:0 2px 6px rgba(30,138,76,.2)}
 .ci-btn-send:hover{background:var(--gm)}
@@ -480,6 +486,13 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
         <div class="comment-input-wrap" data-auth-only>
           <div class="ci-av" id="ciAv">НК</div>
           <div class="ci-box">
+            <div class="reply-chip" id="replyChip" style="display:none">
+              <div class="reply-chip-body">
+                <div class="reply-chip-author" id="replyChipAuthor"></div>
+                <div class="reply-chip-text" id="replyChipText"></div>
+              </div>
+              <button class="reply-chip-close" type="button" aria-label="Убрать цитату" onclick="clearReplyState()">×</button>
+            </div>
             <textarea class="ci-textarea" id="commentInput" placeholder="Напишите комментарий…" rows="1"></textarea>
             <div class="ci-actions" id="ciActions" style="display:none">
               <button class="ci-btn-cancel" onclick="cancelComment()">Отмена</button>
@@ -801,7 +814,7 @@ function renderComments(){
             <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${c.liked?'fill="var(--red)"':''}></path></svg>
             ${c.likes}
           </button>
-          <button class="com-act" onclick="replyTo('${esc(c.name)}')">
+          <button class="com-act" onclick="replyTo('${c.id}','${esc(c.name)}','${esc(String(c.text||'').replace(/\s+/g,' ').trim().slice(0,200))}')">
             <svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
             Ответить
           </button>
@@ -844,12 +857,37 @@ function likeReply(cid,rid){
   renderComments();
 }
 
-let replyingTo='';
-function replyTo(name){
-  replyingTo=name;
+let replyState={replyToId:null,replyToName:'',replyToText:''};
+
+function getReplyTextPreview(text){
+  return String(text||'').trim().replace(/\s+/g,' ').slice(0,80);
+}
+
+function clearReplyState(){
+  replyState={replyToId:null,replyToName:'',replyToText:''};
+  const chip=document.getElementById('replyChip');
+  if(chip)chip.style.display='none';
+}
+
+function renderReplyChip(){
+  const chip=document.getElementById('replyChip');
+  if(!chip)return;
+  if(!replyState.replyToId){
+    chip.style.display='none';
+    return;
+  }
+  const author=document.getElementById('replyChipAuthor');
+  const text=document.getElementById('replyChipText');
+  if(author)author.textContent='↳ '+replyState.replyToName+':';
+  if(text)text.textContent=getReplyTextPreview(replyState.replyToText);
+  chip.style.display='flex';
+}
+
+function replyTo(id,name,text){
+  replyState={replyToId:id,replyToName:name||'Участник',replyToText:text||''};
+  renderReplyChip();
   const ta=document.getElementById('commentInput');
   if(!ta)return;
-  ta.value='@'+name+' ';
   ta.focus();
   const actions=document.getElementById('ciActions');
   if(actions)actions.style.display='flex';
@@ -872,7 +910,7 @@ function cancelComment(){
   ta.value='';ta.style.minHeight='44px';
   const actions=document.getElementById('ciActions');
   if(actions)actions.style.display='none';
-  replyingTo='';
+  clearReplyState();
 }
 
 async function sendComment(){
@@ -885,7 +923,7 @@ async function sendComment(){
     const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/comments`, {
       method: 'POST',
       headers: window.withActiveContextHeaders(authHeaders({ 'Content-Type': 'application/json' })),
-      body: JSON.stringify({ content: text })
+      body: JSON.stringify({ content: text, parent_id: replyState.replyToId, quoted: replyState.replyToId ? { id: replyState.replyToId, name: replyState.replyToName, text: replyState.replyToText } : null })
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
@@ -911,6 +949,8 @@ async function sendComment(){
       av: ltr(dispName),
       color: avc(dispName),
       text: c.content || text,
+      parent_id: c.parent_id || replyState.replyToId || null,
+      quoted: c.quoted || (replyState.replyToId ? { name: replyState.replyToName, text: replyState.replyToText } : null),
       likes: 0,
       liked: false,
       ts: c.created_at || new Date().toISOString(),
@@ -926,6 +966,7 @@ async function sendComment(){
     input.style.minHeight = '';
     const actions = document.getElementById('ciActions');
     if (actions) actions.style.display = 'none';
+    clearReplyState();
     toast('Комментарий добавлен ✓');
   } catch (err) {
     toast('Сеть недоступна');
@@ -986,6 +1027,8 @@ async function loadPostAndComments(){
           av: ltr(dispName),
           color: avc(dispName),
           text: c.content,
+          parent_id: c.parent_id || null,
+          quoted: c.quoted || null,
           likes: 0,
           liked: false,
           ts: c.created_at,
