@@ -514,10 +514,15 @@ function mapApiEvent(e){
 
 async function loadEvents(){
   try{
-    const r = await fetch(API+'/events?limit=200', { headers: { Authorization:'Bearer '+tk() }});
-    if(!r.ok)return;
+    const url = API+'/events?limit=200';
+    const r = await fetch(url, { headers: tk() ? { Authorization:'Bearer '+tk() } : {} });
+    if(!r.ok){
+      console.error('loadEvents HTTP', r.status, url);
+      return;
+    }
     const d = await r.json();
-    EVENTS = (d.events||[]).map(mapApiEvent);
+    const arr = Array.isArray(d) ? d : (d.events || d.items || d.data || []);
+    EVENTS = arr.map(mapApiEvent);
     EVENTS.forEach(e=>{ if(e.isRegistered&&e.public_id)registeredSet.add(e.public_id); if(e.isSaved&&e.public_id)savedSet.add(e.public_id); });
     applyFilters();
     loadCalendarEvents();
