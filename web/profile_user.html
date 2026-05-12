@@ -490,8 +490,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="ps-item" onclick="switchTab('publications')"><div class="ps-n" id="psViewedPubs">0</div><div class="ps-l">Публикаций</div></div>
       <div class="ps-item" onclick="switchTab('projects')"><div class="ps-n" id="psViewedProjs">0</div><div class="ps-l">Проектов</div></div>
       <div class="ps-item" onclick="switchTab('friends')"><div class="ps-n" id="psViewedFriends">0</div><div class="ps-l">Друзей</div></div>
-      <div class="ps-item"><div class="ps-n" id="psViewedComms">0</div><div class="ps-l">Сообществ</div></div>
-      <div class="ps-item"><div class="ps-n" id="psViewedEvents">0</div><div class="ps-l">Мероприятий</div></div>
+      <div class="ps-item" onclick="switchTab('communities')"><div class="ps-n" id="psViewedComms">0</div><div class="ps-l">Сообществ</div></div>
+      <div class="ps-item" onclick="switchTab('events')"><div class="ps-n" id="psViewedEvents">0</div><div class="ps-l">Мероприятий</div></div>
     </div>
   </div>
 
@@ -516,6 +516,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <button class="ptab" onclick="switchTab('friends', this)">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
       Друзья <span class="ptab-count" id="ptabCntViewedFriends">0</span>
+    </button>
+    <button class="ptab" onclick="switchTab('communities', this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Сообщества <span class="ptab-count" id="ptabCntViewedComms">0</span>
+    </button>
+    <button class="ptab" onclick="switchTab('events', this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Мероприятия <span class="ptab-count" id="ptabCntViewedEvents">0</span>
     </button>
   </div>
 
@@ -548,6 +556,30 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
       <div id="viewedExperience">
         <div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px">Загрузка…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Таб: СООБЩЕСТВА ═══ -->
+  <div class="tab-content" id="tab-communities">
+    <div class="section">
+      <div class="block-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Сообщества</span>
+      </div>
+      <div id="viewedCommunitiesList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:12px">
+        <div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px;grid-column:1/-1">Загрузка…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Таб: МЕРОПРИЯТИЯ ═══ -->
+  <div class="tab-content" id="tab-events">
+    <div class="section">
+      <div class="block-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Мероприятия</span>
+      </div>
+      <div id="viewedEventsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:12px">
+        <div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px;grid-column:1/-1">Загрузка…</div>
       </div>
     </div>
   </div>
@@ -912,6 +944,8 @@ document.addEventListener('click',e=>{const dd=document.getElementById('profileD
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function switchTab(tab, btn){
+  if(tab==='communities')renderViewedCommunities();
+  if(tab==='events')renderViewedEvents();
   if(!btn){btn=document.querySelector(`.ptab[onclick*="'${tab}'"]`);}
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
@@ -1100,11 +1134,63 @@ async function loadViewedCounts(){
   document.getElementById('psViewedPubs').textContent=String(pubsCount);
   const t1=document.getElementById('ptabCntViewedPubs'); if(t1)t1.textContent=String(pubsCount);
   const dComms=await safeFetch(`/users/${encodeURIComponent(uid)}/communities`);
-  document.getElementById('psViewedComms').textContent=String((dComms?.communities||[]).length);
+  const commList=dComms?.communities||[];
+  document.getElementById('psViewedComms').textContent=String(commList.length);
+  const cc=document.getElementById('ptabCntViewedComms');if(cc)cc.textContent=String(commList.length);
+  window._viewedCommunities=commList;
   const dEvs=await safeFetch(`/users/${encodeURIComponent(uid)}/events`);
-  document.getElementById('psViewedEvents').textContent=String((dEvs?.events||[]).length);
+  const evList=dEvs?.events||[];
+  document.getElementById('psViewedEvents').textContent=String(evList.length);
+  const ec=document.getElementById('ptabCntViewedEvents');if(ec)ec.textContent=String(evList.length);
+  window._viewedEvents=evList;
   void loadViewedProjects();
   void loadViewedFriends();
+}
+
+function renderViewedCommunities(){
+  const root=document.getElementById('viewedCommunitiesList');if(!root)return;
+  const list=window._viewedCommunities||[];
+  if(!list.length){
+    root.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;grid-column:1/-1">Не состоит ни в одном сообществе</div>';
+    return;
+  }
+  root.innerHTML=list.map(c=>{
+    const slug=c.slug||c.public_id||c.id||'';
+    const av=c.avatar_url
+      ? `<img src="${esc(c.avatar_url)}" alt="" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`
+      : `<div style="width:44px;height:44px;border-radius:12px;background:${viewedColor(c.name||'')};color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800">${esc(viewedLetter(c.name||''))}</div>`;
+    return `<a href="/community-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;gap:10px;align-items:center;padding:12px;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
+      ${av}
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||'')}</div>
+        <div style="font-size:11px;color:var(--gmt);margin-top:2px">${esc(c.category||c.region||'Сообщество')}</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+function renderViewedEvents(){
+  const root=document.getElementById('viewedEventsList');if(!root)return;
+  const list=window._viewedEvents||[];
+  if(!list.length){
+    root.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;grid-column:1/-1">Не участвует в мероприятиях</div>';
+    return;
+  }
+  root.innerHTML=list.map(ev=>{
+    const slug=ev.slug||ev.public_id||ev.id||'';
+    const d=ev.starts_at?new Date(ev.starts_at):null;
+    const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):'';
+    const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
+    const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:'';
+    return `<a href="/event-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
+      ${cover}
+      <div style="padding:12px">
+        <div style="font-size:13px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(ev.title||'')}</div>
+        <div style="font-size:11px;color:var(--gmt);margin-top:6px">${esc(dateStr)}${timeStr?' · '+esc(timeStr):''}</div>
+        ${ev.city?`<div style="font-size:11px;color:var(--gmt);margin-top:2px">📍 ${esc(ev.city)}</div>`:''}
+      </div>
+    </a>`;
+  }).join('');
 }
 
 setTimeout(()=>{ void loadViewedCounts(); }, 400);
