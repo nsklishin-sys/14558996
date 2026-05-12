@@ -186,11 +186,9 @@ async function loadProfile(){
     const u = await r.json();
     const name = u.full_name || u.handle || 'Пользователь';
     document.getElementById('topbarName').textContent = name;
-    document.getElementById('topbarAv').textContent = ltr(name);
-    document.getElementById('topbarAv').style.background = avc(name);
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",ltr(name),avc(name),((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{document.getElementById("topbarAv").textContent=ltr(name);document.getElementById("topbarAv").style.background=avc(name);}
     document.getElementById('pddName').textContent = name;
-    document.getElementById('pddAv').textContent = ltr(name);
-    document.getElementById('pddAv').style.background = avc(name);
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",ltr(name),avc(name),((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{document.getElementById("pddAv").textContent=ltr(name);document.getElementById("pddAv").style.background=avc(name);}
   } catch(err){ console.error('loadProfile', err); }
 }
 

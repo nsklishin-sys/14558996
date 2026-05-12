@@ -990,7 +990,7 @@ async function loadCommunityProfile(){
     }
   }catch{}
 }
-(async()=>{if(!tk())return;try{const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw 0;const{user={}}=await r.json();const name=user.full_name||user.name||'Пользователь';const color=avc(name);const L=ltr(name);['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});const role=user.role||user.position||'Участник LASTOP';['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});}catch{}})();
+(async()=>{if(!tk())return;try{const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw 0;const{user={}}=await r.json();const name=user.full_name||user.name||'Пользователь';const color=avc(name);const L=ltr(name);["topbarAv","pddAv"].forEach(id=>{if(window.LASTOP_SET_AV)window.LASTOP_SET_AV(id,L,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||"")); else{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color;}}});['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});const role=user.role||user.position||'Участник LASTOP';['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});}catch{}})();
 
 async function loadCommunityProjects(){
   const wrap=document.getElementById('communityProjects');if(!wrap)return;

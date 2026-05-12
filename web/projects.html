@@ -848,7 +848,7 @@ function resetCreateForm(){
     const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A'];
     const color=C[name.charCodeAt(0)%C.length];
     const ltr=letter(name);
-    ['topbarAv','pddAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
+    ["topbarAv","pddAv"].forEach(id=>{if(window.LASTOP_SET_AV)window.LASTOP_SET_AV(id,ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||"")); else{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}}});
     document.getElementById('topbarName').textContent=name;
     document.getElementById('topbarRole').textContent=user.role||user.position||'Участник LASTOP';
     document.getElementById('pddName').textContent=name;
