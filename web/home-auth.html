@@ -113,6 +113,18 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .widgets-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0;align-items:stretch}
 @media(max-width:1400px){.widgets-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:800px){.widgets-row{grid-template-columns:1fr}}
+
+.cal-hero{background:linear-gradient(180deg,var(--w) 0%, #FBFEFC 100%);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px 22px 20px;position:relative;overflow:hidden}
+.cal-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#1E8A4C 0%,#185FA5 33%,#B07A00 66%,#C04030 100%)}
+.cal-hero-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:14px;flex-wrap:wrap}
+.cal-hero-title-group{display:flex;align-items:center;gap:12px}.cal-hero-icon{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--g),var(--gm));display:grid;place-items:center;color:#fff}.cal-hero-body{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px}
+.cal-h-dow,.cal-h-grid{display:grid;grid-template-columns:repeat(7,1fr)}.cal-h-day{aspect-ratio:1.1/1;min-height:38px;border-radius:10px}.cal-h-day.today{background:linear-gradient(135deg,var(--g),var(--gm));color:#fff}
+.cal-h-legend{display:flex;gap:14px;flex-wrap:wrap;padding-top:10px;border-top:1px dashed var(--bdr);margin-top:4px}
+.cal-hero-right{display:flex;flex-direction:column;gap:10px}.cal-h-today-card{background:linear-gradient(135deg,rgba(30,138,76,.06),rgba(34,160,90,.03));border:1.5px solid var(--gb);border-radius:var(--rl);padding:14px}
+.cal-h-soon-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:12px 14px 10px}.cal-h-add{width:100%}
+@media(max-width:1100px){.cal-hero-body{grid-template-columns:1fr}.cal-hero-right{flex-direction:row;flex-wrap:wrap}.cal-h-today-card,.cal-h-soon-card{flex:1 1 240px}.cal-h-add{flex:1 1 100%}}
+@media(max-width:740px){.cal-hero{padding:14px 14px 16px}.cal-hero-right{flex-direction:column}}
+
 .widget{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);display:flex;flex-direction:column;min-width:0;overflow:hidden;min-height:350px}
 .wh{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-shrink:0}
 .wt{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--t)}
@@ -467,15 +479,43 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       </div>
       <div id="forumList" class="widget-body"></div>
     </div>
-    <!-- Календарь -->
+    <!-- Мероприятия (список) -->
     <div class="widget">
       <div class="wh">
-        <a class="wt wt-link" href="/calendar.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Календарь</a>
-        <a class="wmore" href="/calendar.html">Открыть →</a>
+        <a class="wt wt-link" href="/events.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Мероприятия</a>
+        <a class="wmore" href="/events.html">Все →</a>
       </div>
-      <div id="calendarWidget" class="widget-body"></div>
+      <div id="eventsListMini" class="widget-body"></div>
     </div>
   </div>
+
+  <!-- ═══ HERO-БЛОК: КАЛЕНДАРЬ ═══ -->
+  <section class="cal-hero">
+    <div class="cal-hero-head">
+      <div class="cal-hero-title-group">
+        <div class="cal-hero-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="cal-hero-title">Календарь</h2>
+          <p class="cal-hero-sub" id="calHeroSub">Загрузка…</p>
+        </div>
+      </div>
+      <a href="/calendar.html" class="cal-hero-cta">Открыть полный
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><polyline points="9 6 15 12 9 18"/></svg>
+      </a>
+    </div>
+    <div class="cal-hero-body"><div class="cal-hero-left"><div class="cal-hero-navrow">
+      <button type="button" class="cal-h-nav" onclick="calPrevMonth()" aria-label="Предыдущий месяц"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="cal-h-month" id="calHeroMonth">—</div>
+      <button type="button" class="cal-h-nav" onclick="calNextMonth()" aria-label="Следующий месяц"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <button type="button" class="cal-h-today" onclick="calGoToday()">Сегодня</button>
+    </div><div class="cal-h-dow" id="calHeroDow"></div><div class="cal-h-grid" id="calHeroGrid"></div>
+    <div class="cal-h-legend"><span class="cal-h-leg-item"><span class="cal-h-leg-dot" style="background:#1E8A4C"></span>Личное</span><span class="cal-h-leg-item"><span class="cal-h-leg-dot" style="background:#185FA5"></span>Мероприятия</span><span class="cal-h-leg-item"><span class="cal-h-leg-dot" style="background:#B07A00"></span>Выставки</span><span class="cal-h-leg-item"><span class="cal-h-leg-dot" style="background:#C04030"></span>Дедлайны</span></div></div>
+    <aside class="cal-hero-right"><div class="cal-h-today-card"><div class="cal-h-today-head"><span class="cal-h-today-lbl">Сегодня</span><span class="cal-h-today-date" id="calHeroTodayDate">—</span></div><div id="calHeroTodayList" class="cal-h-today-list"></div></div><div class="cal-h-soon-card"><div class="cal-h-soon-head">Скоро</div><div id="calHeroSoonList" class="cal-h-soon-list"></div></div><button class="cal-h-add" onclick="location.href='/calendar.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать событие</button></aside></div>
+  </section>
 
   <!-- Лента -->
   <div class="feed-wrap">
@@ -1067,6 +1107,8 @@ function pluralRu(n,forms){
 
 /* ── МЕРОПРИЯТИЯ И КАЛЕНДАРЬ ── */
 let CAL_STATE={year:new Date().getFullYear(),month:new Date().getMonth(),events:[],selectedDay:null};
+const SRC_COLORS={personal:'#1E8A4C',event:'#185FA5',event_own:'#185FA5',exhibition:'#B07A00',exhibition_own:'#B07A00',project:'#C04030',birthday:'#9060C0'};
+const SRC_LABELS={personal:'Личное',event:'Мероприятие',event_own:'Моё мероприятие',exhibition:'Выставка',exhibition_own:'Моя выставка',project:'Дедлайн',birthday:'День рождения'};
 async function loadCalendarMonth(year,month){
   CAL_STATE.year=year;CAL_STATE.month=month;
   // Берём окно ±1 месяц чтобы хвосты соседних месяцев тоже подсвечивались
@@ -1081,83 +1123,28 @@ async function loadCalendarMonth(year,month){
     const d=await r.json();
     CAL_STATE.events=d.events||[];
   }catch{CAL_STATE.events=[];}
-  renderCalendar();
+  renderHomeCalendar();
 }
-function renderCalendar(){
-  const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  const DOWS=['пн','вт','ср','чт','пт','сб','вс'];
-  const y=CAL_STATE.year,m=CAL_STATE.month;
-  const now=new Date();
+function renderHomeCalendar(){
+  const MONTHS=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+  const DOWS=[{l:'Пн',w:false},{l:'Вт',w:false},{l:'Ср',w:false},{l:'Чт',w:false},{l:'Пт',w:false},{l:'Сб',w:true},{l:'Вс',w:true}];
+  const y=CAL_STATE.year,m=CAL_STATE.month; const now=new Date(); const pad=n=>String(n).padStart(2,'0');
   const firstDow=(new Date(y,m,1).getDay()+6)%7,totalDays=new Date(y,m+1,0).getDate(),prevLast=new Date(y,m,0).getDate();
-  // Группировка событий по дню текущего месяца. Цвет — берём из ev.color или fallback по source.
-  const SRC_COLORS={personal:'#1E8A4C',event:'#185FA5',event_own:'#185FA5',exhibition:'#B07A00',exhibition_own:'#B07A00',project:'#C04030',birthday:'#9060C0'};
-  const byDay={};
-  CAL_STATE.events.forEach(ev=>{
-    const d=new Date(ev.starts_at);
-    if(d.getFullYear()===y && d.getMonth()===m){
-      const k=d.getDate();
-      const color=ev.color || SRC_COLORS[ev.source] || '#1E8A4C';
-      (byDay[k]=byDay[k]||[]).push({...ev,_color:color});
-    }
-  });
-  const pad=n=>String(n).padStart(2,'0');
-  let html=`<div class="cal-headrow"><button type="button" class="cal-nav-btn" onclick="calPrevMonth()">‹</button><div class="cal-month">${MONTHS[m]} ${y}</div><div class="cal-headrow-right"><button type="button" class="cal-nav-btn" onclick="calNextMonth()">›</button><button type="button" class="cal-today-btn" onclick="calGoToday()">Сегодня</button></div></div>`;
-  html+=`<div class="cal-header">${DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('')}</div><div class="cal-grid">`;
-  for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-day other-month">${prevLast-i}</div>`;
-  for(let d=1;d<=totalDays;d++){
-    const cls=['cal-day'];
-    if(now.getFullYear()===y&&now.getMonth()===m&&now.getDate()===d)cls.push('today');
-    const dayEvents=byDay[d]||[];
-    if(dayEvents.length)cls.push('has-event');
-    if(CAL_STATE.selectedDay===d)cls.push('selected');
-    // До 3-х точек уникальных цветов
-    const uniqColors=[];
-    for(const ev of dayEvents){if(!uniqColors.includes(ev._color))uniqColors.push(ev._color);if(uniqColors.length>=3)break;}
-    const dotsHTML = uniqColors.length
-      ? `<div class="cal-dots">${uniqColors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>`
-      : '';
-    const dateISO = `${y}-${pad(m+1)}-${pad(d)}`;
-    html+=`<button type="button" class="${cls.join(' ')}" onclick="pickDay(${d},'${dateISO}')">${d}${dotsHTML}</button>`;
-  }
-  const cells=Math.ceil((firstDow+totalDays)/7)*7;for(let i=1;i<=cells-firstDow-totalDays;i++)html+=`<div class="cal-day other-month">${i}</div>`;
-  html+='</div>';
-  // Список событий снизу — выбранный день ИЛИ ближайшие 3
-  const SRC_LABELS={personal:'Личное',event:'Мероприятие',event_own:'Моё мероприятие',exhibition:'Выставка',exhibition_own:'Моя выставка',project:'Дедлайн',birthday:'День рождения'};
-  function evRow(ev){
-    const d=new Date(ev.starts_at);
-    const day=d.getDate();
-    const mon=d.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');
-    const time=ev.is_all_day?'весь день':d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-    const color=ev.color || SRC_COLORS[ev.source] || '#1E8A4C';
-    const label=SRC_LABELS[ev.source]||'Событие';
-    // Клик: личные открывают /calendar.html (для редактирования); остальные — детальную страницу по ev.link
-    const href = (ev.source==='personal' || !ev.link)
-      ? `/calendar.html?date=${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
-      : ev.link;
-    return `<div class="ev-item" style="border-left:3px solid ${color};padding-left:9px" onclick="location.href='${href}'">
-      <div class="ev-date-box"><div class="ev-d">${day}</div><div class="ev-m">${mon}</div></div>
-      <div class="ev-info"><div class="ev-title"><span class="ev-title-text">${esc(ev.title)}</span><span class="ev-tag" style="background:${color}22;color:${color};border:1px solid ${color}44">${label}</span></div><div style="font-size:10px;color:var(--gmt);margin-top:2px">${esc(time)}</div></div>
-    </div>`;
-  }
-  const dayList = CAL_STATE.selectedDay && byDay[CAL_STATE.selectedDay]
-    ? byDay[CAL_STATE.selectedDay].sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at))
-    : [];
-  if(dayList.length){
-    html += '<div class="ev-list">' + dayList.map(evRow).join('') + '</div>';
-  } else if(CAL_STATE.selectedDay){
-    html += '<div style="padding:14px 8px;text-align:center;color:var(--gmt);font-size:12px">На этот день событий нет</div>';
-  } else {
-    // Нет выбранного дня — показываем ближайшие 3 предстоящих
-    const upcoming = CAL_STATE.events
-      .filter(e=>new Date(e.ends_at)>=new Date())
-      .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at))
-      .slice(0,3);
-    if(upcoming.length){
-      html += '<div class="ev-list">' + upcoming.map(evRow).join('') + '</div>';
-    }
-  }
-  document.getElementById('calendarWidget').innerHTML=html;
+  const byDay={}; CAL_STATE.events.forEach(ev=>{const sa=new Date(ev.starts_at);if(sa.getFullYear()===y&&sa.getMonth()===m){const k=sa.getDate();const color=ev.color||SRC_COLORS[ev.source]||'#1E8A4C';(byDay[k]=byDay[k]||[]).push({...ev,_color:color});}});
+  const monthEl=document.getElementById('calHeroMonth'); if(monthEl)monthEl.textContent=`${MONTHS[m]} ${y}`;
+  const subEl=document.getElementById('calHeroSub'); if(subEl){const total=CAL_STATE.events.length;subEl.textContent=total?`${total} ${pluralRu(total,['событие','события','событий'])} в окне`:'Нет событий в окне';}
+  const dowEl=document.getElementById('calHeroDow'); if(dowEl)dowEl.innerHTML=DOWS.map(d=>`<div class="cal-h-dow-cell${d.w?' weekend':''}">${d.l}</div>`).join('');
+  const grid=document.getElementById('calHeroGrid'); if(!grid)return; let html='';
+  for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-h-day other-month">${prevLast-i}</div>`;
+  for(let d=1;d<=totalDays;d++){const cls=['cal-h-day'];const dow=new Date(y,m,d).getDay();if(dow===0||dow===6)cls.push('weekend');const isToday=now.getFullYear()===y&&now.getMonth()===m&&now.getDate()===d;if(isToday)cls.push('today');const dayEvents=byDay[d]||[];if(dayEvents.length)cls.push('has-event');if(CAL_STATE.selectedDay===d)cls.push('selected');const uniqColors=[];for(const ev of dayEvents){if(!uniqColors.includes(ev._color))uniqColors.push(ev._color);if(uniqColors.length>=3)break;}const dotsHTML=uniqColors.length?`<div class="cal-h-dots">${uniqColors.map(c=>`<span style="background:${c}"></span>`).join('')}</div>`:'';const dateISO=`${y}-${pad(m+1)}-${pad(d)}`;html+=`<button type="button" class="${cls.join(' ')}" onclick="pickDay(${d},'${dateISO}')">${d}${dotsHTML}</button>`;}
+  const cells=Math.ceil((firstDow+totalDays)/7)*7; for(let i=1;i<=cells-firstDow-totalDays;i++)html+=`<div class="cal-h-day other-month">${i}</div>`; grid.innerHTML=html;
+  const todayDateEl=document.getElementById('calHeroTodayDate'); if(todayDateEl)todayDateEl.textContent=now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'long'});
+  const todayList=document.getElementById('calHeroTodayList'); if(todayList){const todayEvs=CAL_STATE.events.filter(ev=>{const sa=new Date(ev.starts_at),ea=new Date(ev.ends_at);const ts=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0).getTime();const te=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59).getTime();return sa.getTime()<=te&&ea.getTime()>=ts;}).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));todayList.innerHTML=!todayEvs.length?'<div class="cal-h-empty">Свободный день — ни одного события 🌿</div>':todayEvs.slice(0,4).map(ev=>buildEvRow(ev)).join('');}
+  const soonList=document.getElementById('calHeroSoonList'); if(soonList){const tomorrow=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0).getTime();const upcoming=CAL_STATE.events.filter(ev=>new Date(ev.starts_at).getTime()>=tomorrow).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,4);soonList.innerHTML=!upcoming.length?'<div class="cal-h-empty">В ближайшие дни ничего не запланировано</div>':upcoming.map(ev=>buildEvRow(ev,true)).join('');}
+  renderEventsMiniWidget();
 }
+function buildEvRow(ev,showDate){const sa=new Date(ev.starts_at);const time=ev.is_all_day?'весь день':sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});const dateStr=showDate?sa.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.',''):time;const color=ev.color||SRC_COLORS[ev.source]||'#1E8A4C';const label=SRC_LABELS[ev.source]||'Событие';const href=(ev.source==='personal'||!ev.link)?`/calendar.html?date=${sa.getFullYear()}-${String(sa.getMonth()+1).padStart(2,'0')}-${String(sa.getDate()).padStart(2,'0')}`:ev.link;return `<a class="cal-h-evrow" style="background:${color}14;border-left-color:${color}" href="${href}"><div class="cal-h-evrow-time">${esc(dateStr)}</div><div class="cal-h-evrow-body"><div class="cal-h-evrow-title">${esc(ev.title)}</div><div class="cal-h-evrow-meta">${esc(label)}${ev.location?' · '+esc(ev.location):''}</div></div></a>`;}
+function renderEventsMiniWidget(){const root=document.getElementById('eventsListMini');if(!root)return;const now=Date.now();const evs=CAL_STATE.events.filter(ev=>{const s=ev.source;return (s==='event'||s==='event_own'||s==='exhibition'||s==='exhibition_own')&&new Date(ev.ends_at).getTime()>=now;}).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,4);if(!evs.length){root.innerHTML='<div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px">Пока нет мероприятий</div>';return;}root.innerHTML='<div style="display:flex;flex-direction:column;gap:6px;padding-top:2px">'+evs.map(ev=>{const sa=new Date(ev.starts_at);const day=sa.getDate();const mon=sa.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');const time=ev.is_all_day?'весь день':sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});const color=ev.color||SRC_COLORS[ev.source]||'#185FA5';const href=ev.link||('/calendar.html?date='+sa.getFullYear()+'-'+String(sa.getMonth()+1).padStart(2,'0')+'-'+String(sa.getDate()).padStart(2,'0'));return `<a href="${href}" class="ev-item" style="border-left:3px solid ${color};display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gp);border-radius:10px;text-decoration:none;color:inherit;transition:background .12s" onmouseover="this.style.background='var(--gl)'" onmouseout="this.style.background='var(--gp)'"><div class="ev-date-box" style="text-align:center;min-width:34px"><div style="font-size:14px;font-weight:800;color:${color};line-height:1">${day}</div><div style="font-size:9px;font-weight:700;color:var(--gmt);text-transform:uppercase;margin-top:1px">${mon}</div></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ev.title)}</div><div style="font-size:10px;color:var(--gmt);margin-top:1px">${esc(time)}</div></div></a>`;}).join('')+'</div>';}
 function pickDay(day, dateISO){
   // Двойной клик по уже выбранному дню → открыть полный календарь на этой дате
   if(CAL_STATE.selectedDay===day && dateISO){
@@ -1165,7 +1152,7 @@ function pickDay(day, dateISO){
     return;
   }
   CAL_STATE.selectedDay = (CAL_STATE.selectedDay === day) ? null : day;
-  renderCalendar();
+  renderHomeCalendar();
 }
 function calPrevMonth(){
   const y = CAL_STATE.month === 0 ? CAL_STATE.year - 1 : CAL_STATE.year;
