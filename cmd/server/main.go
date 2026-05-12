@@ -9420,6 +9420,245 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
 
+	// ═══════════════════════════════════════════════════════════════
+	// T13-CAL: личный календарь пользователя
+	// GET /api/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD&types=personal,event,exhibition,project
+	// Возвращает агрегированный список всех событий пользователя в окне.
+	// ═══════════════════════════════════════════════════════════════
+	mux.HandleFunc("/api/calendar", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+
+		// Окно дат (по умолчанию ±3 месяца от сегодня — покрывает типичные view)
+		now := time.Now()
+		from := now.AddDate(0, -3, 0)
+		to := now.AddDate(0, 3, 0)
+		if v := r.URL.Query().Get("from"); v != "" {
+			if t, err := time.Parse("2006-01-02", v); err == nil {
+				from = t
+			} else if t, err := time.Parse(time.RFC3339, v); err == nil {
+				from = t
+			}
+		}
+		if v := r.URL.Query().Get("to"); v != "" {
+			if t, err := time.Parse("2006-01-02", v); err == nil {
+				to = t.AddDate(0, 0, 1).Add(-time.Second)
+			} else if t, err := time.Parse(time.RFC3339, v); err == nil {
+				to = t
+			}
+		}
+		if to.Before(from) {
+			to = from.AddDate(0, 6, 0)
+		}
+
+		// Фильтр по типам (CSV). По умолчанию — все.
+		allTypes := map[string]bool{"personal": true, "event": true, "exhibition": true, "project": true}
+		wantTypes := map[string]bool{}
+		typesParam := r.URL.Query().Get("types")
+		if typesParam == "" {
+			wantTypes = allTypes
+		} else {
+			for _, t := range strings.Split(typesParam, ",") {
+				t = strings.TrimSpace(t)
+				if allTypes[t] {
+					wantTypes[t] = true
+				}
+			}
+			if len(wantTypes) == 0 {
+				wantTypes = allTypes
+			}
+		}
+
+		type calendarItem struct {
+			ID          string `json:"id"`
+			Source      string `json:"source"`
+			Kind        string `json:"kind"`
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			StartsAt    string `json:"starts_at"`
+			EndsAt      string `json:"ends_at"`
+			IsAllDay    bool   `json:"is_all_day"`
+			Color       string `json:"color"`
+			Location    string `json:"location"`
+			Link        string `json:"link"`
+			Editable    bool   `json:"editable"`
+		}
+
+		items := []calendarItem{}
+
+		// 1) Личные события
+		if wantTypes["personal"] {
+			rows, err := db.Query(`
+				SELECT public_id, title, description, kind, starts_at, ends_at, is_all_day, color, location
+				FROM personal_calendar_events
+				WHERE user_id=$1 AND is_deleted=FALSE
+				  AND ends_at >= $2 AND starts_at <= $3
+				ORDER BY starts_at`, userID, from, to)
+			if err == nil {
+				for rows.Next() {
+					var pid, title, descr, kind, color, loc string
+					var sa, ea time.Time
+					var allDay bool
+					if err := rows.Scan(&pid, &title, &descr, &kind, &sa, &ea, &allDay, &color, &loc); err == nil {
+						items = append(items, calendarItem{
+							ID: pid, Source: "personal", Kind: kind,
+							Title: title, Description: descr,
+							StartsAt: sa.Format(time.RFC3339), EndsAt: ea.Format(time.RFC3339),
+							IsAllDay: allDay, Color: color, Location: loc,
+							Link: "", Editable: true,
+						})
+					}
+				}
+				rows.Close()
+			} else {
+				log.Printf("calendar: personal query: %v", err)
+			}
+		}
+
+		// 2) Мероприятия — где я зарегистрирован ИЛИ я организатор
+		if wantTypes["event"] {
+			rows, err := db.Query(`
+				SELECT e.public_id, e.title, e.description, e.starts_at, e.ends_at, e.city, e.address,
+				  (e.organizer_id = $1) AS is_own,
+				  EXISTS(SELECT 1 FROM event_registrations er WHERE er.event_id=e.id AND er.user_id=$1 AND er.status='confirmed') AS is_registered
+				FROM events e
+				WHERE e.is_deleted=FALSE AND e.status='published'
+				  AND e.ends_at >= $2 AND e.starts_at <= $3
+				  AND (e.organizer_id = $1
+				       OR EXISTS(SELECT 1 FROM event_registrations er WHERE er.event_id=e.id AND er.user_id=$1 AND er.status='confirmed'))
+				ORDER BY e.starts_at`, userID, from, to)
+			if err == nil {
+				for rows.Next() {
+					var pid, title, descr, city, addr string
+					var sa, ea time.Time
+					var isOwn, isReg bool
+					if err := rows.Scan(&pid, &title, &descr, &sa, &ea, &city, &addr, &isOwn, &isReg); err == nil {
+						loc := strings.TrimSpace(city)
+						if addr != "" {
+							if loc != "" {
+								loc += ", " + addr
+							} else {
+								loc = addr
+							}
+						}
+						source := "event"
+						if isOwn {
+							source = "event_own"
+						}
+						items = append(items, calendarItem{
+							ID: pid, Source: source, Kind: "event",
+							Title: title, Description: descr,
+							StartsAt: sa.Format(time.RFC3339), EndsAt: ea.Format(time.RFC3339),
+							IsAllDay: false, Color: "#185FA5", Location: loc,
+							Link: "/event-detail.html?id=" + pid, Editable: false,
+						})
+					}
+				}
+				rows.Close()
+			} else {
+				log.Printf("calendar: events query: %v", err)
+			}
+		}
+
+		// 3) Выставки — где я зарегистрирован как visitor ИЛИ создатель
+		if wantTypes["exhibition"] {
+			rows, err := db.Query(`
+				SELECT e.public_id, e.title, e.short_description, e.starts_at, e.ends_at, e.city, e.address,
+				  (e.created_by_user_id = $1) AS is_own
+				FROM exhibitions e
+				WHERE e.is_deleted=FALSE
+				  AND e.ends_at >= $2 AND e.starts_at <= $3
+				  AND (e.created_by_user_id = $1
+				       OR EXISTS(SELECT 1 FROM exhibition_visitor_registrations evr WHERE evr.exhibition_id=e.id AND evr.user_id=$1 AND evr.status='registered'))
+				ORDER BY e.starts_at`, userID, from, to)
+			if err == nil {
+				for rows.Next() {
+					var pid, title, descr, city, addr string
+					var sa, ea time.Time
+					var isOwn bool
+					if err := rows.Scan(&pid, &title, &descr, &sa, &ea, &city, &addr, &isOwn); err == nil {
+						loc := strings.TrimSpace(city)
+						if addr != "" {
+							if loc != "" {
+								loc += ", " + addr
+							} else {
+								loc = addr
+							}
+						}
+						source := "exhibition"
+						if isOwn {
+							source = "exhibition_own"
+						}
+						items = append(items, calendarItem{
+							ID: pid, Source: source, Kind: "exhibition",
+							Title: title, Description: descr,
+							StartsAt: sa.Format(time.RFC3339), EndsAt: ea.Format(time.RFC3339),
+							IsAllDay: true, Color: "#B07A00", Location: loc,
+							Link: "/exhibition-detail.html?id=" + pid, Editable: false,
+						})
+					}
+				}
+				rows.Close()
+			} else {
+				log.Printf("calendar: exhibitions query: %v", err)
+			}
+		}
+
+		// 4) Дедлайны проектов где я владелец ИЛИ участник
+		if wantTypes["project"] {
+			rows, err := db.Query(`
+				SELECT p.public_id, p.title, p.description, p.deadline,
+				  (p.owner_id = $1) AS is_owner
+				FROM projects p
+				WHERE p.is_deleted=FALSE AND p.deadline IS NOT NULL
+				  AND p.deadline >= $2 AND p.deadline <= $3
+				  AND p.status IN ('planned','active','paused')
+				  AND (p.owner_id = $1
+				       OR EXISTS(SELECT 1 FROM project_members pm WHERE pm.project_id=p.id AND pm.user_id=$1))
+				ORDER BY p.deadline`, userID, from, to)
+			if err == nil {
+				for rows.Next() {
+					var pid, title, descr string
+					var dl time.Time
+					var isOwner bool
+					if err := rows.Scan(&pid, &title, &descr, &dl, &isOwner); err == nil {
+						roleSuffix := ""
+						if isOwner {
+							roleSuffix = " (мой проект)"
+						}
+						items = append(items, calendarItem{
+							ID: pid, Source: "project", Kind: "deadline",
+							Title: "📌 Дедлайн: " + title + roleSuffix, Description: descr,
+							StartsAt: dl.Format(time.RFC3339), EndsAt: dl.Format(time.RFC3339),
+							IsAllDay: true, Color: "#C04030", Location: "",
+							Link: "/project-detail.html?id=" + pid, Editable: false,
+						})
+					}
+				}
+				rows.Close()
+			} else {
+				log.Printf("calendar: projects query: %v", err)
+			}
+		}
+
+		// Сортировка по starts_at
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].StartsAt < items[j].StartsAt
+		})
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"events": items,
+			"from":   from.Format(time.RFC3339),
+			"to":     to.Format(time.RFC3339),
+		})
+	})
+
 	mux.HandleFunc("/api/users/search", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -19250,6 +19489,29 @@ func newPublicEventID() (string, error) {
 		return "", err
 	}
 	return "evt_" + hex.EncodeToString(b), nil
+}
+
+func newPersonalCalendarID() (string, error) {
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return "pcal_" + hex.EncodeToString(b), nil
+}
+
+func isValidPersonalCalendarID(s string) bool {
+	if !strings.HasPrefix(s, "pcal_") {
+		return false
+	}
+	if len(s) < 8 || len(s) > 40 {
+		return false
+	}
+	for _, c := range s[5:] {
+		if !((c >= 'a' && c <= 'f') || (c >= '0' && c <= '9')) {
+			return false
+		}
+	}
+	return true
 }
 
 func isValidEventPublicID(s string) bool {
