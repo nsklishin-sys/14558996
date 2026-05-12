@@ -405,7 +405,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="modal-body">
       <label class="mf-label">От лица</label>
       <select class="mf-select" id="mAuthor" style="margin-bottom:14px">
-        <option value="0">Личный профиль</option>
+        <option value="personal">Личный профиль</option>
       </select>
       <label class="mf-label">Название проекта *</label>
       <input class="mf-input" id="mTitle" placeholder="Например: TMS-интеграция с маркетплейсами">
@@ -747,22 +747,47 @@ function closeModal(){document.getElementById('modalBg').classList.remove('open'
 async function loadMyCompaniesForAuthor(){
   const sel = document.getElementById('mAuthor');
   if(!sel) return;
-  // Если уже загружали — не перезагружаем
   if(sel.dataset.loaded==='1') return;
   try{
-    const r = await fetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok) return;
-    const d = await r.json();
-    const items = d.companies || d.items || [];
-    items.forEach(c=>{
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name || c.title || ('Компания #'+c.id);
-      sel.appendChild(opt);
-    });
-    // Предвыбор: активный контекст компании, если есть
-    const active = window.getActiveCompanyID && window.getActiveCompanyID();
-    if(active) sel.value = String(active);
+    const [coRes, cmRes] = await Promise.all([
+      fetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null),
+      fetch(API+'/communities?limit=200',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null)
+    ]);
+    if(coRes && coRes.ok){
+      const d = await coRes.json();
+      const items = d.companies || d.items || [];
+      if(items.length){
+        const grp = document.createElement('optgroup');
+        grp.label = 'Мои компании';
+        items.forEach(c=>{
+          const opt = document.createElement('option');
+          opt.value = 'company:'+c.id;
+          opt.textContent = c.name || c.title || ('Компания #'+c.id);
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      }
+    }
+    if(cmRes && cmRes.ok){
+      const d = await cmRes.json();
+      const items = (d.communities || d.items || []).filter(c => c.is_member || c.my_role);
+      if(items.length){
+        const grp = document.createElement('optgroup');
+        grp.label = 'Мои сообщества';
+        items.forEach(c=>{
+          const opt = document.createElement('option');
+          opt.value = 'community:'+c.id;
+          opt.textContent = c.name || c.title || ('Сообщество #'+c.id);
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      }
+    }
+    // Предвыбор: активный контекст
+    const activeCo = window.getActiveCompanyID && window.getActiveCompanyID();
+    const activeCm = window.getActiveCommunityID && window.getActiveCommunityID();
+    if(activeCo) sel.value = 'company:'+activeCo;
+    else if(activeCm) sel.value = 'community:'+activeCm;
     sel.dataset.loaded = '1';
   }catch{}
 }
@@ -829,7 +854,7 @@ async function submitProject(){
   try{
     const r=await fetch(API+'/projects',{
       method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk(),...((()=>{const v=parseInt(document.getElementById('mAuthor')?.value||'0',10);return v>0?{'X-Active-Company-Id':String(v)}:{};})())},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk(),...((()=>{const raw=document.getElementById('mAuthor')?.value||'0';if(raw.startsWith('company:'))return{'X-Active-Company-Id':raw.slice(8)};if(raw.startsWith('community:'))return{'X-Active-Community-Id':raw.slice(10)};return{};})())},
       body:JSON.stringify(body)
     });
     if(!r.ok){
