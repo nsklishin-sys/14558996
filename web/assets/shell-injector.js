@@ -257,9 +257,18 @@
   window.LASTOP_SET_AV = function (id, ltr, color, avatarUrl) {
     const el = document.getElementById(id);
     if (!el) return;
-    // Запоминаем актуальный avatar_url для этого элемента
+    // Запоминаем актуальный avatar_url для этого элемента.
+    // Если avatarUrl не передан — пробуем взять из localStorage.user.avatar_url
+    // (только для аватарок текущего пользователя: topbarAv, pddAv, composeAv, profileAv).
     if (avatarUrl !== undefined) {
       window.LASTOP_AVATARS[id] = avatarUrl || '';
+    } else if (['topbarAv','pddAv','composeAv','profileAv'].includes(id)) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('user') || 'null');
+        if (cached && cached.avatar_url) {
+          window.LASTOP_AVATARS[id] = cached.avatar_url;
+        }
+      } catch {}
     }
     const url = window.LASTOP_AVATARS[id] || '';
     // Базовая буква и цвет
@@ -314,7 +323,7 @@
 
   // Запускаем наблюдатель сразу при загрузке (без ожидания /api/me)
   function bootstrapAvatarWatchers() {
-    ['topbarAv', 'pddAv', 'composeAv', 'profileAv'].forEach(watchAvatar);
+    ['topbarAv', 'pddAv', 'composeAv', 'profileAv', 'heroAv', 'ipAv'].forEach(watchAvatar);
     // Если в localStorage уже есть user — мгновенно ставим аватарку без ожидания /me
     try {
       const cached = JSON.parse(localStorage.getItem('user') || 'null');

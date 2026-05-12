@@ -461,9 +461,9 @@ async function loadProfile(){
     ME = d.user || d;
     const name = ME.full_name || ME.handle || 'Пользователь';
     const ini = initials(name);
-    document.getElementById('topbarAv').textContent = ini;
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",ini);else{const _e=document.getElementById("topbarAv");if(_e)_e.textContent=ini;}
     document.getElementById('topbarName').textContent = name;
-    document.getElementById('pddAv').textContent = ini;
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",ini);else{const _e=document.getElementById("pddAv");if(_e)_e.textContent=ini;}
     document.getElementById('pddName').textContent = name;
   } catch {}
 }
