@@ -646,6 +646,20 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
   </div>
 
+  <div class="card" style="margin-top:10px">
+    <div class="block-title">Общий прогресс</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--gmt)">Готово</span>
+      <span style="font-size:13px;font-weight:800;color:var(--g)" id="allProgress">0%</span>
+    </div>
+    <div style="height:6px;background:var(--gp);border-radius:99px;overflow:hidden;margin-bottom:6px">
+      <div id="allFill" style="height:100%;background:var(--g);width:0%;transition:width .3s"></div>
+    </div>
+    <div style="font-size:11px;color:var(--gmt)">
+      <span id="allDone">0</span> из <span id="allTotal">0</span>
+    </div>
+  </div>
+
   <div class="r-section-title"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Расписание</div>
   <div class="t-cal-mini" id="calMini"></div>
 
@@ -940,6 +954,18 @@ function updateStats(){
     todayTasks.length===0?'Сегодня задач не запланировано':
     todayLeft===0?'Все задачи на сегодня выполнены 🎉':
     `Осталось ${todayLeft} ${plural(todayLeft,'задача','задачи','задач')} на сегодня`;
+
+  // Общий прогресс по всем задачам
+  const totalAll=tasks.length;
+  const totalDone=tasks.filter(t=>t.done).length;
+  const allPct=totalAll?Math.round((totalDone/totalAll)*100):0;
+  const ap=document.getElementById('allProgress');
+  if(ap){
+    ap.textContent=allPct+'%';
+    document.getElementById('allFill').style.width=allPct+'%';
+    document.getElementById('allDone').textContent=totalDone;
+    document.getElementById('allTotal').textContent=totalAll;
+  }
 }
 
 /* ═══ TAGS CLOUD ═══ */
@@ -1127,7 +1153,7 @@ function renderKanban(arr,root){
 function renderCard(t){
   const tags=(t.tags||[]).slice(0,3).map(tg=>`<span class="t-tag ${tg}">${TAG_LABELS[tg]||tg}</span>`).join('');
   const dueClass=t.due&&!t.done?(dayDiff(t.due)<0?'overdue':dayDiff(t.due)===0?'today':''):'';
-  return `<div class="t-card ${t.done?'done':''}" draggable="true" data-id="${t.id}" onclick="openModal('${t.id}')">
+  return `<div class="t-card ${t.done?'done':''}" draggable="true" data-id="${t.id}">
     <div class="t-card-pri-bar ${t.pri||'lo'}"></div>
     <div class="t-card-title">${esc(t.title||'(без названия)')}</div>
     ${tags?`<div class="t-card-tags">${tags}</div>`:''}
@@ -1141,8 +1167,12 @@ function attachKanbanDnD(){
   const cards=document.querySelectorAll('.t-card');
   const cols=document.querySelectorAll('.t-col-body');
   cards.forEach(c=>{
-    c.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',c.dataset.id);c.classList.add('dragging');});
-    c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+    let _dragged=false;
+    c.addEventListener('dragstart',e=>{_dragged=true;e.dataTransfer.setData('text/plain',c.dataset.id);c.classList.add('dragging');});
+    c.addEventListener('dragend',()=>{c.classList.remove('dragging');setTimeout(()=>{_dragged=false;},50);});
+    // Перехватываем click — на draggable элементах click стабильно не срабатывает в Safari.
+    // Открываем модалку, если drag не было.
+    c.addEventListener('click',e=>{if(_dragged)return;const id=c.dataset.id;if(id&&typeof openModal==='function')openModal(id);});
   });
   cols.forEach(col=>{
     col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drag-over');});
