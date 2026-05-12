@@ -1918,7 +1918,8 @@ window.addEventListener('DOMContentLoaded', () => {
 let pendingAttachment = null; // {url, name, size, type} — файл готов к отправке
 
 function triggerAttach(){
-  if (state.uploading) return;
+  // Сбрасываем флаг если он застрял от предыдущей попытки
+  state.uploading = false;
   chatHiddenFile.click();
 }
 
@@ -1995,16 +1996,20 @@ async function uploadAndSendFile(file){
 }
 
 chatHiddenFile?.addEventListener('change', async (e) => {
+  console.log('[upload] change event fired');
   const files = e.target.files;
-  if (!files || !files.length) return;
+  if (!files || !files.length) { console.log('[upload] no files'); return; }
   e.target.value = '';
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
   showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
   try {
     for (const f of files) await uploadAndSendFile(f);
+  } catch (e) {
+    console.error('[upload] handler crashed', e);
   } finally {
     state.uploading = false;
+    console.log('[upload] state.uploading reset');
   }
   try { await loadMessages(); } catch {}
   try { await loadConversations(); } catch {}
