@@ -369,10 +369,10 @@ async function loadProfile(){
     currentUserPublicID = u.public_id || '';
     const name = u.full_name || u.handle || 'Пользователь';
     const ini = initials(name);
-    document.getElementById('topbarAv').textContent = ini;
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",ini);else{const _e=document.getElementById("topbarAv");if(_e)_e.textContent=ini;}
     document.getElementById('topbarName').textContent = name;
     document.getElementById('topbarRole').textContent = 'Участник LASTOP';
-    document.getElementById('pddAv').textContent = ini;
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",ini);else{const _e=document.getElementById("pddAv");if(_e)_e.textContent=ini;}
     document.getElementById('pddName').textContent = name;
     document.getElementById('pddRole').textContent = 'Участник LASTOP';
   } catch (err) { console.error('loadProfile', err); }

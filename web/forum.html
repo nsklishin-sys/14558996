@@ -338,10 +338,10 @@ async function loadProfile(){
     const name = u.full_name || u.handle || 'Пользователь';
     const initials = name.split(/\s+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
     const role = 'Участник LASTOP';
-    document.getElementById('topbarAv').textContent = initials;
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",initials);else{const _e=document.getElementById("topbarAv");if(_e)_e.textContent=initials;}
     document.getElementById('topbarName').textContent = name;
     document.getElementById('topbarRole').textContent = role;
-    document.getElementById('pddAv').textContent = initials;
+    if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",initials);else{const _e=document.getElementById("pddAv");if(_e)_e.textContent=initials;}
     document.getElementById('pddName').textContent = name;
     document.getElementById('pddRole').textContent = role;
   } catch (err) { console.error('loadProfile', err); }

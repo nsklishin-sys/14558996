@@ -715,8 +715,8 @@ async function applyCurrentUserProfile(){
   const website=email||'Добавьте почту в настройках';
   const initials=avatarLetters(fullName);
 
-  document.getElementById('topbarAv').textContent=initials;
-  document.getElementById('pddAv').textContent=initials;
+  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",initials);else{const _e=document.getElementById("topbarAv");if(_e)_e.textContent=initials;}
+  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",initials);else{const _e=document.getElementById("pddAv");if(_e)_e.textContent=initials;}
   document.getElementById('topbarName').textContent=fullName;
   document.getElementById('pddName').textContent=fullName;
   const profileAvatar=document.querySelector('.prof-av');
