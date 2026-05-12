@@ -1009,12 +1009,25 @@ async function renderInvites(wrap){
     const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites', { headers: authHeaders() });
     const d = await r.json();
     const invites = d.invites || [];
-    const rows = invites.map(inv => {
+    const showInactive = window.__invShowInactive || false;
+    const filtered = invites.filter(inv => {
+      const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
+      const usedUp = inv.max_uses > 0 && inv.used_count >= inv.max_uses;
+      const inactive = !inv.is_active || expired || usedUp;
+      return showInactive ? true : !inactive;
+    });
+    const activeCount = invites.filter(inv => {
+      const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
+      const usedUp = inv.max_uses > 0 && inv.used_count >= inv.max_uses;
+      return inv.is_active && !expired && !usedUp;
+    }).length;
+    const inactiveCount = invites.length - activeCount;
+    const rows = filtered.map(inv => {
       const url = location.origin + '/company-detail.html?id=' + encodeURIComponent(currentCompany.slug) + '&invite=' + encodeURIComponent(inv.code);
       const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
       const usedUp = inv.max_uses > 0 && inv.used_count >= inv.max_uses;
       const inactive = !inv.is_active || expired || usedUp;
-      const statusText = !inv.is_active ? 'Деактивирована' : (expired ? 'Просрочена' : (usedUp ? 'Лимит' : 'Активна'));
+      const statusText = !inv.is_active ? 'Деактивирована' : (expired ? 'Просрочена' : (usedUp ? 'Использована' : 'Активна'));
       return '<div class="invite-row' + (inactive ? ' inactive' : '') + '">' +
         '<div class="invite-link" onclick="copyText(\'' + escAttr(url) + '\')" title="Кликни чтобы скопировать">' + esc(url) + '</div>' +
         '<div class="invite-meta">' +
@@ -1022,13 +1035,16 @@ async function renderInvites(wrap){
           '<span>' + inv.used_count + '/' + (inv.max_uses || '∞') + '</span>' +
           (inv.expires_at ? '<span>до ' + esc(fmtDateAbs(inv.expires_at)) + '</span>' : '<span>бессрочно</span>') +
         '</div>' +
-        (inv.is_active ? '<button class="btn btn-ghost" onclick="deactivateInvite(' + inv.id + ')" style="color:var(--red)">Деактивировать</button>' : '') +
+        (inv.is_active && !expired && !usedUp ? '<button class="btn btn-ghost" onclick="deactivateInvite(' + inv.id + ')" style="color:var(--red)">Удалить</button>' : '') +
       '</div>';
     }).join('');
+    const toggleBtn = inactiveCount > 0
+      ? '<button class="btn btn-ghost" onclick="window.__invShowInactive=!window.__invShowInactive;renderTab()" style="font-size:11px;color:var(--gmt);margin-left:auto">' + (showInactive ? '↑ Скрыть использованные ('+inactiveCount+')' : '↓ Показать использованные ('+inactiveCount+')') + '</button>'
+      : '';
     wrap.innerHTML =
       '<div class="panel">' +
-        '<div class="panel-title" style="display:flex;align-items:center"><svg viewBox="0 0 24 24"><path d="M3 7l9 6 9-6"/></svg>Приглашения<button class="btn btn-primary" style="margin-left:auto" onclick="openInviteModal()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать ссылку</button></div>' +
-        (rows || '<div class="placeholder">Активных приглашений нет</div>') +
+        '<div class="panel-title" style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24"><path d="M3 7l9 6 9-6"/></svg>Приглашения <span style="font-size:11px;color:var(--gmt);font-weight:600">'+activeCount+'/10</span>' + toggleBtn + '<button class="btn btn-primary" onclick="openInviteModal()"' + (activeCount >= 10 ? ' disabled style="opacity:.5;cursor:not-allowed"' : '') + '><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать ссылку</button></div>' +
+        (rows || '<div class="placeholder">' + (showInactive ? 'Приглашений нет' : 'Активных приглашений нет') + '</div>') +
       '</div>';
   } catch (err) {
     wrap.innerHTML = '<div class="panel"><div class="placeholder">Ошибка загрузки</div></div>';
