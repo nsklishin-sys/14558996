@@ -486,7 +486,7 @@ function renderTopics(topics){
             } else if (t.author_company_id && t.author_company_name) {
               authorName = t.author_company_name;
               authorIcon = '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>';
-              authorLink = '/company_view.html?slug=' + (t.author_company_slug || '');
+              authorLink = '/company-detail.html?id=' + encodeURIComponent(t.author_company_slug || t.author_company_id || '');
             }
             return '<span class="topic-meta-item">' + authorIcon + '<a class="topic-meta-author" href="' + esc(authorLink) + '" onclick="event.stopPropagation()">' + esc(authorName) + '</a></span>';
           })() +
