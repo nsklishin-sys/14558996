@@ -1997,9 +1997,9 @@ async function uploadAndSendFile(file){
 
 chatHiddenFile?.addEventListener('change', async (e) => {
   console.log('[upload] change event fired');
-  const files = e.target.files;
-  console.log('[upload] files count:', files?.length, 'activeConv:', state.activeConvPublicID);
-  if (!files || !files.length) { console.log('[upload] no files'); return; }
+  const files = Array.from(e.target.files || []);
+  console.log('[upload] files count:', files.length, 'activeConv:', state.activeConvPublicID);
+  if (!files.length) { console.log('[upload] no files'); return; }
   e.target.value = '';
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
