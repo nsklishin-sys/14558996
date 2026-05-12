@@ -253,12 +253,22 @@
   function setAv(id, ltr, color, avatarUrl) {
     const el = document.getElementById(id);
     if (!el) return;
+    // Всегда выставляем букву и цвет на родитель — даже если есть аватарка
+    // (страничные applyMe могут перезаписать background, но img внутри останется).
+    el.textContent = ltr;
+    el.style.background = color;
+    // Удаляем старый img если был
+    const old = el.querySelector('img.lastop-av-img');
+    if (old) old.remove();
     if (avatarUrl) {
-      el.textContent = '';
-      el.style.background = `center/cover no-repeat url("${avatarUrl}")`;
-    } else {
-      el.textContent = ltr;
-      el.style.background = color;
+      el.style.position = el.style.position || 'relative';
+      el.style.overflow = 'hidden';
+      const img = document.createElement('img');
+      img.className = 'lastop-av-img';
+      img.src = avatarUrl;
+      img.alt = '';
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
+      el.appendChild(img);
     }
   }
 
