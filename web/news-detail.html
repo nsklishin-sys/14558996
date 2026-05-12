@@ -650,7 +650,9 @@ async function doRepost(target){
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      toast(d.error || 'Не удалось сделать репост');
+      const errMsg = d.error || `Ошибка ${r.status}`;
+      console.error('[repost] failed:', r.status, d);
+      toast('Не удалось сделать репост: ' + errMsg);
       return;
     }
     // Бэк создал новый пост-репост. Перечитываем оригинал чтобы получить актуальные счётчики.
