@@ -11279,6 +11279,37 @@ CREATE INDEX IF NOT EXISTS jobs_author_community_idx ON jobs(author_community_id
 CREATE INDEX IF NOT EXISTS catalog_items_author_community_idx ON catalog_items(author_community_id) WHERE author_community_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS forum_topics_author_community_idx ON forum_topics(author_community_id) WHERE author_community_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS forum_topics_author_company_idx ON forum_topics(author_company_id) WHERE author_company_id IS NOT NULL;
+
+-- ═══ Личный календарь пользователя (T13-CAL-1) ═══
+-- Здесь хранятся только ЛИЧНЫЕ события (заметки/встречи/напоминания).
+-- Регистрации на events/exhibitions, дедлайны проектов и пр. подтягиваются
+-- агрегирующим endpoint /api/calendar из соответствующих таблиц.
+CREATE TABLE IF NOT EXISTS personal_calendar_events (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 5000),
+    kind TEXT NOT NULL DEFAULT 'personal' CHECK (kind IN ('personal','meeting','reminder','deadline','note')),
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    is_all_day BOOLEAN NOT NULL DEFAULT FALSE,
+    color TEXT NOT NULL DEFAULT '#1E8A4C',
+    location TEXT NOT NULL DEFAULT '' CHECK (char_length(location) <= 500),
+    reminder_minutes INT,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (ends_at >= starts_at)
+);
+
+CREATE INDEX IF NOT EXISTS personal_calendar_events_user_starts_idx
+    ON personal_calendar_events(user_id, starts_at)
+    WHERE is_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS personal_calendar_events_range_idx
+    ON personal_calendar_events(user_id, starts_at, ends_at)
+    WHERE is_deleted = FALSE;
 `
 
 	if _, err := db.Exec(schema); err != nil {
