@@ -757,35 +757,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="repost-dd" id="repostDDBottom">
         <div class="repost-dd-head">Поделиться в…</div>
         <div class="repost-item" onclick="doRepost('page')">
-          <div class="repost-item-av" style="background:#1E8A4C" id="repostUserAv2">НК</div>
+          <div class="repost-item-av" style="background:#1E8A4C" id="repostUserAv2">Я</div>
           <div class="repost-item-body">
             <div class="repost-item-name" id="repostUserName2">Моя страница</div>
-            <div class="repost-item-sub">Личный профиль</div>
+            <div class="repost-item-sub">Опубликовать в ленте</div>
           </div>
         </div>
         <div class="repost-div"></div>
-        <div class="repost-dd-head" style="padding-top:8px">Мои сообщества</div>
-        <div class="repost-item" onclick="doRepost('comm1')">
-          <div class="repost-item-av" style="background:#1E8A4C">🚛</div>
-          <div class="repost-item-body"><div class="repost-item-name">Логистика СНГ</div><div class="repost-item-sub">2 400 участников</div></div>
-        </div>
-        <div class="repost-item" onclick="doRepost('comm2')">
-          <div class="repost-item-av" style="background:#6040A0">💻</div>
-          <div class="repost-item-body"><div class="repost-item-name">LogTech Россия</div><div class="repost-item-sub">834 участника</div></div>
-        </div>
-        <div class="repost-item" onclick="doRepost('comm3')">
-          <div class="repost-item-av" style="background:#B45309">💼</div>
-          <div class="repost-item-body"><div class="repost-item-name">HR в логистике</div><div class="repost-item-sub">412 участников</div></div>
-        </div>
-        <div class="repost-div"></div>
         <div class="repost-dd-head" style="padding-top:8px">Отправить в чат</div>
-        <div class="repost-item" onclick="doRepost('chat1')">
-          <div class="repost-item-av" style="background:#3A90C0">МЗ</div>
-          <div class="repost-item-body"><div class="repost-item-name">Марина Захарова</div><div class="repost-item-sub">Онлайн</div></div>
-        </div>
-        <div class="repost-item" onclick="doRepost('chat2')">
-          <div class="repost-item-av" style="background:#9060C0">АП</div>
-          <div class="repost-item-body"><div class="repost-item-name">Алексей Петров</div><div class="repost-item-sub">5 мин назад</div></div>
+        <div id="repostFriendsListBottom">
+          <div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Загрузка друзей…</div>
         </div>
       </div>
     </div>
@@ -1084,18 +1065,21 @@ async function toggleRepost(e,src){
 
 async function loadRepostFriends(){
   const list = document.getElementById('repostFriendsList');
-  if(!list) return;
+  const listBottom = document.getElementById('repostFriendsListBottom');
+  if(!list && !listBottom) return;
   try{
     const r = await fetch('/api/friends', {headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
     if(!r.ok) throw 0;
     const d = await r.json();
     const friends = d.friends || [];
     if(!friends.length){
-      list.innerHTML = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">У вас пока нет друзей</div>';
+      const empty = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">У вас пока нет друзей</div>';
+      if(list) list.innerHTML = empty;
+      if(listBottom) listBottom.innerHTML = empty;
       _repostFriendsLoaded = true;
       return;
     }
-    list.innerHTML = friends.slice(0, 20).map(f => {
+    const html = friends.slice(0, 20).map(f => {
       const pid = f.public_id || f.friend_id || '';
       const name = f.full_name || f.friend_name || f.name || 'Без имени';
       const sub = f.position || f.company_name || f.email || '';
@@ -1109,9 +1093,13 @@ async function loadRepostFriends(){
         </div>
       </div>`;
     }).join('');
+    if(list) list.innerHTML = html;
+    if(listBottom) listBottom.innerHTML = html;
     _repostFriendsLoaded = true;
   }catch{
-    list.innerHTML = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Не удалось загрузить друзей</div>';
+    const err = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:var(--gmt)">Не удалось загрузить друзей</div>';
+    if(list) list.innerHTML = err;
+    if(listBottom) listBottom.innerHTML = err;
   }
 }
 
