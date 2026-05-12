@@ -1282,11 +1282,19 @@ async function loadCurrentUser(){
   const fullName = d.user.full_name || ((d.user.first_name || '') + ' ' + (d.user.last_name || '')).trim() || d.user.email || '';
   set('topbarName', fullName);
   set('topbarRole', d.user.position || d.user.company_name || 'Участник LASTOP');
-  set('topbarAv', letter(fullName));
-  // На случай если в будущем добавятся pdd-* элементы (выпадающее меню профиля)
+  // pdd-элементы (выпадающее меню профиля)
   set('pddName', fullName);
   set('pddRole', d.user.position || d.user.company_name || 'Участник LASTOP');
-  set('pddAv', letter(fullName));
+  // Аватарки — через LASTOP_SET_AV (учитывает avatar_url, фолбэк на букву)
+  const avatarUrl = d.user.avatar_url || '';
+  const color = (window.avc ? window.avc(fullName) : '');
+  if (window.LASTOP_SET_AV) {
+    window.LASTOP_SET_AV('topbarAv', letter(fullName), color, avatarUrl);
+    window.LASTOP_SET_AV('pddAv', letter(fullName), color, avatarUrl);
+  } else {
+    set('topbarAv', letter(fullName));
+    set('pddAv', letter(fullName));
+  }
 }
 async function loadConversations(){
   try{
