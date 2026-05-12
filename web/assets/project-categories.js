@@ -103,4 +103,7 @@ window.renderProjectCategoriesInto = function(selectEl, firstOption) {
   if (currentValue) {
     selectEl.value = currentValue;
   }
+  // Триггерим change чтобы lt-select.js перерисовал label/popup
+  try { selectEl.dispatchEvent(new Event('change',{bubbles:true})); } catch(_){}
+
 };
