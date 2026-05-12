@@ -4195,10 +4195,12 @@ func main() {
 		case http.MethodGet:
 			authUserID, hasAuth := optionalAuthenticatedUserID(r, sessions)
 			communities, err := listCommunities(db, authUserID, hasAuth, communityListFilters{
-				Privacy:  r.URL.Query().Get("privacy"),
-				Category: r.URL.Query().Get("category"),
-				Region:   r.URL.Query().Get("region"),
-				Query:    r.URL.Query().Get("q"),
+				Privacy:    r.URL.Query().Get("privacy"),
+				Category:   r.URL.Query().Get("category"),
+				Region:     r.URL.Query().Get("region"),
+				Query:      r.URL.Query().Get("q"),
+				Tab:        r.URL.Query().Get("tab"),
+				RoleFilter: r.URL.Query().Get("role_filter"),
 			})
 			if err != nil {
 				handleCommunityError(w, err)
@@ -8591,13 +8593,14 @@ func main() {
 			viewerID, _ := optionalAuthenticatedUserID(r, sessions)
 			limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 			items, err := listCompanies(db, listCompaniesFilters{
-				Category: r.URL.Query().Get("category"),
-				Region:   r.URL.Query().Get("region"),
-				City:     r.URL.Query().Get("city"),
-				Search:   r.URL.Query().Get("search"),
-				Tab:      r.URL.Query().Get("tab"),
-				ViewerID: viewerID,
-				Limit:    limit,
+				Category:   r.URL.Query().Get("category"),
+				Region:     r.URL.Query().Get("region"),
+				City:       r.URL.Query().Get("city"),
+				Search:     r.URL.Query().Get("search"),
+				Tab:        r.URL.Query().Get("tab"),
+				RoleFilter: r.URL.Query().Get("role_filter"),
+				ViewerID:   viewerID,
+				Limit:      limit,
 			})
 			if err != nil {
 				log.Printf("listCompanies: %v", err)
@@ -14658,10 +14661,12 @@ func removeFriend(db *sql.DB, userID int64, friendPublicID string) error {
 }
 
 type communityListFilters struct {
-	Privacy  string
-	Category string
-	Region   string
-	Query    string
+	Privacy    string
+	Category   string
+	Region     string
+	Query      string
+	Tab        string
+	RoleFilter string
 }
 
 func listCommunities(db *sql.DB, authUserID int64, hasAuth bool, filters communityListFilters) ([]community, error) {
@@ -14723,6 +14728,14 @@ func listCommunities(db *sql.DB, authUserID int64, hasAuth bool, filters communi
 	if q := strings.TrimSpace(filters.Query); q != "" {
 		query += fmt.Sprintf(" AND (c.name ILIKE $%d OR c.description ILIKE $%d)", len(args)+1, len(args)+1)
 		args = append(args, "%"+q+"%")
+	}
+	if filters.Tab == "my" && hasAuth {
+		query += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM community_members cm WHERE cm.community_id = c.id AND cm.user_id = $%d", len(args)+1)
+		args = append(args, authUserID)
+		if filters.RoleFilter == "admin" {
+			query += " AND cm.role IN ('owner','admin','moderator')"
+		}
+		query += ")"
 	}
 	query += " ORDER BY c.created_at DESC"
 
@@ -24525,14 +24538,15 @@ type companyItem struct {
 
 // listCompaniesFilters — параметры фильтрации.
 type listCompaniesFilters struct {
-	Category string
-	Region   string
-	City     string
-	Search   string
-	Tab      string // all / verified / my (где my — компании, в которых юзер состоит)
-	Verified bool   // если true — только подтверждённые
-	ViewerID int64
-	Limit    int
+	Category   string
+	Region     string
+	City       string
+	Search     string
+	Tab        string // all / verified / my (где my — компании, в которых юзер состоит)
+	RoleFilter string
+	Verified   bool // если true — только подтверждённые
+	ViewerID   int64
+	Limit      int
 }
 
 // listCompanies возвращает компании с фильтрацией.
@@ -24567,7 +24581,12 @@ func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
 	}
 	if f.Tab == "my" && f.ViewerID > 0 {
 		args = append(args, f.ViewerID)
-		conds = append(conds, fmt.Sprintf("EXISTS (SELECT 1 FROM company_members cm WHERE cm.company_id = c.id AND cm.user_id = $%d)", len(args)))
+		cond := fmt.Sprintf("EXISTS (SELECT 1 FROM company_members cm WHERE cm.company_id = c.id AND cm.user_id = $%d", len(args))
+		if f.RoleFilter == "admin" {
+			cond += " AND cm.role IN ('owner','admin')"
+		}
+		cond += ")"
+		conds = append(conds, cond)
 	}
 
 	args = append(args, f.Limit)
