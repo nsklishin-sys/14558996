@@ -453,20 +453,21 @@ async function handleLogin(e){
     pwdErr.textContent='Пароль должен быть не короче 6 символов';
     document.getElementById('password').classList.add('error');return;
   }
-  if(!checkCaptcha()){
-    showToast('Решите пример для проверки','error');
-    document.getElementById('captchaInput').focus();return;
+  if(window.LASTOP_CAPTCHA && !window.LASTOP_CAPTCHA.check()){
+    showToast(window.LASTOP_CAPTCHA.type==='yandex'?'Пройдите проверку капчи':'Решите пример для проверки','error');
+    const inp=document.getElementById('captchaInput');if(inp)inp.focus();return;
   }
 
   const btn=document.getElementById('submitBtn');
   btn.disabled=true;btn.innerHTML='Вход…';
 
   try{
-    const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const captchaToken=(window.LASTOP_CAPTCHA&&window.LASTOP_CAPTCHA.getToken)?window.LASTOP_CAPTCHA.getToken():'';
+    const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,captcha_token:captchaToken})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
       showToast(d.error||'Неверный email или пароль','error');
-      newCaptcha();
+      if(window.LASTOP_CAPTCHA&&window.LASTOP_CAPTCHA.reset)window.LASTOP_CAPTCHA.reset();
       btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
       return;
     }
@@ -496,5 +497,6 @@ function socialLogin(p){showToast('Вход через '+(p==='yandex'?'Янде
 
 window.addEventListener('DOMContentLoaded',newCaptcha);
 </script>
+<script src="/assets/captcha-loader.js" defer></script>
 </body>
 </html>
