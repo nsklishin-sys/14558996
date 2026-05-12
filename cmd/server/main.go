@@ -39,11 +39,11 @@ import (
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
 
-	"greeting-site/internal/captcha"
-	"greeting-site/internal/errtrack"
-	"greeting-site/internal/mailer"
-	"greeting-site/internal/metrics"
-	"greeting-site/internal/storage"
+	"lastop/internal/captcha"
+	"lastop/internal/errtrack"
+	"lastop/internal/mailer"
+	"lastop/internal/metrics"
+	"lastop/internal/storage"
 )
 
 type greetingResponse struct {
@@ -1202,6 +1202,64 @@ const sessionCacheTTL = 10 * time.Minute
 const statsCacheTTL = 60 * time.Second
 const sessionLifetime = 30 * 24 * time.Hour
 
+// Rate limit constants. Format: (max_requests, time_window).
+// Centralized here so they can be tuned in one place.
+const (
+	// Auth & account
+	rateLimitAuth                  = 10
+	rateLimitAuthWindow            = time.Minute
+	rateLimitForgotPassword        = 3
+	rateLimitForgotPasswordWindow  = time.Hour
+	rateLimitResetPassword         = 5
+	rateLimitResetPasswordWindow   = time.Hour
+	rateLimitResendVerify          = 3
+	rateLimitResendVerifyWindow    = time.Hour
+	rateLimitAccountChange         = 5
+	rateLimitAccountChangeWindow   = time.Hour
+	rateLimitAccountDelete         = 3
+	rateLimitAccountDeleteWindow   = 24 * time.Hour
+	rateLimitHandleCheck           = 30
+	rateLimitHandleCheckWindow     = time.Minute
+	rateLimitHandleUpdate          = 5
+	rateLimitHandleUpdateWindow    = 24 * time.Hour
+
+	// Content
+	rateLimitPost                  = 10
+	rateLimitPostWindow            = time.Minute
+	rateLimitComment               = 30
+	rateLimitCommentWindow         = time.Minute
+
+	// Communities
+	rateLimitCommunityCreate       = 5
+	rateLimitCommunityCreateWindow = time.Hour
+	rateLimitCommunityPost         = 20
+	rateLimitCommunityPostWindow   = time.Hour
+	rateLimitCommunityJoinReq      = 10
+	rateLimitCommunityJoinReqWindow = time.Hour
+
+	// Events
+	rateLimitEventCreate           = 5
+	rateLimitEventCreateWindow     = time.Hour
+	rateLimitEventRegister         = 30
+	rateLimitEventRegisterWindow   = time.Minute
+	rateLimitEventSave             = 60
+	rateLimitEventSaveWindow       = time.Minute
+	rateLimitEventPatch            = 30
+	rateLimitEventPatchWindow      = time.Hour
+	rateLimitEventDelete           = 10
+	rateLimitEventDeleteWindow     = 24 * time.Hour
+
+	// Search & chat
+	rateLimitSearch                = 60
+	rateLimitSearchWindow          = time.Minute
+	rateLimitChatMessage           = 60
+	rateLimitChatMessageWindow     = time.Minute
+	rateLimitChatTyping            = 20
+	rateLimitChatTypingWindow      = time.Minute
+	rateLimitChatCreate            = 10
+	rateLimitChatCreateWindow      = time.Minute
+)
+
 var globalStatsCache = &statsCache{}
 
 type ipRateLimiter struct {
@@ -1831,22 +1889,22 @@ func main() {
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		handleWebSocket(w, r, sessions, db)
 	})
-	authRateLimiter := newIPRateLimiter(10, time.Minute)
-	postRateLimiter := newIPRateLimiter(10, time.Minute)
-	commentRateLimiter := newIPRateLimiter(30, time.Minute)
-	communityCreateRateLimiter := newIPRateLimiter(5, time.Hour)
-	communityPostRateLimiter := newIPRateLimiter(20, time.Hour)
-	communityJoinRequestRateLimiter := newIPRateLimiter(10, time.Hour)
-	handleCheckLimiter := newIPRateLimiter(30, time.Minute)
-	handleUpdateLimiter := newIPRateLimiter(5, 24*time.Hour)
-	accountChangeLimiter := newIPRateLimiter(5, time.Hour)
-	accountDeleteLimiter := newIPRateLimiter(3, 24*time.Hour)
-	eventCreateLimiter := newIPRateLimiter(5, time.Hour)
-	eventRegisterLimiter := newIPRateLimiter(30, time.Minute)
-	eventSaveLimiter := newIPRateLimiter(60, time.Minute)
-	eventPatchLimiter := newIPRateLimiter(30, time.Hour)
-	eventDeleteLimiter := newIPRateLimiter(10, 24*time.Hour)
-	searchLimiter := newIPRateLimiter(60, time.Minute)
+	authRateLimiter := newIPRateLimiter(rateLimitAuth, rateLimitAuthWindow)
+	postRateLimiter := newIPRateLimiter(rateLimitPost, rateLimitPostWindow)
+	commentRateLimiter := newIPRateLimiter(rateLimitComment, rateLimitCommentWindow)
+	communityCreateRateLimiter := newIPRateLimiter(rateLimitCommunityCreate, rateLimitCommunityCreateWindow)
+	communityPostRateLimiter := newIPRateLimiter(rateLimitCommunityPost, rateLimitCommunityPostWindow)
+	communityJoinRequestRateLimiter := newIPRateLimiter(rateLimitCommunityJoinReq, rateLimitCommunityJoinReqWindow)
+	handleCheckLimiter := newIPRateLimiter(rateLimitHandleCheck, rateLimitHandleCheckWindow)
+	handleUpdateLimiter := newIPRateLimiter(rateLimitHandleUpdate, rateLimitHandleUpdateWindow)
+	accountChangeLimiter := newIPRateLimiter(rateLimitAccountChange, rateLimitAccountChangeWindow)
+	accountDeleteLimiter := newIPRateLimiter(rateLimitAccountDelete, rateLimitAccountDeleteWindow)
+	eventCreateLimiter := newIPRateLimiter(rateLimitEventCreate, rateLimitEventCreateWindow)
+	eventRegisterLimiter := newIPRateLimiter(rateLimitEventRegister, rateLimitEventRegisterWindow)
+	eventSaveLimiter := newIPRateLimiter(rateLimitEventSave, rateLimitEventSaveWindow)
+	eventPatchLimiter := newIPRateLimiter(rateLimitEventPatch, rateLimitEventPatchWindow)
+	eventDeleteLimiter := newIPRateLimiter(rateLimitEventDelete, rateLimitEventDeleteWindow)
+	searchLimiter := newIPRateLimiter(rateLimitSearch, rateLimitSearchWindow)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -1960,9 +2018,9 @@ func main() {
 		})
 	})
 
-	forgotPasswordLimiter := newIPRateLimiter(3, time.Hour)
-	resetPasswordLimiter := newIPRateLimiter(5, time.Hour)
-	resendVerifyLimiter := newIPRateLimiter(3, time.Hour)
+	forgotPasswordLimiter := newIPRateLimiter(rateLimitForgotPassword, rateLimitForgotPasswordWindow)
+	resetPasswordLimiter := newIPRateLimiter(rateLimitResetPassword, rateLimitResetPasswordWindow)
+	resendVerifyLimiter := newIPRateLimiter(rateLimitResendVerify, rateLimitResendVerifyWindow)
 
 	mux.HandleFunc("/api/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -3656,9 +3714,9 @@ func main() {
 	})
 
 	chatPresence = newChatPresenceStore()
-	chatMessageRateLimiter := newIPRateLimiter(60, time.Minute)
-	chatTypingRateLimiter := newIPRateLimiter(20, time.Minute)
-	chatCreateRateLimiter := newIPRateLimiter(10, time.Minute)
+	chatMessageRateLimiter := newIPRateLimiter(rateLimitChatMessage, rateLimitChatMessageWindow)
+	chatTypingRateLimiter := newIPRateLimiter(rateLimitChatTyping, rateLimitChatTypingWindow)
+	chatCreateRateLimiter := newIPRateLimiter(rateLimitChatCreate, rateLimitChatCreateWindow)
 
 	mux.HandleFunc("/api/chat/conversations", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

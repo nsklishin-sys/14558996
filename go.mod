@@ -1,4 +1,4 @@
-module greeting-site
+module lastop
 
 go 1.25.0
 
