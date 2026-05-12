@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Календарь</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13);
+  --src-personal:#1E8A4C;--src-event:#185FA5;--src-exhibition:#B07A00;--src-project:#C04030;--src-birthday:#9060C0;
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh)}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+.topbar{grid-area:topbar;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:grid;grid-template-columns:1fr 300px;align-items:center;gap:10px;padding:0 16px;box-shadow:var(--sh);min-width:0}
+
+.nav{grid-area:nav;background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:12px 10px 10px;gap:1px}
+.nav::-webkit-scrollbar{display:none}
+
+.main{grid-area:main;display:flex;flex-direction:column;gap:10px;overflow:hidden;min-width:0}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{width:4px}
+.right::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* TOOLBAR */
+.cal-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:14px;flex-shrink:0;flex-wrap:wrap}
+.cal-page-title{font-size:17px;font-weight:900;color:var(--t)}
+.cal-nav-group{display:flex;align-items:center;gap:6px}
+.cal-nav-btn{width:32px;height:32px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s}
+.cal-nav-btn:hover{border-color:var(--gb);color:var(--g);background:var(--gl)}
+.cal-nav-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cal-today-btn{padding:7px 16px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--gp);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.cal-today-btn:hover{background:var(--gl);border-color:var(--gb)}
+.cal-current-label{font-size:16px;font-weight:800;color:var(--t);min-width:140px;text-align:center}
+.cal-mode-switch{display:flex;background:var(--gp);border:1.5px solid var(--bdr);border-radius:99px;padding:3px;gap:2px;margin-left:auto}
+.cal-mode-btn{padding:5px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;color:var(--gmt);background:transparent;transition:all .15s;white-space:nowrap}
+.cal-mode-btn.active{background:var(--g);color:#fff;box-shadow:0 2px 6px rgba(30,138,76,.2)}
+.btn-create-event{padding:8px 18px;border-radius:99px;background:var(--g);border:none;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(30,138,76,.22);transition:background .15s}
+.btn-create-event:hover{background:var(--gm)}
+.btn-create-event svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* MONTH GRID */
+.cal-grid-wrap{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.cal-dow-row{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--gp)}
+.cal-dow-cell{padding:10px 8px;font-size:11px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.06em;text-align:center;border-right:1px solid var(--bdr)}
+.cal-dow-cell:last-child{border-right:none}
+.cal-dow-cell.weekend{color:var(--red)}
+.cal-month-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;flex:1;min-height:0;overflow-y:auto}
+.cal-month-grid::-webkit-scrollbar{width:4px}
+.cal-month-grid::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.cal-day-cell{border-right:1px solid var(--bdr);border-bottom:1px solid var(--bdr);padding:6px 6px 4px;display:flex;flex-direction:column;gap:3px;cursor:pointer;transition:background .12s;min-height:90px;overflow:hidden;position:relative}
+.cal-day-cell:hover{background:var(--gp)}
+.cal-day-cell.other-month{background:#FAFBFA;color:var(--bdr)}
+.cal-day-cell.other-month:hover{background:#F4F6F4}
+.cal-day-cell.weekend:not(.other-month){background:#FAFCFB}
+.cal-day-cell.today{background:var(--gl)}
+.cal-day-cell.today:hover{background:var(--gl);filter:brightness(.97)}
+.cal-day-num{font-size:13px;font-weight:700;color:var(--t);display:flex;align-items:center;justify-content:flex-end;height:22px;padding:0 2px}
+.cal-day-cell.other-month .cal-day-num{color:var(--gb)}
+.cal-day-cell.today .cal-day-num{position:relative}
+.cal-day-cell.today .cal-day-num::before{content:'';position:absolute;right:0;width:22px;height:22px;border-radius:50%;background:var(--g);z-index:0}
+.cal-day-cell.today .cal-day-num span{position:relative;z-index:1;color:#fff;font-weight:800;width:22px;text-align:center}
+.cal-event-chip{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:5px;font-size:10.5px;font-weight:700;line-height:1.2;cursor:pointer;background:rgba(30,138,76,.1);color:#1E8A4C;border-left:3px solid #1E8A4C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:filter .12s}
+.cal-event-chip:hover{filter:brightness(.92)}
+.cal-event-time{font-size:9px;opacity:.75;font-weight:800;flex-shrink:0}
+.cal-event-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.cal-more-link{font-size:10px;font-weight:700;color:var(--gmt);padding:2px 6px;cursor:pointer}
+.cal-more-link:hover{color:var(--g)}
+
+/* RIGHT SIDEBAR */
+.r-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.r-title{font-size:11px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+.flt-item{display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;border-radius:8px;transition:background .1s}
+.flt-item:hover{background:var(--gp)}
+.flt-dot{width:12px;height:12px;border-radius:4px;flex-shrink:0}
+.flt-label{flex:1;font-size:13px;color:var(--t);font-weight:600}
+.flt-count{font-size:11px;color:var(--gmt);font-weight:700}
+.flt-check{width:16px;height:16px;border:1.8px solid var(--bdr);border-radius:4px;display:grid;place-items:center;flex-shrink:0;background:var(--w);transition:all .12s}
+.flt-item.on .flt-check{background:var(--g);border-color:var(--g)}
+.flt-item.on .flt-check svg{display:block}
+.flt-check svg{display:none;width:10px;height:10px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round}
+
+.upcoming-item{display:flex;gap:9px;align-items:flex-start;padding:8px 4px;border-bottom:1px solid var(--bdr);text-decoration:none;color:inherit;cursor:pointer}
+.upcoming-item:last-child{border-bottom:none}
+.upcoming-item:hover .upc-title{color:var(--g)}
+.upc-date{display:flex;flex-direction:column;align-items:center;background:var(--gp);border:1px solid var(--bdr);border-radius:8px;padding:4px 6px;min-width:38px;flex-shrink:0}
+.upc-d{font-size:14px;font-weight:800;color:var(--g);line-height:1}
+.upc-m{font-size:8px;font-weight:700;color:var(--gmt);text-transform:uppercase;margin-top:1px}
+.upc-body{min-width:0;flex:1}
+.upc-title{font-size:12px;font-weight:700;color:var(--t);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:color .12s}
+.upc-sub{font-size:10px;color:var(--gmt);margin-top:2px}
+.upc-tag{display:inline-block;font-size:8.5px;font-weight:800;text-transform:uppercase;padding:1px 5px;border-radius:99px;margin-top:3px;letter-spacing:.04em}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.18);padding:24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .22s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal::-webkit-scrollbar{width:4px}
+.modal::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-head h3{font-size:17px;font-weight:900;color:var(--t)}
+.modal-x{width:30px;height:30px;border-radius:8px;background:var(--gp);border:none;cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:background .15s;flex-shrink:0}
+.modal-x:hover{background:var(--gl);color:var(--g)}
+.modal-x svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.form-row{margin-bottom:13px}
+.form-row.req .form-label::after{content:' *';color:var(--red)}
+.form-label{font-size:11px;font-weight:800;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:6px}
+.form-input{width:100%;border:1.5px solid var(--bdr);border-radius:12px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
+.form-input:focus{border-color:var(--gm);background:var(--w)}
+.form-input::placeholder{color:var(--gmt)}
+textarea.form-input{resize:vertical;min-height:70px;line-height:1.5}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kind-row,.color-row{display:flex;gap:6px;flex-wrap:wrap}
+.kind-chip{padding:6px 12px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--gp);color:var(--tm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.kind-chip:hover{border-color:var(--gb);background:var(--gl)}
+.kind-chip.active{background:var(--g);color:#fff;border-color:var(--g)}
+.kind-chip svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.color-chip{width:30px;height:30px;border-radius:8px;cursor:pointer;border:3px solid transparent;transition:transform .12s;position:relative}
+.color-chip:hover{transform:scale(1.08)}
+.color-chip.active{border-color:var(--w);box-shadow:0 0 0 2px var(--t)}
+.allday-row{display:flex;align-items:center;gap:8px;margin-top:10px}
+.allday-cb{width:18px;height:18px;border:1.8px solid var(--bdr);border-radius:5px;display:grid;place-items:center;background:var(--w);cursor:pointer;transition:all .12s}
+.allday-cb.on{background:var(--g);border-color:var(--g)}
+.allday-cb.on svg{display:block}
+.allday-cb svg{display:none;width:11px;height:11px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round}
+.allday-row label{font-size:13px;color:var(--t);font-weight:600;cursor:pointer}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)}
+.btn-sec{padding:9px 18px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:700;color:var(--tm);cursor:pointer;transition:background .15s}
+.btn-sec:hover{background:var(--gp)}
+.btn-pri{padding:9px 24px;border-radius:99px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:background .15s}
+.btn-pri:hover{background:var(--gm)}
+.btn-pri:disabled{background:var(--gb);cursor:not-allowed}
+.btn-del{padding:9px 18px;border-radius:99px;border:1.5px solid #F5C2C2;background:#FFF;color:var(--red);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;margin-right:auto}
+.btn-del:hover{background:#FDEDED;border-color:#F5A5A5}
+.read-only-banner{padding:10px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:10px;font-size:12px;color:var(--gmt);margin-bottom:13px;display:flex;align-items:center;gap:8px}
+.read-only-banner svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0}
+
+/* DAY POPUP */
+.day-popup-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;padding-right:4px;margin-bottom:14px}
+.day-popup-list::-webkit-scrollbar{width:4px}
+.day-popup-list::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.day-event-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;background:var(--gp);border-left:4px solid var(--g);cursor:pointer;transition:filter .12s}
+.day-event-row:hover{filter:brightness(.97)}
+.dev-time{font-size:11px;font-weight:800;color:var(--gmt);min-width:70px;flex-shrink:0;padding-top:1px}
+.dev-body{flex:1;min-width:0}
+.dev-title{font-size:13px;font-weight:700;color:var(--t);line-height:1.35}
+.dev-meta{font-size:11px;color:var(--gmt);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dev-tag{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;padding:1px 6px;border-radius:99px;letter-spacing:.04em}
+.empty-day{padding:30px 16px;text-align:center;color:var(--gmt);font-size:13px}
+
+@media(max-width:1200px){.shell{grid-template-columns:240px 1fr 260px}}
+@media(max-width:1000px){.shell{grid-template-columns:240px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}}
+@media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}.cal-page-title{display:none}.cal-mode-switch{margin-left:0}.cal-day-cell{min-height:60px}.cal-event-chip{font-size:9.5px;padding:2px 4px}}
+
+[class*="card"]{transition:box-shadow .2s ease,transform .2s ease}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+
+<div class="main">
+  <!-- TOOLBAR -->
+  <div class="cal-toolbar">
+    <span class="cal-page-title">Календарь</span>
+    <div class="cal-nav-group">
+      <button class="cal-nav-btn" id="prevBtn" title="Назад"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <span class="cal-current-label" id="currentLabel">—</span>
+      <button class="cal-nav-btn" id="nextBtn" title="Вперёд"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <button class="cal-today-btn" id="todayBtn">Сегодня</button>
+    <div class="cal-mode-switch">
+      <button class="cal-mode-btn active" data-mode="month">Месяц</button>
+      <button class="cal-mode-btn" data-mode="week" title="Доступно скоро">Неделя</button>
+      <button class="cal-mode-btn" data-mode="day" title="Доступно скоро">День</button>
+    </div>
+    <button class="btn-create-event" id="createBtn"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать событие</button>
+  </div>
+
+  <!-- MONTH GRID -->
+  <div class="cal-grid-wrap">
+    <div class="cal-dow-row">
+      <div class="cal-dow-cell">Пн</div>
+      <div class="cal-dow-cell">Вт</div>
+      <div class="cal-dow-cell">Ср</div>
+      <div class="cal-dow-cell">Чт</div>
+      <div class="cal-dow-cell">Пт</div>
+      <div class="cal-dow-cell weekend">Сб</div>
+      <div class="cal-dow-cell weekend">Вс</div>
+    </div>
+    <div class="cal-month-grid" id="monthGrid"></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<aside class="right">
+  <div class="r-card">
+    <div class="r-title">Источники</div>
+    <div id="filterList"></div>
+  </div>
+  <div class="r-card">
+    <div class="r-title">Скоро</div>
+    <div id="upcomingList"></div>
+  </div>
+</aside>
+</div>
+
+<!-- MODAL: CREATE / EDIT -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Создать событие</h3>
+      <button class="modal-x" onclick="closeModal()" type="button"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div id="readOnlyBanner" class="read-only-banner" style="display:none">
+      <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+      <span id="readOnlyMsg">Это событие нельзя редактировать здесь</span>
+    </div>
+
+    <div class="form-row req">
+      <label class="form-label">Название</label>
+      <input class="form-input" id="evTitle" placeholder="Например: Звонок с командой" maxlength="200">
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Тип</label>
+      <div class="kind-row" id="kindRow">
+        <button type="button" class="kind-chip active" data-kind="personal"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Личное</button>
+        <button type="button" class="kind-chip" data-kind="meeting"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Встреча</button>
+        <button type="button" class="kind-chip" data-kind="reminder"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Напоминание</button>
+        <button type="button" class="kind-chip" data-kind="note"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Заметка</button>
+        <button type="button" class="kind-chip" data-kind="deadline"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Дедлайн</button>
+      </div>
+    </div>
+
+    <div class="form-grid2">
+      <div class="form-row req">
+        <label class="form-label">Начало</label>
+        <input class="form-input" type="datetime-local" id="evStarts">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Окончание</label>
+        <input class="form-input" type="datetime-local" id="evEnds">
+      </div>
+    </div>
+
+    <div class="allday-row" onclick="toggleAllDay()">
+      <div class="allday-cb" id="alldayCb"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+      <label>Весь день</label>
+    </div>
+
+    <div class="form-row" style="margin-top:13px">
+      <label class="form-label">Цвет</label>
+      <div class="color-row" id="colorRow">
+        <div class="color-chip active" data-color="#1E8A4C" style="background:#1E8A4C"></div>
+        <div class="color-chip" data-color="#185FA5" style="background:#185FA5"></div>
+        <div class="color-chip" data-color="#B07A00" style="background:#B07A00"></div>
+        <div class="color-chip" data-color="#C04030" style="background:#C04030"></div>
+        <div class="color-chip" data-color="#9060C0" style="background:#9060C0"></div>
+        <div class="color-chip" data-color="#208090" style="background:#208090"></div>
+        <div class="color-chip" data-color="#5A5A5A" style="background:#5A5A5A"></div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Место (опционально)</label>
+      <input class="form-input" id="evLocation" placeholder="Адрес или ссылка на встречу" maxlength="500">
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Описание</label>
+      <textarea class="form-input" id="evDescription" placeholder="Дополнительные детали…" maxlength="5000"></textarea>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Напомнить за</label>
+      <select class="form-input" id="evReminder">
+        <option value="">Не напоминать</option>
+        <option value="5">5 минут</option>
+        <option value="15">15 минут</option>
+        <option value="30">30 минут</option>
+        <option value="60">1 час</option>
+        <option value="1440">1 день</option>
+      </select>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-del" id="deleteBtn" type="button" style="display:none" onclick="deleteEvent()">Удалить</button>
+      <button class="btn-sec" type="button" onclick="closeModal()">Отмена</button>
+      <button class="btn-pri" id="saveBtn" type="button" onclick="saveEvent()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY POPUP MODAL -->
+<div class="modal-bg" id="dayModalBg">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h3 id="dayModalTitle">События дня</h3>
+      <button class="modal-x" onclick="closeDayModal()" type="button"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="day-popup-list" id="dayPopupList"></div>
+    <div class="modal-footer" style="justify-content:flex-start">
+      <button class="btn-pri" id="dayCreateBtn" type="button"><svg style="width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;vertical-align:-1px;margin-right:4px" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать на этот день</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+const tk = () => localStorage.getItem('token');
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+if(!tk()){location.href='/login.html';}
+
+/* ─── State ─── */
+const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+let viewYear, viewMonth;            // текущий просматриваемый месяц
+let allEvents=[];                   // все события из /api/calendar
+const SOURCE_META = {
+  personal:    {label:'Личные события', color:'var(--src-personal)',  hex:'#1E8A4C'},
+  event:       {label:'Мероприятия',    color:'var(--src-event)',     hex:'#185FA5'},
+  event_own:   {label:'Мои мероприятия',color:'var(--src-event)',     hex:'#185FA5'},
+  exhibition:  {label:'Выставки',       color:'var(--src-exhibition)',hex:'#B07A00'},
+  exhibition_own:{label:'Мои выставки', color:'var(--src-exhibition)',hex:'#B07A00'},
+  project:     {label:'Дедлайны',       color:'var(--src-project)',   hex:'#C04030'},
+  birthday:    {label:'Дни рождения',   color:'var(--src-birthday)',  hex:'#9060C0'},
+};
+const FILTER_GROUPS = ['personal','event','exhibition','project'];   // верхнеуровневые группы в правом сайдбаре
+const filterOn = {personal:true,event:true,exhibition:true,project:true};
+function groupForSource(src){
+  if(src==='event_own')return 'event';
+  if(src==='exhibition_own')return 'exhibition';
+  return src;
+}
+
+/* ─── INIT ─── */
+window.addEventListener('DOMContentLoaded',()=>{
+  const now=new Date();
+  // ?date=YYYY-MM-DD позволяет открыть конкретный месяц
+  const p=new URLSearchParams(location.search);
+  const dateParam=p.get('date');
+  if(dateParam){
+    const d=new Date(dateParam+'T00:00:00');
+    if(!isNaN(d)){viewYear=d.getFullYear();viewMonth=d.getMonth();}
+    else {viewYear=now.getFullYear();viewMonth=now.getMonth();}
+  } else {
+    viewYear=now.getFullYear();viewMonth=now.getMonth();
+  }
+  document.getElementById('prevBtn').addEventListener('click',()=>navigateMonth(-1));
+  document.getElementById('nextBtn').addEventListener('click',()=>navigateMonth(1));
+  document.getElementById('todayBtn').addEventListener('click',()=>{
+    const t=new Date();viewYear=t.getFullYear();viewMonth=t.getMonth();void refresh();
+  });
+  document.getElementById('createBtn').addEventListener('click',()=>openModal(null,null));
+  document.getElementById('dayCreateBtn').addEventListener('click',()=>{
+    const d=dayModalDate;
+    closeDayModal();
+    openModal(null,d);
+  });
+  // Mode switch (только месяц активен; неделя/день — заглушки до CAL-5)
+  document.querySelectorAll('.cal-mode-btn').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.mode!=='month'){
+      if(window.lastopToast)window.lastopToast('Режимы «Неделя» и «День» появятся в следующем обновлении','info');
+      return;
+    }
+  }));
+  // Колесо мыши на навигации
+  document.getElementById('monthGrid').addEventListener('wheel',e=>{
+    // не угоняем основной скролл
+  },{passive:true});
+  // ESC
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){closeModal();closeDayModal();}
+  });
+  void refresh();
+});
+
+function navigateMonth(delta){
+  viewMonth+=delta;
+  while(viewMonth<0){viewMonth+=12;viewYear--;}
+  while(viewMonth>11){viewMonth-=12;viewYear++;}
+  void refresh();
+}
+
+/* ─── LOAD & RENDER ─── */
+async function refresh(){
+  document.getElementById('currentLabel').textContent=`${MONTHS[viewMonth]} ${viewYear}`;
+  // Загружаем окно ±1 месяц (чтобы хвосты соседних месяцев тоже были подсвечены)
+  const from=new Date(viewYear,viewMonth-1,1).toISOString().slice(0,10);
+  const to=new Date(viewYear,viewMonth+2,0).toISOString().slice(0,10);
+  try{
+    const r=await fetch(`${API}/calendar?from=${from}&to=${to}`,{headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      const d=await r.json();
+      allEvents=d.events||[];
+    } else {
+      allEvents=[];
+    }
+  }catch{
+    allEvents=[];
+  }
+  renderMonth();
+  renderFilters();
+  renderUpcoming();
+}
+
+function eventsForDay(y,m,d){
+  const dayStart=new Date(y,m,d,0,0,0,0).getTime();
+  const dayEnd=new Date(y,m,d,23,59,59,999).getTime();
+  return allEvents.filter(ev=>{
+    const grp=groupForSource(ev.source);
+    if(!filterOn[grp])return false;
+    const sa=new Date(ev.starts_at).getTime();
+    const ea=new Date(ev.ends_at).getTime();
+    return sa<=dayEnd && ea>=dayStart;
+  }).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+}
+
+function renderMonth(){
+  const root=document.getElementById('monthGrid');
+  const firstDow=(new Date(viewYear,viewMonth,1).getDay()+6)%7;  // Пн=0
+  const totalDays=new Date(viewYear,viewMonth+1,0).getDate();
+  const prevLast=new Date(viewYear,viewMonth,0).getDate();
+  const today=new Date();
+  const isThisMonth = today.getFullYear()===viewYear && today.getMonth()===viewMonth;
+  const todayDay = isThisMonth ? today.getDate() : -1;
+
+  const cells=[];
+  // prev month tail
+  for(let i=firstDow-1;i>=0;i--){
+    const day=prevLast-i;
+    const y= viewMonth===0?viewYear-1:viewYear;
+    const m= viewMonth===0?11:viewMonth-1;
+    cells.push({y,m,d:day,other:true});
+  }
+  // this month
+  for(let d=1;d<=totalDays;d++){
+    cells.push({y:viewYear,m:viewMonth,d,other:false,today:d===todayDay});
+  }
+  // next month head
+  const totalCells=Math.ceil(cells.length/7)*7;
+  while(cells.length<totalCells){
+    const idx=cells.length - (firstDow+totalDays);
+    const day=idx+1;
+    const y= viewMonth===11?viewYear+1:viewYear;
+    const m= viewMonth===11?0:viewMonth+1;
+    cells.push({y,m,d:day,other:true});
+  }
+
+  root.innerHTML = cells.map(c=>{
+    const dayEvents=eventsForDay(c.y,c.m,c.d);
+    const dow=new Date(c.y,c.m,c.d).getDay();
+    const isWeekend=dow===0||dow===6;
+    let cls='cal-day-cell';
+    if(c.other)cls+=' other-month';
+    if(c.today)cls+=' today';
+    if(isWeekend)cls+=' weekend';
+    const visibleEvents=dayEvents.slice(0,3);
+    const restCount=dayEvents.length-visibleEvents.length;
+    const chipsHTML = visibleEvents.map(ev=>{
+      const sa=new Date(ev.starts_at);
+      const timeStr=ev.is_all_day?'':sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+      const bg=hexToBg(ev.color);
+      return `<div class="cal-event-chip" style="background:${bg};color:${ev.color};border-left-color:${ev.color}" data-evid="${esc(ev.id)}" data-src="${esc(ev.source)}" onclick="event.stopPropagation();openEventFromChip('${esc(ev.id)}','${esc(ev.source)}')">${timeStr?`<span class="cal-event-time">${timeStr}</span>`:''}<span class="cal-event-title">${esc(ev.title)}</span></div>`;
+    }).join('');
+    const more = restCount>0
+      ? `<div class="cal-more-link" onclick="event.stopPropagation();openDayModal(${c.y},${c.m},${c.d})">ещё ${restCount}</div>`
+      : '';
+    return `<div class="${cls}" onclick="openDayModal(${c.y},${c.m},${c.d})">
+      <div class="cal-day-num"><span>${c.d}</span></div>
+      ${chipsHTML}
+      ${more}
+    </div>`;
+  }).join('');
+}
+
+function hexToBg(hex){
+  // делает полупрозрачный фон из hex
+  if(!hex||hex[0]!=='#')return 'rgba(30,138,76,.1)';
+  const h=hex.replace('#','');
+  const r=parseInt(h.substring(0,2),16);
+  const g=parseInt(h.substring(2,4),16);
+  const b=parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},0.12)`;
+}
+
+/* ─── FILTERS ─── */
+function renderFilters(){
+  const counts={personal:0,event:0,exhibition:0,project:0};
+  allEvents.forEach(ev=>{const g=groupForSource(ev.source);if(counts[g]!==undefined)counts[g]++;});
+  const root=document.getElementById('filterList');
+  root.innerHTML = FILTER_GROUPS.map(key=>{
+    const meta=SOURCE_META[key];
+    const on=filterOn[key];
+    return `<div class="flt-item${on?' on':''}" onclick="toggleFilter('${key}')">
+      <div class="flt-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+      <div class="flt-dot" style="background:${meta.hex}"></div>
+      <div class="flt-label">${esc(meta.label)}</div>
+      <div class="flt-count">${counts[key]}</div>
+    </div>`;
+  }).join('');
+}
+function toggleFilter(key){
+  filterOn[key]=!filterOn[key];
+  renderMonth();renderFilters();renderUpcoming();
+}
+
+/* ─── UPCOMING ─── */
+function renderUpcoming(){
+  const now=Date.now();
+  const upcoming=allEvents
+    .filter(ev=>filterOn[groupForSource(ev.source)] && new Date(ev.ends_at).getTime()>=now)
+    .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at))
+    .slice(0,5);
+  const root=document.getElementById('upcomingList');
+  if(!upcoming.length){
+    root.innerHTML='<div style="padding:10px 4px;color:var(--gmt);font-size:12px;text-align:center">Нет предстоящих событий</div>';
+    return;
+  }
+  root.innerHTML=upcoming.map(ev=>{
+    const sa=new Date(ev.starts_at);
+    const day=sa.getDate();
+    const mon=sa.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');
+    const time=ev.is_all_day?'весь день':sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+    const meta=SOURCE_META[ev.source]||SOURCE_META.personal;
+    const handler = ev.editable
+      ? `onclick="openEventFromChip('${esc(ev.id)}','personal')"`
+      : (ev.link ? `onclick="location.href='${esc(ev.link)}'"` : '');
+    return `<div class="upcoming-item" ${handler}>
+      <div class="upc-date"><div class="upc-d">${day}</div><div class="upc-m">${esc(mon)}</div></div>
+      <div class="upc-body">
+        <div class="upc-title">${esc(ev.title)}</div>
+        <div class="upc-sub">${esc(time)}${ev.location?' · '+esc(ev.location):''}</div>
+        <span class="upc-tag" style="background:${hexToBg(meta.hex)};color:${meta.hex}">${esc(meta.label)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ─── DAY MODAL ─── */
+let dayModalDate=null;
+function openDayModal(y,m,d){
+  dayModalDate=new Date(y,m,d,9,0,0);
+  const dayEvents=eventsForDay(y,m,d);
+  const dateLabel=new Date(y,m,d).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',weekday:'long'});
+  document.getElementById('dayModalTitle').textContent=dateLabel;
+  const list=document.getElementById('dayPopupList');
+  if(!dayEvents.length){
+    list.innerHTML='<div class="empty-day">В этот день нет событий</div>';
+  } else {
+    list.innerHTML=dayEvents.map(ev=>{
+      const sa=new Date(ev.starts_at);
+      const ea=new Date(ev.ends_at);
+      const time=ev.is_all_day
+        ? 'весь день'
+        : `${sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}–${ea.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;
+      const meta=SOURCE_META[ev.source]||SOURCE_META.personal;
+      return `<div class="day-event-row" style="border-left-color:${ev.color};background:${hexToBg(ev.color)}" onclick="closeDayModal();openEventFromChip('${esc(ev.id)}','${esc(ev.source)}')">
+        <div class="dev-time">${esc(time)}</div>
+        <div class="dev-body">
+          <div class="dev-title">${esc(ev.title)}</div>
+          <div class="dev-meta">
+            <span class="dev-tag" style="background:${hexToBg(meta.hex)};color:${meta.hex}">${esc(meta.label)}</span>
+            ${ev.location?`<span>📍 ${esc(ev.location)}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('dayModalBg').classList.add('open');
+}
+function closeDayModal(){document.getElementById('dayModalBg').classList.remove('open');}
+
+/* ─── EVENT MODAL ─── */
+let editingId=null;            // pcal_xxx если редактируем личное; null если новое
+let editingSource=null;        // source агрегатора (только для read-only режима)
+let modalKind='personal';
+let modalColor='#1E8A4C';
+let modalAllDay=false;
+
+function openEventFromChip(id, source){
+  if(source==='personal'){
+    const ev=allEvents.find(e=>e.id===id && e.source==='personal');
+    if(ev)openModal(ev,null);
+    return;
+  }
+  // Не личное — открыть детальную страницу через link
+  const ev=allEvents.find(e=>e.id===id);
+  if(ev && ev.link){location.href=ev.link;return;}
+}
+
+function openModal(ev, defaultDate){
+  editingId=null;editingSource=null;
+  modalKind='personal';modalColor='#1E8A4C';modalAllDay=false;
+  document.getElementById('modalTitle').textContent = ev ? 'Редактирование события' : 'Создать событие';
+  document.getElementById('saveBtn').textContent = ev ? 'Сохранить' : 'Создать';
+  document.getElementById('deleteBtn').style.display = ev ? '' : 'none';
+  document.getElementById('readOnlyBanner').style.display='none';
+  // Заполняем форму
+  document.getElementById('evTitle').value = ev?.title || '';
+  document.getElementById('evDescription').value = ev?.description || '';
+  document.getElementById('evLocation').value = ev?.location || '';
+  document.getElementById('evReminder').value = '';
+  if(ev){
+    editingId=ev.id;
+    modalKind=ev.kind||'personal';
+    modalColor=ev.color||'#1E8A4C';
+    modalAllDay=!!ev.is_all_day;
+    const sa=new Date(ev.starts_at);
+    const ea=new Date(ev.ends_at);
+    document.getElementById('evStarts').value=toLocalInputDT(sa);
+    document.getElementById('evEnds').value=toLocalInputDT(ea);
+  } else {
+    // Создание: defaultDate — день, на который кликнули (или now)
+    const base = defaultDate || new Date();
+    const sa=new Date(base); sa.setHours(10,0,0,0);
+    const ea=new Date(base); ea.setHours(11,0,0,0);
+    document.getElementById('evStarts').value=toLocalInputDT(sa);
+    document.getElementById('evEnds').value=toLocalInputDT(ea);
+  }
+  // Подсветка chips
+  document.querySelectorAll('.kind-chip').forEach(c=>c.classList.toggle('active',c.dataset.kind===modalKind));
+  document.querySelectorAll('.color-chip').forEach(c=>c.classList.toggle('active',c.dataset.color===modalColor));
+  document.getElementById('alldayCb').classList.toggle('on',modalAllDay);
+  if(window.lastopClearAllErrors)window.lastopClearAllErrors(document.getElementById('modalBg'));
+  document.getElementById('modalBg').classList.add('open');
+  setTimeout(()=>document.getElementById('evTitle').focus(),120);
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');editingId=null;}
+
+function toLocalInputDT(d){
+  if(!(d instanceof Date) || isNaN(d))return '';
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/* Chip handlers */
+document.getElementById('kindRow').addEventListener('click',e=>{
+  const c=e.target.closest('.kind-chip');if(!c)return;
+  modalKind=c.dataset.kind;
+  document.querySelectorAll('.kind-chip').forEach(x=>x.classList.toggle('active',x===c));
+});
+document.getElementById('colorRow').addEventListener('click',e=>{
+  const c=e.target.closest('.color-chip');if(!c)return;
+  modalColor=c.dataset.color;
+  document.querySelectorAll('.color-chip').forEach(x=>x.classList.toggle('active',x===c));
+});
+function toggleAllDay(){
+  modalAllDay=!modalAllDay;
+  document.getElementById('alldayCb').classList.toggle('on',modalAllDay);
+}
+
+/* SAVE */
+async function saveEvent(){
+  if(window.lastopClearAllErrors)window.lastopClearAllErrors(document.getElementById('modalBg'));
+  // Валидация
+  const titleEl=document.getElementById('evTitle');
+  const startsEl=document.getElementById('evStarts');
+  const endsEl=document.getElementById('evEnds');
+  if(window.lastopValidate){
+    const ok=window.lastopValidate([
+      {el:titleEl,required:true,message:'Введите название события'},
+      {el:startsEl,required:true,message:'Укажите дату и время начала'},
+    ]);
+    if(!ok)return;
+  } else {
+    if(!titleEl.value.trim()){alert('Введите название');return;}
+    if(!startsEl.value){alert('Укажите дату начала');return;}
+  }
+  const body={
+    title: titleEl.value.trim(),
+    description: document.getElementById('evDescription').value.trim(),
+    kind: modalKind,
+    starts_at: startsEl.value,                       // YYYY-MM-DDTHH:MM
+    ends_at: endsEl.value || startsEl.value,         // если пусто — = старт
+    is_all_day: modalAllDay,
+    color: modalColor,
+    location: document.getElementById('evLocation').value.trim(),
+  };
+  const remVal=document.getElementById('evReminder').value;
+  if(remVal!==''){body.reminder_minutes=parseInt(remVal,10);}
+  else if(editingId){body.reminder_minutes=-1;}        // снять напоминание при редактировании
+  // Если weекдончание раньше начала — backend сам выставит +1 час; на всякий случай:
+  if(body.ends_at && body.ends_at < body.starts_at){body.ends_at=body.starts_at;}
+  const btn=document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent=editingId?'Сохранение…':'Создание…';
+  try{
+    const url = editingId ? `${API}/calendar/events/${editingId}` : `${API}/calendar/events`;
+    const method = editingId ? 'PATCH' : 'POST';
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    if(!r.ok){
+      const d=await r.json().catch(()=>({}));
+      if(r.status===429 && window.lastopAlert){
+        await window.lastopAlert({title:'Слишком много попыток',message:d.error||'Подождите немного и повторите',type:'warn'});
+      } else if(window.lastopToast){
+        window.lastopToast(d.error||'Не удалось сохранить','error');
+      } else {
+        alert(d.error||'Ошибка');
+      }
+      btn.disabled=false;btn.textContent=editingId?'Сохранить':'Создать';
+      return;
+    }
+    if(window.lastopToast)window.lastopToast(editingId?'Событие обновлено':'Событие создано','success');
+    closeModal();
+    await refresh();
+  }catch(err){
+    if(window.lastopToast)window.lastopToast('Ошибка сети','error');
+  }
+  btn.disabled=false;btn.textContent=editingId?'Сохранить':'Создать';
+}
+
+async function deleteEvent(){
+  if(!editingId)return;
+  const confirmed = window.lastopConfirm
+    ? await window.lastopConfirm({title:'Удалить событие?',message:'Это действие нельзя отменить',danger:true})
+    : confirm('Удалить событие?');
+  if(!confirmed)return;
+  try{
+    const r=await fetch(`${API}/calendar/events/${editingId}`,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    if(r.ok){
+      if(window.lastopToast)window.lastopToast('Удалено','success');
+      closeModal();
+      await refresh();
+    } else {
+      if(window.lastopToast)window.lastopToast('Не удалось удалить','error');
+    }
+  }catch{
+    if(window.lastopToast)window.lastopToast('Ошибка сети','error');
+  }
+}
+
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{
+  if(e.target===m){
+    if(m.id==='modalBg')closeModal();
+    if(m.id==='dayModalBg')closeDayModal();
+  }
+}));
+</script>
+<script src="/assets/guest-nav.js" defer></script>
+<script src="/assets/profile-context.js" defer></script>
+</body>
+</html>
