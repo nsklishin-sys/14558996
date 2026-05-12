@@ -904,3 +904,29 @@ html.lt-shell-2col .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px so
 }
 
 /* Тёмная тема — не нужны явные правила, переменные --w/--gp/--bdr уже инвертируются */
+
+
+/* ─────────────────────────────────────────────────────────────
+   ГЛОБАЛЬНЫЙ ГОРИЗОНТАЛЬНЫЙ СКРОЛЛБАР
+   Помеченные [data-hw="1"] контейнеры (выставляется JS-хелпером
+   из shell-injector.js) получают тонкий зелёный скроллбар
+   и поддержку колеса мыши для горизонтального скролла.
+   ───────────────────────────────────────────────────────────── */
+[data-hw="1"]{
+  scrollbar-width:thin !important;
+  scrollbar-color:var(--gb,#C0DECA) transparent !important;
+}
+[data-hw="1"]::-webkit-scrollbar{
+  height:6px !important;
+  width:6px;
+}
+[data-hw="1"]::-webkit-scrollbar-track{
+  background:transparent !important;
+}
+[data-hw="1"]::-webkit-scrollbar-thumb{
+  background:var(--gb,#C0DECA) !important;
+  border-radius:99px !important;
+}
+[data-hw="1"]::-webkit-scrollbar-thumb:hover{
+  background:var(--gm,#22A05A) !important;
+}
