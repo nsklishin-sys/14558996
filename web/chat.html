@@ -213,6 +213,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* Пузыри */
 .msg{display:flex;gap:8px;max-width:70%;animation:msgIn .25s ease both}
+.msg-reply{display:flex;gap:6px;align-items:stretch;background:rgba(30,138,76,.08);border-radius:6px;padding:4px 8px 4px 6px;margin-bottom:4px;cursor:pointer;transition:background .15s;max-width:100%;overflow:hidden}
+.msg-reply:hover{background:rgba(30,138,76,.14)}
+.msg.me .msg-reply{background:rgba(255,255,255,.18)}
+.msg.me .msg-reply:hover{background:rgba(255,255,255,.28)}
+.msg-reply-bar{width:3px;flex-shrink:0;background:#1E8A4C;border-radius:2px;align-self:stretch}
+.msg.me .msg-reply-bar{background:#fff}
+.msg-reply-body{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.msg-reply-author{font-size:11px;font-weight:700;color:#1E8A4C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.msg.me .msg-reply-author{color:#fff}
+.msg-reply-text{font-size:11px;color:#5A8A6A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.msg.me .msg-reply-text{color:rgba(255,255,255,.85)}
+.msg-highlight{animation:msgHl 1.5s ease}
+@keyframes msgHl{0%,100%{background:transparent}30%{background:rgba(30,138,76,.18)}}
 @keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .msg.me{align-self:flex-end;flex-direction:row-reverse}
 .msg.them{align-self:flex-start}
@@ -1448,7 +1461,7 @@ function renderMessages(){
     const _urls = m.content ? extractURLs(m.content) : [];
     const previewSlotsHTML = _urls.map(u=>`<div class="lp-slot" data-url="${esc(u)}"></div>`).join('');
     const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
-    const replyHTML = m.reply_to ? `<div class='msg-reply'>${esc(m.reply_to.author_name)}: ${esc(m.reply_to.content_preview||'—')}</div>` : '';
+    const replyHTML = m.reply_to ? `<div class='msg-reply' onclick='scrollToMessage(${m.reply_to.id})'><div class='msg-reply-bar'></div><div class='msg-reply-body'><div class='msg-reply-author'>${esc(m.reply_to.author_name)}</div><div class='msg-reply-text'>${esc(m.reply_to.content_preview||'—')}</div></div></div>` : '';
 
     // A2.1: вычисляем effective автора и аватар с учётом контекста
     let avatarHtml = '';
@@ -1591,6 +1604,7 @@ function renderAttachment(m){
   </div>`;
 }
 function openReply(id){const m=state.messages.find(x=>x.id===id);if(!m)return;state.replyTo={id:m.id,author_name:m.author_name,content_preview:(m.content||'').slice(0,60)};replyBar.classList.add('active');const rn=document.getElementById('replyToTitle');if(rn)rn.textContent='Ответ '+m.author_name;const rt=document.getElementById('replyText');if(rt)rt.textContent=(m.content||'').slice(0,100)}
+function scrollToMessage(id){const el=document.querySelector(`[data-msg-id="${id}"]`);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('msg-highlight');setTimeout(()=>el.classList.remove('msg-highlight'),1500)}
 function closeReply(){
   state.replyTo=null;
   if(state.editing){
