@@ -21,6 +21,7 @@ import (
 	netmail "net/mail"
 	neturl "net/url"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -10567,9 +10569,27 @@ func main() {
 		MaxHeaderBytes:    1 << 20,
 	}
 	log.Printf("Server started at http://localhost%s", addr)
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatal(err)
+
+	// Graceful shutdown: ловим SIGINT/SIGTERM, даём активным запросам
+	// до 30 секунд завершиться, потом останавливаем сервер.
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-stop
+	log.Printf("Получен сигнал %v, начинаем graceful shutdown (макс 30 сек)…", sig)
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown failed: %v — принудительный close", err)
+		_ = srv.Close()
 	}
+	log.Printf("Сервер корректно остановлен")
 }
 
 func initDBFromEnv() (*sql.DB, error) {

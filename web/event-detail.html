@@ -925,11 +925,14 @@ async function messageOrganizer(){
   const ev=state.currentEvent;
   // Если организатор — компания, направляем на её страницу
   // (личный чат с владельцем = неправильный контекст).
-  if(ev.organizer_company_id && ev.organizer_company_slug){
-    location.href='/company-detail.html?slug='+encodeURIComponent(ev.organizer_company_slug);
+  // На бэке для event поля называются author_company_*, а не organizer_company_*.
+  const companyID = ev.author_company_id || ev.organizer_company_id;
+  const companySlug = ev.author_company_slug || ev.organizer_company_slug;
+  if(companyID && companySlug){
+    location.href='/company-detail.html?slug='+encodeURIComponent(companySlug);
     return;
   }
-  if(ev.organizer_company_id && !ev.organizer_company_slug){
+  if(companyID && !companySlug){
     // Slug не пришёл — fallback: открыть каталог компаний
     location.href='/companies.html';
     return;
@@ -1205,7 +1208,7 @@ function applyEvent(ev){
   }
   const moBtn=document.getElementById('messageOrganizerBtn');
   if(moBtn && ev){
-    if(ev.organizer_company_id){
+    if(ev.author_company_id || ev.organizer_company_id){
       moBtn.textContent='Открыть страницу компании';
     }else{
       moBtn.textContent='Написать организатору';
