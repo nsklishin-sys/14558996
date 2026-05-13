@@ -2947,6 +2947,89 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"user": authUser})
 	})
 
+	mux.HandleFunc("/api/repost-targets", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		// Personal
+		type target struct {
+			Type     string `json:"type"` // "user" | "company" | "community"
+			ID       int64  `json:"id"`
+			PublicID string `json:"public_id,omitempty"`
+			Name     string `json:"name"`
+			Avatar   string `json:"avatar,omitempty"`
+			Subtitle string `json:"subtitle,omitempty"`
+		}
+		var targets []target
+		// 1) Личная страница
+		var userName, userAvatar string
+		_ = db.QueryRow(`SELECT COALESCE(NULLIF(full_name,''), email), COALESCE(avatar_url, '') FROM users WHERE id=$1`, userID).Scan(&userName, &userAvatar)
+		targets = append(targets, target{
+			Type:     "user",
+			ID:       userID,
+			Name:     userName,
+			Avatar:   userAvatar,
+			Subtitle: "На мою страницу",
+		})
+		// 2) Компании, где юзер состоит
+		rows, err := db.Query(`
+			SELECT c.id, c.public_id, c.name, COALESCE(c.logo_image, ''), cm.role
+			FROM companies c
+			JOIN company_members cm ON cm.company_id = c.id
+			WHERE cm.user_id = $1 AND c.deleted_at IS NULL
+			ORDER BY c.name
+		`, userID)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var t target
+				var role string
+				if err := rows.Scan(&t.ID, &t.PublicID, &t.Name, &t.Avatar, &role); err == nil {
+					t.Type = "company"
+					if role == "owner" {
+						t.Subtitle = "Владелец компании"
+					} else {
+						t.Subtitle = "Участник компании"
+					}
+					targets = append(targets, t)
+				}
+			}
+		}
+		// 3) Сообщества, где юзер состоит
+		rows2, err2 := db.Query(`
+			SELECT co.id, co.public_id, co.name, COALESCE(co.avatar_url, ''), cm.role
+			FROM communities co
+			JOIN community_members cm ON cm.community_id = co.id
+			WHERE cm.user_id = $1 AND co.is_deleted = FALSE
+			ORDER BY co.name
+		`, userID)
+		if err2 == nil {
+			defer rows2.Close()
+			for rows2.Next() {
+				var t target
+				var role string
+				if err := rows2.Scan(&t.ID, &t.PublicID, &t.Name, &t.Avatar, &role); err == nil {
+					t.Type = "community"
+					switch role {
+					case "owner":
+						t.Subtitle = "Владелец сообщества"
+					case "admin":
+						t.Subtitle = "Админ сообщества"
+					default:
+						t.Subtitle = "Участник сообщества"
+					}
+					targets = append(targets, t)
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"targets": targets})
+	})
+
 	mux.HandleFunc("/api/stats", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -5897,10 +5980,16 @@ func main() {
 				return
 			}
 			var req struct {
-				Comment string `json:"comment"`
+				Comment           string `json:"comment"`
+				TargetCompanyID   int64  `json:"target_company_id"`
+				TargetCommunityID int64  `json:"target_community_id"`
 			}
 			_ = decodeJSON(w, r, &req)
-			repost, err := createRepost(db, postPublicID, userID, strings.TrimSpace(req.Comment))
+			repost, err := createRepost(db, postPublicID, userID, repostOpts{
+				Comment:           strings.TrimSpace(req.Comment),
+				TargetCompanyID:   req.TargetCompanyID,
+				TargetCommunityID: req.TargetCommunityID,
+			})
 			if err != nil {
 				handlePostActionError(w, err)
 				return
@@ -17540,7 +17629,7 @@ func togglePostSave(db *sql.DB, postPublicID string, userID int64) (bool, int, e
 	return isSaved, savesCount, nil
 }
 
-func createRepost(db *sql.DB, originalPublicID string, userID int64, comment string) (post, error) {
+func createRepost(db *sql.DB, originalPublicID string, userID int64, opts repostOpts) (post, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return post{}, err
@@ -17560,13 +17649,37 @@ func createRepost(db *sql.DB, originalPublicID string, userID int64, comment str
 		return post{}, err
 	}
 
+	// Проверка прав: target компания/сообщество, юзер должен иметь право публиковать от их лица
+	if opts.TargetCompanyID > 0 {
+		isMember, _, err := userIsCompanyMember(db, userID, opts.TargetCompanyID)
+		if err != nil {
+			return post{}, err
+		}
+		if !isMember {
+			return post{}, errForbidden
+		}
+	}
+	if opts.TargetCommunityID > 0 {
+		var hasMembership bool
+		if err := tx.QueryRow(`
+			SELECT EXISTS(SELECT 1 FROM community_members WHERE community_id=$1 AND user_id=$2)
+		`, opts.TargetCommunityID, userID).Scan(&hasMembership); err != nil {
+			return post{}, err
+		}
+		if !hasMembership {
+			return post{}, errForbidden
+		}
+	}
+	// Нельзя одновременно компанию и сообщество
+	if opts.TargetCompanyID > 0 && opts.TargetCommunityID > 0 {
+		return post{}, errValidation
+	}
+
 	newPublicID, err := newPublicPostID()
 	if err != nil {
 		return post{}, err
 	}
 
-	// Получаем оригинальный заголовок для подстановки в title репоста
-	// (posts.title имеет CHECK char_length BETWEEN 1 AND 200, поэтому пустую строку дать нельзя)
 	var origTitle string
 	if err := tx.QueryRow(`SELECT COALESCE(NULLIF(title,''), 'Репост') FROM posts WHERE id = $1`, origID).Scan(&origTitle); err != nil {
 		origTitle = "Репост"
@@ -17575,20 +17688,21 @@ func createRepost(db *sql.DB, originalPublicID string, userID int64, comment str
 		runes := []rune(origTitle)
 		origTitle = string(runes[:200])
 	}
-	// content тоже не может быть пустым (CHECK BETWEEN 1 AND 20000).
-	// Если пользователь не написал комментарий — кладём специальный маркер,
-	// фронт по reposted_from_id и пустому content определит что это «чистый» репост.
-	contentToInsert := strings.TrimSpace(comment)
+	contentToInsert := strings.TrimSpace(opts.Comment)
 	if contentToInsert == "" {
 		contentToInsert = "↪"
+	}
+	if utf8.RuneCountInString(contentToInsert) > 20000 {
+		runes := []rune(contentToInsert)
+		contentToInsert = string(runes[:20000])
 	}
 
 	var insertedID int64
 	if err := tx.QueryRow(`
-		INSERT INTO posts (public_id, author_id, type, title, content, tags, cover_url, privacy_level, reposted_from_id, created_at, updated_at)
-		VALUES ($1, $2, 'news', $3, $4, $5::text[], NULLIF($6, ''), 'public', $7, NOW(), NOW())
+		INSERT INTO posts (public_id, author_id, author_company_id, community_id, type, title, content, tags, cover_url, privacy_level, reposted_from_id, created_at, updated_at)
+		VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), 'news', $5, $6, $7::text[], NULLIF($8, ''), 'public', $9, NOW(), NOW())
 		RETURNING id
-	`, newPublicID, userID, origTitle, contentToInsert, origTags, origCoverURL, origID).Scan(&insertedID); err != nil {
+	`, newPublicID, userID, opts.TargetCompanyID, opts.TargetCommunityID, origTitle, contentToInsert, origTags, origCoverURL, origID).Scan(&insertedID); err != nil {
 		return post{}, err
 	}
 	_ = insertedID
@@ -17600,6 +17714,13 @@ func createRepost(db *sql.DB, originalPublicID string, userID int64, comment str
 		return post{}, err
 	}
 	return getPostByID(db, newPublicID, userID, true, false)
+}
+
+// repostOpts — параметры репоста.
+type repostOpts struct {
+	Comment           string
+	TargetCompanyID   int64 // 0 = личная лента
+	TargetCommunityID int64 // 0 = личная лента
 }
 
 func registerPostView(db *sql.DB, postPublicID string, userID int64, ipHash string) (bool, int, error) {
@@ -20281,6 +20402,8 @@ func handlePostActionError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, errNotFound), errors.Is(err, sql.ErrNoRows):
 		writeError(w, http.StatusNotFound, "Не найдено")
+	case errors.Is(err, errForbidden):
+		writeError(w, http.StatusForbidden, "Нет прав на репост от выбранного источника")
 	default:
 		log.Printf("post action error: %v", err)
 		writeError(w, http.StatusInternalServerError, "Ошибка сервера")
