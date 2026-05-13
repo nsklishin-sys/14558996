@@ -1334,6 +1334,7 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/assets/api-cache.js" defer></script>
 <script src="/assets/skeleton.js" defer></script>
 <script src="/assets/ux-perf.js" defer></script>
+<script src="/assets/repost-picker.js" defer></script>
 <script src="/assets/company-badge.js" defer></script>
 <script src="/assets/shell-injector.js" defer></script>
 <script src="/assets/share.js" defer></script>
