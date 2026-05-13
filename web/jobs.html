@@ -575,7 +575,7 @@ function setTab(key){
 // ─── Data ───
 async function loadList(){
   const feed = document.getElementById('feed');
-  feed.innerHTML = '<div class="empty-state">Загрузка…</div>';
+  feed.innerHTML = window.lastopSkel ? window.lastopSkel.cards(6) : '<div class="empty-state">Загрузка…</div>';
   const params = new URLSearchParams();
   if (currentCategory) params.set('category', currentCategory);
   const city = document.getElementById('filterCity').value;

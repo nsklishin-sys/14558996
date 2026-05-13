@@ -514,6 +514,8 @@ function mapApiEvent(e){
 }
 
 async function loadEvents(){
+  const feedEl = document.getElementById('evFeed') || document.getElementById('feed') || document.getElementById('eventsList');
+  if (feedEl && window.lastopSkel) feedEl.innerHTML = window.lastopSkel.cards(6);
   try{
     const url = API+'/events?limit=200';
     const r = await fetch(url, { headers: tk() ? { Authorization:'Bearer '+tk() } : {} });

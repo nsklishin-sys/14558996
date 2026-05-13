@@ -1329,6 +1329,7 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/assets/confirm-modal.js" defer></script>
 <script src="/assets/calendar-modal.js" defer></script>
 <script src="/assets/api-cache.js" defer></script>
+<script src="/assets/skeleton.js" defer></script>
 <script src="/assets/shell-injector.js" defer></script>
 <script src="/assets/share.js" defer></script>
 <script src="/assets/yandex-metrica.js" defer></script>

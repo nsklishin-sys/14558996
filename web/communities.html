@@ -884,6 +884,8 @@ function filterMyRegion(btn){
   fetchCommunitiesByRegion(myRegion);
 }
 async function fetchCommunitiesByRegion(region){
+  const grid = document.getElementById('communitiesGrid') || document.getElementById('feed') || document.getElementById('communityList');
+  if (grid && window.lastopSkel) grid.innerHTML = window.lastopSkel.cards(6);
   try{
     const r=await fetch(API+'/communities?region='+encodeURIComponent(region),{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)return;

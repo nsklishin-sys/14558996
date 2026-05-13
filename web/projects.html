@@ -611,6 +611,9 @@ function renderFeed(projects){
 
 /* ── ФИЛЬТРЫ ── */
 async function loadProjects(){
+  // Skeleton-карточки на время запроса
+  const feedEl = document.getElementById('projFeed') || document.getElementById('feed') || document.querySelector('.proj-feed, .feed');
+  if (feedEl && window.lastopSkel) feedEl.innerHTML = window.lastopSkel.cards(6);
   const params=new URLSearchParams();
 
   if(currentTab==='my'){

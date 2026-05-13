@@ -227,6 +227,8 @@ async function loadProfile(){
 }
 
 async function loadAll(){
+  const grid = document.getElementById('feed');
+  if (grid && window.lastopSkel) grid.innerHTML = window.lastopSkel.cards(6);
   try{
     const [allR,myR,catR]=await Promise.all([
       fetch(API+'/companies?limit=100',{headers:authHeaders()}).then(r=>r.json()),
