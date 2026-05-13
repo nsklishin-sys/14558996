@@ -365,7 +365,7 @@ html.lt-shell .topbar > .profile-dd-wrap{
   border: 1px solid var(--bdr);
   border-radius: var(--rl);
   box-shadow: var(--sh);
-  padding: 6px 14px;
+  padding: 6px 6px;
   min-height: 56px;
   height: 56px;
   align-items: center;
@@ -377,18 +377,17 @@ html.lt-shell .topbar > .profile-dd-wrap{
 html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile{
   background: transparent;
   border: none;
-  border-radius: 0;
-  padding: 0;
+  border-radius: 10px;
+  padding: 6px 10px;
   width: 100%;
   cursor: pointer;
+  transition: background .15s;
 }
 html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile:hover{
   background: var(--gp);
-  border-radius: var(--rm);
 }
 html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile.open{
-  background: var(--gp);
-  border-radius: var(--rm);
+  background: var(--gl);
 }
 
 /* Дропдаун профиля — позиционирование от обёртки-карточки */
@@ -413,19 +412,19 @@ html.lt-shell-2col .topbar > .profile-dd-wrap{
 html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile{
   background: transparent;
   border: none;
-  border-radius: 0;
-  padding: 0;
+  border-radius: 10px;
+  padding: 6px 10px;
+  width: 100%;
   cursor: pointer;
+  transition: background .15s;
   flex: 1 1 auto;
   min-width: 0;
 }
 html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile:hover{
   background: var(--gp);
-  border-radius: var(--rm);
 }
 html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile.open{
-  background: var(--gp);
-  border-radius: var(--rm);
+  background: var(--gl);
 }
 
 /* Дропдаун профиля — позиционирование от обёртки-карточки */
@@ -929,4 +928,17 @@ html.lt-shell-2col .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px so
 }
 [data-hw="1"]::-webkit-scrollbar-thumb:hover{
   background:var(--gm,#22A05A) !important;
+}
+
+
+/* ── T14-C1: резервируем высоту для контейнеров фильтров,
+   чтобы они не подпрыгивали при загрузке данных ── */
+.filter-tabs,
+.filter-row,
+.filters-row,
+.ftab-row{
+  min-height: 32px
+}
+.ftab{
+  min-height: 28px
 }
