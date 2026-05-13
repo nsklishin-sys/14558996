@@ -156,9 +156,7 @@
     // МОИ КОМПАНИИ
     if (companies && companies.length) {
       var companyRows = companies.map(function (c) {
-        var verified = c.is_verified
-          ? '<span class="pcx-verified" title="Подтверждена"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg></span>'
-          : '';
+        var verified = (window.lastopCompanyBadge ? lastopCompanyBadge(c, 'inline') : '');
         return rowHTML({
           name: c.name,
           color: c.accent_color || '#1E8A4C',

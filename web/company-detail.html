@@ -279,9 +279,7 @@ async function loadCompany(){
 function render(){
   const c = company;
   const accent = c.accent_color || '#1E8A4C';
-  const verifiedBadge = c.is_verified
-    ? '<span class="co-verified" title="Подтверждена"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg></span>'
-    : '';
+  const verifiedBadge = (window.lastopCompanyBadge ? lastopCompanyBadge(c, 'card') : '');
   const logoHtml = c.logo_image
     ? '<div class="co-logo"><img src="'+escAttr(c.logo_image)+'" alt=""></div>'
     : '<div class="co-logo" style="background:'+escAttr(accent)+';color:#fff">'+esc(initials(c.name))+'</div>';
