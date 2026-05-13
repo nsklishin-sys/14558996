@@ -920,7 +920,31 @@ async function loadSimilar(){
   }catch{}
 }
 function openSimilar(el){const pid=el?.dataset?.pid;if(pid)location.href='/event-detail.html?id='+encodeURIComponent(pid)}
-async function messageOrganizer(){if(!state.currentEvent)return;const r=await fetch(`${API}/chat/conversations/direct`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({user_public_id:state.currentEvent.organizer_public_id})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось открыть чат');return;}const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';location.href='/chat.html?conv='+encodeURIComponent(conv);}
+async function messageOrganizer(){
+  if(!state.currentEvent)return;
+  const ev=state.currentEvent;
+  // Если организатор — компания, направляем на её страницу
+  // (личный чат с владельцем = неправильный контекст).
+  if(ev.organizer_company_id && ev.organizer_company_slug){
+    location.href='/company-detail.html?slug='+encodeURIComponent(ev.organizer_company_slug);
+    return;
+  }
+  if(ev.organizer_company_id && !ev.organizer_company_slug){
+    // Slug не пришёл — fallback: открыть каталог компаний
+    location.href='/companies.html';
+    return;
+  }
+  // Личный организатор — открываем direct-чат как раньше
+  const r=await fetch(`${API}/chat/conversations/direct`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+    body:JSON.stringify({user_public_id:ev.organizer_public_id})
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){toast(d.error||'Не удалось открыть чат');return;}
+  const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';
+  location.href='/chat.html?conv='+encodeURIComponent(conv);
+}
 async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await fetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
 function applyEvent(ev){
   state.currentEvent=ev;
@@ -1178,6 +1202,14 @@ function applyEvent(ev){
   const msgBtn=document.getElementById('messageOrganizerBtn');
   if(msgBtn){
     msgBtn.style.display=isOrganizer?'none':'block';
+  }
+  const moBtn=document.getElementById('messageOrganizerBtn');
+  if(moBtn && ev){
+    if(ev.organizer_company_id){
+      moBtn.textContent='Открыть страницу компании';
+    }else{
+      moBtn.textContent='Написать организатору';
+    }
   }
 }
 function openOrganizerProfile(){
