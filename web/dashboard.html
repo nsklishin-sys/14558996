@@ -723,7 +723,7 @@ function renderCard(n,idx){
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         ${n.comments}
       </button>
-      <button class="nc-action" onclick="sharePost('${escAttr(postKey)}')">
+      <button class="nc-action" onclick="event.stopPropagation();sharePost('${escAttr(postKey)}',this)">
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         ${n.shares}
       </button>
@@ -841,10 +841,26 @@ async function toggleSave(postKey,btn){
     }
   }catch{showToast('Не удалось сохранить');}
 }
-function sharePost(postKey){
+function sharePost(postKey, btnEl){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
-  const link=n?.public_id?`${location.origin}/news-detail.html?id=${encodeURIComponent(n.public_id)}`:location.href;
-  lastopCopy(link,'Ссылка скопирована','Не удалось скопировать ссылку');
+  if (!n || !n.public_id) {
+    // Fallback на копирование ссылки если pid не определён
+    const link = location.href;
+    if (window.lastopCopy) lastopCopy(link,'Ссылка скопирована','Не удалось скопировать');
+    return;
+  }
+  if (!window.lastopRepostPicker) {
+    if (window.lastopCopy) lastopCopy(`${location.origin}/news-detail.html?id=${encodeURIComponent(n.public_id)}`,'Ссылка скопирована','Не удалось скопировать');
+    return;
+  }
+  window.lastopRepostPicker.open({
+    anchor: btnEl || null,
+    postPublicID: n.public_id,
+    onSuccess: function () {
+      // Увеличить счётчик в карточке локально (оптимистично)
+      n.reposts_count = (n.reposts_count || 0) + 1;
+    }
+  });
 }
 
 /* ── COMPOSE ── */

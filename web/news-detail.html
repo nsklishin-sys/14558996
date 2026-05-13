@@ -462,7 +462,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
           <span class="act-count" id="btnSaveCount">0</span>
         </button>
 
-        <button class="act-btn repost" id="btnRepost" onclick="doRepost('page')">
+        <button class="act-btn repost" id="btnRepost" onclick="doRepost()">
           <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
           <span>Репост</span>
           <span class="act-count" id="btnRepostCount">0</span>
@@ -722,52 +722,37 @@ async function toggleSave(){
 }
 
 /* ── РЕПОСТ ── */
-async function doRepost(target){
-  // Поскольку dropdown убран, target всегда 'page' — репост на свою страницу.
-  // Параметр оставлен для совместимости со старыми вызовами, если они где-то есть.
+function doRepost(){
   if (!postPublicID) return;
-  const btn = document.getElementById('btnRepost');
-  if (btn && btn.classList.contains('busy')) return;
-  if (btn) btn.classList.add('busy');
-  try {
-    const r = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}/repost`, {
-      method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ comment: '' })
-    });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      const errMsg = d.error || `Ошибка ${r.status}`;
-      console.error('[repost] failed:', r.status, d);
-      toast('Не удалось сделать репост: ' + errMsg);
-      return;
-    }
-    // Бэк создал новый пост-репост. Перечитываем оригинал чтобы получить актуальные счётчики.
-    const refresh = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: authHeaders() });
-    if (refresh.ok) {
-      const data = await refresh.json();
-      const p = data.post || {};
-      const newCount = Number(p.reposts_count || 0);
-      const statEl = document.getElementById('statReposts');
-      if (statEl) statEl.textContent = newCount.toLocaleString('ru-RU');
-      const btnCount = document.getElementById('btnRepostCount');
-      if (btnCount) btnCount.textContent = newCount;
-      // Подсветить кнопку как "репостнуто"
-      if (p.is_reposted && btn) {
-        btn.classList.add('active');
-        const svg = btn.querySelector('svg');
-        if (svg) {
-          svg.style.fill = 'none';
-          svg.style.stroke = 'var(--g)';
-        }
-      }
-    }
-    toast('Опубликовано в вашей ленте ✓');
-  } catch (err) {
-    toast('Сеть недоступна');
-  } finally {
-    if (btn) btn.classList.remove('busy');
+  if (!window.lastopRepostPicker) {
+    toast('Компонент репоста ещё загружается, попробуйте через секунду');
+    return;
   }
+  const btn = document.getElementById('btnRepost');
+  window.lastopRepostPicker.open({
+    anchor: btn,
+    postPublicID: postPublicID,
+    onSuccess: async function () {
+      // Обновить счётчик репостов на странице оригинала
+      try {
+        const refresh = await fetch(`${API}/posts/${encodeURIComponent(postPublicID)}`, { headers: authHeaders() });
+        if (refresh.ok) {
+          const data = await refresh.json();
+          const p = data.post || {};
+          const newCount = Number(p.reposts_count || 0);
+          const statEl = document.getElementById('statReposts');
+          if (statEl) statEl.textContent = newCount.toLocaleString('ru-RU');
+          const btnCount = document.getElementById('btnRepostCount');
+          if (btnCount) btnCount.textContent = newCount;
+          if (p.is_reposted && btn) {
+            btn.classList.add('active');
+            const svg = btn.querySelector('svg');
+            if (svg) { svg.style.fill = 'none'; svg.style.stroke = 'var(--g)'; }
+          }
+        }
+      } catch (e) {}
+    }
+  });
 }
 
 /* ── ПОДПИСКА НА АВТОРА ── */
