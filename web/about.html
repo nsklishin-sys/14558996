@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>О платформе — LASTOP GROUP</title>
+<meta name="description" content="LASTOP GROUP — деловая платформа для логистики и ВЭД. Информация о компании, документы, форма обратной связи.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px;line-height:1.6}
+.about-shell{max-width:1100px;margin:0 auto;padding:30px 24px 60px}
+.about-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--gmt);text-decoration:none;margin-bottom:24px;transition:color .15s}
+.about-back:hover{color:var(--g)}
+.about-back svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,var(--g) 0%,var(--gm) 100%);border-radius:var(--rxl);padding:40px 36px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.08)}
+.hero::after{content:'';position:absolute;bottom:-40px;left:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
+.hero-content{position:relative;z-index:1}
+.hero-eyebrow{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.85;margin-bottom:10px}
+.hero h1{font-size:32px;font-weight:800;line-height:1.2;margin-bottom:10px;letter-spacing:-.01em}
+.hero p{font-size:15px;opacity:.92;max-width:640px;line-height:1.55}
+
+/* GRID */
+.about-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-bottom:24px}
+@media(max-width:900px){.about-grid{grid-template-columns:1fr}}
+
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:28px}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--bdr)}
+.card-icon{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.card-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.card-title{font-size:17px;font-weight:800;color:var(--t)}
+.card-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="about-shell">
+  <a class="about-back" href="javascript:history.length>1?history.back():location.href='/'">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    Назад
+  </a>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API='/api';
+</script>
+</body>
+</html>

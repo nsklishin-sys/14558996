@@ -2042,6 +2042,73 @@ func main() {
 		})
 	})
 
+	contactLimiter := newIPRateLimiter(5, time.Hour)
+	mux.HandleFunc("/api/contact", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if !contactLimiter.Allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много обращений, попробуйте через час")
+			return
+		}
+		var req struct {
+			Name    string `json:"name"`
+			Email   string `json:"email"`
+			Subject string `json:"subject"`
+			Message string `json:"message"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		name := strings.TrimSpace(req.Name)
+		email := strings.ToLower(strings.TrimSpace(req.Email))
+		subject := strings.TrimSpace(req.Subject)
+		message := strings.TrimSpace(req.Message)
+		if len([]rune(name)) < 2 || len([]rune(name)) > 200 {
+			writeError(w, http.StatusBadRequest, "Имя: от 2 до 200 символов")
+			return
+		}
+		if !looksLikeEmail(email) {
+			writeError(w, http.StatusBadRequest, "Некорректный email")
+			return
+		}
+		if len([]rune(subject)) < 3 || len([]rune(subject)) > 200 {
+			writeError(w, http.StatusBadRequest, "Тема: от 3 до 200 символов")
+			return
+		}
+		if len([]rune(message)) < 10 || len([]rune(message)) > 5000 {
+			writeError(w, http.StatusBadRequest, "Сообщение: от 10 до 5000 символов")
+			return
+		}
+		htmlEsc := func(s string) string {
+			s = strings.ReplaceAll(s, "&", "&amp;")
+			s = strings.ReplaceAll(s, "<", "&lt;")
+			s = strings.ReplaceAll(s, ">", "&gt;")
+			s = strings.ReplaceAll(s, "\n", "<br>")
+			return s
+		}
+		body := `<div style="font-family:Manrope,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1A2A22">
+<h2 style="color:#1E8A4C;margin:0 0 16px">Новое обращение через форму на lastop.ru</h2>
+<p><b>Имя:</b> ` + htmlEsc(name) + `</p>
+<p><b>Email:</b> <a href="mailto:` + htmlEsc(email) + `" style="color:#1E8A4C">` + htmlEsc(email) + `</a></p>
+<p><b>Тема:</b> ` + htmlEsc(subject) + `</p>
+<hr style="border:0;border-top:1px solid #DDE8E2;margin:18px 0">
+<div style="white-space:pre-wrap;line-height:1.6">` + htmlEsc(message) + `</div>
+<hr style="border:0;border-top:1px solid #DDE8E2;margin:18px 0">
+<p style="font-size:12px;color:#5A8A6A">IP отправителя: ` + clientIP(r) + `</p>
+</div>`
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		if err := mail.Send(ctx, "partner@lastop.ru", "Обращение через форму: "+subject, body); err != nil {
+			log.Printf("[contact] mail.Send failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось отправить сообщение, попробуйте позже")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
+
 	mux.HandleFunc("/api/captcha/config", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"type":     cap.Type(),
@@ -25489,4 +25556,18 @@ func searchChatsInto(db *sql.DB, q, sortBy string, limit, offset int, viewerID i
 	res.Chats = out
 	mu.Unlock()
 	return len(out), nil
+}
+
+func looksLikeEmail(s string) bool {
+	if len(s) < 3 || len(s) > 320 {
+		return false
+	}
+	at := strings.Index(s, "@")
+	if at <= 0 || at == len(s)-1 {
+		return false
+	}
+	if !strings.Contains(s[at+1:], ".") {
+		return false
+	}
+	return true
 }
