@@ -4,10 +4,14 @@
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>О платформе — LASTOP GROUP</title>
+<title>LASTOP GROUP — О платформе</title>
 <meta name="description" content="LASTOP GROUP — деловая платформа для логистики и ВЭД. Информация о компании, документы, форма обратной связи.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -16,88 +20,99 @@
   --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
-html,body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px;line-height:1.6}
-.about-shell{max-width:1100px;margin:0 auto;padding:30px 24px 60px}
-.about-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--gmt);text-decoration:none;margin-bottom:24px;transition:color .15s}
-.about-back:hover{color:var(--g)}
-.about-back svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.hero{background:linear-gradient(135deg,var(--g) 0%,var(--gm) 100%);border-radius:var(--rxl);padding:40px 36px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.08)}
-.hero::after{content:'';position:absolute;bottom:-40px;left:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
-.hero-content{position:relative;z-index:1}
-.hero-eyebrow{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.85;margin-bottom:10px}
-.hero h1{font-size:32px;font-weight:800;line-height:1.2;margin-bottom:10px;letter-spacing:-.01em}
-.hero p{font-size:15px;opacity:.92;max-width:640px;line-height:1.55}
-.about-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-bottom:24px}
-@media(max-width:900px){.about-grid{grid-template-columns:1fr}}
-.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:28px}
-.card-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--bdr)}
-.card-icon{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
-.card-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.card-title{font-size:17px;font-weight:800;color:var(--t)}
+html,body{height:100%;min-height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar" "nav main right";height:100vh;height:100dvh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.main{grid-area:main;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:14px;min-height:0}
+
+/* HEADER SECTION (вместо зелёного hero) */
+.about-header{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px 22px;box-shadow:var(--sh);flex-shrink:0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.about-header-icon{width:46px;height:46px;border-radius:var(--rm);background:var(--gl);display:grid;place-items:center;flex-shrink:0}
+.about-header-icon svg{width:22px;height:22px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.about-header-text h1{font-size:20px;font-weight:800;color:var(--t);margin-bottom:3px;letter-spacing:-.005em}
+.about-header-text p{font-size:13px;color:var(--gmt);line-height:1.5}
+
+/* GRID 2-col */
+.about-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;flex-shrink:0}
+@media(max-width:1100px){.about-grid{grid-template-columns:1fr}}
+
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:22px}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
+.card-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.card-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.card-title{font-size:15px;font-weight:800;color:var(--t)}
 .card-sub{font-size:12px;color:var(--gmt);margin-top:2px}
-.info-row{display:grid;grid-template-columns:140px 1fr;gap:14px;padding:11px 0;border-bottom:1px solid var(--bdr);align-items:start}
+
+.info-row{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--bdr);align-items:start}
 .info-row:last-child{border-bottom:none}
-.info-label{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.04em;text-transform:uppercase;padding-top:2px}
-.info-value{font-size:13.5px;color:var(--t);font-weight:500;line-height:1.55}
+.info-label{font-size:10.5px;font-weight:700;color:var(--gmt);letter-spacing:.04em;text-transform:uppercase;padding-top:2px}
+.info-value{font-size:13px;color:var(--t);font-weight:500;line-height:1.55}
 .info-value.copy{cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:color .15s}
 .info-value.copy:hover{color:var(--g)}
 @media(max-width:560px){.info-row{grid-template-columns:1fr;gap:4px}.info-label{padding-top:0}}
-.form-row{margin-bottom:14px}
-.form-label{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:6px}
-.form-input{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:11px 13px;font-family:inherit;font-size:13.5px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
+
+.form-row{margin-bottom:11px}
+.form-label{font-size:10.5px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:5px}
+.form-input{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
 .form-input:focus{border-color:var(--gm);background:var(--w)}
 .form-input::placeholder{color:var(--gmt)}
-textarea.form-input{resize:vertical;min-height:120px;line-height:1.55}
+textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
 .form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:520px){.form-grid2{grid-template-columns:1fr}}
-.btn-pri{padding:11px 26px;border-radius:99px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+.btn-pri{padding:10px 22px;border-radius:99px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
 .btn-pri:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
 .btn-pri:disabled{background:var(--gb);cursor:not-allowed;transform:none;box-shadow:none}
-.btn-pri svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.form-hint{font-size:11.5px;color:var(--gmt);margin-top:8px;line-height:1.5}
+.btn-pri svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.form-hint{font-size:11px;color:var(--gmt);margin-top:8px;line-height:1.5}
 .form-hint a{color:var(--g);text-decoration:none}
 .form-hint a:hover{text-decoration:underline}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:11px 22px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.25)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.25)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{background:var(--g)}
 .toast.error{background:var(--red)}
-.quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
-.qa{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:99px;background:var(--gl);border:1.5px solid var(--gb);color:var(--g);font-size:12.5px;font-weight:700;text-decoration:none;transition:all .15s}
+
+.quick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.qa{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;background:var(--gl);border:1.5px solid var(--gb);color:var(--g);font-size:12px;font-weight:700;text-decoration:none;transition:all .15s}
 .qa:hover{background:var(--g);color:#fff;border-color:var(--g);transform:translateY(-1px)}
-.qa svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
-.section-title{font-size:20px;font-weight:800;color:var(--t);margin:32px 0 6px;letter-spacing:-.005em}
-.section-sub{font-size:13px;color:var(--gmt);margin-bottom:18px}
-.docs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.doc-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:18px;text-decoration:none;color:inherit;transition:all .18s;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.qa svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+
+.section-title{font-size:16px;font-weight:800;color:var(--t);margin:8px 0 4px;letter-spacing:-.005em}
+.section-sub{font-size:12.5px;color:var(--gmt);margin-bottom:10px}
+.docs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding-bottom:14px}
+.doc-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:16px;text-decoration:none;color:inherit;transition:all .18s;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden}
 .doc-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,var(--g),var(--gm));opacity:0;transition:opacity .18s}
 .doc-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
 .doc-card:hover::before{opacity:1}
-.doc-card-head{display:flex;align-items:center;gap:10px}
-.doc-icon{width:36px;height:36px;border-radius:10px;background:var(--gl);display:grid;place-items:center;color:var(--g);flex-shrink:0}
-.doc-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.doc-tag{font-size:10px;font-weight:700;color:var(--g);background:var(--gl);padding:2px 8px;border-radius:99px;margin-left:auto;text-transform:uppercase;letter-spacing:.05em}
-.doc-title{font-size:14px;font-weight:800;color:var(--t);line-height:1.35}
-.doc-desc{font-size:12px;color:var(--gmt);line-height:1.5;flex:1}
-.doc-meta{font-size:11px;color:var(--gmt);padding-top:8px;border-top:1px dashed var(--bdr);display:flex;align-items:center;gap:6px}
-.doc-meta svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;opacity:.7}
-@media(max-width:640px){.about-shell{padding:18px 14px 40px}.hero{padding:28px 22px}.hero h1{font-size:24px}.card{padding:20px}}
+.doc-card-head{display:flex;align-items:center;gap:9px}
+.doc-icon{width:32px;height:32px;border-radius:9px;background:var(--gl);display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.doc-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.doc-tag{font-size:9.5px;font-weight:700;color:var(--g);background:var(--gl);padding:2px 7px;border-radius:99px;margin-left:auto;text-transform:uppercase;letter-spacing:.05em}
+.doc-title{font-size:13px;font-weight:800;color:var(--t);line-height:1.35}
+.doc-desc{font-size:11.5px;color:var(--gmt);line-height:1.5;flex:1}
+.doc-meta{font-size:10.5px;color:var(--gmt);padding-top:6px;border-top:1px dashed var(--bdr);display:flex;align-items:center;gap:5px}
+.doc-meta svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;opacity:.7}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
-<div class="about-shell">
-  <a class="about-back" href="javascript:history.length>1?history.back():location.href='/'">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    Назад
-  </a>
-  <div class="hero">
-    <div class="hero-content">
-      <div class="hero-eyebrow">О платформе</div>
-      <h1>LASTOP GROUP</h1>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+<main class="main">
+
+  <section class="about-header">
+    <div class="about-header-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+    <div class="about-header-text">
+      <h1>О платформе LASTOP GROUP</h1>
       <p>Деловая платформа для специалистов и компаний в логистике, ВЭД и смежных отраслях. Объединяем участников рынка, помогаем находить партнёров, проекты и кадры.</p>
     </div>
-  </div>
+  </section>
+
   <div class="about-grid">
     <div class="card">
       <div class="card-head">
@@ -129,8 +144,10 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.55}
       <div class="form-hint">Отправляя форму, вы соглашаетесь с <a href="/privacy.html" target="_blank">политикой обработки персональных данных</a>.</div>
     </div>
   </div>
+
   <h2 class="section-title">Правовая документация</h2>
   <p class="section-sub">Полный комплект документов, регулирующих работу платформы. Действующие редакции от 12 мая 2026 года.</p>
+
   <div class="docs-grid">
     <a href="/terms.html" class="doc-card" target="_blank" rel="noopener">
       <div class="doc-card-head"><div class="doc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="doc-tag">Основное</span></div>
@@ -175,8 +192,12 @@ textarea.form-input{resize:vertical;min-height:120px;line-height:1.55}
       <div class="doc-meta"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Действует с 12 мая 2026</div>
     </a>
   </div>
+
+</main>
+<aside class="right"></aside>
 </div>
 <div class="toast" id="toast"></div>
+
 <script>
 const API='/api';
 function showToast(msg, type){
@@ -228,8 +249,48 @@ async function submitContact(){
     showToast('Ошибка сети, попробуйте позже','error');
   }
   btn.disabled=false;
-  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить';
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить';
 }
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </body>
 </html>
