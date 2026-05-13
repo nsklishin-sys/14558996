@@ -930,5 +930,14 @@ async function fetchCommunitiesByRegion(region){
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script>
+if (window.lastopUX) {
+  const si = document.getElementById('searchInput');
+  if (si) window.lastopUX.attachSearchDebounce(si, () => {
+    if (typeof applyFilters === 'function') applyFilters();
+    else if (typeof loadCommunities === 'function') loadCommunities();
+  }, 300);
+}
+</script>
 </body>
 </html>

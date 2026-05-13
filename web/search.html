@@ -1205,5 +1205,15 @@ async function waitForSearchInput(timeoutMs){
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script>
+if (window.lastopUX) {
+  const si = document.getElementById('searchInput') || document.querySelector('input[type="search"]');
+  if (si) window.lastopUX.attachSearchDebounce(si, () => {
+    if (typeof runSearch === 'function') runSearch();
+    else if (typeof performSearch === 'function') performSearch();
+    else if (typeof loadResults === 'function') loadResults();
+  }, 300);
+}
+</script>
 </body>
 </html>
