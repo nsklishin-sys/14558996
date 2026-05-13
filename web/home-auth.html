@@ -1214,13 +1214,22 @@ async function openAddTask(){
 
 /* ── ЧАТЫ ── */
 async function loadChats(){
-  document.getElementById('chatsList').innerHTML=skels(3,42);
+  const cachedChats = window.lastopCache && window.lastopCache.get('home.chats', 60_000);
+  if (cachedChats && Array.isArray(cachedChats) && cachedChats.length) {
+    renderChats(cachedChats);
+  } else {
+    document.getElementById('chatsList').innerHTML=skels(3,42);
+  }
   try{
     const r=await fetch(API+'/chat/conversations?limit=4',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.conversations||[];
-    if(items.length){renderChats(items);return;}
+    if(items.length){
+      if (window.lastopCache) window.lastopCache.set('home.chats', items);
+      renderChats(items);
+      return;
+    }
   }catch{}
   // Если реально нет диалогов — показываем подсказку, а не demo-фейк
   document.getElementById('chatsList').innerHTML=`
@@ -1315,6 +1324,15 @@ let CAL_STATE={year:new Date().getFullYear(),month:new Date().getMonth(),events:
 const SRC_COLORS={personal:'#1E8A4C',event:'#185FA5',event_own:'#185FA5',exhibition:'#B07A00',exhibition_own:'#B07A00',project:'#C04030',birthday:'#9060C0'};
 const SRC_LABELS={personal:'Личное',event:'Мероприятие',event_own:'Моё мероприятие',exhibition:'Выставка',exhibition_own:'Моя выставка',project:'Дедлайн',birthday:'День рождения'};
 async function loadCalendarMonth(year,month){
+  const cacheKey = `home.cal.${year}-${month}`;
+  const cachedCal = window.lastopCache && window.lastopCache.get(cacheKey, 120_000);
+  if (cachedCal) {
+    CAL_STATE.year = year;
+    CAL_STATE.month = month;
+    CAL_STATE.events = cachedCal;
+    renderHomeCalendar();
+  }
+
   CAL_STATE.year=year;CAL_STATE.month=month;
   // Берём окно ±1 месяц чтобы хвосты соседних месяцев тоже подсвечивались
   const fromDate=new Date(year,month-1,1);
@@ -1327,6 +1345,7 @@ async function loadCalendarMonth(year,month){
     if(!r.ok)throw 0;
     const d=await r.json();
     CAL_STATE.events=d.events||[];
+    if (window.lastopCache) window.lastopCache.set(cacheKey, CAL_STATE.events);
   }catch{CAL_STATE.events=[];}
   renderHomeCalendar();
 }
@@ -1430,18 +1449,27 @@ let allPosts=[];
 let _feedRenderSig='';
 let _feedFirstLoad = true;
 async function loadFeed(){
-  // Skeleton-плашки показываем только при первой загрузке.
-  // На polling-тиках оставляем существующую ленту до получения ответа,
-  // затем renderFeedFiltered через сигнатуру решит — обновлять DOM или нет.
+  // При первой загрузке: если в кеше есть свежая лента — показываем сразу,
+  // skeleton не нужен. Затем тихо фетчим в фоне и обновляем через сигнатуру.
   if (_feedFirstLoad) {
-    const feedEl = document.getElementById('feed');
-    if (feedEl) feedEl.innerHTML = skels(3, 100);
+    const cached = window.lastopCache && window.lastopCache.get('home.feed', 90_000);
+    if (cached && Array.isArray(cached) && cached.length) {
+      allPosts = cached;
+      _feedFirstLoad = false;
+      renderFeedFiltered('all');
+    } else {
+      const feedEl = document.getElementById('feed');
+      if (feedEl) feedEl.innerHTML = skels(3, 100);
+    }
   }
   try{
     const r = await fetch(API + '/feed?limit=30', { headers: { Authorization: 'Bearer ' + tk() } });
     if (!r.ok) throw 0;
     const d = await r.json();
     allPosts = d.posts || d.items || [];
+    if (window.lastopCache && allPosts.length) {
+      window.lastopCache.set('home.feed', allPosts);
+    }
   } catch {
     // На polling-тике если запрос упал — не трогаем allPosts,
     // ничего не меняется на экране.
