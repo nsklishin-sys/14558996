@@ -42,6 +42,7 @@ import (
 	"nhooyr.io/websocket"
 
 	"lastop/internal/captcha"
+	"lastop/internal/dadata"
 	"lastop/internal/errtrack"
 	"lastop/internal/mailer"
 	"lastop/internal/metrics"
@@ -1906,6 +1907,7 @@ func main() {
 	defer db.Close()
 
 	mail = mailer.New()
+	dada := dadata.New()
 	store = storage.New()
 	cap = captcha.New()
 	errs = errtrack.New()
@@ -8663,6 +8665,67 @@ func main() {
 
 	// ═════ КОМПАНИИ — Read-only эндпоинты (Mini-B) ═════
 
+	verifyINNLimiter := newIPRateLimiter(30, time.Hour)
+	mux.HandleFunc("/api/companies/verify-inn", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+			return
+		}
+		if !verifyINNLimiter.Allow(clientIP(r)) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много проверок, попробуйте позже")
+			return
+		}
+		var req struct {
+			INN string `json:"inn"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		inn := strings.TrimSpace(req.INN)
+		digits := true
+		for _, ch := range inn {
+			if ch < '0' || ch > '9' {
+				digits = false
+				break
+			}
+		}
+		if !digits || (len(inn) != 10 && len(inn) != 12) {
+			writeError(w, http.StatusBadRequest, "ИНН должен содержать 10 или 12 цифр")
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		info, err := dada.FindByINN(ctx, inn)
+		if err != nil {
+			log.Printf("[verify-inn] dadata error: %v", err)
+			writeError(w, http.StatusBadGateway, "Сервис проверки недоступен, попробуйте позже")
+			return
+		}
+		if !info.Found {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"found": false,
+				"inn":   inn,
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"found":      true,
+			"inn":        info.INN,
+			"ogrn":       info.OGRN,
+			"kpp":        info.KPP,
+			"name_short": info.NameShort,
+			"name_full":  info.NameFull,
+			"opf":        info.OPF,
+			"address":    info.Address,
+			"status":     info.Status,
+			"director":   info.Director,
+		})
+	})
+
 	mux.HandleFunc("/api/companies", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -8763,14 +8826,46 @@ func main() {
 			}
 			defer tx.Rollback()
 
+			// Авто-проверка ИНН через Dadata, если задан
+			verificationStatus := "none"
+			var innDataJSON []byte
+			var innVerifiedAt *time.Time
+			if req.INN != "" {
+				vctx, vcancel := context.WithTimeout(r.Context(), 10*time.Second)
+				info, vErr := dada.FindByINN(vctx, req.INN)
+				vcancel()
+				if vErr == nil && info.Found {
+					verificationStatus = "inn_verified"
+					now := time.Now()
+					innVerifiedAt = &now
+					if raw, mErr := json.Marshal(map[string]any{
+						"inn":        info.INN,
+						"ogrn":       info.OGRN,
+						"kpp":        info.KPP,
+						"name_short": info.NameShort,
+						"name_full":  info.NameFull,
+						"opf":        info.OPF,
+						"address":    info.Address,
+						"status":     info.Status,
+						"director":   info.Director,
+					}); mErr == nil {
+						innDataJSON = raw
+					}
+				} else {
+					// ИНН указан, но не найден или Dadata недоступна — pending
+					verificationStatus = "pending"
+				}
+			}
+
 			var newID int64
 			if err := tx.QueryRow(`
-				INSERT INTO companies (public_id, slug, owner_user_id, name, inn, description, region, city, website, email, phone, logo_image, accent_color, category, tags)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+				INSERT INTO companies (public_id, slug, owner_user_id, name, inn, description, region, city, website, email, phone, logo_image, accent_color, category, tags, verification_status, inn_verified_at, inn_data)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 				RETURNING id
 			`, publicID, slug, userID, req.Name, req.INN, req.Description, req.Region, req.City,
 				req.Website, req.Email, req.Phone, req.LogoImage, req.AccentColor, req.Category,
 				pgtype.FlatArray[string](req.Tags),
+				verificationStatus, innVerifiedAt, innDataJSON,
 			).Scan(&newID); err != nil {
 				log.Printf("createCompany: %v", err)
 				http.Error(w, "internal", http.StatusInternalServerError)
@@ -9304,7 +9399,11 @@ func main() {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		if _, err := db.Exec(`UPDATE companies SET is_verified=$1, updated_at=NOW() WHERE id=$2`, req.Verified, companyID); err != nil {
+		newStatus := "rejected"
+		if req.Verified {
+			newStatus = "verified"
+		}
+		if _, err := db.Exec(`UPDATE companies SET is_verified=$1, verification_status=$2, updated_at=NOW() WHERE id=$3`, req.Verified, newStatus, companyID); err != nil {
 			http.Error(w, "internal", http.StatusInternalServerError)
 			return
 		}
@@ -11932,6 +12031,12 @@ CREATE TABLE IF NOT EXISTS companies (
 
 CREATE INDEX IF NOT EXISTS companies_owner_idx ON companies(owner_user_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at DESC) WHERE deleted_at IS NULL;
+
+		ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'inn_verified', 'verified', 'rejected'));
+		ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_verified_at TIMESTAMPTZ;
+		ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_data JSONB;
+		ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_notes TEXT NOT NULL DEFAULT '';
+		CREATE INDEX IF NOT EXISTS companies_verification_status_idx ON companies(verification_status) WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS company_members (
     id BIGSERIAL PRIMARY KEY,
@@ -24603,33 +24708,34 @@ func userIsCompanyMember(db *sql.DB, userID, companyID int64) (bool, string, err
 
 // companyItem — структура компании для ответа API.
 type companyItem struct {
-	ID             int64     `json:"id"`
-	PublicID       string    `json:"public_id"`
-	Slug           string    `json:"slug"`
-	OwnerUserID    int64     `json:"owner_user_id"`
-	OwnerName      string    `json:"owner_name,omitempty"`
-	Name           string    `json:"name"`
-	INN            string    `json:"inn,omitempty"`
-	Description    string    `json:"description"`
-	Region         string    `json:"region,omitempty"`
-	City           string    `json:"city,omitempty"`
-	Website        string    `json:"website,omitempty"`
-	Email          string    `json:"email,omitempty"`
-	Phone          string    `json:"phone,omitempty"`
-	LogoImage      string    `json:"logo_image,omitempty"`
-	AccentColor    string    `json:"accent_color"`
-	Category       string    `json:"category,omitempty"`
-	CategoryLabel  string    `json:"category_label,omitempty"`
-	CategoryGroup  string    `json:"category_group,omitempty"`
-	Tags           []string  `json:"tags"`
-	IsVerified     bool      `json:"is_verified"`
-	Status         string    `json:"status"`
-	MembersCount   int       `json:"members_count"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	ViewerIsOwner  bool      `json:"viewer_is_owner,omitempty"`
-	ViewerIsMember bool      `json:"viewer_is_member,omitempty"`
-	ViewerRole     string    `json:"viewer_role,omitempty"`
+	ID                 int64     `json:"id"`
+	PublicID           string    `json:"public_id"`
+	Slug               string    `json:"slug"`
+	OwnerUserID        int64     `json:"owner_user_id"`
+	OwnerName          string    `json:"owner_name,omitempty"`
+	Name               string    `json:"name"`
+	INN                string    `json:"inn,omitempty"`
+	Description        string    `json:"description"`
+	Region             string    `json:"region,omitempty"`
+	City               string    `json:"city,omitempty"`
+	Website            string    `json:"website,omitempty"`
+	Email              string    `json:"email,omitempty"`
+	Phone              string    `json:"phone,omitempty"`
+	LogoImage          string    `json:"logo_image,omitempty"`
+	AccentColor        string    `json:"accent_color"`
+	Category           string    `json:"category,omitempty"`
+	CategoryLabel      string    `json:"category_label,omitempty"`
+	CategoryGroup      string    `json:"category_group,omitempty"`
+	Tags               []string  `json:"tags"`
+	IsVerified         bool      `json:"is_verified"`
+	VerificationStatus string    `json:"verification_status,omitempty"`
+	Status             string    `json:"status"`
+	MembersCount       int       `json:"members_count"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	ViewerIsOwner      bool      `json:"viewer_is_owner,omitempty"`
+	ViewerIsMember     bool      `json:"viewer_is_member,omitempty"`
+	ViewerRole         string    `json:"viewer_role,omitempty"`
 }
 
 // listCompaniesFilters — параметры фильтрации.
@@ -24695,7 +24801,7 @@ func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
 			c.website, c.email, c.phone, c.logo_image,
 			c.accent_color, c.category,
 			COALESCE(array_to_json(c.tags), '[]'::json),
-			c.is_verified, c.status,
+			c.is_verified, COALESCE(c.verification_status, 'none'), c.status,
 			(SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id),
 			c.created_at, c.updated_at
 		FROM companies c
@@ -24719,7 +24825,7 @@ func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
 			&c.Name, &c.Description, &c.Region, &c.City,
 			&c.Website, &c.Email, &c.Phone, &c.LogoImage,
 			&c.AccentColor, &c.Category, &tagsJSON,
-			&c.IsVerified, &c.Status, &c.MembersCount,
+			&c.IsVerified, &c.VerificationStatus, &c.Status, &c.MembersCount,
 			&c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -24771,7 +24877,7 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		c.website, c.email, c.phone, c.logo_image,
 		c.accent_color, c.category,
 		COALESCE(array_to_json(c.tags), '[]'::json),
-		c.is_verified, c.status,
+		c.is_verified, COALESCE(c.verification_status, 'none'), c.status,
 		(SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id),
 		c.created_at, c.updated_at
 		FROM companies c
@@ -24782,7 +24888,7 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		&c.Name, &c.INN, &c.Description, &c.Region, &c.City,
 		&c.Website, &c.Email, &c.Phone, &c.LogoImage,
 		&c.AccentColor, &c.Category, &tagsJSON,
-		&c.IsVerified, &c.Status, &c.MembersCount,
+		&c.IsVerified, &c.VerificationStatus, &c.Status, &c.MembersCount,
 		&c.CreatedAt, &c.UpdatedAt,
 	); err != nil {
 		return nil, err

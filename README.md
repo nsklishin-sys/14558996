@@ -40,6 +40,7 @@ go run ./cmd/server
 - `S3_*` — настройки S3 (см. `internal/storage/s3.go`)
 - `SMTP_*` — отправка писем
 - `SENTRY_DSN` — отслеживание ошибок (опционально)
+- `DADATA_TOKEN` — токен Dadata для live-проверки ИНН компаний (пример: `50f2c0df6a274874fec5edd4d95c468ef31db9dc`)
 
 См. `internal/storage/s3.go`, `internal/mailer/mailer.go` для полного списка.
 
