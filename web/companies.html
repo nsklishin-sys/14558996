@@ -296,7 +296,7 @@ function getFilteredList(){
     const myIDs=new Set(myCompanies.map(c=>c.id));
     list=list.filter(c=>myIDs.has(c.id));
   }else if(mode==='verified'){
-    list=list.filter(c=>c.is_verified);
+    list=list.filter(c=>c.is_verified||c.verification_status==='verified');
   }
   if(activeGroup){
     list=list.filter(c=>c.category_group===activeGroup);
@@ -326,7 +326,7 @@ function renderFeed(){
 
 function renderCard(c){
   const accent=c.accent_color||'#1E8A4C';
-  const verifiedBadge=c.is_verified?'<span class="co-verified" title="Подтверждена"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg></span>':'';
+  const verifiedBadge=(window.lastopCompanyBadge?lastopCompanyBadge(c,'inline'):'');
   const logoHtml=c.logo_image?'<img src="'+escAttr(c.logo_image)+'" alt="">':esc(initials(c.name));
   const tagsHtml=(c.tags||[]).slice(0,3).map(t=>'<span class="co-tag">'+esc(t)+'</span>').join('');
   const isMember=!!c.viewer_is_member;
@@ -354,7 +354,7 @@ function renderCard(c){
 
 function renderStats(){
   document.getElementById('statAll').textContent=fmtNum(allCompanies.length);
-  document.getElementById('statVer').textContent=fmtNum(allCompanies.filter(c=>c.is_verified).length);
+  document.getElementById('statVer').textContent=fmtNum(allCompanies.filter(c=>c.is_verified||c.verification_status==='verified').length);
   document.getElementById('statMy').textContent=fmtNum(myCompanies.length);
 }
 
@@ -380,7 +380,7 @@ function renderRecom(){
   const wrap=document.getElementById('recomList');
   // показываем чужие верифицированные с наибольшим числом сотрудников
   const myIDs=new Set(myCompanies.map(c=>c.id));
-  const list=allCompanies.filter(c=>!myIDs.has(c.id)&&c.is_verified)
+  const list=allCompanies.filter(c=>!myIDs.has(c.id)&&(c.is_verified||c.verification_status==='verified'))
     .sort((a,b)=>(b.members_count||0)-(a.members_count||0))
     .slice(0,5);
   if(!list.length){
