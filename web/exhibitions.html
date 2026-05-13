@@ -563,6 +563,8 @@ function mapApiExhibition(e){
 }
 
 async function loadExhibitions(){
+  const feedEl = document.getElementById('exFeed') || document.getElementById('feed');
+  if (feedEl && window.lastopSkel) feedEl.innerHTML = window.lastopSkel.cards(6);
   try{
     const r=await fetch(API+'/exhibitions?limit=200',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)return;
