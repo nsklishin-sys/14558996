@@ -427,6 +427,9 @@ a.nc-author{text-decoration:none}
       <div class="c-av" id="composeAv">НК</div>
       <input class="c-input" id="composeTitleInput" placeholder="Заголовок публикации…" maxlength="200">
     </div>
+    <select id="composeCategoryInput" class="form-input" style="margin-bottom:10px;height:38px;border:1.5px solid var(--bdr);border-radius:8px;padding:0 12px;font-family:inherit;font-size:13px;color:var(--t);background:var(--w);width:100%">
+  <option value="">Категория…</option><option value="Логистика">Логистика</option><option value="ВЭД">ВЭД</option><option value="Регуляторика">Регуляторика</option><option value="Технологии">Технологии</option><option value="Компании">Компании</option><option value="Форум">Форум</option>
+</select>
     <textarea id="composeTextInput"
       style="width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:10px 14px;font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:vertical;min-height:140px;max-height:480px;line-height:1.55;background:var(--gp);transition:border-color .2s;margin-bottom:6px"
       placeholder="Расскажите о событии, поделитесь кейсом или инсайдом…"
@@ -1046,17 +1049,18 @@ function renderComposeTags(){
 async function submitPost(){
   const title=document.getElementById('composeTitleInput').value.trim();
   const text=document.getElementById('composeTextInput').value.trim();
+  const category=document.getElementById('composeCategoryInput')?.value||'';
   if(title.length<3){showToast('Заголовок должен быть не короче 3 символов');return;}
   if(text.length<10){showToast('Текст должен быть не короче 10 символов');return;}
   const btn=document.querySelector('.c-submit');
   if(btn)btn.disabled=true;
   try{
-    const r=await fetch(API+'/posts',{method:'POST',headers:window.withActiveContextHeaders ? window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}) : {'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags,cover_url:composeCoverUrl})});
+    const r=await fetch(API+'/posts',{method:'POST',headers:window.withActiveContextHeaders ? window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}) : {'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags,cover_url:composeCoverUrl,category})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.post){showToast(d.error||'Не удалось опубликовать');return;}
     const p=d.post;
       allNews.unshift({
-        id:p.id,public_id:p.public_id,cat:'Публикации',
+        id:p.id,public_id:p.public_id,cat:p.category||'Публикации',
         author:p.author||document.getElementById('topbarName').textContent||'Пользователь',
         author_avatar:p.author_avatar||'',
         author_company_id:p.author_company_id||0,
@@ -1235,7 +1239,7 @@ function toggleFollow(btn){
         return {
           id: n.id || Math.random(),
           public_id: n.public_id,
-          cat: 'Публикации',
+          cat: n.category || 'Публикации',
           author: displayAuthor,
           role: displayRole,
           title: n.title || '',

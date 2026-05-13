@@ -597,6 +597,7 @@ type post struct {
 	Content           string    `json:"content"`
 	Text              string    `json:"text"`
 	CoverURL          string    `json:"cover_url,omitempty"`
+	Category          string    `json:"category,omitempty"`
 	Tags              []string  `json:"tags"`
 	PrivacyLevel      string    `json:"privacy_level"`
 	LikesCount        int       `json:"likes_count"`
@@ -657,6 +658,7 @@ type createPostRequest struct {
 	Title        string   `json:"title"`
 	Content      string   `json:"content"`
 	Type         string   `json:"type"`
+	Category     string   `json:"category"`
 	Tags         []string `json:"tags"`
 	CoverURL     string   `json:"cover_url"`
 	PrivacyLevel string   `json:"privacy_level"`
@@ -4062,6 +4064,141 @@ func main() {
 			return
 		}
 
+		// GET /api/chat/conversations/{publicID}/members — список участников группы
+		if len(parts) == 2 && parts[1] == "members" && r.Method == http.MethodGet {
+			rows, err := db.Query(`
+				SELECT u.id, COALESCE(u.public_id, ''), COALESCE(NULLIF(u.full_name,''), u.email), COALESCE(u.avatar_url, ''), p.role, p.joined_at
+				FROM chat_participants p
+				JOIN chat_conversations c ON c.id = p.conversation_id
+				JOIN users u ON u.id = p.user_id
+				WHERE c.public_id = $1 AND p.participant_kind = 'user'
+				ORDER BY CASE p.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.full_name
+			`, publicID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			type member struct {
+				ID       int64     `json:"id"`
+				PublicID string    `json:"public_id"`
+				Name     string    `json:"name"`
+				Avatar   string    `json:"avatar,omitempty"`
+				Role     string    `json:"role"`
+				JoinedAt time.Time `json:"joined_at"`
+			}
+			var out []member
+			for rows.Next() {
+				var m member
+				if err := rows.Scan(&m.ID, &m.PublicID, &m.Name, &m.Avatar, &m.Role, &m.JoinedAt); err == nil {
+					out = append(out, m)
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"members": out})
+			return
+		}
+		if len(parts) == 1 && r.Method == http.MethodPatch {
+			var myRole string
+			if err := db.QueryRow(`SELECT p.role FROM chat_participants p JOIN chat_conversations c ON c.id = p.conversation_id WHERE c.public_id = $1 AND p.user_id = $2`, publicID, userID).Scan(&myRole); err != nil {
+				writeError(w, http.StatusNotFound, "Чат не найден")
+				return
+			}
+			if myRole != "owner" && myRole != "admin" {
+				writeError(w, http.StatusForbidden, "Только владелец или админ может менять группу")
+				return
+			}
+			var req struct {
+				Title     *string `json:"title"`
+				AvatarURL *string `json:"avatar_url"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.Title != nil {
+				t := strings.TrimSpace(*req.Title)
+				if utf8.RuneCountInString(t) < 1 || utf8.RuneCountInString(t) > 100 {
+					writeError(w, http.StatusBadRequest, "Название: 1–100 символов")
+					return
+				}
+				if _, err := db.Exec(`UPDATE chat_conversations SET title=$1 WHERE public_id=$2`, t, publicID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+			}
+			if req.AvatarURL != nil {
+				if _, err := db.Exec(`UPDATE chat_conversations SET avatar_url=$1 WHERE public_id=$2`, *req.AvatarURL, publicID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "members" && r.Method == http.MethodPost {
+			var myRole string
+			if err := db.QueryRow(`SELECT p.role FROM chat_participants p JOIN chat_conversations c ON c.id = p.conversation_id WHERE c.public_id = $1 AND p.user_id = $2`, publicID, userID).Scan(&myRole); err != nil {
+				writeError(w, http.StatusNotFound, "Чат не найден")
+				return
+			}
+			if myRole != "owner" && myRole != "admin" {
+				writeError(w, http.StatusForbidden, "Только владелец или админ может добавлять участников")
+				return
+			}
+			var req struct {
+				UserPublicID string `json:"user_public_id"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			var newUserID int64
+			if err := db.QueryRow(`SELECT id FROM users WHERE public_id=$1 AND is_deleted=FALSE`, req.UserPublicID).Scan(&newUserID); err != nil {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			var convID int64
+			if err := db.QueryRow(`SELECT id FROM chat_conversations WHERE public_id=$1`, publicID).Scan(&convID); err != nil {
+				writeError(w, http.StatusNotFound, "Чат не найден")
+				return
+			}
+			if _, err := db.Exec(`INSERT INTO chat_participants (conversation_id, user_id, role, participant_kind, participant_id) VALUES ($1, $2, 'member', 'user', $2) ON CONFLICT (conversation_id, user_id) DO NOTHING`, convID, newUserID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		if len(parts) == 3 && parts[1] == "members" && r.Method == http.MethodDelete {
+			var myRole string
+			if err := db.QueryRow(`SELECT p.role FROM chat_participants p JOIN chat_conversations c ON c.id = p.conversation_id WHERE c.public_id = $1 AND p.user_id = $2`, publicID, userID).Scan(&myRole); err != nil {
+				writeError(w, http.StatusNotFound, "Чат не найден")
+				return
+			}
+			if myRole != "owner" && myRole != "admin" {
+				writeError(w, http.StatusForbidden, "Только владелец или админ может удалять")
+				return
+			}
+			targetPublicID := parts[2]
+			var targetUserID int64
+			if err := db.QueryRow(`SELECT id FROM users WHERE public_id=$1`, targetPublicID).Scan(&targetUserID); err != nil {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			var targetRole string
+			_ = db.QueryRow(`SELECT p.role FROM chat_participants p JOIN chat_conversations c ON c.id = p.conversation_id WHERE c.public_id = $1 AND p.user_id = $2`, publicID, targetUserID).Scan(&targetRole)
+			if targetRole == "owner" {
+				writeError(w, http.StatusBadRequest, "Нельзя удалить владельца группы")
+				return
+			}
+			if _, err := db.Exec(`DELETE FROM chat_participants WHERE user_id=$1 AND conversation_id=(SELECT id FROM chat_conversations WHERE public_id=$2)`, targetUserID, publicID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+
 		if len(parts) == 1 && r.Method == http.MethodGet {
 			item, err := getConversationByPublicID(db, userID, publicID)
 			if err != nil {
@@ -6186,7 +6323,8 @@ func main() {
 		limit := parseLimit(r.URL.Query().Get("limit"), 20, 100)
 		beforeID := parseIDOrZero(r.URL.Query().Get("before_id"))
 		postType := strings.TrimSpace(r.URL.Query().Get("type"))
-		posts, nextCursor, err := listFeed(db, authUserID, hasAuth, limit, beforeID, postType)
+		category := strings.TrimSpace(r.URL.Query().Get("category"))
+		posts, nextCursor, err := listFeed(db, authUserID, hasAuth, limit, beforeID, postType, category)
 		if err != nil {
 			handlePostActionError(w, err)
 			return
@@ -8951,6 +9089,13 @@ func main() {
 					verificationStatus = "inn_verified"
 					now := time.Now()
 					innVerifiedAt = &now
+					// Автоподставляем название компании из ЕГРЮЛ.
+					// Приоритет: name_short (например "ПАО Сбербанк") → name_full → оставляем как ввёл юзер
+					if info.NameShort != "" {
+						req.Name = info.NameShort
+					} else if info.NameFull != "" {
+						req.Name = info.NameFull
+					}
 					if raw, mErr := json.Marshal(map[string]any{
 						"inn":        info.INN,
 						"ogrn":       info.OGRN,
@@ -9021,6 +9166,7 @@ func main() {
 		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
 
 		// /api/companies/{slug-or-publicID} — деталка
+
 		if len(parts) == 1 && r.Method == http.MethodGet {
 			// Сначала пробуем как slug, потом как public_id
 			item, err := getCompanyBySlugFull(db, identifier, viewerID)
@@ -11182,7 +11328,10 @@ ALTER TABLE posts
     ADD COLUMN IF NOT EXISTS community_id BIGINT REFERENCES communities(id) ON DELETE CASCADE,
     ADD COLUMN IF NOT EXISTS reposted_from_id BIGINT REFERENCES posts(id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS reposts_count INTEGER NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS saves_count INTEGER NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS saves_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS posts_category_idx ON posts(category) WHERE is_deleted = FALSE AND category <> '';
 
 CREATE INDEX IF NOT EXISTS posts_author_created_idx
     ON posts(author_id, created_at DESC) WHERE is_deleted = FALSE;
@@ -15902,10 +16051,10 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		       FALSE,
 		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM post_saves ps WHERE ps.post_id = p.id AND ps.user_id = $3::bigint)), FALSE),
 		       COALESCE(($3::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $3::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, ''), COALESCE(p.category, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
-		LEFT JOIN companies ac ON ac.id = p.author_company_id
+		LEFT JOIN companies ac ON ac.id = p.author_company_id AND ac.deleted_at IS NULL
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.community_id = $1 AND p.is_deleted = FALSE`
 	if beforeID > 0 {
@@ -15925,7 +16074,7 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
 			&item.AuthorCompanyID, &item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
@@ -16138,11 +16287,11 @@ func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error)
 			return post{}, err
 		}
 		created, err := scanPost(db.QueryRow(`
-			INSERT INTO posts (public_id, author_id, author_company_id, community_id, type, title, content, cover_url, tags, privacy_level)
-			VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), $5, $6, $7, NULLIF($8, ''), $9::text[], $10)
+			INSERT INTO posts (public_id, author_id, author_company_id, community_id, type, title, content, cover_url, tags, privacy_level, category)
+			VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), $5, $6, $7, NULLIF($8, ''), $9::text[], $10, $11)
 			RETURNING id, public_id, type, title, content, COALESCE(cover_url, ''), COALESCE(array_to_json(tags), '[]'::json),
 					  privacy_level, likes_count, comments_count, views_count, saves_count, reposts_count, COALESCE(reposted_from_id, 0), created_at, author_id
-		`, publicID, authorID, req.CompanyID, req.CommunityID, postType, title, content, coverURL, pgTags, privacy))
+		`, publicID, authorID, req.CompanyID, req.CommunityID, postType, title, content, coverURL, pgTags, privacy, strings.TrimSpace(req.Category)))
 		if err == nil {
 			_ = saveMentions(db, "post", created.ID, authorID, content, content)
 			return hydratePostAuthor(db, created)
@@ -16185,20 +16334,21 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		       COALESCE(($2::bigint IS NOT NULL AND EXISTS (
 		           SELECT 1 FROM posts rp WHERE rp.author_id = $2::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE
 		       )), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, ''), COALESCE(p.category, '')
 		FROM posts p
-		LEFT JOIN companies ac ON ac.id = p.author_company_id
+		LEFT JOIN companies ac ON ac.id = p.author_company_id AND ac.deleted_at IS NULL
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $2::bigint
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $2::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.public_id = $1 AND p.is_deleted = FALSE
+		  AND (p.author_company_id IS NULL OR EXISTS (SELECT 1 FROM companies cc WHERE cc.id = p.author_company_id AND cc.deleted_at IS NULL))
 		LIMIT 1
 	`, publicID, currentUser).Scan(
 		&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &coverURL, &tagsJSON,
 		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID, &item.AuthorCompanyID,
 		&item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo, &item.IsLiked,
 		&item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.IsSaved, &item.IsReposted,
-		&item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor,
+		&item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -16230,7 +16380,7 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 	return item, nil
 }
 
-func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID int64, postType string) ([]post, *int64, error) {
+func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID int64, postType, category string) ([]post, *int64, error) {
 	currentUser := sql.NullInt64{}
 	if hasAuth {
 		currentUser = sql.NullInt64{Int64: authUserID, Valid: true}
@@ -16245,14 +16395,15 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
 		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, ''), COALESCE(p.category, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
-		LEFT JOIN companies ac ON ac.id = p.author_company_id
+		LEFT JOIN companies ac ON ac.id = p.author_company_id AND ac.deleted_at IS NULL
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
-		WHERE p.is_deleted = FALSE AND p.privacy_level = 'public'`
+		WHERE p.is_deleted = FALSE AND p.privacy_level = 'public'
+		  AND (p.author_company_id IS NULL OR EXISTS (SELECT 1 FROM companies cc WHERE cc.id = p.author_company_id AND cc.deleted_at IS NULL))`
 	if postType != "" {
 		postType = strings.ToLower(strings.TrimSpace(postType))
 		query += fmt.Sprintf(" AND p.type = $%d", len(args)+1)
@@ -16275,7 +16426,7 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
 			&item.AuthorCompanyID, &item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
@@ -17575,7 +17726,7 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
@@ -18023,7 +18174,8 @@ func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, er
 		JOIN users u ON u.id = pc.author_id
 		LEFT JOIN companies co ON co.id = pc.sender_company_id
 		LEFT JOIN communities cm ON cm.id = pc.sender_community_id
-		WHERE p.public_id = $1 AND p.is_deleted = FALSE AND pc.is_deleted = FALSE
+		WHERE p.public_id = $1 AND p.is_deleted = FALSE
+		  AND (p.author_company_id IS NULL OR EXISTS (SELECT 1 FROM companies cc WHERE cc.id = p.author_company_id AND cc.deleted_at IS NULL)) AND pc.is_deleted = FALSE
 		ORDER BY pc.created_at ASC, pc.id ASC
 		LIMIT $2
 	`, postPublicID, limit)
