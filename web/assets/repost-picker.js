@@ -230,6 +230,7 @@
     var personal = targets.filter(function (t) { return t.type === 'user'; });
     var companies = targets.filter(function (t) { return t.type === 'company'; });
     var communities = targets.filter(function (t) { return t.type === 'community'; });
+    var friends = targets.filter(function (t) { return t.type === 'friend'; });
 
     var html = '';
     personal.forEach(function (t) {
@@ -242,6 +243,10 @@
     if (communities.length) {
       html += '<div class="lrp-divider"></div><div class="lrp-section">Сообщества</div>';
       communities.forEach(function (t) { html += renderItem(t); });
+    }
+    if (friends.length) {
+      html += '<div class="lrp-divider"></div><div class="lrp-section">Отправить в чат</div>';
+      friends.forEach(function (t) { html += renderItem(t); });
     }
     body.innerHTML = html;
 
@@ -269,12 +274,16 @@
     var body = pop.querySelector('.lrp-body');
     var pane = pop.querySelector('.lrp-comment-pane');
 
+    var isFriend = target.type === 'friend';
+    var label = isFriend ? 'Отправить в чат: <b>' + esc(target.name) + '</b>' : 'Репост: <b>' + esc(target.name) + '</b>';
+    var placeholder = isFriend ? 'Добавить сообщение (опционально)…' : 'Добавить комментарий (опционально)…';
+    var btnText = isFriend ? 'Отправить' : 'Опубликовать';
     pane.innerHTML = '' +
-      '<div class="lrp-selected">' + buildAvatar(target) + 'Репост: <b>' + esc(target.name) + '</b></div>' +
-      '<textarea class="lrp-textarea" id="lrpComment" placeholder="Добавить комментарий (опционально)…" maxlength="20000"></textarea>' +
+      '<div class="lrp-selected">' + buildAvatar(target) + label + '</div>' +
+      '<textarea class="lrp-textarea" id="lrpComment" placeholder="' + placeholder + '" maxlength="20000"></textarea>' +
       '<div class="lrp-actions">' +
       '<button class="lrp-btn lrp-btn-sec" type="button" id="lrpCancel">Назад</button>' +
-      '<button class="lrp-btn lrp-btn-pri" type="button" id="lrpSubmit">Опубликовать</button>' +
+      '<button class="lrp-btn lrp-btn-pri" type="button" id="lrpSubmit">' + btnText + '</button>' +
       '</div>';
     pane.classList.remove('hidden');
     body.style.display = 'none';
@@ -300,6 +309,57 @@
     var taEl = pop.querySelector('#lrpComment');
     var btn = pop.querySelector('#lrpSubmit');
     var comment = taEl ? taEl.value.trim() : '';
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = target.type === 'friend' ? 'Отправляем…' : 'Публикуем…';
+    }
+
+    // Отправка в личный чат другу — не репост, а сообщение со ссылкой
+    if (target.type === 'friend') {
+      try {
+        // 1) Открыть direct-чат
+        var dc = await fetch(API + '/chat/conversations/direct', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ user_public_id: target.public_id })
+        });
+        if (!dc.ok) {
+          toast('Не удалось открыть чат');
+          if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+          return;
+        }
+        var dd = await dc.json();
+        var convPID = dd.conversation && dd.conversation.public_id;
+        if (!convPID) {
+          toast('Не удалось открыть чат');
+          if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+          return;
+        }
+        // 2) Сообщение со ссылкой на пост
+        var link = location.origin + '/news-detail.html?id=' + encodeURIComponent(current.opts.postPublicID);
+        var msg = comment ? (comment + '\\n\\n' + link) : link;
+        var mr = await fetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ content: msg })
+        });
+        if (!mr.ok) {
+          var md = await mr.json().catch(function () { return {}; });
+          toast(md.error || 'Не удалось отправить');
+          if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+          return;
+        }
+        toast('Отправлено ✓');
+        close();
+      } catch (e) {
+        toast('Ошибка сети');
+        if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+      }
+      return;
+    }
+
+    // Обычный репост в ленту (свою / компании / сообщества)
     var body = {
       comment: comment,
       target_company_id: 0,
@@ -308,10 +368,6 @@
     if (target.type === 'company') body.target_company_id = target.id;
     if (target.type === 'community') body.target_community_id = target.id;
 
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'Публикуем…';
-    }
     try {
       var r = await fetch(API + '/posts/' + encodeURIComponent(current.opts.postPublicID) + '/repost', {
         method: 'POST',

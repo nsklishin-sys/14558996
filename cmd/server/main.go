@@ -3003,7 +3003,7 @@ func main() {
 		}
 		// 3) Сообщества, где юзер состоит
 		rows2, err2 := db.Query(`
-			SELECT co.id, co.public_id, co.name, COALESCE(co.avatar_url, ''), cm.role
+			SELECT co.id, co.name, COALESCE(co.avatar_url, ''), cm.role
 			FROM communities co
 			JOIN community_members cm ON cm.community_id = co.id
 			WHERE cm.user_id = $1 AND co.is_deleted = FALSE
@@ -3014,7 +3014,7 @@ func main() {
 			for rows2.Next() {
 				var t target
 				var role string
-				if err := rows2.Scan(&t.ID, &t.PublicID, &t.Name, &t.Avatar, &role); err == nil {
+				if err := rows2.Scan(&t.ID, &t.Name, &t.Avatar, &role); err == nil {
 					t.Type = "community"
 					switch role {
 					case "owner":
@@ -3028,6 +3028,28 @@ func main() {
 				}
 			}
 		}
+
+		// 4) Друзья — для отправки в личный чат
+		rows3, err3 := db.Query(`
+			SELECT u.id, COALESCE(u.public_id, ''), COALESCE(NULLIF(u.full_name,''), u.email), COALESCE(u.avatar_url, '')
+			FROM friend_requests fr
+			JOIN users u ON u.id = CASE WHEN fr.requester_id = $1 THEN fr.addressee_id ELSE fr.requester_id END
+			WHERE (fr.requester_id = $1 OR fr.addressee_id = $1) AND fr.status = 'accepted' AND u.is_deleted = FALSE
+			ORDER BY u.full_name
+			LIMIT 50
+		`, userID)
+		if err3 == nil {
+			defer rows3.Close()
+			for rows3.Next() {
+				var t target
+				if err := rows3.Scan(&t.ID, &t.PublicID, &t.Name, &t.Avatar); err == nil {
+					t.Type = "friend"
+					t.Subtitle = "Отправить в чат"
+					targets = append(targets, t)
+				}
+			}
+		}
+
 		writeJSON(w, http.StatusOK, map[string]any{"targets": targets})
 	})
 
