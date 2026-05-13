@@ -419,5 +419,14 @@ document.addEventListener('DOMContentLoaded',async()=>{
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script>
+if (window.lastopUX) {
+  const si = document.getElementById('searchInput');
+  if (si) window.lastopUX.attachSearchDebounce(si, () => {
+    if (typeof applyFilters === 'function') applyFilters();
+    else if (typeof loadCompanies === 'function') loadCompanies();
+  }, 300);
+}
+</script>
 </body>
 </html>
