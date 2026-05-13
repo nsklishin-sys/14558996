@@ -6004,6 +6004,7 @@ func main() {
 			handlePostActionError(w, err)
 			return
 		}
+		w.Header().Set("Cache-Control", "private, max-age=30")
 		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
 	})
 
@@ -6043,6 +6044,7 @@ func main() {
 			}
 			out = append(out, t)
 		}
+		w.Header().Set("Cache-Control", "public, max-age=300")
 		writeJSON(w, http.StatusOK, map[string]any{"trends": out})
 	})
 
@@ -6086,6 +6088,7 @@ func main() {
 			}
 			out = append(out, a)
 		}
+		w.Header().Set("Cache-Control", "public, max-age=60")
 		writeJSON(w, http.StatusOK, map[string]any{"authors": out})
 	})
 
@@ -6118,6 +6121,7 @@ func main() {
 			items = []post{}
 		}
 
+		w.Header().Set("Cache-Control", "public, max-age=60")
 		writeJSON(w, http.StatusOK, map[string]any{
 			"posts":  items,
 			"period": period,
@@ -11408,6 +11412,8 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 CREATE INDEX IF NOT EXISTS chat_messages_conversation_idx
     ON chat_messages(conversation_id, id DESC) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS chat_messages_reply_to_idx
+    ON chat_messages(reply_to_id) WHERE reply_to_id IS NOT NULL AND is_deleted = FALSE;
 
 -- Спринт 5: вложения в сообщениях чата.
 -- Разрешаем пустой content если есть attachment.
