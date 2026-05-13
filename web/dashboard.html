@@ -1005,6 +1005,7 @@ async function submitPost(){
       views:p.views_count||0,likes:p.likes_count||0,comments:p.comments_count||0,shares:0,
       ts:p.created_at||new Date().toISOString(),src:'',type:p.type||'news',tags:p.tags||[]
     });
+    if (window.lastopCache) { window.lastopCache.clear('home.feed'); }
     closeCompose();
     applyFilters();
     showToast('Публикация опубликована ✓');
