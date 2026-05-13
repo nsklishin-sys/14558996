@@ -80,6 +80,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .fld-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .fld-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .fld-hint{font-size:10px;color:var(--gmt);margin-top:2px}
+.inn-status{margin-top:7px;display:none;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;font-size:12.5px;line-height:1.45;font-weight:500}
+.inn-status.show{display:flex}
+.inn-status svg{width:15px;height:15px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.inn-status.loading{background:#FFF8E6;border:1px solid #F0D78A;color:#735100}
+.inn-status.success{background:var(--gl);border:1px solid var(--gb);color:var(--g)}
+.inn-status.success .inn-status-inner{flex:1;min-width:0}
+.inn-status.success .inn-status-title{font-weight:700;margin-bottom:2px;font-size:13px}
+.inn-status.success .inn-status-sub{font-size:11.5px;color:#3B6D11;line-height:1.4;opacity:.85}
+.inn-status.error{background:#FBEAEA;border:1px solid #EFC2C2;color:#A03030}
+.inn-status.warn{background:#FFF3DF;border:1px solid #F0CB80;color:#7A4A00}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 18px;border-radius:99px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .15s;white-space:nowrap;text-decoration:none}
@@ -194,9 +204,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <input class="fld-input" id="cName" maxlength="200" placeholder="Например: ООО «Логистика-Плюс»">
       </div>
       <div class="fld">
-        <label class="fld-label">ИНН (опционально)</label>
-        <input class="fld-input" id="cINN" maxlength="12" placeholder="10 или 12 цифр">
-        <span class="fld-hint">Без ИНН компания будет работать сразу. После указания ИНН компания пройдёт ручную модерацию и получит плашку «Подтверждено».</span>
+        <label class="fld-label">ИНН (рекомендуется)</label>
+        <input class="fld-input" id="cINN" maxlength="12" placeholder="10 или 12 цифр" oninput="onINNInput()">
+        <div id="innStatus" class="inn-status"></div>
+        <span class="fld-hint">Укажите ИНН — мы автоматически подтянем данные из ЕГРЮЛ и предзаполним поля. Финальное подтверждение «Верифицировано» выдаёт модератор.</span>
       </div>
       <div class="fld">
         <label class="fld-label">Описание</label>
@@ -1099,13 +1110,105 @@ async function renderPubs(wrap){
   }
 }
 
+// ── Live-проверка ИНН через Dadata
+let innCheckTimer = null;
+let lastVerifiedINN = null;
+let verifiedINNData = null;
+
+function setINNStatus(state, html) {
+  const el = document.getElementById('innStatus');
+  if (!el) return;
+  el.className = 'inn-status show ' + state;
+  el.innerHTML = html;
+}
+function clearINNStatus() {
+  const el = document.getElementById('innStatus');
+  if (!el) return;
+  el.className = 'inn-status';
+  el.innerHTML = '';
+}
+
+function onINNInput() {
+  const inp = document.getElementById('cINN');
+  if (!inp) return;
+  const cleaned = inp.value.replace(/\D/g, '').slice(0, 12);
+  if (inp.value !== cleaned) inp.value = cleaned;
+
+  lastVerifiedINN = null;
+  verifiedINNData = null;
+
+  if (cleaned.length === 0) {
+    clearINNStatus();
+    return;
+  }
+  if (cleaned.length < 10) {
+    setINNStatus('warn', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Введите 10 или 12 цифр');
+    return;
+  }
+  if (cleaned.length === 11) {
+    setINNStatus('warn', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>ИНН должен быть 10 или 12 цифр');
+    return;
+  }
+  if (innCheckTimer) clearTimeout(innCheckTimer);
+  setINNStatus('loading', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Проверяем ИНН в реестре…');
+  innCheckTimer = setTimeout(() => verifyINNRequest(cleaned), 600);
+}
+
+async function verifyINNRequest(inn) {
+  try {
+    const r = await fetch(API + '/companies/verify-inn', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inn })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setINNStatus('error', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' + (d.error || 'Не удалось проверить ИНН'));
+      return;
+    }
+    if (!d.found) {
+      setINNStatus('warn', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>ИНН не найден в реестре ЕГРЮЛ. Компания будет создана, но потребует ручной модерации.');
+      return;
+    }
+    lastVerifiedINN = inn;
+    verifiedINNData = d;
+    autofillFromDadata(d);
+    const subParts = [];
+    if (d.ogrn) subParts.push('ОГРН: ' + d.ogrn);
+    if (d.kpp) subParts.push('КПП: ' + d.kpp);
+    if (d.status && d.status !== 'ACTIVE') subParts.push('⚠ статус: ' + d.status);
+    const subText = subParts.length ? '<div class="inn-status-sub">' + subParts.join(' · ') + '</div>' : '';
+    setINNStatus('success',
+      '<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg>' +
+      '<div class="inn-status-inner">' +
+      '<div class="inn-status-title">Найдено в ЕГРЮЛ: ' + (d.name_short || d.name_full || 'Организация') + '</div>' +
+      subText +
+      '</div>');
+  } catch (e) {
+    setINNStatus('error', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Ошибка сети');
+  }
+}
+
+function autofillFromDadata(d) {
+  const nameEl = document.getElementById('cName');
+  if (nameEl && !nameEl.value.trim() && d.name_short) {
+    nameEl.value = d.name_short;
+  }
+}
+
 // CREATE COMPANY
 function openCreate(){ document.getElementById('modalCreate').classList.add('open'); setTimeout(() => document.getElementById('cName').focus(), 100); }
-function closeCreate(){ document.getElementById('modalCreate').classList.remove('open'); }
+function closeCreate(){ document.getElementById('modalCreate').classList.remove('open'); clearINNStatus(); if (innCheckTimer) clearTimeout(innCheckTimer); lastVerifiedINN = null; verifiedINNData = null; }
 async function submitCreate(){
   const btn = document.getElementById('cSubmit');
   const name = document.getElementById('cName').value.trim();
-  if (!name) { toast('Введите название'); return; }
+  if (!name || name.length < 1) {
+    return alert('Введите название компании');
+  }
+  const innStatusEl = document.getElementById('innStatus');
+  if (innStatusEl && innStatusEl.classList.contains('loading')) {
+    return alert('Дождитесь окончания проверки ИНН');
+  }
   btn.disabled = true; btn.textContent = 'Создание…';
   try {
     const body = {
