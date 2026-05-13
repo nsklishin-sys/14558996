@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	urlPkg "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,10 +98,30 @@ func (s *LocalStorage) Delete(ctx context.Context, key string) error {
 
 func (s *LocalStorage) Serve(w http.ResponseWriter, r *http.Request) {
 	// Файлы в /uploads/ иммутабельные (имя содержит уникальный хеш).
-	// Можно кешировать на сутки + immutable, чтобы браузер не делал
-	// условные запросы на каждый аватар.
+	// Кешируем на сутки + immutable.
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
+
+	// Если есть ?download=имя — отдаём как attachment с оригинальным именем.
+	// Имя в URL должно быть URL-encoded (encodeURIComponent на фронте).
+	if dl := r.URL.Query().Get("download"); dl != "" {
+		// Очистка от потенциально опасных символов
+		safe := strings.ReplaceAll(dl, "\"", "")
+		safe = strings.ReplaceAll(safe, "\n", "")
+		safe = strings.ReplaceAll(safe, "\r", "")
+		safe = strings.ReplaceAll(safe, "\\", "")
+		// Используем filename*=UTF-8'' для корректной поддержки кириллицы и спецсимволов.
+		// urlPathEscape кодирует имя в percent-encoding.
+		encoded := urlPathEscapeName(safe)
+		w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+encoded)
+	}
+
 	http.StripPrefix("/uploads/", http.FileServer(http.Dir(s.baseDir))).ServeHTTP(w, r)
+}
+
+// urlPathEscapeName кодирует строку для filename*=UTF-8'' заголовка.
+// Использует url.PathEscape (заменяет специальные символы на %XX).
+func urlPathEscapeName(s string) string {
+	return urlPkg.PathEscape(s)
 }
 
 func (s *LocalStorage) PublicURL(key string) string {
