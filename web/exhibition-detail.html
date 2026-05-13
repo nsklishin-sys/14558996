@@ -1130,7 +1130,7 @@ function renderSidebar(ex){
           <span style="font-size:11px;color:var(--gmt);margin-top:2px">${escD(subText)}</span>
         </span>
       </${tag}>
-      ${ex.organizer_company_id?`<button onclick="writeOrganizer(${ex.organizer_company_id})" style="width:100%;padding:7px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'">Написать организатору</button>`:''}
+      ${ex.organizer_company_id?`<button onclick="writeOrganizer(${ex.organizer_company_id}, ${JSON.stringify(ex.organizer_company_slug||'')})" style="width:100%;padding:7px;border-radius:var(--rm);background:var(--gl);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='var(--g)';this.style.color='#fff'" onmouseout="this.style.background='var(--gl)';this.style.color='var(--g)'">Открыть страницу компании</button>`:''}
     `;
   } else if(orgCard){
     orgCard.style.display='none';
@@ -1153,10 +1153,15 @@ async function renderAdminControls(){
   }catch{}
 }
 
-window.writeOrganizer=function(companyID){
-  if(!companyID)return;
-  // переходим в чат с компанией; если нет роутинга — fallback на toast
-  location.href='/chat.html?company='+companyID;
+window.writeOrganizer=function(companyID,companySlug){
+  if(companyID&&companySlug){
+    location.href='/company-detail.html?slug='+encodeURIComponent(companySlug);
+    return;
+  }
+  if(companyID&&!companySlug){
+    location.href='/companies.html';
+    return;
+  }
 };
 
 async function loadSimilar(ex){
