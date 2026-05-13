@@ -181,6 +181,19 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   transform:translateY(-2px);
   border-color:var(--gb)
 }
+.nc-repost-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:var(--gp);color:var(--gmt);font-size:11px;font-weight:600;margin-bottom:10px;border:1px solid var(--bdr)}
+.nc-repost-tag svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nc-repost-tag b{color:var(--t);font-weight:700}
+.nc-orig{margin-top:10px;border:1px solid var(--bdr);border-radius:10px;background:var(--gp);padding:11px 13px;display:flex;gap:10px;cursor:pointer;transition:border-color .15s}
+.nc-orig:hover{border-color:var(--gb)}
+.nc-orig-cover{width:48px;height:48px;border-radius:8px;background:var(--bg);background-size:cover;background-position:center;flex-shrink:0;display:grid;place-items:center;color:var(--gmt)}
+.nc-orig-cover svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5}
+.nc-orig-body{flex:1;min-width:0}
+.nc-orig-author{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.nc-orig-author b{color:var(--t)}
+.nc-orig-title{font-size:13px;font-weight:700;color:var(--t);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nc-orig-text{font-size:12px;color:var(--tm);line-height:1.45;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nc-orig-deleted{font-size:12px;color:var(--gmt);font-style:italic;padding:10px 13px;border:1px dashed var(--bdr);border-radius:10px;background:var(--gp);margin-top:10px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .nc-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
 .nc-av{width:38px;height:38px;border-radius:10px;font-size:12px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
@@ -698,7 +711,42 @@ function renderCard(n,idx){
     ? `<div class="nc-info">${esc(roleText)}<span class="nc-dot"></span>${ago(n.ts)}</div>`
     : `<div class="nc-info">${ago(n.ts)}</div>`;
 
+  // Блок плашки репоста (если это репост)
+  const isRepost = !!(n.reposted_from_id || n.repost);
+  let repostTagHtml = '';
+  let origCardHtml = '';
+  if (isRepost) {
+    const reposterName = fromCompany ? n.author_company_name : (fromCommunity ? n.community_name : (n.author || 'Пользователь'));
+    repostTagHtml = `<div class="nc-repost-tag">
+      <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <b>${esc(reposterName)}</b> поделился(лась)
+    </div>`;
+    const orig = n.repost;
+    if (!orig) {
+      origCardHtml = `<div class="nc-orig-deleted">Оригинал недоступен</div>`;
+    } else {
+      const origAuthorName = (orig.community_id && orig.community_name) ? orig.community_name
+        : (orig.author_company_id && orig.author_company_name) ? orig.author_company_name
+        : (orig.author || 'Участник');
+      const origAuthorRole = (orig.community_id && orig.community_name) ? 'Сообщество'
+        : (orig.author_company_id && orig.author_company_name) ? 'Компания'
+        : '';
+      const origCover = orig.cover_url ? `<div class="nc-orig-cover" style="background-image:url('${esc(orig.cover_url)}')"></div>`
+        : `<div class="nc-orig-cover"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+      const origLink = orig.public_id ? `event.stopPropagation();window.location.href='/news-detail.html?id=${esc(orig.public_id)}'` : 'event.stopPropagation()';
+      origCardHtml = `<div class="nc-orig" onclick="${origLink}">
+        ${origCover}
+        <div class="nc-orig-body">
+          <div class="nc-orig-author"><b>${esc(origAuthorName)}</b>${origAuthorRole ? ' · ' + esc(origAuthorRole) : ''}</div>
+          <div class="nc-orig-title">${esc(orig.title || 'Без названия')}</div>
+          ${(orig.content || orig.text) ? `<div class="nc-orig-text">${esc((orig.content || orig.text).slice(0, 200))}</div>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+
   return`<div class="news-card" style="animation-delay:${idx*.06}s" id="nc-${escAttr(postKey)}" onclick="openNewsDetail('${escAttr(n.public_id||'')}',event)">
+    ${repostTagHtml}
     <div class="nc-head">
       ${avatarHtml}
       <div class="nc-meta">
@@ -707,13 +755,13 @@ function renderCard(n,idx){
       </div>
       <span class="nc-badge ${badgeCls}">${esc(n.cat)}</span>
     </div>
-    <div class="nc-body">
+    ${isRepost && (n.text === '↪' || !n.text) ? origCardHtml : `<div class="nc-body">
       <div class="nc-img-wrap">${imgHtml}</div>
       <div class="nc-content">
         <div class="nc-title-clamp">${esc(n.title)}</div>
         <div class="nc-text-clamp">${fmtMentions(n.text)}</div>
       </div>
-    </div>
+    </div>${origCardHtml}`}
     <div class="nc-foot" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:8px">
       <button class="nc-action ${isLiked?'liked':''}" onclick="toggleLike('${escAttr(postKey)}',this)">
         <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${isLiked?'fill="var(--red)"':''}></path></svg>
@@ -1213,7 +1261,9 @@ function toggleFollow(btn){
           author_company_slug: n.author_company_slug || '',
           author_company_logo: n.author_company_logo || '',
           is_liked: !!n.is_liked,
-          is_saved: !!n.is_saved
+          is_saved: !!n.is_saved,
+          reposted_from_id: n.reposted_from_id || 0,
+          repost: n.repost || null
         };
       });
       // Восстанавливаем состояние лайков и закладок из бэка
