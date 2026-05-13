@@ -1,3 +1,18 @@
+/* ── T-FIN-SMOOTH-2: фон страницы до загрузки inline-стилей ──
+   Чтобы избежать flash of white между рендером каркаса и применением
+   per-page <style>. Значение совпадает с переменной --bg на светлой теме.
+   Тёмная тема переопределит через :root[data-theme="dark"]. */
+html, body {
+  background: #F2F5F3;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+:root[data-theme="dark"] html,
+:root[data-theme="dark"] body,
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background: #0F1A14;
+}
+
 /*
  * ══════════════════════════════════════════════════════════════
  *  LASTOP GROUP — Shell Layout (unified)
@@ -944,4 +959,12 @@ html.lt-shell-2col .nav-bottom{margin-top:auto;padding-top:8px;border-top:1px so
 }
 .ftab{
   min-height: 28px
+}
+
+/* ── T-FIN-SMOOTH-2: фон под не-загруженными картинками ──
+   Если у <img> прописана высота (через style/CSS), но src ещё не пришёл,
+   браузер покажет «дырку». Серый фон делает плейсхолдер незаметным. */
+img[loading="lazy"]:not([src]),
+img:not([src]) {
+  background: var(--gp);
 }
