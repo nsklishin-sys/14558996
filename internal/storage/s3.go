@@ -147,8 +147,7 @@ func (s *S3Storage) Serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	// Кешируем редирект на короткое время (на случай если объект изменится)
-	w.Header().Set("Cache-Control", "public, max-age=60")
+	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	http.Redirect(w, r, target, http.StatusFound)
 }
 

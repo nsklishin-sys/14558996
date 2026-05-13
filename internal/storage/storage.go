@@ -96,6 +96,10 @@ func (s *LocalStorage) Delete(ctx context.Context, key string) error {
 }
 
 func (s *LocalStorage) Serve(w http.ResponseWriter, r *http.Request) {
+	// Файлы в /uploads/ иммутабельные (имя содержит уникальный хеш).
+	// Можно кешировать на сутки + immutable, чтобы браузер не делал
+	// условные запросы на каждый аватар.
+	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	http.StripPrefix("/uploads/", http.FileServer(http.Dir(s.baseDir))).ServeHTTP(w, r)
 }
 
