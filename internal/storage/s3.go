@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	urlPkgS3 "net/url"
 	"os"
 	"strings"
 
@@ -147,8 +148,32 @@ func (s *S3Storage) Serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	// Если есть ?download=имя — добавим response-content-disposition в S3 URL.
+	// Yandex Object Storage и AWS S3 поддерживают этот параметр для override
+	// заголовков ответа объекта.
+	if dl := r.URL.Query().Get("download"); dl != "" {
+		safe := strings.ReplaceAll(dl, "\"", "")
+		safe = strings.ReplaceAll(safe, "\n", "")
+		safe = strings.ReplaceAll(safe, "\r", "")
+		// Формируем Content-Disposition с filename*=UTF-8'' и добавляем как query.
+		// ВНИМАНИЕ: для S3-объектов с публичным доступом без подписи параметр
+		// response-content-disposition НЕ работает — нужен presigned URL.
+		// Это TODO: после переезда на S3 заменить на presigned URL с этим параметром.
+		// Пока что просто добавляем как fallback — для приватных бакетов с
+		// presigned ссылками будет работать.
+		sep := "?"
+		if strings.Contains(target, "?") {
+			sep = "&"
+		}
+		cd := "attachment; filename*=UTF-8''" + urlPkgS3PathEscape(safe)
+		target = target + sep + "response-content-disposition=" + urlPkgS3PathEscape(cd)
+	}
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	http.Redirect(w, r, target, http.StatusFound)
+}
+
+func urlPkgS3PathEscape(s string) string {
+	return urlPkgS3.PathEscape(s)
 }
 
 func (s *S3Storage) PublicURL(key string) string {

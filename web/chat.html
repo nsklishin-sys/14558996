@@ -1600,9 +1600,13 @@ function renderAttachment(m){
   const isDoc = /\.(docx?|odt|rtf)$/i.test(url);
   const isXls = /\.(xlsx?|csv|ods)$/i.test(url);
   const iconType = isPdf ? '📄' : isDoc ? '📝' : isXls ? '📊' : '📎';
+  
+  // Формируем URL для скачивания с оригинальным именем через Content-Disposition.
+  // Параметр ?download=имя обрабатывается на бэке (storage.Serve).
+  const downloadHref = url + (url.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(name);
 
   return `<div class='msg-files' style='margin-top:6px'>
-    <a href='${esc(url)}' target='_blank' rel='noopener' class='msg-file' style='text-decoration:none;color:inherit'>
+    <a href='${esc(downloadHref)}' download='${esc(name)}' rel='noopener' class='msg-file' style='text-decoration:none;color:inherit'>
       <div class='mf-icon' style='font-size:20px'>${iconType}</div>
       <div class='mf-body'>
         <div class='mf-name'>${esc(name)}</div>
