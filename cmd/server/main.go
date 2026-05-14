@@ -6459,9 +6459,11 @@ func main() {
 			return
 		}
 		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
-		var total, active, my, joined int
+		var total, active, planned, done, my, joined int
 		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE`).Scan(&total)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status = 'active'`).Scan(&active)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status = 'planned'`).Scan(&planned)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status IN ('done','completed')`).Scan(&done)
 		if viewerID > 0 {
 			_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND owner_id = $1`, viewerID).Scan(&my)
 			_ = db.QueryRow(`
@@ -6471,10 +6473,12 @@ func main() {
 			`, viewerID).Scan(&joined)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"total":  total,
-			"active": active,
-			"my":     my,
-			"joined": joined,
+			"total":   total,
+			"active":  active,
+			"planned": planned,
+			"done":    done,
+			"my":      my,
+			"joined":  joined,
 		})
 	})
 
