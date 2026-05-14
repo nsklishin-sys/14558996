@@ -1039,55 +1039,124 @@ async function loadPlatformStats(){
 }
 
 /* ── ЗАДАЧИ ── */
-const TASKS_STORAGE_PREFIX='homeTasks:v1:';
+// Виджет работает напрямую с источником истины — ключом tasks.html.
+// Так задачи созданные через виджет видны на /tasks.html и наоборот.
+const TASKS_STORAGE_PREFIX='tasksFull:v1:';
+const TASKS_LEGACY_PREFIX='homeTasks:v1:'; // legacy fallback при чтении
 const DEFAULT_TASKS=[];
 let TASKS=[];
 function taskStorageKey(){
   const uid = getPublicID(currentUser) || currentUser.id || currentUser.email || '';
-  if (!uid) return null; // currentUser ещё не загрузился — сигнализируем что ключ невалидный
+  if (!uid) return null;
   return TASKS_STORAGE_PREFIX + uid;
 }
+function taskLegacyStorageKey(){
+  const uid = getPublicID(currentUser) || currentUser.id || currentUser.email || '';
+  if (!uid) return null;
+  return TASKS_LEGACY_PREFIX + uid;
+}
+// Нормализация: приводим разные форматы (полный из tasks.html и упрощённый
+// из старого homeTasks:v1:) к одному виду для виджета.
 function normalizeTask(t,idx=0){
-  return{
-    id:t.id||Date.now()+idx,
-    title:(t.title||'Новая задача').trim(),
-    due:t.done?'Выполнено':(t.due||''),
-    overdue:!!t.overdue,
-    pri:['hi','md','lo'].includes(t.pri)?t.pri:'lo',
-    done:!!t.done,
+  // Маркер выполненности задачи на сегодня
+  const done = !!t.done;
+  // Поле due: tasks.html хранит ISO-дату или пусто; виджет показывает
+  // человекочитаемую строку. Если уже строка — оставляем как есть.
+  let due = '';
+  if (done) {
+    due = 'Выполнено';
+  } else if (typeof t.due === 'string' && t.due) {
+    // ISO-дата вида '2026-05-14' → форматируем
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t.due)) {
+      const d = new Date(t.due);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff === 0) due = 'Сегодня';
+      else if (diff === 1) due = 'Завтра';
+      else if (diff < 0) due = 'Просрочено';
+      else if (diff < 7) due = 'Через ' + diff + ' дн';
+      else due = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    } else {
+      due = t.due; // уже строка вида «Сегодня», «Без срока» и т.п.
+    }
+  } else {
+    due = 'Без срока';
+  }
+  const overdue = !done && typeof t.due === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.due) &&
+                  new Date(t.due) < (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+  return {
+    id: t.id || ('t_' + Date.now().toString(36) + '_' + idx),
+    title: (t.title || 'Новая задача').trim(),
+    due,
+    overdue: !!overdue,
+    pri: ['hi','md','lo'].includes(t.pri) ? t.pri : 'lo',
+    done,
+    // сохраняем оригинальные поля чтобы не терять данные при записи обратно
+    _raw: t
   };
 }
 function readTasksLocal(){
   const key = taskStorageKey();
-  if (!key) return []; // currentUser не загружен — нечего читать
+  if (!key) return [];
   try {
+    // 1. Сначала пробуем источник истины tasksFull:v1:
     const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((t, i) => normalizeTask(t, i)).slice(0, 30);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed.map((t, i) => normalizeTask(t, i)).slice(0, 30);
+      }
+    }
+    // 2. Fallback: старый ключ homeTasks:v1: (legacy)
+    const legacyKey = taskLegacyStorageKey();
+    if (legacyKey) {
+      const legacyRaw = localStorage.getItem(legacyKey);
+      if (legacyRaw) {
+        const legacyParsed = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyParsed) && legacyParsed.length) {
+          return legacyParsed.map((t, i) => normalizeTask(t, i)).slice(0, 30);
+        }
+      }
+    }
+    return [];
   } catch {
     return [];
   }
 }
 function writeTasksLocal(){
   const key = taskStorageKey();
-  if (!key) return; // не пишем если currentUser не загружен — иначе создадим мусорный ключ
-  localStorage.setItem(key, JSON.stringify(TASKS));
-  // Уведомляем других слушателей в этой же вкладке (например /tasks.html
-  // если когда-то откроется в той же вкладке без полной перезагрузки).
+  if (!key) return;
+  // Виджет добавляет задачи в формате полной структуры (как делает tasks.html)
+  // чтобы они корректно отображались на странице задач.
+  // Восстанавливаем _raw если он был, иначе строим полный объект.
+  const toWrite = TASKS.map(t => {
+    if (t._raw) {
+      // Обновляем done в исходной структуре, остальное оставляем
+      return { ...t._raw, done: t.done };
+    }
+    // Создан через виджет — формируем полную структуру
+    return {
+      id: t.id,
+      title: t.title,
+      desc: '',
+      due: '',
+      time: '',
+      pri: t.pri || 'lo',
+      tags: [],
+      done: !!t.done,
+      checklist: [],
+      created: Date.now(),
+      updated: Date.now()
+    };
+  });
+  localStorage.setItem(key, JSON.stringify(toWrite));
   try { window.dispatchEvent(new CustomEvent('lastop:tasks-updated')); } catch {}
 }
 async function loadTasks(){
-  // Модуль задач пока не реализован на бэкенде — рендерим локальные демо-данные
-  // TODO: когда появится /api/tasks — вернуть запрос
-  const localTasks=readTasksLocal();
-  if(localTasks.length){
-    TASKS=localTasks;
-  }else if(!TASKS.length){
-    TASKS=DEFAULT_TASKS.map((t,i)=>normalizeTask(t,i));
-    writeTasksLocal();
-  }
+  // Бэкенда для задач пока нет — читаем только из localStorage
+  // (источник истины: tasksFull:v1: который пишет /tasks.html)
+  TASKS = readTasksLocal();
+  if (!TASKS.length) TASKS = DEFAULT_TASKS.map((t,i)=>normalizeTask(t,i));
   renderTasks();
 }
 // Делегированный клик-обработчик для виджета задач.
@@ -1168,7 +1237,7 @@ function refreshTasksFromStorage(){
 // 1. Изменения в другой вкладке.
 window.addEventListener('storage', e => {
   if(!e.key) return;
-  if(!e.key.startsWith('homeTasks:v1:')) return;
+  if(!e.key.startsWith(TASKS_STORAGE_PREFIX)) return;
   refreshTasksFromStorage();
 });
 
@@ -1187,15 +1256,27 @@ function toggleTask(id){
   t.done=!t.done;if(t.done){t.due='Выполнено';t.overdue=false;}
   writeTasksLocal();
   renderTasks();
-  // TODO: persist через /api/tasks когда эндпоинт появится
 }
 async function openAddTask(){
   const title=await lastopPrompt({title:'Новая задача',placeholder:'Название задачи'});
   if(!title)return;
-  const task=normalizeTask({id:Date.now(),title,due:'Без срока',overdue:false,pri:'lo',done:false});
-  TASKS.unshift(task);renderTasks();
+  // Создаём задачу в формате источника истины
+  const task = normalizeTask({
+    id: 't_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    title,
+    desc: '',
+    due: '',
+    time: '',
+    pri: 'lo',
+    tags: [],
+    done: false,
+    checklist: [],
+    created: Date.now(),
+    updated: Date.now()
+  });
+  TASKS.unshift(task);
   writeTasksLocal();
-  // TODO: persist через /api/tasks когда эндпоинт появится
+  renderTasks();
 }
 
 /* ── ЧАТЫ ── */
