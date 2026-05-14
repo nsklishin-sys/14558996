@@ -834,11 +834,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="ch-info" onclick="openInfoPanel()">
         <div class="ch-name" id="chatName"></div>
         <div class="ch-status" id="chatStatus"></div>
-        <button id="chatManageBtn" onclick="openChatManage()" style="display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--gmt)" title="Управление группой">
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-</button>
       </div>
       <div class="ch-actions">
+        <button id="chatManageBtn" onclick="event.stopPropagation();openChatManage()" class="ch-act" style="display:none" title="Управление группой">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
         <button class="chat-friend-btn" id="chatFriendBtn" onclick="chatFriendClick()" style="display:none" title="">
           <svg id="chatFriendIcon" viewBox="0 0 24 24"></svg>
           <span id="chatFriendLabel"></span>
@@ -1125,10 +1125,24 @@ const _linkPreviewPending = new Map();
 const URL_RE = /(?:^|\s)(\/[a-z][a-z0-9\-]*\.html\?[^\s<]+|https?:\/\/[^\s<]+)/gi;
 
 function linkifyContent(s){
+  // Внутренние домены — открываем в той же вкладке (без target="_blank"),
+  // чтобы юзер не терял контекст и токен в новой вкладке гарантированно
+  // подхватывался. Внешние — открываем в новой вкладке.
+  const myHost = (typeof location !== 'undefined' && location.host) ? location.host.toLowerCase() : '';
+  function isInternalUrl(u){
+    if (u.startsWith('/')) return true;
+    try {
+      const parsed = new URL(u);
+      const host = parsed.host.toLowerCase();
+      if (myHost && (host === myHost || host === 'www.' + myHost || 'www.' + host === myHost)) return true;
+      // Защита на случай development/preview: учитываем lastop.ru явно
+      if (host === 'lastop.ru' || host === 'www.lastop.ru') return true;
+      return false;
+    } catch { return false; }
+  }
   return esc(s).replace(/(^|\s)(\/[a-z][a-z0-9\-]*\.html\?[^\s<]+|https?:\/\/[^\s<]+)/gi,
     (_,p,u)=>{
-      const isInternal = u.startsWith('/');
-      const target = isInternal ? '' : ' target="_blank" rel="noopener"';
+      const target = isInternalUrl(u) ? '' : ' target="_blank" rel="noopener"';
       return `${p}<a href="${u}" class="msg-link"${target}>${u}</a>`;
     });
 }
@@ -1440,8 +1454,12 @@ function applyConversation(c){
     chatStatus.textContent=c.is_online?'в сети':'был(а) недавно';
   }else{
     chatStatus.textContent=c.members_count?`${c.members_count} участников`:'';
-    const manageBtn=document.getElementById('chatManageBtn'); if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   }
+  // B28: видимость шестерёнки управления группой ВСЕГДА обновляется
+  // (раньше управлялось только в else — поэтому при переходе с
+  // группового чата на личный кнопка оставалась видимой)
+  const manageBtn=document.getElementById('chatManageBtn');
+  if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   state.activeConversation=c;
 }
 async function selectConversation(pid){if(typeof cancelVoiceRecord==='function'&&_voiceRec&&_voiceRec.mediaRecorder)cancelVoiceRecord();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
@@ -2779,7 +2797,16 @@ document.addEventListener('keydown', function(e){
 
 // ── Управление группой
 let cmConv = null;
-function openChatManage(){const c=state.conversations.find(x=>x.public_id===state.activeConvPublicID);if(!c||c.type!=='group')return;cmConv=c;document.getElementById('cmTitle').value=c.title||c.name||'';document.getElementById('chatManageModal').style.display='flex';cmLoadMembers();}
+function openChatManage(){
+  const c=state.conversations.find(x=>x.public_id===state.activeConvPublicID);
+  if(!c||c.type!=='group')return;
+  // B29: закрываем infoPanel чтобы не было наложения с модалкой
+  if(typeof closeInfoPanel==='function')closeInfoPanel();
+  cmConv=c;
+  document.getElementById('cmTitle').value=c.title||c.name||'';
+  document.getElementById('chatManageModal').style.display='flex';
+  cmLoadMembers();
+}
 function closeChatManage(){document.getElementById('chatManageModal').style.display='none';cmConv=null;}
 async function cmLoadMembers(){if(!cmConv)return;try{const r=await fetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members`,{headers:{Authorization:'Bearer '+localStorage.getItem('token')}});const d=await r.json();const members=d.members||[];const myID=state.currentUser?.id;const meRole=members.find(m=>m.id===myID)?.role||'member';const canManage=meRole==='owner'||meRole==='admin';document.getElementById('cmMembersList').innerHTML=members.map(m=>{const isMe=m.id===myID;const canDelete=canManage&&!isMe&&m.role!=='owner';const roleLabel=m.role==='owner'?'Владелец':(m.role==='admin'?'Админ':'Участник');return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:4px;background:#F0FAF4"><div style="width:32px;height:32px;border-radius:8px;background:#1E8A4C;color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px">${(m.name||'?').charAt(0).toUpperCase()}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:#1A2A22">${m.name}${isMe?' (вы)':''}</div><div style="font-size:11px;color:#5A8A6A">${roleLabel}</div></div>${canDelete?`<button onclick="cmRemoveMember('${m.public_id}','${m.name.replace(/'/g,"\'")}'); event.stopPropagation()" style="background:#FBEAEA;border:1px solid #EFC2C2;color:#A03030;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700">Удалить</button>`:''}</div>`}).join('');}catch(e){}}
 async function cmSaveTitle(){if(!cmConv)return;const newTitle=document.getElementById('cmTitle').value.trim();if(!newTitle)return;try{const r=await fetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('token')},body:JSON.stringify({title:newTitle})});if(r.ok){cmConv.title=newTitle;cmConv.name=newTitle;renderConversations();if(window.lastopToast)lastopToast('Сохранено');}else{const d=await r.json().catch(()=>({}));if(window.lastopToast)lastopToast(d.error||'Ошибка');}}catch(e){}}
