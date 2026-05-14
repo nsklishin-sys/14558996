@@ -402,33 +402,42 @@ body.dark-theme .sidebar-toggle {
    а не унаследовать белый фон со светлой темы.
    ───────────────────────────────────────────────────────────── */
 
-/* Неактивные табы — тёмный фон, светлый текст */
+/* Неактивные табы — тёмный фон, светлый текст.
+   .cat-chip и .mode-btn добавлены отдельно потому что на /companies.html
+   у .cat-chip захардкожен background:#fff прямо в HTML (companies.html:64),
+   и нужно его перебить через !important. */
 [data-theme="dark"] .ftab:not(.active),
 [data-theme="dark"] .industry-pill:not(.active),
 [data-theme="dark"] .filter-pill:not(.active),
 [data-theme="dark"] .cat-pill:not(.active),
-[data-theme="dark"] .tag-pill:not(.active) {
+[data-theme="dark"] .tag-pill:not(.active),
+[data-theme="dark"] .cat-chip:not(.active),
+[data-theme="dark"] .mode-btn:not(.active) {
   background: #2C2C2E !important;
   border-color: rgba(84,84,88,0.45) !important;
-  color: rgba(235,235,245,0.85) !important; /* светлее чем var(--tm) — читаемо */
+  color: rgba(235,235,245,0.85) !important;
 }
 
 [data-theme="dark"] .ftab:not(.active):hover,
 [data-theme="dark"] .industry-pill:not(.active):hover,
 [data-theme="dark"] .filter-pill:not(.active):hover,
 [data-theme="dark"] .cat-pill:not(.active):hover,
-[data-theme="dark"] .tag-pill:not(.active):hover {
+[data-theme="dark"] .tag-pill:not(.active):hover,
+[data-theme="dark"] .cat-chip:not(.active):hover,
+[data-theme="dark"] .mode-btn:not(.active):hover {
   background: #3A3A3C !important;
+  border-color: rgba(48,209,88,0.5) !important;
   color: #FFFFFF !important;
 }
 
-/* Активные табы — используют переменную --g которая в шаге 1
-   снижена до #28B14A. Контраст с белым текстом достаточный. */
+/* Активные табы — приглушённый зелёный (var(--g) = #28B14A). */
 [data-theme="dark"] .ftab.active,
 [data-theme="dark"] .industry-pill.active,
 [data-theme="dark"] .filter-pill.active,
 [data-theme="dark"] .cat-pill.active,
-[data-theme="dark"] .tag-pill.active {
+[data-theme="dark"] .tag-pill.active,
+[data-theme="dark"] .cat-chip.active,
+[data-theme="dark"] .mode-btn.active {
   background: var(--g) !important;
   border-color: var(--g) !important;
   color: #FFFFFF !important;
