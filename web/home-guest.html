@@ -273,28 +273,56 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
   <script>
   (async function(){
+    // Собираем элементы из двух источников: выставки + ближайшие события.
+    // Если оба пусты — скрываем весь блок «СЕЙЧАС» чтобы не было пустой полосы.
+    const items = [];
+    // 1. Выставки
     try {
       const r = await fetch('/api/exhibitions/upcoming?limit=6');
-      if (!r.ok) return;
-      const d = await r.json();
-      const items = d.upcoming || [];
-      if (!items.length) return;
-      const colors = ['#22CC66','#3A90C0','#1E8A4C','#C07030','#9060C0','#185FA5'];
-      const _esc = function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
-      const _mon = function(d){const M=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];return M[d.getMonth()];};
-      // Дублируем массив для бесшовной прокрутки
-      const doubled = items.concat(items);
-      const html = doubled.map(function(it, i){
-        const date = new Date(it.starts_at);
-        const label = _esc(it.title) + ' · ' + date.getDate() + ' ' + _mon(date);
-        return '<div class="chip"><span class="chip-dot" style="background:' + colors[i % colors.length] + '"></span>' + label + '</div>';
-      }).join('');
-      const track = document.getElementById('tickerTrack');
-      if (track) {
-        track.innerHTML = html;
-        track.style.display = '';
+      if (r.ok) {
+        const d = await r.json();
+        (d.upcoming || []).forEach(it => items.push({
+          title: it.title,
+          date:  it.starts_at,
+          kind:  'exhibition'
+        }));
       }
     } catch {}
+    // 2. Ближайшие события
+    try {
+      const r = await fetch('/api/events?limit=6&upcoming=1');
+      if (r.ok) {
+        const d = await r.json();
+        (d.events || d.items || []).forEach(ev => items.push({
+          title: ev.title,
+          date:  ev.starts_at,
+          kind:  'event'
+        }));
+      }
+    } catch {}
+    const tickerWrap = document.querySelector('.ticker-wrap');
+    if (!items.length) {
+      // Нечего показать — скрываем весь блок
+      if (tickerWrap) tickerWrap.style.display = 'none';
+      return;
+    }
+    // Сортируем по дате
+    items.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const colors = ['#22CC66','#3A90C0','#1E8A4C','#C07030','#9060C0','#185FA5'];
+    const _esc = function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+    const _mon = function(d){const M=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];return M[d.getMonth()];};
+    // Дублируем массив для бесшовной прокрутки (CSS animation translateX(-50%))
+    const doubled = items.concat(items);
+    const html = doubled.map(function(it, i){
+      const date = new Date(it.date);
+      const dateStr = isNaN(date.getTime()) ? '' : ' · ' + date.getDate() + ' ' + _mon(date);
+      return '<div class="chip"><span class="chip-dot" style="background:' + colors[i % colors.length] + '"></span>' + _esc(it.title) + dateStr + '</div>';
+    }).join('');
+    const track = document.getElementById('tickerTrack');
+    if (track) {
+      track.innerHTML = html;
+      track.style.display = '';
+    }
   })();
   </script>
 
