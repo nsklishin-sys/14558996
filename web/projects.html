@@ -300,11 +300,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="proj-toolbar">
     <span class="proj-title">Проекты</span>
     <div class="proj-tabs" id="projTabs">
-      <button class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">48</span></button>
-      <button class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">3</span></button>
-      <button class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">31</span></button>
-      <button class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">9</span></button>
-      <button class="ptab" onclick="setTab('done',this)">Завершённые<span class="ptab-count" id="tc-done">8</span></button>
+      <button class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">0</span></button>
+      <button class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">0</span></button>
+      <button class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">0</span></button>
+      <button class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">0</span></button>
+      <button class="ptab" onclick="setTab('done',this)">Завершённые<span class="ptab-count" id="tc-done">0</span></button>
     </div>
     <div class="toolbar-right">
       <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
@@ -700,6 +700,28 @@ function renderCurrentView(){
   if(el)el.textContent=count+' проект'+(count===1?'':(count>=2&&count<=4?'а':'ов'));
   renderFeed(allProjects);
 }
+
+// B25: загружаем реальные счётчики с бэкенда вместо хардкода 48/3/31/9/8
+async function loadProjectTabCounts(){
+  try{
+    const tok=localStorage.getItem('token');
+    const headers=tok?{Authorization:'Bearer '+tok}:{};
+    const r=await fetch('/api/projects/stats',{headers});
+    if(!r.ok)return;
+    const d=await r.json();
+    const set=(id,val)=>{const el=document.getElementById(id); if(el)el.textContent=(val||0);};
+    set('tc-all',d.total);
+    set('tc-my',d.my);
+    set('tc-active',d.active);
+    set('tc-planned',d.planned);
+    set('tc-done',d.done);
+  }catch(e){}
+}
+
+// Вызываем при загрузке страницы
+window.addEventListener('DOMContentLoaded',()=>{loadProjectTabCounts();});
+// И обновляем после действий которые могут изменить счётчики
+window.addEventListener('focus',()=>{loadProjectTabCounts();});
 
 let _filtersDebounce=null;
 function applyFilters(){
