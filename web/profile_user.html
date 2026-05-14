@@ -461,7 +461,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <div class="prof-meta-row">
             <span class="prof-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="profileLocation"></span></span>
             <span class="prof-meta-item"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><a href="#" id="profileWebsite"></a></span>
-            <span class="prof-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>на платформе с января 2024</span>
+            <span class="prof-meta-item" id="profileJoinedAtWrap" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>на платформе с <span id="profileJoinedAt"></span></span>
           </div>
         </div>
 
@@ -791,7 +791,8 @@ function applyViewedUserProfile(u){
     return;
   }
   const fullName=(u.full_name||`${u.first_name||''} ${u.last_name||''}`.trim()||'Пользователь').trim();
-  const role=u.position||u.role||'Участник LASTOP';
+  // B07: роль без fallback (скроем строку если её нет)
+  const role=(u.position||u.role||'').trim();
   const company=u.company_name||'';
   const location=u.location||u.city||'Не указано';
   const phone=u.phone||'Не указан';
@@ -835,7 +836,33 @@ function applyViewedUserProfile(u){
   const h=(u.handle||'').trim(),hh=document.getElementById('profileHandle');
   if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
-  document.getElementById('profileRole').textContent=company?`${role} · ${company}`:role;
+  // Вариант B из B07: если ни роли ни компании нет — скрываем строку
+  const profileRoleEl=document.getElementById('profileRole');
+  if(profileRoleEl){
+    if(!role && !company){
+      profileRoleEl.style.display='none';
+      profileRoleEl.textContent='';
+    } else {
+      profileRoleEl.style.display='';
+      profileRoleEl.textContent = (role && company) ? `${role} · ${company}`
+                                : (role ? role : company);
+    }
+  }
+  // B08: дата регистрации просматриваемого юзера
+  const joinedWrap=document.getElementById('profileJoinedAtWrap');
+  const joinedEl=document.getElementById('profileJoinedAt');
+  if(joinedWrap && joinedEl){
+    const createdAt=u.created_at||u.createdAt;
+    if(createdAt){
+      try{
+        const d=new Date(createdAt);
+        if(!isNaN(d.getTime())){
+          joinedEl.textContent = d.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+          joinedWrap.style.display='';
+        }
+      }catch{}
+    }
+  }
   document.getElementById('profileBio').textContent=bio;
   document.getElementById('profileLocation').textContent=location;
   document.getElementById('contactLocation').textContent=location;
