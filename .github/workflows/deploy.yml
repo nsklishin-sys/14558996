@@ -1,0 +1,96 @@
+name: Deploy to Yandex Cloud VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Verify build before deploy
+        run: |
+          go build ./...
+          echo "✓ go build passed — safe to deploy"
+
+      - name: Deploy to VM via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.YC_VM_HOST }}
+          username: ${{ secrets.YC_VM_USER }}
+          key: ${{ secrets.YC_VM_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 8m
+          script: |
+            set -e
+            echo "═══ Deploy started: $(date '+%Y-%m-%d %H:%M:%S') ═══"
+
+            cd /opt/lastop
+
+            PREV_COMMIT=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV_COMMIT"
+
+            echo "→ Fetching latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+            NEW_COMMIT=$(git rev-parse HEAD)
+            echo "New commit: $NEW_COMMIT"
+
+            if [ "$PREV_COMMIT" = "$NEW_COMMIT" ]; then
+              echo "✓ No new commits — nothing to do"
+              exit 0
+            fi
+
+            echo "→ Building binary..."
+            go build -o /opt/lastop/bin/lastop.new ./cmd/server
+            if [ ! -s /opt/lastop/bin/lastop.new ]; then
+              echo "✗ Build produced empty binary — aborting"
+              exit 1
+            fi
+
+            mv /opt/lastop/bin/lastop.new /opt/lastop/bin/lastop
+            chmod +x /opt/lastop/bin/lastop
+
+            echo "→ Restarting service..."
+            sudo systemctl restart lastop
+
+            echo "→ Health check..."
+            sleep 3
+            for i in 1 2 3 4 5; do
+              if curl -sf http://localhost:8080/api/health > /dev/null; then
+                echo "✓ Service is healthy"
+                break
+              fi
+              if [ $i = 5 ]; then
+                echo "✗ Health check failed after 5 attempts — rolling back"
+                git reset --hard $PREV_COMMIT
+                go build -o /opt/lastop/bin/lastop ./cmd/server
+                sudo systemctl restart lastop
+                exit 1
+              fi
+              echo "  attempt $i/5 — waiting 3s..."
+              sleep 3
+            done
+
+            echo "═══ Deploy successful: $NEW_COMMIT ═══"
