@@ -91,7 +91,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 <div class="divider"><div class="divider-line"></div><span class="divider-text">или через</span><div class="divider-line"></div></div>
 <div class="social-row"><button type="button" class="btn-social" onclick="socialLogin('yandex')">Яндекс ID</button><button type="button" class="btn-social" onclick="socialLogin('vk')">VK ID</button></div>
 </form></div>
-<div class="auth-side"><div><div class="side-badge">Бесплатный аккаунт</div><div class="side-h1">Откройте все возможности LASTOP</div><p class="side-p">Присоединяйтесь к ведущей B2B-платформе в логистике и ВЭД. Находите партнёров, публикуйте вакансии, участвуйте в мероприятиях.</p></div><div class="side-stats"><div><div class="side-stat-n">1 247</div><div class="side-stat-l">Участников</div></div><div><div class="side-stat-n">342</div><div class="side-stat-l">Компаний</div></div><div><div class="side-stat-n">47</div><div class="side-stat-l">Событий</div></div></div></div>
+<div class="auth-side"><div><div class="side-badge">Бесплатный аккаунт</div><div class="side-h1">Откройте все возможности LASTOP</div><p class="side-p">Присоединяйтесь к деловой B2B-платформе. Находите партнёров, публикуйте вакансии, участвуйте в мероприятиях.</p></div><div class="side-stats"><div><div class="side-stat-n" id="regStatUsers">—</div><div class="side-stat-l">Участников</div></div><div><div class="side-stat-n" id="regStatCompanies">—</div><div class="side-stat-l">Компаний</div></div><div><div class="side-stat-n" id="regStatEvents">—</div><div class="side-stat-l">Событий</div></div></div></div>
 </div></div><div class="toast" id="toast"></div>
 <script>
 const API='/api';
@@ -106,6 +106,19 @@ function togglePwd(id,btn){const inp=document.getElementById(id),isPwd=inp.type=
 async function handleRegister(e){e.preventDefault();const first=document.getElementById('firstName').value.trim(),last=document.getElementById('lastName').value.trim(),email=document.getElementById('email').value.trim(),pwd=document.getElementById('password').value,pwd2=document.getElementById('confirmPassword').value,terms=document.getElementById('termsBox').classList.contains('checked');['firstName','lastName'].forEach(id=>{document.getElementById(id).classList.remove('error');document.getElementById(id+'Err').textContent='';});if(!first){document.getElementById('firstName').classList.add('error');document.getElementById('firstNameErr').textContent='Введите имя';return;}if(!last){document.getElementById('lastName').classList.add('error');document.getElementById('lastNameErr').textContent='Введите фамилию';return;}if(!validateEmail())return;if(pwd.length<8){showToast('Пароль должен быть не короче 8 символов','error');return;}if(pwd!==pwd2){showToast('Пароли не совпадают','error');return;}if(!terms){showToast('Подтвердите согласие с условиями','error');return;}if(window.LASTOP_CAPTCHA&&!window.LASTOP_CAPTCHA.check()){showToast(window.LASTOP_CAPTCHA.type==='yandex'?'Пройдите проверку капчи':'Решите пример для проверки','error');const _ci=document.getElementById('captchaInput');if(_ci)_ci.focus();return;}const btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='Создаём аккаунт…';
 try{const captchaToken=(window.LASTOP_CAPTCHA&&window.LASTOP_CAPTCHA.getToken)?window.LASTOP_CAPTCHA.getToken():'';const r=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({first_name:first,last_name:last,full_name:`${first} ${last}`,email,password:pwd,terms:true,captcha_token:captchaToken})});const d=await r.json().catch(()=>({}));if(!r.ok){showToast(d.error||'Не удалось создать аккаунт','error');if(window.LASTOP_CAPTCHA&&window.LASTOP_CAPTCHA.reset)window.LASTOP_CAPTCHA.reset();btn.disabled=false;btn.innerHTML='Создать аккаунт';return;}if(d.token){const u=d.user||{};if(!u.public_id&&u.id!=null)u.public_id='u'+u.id;localStorage.setItem('token',d.token);localStorage.setItem('user',JSON.stringify(u));}showToast('Аккаунт создан! Добро пожаловать в LASTOP 🎉','success');setTimeout(()=>{const nx=new URLSearchParams(location.search).get('next');location.href=d.token?(nx||'/home-auth.html'):('/login.html'+(nx?'?next='+encodeURIComponent(nx):''));},1200);}catch{showToast('Ошибка соединения с сервером','error');btn.disabled=false;btn.innerHTML='Создать аккаунт';}}
 function socialLogin(p){showToast('Регистрация через '+(p==='yandex'?'Яндекс ID':'VK ID')+' скоро появится','success');}
+
+// Подгружаем числа платформы
+(async()=>{
+  try{
+    const r=await fetch('/api/stats');
+    if(!r.ok)return;
+    const d=await r.json();
+    const fmt=n=>(n||0).toLocaleString('ru-RU');
+    if(d.members||d.users){const el=document.getElementById('regStatUsers');if(el)el.textContent=fmt(d.members||d.users);}
+    if(d.companies){const el=document.getElementById('regStatCompanies');if(el)el.textContent=fmt(d.companies);}
+    if(d.events){const el=document.getElementById('regStatEvents');if(el)el.textContent=fmt(d.events);}
+  }catch{}
+})();
 window.addEventListener('DOMContentLoaded',newCaptcha);
 </script>
 <script src="/assets/captcha-loader.js" defer></script>
