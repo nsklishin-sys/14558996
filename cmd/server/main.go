@@ -23667,6 +23667,8 @@ func computePlatformStats(db *sql.DB) (map[string]any, error) {
 		"members":       0,
 		"news":          0,
 		"events":        0,
+		"companies":     0,
+		"jobs":          0,
 		"active_now":    0,
 		"top_news_week": nil,
 		"trend_today":   nil,
@@ -23678,6 +23680,23 @@ func computePlatformStats(db *sql.DB) (map[string]any, error) {
 		return nil, err
 	}
 	out["members"] = members
+
+	// 1.5. Companies
+	var companies int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM companies WHERE is_deleted = FALSE`).Scan(&companies); err != nil {
+		// Если таблица или поле названо иначе — не падаем, оставляем 0.
+		log.Printf("computePlatformStats: companies count failed: %v", err)
+	} else {
+		out["companies"] = companies
+	}
+
+	// 1.6. Jobs (активные вакансии)
+	var jobs int64
+	if err := db.QueryRow(`SELECT COUNT(*) FROM jobs WHERE is_deleted = FALSE AND status = 'active'`).Scan(&jobs); err != nil {
+		log.Printf("computePlatformStats: jobs count failed: %v", err)
+	} else {
+		out["jobs"] = jobs
+	}
 
 	// 2. News (опубликованные посты)
 	var news int64
