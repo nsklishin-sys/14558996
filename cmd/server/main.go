@@ -11138,6 +11138,39 @@ ALTER TABLE users
     ADD COLUMN IF NOT EXISTS storage_used_bytes BIGINT NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS storage_quota_bytes BIGINT NOT NULL DEFAULT 1073741824;
 
+CREATE TABLE IF NOT EXISTS companies (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT UNIQUE NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    owner_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (length(name) >= 1 AND length(name) <= 200),
+    inn TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '' CHECK (length(description) <= 10000),
+    region TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '',
+    website TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    logo_image TEXT NOT NULL DEFAULT '',
+    accent_color TEXT NOT NULL DEFAULT '#1E8A4C',
+    category TEXT NOT NULL DEFAULT '',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'draft', 'archived')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS companies_owner_idx ON companies(owner_user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at DESC) WHERE deleted_at IS NULL;
+
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'inn_verified', 'verified', 'rejected'));
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_verified_at TIMESTAMPTZ;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_data JSONB;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_notes TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS companies_verification_status_idx ON companies(verification_status) WHERE deleted_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS user_uploads (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -12266,39 +12299,6 @@ CREATE TABLE IF NOT EXISTS saved_catalog_items (
 );
 
 CREATE INDEX IF NOT EXISTS saved_catalog_items_user_idx ON saved_catalog_items(user_id, saved_at DESC);
-
-CREATE TABLE IF NOT EXISTS companies (
-    id BIGSERIAL PRIMARY KEY,
-    public_id TEXT UNIQUE NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    owner_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL CHECK (length(name) >= 1 AND length(name) <= 200),
-    inn TEXT NOT NULL DEFAULT '',
-    description TEXT NOT NULL DEFAULT '' CHECK (length(description) <= 10000),
-    region TEXT NOT NULL DEFAULT '',
-    city TEXT NOT NULL DEFAULT '',
-    website TEXT NOT NULL DEFAULT '',
-    email TEXT NOT NULL DEFAULT '',
-    phone TEXT NOT NULL DEFAULT '',
-    logo_image TEXT NOT NULL DEFAULT '',
-    accent_color TEXT NOT NULL DEFAULT '#1E8A4C',
-    category TEXT NOT NULL DEFAULT '',
-    tags TEXT[] NOT NULL DEFAULT '{}',
-    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'draft', 'archived')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
-);
-
-CREATE INDEX IF NOT EXISTS companies_owner_idx ON companies(owner_user_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at DESC) WHERE deleted_at IS NULL;
-
-		ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'inn_verified', 'verified', 'rejected'));
-		ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_verified_at TIMESTAMPTZ;
-		ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_data JSONB;
-		ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_notes TEXT NOT NULL DEFAULT '';
-		CREATE INDEX IF NOT EXISTS companies_verification_status_idx ON companies(verification_status) WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS company_members (
     id BIGSERIAL PRIMARY KEY,
