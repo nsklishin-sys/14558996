@@ -22204,13 +22204,13 @@ func isValidEmail(s string) bool {
 //	https://*.yandexcloud.net — S3-redirect для аватаров и медиа
 //	data:               — base64 в превью
 const cspPolicy = "default-src 'self'; " +
-	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://api-maps.yandex.ru https://mc.yandex.ru https://yastatic.net https://*.yandex.net; " +
+	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://api-maps.yandex.ru https://mc.yandex.ru https://yastatic.net https://*.yandex.net https://smartcaptcha.yandexcloud.net; " +
 	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://yastatic.net; " +
 	"font-src 'self' data: https://fonts.gstatic.com https://yastatic.net; " +
 	"img-src 'self' data: blob: https: http:; " +
 	"media-src 'self' data: blob: https:; " +
 	"connect-src 'self' ws: wss: https://*.yandexcloud.net https://api-maps.yandex.ru https://mc.yandex.ru https://*.yandex.ru; " +
-	"frame-src 'self' https://yandex.ru https://*.yandex.ru https://yastatic.net; " +
+	"frame-src 'self' https://yandex.ru https://*.yandex.ru https://yastatic.net https://smartcaptcha.yandexcloud.net; " +
 	"object-src 'none'; " +
 	"base-uri 'self'; " +
 	"form-action 'self'; " +
