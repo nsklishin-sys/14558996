@@ -469,7 +469,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
           <div class="prof-meta-row">
             <span class="prof-meta-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="profileLocation"></span></span>
             <span class="prof-meta-item"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><a href="#" id="profileWebsite"></a></span>
-            <span class="prof-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>на платформе с января 2024</span>
+            <span class="prof-meta-item" id="profileJoinedAtWrap" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>на платформе с <span id="profileJoinedAt"></span></span>
           </div>
         </div>
 
@@ -752,7 +752,8 @@ async function applyCurrentUserProfile(){
   const firstName=(mergedUser.first_name||'').trim();
   const lastName=(mergedUser.last_name||'').trim();
   const fullName=(mergedUser.full_name||`${firstName} ${lastName}`.trim()||mergedUser.name||'Пользователь').trim();
-  const role=mergedUser.position||'Участник LASTOP';
+  // B07: роль без fallback — если её нет, скроем строку #profileRole ниже
+  const role=(mergedUser.position||'').trim();
   const company=mergedUser.company_name||'—';
   const location=mergedUser.location||mergedUser.city||'Не указано';
   const phone=mergedUser.phone||'Не указан';
@@ -785,9 +786,38 @@ async function applyCurrentUserProfile(){
   if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((node)=>{node.textContent=fullName;});
 
-  document.getElementById('topbarRole').textContent=role;
-  document.getElementById('pddRole').textContent=role;
-  document.getElementById('profileRole').textContent=company!=='—' ? `${role} · ${company}` : role;
+  // Topbar и dropdown — оставляем fallback «Участник LASTOP» чтобы
+  // не было пустой строки рядом с именем (важно для UX шапки).
+  document.getElementById('topbarRole').textContent=role||'Участник LASTOP';
+  document.getElementById('pddRole').textContent=role||'Участник LASTOP';
+  // Профильная роль (под именем на странице) — если ни position
+  // ни company нет, скрываем строку совсем (вариант B из B07).
+  const profileRoleEl=document.getElementById('profileRole');
+  if(profileRoleEl){
+    if(!role && (!company || company==='—')){
+      profileRoleEl.style.display='none';
+      profileRoleEl.textContent='';
+    } else {
+      profileRoleEl.style.display='';
+      profileRoleEl.textContent = (role && company!=='—') ? `${role} · ${company}`
+                                : (role ? role : company);
+    }
+  }
+  // B08: дата регистрации из user.created_at
+  const joinedWrap=document.getElementById('profileJoinedAtWrap');
+  const joinedEl=document.getElementById('profileJoinedAt');
+  if(joinedWrap && joinedEl){
+    const createdAt=mergedUser.created_at||mergedUser.createdAt;
+    if(createdAt){
+      try{
+        const d=new Date(createdAt);
+        if(!isNaN(d.getTime())){
+          joinedEl.textContent = d.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+          joinedWrap.style.display='';
+        }
+      }catch{}
+    }
+  }
   document.getElementById('profileBio').textContent=bio;
 
   document.getElementById('profileLocation').textContent=location;
