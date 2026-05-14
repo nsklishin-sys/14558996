@@ -21932,6 +21932,28 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	return out, nil
 }
 
+// isAllowedAttachmentURL проверяет что URL вложения принадлежит нашему
+// хранилищу: либо легаси-путь /uploads/..., либо публичный URL S3-бакета
+// (взятый из env S3_PUBLIC_URL_BASE). Защита от отправки чужих ссылок
+// под видом вложения.
+func isAllowedAttachmentURL(u string) bool {
+	u = strings.TrimSpace(u)
+	if u == "" {
+		return false
+	}
+	// Легаси-путь локального хранилища
+	if strings.HasPrefix(u, "/uploads/") {
+		return true
+	}
+	// Префикс S3-бакета из env
+	base := strings.TrimSpace(os.Getenv("S3_PUBLIC_URL_BASE"))
+	if base == "" {
+		return false
+	}
+	base = strings.TrimRight(base, "/")
+	return strings.HasPrefix(u, base+"/")
+}
+
 func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req sendMessageRequest) (chatMessage, error) {
 	cid, err := ensureParticipant(db, userID, conversationPublicID)
 	if err != nil {
@@ -21950,8 +21972,9 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 		if contentLen > 8000 {
 			return chatMessage{}, fmt.Errorf("%w: длина сообщения до 8000", errValidation)
 		}
-		// Дополнительная защита — URL должен начинаться с /uploads/
-		if !strings.HasPrefix(req.AttachmentURL, "/uploads/") {
+		// Дополнительная защита — URL должен быть из нашего хранилища
+		// (легаси /uploads/... ИЛИ полный публичный URL S3-бакета)
+		if !isAllowedAttachmentURL(req.AttachmentURL) {
 			return chatMessage{}, fmt.Errorf("%w: некорректный attachment_url", errValidation)
 		}
 	}
