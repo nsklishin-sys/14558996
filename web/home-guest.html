@@ -253,7 +253,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="guest-hero">
     <div class="gh-badge">Деловая B2B-платформа</div>
     <div class="gh-h1">Вся отрасль в одном пространстве</div>
-    <p class="gh-p">LASTOP объединяет компании, специалистов и проекты в логистике и ВЭД. Находите партнёров, публикуйте вакансии, участвуйте в мероприятиях.</p>
+    <p class="gh-p">LASTOP объединяет компании, специалистов и проекты в одной экосистеме. Находите партнёров, публикуйте вакансии, участвуйте в мероприятиях.</p>
     <div class="gh-actions">
       <a href="/register.html" class="gh-btn-reg"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Зарегистрироваться бесплатно</a>
       <a href="/login.html" class="gh-btn-login">Уже есть аккаунт →</a>
@@ -302,7 +302,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="section-header"><span class="section-title">Возможности платформы</span><a href="/register.html" class="section-link">Зарегистрироваться →</a></div>
   <div class="features-grid">
     <div class="feat-card" style="cursor:pointer" onclick="openModal('locked')"><div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div><div class="feat-t">Компании</div><div class="feat-s">Карточка компании с командой, портфолио и контактами</div></div>
-    <div class="feat-card" style="cursor:pointer" onclick="openModal('locked')"><div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="feat-t">Резюме и вакансии</div><div class="feat-s">Рынок труда для специалистов в логистике и ВЭД</div></div>
+    <div class="feat-card" style="cursor:pointer" onclick="openModal('locked')"><div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="feat-t">Резюме и вакансии</div><div class="feat-s">B2B-найм: вакансии, отклики, портфолио специалистов</div></div>
     <div class="feat-card" style="cursor:pointer" onclick="openModal('locked')"><div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="feat-t">Мероприятия</div><div class="feat-s">Форумы, выставки и вебинары с регистрацией</div></div>
     <div class="feat-card" style="cursor:pointer" onclick="openModal('locked')"><div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div class="feat-t">Проекты</div><div class="feat-s">Публикуйте инициативы и привлекайте партнёров</div></div>
     <div class="feat-card" style="cursor:pointer" onclick="openModal('locked')"><div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="feat-t">Форум и сообщества</div><div class="feat-s">Профессиональные обсуждения и тематические группы</div></div>
@@ -344,9 +344,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
   <div class="card">
     <div class="block-title">Рекомендации</div>
-    <div class="rec-item" onclick="location.href='/companies.html'"><div class="rec-av" style="background:#1A8A6A">N</div><div style="min-width:0;flex:1"><div class="rec-name">NorthBridge Logistics</div><div class="rec-sub">Партнёр LASTOP · Логистика</div></div></div>
-    <div class="rec-item" onclick="location.href='/companies.html'"><div class="rec-av" style="background:#3A90C0">G</div><div style="min-width:0;flex:1"><div class="rec-name">GlobalFreight</div><div class="rec-sub">Таможенное оформление · Москва</div></div></div>
-    <div class="rec-item" onclick="location.href='/events.html'"><div class="rec-av" style="background:#9060C0">Ф</div><div style="min-width:0;flex:1"><div class="rec-name">Форум «Логистика 2026»</div><div class="rec-sub">24 апреля · Москва</div></div></div>
+    <div id="guestRecsList"><div style="font-size:11px;color:var(--gmt);font-style:italic;padding:8px">Загрузка…</div></div>
   </div>
   <div class="ad-block">
     <div class="ad-label">Реклама</div>
@@ -378,26 +376,51 @@ function closeModal(){document.getElementById('modalBg').classList.remove('open'
 (async()=>{try{const r=await fetch('/api/stats');if(!r.ok)throw 0;const d=await r.json();if(d.members||d.users)document.getElementById('s1').textContent=d.members||d.users;if(d.companies)document.getElementById('s2').textContent=d.companies;if(d.events)document.getElementById('s3').textContent=d.events;if(d.jobs)document.getElementById('s4').textContent=d.jobs;}catch{}})();
 const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum'};
 const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум'};
+let _feedAll = [];
+let _feedOffset = 0;
+let _feedInterval = null;
+
 async function loadFeed(){
   const empty='<div style="padding:30px 20px;text-align:center;color:var(--gmt);font-size:13px">Пока нет публикаций</div>';
   try{
-    const r=await fetch('/api/feed?limit=3');
+    // Берём до 10 постов чтобы было что крутить
+    const r=await fetch('/api/feed?limit=10');
     if(!r.ok)throw 0;
     const d=await r.json();
     const p=d.posts||d.items||[];
-    if(p.length){render(p.slice(0,3));return;}
+    if(p.length){
+      _feedAll = p;
+      _feedOffset = 0;
+      renderCarousel();
+      // Если постов больше 3 — запускаем карусель (сдвиг каждые 5 сек)
+      if (_feedAll.length > 3) {
+        if (_feedInterval) clearInterval(_feedInterval);
+        _feedInterval = setInterval(() => {
+          _feedOffset = (_feedOffset + 1) % _feedAll.length;
+          renderCarousel();
+        }, 5000);
+      }
+      return;
+    }
   }catch{}
-  const feed=document.getElementById('feed')||document.querySelector('.feed-list');
+  const feed=document.getElementById('feedPosts');
   if(feed)feed.innerHTML=empty;
+}
+
+function renderCarousel(){
+  if (!_feedAll.length) return;
+  // Берём 3 поста начиная с _feedOffset, циклически
+  const visible = [];
+  for (let i = 0; i < Math.min(3, _feedAll.length); i++) {
+    visible.push(_feedAll[(_feedOffset + i) % _feedAll.length]);
+  }
+  render(visible);
 }
 
 function render(posts){document.getElementById('feedPosts').innerHTML=posts.map((p,i)=>{const n=p.author||'Участник';const tag=TAG[p.type]||'t-news',lbl=LBL[p.type]||'Публикация';const t=p.created_at?ago(p.created_at):(p.ago||'');const href=p.type==='forum'?'/forum.html':'/dashboard.html';const id=p.id?'?id='+p.id:'';return`<div class="post-card" style="animation-delay:${i*.08}s;margin-bottom:10px" onclick="location.href='${href}${id}'"><div class="pc-head"><div class="pc-av" style="background:${avc(n)}">${letter(n)}</div><div><div class="pc-name">${esc(n)}</div><div class="pc-meta">${esc(p.role||'')}${p.role?' · ':''}${esc(t)}</div></div><span class="pc-tag ${tag}">${lbl}</span></div><div class="pc-text">${esc(p.text||p.content||'')}</div><div class="pc-foot"><div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||0}</div><div class="pc-act" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||0}</div><span class="pc-time">${esc(t)}</span></div></div>`;}).join('');}
 window.addEventListener('DOMContentLoaded',loadFeed);
-</script>
-<script>
-// Временно скрываем строки «Топ новость недели» и «Тренд дня"
-// до появления endpoint'а агрегатов. Оставляем только «Активных сейчас"
-// или «Платформа запущена ✓».
+
+// Универсальное скрытие мок-строк в правом сайдбаре
 (function(){
   function hideMockRows(){
     document.querySelectorAll('.live-row').forEach(row=>{
@@ -405,7 +428,6 @@ window.addEventListener('DOMContentLoaded',loadFeed);
       if (txt.includes('Топ новость недели') || txt.includes('Тренд дня')) {
         row.style.display = 'none';
       }
-      // «Активных сейчас 124» — число тоже хардкод; меняем строку
       if (txt.includes('Активных сейчас')) {
         const labelEl = row.querySelector('.live-label');
         const numEl = row.querySelector('.live-n');
@@ -414,7 +436,6 @@ window.addEventListener('DOMContentLoaded',loadFeed);
       }
     });
   }
-  // Запускаем сразу и через 100мс на случай асинхронного рендера
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', hideMockRows);
   } else {
@@ -422,6 +443,54 @@ window.addEventListener('DOMContentLoaded',loadFeed);
   }
   setTimeout(hideMockRows, 100);
   setTimeout(hideMockRows, 500);
+})();
+
+// Динамические рекомендации: 2 верифицированные компании + ближайшее событие
+(async function loadGuestRecs(){
+  const root = document.getElementById('guestRecsList');
+  if (!root) return;
+  const items = [];
+  try {
+    const r = await fetch('/api/companies?limit=2&verified=1');
+    if (r.ok) {
+      const d = await r.json();
+      const list = (d.companies || d.items || []).slice(0, 2);
+      list.forEach(c => {
+        items.push({
+          name: c.name || c.title || 'Компания',
+          sub: (c.industry || c.category || 'Компания') + (c.city ? ' · ' + c.city : ''),
+          href: c.slug ? '/company.html?slug=' + c.slug : '/companies.html',
+          letter: ((c.name || c.title || '?')[0] || '?').toUpperCase(),
+          color: '#1A8A6A'
+        });
+      });
+    }
+  } catch {}
+  try {
+    const r = await fetch('/api/events?limit=1&upcoming=1');
+    if (r.ok) {
+      const d = await r.json();
+      const ev = (d.events || d.items || [])[0];
+      if (ev) {
+        const date = ev.starts_at ? new Date(ev.starts_at) : null;
+        const dateStr = date ? date.toLocaleDateString('ru-RU', {day:'numeric',month:'long'}) : '';
+        items.push({
+          name: ev.title || 'Событие',
+          sub: dateStr + (ev.city ? ' · ' + ev.city : ''),
+          href: ev.slug ? '/event.html?slug=' + ev.slug : '/events.html',
+          letter: ((ev.title || '?')[0] || '?').toUpperCase(),
+          color: '#9060C0'
+        });
+      }
+    }
+  } catch {}
+  if (!items.length) {
+    root.innerHTML = '<div style="font-size:11px;color:var(--gmt);font-style:italic;padding:8px">Пока нет рекомендаций</div>';
+    return;
+  }
+  root.innerHTML = items.map(i =>
+    '<div class="rec-item" onclick="location.href=\\''+i.href+'\\'"><div class="rec-av" style="background:'+i.color+'">'+i.letter+'</div><div style="min-width:0;flex:1"><div class="rec-name">'+i.name+'</div><div class="rec-sub">'+i.sub+'</div></div></div>'
+  ).join('');
 })();
 </script>
 </body>
