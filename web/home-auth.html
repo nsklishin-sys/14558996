@@ -1079,29 +1079,15 @@ function writeTasksLocal(){
   try { window.dispatchEvent(new CustomEvent('lastop:tasks-updated')); } catch {}
 }
 async function loadTasks(){
+  // Модуль задач пока не реализован на бэкенде — рендерим локальные демо-данные
+  // TODO: когда появится /api/tasks — вернуть запрос
   const localTasks=readTasksLocal();
   if(localTasks.length){
     TASKS=localTasks;
-    renderTasks();
-    return;
+  }else if(!TASKS.length){
+    TASKS=DEFAULT_TASKS.map((t,i)=>normalizeTask(t,i));
+    writeTasksLocal();
   }
-  try{
-    const r=await fetch(API+'/tasks',{headers:{Authorization:'Bearer '+tk()}});
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    if(d.tasks&&d.tasks.length){
-      TASKS=d.tasks.map((t,i)=>normalizeTask({
-        id:t.id,
-        title:t.title,
-        due:t.due_date?new Date(t.due_date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):'',
-        overdue:!!t.is_overdue,
-        pri:t.priority||'lo',
-        done:t.status==='done'
-      },i));
-    }
-  }catch{}
-  if(!TASKS.length)TASKS=DEFAULT_TASKS.map((t,i)=>normalizeTask(t,i));
-  writeTasksLocal();
   renderTasks();
 }
 // Делегированный клик-обработчик для виджета задач.
@@ -1201,7 +1187,7 @@ function toggleTask(id){
   t.done=!t.done;if(t.done){t.due='Выполнено';t.overdue=false;}
   writeTasksLocal();
   renderTasks();
-  fetch(API+'/tasks/'+id,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({status:t.done?'done':'active'})}).catch(()=>{});
+  // TODO: persist через /api/tasks когда эндпоинт появится
 }
 async function openAddTask(){
   const title=await lastopPrompt({title:'Новая задача',placeholder:'Название задачи'});
@@ -1209,7 +1195,7 @@ async function openAddTask(){
   const task=normalizeTask({id:Date.now(),title,due:'Без срока',overdue:false,pri:'lo',done:false});
   TASKS.unshift(task);renderTasks();
   writeTasksLocal();
-  fetch(API+'/tasks',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({title:task.title})}).catch(()=>{});
+  // TODO: persist через /api/tasks когда эндпоинт появится
 }
 
 /* ── ЧАТЫ ── */
