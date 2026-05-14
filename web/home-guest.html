@@ -373,7 +373,23 @@ function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new D
 const MODALS={locked:{h:'Раздел только для участников',p:'Зарегистрируйтесь, чтобы открыть все разделы: Резюме, Чат, Товары и услуги, Профиль.'},write:{h:'Публикация доступна участникам',p:'Чтобы писать посты и делиться новостями, создайте аккаунт — это займёт меньше 2 минут.'},search:{h:'Расширенный поиск после входа',p:'Авторизованные пользователи ищут по всем разделам: компаниям, специалистам, вакансиям и проектам.'}};
 function openModal(t){const m=MODALS[t]||MODALS.locked;document.getElementById('modalH').textContent=m.h;document.getElementById('modalP').textContent=m.p;document.getElementById('modalBg').classList.add('open');}
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
-(async()=>{try{const r=await fetch('/api/stats');if(!r.ok)throw 0;const d=await r.json();if(d.members||d.users)document.getElementById('s1').textContent=d.members||d.users;if(d.companies)document.getElementById('s2').textContent=d.companies;if(d.events)document.getElementById('s3').textContent=d.events;if(d.jobs)document.getElementById('s4').textContent=d.jobs;}catch{}})();
+(async()=>{
+  try{
+    const r = await fetch('/api/stats');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const fmt = n => (Number(n)||0).toLocaleString('ru-RU');
+    const setIf = (id, val) => {
+      if (val === undefined || val === null) return;
+      const el = document.getElementById(id);
+      if (el) el.textContent = fmt(val);
+    };
+    setIf('s1', d.members ?? d.users);
+    setIf('s2', d.companies);
+    setIf('s3', d.events);
+    setIf('s4', d.jobs);
+  } catch {}
+})();
 const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum'};
 const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум'};
 let _feedAll = [];
@@ -488,9 +504,16 @@ window.addEventListener('DOMContentLoaded',loadFeed);
     root.innerHTML = '<div style="font-size:11px;color:var(--gmt);font-style:italic;padding:8px">Пока нет рекомендаций</div>';
     return;
   }
-  root.innerHTML = items.map(i =>
-    '<div class="rec-item" onclick="location.href=\\''+i.href+'\\'"><div class="rec-av" style="background:'+i.color+'">'+i.letter+'</div><div style="min-width:0;flex:1"><div class="rec-name">'+i.name+'</div><div class="rec-sub">'+i.sub+'</div></div></div>'
-  ).join('');
+  function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+  function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  root.innerHTML = items.map(i => `
+    <div class="rec-item" onclick="location.href='${escAttr(i.href)}'">
+      <div class="rec-av" style="background:${escAttr(i.color)}">${escHtml(i.letter)}</div>
+      <div style="min-width:0;flex:1">
+        <div class="rec-name">${escHtml(i.name)}</div>
+        <div class="rec-sub">${escHtml(i.sub)}</div>
+      </div>
+    </div>`).join('');
 })();
 </script>
 </body>
