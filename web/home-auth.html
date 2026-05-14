@@ -93,7 +93,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 /* Активный пункт — зелёный фон как на скриншоте */
 
 /* ═══ MAIN — БЕЗ ИЗМЕНЕНИЙ ═══ */
-.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
+.main{grid-area:main;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:10px;min-width:0}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 
@@ -110,7 +110,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .cb-btn{padding:5px 14px;border-radius:99px;background:var(--g);border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
 .cb-btn:hover{background:var(--gm)}
 
-.widgets-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex-shrink:0;align-items:stretch}
+.widgets-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;flex-shrink:0;align-items:stretch;min-width:0}
 @media(max-width:1100px){.widgets-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.widgets-row{grid-template-columns:1fr}}
 
@@ -569,7 +569,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .pc-time{margin-left:auto;font-size:11px;color:var(--gmt)}
 
 /* ═══ RIGHT — как на скриншоте ═══ */
-.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;min-width:0}
 .right::-webkit-scrollbar{display:none}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
 .card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
