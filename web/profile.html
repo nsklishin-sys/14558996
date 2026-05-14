@@ -762,10 +762,16 @@ async function applyCurrentUserProfile(){
   const website=email||'Добавьте почту в настройках';
   const initials=avatarLetters(fullName);
 
+  // Хелпер для безопасного присваивания (shell-injector вставляет
+  // элементы асинхронно — могут ещё не существовать на момент вызова)
+  function _setText(id, value){
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
   if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",initials);else{const _e=document.getElementById("topbarAv");if(_e)_e.textContent=initials;}
   if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",initials);else{const _e=document.getElementById("pddAv");if(_e)_e.textContent=initials;}
-  document.getElementById('topbarName').textContent=fullName;
-  document.getElementById('pddName').textContent=fullName;
+  _setText('topbarName', fullName);
+  _setText('pddName', fullName);
   const profileAvatar=document.querySelector('.prof-av');
   if(mergedUser.avatar_url){
     profileAvatar.innerHTML=`<img src="${mergedUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
@@ -788,8 +794,10 @@ async function applyCurrentUserProfile(){
 
   // Topbar и dropdown — оставляем fallback «Участник LASTOP» чтобы
   // не было пустой строки рядом с именем (важно для UX шапки).
-  document.getElementById('topbarRole').textContent=role||'Участник LASTOP';
-  document.getElementById('pddRole').textContent=role||'Участник LASTOP';
+  // Все обращения через _setText (определён выше) — защита от
+  // отсутствующих элементов когда shell-injector ещё не отработал
+  _setText('topbarRole', role);
+  _setText('pddRole', role);
   // Профильная роль (под именем на странице) — если ни position
   // ни company нет, скрываем строку совсем (вариант B из B07).
   const profileRoleEl=document.getElementById('profileRole');
@@ -818,11 +826,11 @@ async function applyCurrentUserProfile(){
       }catch{}
     }
   }
-  document.getElementById('profileBio').textContent=bio;
+  _setText('profileBio', bio);
 
-  document.getElementById('profileLocation').textContent=location;
-  document.getElementById('contactLocation').textContent=location;
-  document.getElementById('contactEmail').textContent=email;
+  _setText('profileLocation', location);
+  _setText('contactLocation', location);
+  _setText('contactEmail', email);
   document.getElementById('contactPhone').textContent=phone;
   document.getElementById('contactCompany').textContent=company;
 
