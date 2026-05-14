@@ -1539,5 +1539,32 @@ async function executePwdChange(){
 <style>.modal-bg.open{display:flex!important}</style>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script>
+// Скрываем mock-строки «Топ новость / Тренд дня / Активных сейчас 124»
+// до появления реальных данных. Тот же скрипт что на home-guest.
+(function(){
+  function hideMockRows(){
+    document.querySelectorAll('.live-row').forEach(row=>{
+      const txt = (row.textContent||'').trim();
+      if (txt.includes('Топ новость недели') || txt.includes('Тренд дня')) {
+        row.style.display = 'none';
+      }
+      if (txt.includes('Активных сейчас')) {
+        const labelEl = row.querySelector('.live-label');
+        const numEl = row.querySelector('.live-n');
+        if (labelEl) labelEl.textContent = 'Платформа запущена';
+        if (numEl) numEl.textContent = '✓';
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hideMockRows);
+  } else {
+    hideMockRows();
+  }
+  setTimeout(hideMockRows, 100);
+  setTimeout(hideMockRows, 500);
+})();
+</script>
 </body>
 </html>
