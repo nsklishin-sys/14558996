@@ -587,7 +587,126 @@ html.dark body {
 
 
 /* ─────────────────────────────────────────────────────────────
-   12. PRINT
+   12. LISTING PAGES — companies / jobs / events / projects / saved
+   Универсальные правила для toolbar + табов + кнопки Создать
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* ── Toolbar: уменьшить padding, компактнее на мобиле ── */
+  .toolbar,
+  .ev-toolbar,
+  .filter-bar {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    min-height: 48px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .toolbar::-webkit-scrollbar,
+  .ev-toolbar::-webkit-scrollbar,
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  /* ── Pill-табы (фильтры) — горизонтальный скролл с снэп ── */
+  .ptab, .etab, .ftab {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    scroll-snap-align: start;
+  }
+
+  /* Группа табов в toolbar становится скроллируемой полосой */
+  .filter-tabs,
+  .tabs,
+  .toolbar > div:has(.ptab),
+  .toolbar > div:has(.etab),
+  .toolbar > div:has(.ftab),
+  .ev-toolbar > div:has(.etab) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    gap: 6px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* ── Кнопка «Создать» → плавающая FAB справа снизу ── */
+  .btn-create,
+  .btn-create-job {
+    position: fixed !important;
+    bottom: calc(var(--bn-height) + var(--safe-bottom) + 16px) !important;
+    right: 16px !important;
+    z-index: 90;
+    height: 52px !important;
+    width: 52px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 6px 18px rgba(30, 138, 76, 0.4) !important;
+    margin: 0 !important;
+    justify-content: center;
+    font-size: 0 !important;
+    overflow: hidden;
+  }
+
+  /* Иконка крупнее, текст скрываем */
+  .btn-create svg,
+  .btn-create-job svg {
+    width: 22px !important;
+    height: 22px !important;
+    stroke-width: 2.4 !important;
+  }
+  .btn-create span,
+  .btn-create-job span {
+    display: none !important;
+  }
+  /* На случай если кнопка содержит текст прямо в HTML — скрываем через
+     родительский font-size:0, иконку оставляем явным sizing'ом выше */
+
+  /* ── cat-bar и аналогичные scroll-фильтры — уже корректно работают,
+        но добавляем fade-индикатор справа если ещё нет ── */
+  .cat-bar-wrap,
+  .filter-tabs-wrap {
+    position: relative;
+  }
+  .cat-bar-wrap::after,
+  .filter-tabs-wrap::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(to right, transparent, var(--w));
+    pointer-events: none;
+    border-radius: 0 var(--rxl) var(--rxl) 0;
+  }
+
+  /* ── Карточки в списках — уже в столбик (фундамент), здесь паддинги ── */
+  .company-card,
+  .job-card,
+  .event-card,
+  .project-card,
+  .cv-card,
+  .saved-card {
+    padding: 12px !important;
+  }
+
+  /* Длинные заголовки карточек — не разрываются криво */
+  .company-card h3,
+  .job-card .job-title,
+  .event-card .event-title,
+  .project-card .pr-title {
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   13. PRINT
    ───────────────────────────────────────────────────────────── */
 @media print {
   .bottom-nav,
