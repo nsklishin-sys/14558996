@@ -607,6 +607,12 @@
       } catch(e) {}
     });
 
+    // M5.6: скрыть кнопку «+» на страницах где нет операции "создать"
+    if (/^\/(chat|profile|profile_user|settings|saved|tasks|notifications)\.html/.test(path)) {
+      const createBtn = bn.querySelector('.bn-create-btn');
+      if (createBtn) createBtn.style.display = 'none';
+    }
+
     // Badge для чата — если есть свежие непрочитанные сообщения
     try {
       const tk = localStorage.getItem('token');
@@ -703,7 +709,16 @@
       }
     }
 
-    // 3) Крайний случай — открываем Меню sheet (юзер хотя бы выберет раздел)
+    // 3) Точечные фоллбеки для страниц без .btn-create
+    if (/^\/(home-auth\.html|index_.*\.html|)?$/.test(path)) {
+      location.href = '/dashboard.html?compose=1';
+      return;
+    }
+    // На /chat.html и /profile.html нет действия «создать» —
+    // на этих страницах кнопка «+» скрыта через CSS, сюда не доходит.
+    // Но если вдруг — открываем Меню.
+
+    // 4) Крайний случай — открываем Меню sheet
     if (typeof lastopOpenBottomMenu === 'function') lastopOpenBottomMenu();
   }
   window.lastopOpenCreateAction = lastopOpenCreateAction;
