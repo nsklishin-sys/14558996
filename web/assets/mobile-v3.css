@@ -202,6 +202,19 @@ html {
   html.lt-shell .profile-dd-wrap,
   html.lt-shell-2col .profile-dd-wrap { display: none; }
 
+  /* M5.10: Скрыть плавающую кнопку темы (☾) — на мобиле она
+     перекрывает «Профиль» в bottom-nav. Переключатель темы
+     доступен в Настройках. */
+  .dark-fab,
+  .theme-toggle-fab,
+  .lastop-dark-fab,
+  #darkThemeFab,
+  [data-dark-fab],
+  button[onclick*="toggleTheme"][style*="fixed"],
+  button[onclick*="toggleDark"][style*="fixed"] {
+    display: none !important;
+  }
+
   /* M5.7: Колокольчик уведомлений в topbar тоже скрываем —
      его функцию взяла центральная кнопка bottom-nav.
      Поиск занимает всю ширину topbar. */
