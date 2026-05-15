@@ -85,6 +85,22 @@ html {
     min-width: var(--touch-target);
     min-height: var(--touch-target);
   }
+
+  /* Убираем double-tap zoom задержку Safari iOS на всех
+     интерактивных элементах. user-scalable не отключаем
+     ради accessibility — pinch-zoom двумя пальцами работает. */
+  button,
+  a,
+  .bn-item,
+  .bms-item,
+  .icon-btn,
+  .nav-item,
+  .pdd-item,
+  .ftab, .ptab, .etab, .ntab,
+  .btn-create, .btn-create-job,
+  [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 /* Плавный скролл везде кроме prefers-reduced-motion */
@@ -292,6 +308,7 @@ html {
   min-height: var(--touch-target);
   transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* iOS-style "риска" сверху для активного пункта */
