@@ -454,3 +454,92 @@ a,
     font-weight: 400;
   }
 }
+
+/* ───────────────────────────────────────────────────────────────
+   Э6 — Главная (home-auth) на мобиле
+   Селекторы привязаны к классам в самой home-auth.html.
+   Все правила внутри @media ≤640.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* ── Баннер «Добрый день, …» ── */
+  /* На десктопе .home-banner — flex row (привет слева, статистики справа).
+     На мобиле растягиваем в вертикальный стек чтобы не давить контент. */
+  .home-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+  }
+  /* Статистики (Участников / Новостей / Событий) занимают всю ширину
+     родителя — три цифры в ряд, без правого выравнивания. */
+  .hb-stats {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  /* Цифры чуть мельче, чтобы 3 пункта точно влезали на 360-390px. */
+  .hbs-num {
+    font-size: 22px;
+  }
+  .hbs-lbl {
+    font-size: 10px;
+  }
+
+  /* ── Compose-bar ── */
+  /* Уменьшаем padding и размер кнопки «Опубликовать», иначе
+     placeholder обрезается слишком сильно. */
+  .compose-bar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .compose-bar .cb-ph {
+    font-size: 13px;
+    /* Многоточие если фраза не помещается. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .compose-bar .cb-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* ── Feed-toolbar (фильтры Все/Новости/Проекты/Компании/Форум) ── */
+  /* Горизонтальный скролл вместо переполнения — паттерн iOS Safari. */
+  .feed-toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    /* Скрываем нативный scrollbar (стиль уже есть в shell-layout.css но дублируем для надёжности). */
+    scrollbar-width: none;
+  }
+  .feed-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .feed-toolbar .ftab {
+    flex-shrink: 0;
+  }
+
+  /* ── Post-card в ленте ── */
+  /* Компактнее padding, иначе на 390px карточки выглядят пустоватыми. */
+  .post-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+  /* Аватар автора чуть меньше. */
+  .post-card .pc-av {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+  .post-card .pc-name {
+    font-size: 13px;
+  }
+  .post-card .pc-text {
+    font-size: 13px;
+  }
+}
+
+/* Следующие этапы добавляют сюда настройки, списочные и т.д. */
