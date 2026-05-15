@@ -273,13 +273,14 @@ html {
 }
 
 .bn-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 6px 2px;
+  gap: 3px;
+  padding: 8px 2px 6px;
   text-decoration: none;
   color: var(--gmt, #5A8A6A);
   background: none;
@@ -289,8 +290,25 @@ html {
   font-size: var(--fs-xxs);
   font-weight: 600;
   min-height: var(--touch-target);
-  transition: color 0.15s;
+  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
 }
+
+/* iOS-style "риска" сверху для активного пункта */
+.bn-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 3px;
+  background: var(--g, #1E8A4C);
+  border-radius: 0 0 3px 3px;
+  transform: translateX(-50%);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bn-item.active::before { width: 28px; }
 
 .bn-item:hover,
 .bn-item:focus { color: var(--g, #1E8A4C); }
@@ -298,6 +316,12 @@ html {
 .bn-item.active {
   color: var(--g, #1E8A4C);
   font-weight: 700;
+}
+
+/* Press feedback — лёгкое сжатие при тапе (iOS pattern) */
+.bn-item:active {
+  transform: scale(0.92);
+  transition-duration: 0.1s;
 }
 
 .bn-item svg {
@@ -309,14 +333,34 @@ html {
   stroke-linecap: round;
   stroke-linejoin: round;
   flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              stroke-width 0.2s ease;
 }
 
-.bn-item.active svg { stroke-width: 2.2; }
+/* Активная иконка масштабируется + утолщается */
+.bn-item.active svg {
+  stroke-width: 2.2;
+  transform: scale(1.12) translateY(-1px);
+}
 
 .bn-item span {
   font-size: var(--fs-xxs);
   line-height: 1;
   white-space: nowrap;
+  transition: font-weight 0.2s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bn-item.active span {
+  transform: translateY(1px);
+}
+
+/* Кнопка «Меню» — особое состояние при открытом sheet */
+.bottom-menu-sheet.open ~ .bottom-nav .bn-menu-btn,
+body:has(.bottom-menu-sheet.open) .bn-menu-btn {
+  color: var(--g, #1E8A4C);
+}
+body:has(.bottom-menu-sheet.open) .bn-menu-btn svg {
+  transform: rotate(90deg) scale(1.1);
 }
 
 /* Badge для непрочитанных в Чате/Уведомлениях */
@@ -338,6 +382,7 @@ html {
 }
 
 .bn-item { position: relative; }
+.bn-item.active .bn-badge { border-color: var(--gp, #F0FAF4); }
 
 
 /* ─────────────────────────────────────────────────────────────
