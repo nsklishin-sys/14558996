@@ -645,19 +645,44 @@
 
   // Открыть модалку создания контекстно для текущей страницы
   function lastopOpenCreateAction() {
+    // 1) Самый надёжный путь — кликнуть оригинальную .btn-create на странице.
+    //    Даже если она скрыта через display:none, её обработчик клика работает.
+    var selectors = [
+      '.btn-create',
+      '.btn-create-job',
+      '.btn-create-event',
+      '.btn-create-project',
+      '.btn-create-company',
+      '.btn-create-topic',
+      '.btn-create-community',
+      '.btn-create-post',
+      '.btn-new-topic',
+      '[data-action="create"]',
+      '[data-create]',
+      'button[onclick*="openCreate"]',
+      'button[onclick*="openAddCompany"]',
+      'button[onclick*="openModal"]',
+      'a[onclick*="openCreate"]'
+    ];
+    for (var s = 0; s < selectors.length; s++) {
+      var btn = document.querySelector(selectors[s]);
+      if (btn) {
+        try { btn.click(); return; } catch(e) {}
+      }
+    }
+
+    // 2) Если кнопки на странице нет — пытаемся вызвать глобальную функцию по path
     var path = location.pathname || '';
-    // Маппинг: страница → имя функции открытия модалки на этой странице
     var map = [
-      [/^\/companies\.html/,  ['openCreateModal','openAddCompanyModal','openCompanyModal']],
-      [/^\/projects\.html/,   ['openCreateModal','openCreateProjectModal','openProjectModal']],
-      [/^\/events\.html/,     ['openCreateModal','openCreateEventModal','openEventModal']],
-      [/^\/jobs\.html/,       ['openCreateModal','openCreateJobModal','openJobModal']],
-      [/^\/forum\.html/,      ['openCreateTopic','openCreateModal','openNewTopicModal']],
-      [/^\/communities\.html/,['openCreateModal','openCreateCommunityModal']],
-      [/^\/catalog\.html/,    ['openCreateModal','openCreateItemModal']],
-      [/^\/saved\.html/,      []],
-      [/^\/dashboard\.html/,  ['openCreatePost','openCreateModal']],
-      [/^\/(home-auth\.html|index_.*\.html|)?$/, ['openCreatePost']],
+      [/^\/companies\.html/,   ['openCreateModal','openAddCompanyModal','openCompanyModal']],
+      [/^\/projects\.html/,    ['openCreateModal','openCreateProjectModal','openProjectModal']],
+      [/^\/events\.html/,      ['openCreateModal','openCreateEventModal','openEventModal']],
+      [/^\/jobs\.html/,        ['openCreateModal','openCreateJobModal','openJobModal']],
+      [/^\/forum\.html/,       ['openCreateTopic','openCreateModal','openNewTopicModal']],
+      [/^\/communities\.html/, ['openCreateModal','openCreateCommunityModal']],
+      [/^\/catalog\.html/,     ['openCreateModal','openCreateItemModal']],
+      [/^\/dashboard\.html/,   ['openCreatePost','openCreateModal']],
+      [/^\/(home-auth\.html|index_.*\.html|)?$/, ['openCreatePost']]
     ];
     for (var i = 0; i < map.length; i++) {
       if (map[i][0].test(path)) {
@@ -670,10 +695,8 @@
         break;
       }
     }
-    // Фоллбек: пытаемся кликнуть оригинальную .btn-create на странице
-    var fallbackBtn = document.querySelector('.btn-create, .btn-create-job, [data-action="create"]');
-    if (fallbackBtn) { fallbackBtn.click(); return; }
-    // Иначе — открываем Меню sheet (юзер хотя бы выберет раздел)
+
+    // 3) Крайний случай — открываем Меню sheet (юзер хотя бы выберет раздел)
     if (typeof lastopOpenBottomMenu === 'function') lastopOpenBottomMenu();
   }
   window.lastopOpenCreateAction = lastopOpenCreateAction;
