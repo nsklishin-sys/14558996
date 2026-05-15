@@ -143,9 +143,10 @@
       <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       <span>Меню</span>
     </button>
-    <button type="button" class="bn-item bn-create-btn" onclick="lastopOpenCreateAction()" aria-label="Создать">
-      <span class="bn-create-circle">
-        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <button type="button" class="bn-item bn-action-btn" onclick="lastopActionClick()" aria-label="Действие">
+      <span class="bn-action-circle">
+        <svg class="bn-action-icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="bn-action-badge" id="bnActionBadge" style="display:none">0</span>
       </span>
     </button>
     <a href="/chat.html" class="bn-item" data-match="^/chat\.html">
@@ -607,11 +608,9 @@
       } catch(e) {}
     });
 
-    // M5.6: скрыть кнопку «+» на страницах где нет операции "создать"
-    if (/^\/(chat|profile|profile_user|settings|saved|tasks|notifications)\.html/.test(path)) {
-      const createBtn = bn.querySelector('.bn-create-btn');
-      if (createBtn) createBtn.style.display = 'none';
-    }
+    // M5.7: применить контекстный режим центральной кнопки (create / notify)
+    if (typeof lastopApplyActionMode === 'function') lastopApplyActionMode();
+    if (typeof lastopLoadNotifBadge === 'function') lastopLoadNotifBadge();
 
     // Badge для чата — если есть свежие непрочитанные сообщения
     try {
@@ -650,78 +649,93 @@
   }
 
   // Открыть модалку создания контекстно для текущей страницы
-  function lastopOpenCreateAction() {
-    // 1) Самый надёжный путь — кликнуть оригинальную .btn-create на странице.
-    //    Даже если она скрыта через display:none, её обработчик клика работает.
-    //    КРИТИЧНО: исключаем САМУ кнопку bottom-nav «+» (.bn-create-btn)
-    //    и любые другие наши инжект-кнопки с onclick="lastopOpen..."
-    //    — иначе бесконечная рекурсия.
-    var EXCLUDE = ':not(.bn-create-btn):not([onclick*="lastopOpen"])';
+  // Страницы где центральная кнопка работает как «Создать»
+  var CREATE_PAGES_RE = /^\/(companies|projects|events|jobs|forum|communities|catalog|dashboard)\.html/;
+
+  // Определить текущий режим: 'create' или 'notify'
+  function lastopGetActionMode() {
+    return CREATE_PAGES_RE.test(location.pathname || '') ? 'create' : 'notify';
+  }
+
+  // Применить визуал кнопки: иконка + aria-label
+  function lastopApplyActionMode() {
+    var btn = document.querySelector('.bn-action-btn');
+    if (!btn) return;
+    var icon = btn.querySelector('.bn-action-icon');
+    var mode = lastopGetActionMode();
+    if (mode === 'create') {
+      btn.setAttribute('aria-label', 'Создать');
+      btn.classList.add('is-create');
+      btn.classList.remove('is-notify');
+      if (icon) icon.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
+    } else {
+      btn.setAttribute('aria-label', 'Уведомления');
+      btn.classList.add('is-notify');
+      btn.classList.remove('is-create');
+      if (icon) icon.innerHTML = '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>';
+    }
+  }
+
+  // Обработчик клика — диспетчер по режиму
+  function lastopActionClick() {
+    var mode = lastopGetActionMode();
+    if (mode === 'notify') {
+      location.href = '/notifications.html';
+      return;
+    }
+    // Режим create — старая логика поиска .btn-create
+    var EXCLUDE = ':not(.bn-action-btn):not([onclick*="lastopOpen"]):not([onclick*="lastopAction"])';
     var selectors = [
       '.btn-create' + EXCLUDE,
       '.btn-create-job' + EXCLUDE,
-      '.btn-create-event' + EXCLUDE,
-      '.btn-create-project' + EXCLUDE,
-      '.btn-create-company' + EXCLUDE,
-      '.btn-create-topic' + EXCLUDE,
-      '.btn-create-community' + EXCLUDE,
-      '.btn-create-post' + EXCLUDE,
-      '.btn-new-topic' + EXCLUDE,
       '.btn-write' + EXCLUDE,
       '[data-action="create"]' + EXCLUDE,
-      '[data-create]' + EXCLUDE,
       'button[onclick*="openCompose"]' + EXCLUDE,
       'button[onclick*="openCreate"]' + EXCLUDE,
-      'button[onclick*="openAddCompany"]' + EXCLUDE,
       'button[onclick*="openModal"]' + EXCLUDE,
       'a[onclick*="openCreate"]' + EXCLUDE,
       'a.btn-create' + EXCLUDE
     ];
     for (var s = 0; s < selectors.length; s++) {
       var btn = document.querySelector(selectors[s]);
-      if (btn) {
-        try { btn.click(); return; } catch(e) {}
-      }
+      if (btn) { try { btn.click(); return; } catch(e) {} }
     }
-
-    // 2) Если кнопки на странице нет — пытаемся вызвать глобальную функцию по path
-    var path = location.pathname || '';
-    var map = [
-      [/^\/companies\.html/,   ['openCreateModal','openAddCompanyModal','openCompanyModal']],
-      [/^\/projects\.html/,    ['openCreateModal','openCreateProjectModal','openProjectModal']],
-      [/^\/events\.html/,      ['openCreateModal','openCreateEventModal','openEventModal']],
-      [/^\/jobs\.html/,        ['openCreateModal','openCreateJobModal','openJobModal']],
-      [/^\/forum\.html/,       ['openCreateTopic','openCreateModal','openNewTopicModal']],
-      [/^\/communities\.html/, ['openCreateModal','openCreateCommunityModal']],
-      [/^\/catalog\.html/,     ['openCreateModal','openCreateItemModal']],
-      [/^\/dashboard\.html/,   ['openCreatePost','openCreateModal']],
-      [/^\/(home-auth\.html|index_.*\.html|)?$/, ['openCreatePost']]
-    ];
-    for (var i = 0; i < map.length; i++) {
-      if (map[i][0].test(path)) {
-        var fns = map[i][1];
-        for (var j = 0; j < fns.length; j++) {
-          if (typeof window[fns[j]] === 'function') {
-            try { window[fns[j]](); return; } catch(e) {}
-          }
-        }
-        break;
-      }
-    }
-
-    // 3) Точечные фоллбеки для страниц без .btn-create
-    if (/^\/(home-auth\.html|index_.*\.html|)?$/.test(path)) {
+    // Точечный фоллбек для dashboard
+    if (/^\/dashboard\.html/.test(location.pathname)) {
       location.href = '/dashboard.html?compose=1';
       return;
     }
-    // На /chat.html и /profile.html нет действия «создать» —
-    // на этих страницах кнопка «+» скрыта через CSS, сюда не доходит.
-    // Но если вдруг — открываем Меню.
-
-    // 4) Крайний случай — открываем Меню sheet
+    // Крайний случай — Меню
     if (typeof lastopOpenBottomMenu === 'function') lastopOpenBottomMenu();
   }
-  window.lastopOpenCreateAction = lastopOpenCreateAction;
+
+  // Подгрузить счётчик непрочитанных уведомлений
+  function lastopLoadNotifBadge() {
+    if (lastopGetActionMode() !== 'notify') return;
+    try {
+      var tk = localStorage.getItem('token');
+      if (!tk) return;
+      fetch('/api/notifications/unread-count', { headers: { Authorization: 'Bearer ' + tk } })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) {
+          var cnt = (d && (d.count || d.unread_count)) || 0;
+          var badge = document.getElementById('bnActionBadge');
+          if (badge) {
+            if (cnt > 0) {
+              badge.textContent = cnt > 99 ? '99+' : String(cnt);
+              badge.style.display = 'grid';
+            } else {
+              badge.style.display = 'none';
+            }
+          }
+        })
+        .catch(function() {});
+    } catch(e) {}
+  }
+
+  window.lastopActionClick = lastopActionClick;
+  window.lastopApplyActionMode = lastopApplyActionMode;
+  window.lastopLoadNotifBadge = lastopLoadNotifBadge;
 
   // Открыть/закрыть Меню sheet
   function lastopOpenBottomMenu() {
