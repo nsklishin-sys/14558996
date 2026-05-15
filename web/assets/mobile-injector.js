@@ -29,6 +29,30 @@
     return;
   }
 
+  // Проверка наличия токена — без него мы на гостевой странице.
+  // Гостям мобильную навигацию не показываем (bottom-nav и sheet-меню
+  // ведут на разделы для авторизованных).
+  var hasToken = false;
+  try {
+    var raw = localStorage.getItem('token') || '';
+    hasToken = raw.trim().length > 0;
+  } catch (_) { /* localStorage недоступен — считаем гостем */ }
+
+  if (!hasToken) {
+    // На /home-guest.html у гостя на мобиле — редирект на /login.html.
+    // Гостевая главная сейчас не адаптирована под мобилу, временно
+    // показываем сразу login (компактная страница которая работает).
+    // /login.html, /register.html и другие auth-страницы оставляем
+    // как есть — на них bottom-nav просто не появится.
+    var path = location.pathname || '';
+    if (path === '/home-guest.html') {
+      location.replace('/login.html');
+      return;
+    }
+    // Прочие гостевые: ничего не инжектируем, выходим тихо.
+    return;
+  }
+
   // === Э2: bottom-nav + sheet-меню ============================
 
   // 5 пунктов bottom-nav: Главная · Меню · Уведомления · Чат · Профиль.
