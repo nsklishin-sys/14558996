@@ -139,13 +139,14 @@
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
       <span>Главная</span>
     </a>
-    <a href="/dashboard.html" class="bn-item" data-match="^/dashboard\.html">
-      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      <span>Новости</span>
-    </a>
     <button type="button" class="bn-item bn-menu-btn" onclick="lastopOpenBottomMenu()">
       <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       <span>Меню</span>
+    </button>
+    <button type="button" class="bn-item bn-create-btn" onclick="lastopOpenCreateAction()" aria-label="Создать">
+      <span class="bn-create-circle">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </span>
     </button>
     <a href="/chat.html" class="bn-item" data-match="^/chat\.html">
       <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
@@ -161,6 +162,10 @@
   const BOTTOM_MENU_HTML = `
     <div class="bms-title">Все разделы</div>
     <div class="bms-grid">
+      <a href="/dashboard.html" class="bms-item">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Новости</span>
+      </a>
       <a href="/forum.html" class="bms-item">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span>Форум</span>
@@ -637,6 +642,41 @@
       if (dy > 80) lastopCloseBottomMenu();
     }, { passive: true });
   }
+
+  // Открыть модалку создания контекстно для текущей страницы
+  function lastopOpenCreateAction() {
+    var path = location.pathname || '';
+    // Маппинг: страница → имя функции открытия модалки на этой странице
+    var map = [
+      [/^\/companies\.html/,  ['openCreateModal','openAddCompanyModal','openCompanyModal']],
+      [/^\/projects\.html/,   ['openCreateModal','openCreateProjectModal','openProjectModal']],
+      [/^\/events\.html/,     ['openCreateModal','openCreateEventModal','openEventModal']],
+      [/^\/jobs\.html/,       ['openCreateModal','openCreateJobModal','openJobModal']],
+      [/^\/forum\.html/,      ['openCreateTopic','openCreateModal','openNewTopicModal']],
+      [/^\/communities\.html/,['openCreateModal','openCreateCommunityModal']],
+      [/^\/catalog\.html/,    ['openCreateModal','openCreateItemModal']],
+      [/^\/saved\.html/,      []],
+      [/^\/dashboard\.html/,  ['openCreatePost','openCreateModal']],
+      [/^\/(home-auth\.html|index_.*\.html|)?$/, ['openCreatePost']],
+    ];
+    for (var i = 0; i < map.length; i++) {
+      if (map[i][0].test(path)) {
+        var fns = map[i][1];
+        for (var j = 0; j < fns.length; j++) {
+          if (typeof window[fns[j]] === 'function') {
+            try { window[fns[j]](); return; } catch(e) {}
+          }
+        }
+        break;
+      }
+    }
+    // Фоллбек: пытаемся кликнуть оригинальную .btn-create на странице
+    var fallbackBtn = document.querySelector('.btn-create, .btn-create-job, [data-action="create"]');
+    if (fallbackBtn) { fallbackBtn.click(); return; }
+    // Иначе — открываем Меню sheet (юзер хотя бы выберет раздел)
+    if (typeof lastopOpenBottomMenu === 'function') lastopOpenBottomMenu();
+  }
+  window.lastopOpenCreateAction = lastopOpenCreateAction;
 
   // Открыть/закрыть Меню sheet
   function lastopOpenBottomMenu() {
