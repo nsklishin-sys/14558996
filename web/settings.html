@@ -19,15 +19,13 @@
   --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
-html,body{height:100%;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
-@media(min-width:641px){html,body{overflow:hidden}}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
 /* Hide scrollbars visually, keep scrolling functional */
 *{scrollbar-width:none;-ms-overflow-style:none}
 *::-webkit-scrollbar{width:0;height:0;display:none}
 
 /* ═══ SHELL ═══ */
 .shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar""nav main right";height:100vh;gap:10px;padding:10px}
-@media(max-width:640px){.shell{height:auto;min-height:100vh;min-height:100dvh}}
 
 
 /* ═══ LOGO ═══ */
@@ -324,112 +322,6 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 @media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
 @media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right{display:none}.profile-dd-wrap{display:none}.topbar{grid-template-columns:1fr}.search-wrap{max-width:100%}.search-wrap{max-width:100%}}
 @media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}}
-
-@media(max-width:640px){
-  /* Сетка settings-body: dropdown сверху, панели снизу */
-  .settings-body{grid-template-columns:1fr;gap:10px}
-
-  /* Прячем оригинальное вертикальное меню — будет dropdown */
-  .settings-menu{display:none}
-
-  /* Dropdown-селектор раздела (показывается только на мобиле) */
-  .settings-section-picker{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding:12px 14px;
-    background:var(--w);
-    border:1px solid var(--bdr);
-    border-radius:var(--rxl);
-    box-shadow:var(--sh);
-    cursor:pointer;
-    font-family:inherit;
-    font-size:14px;
-    font-weight:600;
-    color:var(--t);
-    width:100%;
-    text-align:left;
-    transition:border-color .15s;
-  }
-  .settings-section-picker:hover,
-  .settings-section-picker:focus{border-color:var(--gb);outline:none}
-  .settings-section-picker .ssp-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-  .settings-section-picker .ssp-left svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-  .settings-section-picker .ssp-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .settings-section-picker .ssp-arrow{width:16px;height:16px;flex-shrink:0;fill:none;stroke:var(--gmt);stroke-width:2;stroke-linecap:round;transition:transform .2s}
-  .settings-section-picker.open .ssp-arrow{transform:rotate(180deg)}
-
-  /* Inline-dropdown: список появляется прямо под кнопкой */
-  .settings-section-picker-wrap{position:relative}
-
-  .settings-picker-dropdown{
-    display:none;
-    position:absolute;
-    top:calc(100% + 6px);
-    left:0;right:0;
-    background:var(--w);
-    border:1px solid var(--bdr);
-    border-radius:var(--rxl);
-    box-shadow:0 12px 32px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.06);
-    z-index:50;
-    padding:8px;
-    max-height:60vh;max-height:60dvh;
-    overflow-y:auto;
-    opacity:0;
-    transform:translateY(-6px) scaleY(.96);
-    transform-origin:top center;
-    transition:opacity .18s ease,transform .18s ease;
-  }
-  .settings-picker-dropdown.open{
-    display:block;
-    opacity:1;
-    transform:translateY(0) scaleY(1);
-  }
-
-  .settings-picker-item{
-    display:flex;align-items:center;gap:12px;
-    padding:12px;border-radius:10px;
-    background:transparent;border:none;
-    text-align:left;cursor:pointer;font-family:inherit;
-    font-size:14px;font-weight:600;color:var(--t);
-    width:100%;transition:background .12s;
-  }
-  .settings-picker-item:hover,
-  .settings-picker-item:active{background:var(--gp)}
-  .settings-picker-item.active{background:var(--gl);color:var(--g)}
-  .settings-picker-item.active::after{
-    content:'';width:6px;height:6px;border-radius:50%;
-    background:var(--g);margin-left:auto;flex-shrink:0;
-  }
-  .settings-picker-item svg{
-    width:18px;height:18px;flex-shrink:0;
-    fill:none;stroke:currentColor;stroke-width:1.8;
-    stroke-linecap:round;stroke-linejoin:round;
-  }
-  .settings-picker-item.danger{color:var(--red)}
-  .settings-picker-item.danger svg{stroke:var(--red)}
-  .settings-picker-divider{
-    height:1px;background:var(--bdr);margin:6px 4px;
-  }
-
-  /* Панели — без горизонтальных отступов сверху */
-  .settings-panels{padding:0}
-  .settings-card{padding:14px !important}
-
-  /* Поля формы — компактнее */
-  .field-grid2{grid-template-columns:1fr}
-  .field input,.field textarea,.field select{font-size:14px}
-
-  /* Карточки тем выбора темы — по 1 в строку, чтобы preview не сжимался */
-  .theme-grid{grid-template-columns:1fr}
-}
-
-/* Dropdown-кнопка скрыта на десктопе */
-@media(min-width:641px){
-  .settings-section-picker-wrap,
-  .settings-picker-dropdown{display:none !important}
-}
 @media (min-width:1921px) and (min-height:1081px){
   html,body{font-size:15px}
   .shell{grid-template-columns:280px 1fr 360px !important;gap:12px;padding:12px}
@@ -461,22 +353,6 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
   <!-- Тело настроек: меню + панели -->
   <div class="settings-body">
-
-    <!-- Dropdown-селектор раздела (только мобила ≤640px) -->
-    <div class="settings-section-picker-wrap">
-      <button type="button" class="settings-section-picker" id="settingsSectionPicker" onclick="lastopToggleSettingsPicker(event)">
-        <span class="ssp-left">
-          <svg id="sspIcon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span class="ssp-label" id="sspLabel">Профиль</span>
-        </span>
-        <svg class="ssp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-
-      <!-- Inline-dropdown с разделами -->
-      <div class="settings-picker-dropdown" id="settingsPickerSheet" role="listbox" aria-label="Разделы настроек">
-        <div id="settingsPickerList"></div>
-      </div>
-    </div>
 
     <!-- Левое меню разделов -->
     <div class="settings-menu">
@@ -1040,93 +916,8 @@ function switchPanel(id, btn){
   if(!panel)return;
   panel.classList.add('active');
   if(btn)btn.classList.add('active');
-  // M4.1: обновить dropdown-кнопку
-  try{
-    const src=btn||document.querySelector('.sm-item[data-panel="'+id+'"]');
-    if(src){
-      const lbl=document.getElementById('sspLabel');
-      const ico=document.getElementById('sspIcon');
-      if(lbl) lbl.textContent=(src.textContent||'').trim();
-      const srcSvg=src.querySelector('svg');
-      if(ico && srcSvg) ico.innerHTML=srcSvg.innerHTML;
-    }
-    // Подсветить активный пункт в sheet и закрыть его
-    document.querySelectorAll('.settings-picker-item').forEach(b=>b.classList.toggle('active', b.dataset.panel===id));
-    lastopCloseSettingsPicker();
-  }catch(e){}
 }
-
-// M4.1: bottom-sheet со списком разделов
-function buildSettingsPickerList(){
-  const list=document.getElementById('settingsPickerList');
-  if(!list)return;
-  const items=document.querySelectorAll('.settings-menu .sm-item');
-  let html='';
-  let logoutInserted=false;
-  items.forEach(src=>{
-    const isLogout=src.hasAttribute('onclick') && /logout/.test(src.getAttribute('onclick')||'');
-    const panel=src.dataset.panel||'';
-    const txt=(src.textContent||'').trim();
-    const svg=src.querySelector('svg');
-    const svgHTML=svg?svg.outerHTML:'';
-    if(isLogout){
-      if(!logoutInserted){
-        html+='<div class="settings-picker-divider"></div>';
-        logoutInserted=true;
-      }
-      html+='<button type="button" class="settings-picker-item danger" onclick="lastopCloseSettingsPicker();logout()">'+svgHTML+'<span>'+txt+'</span></button>';
-    } else if(panel){
-      html+='<button type="button" class="settings-picker-item" data-panel="'+panel+'" onclick="lastopPickSettingsPanel(\''+panel+'\')">'+svgHTML+'<span>'+txt+'</span></button>';
-    }
-  });
-  list.innerHTML=html;
-  const active=document.querySelector('.sm-item.active');
-  if(active && active.dataset.panel){
-    const it=list.querySelector('.settings-picker-item[data-panel="'+active.dataset.panel+'"]');
-    if(it) it.classList.add('active');
-  }
-}
-
-function lastopOpenSettingsPicker(){
-  const sh=document.getElementById('settingsPickerSheet');
-  const pk=document.getElementById('settingsSectionPicker');
-  if(sh) sh.classList.add('open');
-  if(pk) pk.classList.add('open');
-}
-function lastopCloseSettingsPicker(){
-  const sh=document.getElementById('settingsPickerSheet');
-  const pk=document.getElementById('settingsSectionPicker');
-  if(sh) sh.classList.remove('open');
-  if(pk) pk.classList.remove('open');
-}
-function lastopToggleSettingsPicker(e){
-  if(e) e.stopPropagation();
-  const sh=document.getElementById('settingsPickerSheet');
-  if(sh && sh.classList.contains('open')) lastopCloseSettingsPicker();
-  else lastopOpenSettingsPicker();
-}
-function lastopPickSettingsPanel(id){
-  const btn=document.querySelector('.settings-menu .sm-item[data-panel="'+id+'"]');
-  if(btn) switchPanel(id, btn);
-}
-
-// Закрытие по Escape
-document.addEventListener('keydown',e=>{if(e.key==='Escape')lastopCloseSettingsPicker();});
-
-// Закрытие при клике вне dropdown
-document.addEventListener('click',e=>{
-  const wrap=document.querySelector('.settings-section-picker-wrap');
-  if(!wrap)return;
-  if(!wrap.contains(e.target)) lastopCloseSettingsPicker();
-});
-
-window.lastopOpenSettingsPicker=lastopOpenSettingsPicker;
-window.lastopCloseSettingsPicker=lastopCloseSettingsPicker;
-window.lastopToggleSettingsPicker=lastopToggleSettingsPicker;
-window.lastopPickSettingsPanel=lastopPickSettingsPanel;
-
 initSettingsPanels();
-buildSettingsPickerList();
 
 /* ── ТОГГЛЫ ── */
 function toggleCheck(row){

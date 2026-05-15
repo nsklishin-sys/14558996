@@ -133,70 +133,6 @@
     </a>
   </div>`;
 
-  // ── HTML для bottom-nav (мобильная нижняя навигация ≤640px) ──
-  const BOTTOM_NAV_HTML = `
-    <a href="/home-auth.html" class="bn-item" data-match="^/(home-auth\.html|index_.*\.html)?$">
-      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-      <span>Главная</span>
-    </a>
-    <a href="/dashboard.html" class="bn-item" data-match="^/dashboard\.html">
-      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      <span>Новости</span>
-    </a>
-    <button type="button" class="bn-item bn-menu-btn" onclick="lastopOpenBottomMenu()">
-      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      <span>Меню</span>
-    </button>
-    <a href="/chat.html" class="bn-item" data-match="^/chat\.html">
-      <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-      <span>Чат</span>
-      <span class="bn-badge" id="bnChatBadge" style="display:none">0</span>
-    </a>
-    <a href="/profile.html" class="bn-item" data-match="^/profile\.html">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Профиль</span>
-    </a>`;
-
-  // ── HTML для bottom-menu-sheet (раскрывающееся меню всех разделов) ──
-  const BOTTOM_MENU_HTML = `
-    <div class="bms-title">Все разделы</div>
-    <div class="bms-grid">
-      <a href="/forum.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span>Форум</span>
-      </a>
-      <a href="/companies.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-        <span>Компании</span>
-      </a>
-      <a href="/communities.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
-        <span>Сообщества</span>
-      </a>
-      <a href="/projects.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <span>Проекты</span>
-      </a>
-      <a href="/events.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>Мероприятия</span>
-      </a>
-      <a href="/jobs.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>
-        <span>Резюме</span>
-      </a>
-      <a href="/catalog.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        <span>Товары и услуги</span>
-      </a>
-    </div>
-    <div class="bms-footer">
-      <a href="/settings.html" class="bms-settings">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>Настройки</span>
-      </a>
-    </div>`;
-
   function letter(s) {
     const p = String(s || '').trim().split(/\s+/).filter(Boolean);
     if (!p.length) return '?';
@@ -210,8 +146,6 @@
   }
 
   function inject() {
-    // 0. Bottom-nav (только если есть topbar — значит это shell-страница)
-    injectBottomNav();
     // 1. Topbar
     const topbar = document.querySelector('header.topbar');
     if (topbar && !topbar.children.length) {
@@ -560,99 +494,4 @@
   } else {
     lastopStartHorizWatcher();
   }
-
-  // ─────────────────────────────────────────────────────────────
-  // BOTTOM-NAV: инжектируется один раз в конец <body>.
-  // Виден только на ≤640px (стили в mobile-v3.css).
-  // ─────────────────────────────────────────────────────────────
-  function injectBottomNav() {
-    // Только для shell-страниц (где есть topbar или nav)
-    if (!document.querySelector('header.topbar') && !document.querySelector('nav.nav')) return;
-    // Только один раз
-    if (document.querySelector('nav.bottom-nav')) return;
-
-    // Bottom-nav
-    const bn = document.createElement('nav');
-    bn.className = 'bottom-nav';
-    bn.setAttribute('aria-label', 'Нижняя навигация');
-    bn.innerHTML = BOTTOM_NAV_HTML;
-    document.body.appendChild(bn);
-
-    // Bottom-menu overlay + sheet
-    const ov = document.createElement('div');
-    ov.className = 'bottom-menu-overlay';
-    ov.id = 'lastopBottomMenuOverlay';
-    ov.onclick = lastopCloseBottomMenu;
-    document.body.appendChild(ov);
-
-    const sheet = document.createElement('div');
-    sheet.className = 'bottom-menu-sheet';
-    sheet.id = 'lastopBottomMenuSheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-label', 'Все разделы');
-    sheet.innerHTML = BOTTOM_MENU_HTML;
-    document.body.appendChild(sheet);
-
-    // Подсветка активного пункта по pathname
-    const path = location.pathname;
-    bn.querySelectorAll('.bn-item[data-match]').forEach(a => {
-      try {
-        const re = new RegExp(a.getAttribute('data-match'));
-        if (re.test(path)) a.classList.add('active');
-      } catch(e) {}
-    });
-
-    // Badge для чата — если есть свежие непрочитанные сообщения
-    try {
-      const tk = localStorage.getItem('token');
-      if (tk) {
-        fetch('/api/chat/unread-count', { headers: { Authorization: 'Bearer ' + tk } })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => {
-            const cnt = (d && (d.count || d.unread_count)) || 0;
-            const badge = document.getElementById('bnChatBadge');
-            if (badge) {
-              if (cnt > 0) {
-                badge.textContent = cnt > 99 ? '99+' : String(cnt);
-                badge.style.display = 'grid';
-              }
-            }
-          })
-          .catch(()=>{});
-      }
-    } catch(e) {}
-
-    // Закрытие меню по Escape
-    document.addEventListener('keydown', function(e){
-      if (e.key === 'Escape') lastopCloseBottomMenu();
-    });
-
-    // Закрытие меню при свайпе вниз (touch)
-    let touchStartY = 0;
-    sheet.addEventListener('touchstart', function(e){
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-    sheet.addEventListener('touchend', function(e){
-      const dy = e.changedTouches[0].clientY - touchStartY;
-      if (dy > 80) lastopCloseBottomMenu();
-    }, { passive: true });
-  }
-
-  // Открыть/закрыть Меню sheet
-  function lastopOpenBottomMenu() {
-    const ov = document.getElementById('lastopBottomMenuOverlay');
-    const sh = document.getElementById('lastopBottomMenuSheet');
-    if (ov) ov.classList.add('open');
-    if (sh) sh.classList.add('open');
-  }
-  function lastopCloseBottomMenu() {
-    const ov = document.getElementById('lastopBottomMenuOverlay');
-    const sh = document.getElementById('lastopBottomMenuSheet');
-    if (ov) ov.classList.remove('open');
-    if (sh) sh.classList.remove('open');
-  }
-
-  // Экспорт в global scope для onclick
-  window.lastopOpenBottomMenu = lastopOpenBottomMenu;
-  window.lastopCloseBottomMenu = lastopCloseBottomMenu;
 })();
