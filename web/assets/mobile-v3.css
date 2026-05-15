@@ -633,37 +633,40 @@ html.dark body {
     min-width: 0;
   }
 
-  /* ── Кнопка «Создать» → плавающая FAB справа снизу ── */
+  /* ── Кнопка «Создать» — компактная иконка в toolbar (не FAB) ── */
   .btn-create,
   .btn-create-job {
-    position: fixed !important;
-    bottom: calc(var(--bn-height) + var(--safe-bottom) + 16px) !important;
-    right: 16px !important;
-    z-index: 90;
-    height: 52px !important;
-    width: 52px !important;
+    order: -1 !important;
+    flex-shrink: 0 !important;
+    position: static !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
     padding: 0 !important;
     border-radius: 50% !important;
-    box-shadow: 0 6px 18px rgba(30, 138, 76, 0.4) !important;
     margin: 0 !important;
-    justify-content: center;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
     font-size: 0 !important;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(30, 138, 76, 0.25) !important;
   }
 
-  /* Иконка крупнее, текст скрываем */
   .btn-create svg,
   .btn-create-job svg {
-    width: 22px !important;
-    height: 22px !important;
-    stroke-width: 2.4 !important;
+    width: 18px !important;
+    height: 18px !important;
+    stroke-width: 2.6 !important;
+    margin: 0 !important;
   }
+
   .btn-create span,
-  .btn-create-job span {
+  .btn-create-job span,
+  .btn-create::after,
+  .btn-create-job::after {
     display: none !important;
   }
-  /* На случай если кнопка содержит текст прямо в HTML — скрываем через
-     родительский font-size:0, иконку оставляем явным sizing'ом выше */
 
   /* ── cat-bar и аналогичные scroll-фильтры — уже корректно работают,
         но добавляем fade-индикатор справа если ещё нет ── */
