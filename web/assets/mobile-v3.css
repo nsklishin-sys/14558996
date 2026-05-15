@@ -18,4 +18,107 @@
    - Obsidian: 23 — Дорожная карта мобильной адаптации
    ═══════════════════════════════════════════════════════════════ */
 
-/* Файл пока пуст — этапы 1+ постепенно добавляют правила */
+/* ───────────────────────────────────────────────────────────────
+   TOP-LEVEL: CSS-переменные и универсальные нормализации
+   Допустимы по правилу И2 (см. Obsidian 07 раздел «📱»)
+   ─────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Fluid font-size: на узких экранах слегка меньше, на широких — обычный.
+     clamp(min, preferred, max) — на 360px даст ~13px, на 640px ~14px. */
+  --m-fs-sm: clamp(12.5px, 3.4vw, 14px);
+  --m-fs-md: clamp(13.5px, 3.6vw, 15px);
+
+  /* Высота будущего bottom-nav (используется на этапе 2+ для padding-bottom main). */
+  --m-bn-height: 64px;
+
+  /* Безопасная зона снизу (notch / home indicator на iPhone). */
+  --m-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Универсальные нормализации для touch-устройств.
+   Top-level допустимо: правила безопасны для десктопа
+   (touch-action на не-touch устройствах = no-op,
+   tap-highlight видим только на touch). */
+button,
+a,
+[role="button"],
+.nav-item,
+.icon-btn,
+.ftab {
+  /* Убираем синюю подсветку при тапе на iOS Safari. И2: универсальная норма. */
+  -webkit-tap-highlight-color: transparent;
+  /* Убирает 300ms задержку double-tap zoom на старых iOS. */
+  touch-action: manipulation;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   @media ≤640px — основная мобильная зона
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Чуть-чуть уменьшаем базовый шрифт чтобы текст не ломал layout
+     на узких экранах. Не агрессивно — fluid через clamp. */
+  html.lt-shell body,
+  html.lt-shell-2col body {
+    font-size: var(--m-fs-sm);
+  }
+
+  /* Главное переопределение grid: одна колонка, две строки.
+     Прячем areas logo/nav/right — оставляем только topbar и main.
+     specificity (0,2,1) перебивает все @media-зоны в shell-layout.css
+     которые работают до ≤740, и top-level html.lt-shell .shell (0,2,1). */
+  html.lt-shell .shell,
+  html.lt-shell-2col .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas:
+      "topbar"
+      "main";
+    gap: 8px;
+    padding: 8px;
+  }
+
+  /* Скрываем элементы которые не помещаются в мобильный layout.
+     Логотип убираем — место занимает топбар.
+     .nav скрываем — его заменит bottom-nav на этапе 2.
+     .right уже скрыт с ≤1000 в shell-layout.css, дублируем для надёжности. */
+  html.lt-shell .logo-cell,
+  html.lt-shell-2col .logo-cell,
+  html.lt-shell .nav,
+  html.lt-shell-2col .nav,
+  html.lt-shell .right,
+  html.lt-shell-2col .right {
+    display: none;
+  }
+
+  /* На мобиле main скроллится сам (на десктопе шеллом).
+     Без этого контент уезжает за пределы viewport. */
+  html.lt-shell .main,
+  html.lt-shell-2col .main {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Topbar — единственный survivor сверху. Убедимся что он
+     не пытается растянуть какие-то ячейки колонок. */
+  html.lt-shell .topbar,
+  html.lt-shell-2col .topbar {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────
+   @media ≤375px — узкие устройства (iPhone SE и подобные)
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 375px) {
+
+  /* Ещё компактнее padding shell. */
+  html.lt-shell .shell,
+  html.lt-shell-2col .shell {
+    gap: 6px;
+    padding: 6px;
+  }
+}
+
+/* Следующие этапы добавляют сюда bottom-nav, sheet-меню и т.д. */
