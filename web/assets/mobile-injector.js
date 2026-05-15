@@ -147,4 +147,146 @@
     init();
   }
 
+  // === Этапы 2+ постепенно добавляют функции сюда ===
+
+  // ─── Э6.1: календарь на главной — sheet с событиями выбранного дня ───
+  // Скрытие .cal-hero-right делается через CSS. Здесь добавляем интерактив:
+  // тап на день с событиями → выезжает блок с событиями этого дня.
+  // Привязываемся только к /home-auth.html (главная для авторизованных).
+  (function initHomeCalDaySheet() {
+    var path = location.pathname || '';
+    if (path !== '/home-auth.html' && path !== '/') return;
+
+    // Контейнер dom-grid пересоздаётся при каждом renderHomeCalendar(),
+    // поэтому ставим делегирование на .cal-hero (родитель) — он стабилен.
+    function ensureDaySheet() {
+      var hero = document.querySelector('.cal-hero');
+      if (!hero) return null;
+      var sheet = hero.querySelector('.m-cal-daysheet');
+      if (!sheet) {
+        sheet = document.createElement('div');
+        sheet.className = 'm-cal-daysheet';
+        sheet.innerHTML =
+          '<div class="m-cal-daysheet-head">' +
+            '<span class="m-cal-daysheet-title">События дня</span>' +
+            '<button type="button" class="m-cal-daysheet-close" aria-label="Закрыть">×</button>' +
+          '</div>' +
+          '<div class="m-cal-daysheet-list"></div>';
+        hero.appendChild(sheet);
+        sheet.querySelector('.m-cal-daysheet-close').addEventListener('click', function(e) {
+          e.stopPropagation();
+          sheet.classList.remove('m-open');
+        });
+      }
+      return sheet;
+    }
+
+    function fmtDate(d) {
+      try {
+        return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      } catch (_) {
+        return (d.getDate() + '.' + (d.getMonth() + 1));
+      }
+    }
+    function fmtTime(ev) {
+      if (ev.is_all_day) return 'весь день';
+      try {
+        return new Date(ev.starts_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        return '';
+      }
+    }
+    function evHref(ev) {
+      if (ev.source === 'personal' || !ev.link) {
+        var sa = new Date(ev.starts_at);
+        var iso = sa.getFullYear() + '-' +
+          String(sa.getMonth() + 1).padStart(2, '0') + '-' +
+          String(sa.getDate()).padStart(2, '0');
+        return '/calendar.html?date=' + iso;
+      }
+      return ev.link;
+    }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Показать события выбранного дня в day-sheet.
+    function showEventsForDay(day) {
+      var state = window.CAL_STATE;
+      if (!state || !Array.isArray(state.events)) return;
+      var sheet = ensureDaySheet();
+      if (!sheet) return;
+
+      var year = state.year, month = state.month;
+      var dayEvents = state.events.filter(function(ev) {
+        var sa = new Date(ev.starts_at);
+        return sa.getFullYear() === year && sa.getMonth() === month && sa.getDate() === day;
+      }).sort(function(a, b) { return new Date(a.starts_at) - new Date(b.starts_at); });
+
+      var titleEl = sheet.querySelector('.m-cal-daysheet-title');
+      if (titleEl) titleEl.textContent = 'События — ' + fmtDate(new Date(year, month, day));
+
+      var list = sheet.querySelector('.m-cal-daysheet-list');
+      if (!list) return;
+
+      if (!dayEvents.length) {
+        list.innerHTML = '<div class="m-cal-daysheet-empty">Нет событий в этот день</div>';
+      } else {
+        list.innerHTML = dayEvents.map(function(ev) {
+          var color = ev.color || ev._color || '#1E8A4C';
+          var time = fmtTime(ev);
+          var loc = ev.location ? ' · ' + escapeHtml(ev.location) : '';
+          return '<a class="m-cal-evrow" href="' + escapeHtml(evHref(ev)) + '">' +
+            '<span class="m-cal-evrow-dot" style="background:' + escapeHtml(color) + '"></span>' +
+            '<div class="m-cal-evrow-body">' +
+              '<div class="m-cal-evrow-title">' + escapeHtml(ev.title || 'Событие') + '</div>' +
+              '<div class="m-cal-evrow-meta">' + escapeHtml(time) + escapeHtml(loc) + '</div>' +
+            '</div>' +
+          '</a>';
+        }).join('');
+      }
+      sheet.classList.add('m-open');
+    }
+
+    // Делегирование клика по дню. Слушаем на родителе .cal-hero, поскольку
+    // .cal-h-grid пересоздаётся при каждом renderHomeCalendar.
+    document.addEventListener('click', function(e) {
+      var dayBtn = e.target.closest('.cal-h-day:not(.other-month)');
+      if (!dayBtn) return;
+      // Проверяем что мы на главной (страница могла поменяться после initial load)
+      if (location.pathname !== '/home-auth.html' && location.pathname !== '/') return;
+
+      // Парсим число из onclick="pickDay(d, 'YYYY-MM-DD')"
+      var onclick = dayBtn.getAttribute('onclick') || '';
+      var m = onclick.match(/pickDay\((\d+)/);
+      if (!m) return;
+      var day = parseInt(m[1], 10);
+      if (!day) return;
+
+      // pickDay (из home-auth.html) сам отрабатывает: toggle selected, ререндер.
+      // Мы добавляем своё поведение в bubble — показываем sheet.
+      // Используем setTimeout 0, чтобы pickDay успел обновить CAL_STATE.selectedDay.
+      setTimeout(function() {
+        var state = window.CAL_STATE;
+        if (!state) return;
+        // Если день стал selected — показываем. Если deselected (повторный тап) — скрываем.
+        if (state.selectedDay === day) {
+          showEventsForDay(day);
+        } else {
+          var sheet = document.querySelector('.m-cal-daysheet');
+          if (sheet) sheet.classList.remove('m-open');
+        }
+      }, 0);
+    });
+
+    // Escape — закрыть sheet.
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var sheet = document.querySelector('.m-cal-daysheet.m-open');
+        if (sheet) sheet.classList.remove('m-open');
+      }
+    });
+  })();
+
 })();
