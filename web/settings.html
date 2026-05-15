@@ -360,34 +360,36 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
   .settings-section-picker .ssp-arrow{width:16px;height:16px;flex-shrink:0;fill:none;stroke:var(--gmt);stroke-width:2;stroke-linecap:round;transition:transform .2s}
   .settings-section-picker.open .ssp-arrow{transform:rotate(180deg)}
 
-  /* Bottom-sheet со списком разделов */
-  .settings-picker-overlay{
-    display:none;position:fixed;inset:0;
-    background:rgba(15,25,18,.55);
-    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-    z-index:199;opacity:0;transition:opacity .25s;
+  /* Inline-dropdown: список появляется прямо под кнопкой */
+  .settings-section-picker-wrap{position:relative}
+
+  .settings-picker-dropdown{
+    display:none;
+    position:absolute;
+    top:calc(100% + 6px);
+    left:0;right:0;
+    background:var(--w);
+    border:1px solid var(--bdr);
+    border-radius:var(--rxl);
+    box-shadow:0 12px 32px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.06);
+    z-index:50;
+    padding:8px;
+    max-height:60vh;max-height:60dvh;
+    overflow-y:auto;
+    opacity:0;
+    transform:translateY(-6px) scaleY(.96);
+    transform-origin:top center;
+    transition:opacity .18s ease,transform .18s ease;
   }
-  .settings-picker-overlay.open{display:block;opacity:1}
-  .settings-picker-sheet{
-    display:none;position:fixed;bottom:0;left:0;right:0;
-    background:var(--w);border-radius:20px 20px 0 0;
-    z-index:200;padding:12px 16px calc(20px + env(safe-area-inset-bottom,0px));
-    max-height:80vh;max-height:80dvh;overflow-y:auto;
-    transform:translateY(100%);transition:transform .3s cubic-bezier(0.4,0,0.2,1);
-    box-shadow:0 -8px 32px rgba(0,0,0,0.18);
+  .settings-picker-dropdown.open{
+    display:block;
+    opacity:1;
+    transform:translateY(0) scaleY(1);
   }
-  .settings-picker-sheet.open{display:block;transform:translateY(0)}
-  .settings-picker-sheet::before{
-    content:'';display:block;width:40px;height:4px;
-    background:var(--bdr);border-radius:2px;margin:0 auto 14px;
-  }
-  .settings-picker-title{
-    font-size:14px;font-weight:800;color:var(--t);
-    margin-bottom:8px;padding:0 4px;
-  }
+
   .settings-picker-item{
     display:flex;align-items:center;gap:12px;
-    padding:14px 12px;border-radius:12px;
+    padding:12px;border-radius:10px;
     background:transparent;border:none;
     text-align:left;cursor:pointer;font-family:inherit;
     font-size:14px;font-weight:600;color:var(--t);
@@ -396,13 +398,20 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
   .settings-picker-item:hover,
   .settings-picker-item:active{background:var(--gp)}
   .settings-picker-item.active{background:var(--gl);color:var(--g)}
+  .settings-picker-item.active::after{
+    content:'';width:6px;height:6px;border-radius:50%;
+    background:var(--g);margin-left:auto;flex-shrink:0;
+  }
   .settings-picker-item svg{
-    width:20px;height:20px;flex-shrink:0;
+    width:18px;height:18px;flex-shrink:0;
     fill:none;stroke:currentColor;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round;
   }
   .settings-picker-item.danger{color:var(--red)}
   .settings-picker-item.danger svg{stroke:var(--red)}
+  .settings-picker-divider{
+    height:1px;background:var(--bdr);margin:6px 4px;
+  }
 
   /* Панели — без горизонтальных отступов сверху */
   .settings-panels{padding:0}
@@ -418,9 +427,8 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
 /* Dropdown-кнопка скрыта на десктопе */
 @media(min-width:641px){
-  .settings-section-picker,
-  .settings-picker-overlay,
-  .settings-picker-sheet{display:none !important}
+  .settings-section-picker-wrap,
+  .settings-picker-dropdown{display:none !important}
 }
 @media (min-width:1921px) and (min-height:1081px){
   html,body{font-size:15px}
@@ -455,21 +463,19 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
   <div class="settings-body">
 
     <!-- Dropdown-селектор раздела (только мобила ≤640px) -->
-    <button type="button" class="settings-section-picker" id="settingsSectionPicker" onclick="lastopOpenSettingsPicker()">
-      <span class="ssp-left">
-        <svg id="sspIcon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span class="ssp-label" id="sspLabel">Профиль</span>
-      </span>
-      <svg class="ssp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
+    <div class="settings-section-picker-wrap">
+      <button type="button" class="settings-section-picker" id="settingsSectionPicker" onclick="lastopToggleSettingsPicker(event)">
+        <span class="ssp-left">
+          <svg id="sspIcon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="ssp-label" id="sspLabel">Профиль</span>
+        </span>
+        <svg class="ssp-arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
 
-    <!-- Bottom-sheet overlay -->
-    <div class="settings-picker-overlay" id="settingsPickerOverlay" onclick="lastopCloseSettingsPicker()"></div>
-
-    <!-- Bottom-sheet содержимое -->
-    <div class="settings-picker-sheet" id="settingsPickerSheet" role="dialog" aria-label="Разделы настроек">
-      <div class="settings-picker-title">Раздел настроек</div>
-      <div id="settingsPickerList"></div>
+      <!-- Inline-dropdown с разделами -->
+      <div class="settings-picker-dropdown" id="settingsPickerSheet" role="listbox" aria-label="Разделы настроек">
+        <div id="settingsPickerList"></div>
+      </div>
     </div>
 
     <!-- Левое меню разделов -->
@@ -1056,6 +1062,7 @@ function buildSettingsPickerList(){
   if(!list)return;
   const items=document.querySelectorAll('.settings-menu .sm-item');
   let html='';
+  let logoutInserted=false;
   items.forEach(src=>{
     const isLogout=src.hasAttribute('onclick') && /logout/.test(src.getAttribute('onclick')||'');
     const panel=src.dataset.panel||'';
@@ -1063,13 +1070,16 @@ function buildSettingsPickerList(){
     const svg=src.querySelector('svg');
     const svgHTML=svg?svg.outerHTML:'';
     if(isLogout){
+      if(!logoutInserted){
+        html+='<div class="settings-picker-divider"></div>';
+        logoutInserted=true;
+      }
       html+='<button type="button" class="settings-picker-item danger" onclick="lastopCloseSettingsPicker();logout()">'+svgHTML+'<span>'+txt+'</span></button>';
     } else if(panel){
       html+='<button type="button" class="settings-picker-item" data-panel="'+panel+'" onclick="lastopPickSettingsPanel(\''+panel+'\')">'+svgHTML+'<span>'+txt+'</span></button>';
     }
   });
   list.innerHTML=html;
-  // Подсветить активный
   const active=document.querySelector('.sm-item.active');
   if(active && active.dataset.panel){
     const it=list.querySelector('.settings-picker-item[data-panel="'+active.dataset.panel+'"]');
@@ -1078,41 +1088,41 @@ function buildSettingsPickerList(){
 }
 
 function lastopOpenSettingsPicker(){
-  const ov=document.getElementById('settingsPickerOverlay');
   const sh=document.getElementById('settingsPickerSheet');
   const pk=document.getElementById('settingsSectionPicker');
-  if(ov) ov.classList.add('open');
   if(sh) sh.classList.add('open');
   if(pk) pk.classList.add('open');
 }
 function lastopCloseSettingsPicker(){
-  const ov=document.getElementById('settingsPickerOverlay');
   const sh=document.getElementById('settingsPickerSheet');
   const pk=document.getElementById('settingsSectionPicker');
-  if(ov) ov.classList.remove('open');
   if(sh) sh.classList.remove('open');
   if(pk) pk.classList.remove('open');
+}
+function lastopToggleSettingsPicker(e){
+  if(e) e.stopPropagation();
+  const sh=document.getElementById('settingsPickerSheet');
+  if(sh && sh.classList.contains('open')) lastopCloseSettingsPicker();
+  else lastopOpenSettingsPicker();
 }
 function lastopPickSettingsPanel(id){
   const btn=document.querySelector('.settings-menu .sm-item[data-panel="'+id+'"]');
   if(btn) switchPanel(id, btn);
 }
 
-// Закрытие по Escape + свайп вниз
+// Закрытие по Escape
 document.addEventListener('keydown',e=>{if(e.key==='Escape')lastopCloseSettingsPicker();});
-(function(){
-  const sh=document.getElementById('settingsPickerSheet');
-  if(!sh)return;
-  let y0=0;
-  sh.addEventListener('touchstart',e=>{y0=e.touches[0].clientY;},{passive:true});
-  sh.addEventListener('touchend',e=>{
-    const dy=e.changedTouches[0].clientY-y0;
-    if(dy>80) lastopCloseSettingsPicker();
-  },{passive:true});
-})();
+
+// Закрытие при клике вне dropdown
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.settings-section-picker-wrap');
+  if(!wrap)return;
+  if(!wrap.contains(e.target)) lastopCloseSettingsPicker();
+});
 
 window.lastopOpenSettingsPicker=lastopOpenSettingsPicker;
 window.lastopCloseSettingsPicker=lastopCloseSettingsPicker;
+window.lastopToggleSettingsPicker=lastopToggleSettingsPicker;
 window.lastopPickSettingsPanel=lastopPickSettingsPanel;
 
 initSettingsPanels();
