@@ -633,15 +633,22 @@ html.dark body {
     min-width: 0;
   }
 
-  /* ── Кнопка «Создать» — компактная иконка в toolbar (не FAB) ── */
+  /* ── Кнопка «Создать» — absolute в правом верхнем углу .main ── */
+  /* Делаем .main якорем позиционирования */
+  html.lt-shell .main,
+  html.lt-shell-2col .main {
+    position: relative;
+  }
+
   .btn-create,
   .btn-create-job {
-    order: -1 !important;
-    flex-shrink: 0 !important;
-    position: static !important;
-    width: 38px !important;
-    height: 38px !important;
-    min-width: 38px !important;
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    z-index: 10;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
     padding: 0 !important;
     border-radius: 50% !important;
     margin: 0 !important;
@@ -650,13 +657,15 @@ html.dark body {
     align-items: center !important;
     font-size: 0 !important;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(30, 138, 76, 0.25) !important;
+    box-shadow: 0 2px 8px rgba(30, 138, 76, 0.3) !important;
+    flex-shrink: 0 !important;
+    order: 0 !important;
   }
 
   .btn-create svg,
   .btn-create-job svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 17px !important;
+    height: 17px !important;
     stroke-width: 2.6 !important;
     margin: 0 !important;
   }
@@ -666,6 +675,13 @@ html.dark body {
   .btn-create::after,
   .btn-create-job::after {
     display: none !important;
+  }
+
+  /* Чтобы заголовок страницы / toolbar не наезжали на кнопку —
+     добавляем правый padding на первый дочерний элемент .main */
+  html.lt-shell .main > *:first-child,
+  html.lt-shell-2col .main > *:first-child {
+    padding-right: 52px;
   }
 
   /* ── cat-bar и аналогичные scroll-фильтры — уже корректно работают,
