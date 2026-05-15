@@ -245,13 +245,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .modal-close svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
 .mf-label{font-size:11px;font-weight:700;color:var(--gmt);margin-bottom:5px;display:block}
-/* B31: визуальная подсветка обязательных полей при ошибке валидации */
-.mf-input.is-error,.mf-select.is-error,.mf-textarea.is-error{
-  border-color:#E04040 !important;
-  background:rgba(224,64,64,0.04);
-}
-.mf-field-hint{display:none;font-size:11px;font-weight:600;color:#E04040;margin-top:4px}
-.mf-field-hint.is-shown{display:block}
 .mf-input{width:100%;height:38px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s}
 .mf-input:focus{border-color:var(--gm);background:var(--w)}
 .mf-input::placeholder{color:var(--gmt)}
@@ -704,7 +697,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div><label class="mf-label">Ссылка онлайн</label><input class="mf-input" id="mOnlineURL" placeholder="https://..."></div>
         <div><label class="mf-label">Лимит мест</label><input class="mf-input" id="mSeats" type="number" min="0" placeholder="0"></div>
       </div>
-      <div><label class="mf-label">Категория</label><select class="mf-select" id="mCat" data-category-picker><option value="">Выберите категорию</option></select></div>
+      <div><label class="mf-label">Категория</label><select class="mf-select" id="mCat"><option value="">Выбрать…</option><option>ВЭД и таможня</option></select></div>
       <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Подробно о программе…"></textarea></div>
       <div class="mf-section">
         <span>Спикеры</span>
@@ -732,7 +725,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <div class="toast" id="toast"></div>
 
-<script src="/assets/project-categories.js"></script>
 <script>
 const API='/api', tk=()=>localStorage.getItem('token');
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -1334,14 +1326,7 @@ function openEditEventModal(){
   document.getElementById('mOnlineURL').value=ev.online_url||'';
   document.getElementById('mFee').value=ev.fee_cents?Math.round(ev.fee_cents/100):'';
   document.getElementById('mSeats').value=ev.seats_total||'';
-  // B30: рендерим полный список категорий (6 групп, ~34 пункта)
-  // через общий хелпер. Без него в select была только одна
-  // тестовая опция «ВЭД и таможня».
-  const _mCat=document.getElementById('mCat');
-  if(_mCat && typeof window.renderProjectCategoriesInto==='function'){
-    window.renderProjectCategoriesInto(_mCat,'Выберите категорию');
-  }
-  if(_mCat) _mCat.value=ev.category||'';
+  document.getElementById('mCat').value=ev.category||'';
   document.getElementById('mDesc').value=ev.description||'';
   document.getElementById('mTags').value=(ev.tags||[]).join(', ');
   const _parseList=(v)=>{
@@ -1363,41 +1348,12 @@ function openEditEventModal(){
   document.getElementById('modalBgEvent').classList.add('open');
 }
 function closeEventModal(){document.getElementById('modalBgEvent').classList.remove('open')}
-function _evClearErrors(){
-  ['mTitle','mDate'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el)el.classList.remove('is-error');
-    const hint=document.getElementById('hint-'+id);
-    if(hint)hint.classList.remove('is-shown');
-  });
-}
-function _evMarkError(id,message){
-  const el=document.getElementById(id);
-  if(!el)return;
-  el.classList.add('is-error');
-  let hint=document.getElementById('hint-'+id);
-  if(!hint){
-    hint=document.createElement('div');
-    hint.className='mf-field-hint';
-    hint.id='hint-'+id;
-    el.parentNode.appendChild(hint);
-  }
-  hint.textContent=message;
-  hint.classList.add('is-shown');
-  // Снимаем подсветку при следующем вводе
-  const handler=()=>{el.classList.remove('is-error');hint.classList.remove('is-shown');el.removeEventListener('input',handler);el.removeEventListener('change',handler);};
-  el.addEventListener('input',handler);
-  el.addEventListener('change',handler);
-  // Прокручиваем к первому ошибочному полю
-  try{el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
-}
 async function submitEventEdit(){
   const ev=state.currentEvent;if(!ev||!ev.public_id)return;
-  _evClearErrors();
   const title=(document.getElementById('mTitle').value||'').trim();
-  if(!title){_evMarkError('mTitle','Введите название мероприятия');return;}
+  if(!title){toast('Введите название');return}
   const date=document.getElementById('mDate').value;
-  if(!date){_evMarkError('mDate','Укажите дату мероприятия');return;}
+  if(!date){toast('Укажите дату');return}
   const tS=document.getElementById('mTimeStart').value||'10:00';
   const tE=document.getElementById('mTimeEnd').value||'12:00';
   const tagsRaw=(document.getElementById('mTags').value||'').trim();

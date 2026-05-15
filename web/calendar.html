@@ -96,18 +96,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cal-time-scroll::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 .cal-time-grid{display:grid;grid-template-columns:60px 1fr;position:relative}
 .cal-time-hours{display:flex;flex-direction:column;border-right:1px solid var(--bdr);background:var(--w)}
-.cal-time-hour-lbl{height:60px;font-size:10px;font-weight:700;color:var(--gmt);padding:4px 8px 0;text-align:right;border-top:1px solid var(--bdr);box-sizing:border-box}
-.cal-time-hour-lbl:first-child{border-top:none}
+.cal-time-hour-lbl{height:60px;font-size:10px;font-weight:700;color:var(--gmt);padding:4px 8px 0;text-align:right;border-bottom:1px solid var(--bdr);box-sizing:border-box}
 .cal-time-days{display:grid;position:relative}
 .cal-time-days.week{grid-template-columns:repeat(7,1fr)}
 .cal-time-days.day{grid-template-columns:1fr}
-.cal-time-col{position:relative;border-right:1px solid var(--bdr);min-height:0}
+.cal-time-col{position:relative;border-right:1px solid var(--bdr);min-height:840px}
 .cal-time-col:last-child{border-right:none}
 .cal-time-col.today{background:rgba(30,138,76,.04)}
 .cal-time-col.weekend{background:#FAFCFB}
 .cal-time-col.today.weekend{background:rgba(30,138,76,.04)}
-.cal-time-hourline{height:60px;border-top:1px solid var(--bdr);box-sizing:border-box}
-.cal-time-hourline:first-child{border-top:none}
+.cal-time-hourline{height:60px;border-bottom:1px solid var(--bdr);box-sizing:border-box}
 .cal-time-event{
   position:absolute;left:4px;right:4px;
   border-radius:6px;padding:4px 6px;
@@ -689,12 +687,10 @@ function renderTimeView(mode, days){
   }).join('');
   const hoursEl=document.getElementById(mode==='week'?'weekHours':'dayHours');
   let hoursHTML='';
-  // B24: расширили окно до полных суток 00:00-24:00
-  // (раньше было 08:00-22:00, события до 8 и после 22 не помещались)
-  for(let h=0;h<=23;h++)hoursHTML+=`<div class="cal-time-hour-lbl">${String(h).padStart(2,'0')}:00</div>`;
+  for(let h=8;h<=22;h++)hoursHTML+=`<div class="cal-time-hour-lbl">${String(h).padStart(2,'0')}:00</div>`;
   hoursEl.innerHTML=hoursHTML;
   const daysEl=document.getElementById(mode==='week'?'weekDays':'dayDays');
-  const dayStart=0, dayEnd=24, hourPx=60;
+  const dayStart=8, dayEnd=23, hourPx=60;
   const colHeight=(dayEnd-dayStart)*hourPx;
   daysEl.innerHTML=days.map(d=>{
     const isToday=d.getTime()===today.getTime();

@@ -93,7 +93,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 /* Активный пункт — зелёный фон как на скриншоте */
 
 /* ═══ MAIN — БЕЗ ИЗМЕНЕНИЙ ═══ */
-.main{grid-area:main;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:10px;min-width:0}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-bottom:10px}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 
@@ -110,7 +110,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .cb-btn{padding:5px 14px;border-radius:99px;background:var(--g);border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
 .cb-btn:hover{background:var(--gm)}
 
-.widgets-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;flex-shrink:0;align-items:stretch;min-width:0}
+.widgets-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex-shrink:0;align-items:stretch}
 @media(max-width:1100px){.widgets-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.widgets-row{grid-template-columns:1fr}}
 
@@ -569,7 +569,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .pc-time{margin-left:auto;font-size:11px;color:var(--gmt)}
 
 /* ═══ RIGHT — как на скриншоте ═══ */
-.right{grid-area:right;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;min-width:0}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .right::-webkit-scrollbar{display:none}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
 .card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
@@ -614,26 +614,6 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 @media(max-width:1200px){.shell{grid-template-columns:220px 1fr 260px}}
 @media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar""nav main"}.right,.profile-dd-wrap{display:none}.topbar{grid-template-columns:1fr}.search-wrap{max-width:100%}}
 @media(max-width:740px){.shell{grid-template-columns:52px 1fr}.nav-item span,.nav-group{display:none}.nav-item{justify-content:center;padding:10px}}
-
-@media(max-width:640px){
-  /* Баннер: вертикальный stack — заголовок сверху, статистика снизу */
-  .home-banner{flex-direction:column;align-items:flex-start;gap:12px;padding:14px}
-  .home-banner .hb-left{width:100%}
-  .home-banner .hb-stats{width:100%;justify-content:space-between;gap:8px}
-  .home-banner .hbs-num{font-size:18px}
-  .home-banner .hbs-lbl{font-size:9px}
-
-  /* Compose-bar: компактнее */
-  .compose-bar{padding:10px;gap:8px}
-  .compose-bar .cb-ph{font-size:13px}
-
-  /* Виджеты: меньше padding, заголовок секции компактнее */
-  .widget{padding:12px}
-  .wt{font-size:13px}
-
-  /* Лента: убираем горизонтальный padding на feed */
-  .feed-wrap{padding:0}
-}
 @media (min-width:1921px) and (min-height:1081px){
   html,body{font-size:15px}
   .shell{grid-template-columns:280px 1fr 360px !important;gap:12px;padding:12px}

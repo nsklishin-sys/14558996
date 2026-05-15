@@ -59,9 +59,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .flt-counter{font-size:11px;color:var(--gmt);font-weight:700;flex-shrink:0}
 
 /* CATEGORY BAR */
-.cat-bar-wrap{position:relative}
-.cat-bar-wrap::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(to right,transparent,var(--w));border-radius:0 var(--rxl) var(--rxl) 0;pointer-events:none}
-.cat-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 12px;box-shadow:var(--sh);display:flex;gap:6px;align-items:center;overflow-x:auto;flex-wrap:nowrap;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.cat-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 12px;box-shadow:var(--sh);display:flex;gap:6px;align-items:center;overflow-x:auto;flex-wrap:nowrap;scroll-behavior:smooth}
 .cat-bar::-webkit-scrollbar{display:none}
 .cat-chip{padding:6px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bdr);background:#fff;color:var(--tm);font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0}
 .cat-chip:hover{background:var(--gp);border-color:var(--gb);color:var(--g)}
@@ -153,7 +151,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="flt-counter" id="counter">0 компаний</span>
   </div>
 
-  <div class="cat-bar-wrap"><div class="cat-bar" id="catBar"></div></div>
+  <div class="cat-bar" id="catBar"></div>
 
   <div id="feed">
     <div class="placeholder">Загрузка…</div>
@@ -298,9 +296,7 @@ function getFilteredList(){
     const myIDs=new Set(myCompanies.map(c=>c.id));
     list=list.filter(c=>myIDs.has(c.id));
   }else if(mode==='verified'){
-    list=list.filter(c=>c.is_verified
-      || c.verification_status==='verified'
-      || c.verification_status==='inn_verified');
+    list=list.filter(c=>c.is_verified||c.verification_status==='verified');
   }
   if(activeGroup){
     list=list.filter(c=>c.category_group===activeGroup);
@@ -358,9 +354,7 @@ function renderCard(c){
 
 function renderStats(){
   document.getElementById('statAll').textContent=fmtNum(allCompanies.length);
-  document.getElementById('statVer').textContent=fmtNum(allCompanies.filter(c=>c.is_verified
-    || c.verification_status==='verified'
-    || c.verification_status==='inn_verified').length);
+  document.getElementById('statVer').textContent=fmtNum(allCompanies.filter(c=>c.is_verified||c.verification_status==='verified').length);
   document.getElementById('statMy').textContent=fmtNum(myCompanies.length);
 }
 

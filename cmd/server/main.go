@@ -1314,12 +1314,10 @@ type statusRecorder struct {
 //  3. Редирект залогиненного юзера с /home-guest.html и /index.html
 //     сразу на /home-auth.html, без рендера гостевой.
 const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1E8A4C" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0F1714" media="(prefers-color-scheme: dark)">
 <link rel="alternate icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/favicon.svg">
 <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1E8A4C">
 <meta name="description" content="LASTOP GROUP — деловая платформа для логистики, ВЭД и таможни. Компании, проекты, мероприятия, специалисты.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LASTOP GROUP">
@@ -1459,7 +1457,6 @@ html.pt-ready body {
 })();
 </script>
 <link rel="stylesheet" href="/assets/dark-theme.css">
-<link rel="stylesheet" href="/assets/mobile-v3.css">
 <script src="/assets/dark-theme-init.js"></script>
 <script src="/assets/global-settings.js" defer></script>
 <script src="/site-search.js" defer></script>
@@ -6462,11 +6459,9 @@ func main() {
 			return
 		}
 		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
-		var total, active, planned, done, my, joined int
+		var total, active, my, joined int
 		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE`).Scan(&total)
 		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status = 'active'`).Scan(&active)
-		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status = 'planned'`).Scan(&planned)
-		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status IN ('done','completed')`).Scan(&done)
 		if viewerID > 0 {
 			_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND owner_id = $1`, viewerID).Scan(&my)
 			_ = db.QueryRow(`
@@ -6476,12 +6471,10 @@ func main() {
 			`, viewerID).Scan(&joined)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"total":   total,
-			"active":  active,
-			"planned": planned,
-			"done":    done,
-			"my":      my,
-			"joined":  joined,
+			"total":  total,
+			"active": active,
+			"my":     my,
+			"joined": joined,
 		})
 	})
 
