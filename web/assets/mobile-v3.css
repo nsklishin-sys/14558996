@@ -1,0 +1,534 @@
+/* ═══════════════════════════════════════════════════════════════════
+   LASTOP GROUP — Responsive Adaptation Level 3
+   web/assets/mobile-v3.css
+   
+   Fluid responsive adaptation от 320px до 5K.
+   Инжектируется через htmlInject на ВСЕ HTML-страницы.
+   
+   Брейкпоинты:
+     ≤375px   — маленькие смартфоны (iPhone SE)
+     ≤480px   — смартфоны основная масса (bottom-nav)
+     ≤640px   — переходный, телефоны landscape
+     ≤768px   — планшеты портрет
+     ≤1024px  — планшеты ландшафт
+     ≤1280px  — десктоп нормальный (текущий 1200-брейкпоинт)
+     ≤1536px  — десктоп широкий
+     >1536px  — большие мониторы / 4K
+   
+   Технологии:
+     - clamp() для fluid typography
+     - safe-area-inset для iPhone notch
+     - auto-fit minmax() для карточек
+     - dvh fallback (уже есть в shell-layout.css)
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ─────────────────────────────────────────────────────────────
+   1. CSS VARIABLES — fluid scale
+   ───────────────────────────────────────────────────────────── */
+:root {
+  /* Fluid typography */
+  --fs-xxs: clamp(9px, 0.7vw + 6px, 11px);
+  --fs-xs:  clamp(10px, 0.8vw + 7px, 12px);
+  --fs-sm:  clamp(11px, 0.9vw + 8px, 13px);
+  --fs-base: clamp(13px, 1vw + 9px, 15px);
+  --fs-md:  clamp(14px, 1.1vw + 10px, 16px);
+  --fs-lg:  clamp(16px, 1.3vw + 11px, 18px);
+  --fs-xl:  clamp(18px, 1.5vw + 12px, 22px);
+  --fs-h2:  clamp(20px, 2vw + 14px, 28px);
+  --fs-h1:  clamp(24px, 2.5vw + 16px, 36px);
+
+  /* Fluid spacing */
+  --space-1: clamp(4px, 0.4vw + 2px, 6px);
+  --space-2: clamp(6px, 0.6vw + 4px, 10px);
+  --space-3: clamp(10px, 0.8vw + 6px, 14px);
+  --space-4: clamp(12px, 1vw + 8px, 18px);
+  --space-5: clamp(16px, 1.5vw + 10px, 24px);
+
+  /* Touch-target минимум */
+  --touch-target: 44px;
+
+  /* Bottom-nav высота */
+  --bn-height: 60px;
+
+  /* Safe-area для iOS notch */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   2. UNIVERSAL: touch-feedback, scroll, focus
+   ───────────────────────────────────────────────────────────── */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Touch-friendly размеры кнопок/ссылок на сенсорных устройствах */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  .icon-btn,
+  .nav-item,
+  .pdd-item,
+  .bn-item,
+  a.btn,
+  .btn {
+    min-height: var(--touch-target);
+  }
+
+  /* Иконочные кнопки — квадрат 44×44 */
+  .icon-btn {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+  }
+}
+
+/* Плавный скролл везде кроме prefers-reduced-motion */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   3. БОЛЬШИЕ ЭКРАНЫ (≥1536px) — ограничение растяжения контента
+   ───────────────────────────────────────────────────────────── */
+@media (min-width: 1536px) {
+  /* Контентные блоки не растягиваются на ультравайды */
+  html.lt-shell .feed,
+  html.lt-shell .feed-wrap,
+  html.lt-shell-2col .feed {
+    max-width: 920px;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   4. ПЛАНШЕТЫ ЛАНДШАФТ (≤1024px)
+   На ≤1000px уже скрывается .right (shell-layout.css).
+   Здесь — мягкая подкрутка для 1001-1024.
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) and (min-width: 1001px) {
+  html.lt-shell .shell {
+    grid-template-columns: 200px 1fr 240px;
+    gap: 8px;
+    padding: 8px;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   5. ПЛАНШЕТЫ ПОРТРЕТ (≤768px)
+   Левый nav сжимается раньше (с 740 → 768).
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html.lt-shell .shell,
+  html.lt-shell-2col .shell {
+    grid-template-columns: 56px 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  html.lt-shell .nav-item span,
+  html.lt-shell .nav-group,
+  html.lt-shell .logo-text,
+  html.lt-shell-2col .nav-item span,
+  html.lt-shell-2col .nav-group,
+  html.lt-shell-2col .logo-text { display: none; }
+
+  html.lt-shell .nav-item,
+  html.lt-shell-2col .nav-item {
+    justify-content: center;
+    padding: 10px;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   6. МОБИЛА (≤640px) — bottom-nav заменяет левый nav
+   На этом пороге включается полная мобильная адаптация.
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* ── Layout: левый nav скрыт, появляется bottom-nav ── */
+  html.lt-shell .shell,
+  html.lt-shell-2col .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr;
+    grid-template-areas:
+      "topbar"
+      "main";
+    gap: 6px;
+    padding: 6px 6px calc(var(--bn-height) + var(--safe-bottom) + 6px);
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Скрываем logo-cell, nav, right на мобиле */
+  html.lt-shell .logo-cell,
+  html.lt-shell-2col .logo-cell,
+  html.lt-shell .nav,
+  html.lt-shell-2col .nav,
+  html.lt-shell .right { display: none; }
+
+  /* Topbar занимает всю ширину */
+  html.lt-shell .topbar,
+  html.lt-shell-2col .topbar { padding: 0 10px; }
+
+  /* Search-wrap занимает всю доступную ширину */
+  html.lt-shell .search-wrap,
+  html.lt-shell-2col .search-wrap { max-width: 100%; }
+
+  /* Profile dropdown скрываем в topbar (он есть в bottom-nav) */
+  html.lt-shell .profile-dd-wrap,
+  html.lt-shell-2col .profile-dd-wrap { display: none; }
+
+  /* ── Main scroll ── */
+  html.lt-shell .main,
+  html.lt-shell-2col .main {
+    padding: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Модалки в bottom-sheet стиле ── */
+  .modal-bg .modal,
+  .modal .modal-content,
+  .lastop-modal .lastop-modal-content {
+    border-radius: 20px 20px 0 0 !important;
+    margin-top: auto !important;
+    max-height: 92vh !important;
+    max-height: 92dvh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-bottom: calc(20px + var(--safe-bottom)) !important;
+  }
+
+  .modal-bg,
+  .lastop-modal {
+    align-items: flex-end !important;
+  }
+
+  /* Drag-handle для bottom-sheet */
+  .modal-bg .modal::before,
+  .lastop-modal .lastop-modal-content::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--bdr, #DDE8E2);
+    border-radius: 2px;
+    margin: 8px auto 12px;
+  }
+
+  /* ── Карточки на мобиле — компактнее ── */
+  .card,
+  .post-card,
+  .job-card,
+  .cv-card,
+  .company-card,
+  .event-card { padding: 12px; }
+
+  /* ── Grid с auto-fit для feed-карточек ── */
+  .feed,
+  .feed-wrap,
+  .grid-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Виджеты главной 4 в ряд → 1 в столбик */
+  .widgets-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   7. BOTTOM-NAV (≤640px) — стили
+   Инжектируется через shell-injector.js (Промт M2).
+   Виден только на мобиле, скрыт на десктопе/планшетах.
+   ───────────────────────────────────────────────────────────── */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--bn-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--w, #FFF);
+  border-top: 1px solid var(--bdr, #DDE8E2);
+  z-index: 100;
+  justify-content: space-around;
+  align-items: stretch;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 640px) {
+  .bottom-nav { display: flex; }
+}
+
+.bn-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 2px;
+  text-decoration: none;
+  color: var(--gmt, #5A8A6A);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-xxs);
+  font-weight: 600;
+  min-height: var(--touch-target);
+  transition: color 0.15s;
+}
+
+.bn-item:hover,
+.bn-item:focus { color: var(--g, #1E8A4C); }
+
+.bn-item.active {
+  color: var(--g, #1E8A4C);
+  font-weight: 700;
+}
+
+.bn-item svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.bn-item.active svg { stroke-width: 2.2; }
+
+.bn-item span {
+  font-size: var(--fs-xxs);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Badge для непрочитанных в Чате/Уведомлениях */
+.bn-item .bn-badge {
+  position: absolute;
+  top: 4px;
+  right: 22%;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  background: var(--red, #E04040);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 1.5px solid var(--w, #FFF);
+}
+
+.bn-item { position: relative; }
+
+
+/* ─────────────────────────────────────────────────────────────
+   8. BOTTOM-MENU SHEET (≤640px)
+   Открывается по тапу на пункт «Меню» в bottom-nav.
+   Содержит остальные разделы + Настройки внизу.
+   ───────────────────────────────────────────────────────────── */
+.bottom-menu-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 18, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 199;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.bottom-menu-overlay.open {
+  display: block;
+  opacity: 1;
+}
+
+.bottom-menu-sheet {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--w, #FFF);
+  border-radius: 20px 20px 0 0;
+  z-index: 200;
+  padding: 12px 16px calc(20px + var(--safe-bottom));
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.bottom-menu-sheet.open {
+  display: block;
+  transform: translateY(0);
+}
+
+/* Drag-handle */
+.bottom-menu-sheet::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  background: var(--bdr, #DDE8E2);
+  border-radius: 2px;
+  margin: 0 auto 14px;
+}
+
+.bms-title {
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--t, #1A2A22);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.bms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bms-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 6px;
+  border-radius: 12px;
+  background: var(--gp, #F0FAF4);
+  text-decoration: none;
+  color: var(--t, #1A2A22);
+  border: 1px solid var(--bdr, #DDE8E2);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 72px;
+  text-align: center;
+  transition: background 0.12s;
+}
+
+.bms-item:hover,
+.bms-item:active { background: var(--gl, #E8F5EE); }
+
+.bms-item svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--g, #1E8A4C);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bms-footer {
+  border-top: 1px solid var(--bdr, #DDE8E2);
+  padding-top: 12px;
+}
+
+.bms-settings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--gp, #F0FAF4);
+  text-decoration: none;
+  color: var(--t, #1A2A22);
+  border: 1px solid var(--bdr, #DDE8E2);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bms-settings:hover,
+.bms-settings:active { background: var(--gl, #E8F5EE); }
+
+.bms-settings svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--g, #1E8A4C);
+  stroke-width: 1.8;
+  flex-shrink: 0;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   9. МАЛЕНЬКИЕ СМАРТФОНЫ (≤375px) — iPhone SE и компактные Android
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 375px) {
+  :root {
+    --bn-height: 56px;
+  }
+
+  .bn-item span { font-size: 9px; }
+  .bn-item svg { width: 20px; height: 20px; }
+
+  /* Компактнее карточки */
+  .card,
+  .post-card,
+  .job-card,
+  .cv-card,
+  .company-card,
+  .event-card { padding: 10px; }
+
+  /* Меню — 2 колонки вместо 3 на iPhone SE */
+  .bms-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   10. iOS FIXES
+   ───────────────────────────────────────────────────────────── */
+@supports (-webkit-touch-callout: none) {
+  /* Input zoom на focus — отключаем (font-size ≥ 16px) */
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: max(16px, var(--fs-sm));
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   11. PRINT
+   ───────────────────────────────────────────────────────────── */
+@media print {
+  .bottom-nav,
+  .bottom-menu-sheet,
+  .bottom-menu-overlay,
+  html.lt-shell .nav,
+  html.lt-shell .right,
+  html.lt-shell .topbar { display: none !important; }
+}
