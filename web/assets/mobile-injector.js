@@ -31,7 +31,7 @@
 
   // === Э2: bottom-nav + sheet-меню ============================
 
-  // 5 пунктов bottom-nav: Главная · Новости · Меню · Чат · Профиль.
+  // 5 пунктов bottom-nav: Главная · Меню · Уведомления · Чат · Профиль.
   // data-match — regex по pathname для подсветки активного пункта.
   const BOTTOM_NAV_HTML =
     '<nav class="m-bn" id="mobileBottomNav" aria-label="Мобильная навигация">' +
@@ -39,14 +39,14 @@
         '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>' +
         '<span class="m-bn-lbl">Главная</span>' +
       '</a>' +
-      '<a class="m-bn-item" href="/dashboard.html" data-match="^/dashboard|^/news-detail">' +
-        '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>' +
-        '<span class="m-bn-lbl">Новости</span>' +
-      '</a>' +
       '<button type="button" class="m-bn-item m-bn-menu" onclick="lastopMobileOpenMenu()" aria-label="Открыть меню">' +
         '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>' +
         '<span class="m-bn-lbl">Меню</span>' +
       '</button>' +
+      '<a class="m-bn-item" href="/notifications.html" data-match="^/notifications">' +
+        '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+        '<span class="m-bn-lbl">Уведомления</span>' +
+      '</a>' +
       '<a class="m-bn-item" href="/chat.html" data-match="^/chat">' +
         '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>' +
         '<span class="m-bn-lbl">Чат</span>' +
@@ -64,6 +64,7 @@
     '<aside class="m-menu" id="mobileMenu" role="menu" aria-label="Меню разделов">' +
       '<div class="m-menu-handle"></div>' +
       '<div class="m-menu-title">Все разделы</div>' +
+      '<a class="m-menu-item" href="/dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Новости</a>' +
       '<a class="m-menu-item" href="/projects.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Проекты</a>' +
       '<a class="m-menu-item" href="/events.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Мероприятия</a>' +
       '<a class="m-menu-item" href="/exhibitions.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/></svg>Выставки</a>' +

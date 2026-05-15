@@ -269,4 +269,14 @@ a,
   html.m-menu-locked body {
     overflow: hidden;
   }
+
+  /* Скрываем колокольчик уведомлений в топбаре на мобиле —
+     его функцию берёт на себя пункт «Уведомления» в bottom-nav.
+     Колокольчик инжектируется через global-settings.js, ловим
+     обёртку .notif-bell-wrap. Поиск растянется автоматически
+     благодаря flex:1 у .search-wrap. */
+  html.lt-shell .notif-bell-wrap,
+  html.lt-shell-2col .notif-bell-wrap {
+    display: none;
+  }
 }
