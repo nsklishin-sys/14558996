@@ -289,13 +289,114 @@ a,
     overflow: hidden;
   }
 
-  /* Скрываем колокольчик уведомлений в топбаре на мобиле —
-     его функцию берёт на себя пункт «Уведомления» в bottom-nav.
-     Колокольчик инжектируется через global-settings.js, ловим
-     обёртку .notif-bell-wrap. Поиск растянется автоматически
-     благодаря flex:1 у .search-wrap. */
+  /* ─── Топбар на мобиле: компактный профиль вместо широкой плашки ─── */
+
+  /* Колокольчик: функцию забирает пункт «Уведомления» в bottom-nav. */
   html.lt-shell .notif-bell-wrap,
   html.lt-shell-2col .notif-bell-wrap {
     display: none;
+  }
+
+  /* Обёртка профиля: снимаем «карточные» стили — фон, рамку, тень, padding.
+     На десктопе .profile-dd-wrap — белая карточка с min-height:56px и border,
+     из-за чего без колокольчика выглядела как пустая плашка («призрак»).
+     На мобиле делаем её просто контейнером под аватар + dropdown. */
+  html.lt-shell .topbar > .profile-dd-wrap,
+  html.lt-shell-2col .topbar > .profile-dd-wrap {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    min-height: 0;
+    height: auto;
+    padding: 0;
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  /* Карточка профиля: на ≤1000 в shell-layout.css она display:none.
+     На мобиле возвращаем как компактный кружок-аватар без имени/роли/стрелки.
+     Перебиваем specificity (0,4,1) — выше чем (0,3,1) из shell-layout.css. */
+  html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile,
+  html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 0;
+    padding: 0;
+    border: 1.5px solid var(--bdr, #DDE8E2);
+    border-radius: 50%;
+    background: var(--gp, #F0FAF4);
+    flex: 0 0 36px;
+  }
+
+  /* Аватар внутри: занимает весь круг, без скруглений-квадрата с десктопа. */
+  html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile > .tp-av,
+  html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile > .tp-av {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 12px;
+  }
+
+  /* Имя+роль и стрелка-шеврон — на мобиле в круглой кнопке не помещаются. */
+  html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile > .tp-info,
+  html.lt-shell .topbar > .profile-dd-wrap > .topbar-profile > .tp-arrow,
+  html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile > .tp-info,
+  html.lt-shell-2col .topbar > .profile-dd-wrap > .topbar-profile > .tp-arrow {
+    display: none;
+  }
+
+  /* Dropdown профиля: открывается от кнопки-аватара. Выравниваем по правому краю,
+     ширина с учётом viewport. */
+  html.lt-shell .topbar > .profile-dd-wrap > .profile-dd,
+  html.lt-shell-2col .topbar > .profile-dd-wrap > .profile-dd {
+    right: 0;
+    left: auto;
+    width: min(280px, calc(100vw - 16px));
+  }
+
+  /* ─── Sheet-меню: Настройки отдельным блоком в самом низу ─── */
+
+  /* Тонкий divider перед последним пунктом (Настройки), растянутый
+     на все 3 колонки grid. Визуально отделяет «системный» пункт от контентных плиток. */
+  .m-menu-item.m-menu-settings {
+    grid-column: 1 / -1;
+    aspect-ratio: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    margin-top: 6px;
+    border-radius: 12px;
+    background: var(--w, #fff);
+    border-color: var(--bdr, #DDE8E2);
+    font-size: 14px;
+    text-align: left;
+    /* Псевдоэлемент-разделитель сверху имитирует визуальный gap-блок */
+    position: relative;
+  }
+  .m-menu-item.m-menu-settings::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 8px;
+    right: 8px;
+    height: 1px;
+    background: var(--bdr, #DDE8E2);
+  }
+  .m-menu-item.m-menu-settings svg {
+    width: 22px;
+    height: 22px;
+  }
+  /* Стрелка-шеврон справа: подсказка что это list-row, а не плитка. */
+  .m-menu-item.m-menu-settings::after {
+    content: "›";
+    margin-left: auto;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--gmt, #5A8A6A);
+    font-weight: 400;
   }
 }
