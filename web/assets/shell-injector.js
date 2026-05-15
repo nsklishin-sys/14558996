@@ -647,22 +647,29 @@
   function lastopOpenCreateAction() {
     // 1) Самый надёжный путь — кликнуть оригинальную .btn-create на странице.
     //    Даже если она скрыта через display:none, её обработчик клика работает.
+    //    КРИТИЧНО: исключаем САМУ кнопку bottom-nav «+» (.bn-create-btn)
+    //    и любые другие наши инжект-кнопки с onclick="lastopOpen..."
+    //    — иначе бесконечная рекурсия.
+    var EXCLUDE = ':not(.bn-create-btn):not([onclick*="lastopOpen"])';
     var selectors = [
-      '.btn-create',
-      '.btn-create-job',
-      '.btn-create-event',
-      '.btn-create-project',
-      '.btn-create-company',
-      '.btn-create-topic',
-      '.btn-create-community',
-      '.btn-create-post',
-      '.btn-new-topic',
-      '[data-action="create"]',
-      '[data-create]',
-      'button[onclick*="openCreate"]',
-      'button[onclick*="openAddCompany"]',
-      'button[onclick*="openModal"]',
-      'a[onclick*="openCreate"]'
+      '.btn-create' + EXCLUDE,
+      '.btn-create-job' + EXCLUDE,
+      '.btn-create-event' + EXCLUDE,
+      '.btn-create-project' + EXCLUDE,
+      '.btn-create-company' + EXCLUDE,
+      '.btn-create-topic' + EXCLUDE,
+      '.btn-create-community' + EXCLUDE,
+      '.btn-create-post' + EXCLUDE,
+      '.btn-new-topic' + EXCLUDE,
+      '.btn-write' + EXCLUDE,
+      '[data-action="create"]' + EXCLUDE,
+      '[data-create]' + EXCLUDE,
+      'button[onclick*="openCompose"]' + EXCLUDE,
+      'button[onclick*="openCreate"]' + EXCLUDE,
+      'button[onclick*="openAddCompany"]' + EXCLUDE,
+      'button[onclick*="openModal"]' + EXCLUDE,
+      'a[onclick*="openCreate"]' + EXCLUDE,
+      'a.btn-create' + EXCLUDE
     ];
     for (var s = 0; s < selectors.length; s++) {
       var btn = document.querySelector(selectors[s]);
