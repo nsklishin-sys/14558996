@@ -424,14 +424,49 @@ body:has(.bottom-menu-sheet.open) .bn-menu-btn svg {
 .bn-action-btn {
   align-items: center;
   justify-content: center;
-  padding: 0 !important;
+  padding: 8px 2px 6px !important;
 }
-.bn-action-btn span:not(.bn-action-circle):not(.bn-action-badge) { display: none; }
+
+/* Режим .is-notify (по умолчанию подпись видна), .is-create — скрыта */
+.bn-action-btn.is-create span:not(.bn-action-circle):not(.bn-action-badge) { display: none; }
+
 .bn-action-circle {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease,
+              background 0.2s ease;
+}
+
+/* ── Режим UVEDOMЛЕНИЯ: обычный пункт как соседние ── */
+.bn-action-btn.is-notify .bn-action-circle {
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  margin: 0;
+  box-shadow: none;
+}
+.bn-action-btn.is-notify .bn-action-icon {
+  width: 22px !important;
+  height: 22px !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+  fill: none !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bn-action-btn.is-notify {
+  color: var(--gmt, #5A8A6A);
+  gap: 3px;
+}
+.bn-action-btn.is-notify:hover,
+.bn-action-btn.is-notify:focus { color: var(--g, #1E8A4C); }
+
+/* ── Режим СОЗДАТЬ: крупный приподнятый FAB ── */
+.bn-action-btn.is-create .bn-action-circle {
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -440,51 +475,52 @@ body:has(.bottom-menu-sheet.open) .bn-menu-btn svg {
   margin-top: -18px;
   box-shadow: 0 6px 18px rgba(30, 138, 76, 0.45),
               0 0 0 4px var(--w, #FFF);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.2s ease,
-              background 0.2s ease;
 }
-.bn-action-icon {
+.bn-action-btn.is-create .bn-action-icon {
   width: 24px !important;
   height: 24px !important;
   stroke: #fff !important;
-  stroke-width: 2.4 !important;
+  stroke-width: 2.8 !important;
   fill: none !important;
-  flex-shrink: 0;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-/* Режим «+» — иконка чуть толще для лучшей читаемости */
-.bn-action-btn.is-create .bn-action-icon { stroke-width: 2.8 !important; }
 
-.bn-action-btn:hover .bn-action-circle,
-.bn-action-btn:focus .bn-action-circle {
-  transform: scale(1.06);
-}
 .bn-action-btn:active .bn-action-circle {
   transform: scale(0.95);
   transition-duration: 0.08s;
 }
 .bn-action-btn::before { display: none !important; }
 
-/* Бэдж непрочитанных уведомлений на круге */
+/* Бэдж непрочитанных уведомлений */
 .bn-action-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  min-width: 18px;
-  height: 18px;
+  min-width: 16px;
+  height: 16px;
   border-radius: 99px;
   background: var(--red, #E04040);
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 0 5px;
-  border: 2px solid var(--w, #FFF);
+  padding: 0 4px;
+  border: 1.5px solid var(--w, #FFF);
   line-height: 1;
+}
+.bn-action-btn.is-notify .bn-action-badge {
+  top: -4px;
+  right: -8px;
+}
+.bn-action-btn.is-create .bn-action-badge {
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+  border-width: 2px;
+  padding: 0 5px;
 }
 
 
