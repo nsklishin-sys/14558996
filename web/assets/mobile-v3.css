@@ -567,7 +567,27 @@ body:has(.bottom-menu-sheet.open) .bn-menu-btn svg {
 
 
 /* ─────────────────────────────────────────────────────────────
-   11. PRINT
+   11. DARK THEME OVERRIDE — для страниц с хардкодом :root
+   Некоторые страницы (settings, и др.) объявляют свой :root с
+   --w:#FFF, --bg:#F2F5F3 — это перекрывает body.dark-theme
+   на мобиле из-за каскада. Усиливаем темную тему с !important.
+   ───────────────────────────────────────────────────────────── */
+body.dark-theme,
+html.dark body {
+  --w: #1A1F1C !important;
+  --bg: #0F1714 !important;
+  --t: #E8EFEA !important;
+  --tm: #B0BFB5 !important;
+  --bdr: #2A332E !important;
+  --gp: #15201A !important;
+  --gl: #1B2A21 !important;
+  --gmt: #8FA395 !important;
+  --gb: #3A4F42 !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   12. PRINT
    ───────────────────────────────────────────────────────────── */
 @media print {
   .bottom-nav,
