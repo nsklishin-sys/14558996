@@ -121,4 +121,152 @@ a,
   }
 }
 
-/* Следующие этапы добавляют сюда bottom-nav, sheet-меню и т.д. */
+/* ───────────────────────────────────────────────────────────────
+   Э2 — Bottom-nav и sheet-меню (только ≤640)
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Bottom-nav: фиксирован снизу, всегда поверх контента.
+     z-index 100 — выше карточек, ниже модалок (модалки 200+). */
+  .m-bn {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    height: calc(var(--m-bn-height) + var(--m-safe-bottom));
+    padding-bottom: var(--m-safe-bottom);
+    background: var(--w, #fff);
+    border-top: 1px solid var(--bdr, #DDE8E2);
+    box-shadow: 0 -2px 12px rgba(30, 138, 76, 0.06);
+  }
+
+  /* Пункт bottom-nav: иконка сверху, подпись снизу. */
+  .m-bn-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    text-decoration: none;
+    color: var(--gmt, #5A8A6A);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 120ms ease;
+  }
+
+  .m-bn-ico {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .m-bn-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Активный пункт — зелёный, как акцентный цвет платформы. */
+  .m-bn-active {
+    color: var(--g, #1E8A4C);
+  }
+
+  /* Компенсация под bottom-nav: контент main не должен уезжать под него. */
+  html.lt-shell .main,
+  html.lt-shell-2col .main {
+    padding-bottom: calc(var(--m-bn-height) + var(--m-safe-bottom) + 12px);
+  }
+
+  /* Sheet-меню: затемнение фона. */
+  .m-menu-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(15, 25, 18, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .m-menu-bg.m-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Sheet-меню: сам контейнер, выезжает снизу. */
+  .m-menu {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 160;
+    max-height: 80vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--w, #fff);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    padding: 8px 12px calc(16px + var(--m-safe-bottom));
+    transform: translateY(100%);
+    transition: transform 240ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  .m-menu.m-open {
+    transform: translateY(0);
+  }
+
+  /* Полоска-«ручка» сверху sheet — визуальный сигнал что можно тянуть. */
+  .m-menu-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 99px;
+    background: var(--bdr, #DDE8E2);
+    margin: 8px auto 10px;
+  }
+
+  /* Заголовок sheet. */
+  .m-menu-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gmt, #5A8A6A);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 8px 8px;
+  }
+
+  /* Пункт sheet-меню: иконка слева, текст справа. */
+  .m-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--t, #1A2A22);
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 120ms ease;
+  }
+  .m-menu-item:active {
+    background: var(--gp, #F0FAF4);
+  }
+  .m-menu-item svg {
+    width: 20px;
+    height: 20px;
+    color: var(--gmt, #5A8A6A);
+    flex-shrink: 0;
+  }
+
+  /* При открытом меню — запретить скролл фона. */
+  html.m-menu-locked,
+  html.m-menu-locked body {
+    overflow: hidden;
+  }
+}
