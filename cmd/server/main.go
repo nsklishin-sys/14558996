@@ -22492,6 +22492,10 @@ func injectHTML(next http.Handler) http.Handler {
 
 // renderHTMLInject возвращает htmlInject с подставленным counter ID Я.Метрики.
 // Если YA_METRIKA_ID не задан в env — подставляется null, и Метрика не активируется.
+// Также подключает мобильные ассеты (mobile-v3.css + mobile-injector.js)
+// если не установлена env-переменная MOBILE_V3_DISABLE=1.
+// Killswitch: export MOBILE_V3_DISABLE=1 && sudo systemctl restart lastop
+// → мобильная адаптация отключена, десктоп нетронут.
 func renderHTMLInject() string {
 	id := strings.TrimSpace(os.Getenv("YA_METRIKA_ID"))
 	literal := "null"
@@ -22506,7 +22510,15 @@ func renderHTMLInject() string {
 			literal = clean
 		}
 	}
-	return strings.ReplaceAll(htmlInject, "__YA_METRIKA_ID__", literal)
+	out := strings.ReplaceAll(htmlInject, "__YA_METRIKA_ID__", literal)
+
+	// Мобильная адаптация (можно отключить env MOBILE_V3_DISABLE=1)
+	if os.Getenv("MOBILE_V3_DISABLE") != "1" {
+		out += "\n<link rel=\"stylesheet\" href=\"/assets/mobile-v3.css\">\n"
+		out += "<script src=\"/assets/mobile-injector.js\" defer></script>\n"
+	}
+
+	return out
 }
 
 // inj — закешированный результат renderHTMLInject(), вычисляется один раз при первом обращении.
