@@ -144,8 +144,11 @@ a,
     box-shadow: 0 -2px 12px rgba(30, 138, 76, 0.06);
   }
 
-  /* Пункт bottom-nav: иконка сверху, подпись снизу. */
+  /* Пункт bottom-nav: иконка сверху, подпись снизу.
+     position:relative — нужно для абсолютного ::before (риска активного).
+     transition охватывает color и transform для плавности. */
   .m-bn-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -158,24 +161,75 @@ a,
     border: 0;
     cursor: pointer;
     font-family: inherit;
-    transition: color 120ms ease;
+    transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Scale-down при тапе — тактильный feedback в iOS-стиле. */
+  .m-bn-item:active {
+    transform: scale(0.92);
+  }
+
+  /* Риска-индикатор сверху активного пункта.
+     Невидима по умолчанию (opacity:0), появляется на .m-bn-active.
+     transform-origin:center + scaleX делают «раздвижение» риски. */
+  .m-bn-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 28px;
+    height: 3px;
+    border-radius: 0 0 99px 99px;
+    background: var(--g, #1E8A4C);
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.3);
+    transition: opacity 220ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .m-bn-ico {
     width: 22px;
     height: 22px;
     flex-shrink: 0;
+    transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .m-bn-lbl {
     font-size: 10px;
     font-weight: 600;
     line-height: 1;
+    transition: font-weight 200ms ease;
   }
 
-  /* Активный пункт — зелёный, как акцентный цвет платформы. */
+  /* Активный пункт — зелёный + риска проявляется + иконка чуть крупнее +
+     подпись жирнее. Subtle, но заметный «здесь я». */
   .m-bn-active {
     color: var(--g, #1E8A4C);
+  }
+  .m-bn-active::before {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+  .m-bn-active .m-bn-ico {
+    transform: scale(1.05);
+  }
+  .m-bn-active .m-bn-lbl {
+    font-weight: 700;
+  }
+
+  /* Reduce-motion: пользователи с включённой настройкой получают
+     мгновенные смены без анимаций (a11y-best-practice). */
+  @media (prefers-reduced-motion: reduce) {
+    .m-bn-item,
+    .m-bn-item::before,
+    .m-bn-ico,
+    .m-bn-lbl {
+      transition: none;
+    }
+    .m-bn-item:active {
+      transform: none;
+    }
   }
 
   /* Компенсация под bottom-nav: контент main не должен уезжать под него. */
