@@ -139,15 +139,13 @@
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
       <span>Главная</span>
     </a>
+    <a href="/dashboard.html" class="bn-item" data-match="^/dashboard\.html">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Новости</span>
+    </a>
     <button type="button" class="bn-item bn-menu-btn" onclick="lastopOpenBottomMenu()">
       <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       <span>Меню</span>
-    </button>
-    <button type="button" class="bn-item bn-action-btn" onclick="lastopActionClick()" aria-label="Действие">
-      <span class="bn-action-circle">
-        <svg class="bn-action-icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span class="bn-action-badge" id="bnActionBadge" style="display:none">0</span>
-      </span>
     </button>
     <a href="/chat.html" class="bn-item" data-match="^/chat\.html">
       <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
@@ -163,10 +161,6 @@
   const BOTTOM_MENU_HTML = `
     <div class="bms-title">Все разделы</div>
     <div class="bms-grid">
-      <a href="/dashboard.html" class="bms-item">
-        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-        <span>Новости</span>
-      </a>
       <a href="/forum.html" class="bms-item">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <span>Форум</span>
@@ -608,10 +602,6 @@
       } catch(e) {}
     });
 
-    // M5.7: применить контекстный режим центральной кнопки (create / notify)
-    if (typeof lastopApplyActionMode === 'function') lastopApplyActionMode();
-    if (typeof lastopLoadNotifBadge === 'function') lastopLoadNotifBadge();
-
     // Badge для чата — если есть свежие непрочитанные сообщения
     try {
       const tk = localStorage.getItem('token');
@@ -647,95 +637,6 @@
       if (dy > 80) lastopCloseBottomMenu();
     }, { passive: true });
   }
-
-  // Открыть модалку создания контекстно для текущей страницы
-  // Страницы где центральная кнопка работает как «Создать»
-  var CREATE_PAGES_RE = /^\/(companies|projects|events|jobs|forum|communities|catalog|dashboard)\.html/;
-
-  // Определить текущий режим: 'create' или 'notify'
-  function lastopGetActionMode() {
-    return CREATE_PAGES_RE.test(location.pathname || '') ? 'create' : 'notify';
-  }
-
-  // Применить визуал кнопки: иконка + aria-label
-  function lastopApplyActionMode() {
-    var btn = document.querySelector('.bn-action-btn');
-    if (!btn) return;
-    var icon = btn.querySelector('.bn-action-icon');
-    var mode = lastopGetActionMode();
-    if (mode === 'create') {
-      btn.setAttribute('aria-label', 'Создать');
-      btn.classList.add('is-create');
-      btn.classList.remove('is-notify');
-      if (icon) icon.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>';
-    } else {
-      btn.setAttribute('aria-label', 'Уведомления');
-      btn.classList.add('is-notify');
-      btn.classList.remove('is-create');
-      if (icon) icon.innerHTML = '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>';
-    }
-  }
-
-  // Обработчик клика — диспетчер по режиму
-  function lastopActionClick() {
-    var mode = lastopGetActionMode();
-    if (mode === 'notify') {
-      location.href = '/notifications.html';
-      return;
-    }
-    // Режим create — старая логика поиска .btn-create
-    var EXCLUDE = ':not(.bn-action-btn):not([onclick*="lastopOpen"]):not([onclick*="lastopAction"])';
-    var selectors = [
-      '.btn-create' + EXCLUDE,
-      '.btn-create-job' + EXCLUDE,
-      '.btn-write' + EXCLUDE,
-      '[data-action="create"]' + EXCLUDE,
-      'button[onclick*="openCompose"]' + EXCLUDE,
-      'button[onclick*="openCreate"]' + EXCLUDE,
-      'button[onclick*="openModal"]' + EXCLUDE,
-      'a[onclick*="openCreate"]' + EXCLUDE,
-      'a.btn-create' + EXCLUDE
-    ];
-    for (var s = 0; s < selectors.length; s++) {
-      var btn = document.querySelector(selectors[s]);
-      if (btn) { try { btn.click(); return; } catch(e) {} }
-    }
-    // Точечный фоллбек для dashboard
-    if (/^\/dashboard\.html/.test(location.pathname)) {
-      location.href = '/dashboard.html?compose=1';
-      return;
-    }
-    // Крайний случай — Меню
-    if (typeof lastopOpenBottomMenu === 'function') lastopOpenBottomMenu();
-  }
-
-  // Подгрузить счётчик непрочитанных уведомлений
-  function lastopLoadNotifBadge() {
-    if (lastopGetActionMode() !== 'notify') return;
-    try {
-      var tk = localStorage.getItem('token');
-      if (!tk) return;
-      fetch('/api/notifications/unread-count', { headers: { Authorization: 'Bearer ' + tk } })
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(d) {
-          var cnt = (d && (d.count || d.unread_count)) || 0;
-          var badge = document.getElementById('bnActionBadge');
-          if (badge) {
-            if (cnt > 0) {
-              badge.textContent = cnt > 99 ? '99+' : String(cnt);
-              badge.style.display = 'grid';
-            } else {
-              badge.style.display = 'none';
-            }
-          }
-        })
-        .catch(function() {});
-    } catch(e) {}
-  }
-
-  window.lastopActionClick = lastopActionClick;
-  window.lastopApplyActionMode = lastopApplyActionMode;
-  window.lastopLoadNotifBadge = lastopLoadNotifBadge;
 
   // Открыть/закрыть Меню sheet
   function lastopOpenBottomMenu() {
