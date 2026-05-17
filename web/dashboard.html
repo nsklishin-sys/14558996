@@ -1207,7 +1207,14 @@ function toggleFollow(btn){
     const user=meData.user||{};
     const name=user.full_name||user.name||'Пользователь';
     const color=avc(name);const ltr=letter(name);
-    ['topbarAv','pddAv','composeAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=ltr;el.style.background=color;}});
+    ['topbarAv','pddAv','composeAv'].forEach(id=>{
+      if(window.LASTOP_SET_AV){
+        window.LASTOP_SET_AV(id, ltr, color);
+      } else {
+        const el=document.getElementById(id);
+        if(el){el.textContent=ltr;el.style.background=color;}
+      }
+    });
     document.getElementById('topbarName').textContent=name;
     document.getElementById('topbarRole').textContent=(({owner:'Владелец',admin:'Админ',moderator:'Модератор',member:'Участник'})[user.role]||user.position||user.role||'Участник LASTOP');
     document.getElementById('pddName').textContent=name;
