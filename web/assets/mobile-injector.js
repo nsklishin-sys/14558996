@@ -262,6 +262,73 @@
     }
   })();
 
+// ─── Э10: чат на мобиле — двухэкранный iOS-паттерн ───
+  // Список диалогов и открытый чат — два full-width view, переключаются
+  // классами .m-show-dialogs / .m-show-chat на .chat-panel.
+  (function initMobileChat() {
+    if (location.pathname !== '/chat.html') return;
+
+    function init() {
+      var panel = document.querySelector('.chat-panel');
+      if (!panel) return;
+      // Защита от двойной инициализации.
+      if (panel.classList.contains('m-show-dialogs') ||
+          panel.classList.contains('m-show-chat')) return;
+
+      // Дефолтное состояние: показываем список диалогов.
+      // Если URL содержит ?user=X — открыли чат с конкретным юзером,
+      // сразу показываем экран чата.
+      var params = new URLSearchParams(location.search);
+      var hasOpenChat = params.has('user') || params.has('chat') || params.has('id');
+      panel.classList.add(hasOpenChat ? 'm-show-chat' : 'm-show-dialogs');
+
+      // Делегирование клика по диалогам в списке.
+      // Селектор `.dialog` или `.d-item` — берём широкий, ищем
+      // ближайший li/div который и есть «диалог».
+      var dialogsList = panel.querySelector('.dialogs');
+      if (dialogsList) {
+        dialogsList.addEventListener('click', function(e) {
+          // Не реагируем на клики по поиску/настройкам внутри списка.
+          if (e.target.closest('input, button.dialogs-head-btn')) return;
+          // Любой клик внутри ".dialogs" по дочернему элементу-диалогу.
+          // Существующий JS chat.html сам обработает onclick загрузки сообщений.
+          // Мы только переключаем view, и только если действительно был
+          // выбран диалог (есть кликнутый элемент с data-id или onclick="loadDialog").
+          var target = e.target.closest('[data-conv-id], [data-user-id], [onclick*="loadDialog"], [onclick*="openChat"]');
+          if (target) {
+            // Даём существующему обработчику отработать первым.
+            setTimeout(function() {
+              panel.classList.remove('m-show-dialogs');
+              panel.classList.add('m-show-chat');
+            }, 0);
+          }
+        });
+      }
+
+      // Инжектируем кнопку «Назад» в .chat-head (левее аватара).
+      var chatHead = panel.querySelector('.chat-head');
+      if (chatHead && !chatHead.querySelector('.m-chat-back')) {
+        var backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'm-chat-back';
+        backBtn.setAttribute('aria-label', 'Назад к списку диалогов');
+        backBtn.innerHTML =
+          '<svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+        backBtn.addEventListener('click', function() {
+          panel.classList.remove('m-show-chat');
+          panel.classList.add('m-show-dialogs');
+        });
+        chatHead.insertBefore(backBtn, chatHead.firstChild);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+
 // ─── Э7.1: settings — dropdown-селектор разделов на мобиле ───
   // Триггер инжектируется в начало .settings-body. Тап на триггер →
   // .settings-menu получает класс .m-open и выезжает сверху.
