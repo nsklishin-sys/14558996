@@ -1238,6 +1238,30 @@ a,
   body:has(.chat-panel.m-show-chat) .chat-input-wrap {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
+
+  /* ─── Э10.7: голосовые сообщения .msg-voice на мобиле ───
+     Десктопное правило: min-width:220px, max-width:280px. На узком
+     мобиле родитель .msg.them/me ограничен 70% ширины .chat-body
+     (~250px), и плеер вылазит за рамки.
+     Сбрасываем min-width и max-width:100%, дополнительно ужимаем
+     внутренний padding и gap для компактности. */
+  .msg-voice {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  /* Кнопка play — чуть меньше (36→32). */
+  .msg-voice-play {
+    width: 32px;
+    height: 32px;
+  }
+  /* Аватар + контент: бывают сценарии когда даже после сжатия плеера
+     общий .msg всё ещё узкий. Разрешаем сообщению с голосовым растянуться
+     чуть шире обычных текстовых (max-width:85% вместо 70%). */
+  .msg:has(.msg-voice) {
+    max-width: 85%;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────
