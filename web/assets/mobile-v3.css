@@ -1340,4 +1340,46 @@ a,
   }
 }
 
+/* ───────────────────────────────────────────────────────────────
+   Э14 — Страница /friends.html
+   - .tabs-bar горизонтальный скролл работает корректно
+   - .friends-grid одна колонка
+   - .add-card компактный padding
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* .tabs-bar — overflow-x:auto уже есть в inline-стилях, но без
+     дополнительных правил он не работает: max-width не задан, дети
+     с flex-shrink:0 переполняют родителя, и весь shell начинает
+     свайпаться вбок. Принудительно ограничиваем по ширине и
+     скрываем scrollbar для нативного iOS-feel. */
+  html.lt-shell-2col .main > .tabs-bar,
+  html.lt-shell .main > .tabs-bar {
+    max-width: 100%;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  html.lt-shell-2col .main > .tabs-bar::-webkit-scrollbar,
+  html.lt-shell .main > .tabs-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* .friends-grid: десктоп использует auto-fill minmax(220px,1fr), что
+     на 390px экране даёт 1 колонку но иногда переполняется из-за gap
+     или padding'ов карточек. Принудительно ровно одна колонка. */
+  html.lt-shell-2col .friends-grid,
+  html.lt-shell .friends-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* .add-card padding 18px 22px → 14px 16px на мобиле. */
+  html.lt-shell-2col .add-card,
+  html.lt-shell .add-card {
+    padding: 14px 16px;
+  }
+
+  /* Хлебные крошки могут переноситься на 2 строки — это норма, не трогаем. */
+}
+
 /* Следующие этапы добавляют сюда PWA и т.д. */
