@@ -1221,4 +1221,27 @@ a,
 
 /* Следующие этапы добавляют сюда PWA и т.д. */
 
+/* ═══ ВРЕМЕННАЯ ДИАГНОСТИКА E10.4 ═══
+   Cyan outline на .chat — увидим реальную content-box без offset.
+   Красная подсветка нашей кнопки .m-chat-back — поймём, наша ли это
+   «стрелочка ‹» справа сбоку. После понимания корня — удалим. */
+@media (max-width: 640px) {
+  /* Outline ВНУТРИ content-box чтобы видеть точные границы .chat */
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .chat {
+    outline: 4px dashed cyan !important;
+    outline-offset: -4px !important;
+  }
+
+  /* Все НАШИ кнопки «Назад» подсвечиваем красным.
+     Если стрелочка справа стала красной — это где-то лишний .m-chat-back. */
+  .m-chat-back {
+    background: red !important;
+    border-color: red !important;
+    color: white !important;
+  }
+  .m-chat-back svg {
+    stroke: white !important;
+  }
+}
+
 
