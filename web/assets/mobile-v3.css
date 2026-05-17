@@ -834,4 +834,111 @@ a,
   }
 }
 
-/* Следующие этапы добавляют сюда списочные и т.д. */
+/* ───────────────────────────────────────────────────────────────
+   Э8 — Списочные страницы: toolbar в 2 строки на мобиле
+   - companies.html (.toolbar + .mode-switch + .btn-create)
+   - communities.html (.toolbar)
+   - exhibitions.html (.ex-toolbar + .ex-tabs + .toolbar-right)
+   - projects.html отложен (другой баг)
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* ─── COMPANIES / COMMUNITIES (общий .toolbar) ─── */
+  /* На десктопе .toolbar — flex row с заголовком, переключателями и
+     кнопкой «Создать». На мобиле row + wrap даёт хаотичный перенос.
+     Делаем явный 2-строчный layout через grid. */
+  .toolbar {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "title switch"
+      "create create";
+    gap: 8px;
+    align-items: center;
+  }
+  .toolbar-title {
+    grid-area: title;
+  }
+  .toolbar .mode-switch {
+    grid-area: switch;
+    min-width: 0;
+    /* Горизонтальный скролл если режимы не помещаются. */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Прижимаем к правому краю для эстетики. */
+    justify-self: end;
+  }
+  .toolbar .mode-switch::-webkit-scrollbar {
+    display: none;
+  }
+  .toolbar .mode-switch .mode-btn {
+    flex-shrink: 0;
+  }
+  /* Кнопка «+ Создать ...» — отдельной строкой, на всю ширину. */
+  .toolbar .btn-create {
+    grid-area: create;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ─── EXHIBITIONS (.ex-toolbar) ─── */
+  /* Здесь 6 элементов: ex-title + ex-tabs + (btn-create + viewGrid + viewList + btn-add).
+     2-строчный layout: title+tabs сверху, controls снизу. */
+  .ex-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .ex-title {
+    /* Не растягиваем — пусть будет inline в первой строке */
+    align-self: flex-start;
+  }
+  /* Tabs — горизонтальный скролл. */
+  .ex-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px;
+  }
+  .ex-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .ex-tabs .etab {
+    flex-shrink: 0;
+  }
+  /* Правая группа: view-btn компактные, кнопки занимают оставшееся пространство. */
+  .ex-toolbar .toolbar-right {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  /* Кнопки «Создать выставку» и «Заявка на стенд» — flex:1 чтобы делили
+     оставшееся место поровну и не обрезались. */
+  .ex-toolbar .toolbar-right > #btnCreateExhibition,
+  .ex-toolbar .toolbar-right > .btn-add {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+    margin-right: 0 !important;
+    justify-content: center;
+  }
+  /* view-btn (Плитка/Список) — компактные иконки, не растягиваются. */
+  .ex-toolbar .toolbar-right > .view-btn {
+    flex: 0 0 36px;
+  }
+
+  /* ─── EXHIBITIONS filter row ─── */
+  /* На скрине селекты «Тематика», «Город» слишком узкие. Делаем wrap. */
+  .ex-filter-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* Следующие этапы добавляют сюда detail-страницы и т.д. */
