@@ -941,4 +941,82 @@ a,
   }
 }
 
+/* ───────────────────────────────────────────────────────────────
+   Э8 — Глобальная контекстная кнопка действия в топбаре на мобиле
+   FAB-action инжектируется в .profile-dd-wrap (левее круглого аватара)
+   и программно кликает родную кнопку страницы.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Зелёный круг с белым плюсом — стиль соответствует .btn-create
+     на страницах (тот же фон, тень, размеры). Размер 36px = аватар. */
+  .m-fab-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--g, #1E8A4C);
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(30, 138, 76, 0.22);
+    transition: background 150ms ease,
+                transform 120ms cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 200ms ease;
+    /* Зазор между FAB и аватаром справа */
+    margin-right: 8px;
+  }
+  .m-fab-action:active {
+    transform: scale(0.92);
+    background: var(--gm, #22A05A);
+    box-shadow: 0 1px 4px rgba(30, 138, 76, 0.18);
+  }
+  .m-fab-action svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+  }
+
+  /* Reduce-motion для accessibility. */
+  @media (prefers-reduced-motion: reduce) {
+    .m-fab-action,
+    .m-fab-action:active {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* Скрытие родных кнопок «Создать ...» на страницах — их функцию
+     забрал FAB в топбаре. Скрываем ТОЛЬКО когда FAB реально работает,
+     иначе пользователь окажется без точки действия.
+     mobile-injector.js ставит класс .m-fab-mounted на <html> когда
+     FAB успешно прицепился к рабочей кнопке. */
+
+  /* Companies, projects, events, forum, communities, catalog —
+     класс .btn-create единый. */
+  html.m-fab-mounted .toolbar > .btn-create,
+  html.m-fab-mounted .toolbar > a.btn-create,
+  html.m-fab-mounted .pf-toolbar > .btn-create,
+  html.m-fab-mounted .ev-toolbar > .btn-create {
+    display: none;
+  }
+  /* Jobs — .btn-create-job */
+  html.m-fab-mounted .toolbar > .btn-create-job,
+  html.m-fab-mounted .jb-toolbar > .btn-create-job {
+    display: none;
+  }
+  /* Exhibitions — .btn-add (Заявка на стенд) + (опц.) #btnCreateExhibition */
+  html.m-fab-mounted .ex-toolbar .btn-add,
+  html.m-fab-mounted .ex-toolbar #btnCreateExhibition {
+    display: none;
+  }
+}
+
 /* Следующие этапы добавляют сюда detail-страницы и т.д. */

@@ -149,7 +149,119 @@
 
   // === Этапы 2+ постепенно добавляют функции сюда ===
 
-  // ─── Э7.1: settings — dropdown-селектор разделов на мобиле ───
+    // ─── Э8: глобальная контекстная кнопка действия в топбаре ───
+  // Инжектируется в .profile-dd-wrap (рядом с круглым аватаром) на
+  // списочных страницах. При тапе программно кликает родную кнопку
+  // страницы — её action (модалка/переход) исполнится сам по себе.
+  (function initFabAction() {
+    // Словарь: path → массив селекторов-кандидатов кнопки действия.
+    // Первый найденный (и видимый) — целевой. Порядок важен:
+    // на exhibitions сначала ищем «Заявка на стенд» (.btn-add),
+    // потом «Создать выставку» (#btnCreateExhibition).
+    var PAGE_ACTIONS = {
+      '/companies.html':   ['.toolbar a.btn-create', '.toolbar .btn-create'],
+      '/projects.html':    ['.toolbar .btn-create', '.pf-toolbar .btn-create'],
+      '/events.html':      ['.ev-toolbar .btn-create', '.toolbar .btn-create'],
+      '/exhibitions.html': ['.ex-toolbar .btn-add', '.ex-toolbar #btnCreateExhibition'],
+      '/jobs.html':        ['.toolbar .btn-create-job', '.jb-toolbar .btn-create-job'],
+      '/forum.html':       ['.toolbar .btn-create'],
+      '/communities.html': ['.toolbar .btn-create'],
+      '/catalog.html':     ['.toolbar .btn-create']
+    };
+
+    var path = location.pathname || '';
+    var selectors = PAGE_ACTIONS[path];
+    if (!selectors) return; // эта страница без FAB
+
+    // Найти первую видимую кнопку из списка кандидатов.
+    function findTargetBtn() {
+      for (var i = 0; i < selectors.length; i++) {
+        var nodes = document.querySelectorAll(selectors[i]);
+        for (var j = 0; j < nodes.length; j++) {
+          var el = nodes[j];
+          // display:none → пропускаем (например, у юзера нет прав).
+          // visibility:hidden и offsetParent тоже учитываем.
+          if (el.offsetParent !== null || el.getClientRects().length > 0) {
+            return el;
+          }
+        }
+      }
+      return null;
+    }
+
+    // Получить читаемый лейбл из целевой кнопки для aria-label/title.
+    function readLabel(btn) {
+      if (!btn) return 'Создать';
+      // Клонируем без svg, читаем текст.
+      var clone = btn.cloneNode(true);
+      var svg = clone.querySelector('svg');
+      if (svg) svg.remove();
+      var txt = (clone.textContent || '').trim();
+      return txt || 'Создать';
+    }
+
+    // Инжектировать FAB в .profile-dd-wrap (левее .topbar-profile).
+    function injectFab(targetBtn) {
+      var wrap = document.querySelector('.topbar .profile-dd-wrap');
+      if (!wrap) return null;
+      if (wrap.querySelector('.m-fab-action')) return wrap.querySelector('.m-fab-action');
+
+      var fab = document.createElement('button');
+      fab.type = 'button';
+      fab.className = 'm-fab-action';
+      fab.setAttribute('aria-label', readLabel(targetBtn));
+      fab.setAttribute('title', readLabel(targetBtn));
+      fab.innerHTML =
+        '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+      // Программный клик по родной кнопке. На <a> .click() также
+      // отрабатывает href, на <button> срабатывает onclick.
+      fab.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Перечитываем target — мог поменяться (например, toggle на jobs).
+        var current = findTargetBtn();
+        if (current) {
+          // Обновляем лейбл по факту тапа — на jobs/catalog текст мог
+          // поменяться после переключения toggle.
+          fab.setAttribute('aria-label', readLabel(current));
+          fab.setAttribute('title', readLabel(current));
+          current.click();
+        }
+      });
+
+      // FAB вставляется первым ребёнком .profile-dd-wrap (левее аватара).
+      wrap.insertBefore(fab, wrap.firstChild);
+      // Помечаем <html> что FAB смонтирован — CSS скроет родную кнопку.
+      document.documentElement.classList.add('m-fab-mounted');
+      return fab;
+    }
+
+    // Попытка маунта с ретраями: некоторые страницы рендерят
+    // .btn-create через JS после загрузки данных.
+    var attempts = 0;
+    var MAX_ATTEMPTS = 20; // 20 × 200мс = 4 секунды максимум
+
+    function tryMount() {
+      var btn = findTargetBtn();
+      if (btn) {
+        injectFab(btn);
+        return;
+      }
+      attempts++;
+      if (attempts < MAX_ATTEMPTS) {
+        setTimeout(tryMount, 200);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryMount);
+    } else {
+      tryMount();
+    }
+  })();
+
+// ─── Э7.1: settings — dropdown-селектор разделов на мобиле ───
   // Триггер инжектируется в начало .settings-body. Тап на триггер →
   // .settings-menu получает класс .m-open и выезжает сверху.
   // Тап на пункт меню → выпадашка закрывается, switchPanel срабатывает
