@@ -9778,6 +9778,27 @@ func main() {
 		})
 	})
 
+	// Push-уведомления: VAPID public key для регистрации подписки на фронте.
+	// Public-ключ не секретный — без авторизации, без сессии.
+	// Возвращает 503 если VAPID не сконфигурирован на сервере.
+	mux.HandleFunc("/api/push/vapid-public-key", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", "GET")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		key := strings.TrimSpace(os.Getenv("VAPID_PUBLIC_KEY"))
+		if key == "" {
+			http.Error(w, "push notifications not configured", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"public_key": key,
+		})
+	})
+
 	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
