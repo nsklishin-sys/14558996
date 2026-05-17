@@ -661,4 +661,98 @@ a,
   }
 }
 
-/* Следующие этапы добавляют сюда настройки, списочные и т.д. */
+/* ───────────────────────────────────────────────────────────────
+   Э7 — Settings (/settings.html) на мобиле
+   Меню разделов → горизонтальный скролл-tabs сверху,
+   панель активного раздела → на всю ширину под меню.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Контейнер: одна колонка вместо двух. */
+  .settings-body {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Меню разделов: горизонтальная полоска поверх панелей.
+     Чтобы пункты не схлопывались — flex-direction:row + nowrap + scroll. */
+  .settings-menu {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Скрываем нативный scrollbar (как в feed-toolbar). */
+    scrollbar-width: none;
+    /* sticky сверху чтобы при прокрутке длинной панели меню оставалось видно. */
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--w, #fff);
+  }
+  .settings-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Пункты меню: иконка слева, текст справа, компактные пилюли.
+     flex-shrink:0 — не сжимаются, скроллится контейнер. */
+  .settings-menu .sm-item {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 99px;
+    border: 1.5px solid var(--bdr, #DDE8E2);
+    background: var(--gp, #F0FAF4);
+    font-size: 13px;
+    /* Иконка чуть меньше для пилюли. */
+  }
+  .settings-menu .sm-item svg {
+    width: 14px;
+    height: 14px;
+  }
+  .settings-menu .sm-item.active {
+    background: var(--g, #1E8A4C);
+    color: #fff;
+    border-color: var(--g, #1E8A4C);
+  }
+  .settings-menu .sm-item.active svg {
+    stroke: #fff;
+  }
+
+  /* Divider между навигацией и Выходом — на мобиле в горизонтальной
+     полоске не нужен (выглядит как тонкая чёрточка между пилюлями). */
+  .settings-menu .sm-div {
+    display: none;
+  }
+
+  /* Кнопка «Выйти» — скрываем из меню разделов на мобиле.
+     Выход доступен через dropdown профиля в топбаре (тап на круглый аватар).
+     Чтобы не плодить контролы и сделать меню компактнее. */
+  .settings-menu .sm-item[onclick*="logout"] {
+    display: none;
+  }
+
+  /* Карточки внутри панелей: компактные отступы. */
+  .settings-card {
+    padding: 14px !important;
+  }
+
+  /* Заголовок панели чуть меньше — экономим место. */
+  .panel-title {
+    font-size: 14px;
+  }
+
+  /* Сетки полей формы внутри панелей: на мобиле 1 колонка
+     (вместо 2 или 3 на десктопе). Универсальное правило для inline-сеток. */
+  .s-panel .form-grid2,
+  .s-panel .form-grid3,
+  .s-panel [style*="grid-template-columns: 1fr 1fr"],
+  .s-panel [style*="grid-template-columns:1fr 1fr"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px;
+  }
+}
+
+/* Следующие этапы добавляют сюда списочные и т.д. */
