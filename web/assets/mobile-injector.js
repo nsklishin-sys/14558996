@@ -166,7 +166,8 @@
       '/jobs.html':        ['.jobs-toolbar .btn-create-job'],
       '/forum.html':       ['.forum-toolbar .btn-create'],
       '/communities.html': ['.comm-toolbar .btn-create'],
-      '/catalog.html':     ['.cat-toolbar .btn-create']
+      '/catalog.html':     ['.cat-toolbar .btn-create'],
+      '/dashboard.html':   ['.news-toolbar .btn-write']
     };
 
     var path = location.pathname || '';
