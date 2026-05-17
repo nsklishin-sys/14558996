@@ -1240,4 +1240,80 @@ a,
   }
 }
 
+/* ───────────────────────────────────────────────────────────────
+   Э12 — Страницы входа и регистрации (/login.html, /register.html)
+   - Убрать горизонтальный скролл (не свайпать в сторону)
+   - Капча переносится корректно (не выходит за границы)
+   - .auth-card без min-height — нет пустоты под короткой формой
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Запрещаем горизонтальный скролл на гостевых auth-страницах.
+     На обычных страницах с .shell этот скролл и так не возникает
+     (overflow:hidden на body), но login.html и register.html имеют
+     свою верстку с .page (min-height:100vh, flex center) — там нужно
+     явно. */
+  html.lt-shell body:has(.page > .auth-card) {
+    overflow-x: hidden;
+  }
+  html.lt-shell .page {
+    /* На мобиле padding 20px по сторонам сжимает форму и подталкивает
+       контент за края. Уменьшаем. */
+    padding: 12px;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* .auth-card на мобиле — без жёсткого min-height. Десктопное правило
+     min-height:600px центрирует карточку красиво, но на мобиле создаёт
+     пустую область под короткой формой. */
+  html.lt-shell .auth-card {
+    min-height: 0;
+    max-width: 100%;
+  }
+
+  /* .auth-form padding — ещё компактнее на узком экране (320px). */
+  html.lt-shell .auth-form {
+    padding: 24px 18px;
+  }
+
+  /* ─── КАПЧА ─── */
+  /* .captcha-row на десктопе — flex row с детьми quote + input + check + reload.
+     На узком экране (320-390px) сумма ширин превышает контейнер
+     → элементы вылезают за границу .captcha-wrap.
+     
+     Делаем wrap, уменьшаем gap, разрешаем quote-блоку сжиматься. */
+  html.lt-shell .captcha-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Quote-блок (например "3 + 7 = ?") — может сжиматься, но не меньше
+     своего content. flex-shrink:1 разрешает усадку, min-width:0 ломает
+     дефолтное «не сжиматься» поведение. */
+  html.lt-shell .captcha-q {
+    flex-shrink: 1;
+    min-width: 0;
+    padding: 7px 12px;
+  }
+  /* Input — на всю ширину если переносится на новую строку. */
+  html.lt-shell .captcha-input {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  /* Reload-кнопка остаётся фикс-размером (32px). */
+  html.lt-shell .captcha-reload {
+    flex-shrink: 0;
+  }
+
+  /* ─── ОБЩИЕ ФОРМЫ ─── */
+  /* Любой input/textarea в auth-форме — max-width 100% чтобы не вылез
+     за родительский контейнер из-за внутреннего min-width браузера. */
+  html.lt-shell .auth-form input,
+  html.lt-shell .auth-form textarea,
+  html.lt-shell .auth-form select {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
 /* Следующие этапы добавляют сюда PWA и т.д. */
