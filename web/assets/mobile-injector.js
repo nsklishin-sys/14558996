@@ -160,13 +160,13 @@
     // потом «Создать выставку» (#btnCreateExhibition).
     var PAGE_ACTIONS = {
       '/companies.html':   ['.toolbar a.btn-create', '.toolbar .btn-create'],
-      '/projects.html':    ['.toolbar .btn-create', '.pf-toolbar .btn-create'],
+      '/projects.html':    ['.proj-toolbar .btn-create'],
       '/events.html':      ['.ev-toolbar .btn-create', '.toolbar .btn-create'],
       '/exhibitions.html': ['.ex-toolbar .btn-add', '.ex-toolbar #btnCreateExhibition'],
-      '/jobs.html':        ['.toolbar .btn-create-job', '.jb-toolbar .btn-create-job'],
-      '/forum.html':       ['.toolbar .btn-create'],
-      '/communities.html': ['.toolbar .btn-create'],
-      '/catalog.html':     ['.toolbar .btn-create']
+      '/jobs.html':        ['.jobs-toolbar .btn-create-job'],
+      '/forum.html':       ['.forum-toolbar .btn-create'],
+      '/communities.html': ['.comm-toolbar .btn-create'],
+      '/catalog.html':     ['.cat-toolbar .btn-create']
     };
 
     var path = location.pathname || '';

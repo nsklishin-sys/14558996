@@ -999,17 +999,20 @@ a,
      mobile-injector.js ставит класс .m-fab-mounted на <html> когда
      FAB успешно прицепился к рабочей кнопке. */
 
-  /* Companies, projects, events, forum, communities, catalog —
-     класс .btn-create единый. */
-  html.m-fab-mounted .toolbar > .btn-create,
-  html.m-fab-mounted .toolbar > a.btn-create,
-  html.m-fab-mounted .pf-toolbar > .btn-create,
-  html.m-fab-mounted .ev-toolbar > .btn-create {
+  /* Скрытие родных кнопок «Создать ...» на всех 8 списочных страницах.
+     Используем descendant-selector (без `>`) на случай если кнопка
+     лежит в дополнительной обёртке внутри toolbar. */
+  html.m-fab-mounted .toolbar .btn-create,
+  html.m-fab-mounted .toolbar a.btn-create,
+  html.m-fab-mounted .ev-toolbar .btn-create,
+  html.m-fab-mounted .proj-toolbar .btn-create,
+  html.m-fab-mounted .forum-toolbar .btn-create,
+  html.m-fab-mounted .comm-toolbar .btn-create,
+  html.m-fab-mounted .cat-toolbar .btn-create {
     display: none;
   }
-  /* Jobs — .btn-create-job */
-  html.m-fab-mounted .toolbar > .btn-create-job,
-  html.m-fab-mounted .jb-toolbar > .btn-create-job {
+  /* Jobs — отдельный класс .btn-create-job */
+  html.m-fab-mounted .jobs-toolbar .btn-create-job {
     display: none;
   }
   /* Exhibitions — .btn-add (Заявка на стенд) + (опц.) #btnCreateExhibition */
