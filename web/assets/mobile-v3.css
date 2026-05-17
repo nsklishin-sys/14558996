@@ -662,9 +662,9 @@ a,
 }
 
 /* ───────────────────────────────────────────────────────────────
-   Э7 — Settings (/settings.html) на мобиле
-   Меню разделов → горизонтальный скролл-tabs сверху,
-   панель активного раздела → на всю ширину под меню.
+   Э7.1 — Settings (/settings.html) на мобиле
+   Меню разделов → компактный dropdown-селектор сверху.
+   Тап на триггер → меню выезжает сверху вниз.
    ─────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
@@ -672,65 +672,145 @@ a,
   .settings-body {
     grid-template-columns: 1fr;
     gap: 10px;
+    /* position:relative нужен — внутри будет absolute-меню. */
+    position: relative;
   }
 
-  /* Меню разделов: горизонтальная полоска поверх панелей.
-     Чтобы пункты не схлопывались — flex-direction:row + nowrap + scroll. */
-  .settings-menu {
+  /* Триггер-кнопка инжектируется через mobile-injector.js как
+     первый child .settings-body на /settings.html. */
+  .m-set-trigger {
     display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 4px;
-    padding: 6px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    /* Скрываем нативный scrollbar (как в feed-toolbar). */
-    scrollbar-width: none;
-    /* sticky сверху чтобы при прокрутке длинной панели меню оставалось видно. */
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--w, #fff);
+    border: 1.5px solid var(--bdr, #DDE8E2);
+    color: var(--t, #1A2A22);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    /* sticky сверху — даже при прокрутке длинной панели триггер всегда виден. */
     position: sticky;
     top: 0;
-    z-index: 5;
-    background: var(--w, #fff);
+    z-index: 6;
   }
-  .settings-menu::-webkit-scrollbar {
-    display: none;
+  .m-set-trigger:active {
+    background: var(--gp, #F0FAF4);
+  }
+  .m-set-trigger-ico {
+    width: 18px;
+    height: 18px;
+    color: var(--g, #1E8A4C);
+    flex-shrink: 0;
+  }
+  .m-set-trigger-lbl {
+    flex: 1;
+    min-width: 0;
+    /* Многоточие если название раздела не помещается. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .m-set-trigger-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--gmt, #5A8A6A);
+    flex-shrink: 0;
+    transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* Когда выпадашка открыта — шеврон поворачивается. */
+  .m-set-trigger.m-open .m-set-trigger-chevron {
+    transform: rotate(180deg);
   }
 
-  /* Пункты меню: иконка слева, текст справа, компактные пилюли.
-     flex-shrink:0 — не сжимаются, скроллится контейнер. */
-  .settings-menu .sm-item {
-    flex-shrink: 0;
-    padding: 8px 14px;
-    border-radius: 99px;
+  /* Само меню .settings-menu по умолчанию скрыто (выезжает по тапу).
+     Размещаем absolute под триггером (триггер sticky, но он находится
+     внутри .settings-body, поэтому абсолютное позиционирование от него). */
+  .settings-menu {
+    position: absolute;
+    top: 56px; /* высота триггера + небольшой gap */
+    left: 0;
+    right: 0;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    background: var(--w, #fff);
     border: 1.5px solid var(--bdr, #DDE8E2);
-    background: var(--gp, #F0FAF4);
-    font-size: 13px;
-    /* Иконка чуть меньше для пилюли. */
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(30, 138, 76, 0.12);
+    /* Начальное состояние: скрыта, готова выехать сверху. */
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .settings-menu .sm-item svg {
-    width: 14px;
-    height: 14px;
+  .settings-menu.m-open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Пункты меню: иконка слева, текст справа, полная ширина. */
+  .settings-menu .sm-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 0;
+    background: transparent;
+    font-size: 14px;
+    text-align: left;
+  }
+  .settings-menu .sm-item:active {
+    background: var(--gp, #F0FAF4);
   }
   .settings-menu .sm-item.active {
-    background: var(--g, #1E8A4C);
-    color: #fff;
-    border-color: var(--g, #1E8A4C);
+    background: var(--gl, #E8F5EE);
+    color: var(--g, #1E8A4C);
+    font-weight: 700;
   }
-  .settings-menu .sm-item.active svg {
-    stroke: #fff;
+  .settings-menu .sm-item svg {
+    width: 18px;
+    height: 18px;
   }
 
-  /* Divider между навигацией и Выходом — на мобиле в горизонтальной
-     полоске не нужен (выглядит как тонкая чёрточка между пилюлями). */
+  /* Divider в выпадашке: визуально отделяет «Выйти» от обычных пунктов. */
   .settings-menu .sm-div {
-    display: none;
+    display: block;
+    margin: 6px 4px;
   }
 
-  /* Кнопка «Выйти» — скрываем из меню разделов на мобиле.
-     Выход доступен через dropdown профиля в топбаре (тап на круглый аватар).
-     Чтобы не плодить контролы и сделать меню компактнее. */
+  /* Кнопку «Выйти» из меню скрываем — выход доступен в dropdown профиля
+     топбара. На мобиле dropdown и так компактен, не плодим контролы. */
   .settings-menu .sm-item[onclick*="logout"] {
     display: none;
+  }
+  /* Заодно скрываем divider который вёл к нему. */
+  .settings-menu .sm-item[onclick*="logout"] + .sm-div,
+  .settings-menu .sm-div:last-child {
+    display: none;
+  }
+
+  /* Затемнение фона при открытой выпадашке. */
+  .m-set-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    background: rgba(15, 25, 18, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .m-set-backdrop.m-open {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* Карточки внутри панелей: компактные отступы. */
@@ -743,8 +823,7 @@ a,
     font-size: 14px;
   }
 
-  /* Сетки полей формы внутри панелей: на мобиле 1 колонка
-     (вместо 2 или 3 на десктопе). Универсальное правило для inline-сеток. */
+  /* Сетки полей формы внутри панелей: на мобиле 1 колонка. */
   .s-panel .form-grid2,
   .s-panel .form-grid3,
   .s-panel [style*="grid-template-columns: 1fr 1fr"],

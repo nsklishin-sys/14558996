@@ -149,6 +149,99 @@
 
   // === Этапы 2+ постепенно добавляют функции сюда ===
 
+  // ─── Э7.1: settings — dropdown-селектор разделов на мобиле ───
+  // Триггер инжектируется в начало .settings-body. Тап на триггер →
+  // .settings-menu получает класс .m-open и выезжает сверху.
+  // Тап на пункт меню → выпадашка закрывается, switchPanel срабатывает
+  // через свой собственный обработчик (мы не вмешиваемся в его логику).
+  (function initSettingsDropdown() {
+    if (location.pathname !== '/settings.html') return;
+
+    function init() {
+      var body = document.querySelector('.settings-body');
+      var menu = document.querySelector('.settings-menu');
+      if (!body || !menu) return;
+      // Защита от двойной инициализации.
+      if (body.querySelector('.m-set-trigger')) return;
+
+      // Создаём триггер. Метка обновляется из активного пункта меню.
+      var trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'm-set-trigger';
+      trigger.innerHTML =
+        '<svg class="m-set-trigger-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
+        '<span class="m-set-trigger-lbl">Профиль</span>' +
+        '<svg class="m-set-trigger-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+      // Backdrop для затемнения фона и закрытия по тапу вне выпадашки.
+      var backdrop = document.createElement('div');
+      backdrop.className = 'm-set-backdrop';
+
+      body.insertBefore(trigger, body.firstChild);
+      body.appendChild(backdrop);
+
+      // Обновить лейбл триггера из текущего активного пункта.
+      function syncTriggerLabel() {
+        var active = menu.querySelector('.sm-item.active');
+        if (!active) return;
+        var lblEl = trigger.querySelector('.m-set-trigger-lbl');
+        if (!lblEl) return;
+        // Берём текст без иконки — клонируем и удаляем svg.
+        var clone = active.cloneNode(true);
+        var svg = clone.querySelector('svg');
+        if (svg) svg.remove();
+        lblEl.textContent = (clone.textContent || '').trim();
+      }
+      syncTriggerLabel();
+
+      function open() {
+        menu.classList.add('m-open');
+        trigger.classList.add('m-open');
+        backdrop.classList.add('m-open');
+      }
+      function close() {
+        menu.classList.remove('m-open');
+        trigger.classList.remove('m-open');
+        backdrop.classList.remove('m-open');
+      }
+
+      // Тап на триггер → открыть/закрыть.
+      trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (menu.classList.contains('m-open')) close();
+        else open();
+      });
+
+      // Тап на backdrop → закрыть.
+      backdrop.addEventListener('click', close);
+
+      // Тап на пункт меню → закрыть выпадашку и обновить лейбл.
+      // Используем capture-фазу через document, чтобы наш обработчик
+      // сработал параллельно с существующим switchPanel.
+      menu.addEventListener('click', function(e) {
+        var item = e.target.closest('.sm-item[data-panel]');
+        if (!item) return;
+        // Даём switchPanel выполниться (он навешен в settings.html),
+        // потом синхронизируем лейбл триггера.
+        setTimeout(function() {
+          syncTriggerLabel();
+          close();
+        }, 0);
+      });
+
+      // Escape — закрыть.
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && menu.classList.contains('m-open')) close();
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+
   // ─── Э6.1: календарь на главной — sheet с событиями выбранного дня ───
   // Скрытие .cal-hero-right делается через CSS. Здесь добавляем интерактив:
   // тап на день с событиями → выезжает блок с событиями этого дня.
