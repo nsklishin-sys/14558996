@@ -294,7 +294,7 @@
           // Существующий JS chat.html сам обработает onclick загрузки сообщений.
           // Мы только переключаем view, и только если действительно был
           // выбран диалог (есть кликнутый элемент с data-id или onclick="loadDialog").
-          var target = e.target.closest('[data-conv-id], [data-user-id], [onclick*="loadDialog"], [onclick*="openChat"]');
+          var target = e.target.closest('.d-item, [data-conv-id], [data-user-id], [onclick*="selectConversation"], [onclick*="loadDialog"], [onclick*="openChat"]');
           if (target) {
             // Даём существующему обработчику отработать первым.
             setTimeout(function() {
