@@ -1216,3 +1216,52 @@ a,
 }
 
 /* Следующие этапы добавляют сюда PWA и т.д. */
+
+/* ═══ ВРЕМЕННАЯ ДИАГНОСТИКА E10-DIAG ═══
+   Цветные outline на ключевых блоках с лейблами их вычисленной высоты
+   через CSS counter trick. После диагностики — УДАЛИТЬ этот блок. */
+@media (max-width: 640px) {
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .shell {
+    outline: 3px solid red !important;
+    outline-offset: -3px;
+    position: relative;
+  }
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .shell::before {
+    content: 'SHELL';
+    position: absolute;
+    top: 4px; left: 50%;
+    transform: translateX(-50%);
+    background: red;
+    color: white;
+    padding: 2px 8px;
+    font: 700 11px/1 monospace;
+    z-index: 9999;
+  }
+
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .main {
+    outline: 3px solid blue !important;
+    outline-offset: -3px;
+    position: relative;
+  }
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .main::before {
+    content: 'MAIN';
+    position: absolute;
+    top: 4px; left: 4px;
+    background: blue;
+    color: white;
+    padding: 2px 8px;
+    font: 700 11px/1 monospace;
+    z-index: 9999;
+  }
+
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .chat-panel {
+    outline: 3px solid orange !important;
+    outline-offset: -3px;
+  }
+
+  html.lt-shell-2col body:has(.chat-panel.m-show-chat) .chat {
+    outline: 3px solid magenta !important;
+    outline-offset: -6px;
+  }
+}
+
