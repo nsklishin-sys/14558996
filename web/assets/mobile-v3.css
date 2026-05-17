@@ -1187,6 +1187,16 @@ a,
     display: none;
   }
 
+  /* В режиме открытого чата bottom-nav скрыт, поэтому компенсационный
+     padding-bottom из Э1 фундамента (calc + m-bn-height + safe-area)
+     создаёт пустую полосу ~76px под input для сообщений. Сбрасываем.
+     Также убираем overflow-y:auto — внутри chat сам управляет скроллом
+     (chat-body имеет свой overflow-y). */
+  body:has(.chat-panel.m-show-chat) .main {
+    padding-bottom: 0 !important;
+    overflow: hidden !important;
+  }
+
   /* ─── .ch-actions: дать сжиматься на узком экране ─── */
   /* На мобиле в шапке чата много кнопок (поиск/звонок/видео/«В друзьях»),
      они не помещаются в строке вместе с именем. Поэтому
