@@ -1315,9 +1315,13 @@ type statusRecorder struct {
 //     сразу на /home-auth.html, без рендера гостевой.
 const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate icon" href="/favicon.ico">
-<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E8A4C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LASTOP">
 <meta name="description" content="LASTOP GROUP — деловая платформа для логистики, ВЭД и таможни. Компании, проекты, мероприятия, специалисты.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LASTOP GROUP">
