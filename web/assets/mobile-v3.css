@@ -1026,4 +1026,118 @@ a,
   }
 }
 
-/* Следующие этапы добавляют сюда detail-страницы и т.д. */
+/* ───────────────────────────────────────────────────────────────
+   Э10 — Чат (/chat.html) на мобиле
+   Двухэкранный iOS-паттерн: список диалогов и открытый чат как
+   отдельные view, переключаются классами на .chat-panel.
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Сначала ПЕРЕОПРЕДЕЛЯЕМ inline-правило chat.html строка 717:
+     `.chat-panel{grid-template-columns:1fr} .dialogs{display:none}`
+     на ≤740. Возвращаем диалоги в DOM, делаем chat-panel flex-row. */
+  html.lt-shell-2col .chat-panel {
+    display: flex !important;
+    flex-direction: row !important;
+    grid-template-columns: none !important;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* Возвращаем dialogs в видимость, делаем full-width. */
+  html.lt-shell-2col .dialogs {
+    display: flex !important;
+    flex-direction: column;
+    flex: 0 0 100%;
+    width: 100%;
+    border-right: 0;
+  }
+
+  /* Чат — тоже full-width, по умолчанию скрыт. */
+  html.lt-shell-2col .chat-panel .chat {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* ─── ДЕФОЛТНОЕ СОСТОЯНИЕ: показываем диалоги ─── */
+  /* Когда mobile-injector ставит .m-show-dialogs (по умолчанию) —
+     диалоги видны, чат уезжает за правый край. */
+  .chat-panel.m-show-dialogs .dialogs {
+    transform: translateX(0);
+  }
+  .chat-panel.m-show-dialogs .chat {
+    transform: translateX(100%);
+    /* После анимации убираем из layout flow чтобы не было пустого скролла. */
+    pointer-events: none;
+  }
+
+  /* ─── СОСТОЯНИЕ «открыт чат»: показываем чат, диалоги уехали влево ─── */
+  .chat-panel.m-show-chat .dialogs {
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+  .chat-panel.m-show-chat .chat {
+    transform: translateX(-100%);
+    pointer-events: auto;
+  }
+
+  /* Плавный переход. */
+  html.lt-shell-2col .chat-panel .dialogs,
+  html.lt-shell-2col .chat-panel .chat {
+    transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html.lt-shell-2col .chat-panel .dialogs,
+    html.lt-shell-2col .chat-panel .chat {
+      transition: none;
+    }
+  }
+
+  /* ─── КНОПКА «Назад» в хедере чата ─── */
+  /* Инжектится через mobile-injector.js левее аватара собеседника. */
+  .m-chat-back {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--gp, #F0FAF4);
+    border: 1.5px solid var(--bdr, #DDE8E2);
+    color: var(--g, #1E8A4C);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-right: 8px;
+    font-family: inherit;
+    transition: background 150ms ease, transform 120ms ease;
+  }
+  .m-chat-back:active {
+    background: var(--gl, #E8F5EE);
+    transform: scale(0.94);
+  }
+  .m-chat-back svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ─── Скрываем bottom-nav в режиме открытого чата ─── */
+  /* На экране переписки нижняя навигация мешает (input для сообщений
+     должен быть у самого низа). Возвращаем bottom-nav на экране списка. */
+  .chat-panel.m-show-chat ~ #mobileBottomNav,
+  body:has(.chat-panel.m-show-chat) #mobileBottomNav {
+    display: none;
+  }
+
+  /* ─── На /chat.html шелл должен занимать всю высоту ─── */
+  /* Чтобы переписка занимала весь экран без скролла страницы. */
+  html.lt-shell-2col body {
+    overflow: hidden;
+  }
+}
+
+/* Следующие этапы добавляют сюда PWA и т.д. */
