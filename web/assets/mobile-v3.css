@@ -1138,6 +1138,81 @@ a,
   html.lt-shell-2col body {
     overflow: hidden;
   }
+
+  /* ─── iOS Safari address bar fix ─── */
+  /* 100vh на iOS включает address bar, поэтому реальная высота больше
+     экрана и контент уезжает вверх. dvh (dynamic viewport height) даёт
+     актуальную высоту с учётом текущего состояния address bar.
+     Поддержка: iOS Safari 15.4+, актуально для всех наших пользователей. */
+  html.lt-shell-2col,
+  html.lt-shell-2col body {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+  html.lt-shell-2col .shell {
+    height: 100dvh;
+  }
+
+  /* ─── РЕЖИМ ОТКРЫТОГО ЧАТА: спрятать всё кроме переписки ─── */
+  /* Мессенджер-паттерн как Telegram: на экране переписки скрываем
+     топбар платформы, логотип. Видны только: шапка чата + переписка +
+     input. Кнопка ◀ Назад в шапке возвращает к списку диалогов
+     (там топбар снова виден). */
+  body:has(.chat-panel.m-show-chat) .topbar,
+  body:has(.chat-panel.m-show-chat) .logo-cell {
+    display: none;
+  }
+  /* Когда скрыли топбар — шелл становится grid в одну строку,
+     чат занимает всю высоту экрана. */
+  body:has(.chat-panel.m-show-chat) .shell {
+    grid-template-rows: 1fr;
+    grid-template-areas: "main";
+  }
+  body:has(.chat-panel.m-show-chat) .nav {
+    display: none;
+  }
+
+  /* ─── .ch-actions: дать сжиматься на узком экране ─── */
+  /* На мобиле в шапке чата много кнопок (поиск/звонок/видео/«В друзьях»),
+     они не помещаются в строке вместе с именем. Поэтому
+     ch-actions может сжиматься, а малозначительные кнопки скрываем. */
+  .chat-head .ch-actions {
+    flex-shrink: 1;
+    min-width: 0;
+    gap: 4px;
+  }
+  /* Кнопка «В друзьях» — дубль функционала /profile_user, на узком
+     экране только мешает. Скрываем на мобиле. */
+  .chat-head .ch-actions .chat-friend-btn {
+    display: none !important;
+  }
+  /* Кнопки «Аудиозвонок» и «Видеозвонок» — пока заглушки
+     (показывают тост «будут доступны в следующей версии»),
+     на мобиле тоже не нужны. */
+  .chat-head .ch-actions .ch-act[title*="удиозвон"],
+  .chat-head .ch-actions .ch-act[title*="идеозвон"] {
+    display: none;
+  }
+
+  /* ─── Имя в шапке чата — отдать ему всё доступное место ─── */
+  .chat-head .ch-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .chat-head .ch-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ─── Чтобы input для сообщений был у самого низа экрана ─── */
+  /* В режиме открытого чата bottom-nav скрыт, шелл grid-template-areas
+     стал "main" — chat-panel занимает всё. chat внутри — flex column,
+     ch-input-wrap снизу естественно. Добавляем safe-area-inset для
+     iPhone X+ (notch снизу). */
+  body:has(.chat-panel.m-show-chat) .chat-input-wrap {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
 }
 
 /* Следующие этапы добавляют сюда PWA и т.д. */
