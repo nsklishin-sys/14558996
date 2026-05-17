@@ -11955,6 +11955,38 @@ CREATE INDEX IF NOT EXISTS notifications_recipient_created_idx
 CREATE UNIQUE INDEX IF NOT EXISTS notifications_dedup_idx
     ON notifications (recipient_id, type, source_type, source_id, COALESCE(actor_id, 0));
 
+-- ── Push-подписки (Web Push API) ──
+-- Хранит подписки браузеров на push-уведомления. Один пользователь = N подписок
+-- (по числу устройств: iPhone Safari + MacBook Chrome + Android Chrome).
+-- endpoint уникален в рамках всей системы — это URL push-сервиса конкретной
+-- инсталляции браузера, который выдаёт Apple/FCM/Mozilla.
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE
+        CHECK (char_length(endpoint) BETWEEN 10 AND 2000),
+    p256dh_key TEXT NOT NULL
+        CHECK (char_length(p256dh_key) BETWEEN 10 AND 200),
+    auth_key TEXT NOT NULL
+        CHECK (char_length(auth_key) BETWEEN 10 AND 100),
+    user_agent TEXT NOT NULL DEFAULT ''
+        CHECK (char_length(user_agent) <= 500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_error_at TIMESTAMPTZ,
+    last_error_msg TEXT NOT NULL DEFAULT ''
+        CHECK (char_length(last_error_msg) <= 500)
+);
+
+-- Быстрый поиск всех подписок пользователя (при отправке push)
+CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx
+    ON push_subscriptions (user_id);
+
+-- Cleanup-индекс: подписки которые давно не отвечают
+CREATE INDEX IF NOT EXISTS push_subscriptions_last_seen_idx
+    ON push_subscriptions (last_seen_at);
+
 -- ── Этапы проекта (Спринт 6.4.1) ──
 CREATE TABLE IF NOT EXISTS project_stages (
     id BIGSERIAL PRIMARY KEY,
