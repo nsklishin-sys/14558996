@@ -848,32 +848,25 @@ a,
    ─────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
-  /* ─── COMPANIES / COMMUNITIES (общий .toolbar) ─── */
-  /* На десктопе .toolbar — flex row с заголовком, переключателями и
-     кнопкой «Создать». На мобиле row + wrap даёт хаотичный перенос.
-     Делаем явный 2-строчный layout через grid. */
+  /* ─── COMPANIES (общий .toolbar) ─── */
+  /* Унифицируем со страницами проектов/выставок/сообществ: column-flex,
+     заголовок отдельной строкой сверху, mode-switch ниже со скроллом,
+     btn-create скрыт (дублируется с FAB в топбаре). */
   .toolbar {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      "title switch"
-      "create create";
+    display: flex;
+    flex-direction: column;
     gap: 8px;
-    align-items: center;
+    align-items: stretch;
   }
   .toolbar-title {
-    grid-area: title;
+    align-self: flex-start;
   }
   .toolbar .mode-switch {
-    grid-area: switch;
-    min-width: 0;
-    /* Горизонтальный скролл если режимы не помещаются. */
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    /* Прижимаем к правому краю для эстетики. */
-    justify-self: end;
+    flex-wrap: nowrap;
+    align-self: flex-start;
   }
   .toolbar .mode-switch::-webkit-scrollbar {
     display: none;
@@ -881,11 +874,9 @@ a,
   .toolbar .mode-switch .mode-btn {
     flex-shrink: 0;
   }
-  /* Кнопка «+ Создать ...» — отдельной строкой, на всю ширину. */
+  /* btn-create дублируется с m-fab-action в топбаре — скрываем на мобиле. */
   .toolbar .btn-create {
-    grid-area: create;
-    width: 100%;
-    justify-content: center;
+    display: none;
   }
 
   /* ─── EXHIBITIONS (.ex-toolbar) ─── */
@@ -897,9 +888,10 @@ a,
     gap: 8px;
     align-items: stretch;
   }
-  /* На мобиле заголовок раздела дублирует bottom-nav и url — скрываем. */
+  /* Заголовок раздела — отдельной строкой сверху. */
   .ex-title {
-    display: none;
+    align-self: flex-start;
+    display: block;
   }
   /* Tabs — горизонтальный скролл. */
   .ex-tabs {
@@ -1418,9 +1410,10 @@ a,
     gap: 8px;
     align-items: stretch;
   }
-  /* На мобиле заголовок раздела дублирует bottom-nav и url — скрываем. */
+  /* Заголовок раздела — отдельной строкой сверху. */
   .comm-title {
-    display: none;
+    align-self: flex-start;
+    display: block;
   }
   /* mode-switch не нуждается в overflow — кнопки короткие, помещаются
      всегда. justify-content:flex-start чтобы прижать к левому краю
@@ -1466,9 +1459,11 @@ a,
     gap: 8px;
     align-items: stretch;
   }
-  /* На мобиле заголовок раздела дублирует bottom-nav и url — скрываем. */
+  /* Заголовок раздела — отдельной строкой сверху, не inline с табами,
+     чтобы не пересекался с другими элементами тулбара. */
   .proj-title {
-    display: none;
+    align-self: flex-start;
+    display: block;
   }
   .proj-tabs {
     overflow-x: auto;
