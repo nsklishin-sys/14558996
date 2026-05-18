@@ -9794,12 +9794,115 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"public_key": key,
-		})
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"public_key": key,
 	})
+})
 
-	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
+// Push-уведомления: подписка устройства на пуши.
+// POST { endpoint, keys: { p256dh, auth }, user_agent } — авторизованно.
+// ON CONFLICT по endpoint UPDATE — поддерживает refresh подписки и смену юзера на устройстве.
+mux.HandleFunc("/api/push/subscribe", func(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		return
+	}
+	userID, ok := authenticatedUserID(w, r, sessions)
+	if !ok {
+		return
+	}
+	var body struct {
+		Endpoint  string `json:"endpoint"`
+		Keys      struct {
+			P256dh string `json:"p256dh"`
+			Auth   string `json:"auth"`
+		} `json:"keys"`
+		UserAgent string `json:"user_agent"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Некорректный JSON")
+		return
+	}
+	endpoint := strings.TrimSpace(body.Endpoint)
+	p256dh := strings.TrimSpace(body.Keys.P256dh)
+	authKey := strings.TrimSpace(body.Keys.Auth)
+	userAgent := strings.TrimSpace(body.UserAgent)
+
+	// Валидация по CHECK constraints таблицы push_subscriptions.
+	if len(endpoint) < 10 || len(endpoint) > 2000 {
+		writeError(w, http.StatusBadRequest, "Некорректный endpoint")
+		return
+	}
+	if len(p256dh) < 10 || len(p256dh) > 200 {
+		writeError(w, http.StatusBadRequest, "Некорректный ключ p256dh")
+		return
+	}
+	if len(authKey) < 10 || len(authKey) > 100 {
+		writeError(w, http.StatusBadRequest, "Некорректный ключ auth")
+		return
+	}
+	if len(userAgent) > 500 {
+		userAgent = userAgent[:500]
+	}
+
+	_, err := db.ExecContext(r.Context(), `
+		INSERT INTO push_subscriptions (user_id, endpoint, p256dh_key, auth_key, user_agent, last_seen_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (endpoint) DO UPDATE SET
+			user_id = EXCLUDED.user_id,
+			p256dh_key = EXCLUDED.p256dh_key,
+			auth_key = EXCLUDED.auth_key,
+			user_agent = EXCLUDED.user_agent,
+			last_seen_at = NOW(),
+			last_error_at = NULL,
+			last_error_msg = ''
+	`, userID, endpoint, p256dh, authKey, userAgent)
+	if err != nil {
+		log.Printf("push subscribe: db error user=%d: %v", userID, err)
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить подписку")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+})
+
+// Push-уведомления: отписка устройства от пушей.
+// POST { endpoint } — авторизованно. Идемпотентно (200 даже если записи не было).
+// Удаляет только подписки текущего юзера — защита от удаления чужой подписки.
+mux.HandleFunc("/api/push/unsubscribe", func(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		return
+	}
+	userID, ok := authenticatedUserID(w, r, sessions)
+	if !ok {
+		return
+	}
+	var body struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4*1024)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Некорректный JSON")
+		return
+	}
+	endpoint := strings.TrimSpace(body.Endpoint)
+	if endpoint == "" {
+		writeError(w, http.StatusBadRequest, "Не указан endpoint")
+		return
+	}
+	_, err := db.ExecContext(r.Context(), `
+		DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2
+	`, endpoint, userID)
+	if err != nil {
+		log.Printf("push unsubscribe: db error user=%d: %v", userID, err)
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить подписку")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+})
+
+mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
