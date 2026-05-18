@@ -300,11 +300,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="proj-toolbar">
     <span class="proj-title">Проекты</span>
     <div class="proj-tabs" id="projTabs">
-      <button class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">48</span></button>
-      <button class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">3</span></button>
-      <button class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">31</span></button>
-      <button class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">9</span></button>
-      <button class="ptab" onclick="setTab('done',this)">Завершённые<span class="ptab-count" id="tc-done">8</span></button>
+      <button class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">0</span></button>
+      <button class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">0</span></button>
+      <button class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">0</span></button>
+      <button class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">0</span></button>
+      <button class="ptab" onclick="setTab('done',this)">Завершённые<span class="ptab-count" id="tc-done">0</span></button>
     </div>
     <div class="toolbar-right">
       <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
@@ -927,6 +927,7 @@ async function loadProjStats(){
     const r = await fetch('/api/projects/stats', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
+    // Сайдбар
     const total = document.getElementById('prjStatTotal');
     const active = document.getElementById('prjStatActive');
     const my = document.getElementById('prjStatMy');
@@ -935,6 +936,17 @@ async function loadProjStats(){
     if (active) active.textContent = _prjFmt(d.active || 0);
     if (my) my.textContent = _prjFmt(d.my || 0);
     if (joined) joined.textContent = _prjFmt(d.joined || 0);
+    // Счётчики на табах (раньше были захардкожены 48/3/31/9/8)
+    const tcAll = document.getElementById('tc-all');
+    const tcMy = document.getElementById('tc-my');
+    const tcActive = document.getElementById('tc-active');
+    const tcPlanned = document.getElementById('tc-planned');
+    const tcDone = document.getElementById('tc-done');
+    if (tcAll) tcAll.textContent = _prjFmt(d.total || 0);
+    if (tcMy) tcMy.textContent = _prjFmt(d.my || 0);
+    if (tcActive) tcActive.textContent = _prjFmt(d.active || 0);
+    if (tcPlanned) tcPlanned.textContent = _prjFmt(d.planned || 0);
+    if (tcDone) tcDone.textContent = _prjFmt(d.done || 0);
   } catch {}
 }
 

@@ -6467,9 +6467,17 @@ func main() {
 			return
 		}
 		viewerID, _ := optionalAuthenticatedUserID(r, sessions)
-		var total, active, my, joined int
-		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE`).Scan(&total)
-		_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND status = 'active'`).Scan(&active)
+		var total, active, planned, done, my, joined int
+		// Все статусы в одном запросе через FILTER — три COUNT за один проход по таблице.
+		_ = db.QueryRow(`
+			SELECT
+				COUNT(*) FILTER (WHERE TRUE),
+				COUNT(*) FILTER (WHERE status = 'active'),
+				COUNT(*) FILTER (WHERE status = 'planned'),
+				COUNT(*) FILTER (WHERE status = 'done')
+			FROM projects
+			WHERE is_deleted = FALSE
+		`).Scan(&total, &active, &planned, &done)
 		if viewerID > 0 {
 			_ = db.QueryRow(`SELECT COUNT(*) FROM projects WHERE is_deleted = FALSE AND owner_id = $1`, viewerID).Scan(&my)
 			_ = db.QueryRow(`
@@ -6479,10 +6487,12 @@ func main() {
 			`, viewerID).Scan(&joined)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"total":  total,
-			"active": active,
-			"my":     my,
-			"joined": joined,
+			"total":   total,
+			"active":  active,
+			"planned": planned,
+			"done":    done,
+			"my":      my,
+			"joined":  joined,
 		})
 	})
 

@@ -99,7 +99,17 @@
   }
 
   function buildPicker(select) {
-    if (select.dataset.cpReady === '1') return; // уже обработан
+    // Идемпотентность: если рядом уже есть .cp-wrap (от предыдущего
+    // вызова или из-за гонки DOMContentLoaded между category-picker.js
+    // и страничным скриптом, который дёргает fillFilterCategories) —
+    // удаляем его и строим заново. Это закрывает edge-case с дублем
+    // селекта «Все категории» в /projects.html.
+    const existingWrap = select.closest('.cp-wrap');
+    if (existingWrap) {
+      // Вынимаем select из обёртки, удаляем обёртку
+      existingWrap.parentNode.insertBefore(select, existingWrap);
+      existingWrap.remove();
+    }
     select.dataset.cpReady = '1';
 
     // Собираем структуру из optgroup/option
