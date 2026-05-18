@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script src="/assets/utils.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -801,7 +802,7 @@ const USER_NAME_TO_PUBLIC_ID = {
   'Алексей Петров': 'u_demo_alex',
 };
 
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const esc = window.lastopEsc;
 function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
 function letter(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.length)return '?';if(p.length>=2)return (p[0][0]+p[1][0]).toUpperCase();return p[0][0].toUpperCase();}
 function avc(s){
