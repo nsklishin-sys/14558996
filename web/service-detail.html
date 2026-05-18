@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script src="/assets/utils.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -382,8 +383,7 @@ let viewerID = null;
 let editPhotos = [];
 
 // ─── Helpers ───
-function esc(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function escAttr(s){ return esc(s); }
+const esc = window.lastopEsc;function escAttr(s){ return esc(s); }
 function pluralRu(n, forms){const a=[2,0,1,1,1,2];return forms[(n%100>4&&n%100<20)?2:a[Math.min(n%10,5)]];}
 function fmtNumber(n){ return Number(n).toLocaleString('ru-RU'); }
 function fmtPrice(price, currency){
