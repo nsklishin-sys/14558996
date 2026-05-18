@@ -1407,3 +1407,91 @@ a,
 }
 
 /* Следующие этапы добавляют сюда PWA и т.д. */
+
+/* ───────────────────────────────────────────────────────────────
+   M-S1 (18.05) — глобальная защита от horizontal overflow
+   ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* ════════════════════════════════════════════════════════════════
+     M-S1 (18.05): глобальная защита от horizontal overflow.
+
+     Семь страниц на мобилке имели общий баг — тулбары/строки с
+     display:flex + flex-shrink:0 не помещались в viewport и
+     выпирали за край. Чтобы не патчить каждую страницу отдельно
+     (их классы все разные: ex-toolbar, comm-toolbar, news-sort-row,
+     compose-actions, s-sort-row, t-quickadd-hint), используем
+     двухуровневую защиту.
+
+     Уровень 1: корневая страховка. body и .main с overflow-x:hidden
+     и max-width:100vw гарантируют, что никакая часть страницы не
+     может «вылететь» за viewport, даже если мы пропустим какой-то
+     внутренний контейнер.
+
+     Уровень 2: точечные правила для проблемных тулбаров, чтобы
+     контент не просто обрезался, а корректно переносился на
+     новую строку. ════════════════════════════════════════════════ */
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  .main {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* M3 — communities: .comm-toolbar содержит title + 2x mode-switch +
+     comm-tabs. На мобиле переносим на 2 строки. */
+  .comm-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* M4 — exhibitions: .ex-toolbar содержит title + ex-tabs + toolbar-right.
+     Переносим, чтобы .toolbar-right уходил на новую строку при нехватке. */
+  .ex-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ex-toolbar .toolbar-right {
+    flex-wrap: wrap;
+  }
+
+  /* M7 — tasks: .t-quickadd (label + input + hint). На мобиле hint
+     уходит на новую строку под input. */
+  .t-quickadd {
+    flex-wrap: wrap;
+  }
+  .t-quickadd-hint {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  /* M8 — search: .s-sort-row (Сортировка: + 3 кнопки). */
+  .s-sort-row {
+    flex-wrap: wrap;
+  }
+
+  /* M11 — login: SmartCaptcha — 320px iframe, нельзя сжать.
+     Даём horizontal scroll внутри обёртки. */
+  .captcha-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .captcha-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* M12 — dashboard: .news-sort-row (Новые/Популярные/Обсуждаемые). */
+  .news-sort-row {
+    flex-wrap: wrap;
+  }
+
+  /* M13 — dashboard: .compose-actions (Фото/Тег/Отмена/Опубликовать). */
+  .compose-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
