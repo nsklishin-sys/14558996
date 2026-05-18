@@ -1520,4 +1520,65 @@ a,
     flex-wrap: wrap;
     gap: 6px;
   }
+
+  /* ════════════════════════════════════════════════════════════════
+     M-S1-FIX4 (18.05): универсальный горизонтальный скролл для любых
+     тулбаров/табов/фильтр-строк на мобиле. Раньше каждый класс лечился
+     точечно — теперь одно правило покрывает зоопарк типовых имён:
+     *-toolbar, *-tabs, *-filter-row, *-sort-row, плюс именованные
+     .mode-switch, .cat-chips, .filter-row, .filters.
+
+     Логика: если контейнер построен на display:flex и не помещается
+     по ширине, его содержимое скроллится горизонтально по свайпу.
+     Скроллбар скрыт (паттерн iOS), детям задаём flex-shrink:0 чтобы
+     они не сжимались до нечитаемых размеров.
+
+     Конкретные точечные блоки выше (.proj-tabs, .comm-tabs, .ex-tabs)
+     остаются — они задают тот же overflow-x:auto и просто согласуются
+     с этим общим правилом. ═══════════════════════════════════════ */
+  [class*="-toolbar"],
+  [class*="-tabs"],
+  [class*="-filter-row"],
+  [class*="-sort-row"],
+  .mode-switch,
+  .cat-chips,
+  .filter-row,
+  .filters {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  [class*="-toolbar"]::-webkit-scrollbar,
+  [class*="-tabs"]::-webkit-scrollbar,
+  [class*="-filter-row"]::-webkit-scrollbar,
+  [class*="-sort-row"]::-webkit-scrollbar,
+  .mode-switch::-webkit-scrollbar,
+  .cat-chips::-webkit-scrollbar,
+  .filter-row::-webkit-scrollbar,
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+  /* Дети флекс-контейнеров не должны сжиматься меньше своего
+     контента, иначе чипы превратятся в обрезанные «кв...» вместо скролла. */
+  [class*="-tabs"] > *,
+  [class*="-filter-row"] > *,
+  [class*="-sort-row"] > *,
+  .mode-switch > *,
+  .cat-chips > *,
+  .filter-row > *,
+  .filters > * {
+    flex-shrink: 0;
+  }
+
+  /* Исключение: тулбары которые мы намеренно построили в column-flex
+     (.proj-toolbar, .ex-toolbar, .comm-toolbar, .toolbar) — у них
+     overflow-x должен быть hidden, а скроллятся внутренние табы/
+     mode-switch. Иначе колонка сама пытается скроллиться, что
+     ломает layout. */
+  .proj-toolbar,
+  .ex-toolbar,
+  .comm-toolbar,
+  .toolbar {
+    overflow-x: hidden;
+  }
 }
