@@ -814,20 +814,9 @@ a,
      пользователи ожидают видеть его именно тут. Стиль кнопки уже
      задан inline (color:var(--red)), достаточно не прятать. */
 
-  /* Затемнение фона при открытой выпадашке. */
-  .m-set-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 6;
-    background: rgba(15, 25, 18, 0.25);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 200ms ease;
-  }
-  .m-set-backdrop.m-open {
-    opacity: 1;
-    pointer-events: auto;
-  }
+  /* Backdrop удалён (M-S2-TWEAK, 18.05) — пользователь предпочёл
+     более лёгкий паттерн dropdown поверх контента, без затемнения.
+     Закрытие меню по клику вне него теперь через обработчик в JS. */
 
   /* Карточки внутри панелей: компактные отступы. */
   .settings-card {

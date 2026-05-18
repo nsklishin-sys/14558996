@@ -442,12 +442,7 @@
         '<span class="m-set-trigger-lbl">Профиль</span>' +
         '<svg class="m-set-trigger-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
-      // Backdrop для затемнения фона и закрытия по тапу вне выпадашки.
-      var backdrop = document.createElement('div');
-      backdrop.className = 'm-set-backdrop';
-
       body.insertBefore(trigger, body.firstChild);
-      body.appendChild(backdrop);
 
       // Обновить лейбл триггера из текущего активного пункта.
       function syncTriggerLabel() {
@@ -464,22 +459,20 @@
       syncTriggerLabel();
 
       function open() {
-        // M-S2 (18.05): меню теперь fixed относительно viewport.
-        // Вычисляем координаты под триггером каждый раз при открытии —
-        // это надёжно работает при любом скролле страницы.
+        // M-S2 (18.05): меню fixed относительно viewport, координаты
+        // под триггером через getBoundingClientRect — работает при
+        // любом скролле страницы. Backdrop убран в M-S2-TWEAK.
         var rect = trigger.getBoundingClientRect();
-        var gap = 6; // небольшой зазор между триггером и меню
+        var gap = 6;
         menu.style.top = (rect.bottom + gap) + 'px';
         menu.style.left = rect.left + 'px';
         menu.style.width = rect.width + 'px';
         menu.classList.add('m-open');
         trigger.classList.add('m-open');
-        backdrop.classList.add('m-open');
       }
       function close() {
         menu.classList.remove('m-open');
         trigger.classList.remove('m-open');
-        backdrop.classList.remove('m-open');
       }
 
       // Тап на триггер → открыть/закрыть.
@@ -495,8 +488,14 @@
         if (menu.classList.contains('m-open')) close();
       });
 
-      // Тап на backdrop → закрыть.
-      backdrop.addEventListener('click', close);
+      // M-S2-TWEAK: backdrop'а больше нет, поэтому закрытие по клику
+      // вне меню/триггера — через document. Тап внутри меню не закрывает.
+      document.addEventListener('click', function(e) {
+        if (!menu.classList.contains('m-open')) return;
+        if (menu.contains(e.target)) return;
+        if (trigger.contains(e.target)) return;
+        close();
+      });
 
       // Тап на пункт меню → закрыть выпадашку и обновить лейбл.
       // Используем capture-фазу через document, чтобы наш обработчик
