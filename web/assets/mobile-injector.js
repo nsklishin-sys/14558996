@@ -24,9 +24,72 @@
   // а JS почему-то нужно дополнительно проверить.
   // По умолчанию пусто — на каждом этапе добавляются модули.
 
-  // Ранний выход для десктопа — экономим работу
+  // Ранний выход для десктопа — экономим работу.
+  // Если страница загрузилась при ≤640 и потом viewport расширился
+  // (открытие/закрытие DevTools, drag границы окна, ротация устройства),
+  // отдельный resize-watcher (см. installResizeCleanup ниже) удалит
+  // мобильные инъекции из DOM при переходе > 640.
   if (window.innerWidth > 640) {
+    installResizeCleanup();
     return;
+  }
+  // При мобильной загрузке тоже регистрируем watcher — он сработает,
+  // если потом окно расширится на десктоп.
+  installResizeCleanup();
+
+  // Функция installResizeCleanup объявлена через function declaration,
+  // поэтому доступна выше по коду благодаря hoisting.
+  function installResizeCleanup() {
+    if (window.__lastopResizeCleanupInstalled) return;
+    window.__lastopResizeCleanupInstalled = true;
+
+    var MOBILE_CLASSES = [
+      'm-fab-action',
+      'm-chat-back',
+      'm-set-trigger',
+      'm-set-backdrop',
+      'm-cal-daysheet'
+    ];
+
+    var wasMobile = window.innerWidth <= 640;
+    var debounceTimer = null;
+
+    function onResize() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function() {
+        var isMobile = window.innerWidth <= 640;
+        if (wasMobile && !isMobile) {
+          // Мобила → десктоп. Удаляем все мобильные инъекции.
+          MOBILE_CLASSES.forEach(function(cls) {
+            var nodes = document.querySelectorAll('.' + cls);
+            for (var i = 0; i < nodes.length; i++) {
+              if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+            }
+          });
+          // Снимаем флаг с <html>, который скрывает родную кнопку
+          // на топбаре (он включался в injectFab вместе с m-fab-action).
+          document.documentElement.classList.remove('m-fab-mounted');
+          // Снимаем мобильные view-классы с .chat-panel.
+          var cp = document.querySelector('.chat-panel');
+          if (cp) {
+            cp.classList.remove('m-show-chat');
+            cp.classList.remove('m-show-dialogs');
+          }
+        } else if (!wasMobile && isMobile) {
+          // Десктоп → мобила. Простейшее надёжное решение —
+          // перезагрузить страницу, чтобы все 4 IIFE заново отработали.
+          // Этот сценарий редкий: пользователь обычно не ресайзит
+          // десктопное окно в мобильный размер.
+          location.reload();
+        }
+        wasMobile = isMobile;
+      }, 200);
+    }
+
+    window.addEventListener('resize', onResize);
+    if ('onorientationchange' in window) {
+      window.addEventListener('orientationchange', onResize);
+    }
   }
 
   // Проверка наличия токена — без него мы на гостевой странице.
