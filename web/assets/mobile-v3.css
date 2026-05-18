@@ -46,32 +46,34 @@ a,
 .nav-item,
 .icon-btn,
 .ftab {
-  /* ─── iOS Safari: предотвращение авто-зума при фокусе на инпуте ───
-     Safari на iOS автоматически зумит страницу когда фокус попадает
-     на <input>/<textarea> с font-size меньше 16px. После зума
-     viewport расползается, и важные элементы (кнопка отправки в
-     чате, кнопка submit формы) уходят за пределы видимой области.
-     Apple сама рекомендует font-size:16px+ для редактируемых полей
-     на мобильных страницах. На Android поведение не вызывает зум,
-     но 16px нейтрально для UX.
-
-     Применяем только когда поле в фокусе — это сохраняет визуал
-     плейсхолдеров и компактность нефокусных полей. Кроме text-input'ов
-     и textarea, охватываем select (там тот же зум).
-
-     Поля с inputmode="numeric" и type="number" iOS зумит реже, но
-     для надёжности добавляем и их. */
-  input:focus,
-  textarea:focus,
-  select:focus,
-  [contenteditable="true"]:focus {
-    font-size: 16px !important;
-  }
-
   /* Убираем синюю подсветку при тапе на iOS Safari. И2: универсальная норма. */
   -webkit-tap-highlight-color: transparent;
   /* Убирает 300ms задержку double-tap zoom на старых iOS. */
   touch-action: manipulation;
+}
+
+/* ─── iOS Safari: предотвращение авто-зума при фокусе на инпуте ───
+   Safari на iOS автоматически зумит страницу когда фокус попадает
+   на <input>/<textarea> с font-size меньше 16px. После зума
+   viewport расползается, и важные элементы (кнопка отправки в
+   чате, кнопка submit формы) уходят за пределы видимой области.
+   Apple сама рекомендует font-size:16px+ для редактируемых полей
+   на мобильных страницах. На Android поведение не вызывает зум,
+   но 16px нейтрально для UX.
+
+   Применяем правило в двух вариантах:
+   1) общий — input/textarea/select/contenteditable в фокусе
+   2) точечный — для .ci-textarea (поле сообщения в чате), чтобы
+      перебить специфичные стили класса. */
+@media (max-width: 640px) {
+  input:focus,
+  textarea:focus,
+  select:focus,
+  [contenteditable="true"]:focus,
+  .ci-textarea,
+  .ci-textarea:focus {
+    font-size: 16px !important;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────
