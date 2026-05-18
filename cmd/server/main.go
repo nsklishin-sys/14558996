@@ -1731,6 +1731,9 @@ func newSessionStore(db *sql.DB) *sessionStore {
 		},
 	}
 	go s.cleanupLoop()
+	// Фоновая чистка push-подписок: раз в сутки удаляет подписки
+	// с устойчивыми ошибками (>7 дней) и неактивные (>90 дней).
+	go pushnotify.CleanupLoop(db)
 	return s
 }
 

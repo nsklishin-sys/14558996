@@ -172,6 +172,7 @@ func SendToUser(ctx context.Context, db *sql.DB, userID int64, p Payload) {
 		TTL:             3600, // 1 час — push-сервер хранит сообщение если устройство офлайн
 	}
 
+	var sent, removed, errors int
 	for _, s := range subs {
 		wpSub := &webpush.Subscription{
 			Endpoint: s.endpoint,
@@ -183,6 +184,7 @@ func SendToUser(ctx context.Context, db *sql.DB, userID int64, p Payload) {
 		resp, err := webpush.SendNotificationWithContext(sendCtx, msg, wpSub, opts)
 		if err != nil {
 			markError(db, s.id, "send: "+err.Error())
+			errors++
 			continue
 		}
 		_, _ = io.Copy(io.Discard, resp.Body)
@@ -190,15 +192,25 @@ func SendToUser(ctx context.Context, db *sql.DB, userID int64, p Payload) {
 
 		switch resp.StatusCode {
 		case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
-			// success
+			sent++
+			// На успехе обнуляем флаг ошибки, если он был — подписка опять валидна.
+			_, _ = db.ExecContext(sendCtx, `
+				UPDATE push_subscriptions
+				SET last_error_at = NULL, last_error_msg = '', last_seen_at = NOW()
+				WHERE id = $1 AND last_error_at IS NOT NULL
+			`, s.id)
 		case http.StatusGone, http.StatusNotFound:
 			// Подписка мертва — удаляем
 			_, _ = db.ExecContext(sendCtx, `DELETE FROM push_subscriptions WHERE id = $1`, s.id)
+			removed++
 			log.Printf("pushnotify: removed dead subscription id=%d status=%d", s.id, resp.StatusCode)
 		default:
 			markError(db, s.id, "status: "+resp.Status)
+			errors++
 		}
 	}
+	// Итоговая метрика — видна в journalctl, позволяет грубо мониторить деливерабилити.
+	log.Printf("pushnotify: user=%d total=%d sent=%d removed=%d errors=%d", userID, len(subs), sent, removed, errors)
 }
 
 func markError(db *sql.DB, subID int64, msg string) {
@@ -218,4 +230,56 @@ func defaultIfEmpty(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// CleanupLoop запускается как фоновая горутина при старте сервера.
+// Раз в сутки удаляет подписки, чья последняя ошибка старше 7 дней —
+// это либо мёртвые VAPID-конфигурации, либо протухшие endpoint'ы которые
+// не вернули 410/404 (например, 403 от Apple). За 7 дней временные ошибки
+// успевают самовосстановиться через успешную отправку (которая обнуляет
+// last_error_at в ON CONFLICT). Если за неделю успеха не было — мертво.
+//
+// Также удаляем подписки которые ни разу не использовались дольше 90 дней
+// (last_seen_at < now() - 90d) — это юзеры которые подписались и больше
+// не заходят, скорее всего permission уже сняли.
+func CleanupLoop(db *sql.DB) {
+	// Первый прогон через 5 минут после старта, чтобы не нагружать БД при boot.
+	time.Sleep(5 * time.Minute)
+	CleanupOnce(db)
+
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		CleanupOnce(db)
+	}
+}
+
+// CleanupOnce — один прогон чистки. Экспортирован отдельно на случай если
+// захотим триггерить вручную через admin-эндпоинт.
+func CleanupOnce(db *sql.DB) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Удаляем подписки с устойчивой ошибкой (>7 дней)
+	res1, err := db.ExecContext(ctx, `
+		DELETE FROM push_subscriptions
+		WHERE last_error_at IS NOT NULL
+		  AND last_error_at < NOW() - INTERVAL '7 days'
+	`)
+	if err != nil {
+		log.Printf("pushnotify cleanup: stale errors: %v", err)
+	} else if n, _ := res1.RowsAffected(); n > 0 {
+		log.Printf("pushnotify cleanup: removed %d subscriptions with stale errors", n)
+	}
+
+	// Удаляем подписки которые ни разу не обновлялись >90 дней
+	res2, err := db.ExecContext(ctx, `
+		DELETE FROM push_subscriptions
+		WHERE last_seen_at < NOW() - INTERVAL '90 days'
+	`)
+	if err != nil {
+		log.Printf("pushnotify cleanup: stale last_seen: %v", err)
+	} else if n, _ := res2.RowsAffected(); n > 0 {
+		log.Printf("pushnotify cleanup: removed %d subscriptions inactive >90d", n)
+	}
 }
