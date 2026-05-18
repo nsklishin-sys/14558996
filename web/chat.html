@@ -2487,6 +2487,14 @@ if(document.readyState === 'loading'){
 function startPolling(){clearInterval(state.pollTimer);state.pollTimer=setInterval(pollTick,3000)};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pollTick()})
 function openNewDialogModal(){newDialogOverlay.classList.add('open');newDialogModal.classList.add('open');ndSearchFriends('')}
 function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogModal.classList.remove('open')}
+function showChatToast(msg){
+  if (typeof window.showToast === 'function') { window.showToast(msg); return; }
+  var el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:90vw;text-align:center';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.style.transition='opacity .25s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 300); }, 3000);
+}
 function ndSwitchTab(tab,btn){document.querySelectorAll('.nd-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.nd-pane').forEach(x=>x.classList.remove('active'));document.getElementById('nd-'+tab).classList.add('active')}
 async function ndSearchFriends(q){
   const query=(q||'').trim();
@@ -2507,7 +2515,27 @@ async function ndSearchFriends(q){
   }
   ndFriendList.innerHTML=users.map(u=>`<div class='nd-item' onclick="ndPickDirect('${esc(u.public_id||u.id||'')}')"><span>${esc(u.full_name||'')}</span><small>${esc((u.position||'')+(u.company_name?' · '+u.company_name:''))||(u.handle?'@'+esc(u.handle):'')}</small></div>`).join('');
 }
-async function ndPickDirect(id){const c=await openOrCreateDirectByPublicID(id);closeNewDialog();selectConversation(c.public_id)}
+async function ndPickDirect(id){
+  let c;
+  try {
+    c = await openOrCreateDirectByPublicID(id);
+  } catch (e) {
+    let msg = '';
+    const raw = (e && e.message) ? String(e.message) : '';
+    try { const j = JSON.parse(raw); msg = (j && j.error) ? String(j.error) : ''; } catch (_) {}
+    if(!msg){
+      if(raw.includes('403')) msg = 'Этот пользователь ограничил приём сообщений';
+      else if(raw.includes('404')) msg = 'Пользователь не найден';
+      else if(raw.includes('401')) msg = 'Сессия истекла, войдите снова';
+      else msg = 'Не удалось начать диалог';
+    }
+    closeNewDialog();
+    showChatToast(msg);
+    return;
+  }
+  closeNewDialog();
+  selectConversation(c.public_id);
+}
 async function ndSearchForGroup(q){
   const query=(q||'').trim();
   const d=await api('/friends').catch(()=>null);
