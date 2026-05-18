@@ -22575,6 +22575,11 @@ func renderHTMLInject() string {
 		out += "<script src=\"/assets/mobile-injector.js\" defer></script>\n"
 	}
 
+	// Push-уведомления (P4). Без killswitch — клиент сам тихо выходит,
+	// если у юзера нет токена в localStorage. Permission запрашивается
+	// только из юзер-инициированного window.LastopPush.enable() (P7 settings UI).
+	out += "<script src=\"/assets/push-client.js\" defer></script>\n"
+
 	return out
 }
 
