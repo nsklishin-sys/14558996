@@ -687,10 +687,10 @@ function renderTimeView(mode, days){
   }).join('');
   const hoursEl=document.getElementById(mode==='week'?'weekHours':'dayHours');
   let hoursHTML='';
-  for(let h=8;h<=22;h++)hoursHTML+=`<div class="cal-time-hour-lbl">${String(h).padStart(2,'0')}:00</div>`;
+  for(let h=0;h<24;h++)hoursHTML+=`<div class="cal-time-hour-lbl">${String(h).padStart(2,'0')}:00</div>`;
   hoursEl.innerHTML=hoursHTML;
   const daysEl=document.getElementById(mode==='week'?'weekDays':'dayDays');
-  const dayStart=8, dayEnd=23, hourPx=60;
+  const dayStart=0, dayEnd=24, hourPx=60;
   const colHeight=(dayEnd-dayStart)*hourPx;
   daysEl.innerHTML=days.map(d=>{
     const isToday=d.getTime()===today.getTime();
