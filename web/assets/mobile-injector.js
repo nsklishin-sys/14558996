@@ -135,7 +135,7 @@
         '<span class="m-bn-lbl">Уведомления</span>' +
       '</a>' +
       '<a class="m-bn-item" href="/chat.html" data-match="^/chat">' +
-        '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>' +
+        '<svg class="m-bn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="4,7 12,13 20,7"/></svg>' +
         '<span class="m-bn-lbl">Чат</span>' +
       '</a>' +
       '<a class="m-bn-item" href="/profile.html" data-match="^/profile">' +
