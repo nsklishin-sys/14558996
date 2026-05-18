@@ -363,7 +363,14 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
 .right::-webkit-scrollbar{display:none}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
 .card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
-.block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.block-title{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+.fmini{display:flex;align-items:center;gap:9px;padding:6px;border-radius:var(--rm);cursor:pointer;transition:background .15s;text-decoration:none;color:inherit}
+.fmini:hover{background:var(--gp)}
+.fmini-av{width:32px;height:32px;border-radius:9px;font-size:11px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0;position:relative}
+.fmini-online{position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)}
+.fmini-info{min-width:0;flex:1}
+.fmini-name{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmini-role{font-size:10px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Контактная информация (правая колонка) */
 .info-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)}
@@ -1021,9 +1028,17 @@ async function loadAllProfileCounts(){
       onlineBlock.innerHTML=online.slice(0,5).map(f=>{
         const name=f.full_name||f.friend_name||'Участник';
         const pid=f.public_id||f.friend_id||'';
-        return `<a href="/profile_user.html?id=${encodeURIComponent(pid)}" style="display:flex;align-items:center;gap:8px;padding:6px 0;text-decoration:none;color:var(--t)">
-          <div style="position:relative;width:28px;height:28px;border-radius:8px;background:${colorFor(name)};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">${esc(letter(name))}<div style="position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)"></div></div>
-          <div style="font-size:12px;font-weight:600">${esc(name)}</div>
+        // Используем классы .fmini-* (единообразно с profile_user.html) —
+        // даёт hover-эффект и аккуратное отображение позиции/компании.
+        const av=f.avatar_url
+          ? `<div class="fmini-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${colorFor(name)}"><div class="fmini-online"></div></div>`
+          : `<div class="fmini-av" style="background:${colorFor(name)}">${esc(letter(name))}<div class="fmini-online"></div></div>`;
+        return `<a class="fmini" href="/profile_user.html?id=${encodeURIComponent(pid)}">
+          ${av}
+          <div class="fmini-info">
+            <div class="fmini-name">${esc(name)}</div>
+            <div class="fmini-role">${esc(f.position||f.company_name||'')}</div>
+          </div>
         </a>`;
       }).join('');
     }
