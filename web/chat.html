@@ -2487,11 +2487,18 @@ if(document.readyState === 'loading'){
 function startPolling(){clearInterval(state.pollTimer);state.pollTimer=setInterval(pollTick,3000)};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pollTick()})
 function openNewDialogModal(){newDialogOverlay.classList.add('open');newDialogModal.classList.add('open');ndSearchFriends('')}
 function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogModal.classList.remove('open')}
-function showChatToast(msg){
-  if (typeof window.showToast === 'function') { window.showToast(msg); return; }
+function showChatToast(msg, type){
+  // Универсальный toast платформы (см. /assets/confirm-modal.js).
+  // type: 'error' | 'warn' | 'success' | 'info'. По умолчанию — 'error',
+  // т.к. showChatToast в /chat.html используется только для ошибок.
+  if (typeof window.lastopToast === 'function') {
+    window.lastopToast(msg, type || 'error');
+    return;
+  }
+  // Fallback (confirm-modal.js не загрузился). Минимальный стиль платформы.
   var el = document.createElement('div');
   el.textContent = msg;
-  el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:90vw;text-align:center';
+  el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--w,#fff);color:var(--t,#1A2A22);padding:10px 16px;border:1px solid var(--bdr,#DDE8E2);border-left:3px solid var(--red,#E04040);border-radius:10px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 6px 24px rgba(30,138,76,.13);max-width:90vw;text-align:center;font-family:inherit';
   document.body.appendChild(el);
   setTimeout(function(){ el.style.transition='opacity .25s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 300); }, 3000);
 }
