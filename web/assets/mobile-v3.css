@@ -1442,20 +1442,88 @@ a,
   }
 
   /* M3 — communities: .comm-toolbar содержит title + 2x mode-switch +
-     comm-tabs. На мобиле переносим на 2 строки. */
+     comm-tabs + btn-create. На мобиле перестраиваем в column-flex,
+     каждая логическая зона на своей строке. mode-switch и comm-tabs
+     скроллятся горизонтально, если не помещаются. */
   .comm-toolbar {
-    flex-wrap: wrap;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
+    align-items: stretch;
+  }
+  .comm-title {
+    align-self: flex-start;
+  }
+  .comm-toolbar .mode-switch {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .comm-toolbar .mode-switch::-webkit-scrollbar {
+    display: none;
+  }
+  .comm-toolbar .mode-switch .mode-btn {
+    flex-shrink: 0;
+  }
+  .comm-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .comm-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .comm-tabs .ctab {
+    flex-shrink: 0;
   }
 
-  /* M4 — exhibitions: .ex-toolbar содержит title + ex-tabs + toolbar-right.
-     Переносим, чтобы .toolbar-right уходил на новую строку при нехватке. */
-  .ex-toolbar {
-    flex-wrap: wrap;
+  /* M4 — exhibitions: .ex-toolbar layout уже есть в блоке выше
+     ("EXHIBITIONS .ex-toolbar") — flex-direction:column, ex-tabs
+     с overflow-x:auto. Старый M-S1 случайно добавил конфликтующий
+     flex-wrap — он удалён. */
+
+  /* (Новое) Проекты: .proj-toolbar по структуре идентичен ex-toolbar
+     (title + tabs + toolbar-right с view-switch и btn-create), но
+     раньше адаптации для мобилки не было. Применяем тот же
+     column-flex паттерн. */
+  .proj-toolbar {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
+    align-items: stretch;
   }
-  .ex-toolbar .toolbar-right {
+  .proj-title {
+    align-self: flex-start;
+  }
+  .proj-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .proj-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .proj-tabs .ptab {
+    flex-shrink: 0;
+  }
+  .proj-toolbar .toolbar-right {
+    display: flex;
     flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  /* view-btn компактные, не растягиваются */
+  .proj-toolbar .toolbar-right > .view-btn {
+    flex: 0 0 36px;
+  }
+  /* btn-create занимает всё оставшееся место — кнопка читается, не обрезается */
+  .proj-toolbar .toolbar-right > .btn-create {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
   }
 
   /* M7 — tasks: .t-quickadd (label + input + hint). На мобиле hint
