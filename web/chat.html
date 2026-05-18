@@ -2911,7 +2911,11 @@ function cmSearchFriends(q){
     const listEl = document.getElementById('cmInviteList');
     if(!q || q.length < 2){ listEl.innerHTML = ''; return; }
     try{
-      const r = await fetch(`/api/friends?search=${encodeURIComponent(q)}`,{
+      // search — фильтр по подстроке имени/email на бэке.
+      // exclude_conv — исключить друзей которые уже в этой группе.
+      const params = new URLSearchParams({ search: q });
+      if (cmConv?.public_id) params.set('exclude_conv', cmConv.public_id);
+      const r = await fetch(`/api/friends?${params.toString()}`,{
         headers:{Authorization:'Bearer '+localStorage.getItem('token')}
       });
       const d = await r.json();

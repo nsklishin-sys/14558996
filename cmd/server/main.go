@@ -3473,7 +3473,9 @@ func main() {
 			return
 		}
 
-		friends, err := listFriends(db, userID)
+		search := r.URL.Query().Get("search")
+		excludeConv := r.URL.Query().Get("exclude_conv")
+		friends, err := listFriends(db, userID, search, excludeConv)
 		if err != nil {
 			log.Printf("list friends error: %v", err)
 			writeError(w, http.StatusInternalServerError, "Ошибка сервера")
@@ -14759,8 +14761,29 @@ func handleProjectActionError(w http.ResponseWriter, err error) {
 	}
 }
 
-func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
-	rows, err := db.Query(`
+func listFriends(db *sql.DB, userID int64, search string, excludeConvPublicID string) ([]friendDTO, error) {
+	// Базовые условия + динамические для search и exclude_conv.
+	args := []any{userID}
+	conds := []string{
+		"fr.status = 'accepted'",
+		"($1 IN (fr.requester_id, fr.addressee_id))",
+		"u.is_deleted = FALSE",
+	}
+	if s := strings.TrimSpace(search); s != "" {
+		// ILIKE по full_name/email с escape для %_ внутри пользовательской подстроки.
+		safe := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_").Replace(s)
+		args = append(args, "%"+safe+"%")
+		conds = append(conds, fmt.Sprintf("(u.full_name ILIKE $%d ESCAPE '\\' OR u.email ILIKE $%d ESCAPE '\\')", len(args), len(args)))
+	}
+	if cid := strings.TrimSpace(excludeConvPublicID); cid != "" {
+		args = append(args, cid)
+		conds = append(conds, fmt.Sprintf(`NOT EXISTS (
+			SELECT 1 FROM chat_participants cp
+			JOIN chat_conversations cc ON cc.id = cp.conversation_id
+			WHERE cc.public_id = $%d AND cp.user_id = u.id
+		)`, len(args)))
+	}
+	query := `
 		SELECT u.public_id, u.full_name, u.email,
 		  COALESCE(u.position,''), COALESCE(u.company_name,''), COALESCE(u.avatar_url,''),
 		  EXISTS(
@@ -14773,11 +14796,11 @@ func listFriends(db *sql.DB, userID int64) ([]friendDTO, error) {
 			WHEN fr.requester_id = $1 THEN fr.addressee_id
 			ELSE fr.requester_id
 		END
-		WHERE fr.status = 'accepted'
-		  AND ($1 IN (fr.requester_id, fr.addressee_id))
-		  AND u.is_deleted = FALSE
+		WHERE ` + strings.Join(conds, " AND ") + `
 		ORDER BY LOWER(u.full_name)
-	`, userID)
+		LIMIT 50
+	`
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
