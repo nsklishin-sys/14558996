@@ -13081,9 +13081,19 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 		// Web-push: асинхронно шлём системное уведомление всем устройствам юзера.
 		// Tag = type:source_id — одинаковый tag заменяет предыдущую нотификацию,
 		// чтобы не накапливались дубли при апдейтах.
+		// Для chat_message title переопределяем на чистое имя отправителя —
+		// в push контекст «это чат» виден из URL домена и иконки, дублировать
+		// «написал вам» избыточно. Для остальных типов оставляем title как есть.
+		pushTitle := title
+		pushBody := preview
+		if p.Type == "chat_message" {
+			// title для chat_message приходит как "<actorName> написал вам" —
+			// срезаем суффикс если он есть, оставляем только имя.
+			pushTitle = strings.TrimSuffix(title, " написал вам")
+		}
 		go pushnotify.SendToUser(context.Background(), db, p.RecipientID, pushnotify.Payload{
-			Title:     title,
-			Body:      preview,
+			Title:     pushTitle,
+			Body:      pushBody,
 			Tag:       fmt.Sprintf("%s-%d", p.Type, p.SourceID),
 			URL:       pushnotify.URLForNotification(p.Type, p.SourceType, p.SourcePublicID),
 			NotifType: p.Type,
@@ -22290,6 +22300,10 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 			actorName = cmName
 		}
 	}
+	// Для in-app уведомления оставляем явное "написал вам" — он отображается
+	// в /notifications.html где title служит и заголовком, и контекстом.
+	// Для push title будет ниже переопределён на чистое имя — там контекст
+	// доставки виден из домена (lastop.ru) и иконки.
 	title := actorName + " написал вам"
 	preview := truncateRunes(content, 200)
 	// Для чата: одно «активное» уведомление на диалог-актор. При повторе — апдейтим title/preview/created_at и сбрасываем is_read.
@@ -22315,8 +22329,10 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 		})
 		// Web-push: tag для chat одинаковый на диалог-актор, новые сообщения
 		// от того же отправителя заменяют предыдущую нотификацию вместо стека.
+		// Title = чистое имя отправителя, body = текст сообщения. Так нотификация
+		// читается естественно: "Максим Туманов / lastop.ru / ещещ раз пишу".
 		go pushnotify.SendToUser(context.Background(), db, recipientID, pushnotify.Payload{
-			Title:     title,
+			Title:     actorName,
 			Body:      preview,
 			Tag:       fmt.Sprintf("chat_message-%d", conversationID),
 			URL:       pushnotify.URLForNotification("chat_message", "chat", conversationPublicID),
