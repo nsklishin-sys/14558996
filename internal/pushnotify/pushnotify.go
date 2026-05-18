@@ -129,11 +129,22 @@ func SendToUser(ctx context.Context, db *sql.DB, userID int64, p Payload) {
 		return
 	}
 
+	// PUBLIC_URL — env-переменная с абсолютным URL сайта (https://lastop.ru).
+	// Если не задана — определяем по env BASE_URL или фолбэк на lastop.ru.
+	// Chrome на Android и Firefox требуют АБСОЛЮТНЫЙ URL иконки —
+	// относительные пути они игнорируют.
+	siteURL := strings.TrimRight(os.Getenv("PUBLIC_URL"), "/")
+	if siteURL == "" {
+		siteURL = strings.TrimRight(os.Getenv("BASE_URL"), "/")
+	}
+	if siteURL == "" {
+		siteURL = "https://lastop.ru"
+	}
 	body := payloadJSON{
 		Title: p.Title,
 		Body:  p.Body,
-		Icon:  defaultIfEmpty(p.Icon, "/assets/icon-192.png"),
-		Badge: defaultIfEmpty(p.Badge, "/assets/icon-192.png"),
+		Icon:  defaultIfEmpty(p.Icon, siteURL+"/assets/icon-192.png"),
+		Badge: defaultIfEmpty(p.Badge, siteURL+"/assets/icon-192.png"),
 		Tag:   p.Tag,
 		Data: map[string]any{
 			"url":  p.URL,
