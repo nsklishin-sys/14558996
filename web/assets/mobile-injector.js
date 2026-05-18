@@ -306,8 +306,11 @@
       }
 
       // Инжектируем кнопку «Назад» в .chat-head (левее аватара).
+      // Дополнительный guard внутри функции: при resize окна вверх
+      // от ≤640px этот init может быть вызван повторно через 'resize'
+      // handler ниже, и нам нужно избежать инъекции на десктопе.
       var chatHead = panel.querySelector('.chat-head');
-      if (chatHead && !chatHead.querySelector('.m-chat-back')) {
+      if (chatHead && window.innerWidth <= 640 && !chatHead.querySelector('.m-chat-back')) {
         var backBtn = document.createElement('button');
         backBtn.type = 'button';
         backBtn.className = 'm-chat-back';
@@ -321,6 +324,29 @@
         chatHead.insertBefore(backBtn, chatHead.firstChild);
       }
     }
+
+    // Реактивно убираем m-chat-back при ресайзе на десктопный размер.
+    // Это нужно для случаев когда страница загрузилась на ≤640px,
+    // кнопка инжектилась, а потом юзер расширил окно (ротация устройства,
+    // открытие/закрытие DevTools, drag границы окна).
+    function cleanupOnDesktop() {
+      if (window.innerWidth > 640) {
+        var existing = document.querySelector('.m-chat-back');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        // Также снимаем мобильные view-классы с панели, чтобы десктоп
+        // показывал обе колонки одновременно (нормальное состояние).
+        var p = document.querySelector('.chat-panel');
+        if (p) { p.classList.remove('m-show-chat'); p.classList.remove('m-show-dialogs'); }
+      } else {
+        // На ресайзе вниз — заново инициализируем (вернёт кнопку).
+        init();
+      }
+    }
+    var resizeTimer = null;
+    window.addEventListener('resize', function() {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(cleanupOnDesktop, 150);
+    });
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
