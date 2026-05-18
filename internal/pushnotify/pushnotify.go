@@ -146,8 +146,16 @@ func SendToUser(ctx context.Context, db *sql.DB, userID int64, p Payload) {
 		return
 	}
 
+	// webpush-go v1.4.0 в vapid.go:76 безусловно добавляет "mailto:" если
+	// subject не начинается с "https:" — даже если "mailto:" там уже есть.
+	// Из-за этого Apple отбивает push как BadJwtToken. Срезаем префикс
+	// если он есть — библиотека сама его допишет.
+	normalizedSubject := subject
+	if strings.HasPrefix(normalizedSubject, "mailto:") {
+		normalizedSubject = strings.TrimPrefix(normalizedSubject, "mailto:")
+	}
 	opts := &webpush.Options{
-		Subscriber:      subject,
+		Subscriber:      normalizedSubject,
 		VAPIDPublicKey:  publicKey,
 		VAPIDPrivateKey: privateKey,
 		TTL:             3600, // 1 час — push-сервер хранит сообщение если устройство офлайн
