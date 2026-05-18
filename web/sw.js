@@ -71,3 +71,70 @@ self.addEventListener('fetch', (event) => {
     cacheFirst(event);
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// Push-уведомления (P3)
+// Обработчики push и notificationclick. Изолированы от кеша
+// — изменения здесь не затрагивают существующую логику fetch.
+// ─────────────────────────────────────────────────────────────
+
+// Безопасный парсинг payload. Бэкенд (webpush-go в P6) шлёт JSON;
+// при любой ошибке парсинга показываем дефолтную нотификацию,
+// чтобы пользователь хотя бы узнал что что-то пришло.
+function parsePushPayload(event) {
+  if (!event.data) return {};
+  try {
+    return event.data.json();
+  } catch (_) {
+    try { return { body: event.data.text() }; } catch (__) { return {}; }
+  }
+}
+
+self.addEventListener('push', (event) => {
+  const data = parsePushPayload(event);
+  const title = data.title || 'LASTOP GROUP';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/assets/icon-192.png',
+    badge: data.badge || '/assets/icon-192.png',
+    tag: data.tag || undefined,            // одинаковый tag заменяет предыдущую нотификацию
+    renotify: !!data.renotify,
+    requireInteraction: !!data.requireInteraction,
+    data: data.data || {},                 // { url, type, ... } — читаем в notificationclick
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  // Превращаем относительный URL в абсолютный относительно scope SW
+  const absoluteUrl = new URL(targetUrl, self.registration.scope).href;
+
+  event.waitUntil((async () => {
+    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // 1. Точное совпадение URL — фокусируем существующую вкладку
+    for (const client of allClients) {
+      if (client.url === absoluteUrl && 'focus' in client) {
+        return client.focus();
+      }
+    }
+    // 2. Любая вкладка того же origin — фокусируем и навигируем
+    for (const client of allClients) {
+      try {
+        const clientOrigin = new URL(client.url).origin;
+        if (clientOrigin === self.location.origin && 'focus' in client) {
+          await client.focus();
+          if ('navigate' in client) {
+            try { await client.navigate(absoluteUrl); } catch (_) {}
+          }
+          return;
+        }
+      } catch (_) {}
+    }
+    // 3. Открываем новое окно
+    if (self.clients.openWindow) {
+      return self.clients.openWindow(absoluteUrl);
+    }
+  })());
+});
