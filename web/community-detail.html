@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script src="/assets/utils.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -878,7 +879,7 @@ async function submitComment(publicID,btn){
   }
 }
 
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+const esc = window.lastopEsc;
 function queryCommunityID(){const id=new URLSearchParams(location.search).get('id');const n=Number(id);return Number.isFinite(n)&&n>0?n:null}
 function buildCommunityPersona(c){
   const cat=(c?.category||'Сообщество').trim()||'Сообщество';
