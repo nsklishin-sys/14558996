@@ -2505,9 +2505,19 @@ async function ndSearchFriends(q){
     const d=await api('/users/search?'+param).catch(()=>null);
     users=(d&&d.users)||[];
   } else {
-    // Пусто — показываем друзей
+    // Пусто — показываем друзей.
+    // /api/friends возвращает {friend_id, friend_name, email, is_online} —
+    // нормализуем под формат рендера ({public_id, full_name, ...}).
     const d=await api('/friends').catch(()=>null);
-    users=(d&&d.friends)||[];
+    const rawFriends=(d&&d.friends)||[];
+    users=rawFriends.map(f=>({
+      public_id: f.public_id || f.friend_id || '',
+      full_name: f.full_name || f.friend_name || '',
+      handle:    f.handle || '',
+      position:  f.position || '',
+      company_name: f.company_name || '',
+      is_online: !!f.is_online,
+    }));
   }
   if(!users.length){
     ndFriendList.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">'+(query?'Никого не найдено':'Введите имя или @никнейм для поиска')+'</div>';
