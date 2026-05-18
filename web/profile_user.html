@@ -446,7 +446,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="prof-head">
       <div class="prof-head-top">
         <div class="prof-av">
-          <span id="profileAvatarText">НК</span><div class="prof-av-badge"></div>
+          <span id="profileAvatarText">НК</span><div class="prof-av-badge" id="profileOnlineBadge" style="display:none"></div>
         </div>
         <div class="prof-main">
           <div class="prof-name-row">
@@ -826,6 +826,15 @@ function applyViewedUserProfile(u){
       const txt = document.getElementById('profileAvatarText');
       if (txt) txt.style.display = '';
     }
+  }
+  // B-PROFILE-USER-ONLINE (18.05): зелёный значок показываем только
+  // если юзер реально онлайн. is_online приходит с бэка с учётом
+  // приватности владельца (PrivacyShowOnline). Если приватность
+  // «не показывать» — поле всегда false.
+  const _onlineBadge = document.getElementById('profileOnlineBadge');
+  if (_onlineBadge) {
+    _onlineBadge.style.display = u.is_online ? '' : 'none';
+    _onlineBadge.title = u.is_online ? 'В сети' : '';
   }
   document.getElementById('profileFullName').textContent=fullName;
   const _shareBtnViewed = document.getElementById('btnShareViewedProfile');
