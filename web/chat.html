@@ -1605,9 +1605,43 @@ function renderAttachment(m){
   const isXls = /\.(xlsx?|csv|ods)$/i.test(url);
   const iconType = isPdf ? '📄' : isDoc ? '📝' : isXls ? '📊' : '📎';
   
-  // Формируем URL для скачивания с оригинальным именем через Content-Disposition.
-  // Параметр ?download=имя обрабатывается на бэке (storage.Serve).
-  const downloadHref = url + (url.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(name);
+  // Формируем URL для скачивания с оригинальным именем.
+  // КРИТИЧНО: качаем не напрямую из S3, а через наш домен /uploads/<key> —
+  // тогда работает атрибут <a download="..."> (same-origin), и бэк
+  // S3Storage.Serve добавляет response-content-disposition к S3-redirect.
+  // Generic-преобразование любого варианта S3 URL в относительный /uploads/<key>:
+  // - https://storage.yandexcloud.net/lastop-uploads/2026/05/abc.docx → /uploads/2026/05/abc.docx
+  // - https://lastop-uploads.storage.yandexcloud.net/2026/05/abc.docx → /uploads/2026/05/abc.docx (через bucket-в-хосте)
+  // - /uploads/2026/05/abc.docx (если бэк уже отдал относительный) → как есть
+  function _attachToDownloadPath(rawUrl){
+    var u = String(rawUrl || '');
+    // Уже относительный /uploads/ — оставляем
+    if (u.indexOf('/uploads/') === 0) return u;
+    // Path-style: ".../lastop-uploads/<key>"
+    var i = u.indexOf('/lastop-uploads/');
+    if (i >= 0) return '/uploads/' + u.substring(i + '/lastop-uploads/'.length);
+    // Virtual-host style: "https://lastop-uploads.storage.yandexcloud.net/<key>"
+    try {
+      var parsed = new URL(u, location.origin);
+      if (parsed.hostname.indexOf('lastop-uploads.') === 0) {
+        return '/uploads' + parsed.pathname + parsed.search;
+      }
+      // Случайный относительный путь — возвращаем pathname как есть
+      if (parsed.origin === location.origin) return parsed.pathname + parsed.search;
+    } catch (_) {}
+    // Не наш S3 — отдаём как есть (на случай если когда-то будут внешние ссылки)
+    return u;
+  }
+  var basePath = _attachToDownloadPath(url);
+  // Чистим существующий ?download=... и ставим свежий
+  var qPos = basePath.indexOf('?');
+  if (qPos >= 0) {
+    var params = basePath.substring(qPos + 1).split('&').filter(function(p){
+      return p && p.indexOf('download=') !== 0;
+    });
+    basePath = basePath.substring(0, qPos) + (params.length ? '?' + params.join('&') : '');
+  }
+  const downloadHref = basePath + (basePath.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(name);
 
   return `<div class='msg-files' style='margin-top:6px'>
     <a href='${esc(downloadHref)}' download='${esc(name)}' rel='noopener' class='msg-file' style='text-decoration:none;color:inherit'>
