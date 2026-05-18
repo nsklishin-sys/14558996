@@ -1602,4 +1602,20 @@ a,
     -webkit-line-clamp: 3;
     word-break: break-word;
   }
+
+  /* M-S3-CAL (18.05): в режиме «Неделя» календаря (.cal-time-days.week)
+     колонка дня всего ~60-70px шириной — название события физически
+     не вмещается и обрезается до «3...» без смысла. Скрываем title,
+     оставляем только время крупно. Название читается по тапу в детальке.
+     В режиме «День» (одна колонка на весь экран) title остаётся видимым. */
+  .cal-time-days.week .cal-time-event-title {
+    display: none;
+  }
+  .cal-time-days.week .cal-time-event {
+    padding: 2px 3px;
+    border-left-width: 2px;
+  }
+  .cal-time-days.week .cal-time-event-time {
+    font-size: 10px;
+  }
 }
