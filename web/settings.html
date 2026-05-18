@@ -149,6 +149,8 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 }
 .toggle-row:last-child{margin-bottom:0}
 .toggle-row:hover{border-color:var(--gb)}
+.toggle-row.disabled{opacity:.5;cursor:not-allowed}
+.toggle-row.disabled:hover{border-color:var(--bdr)}
 .tr-left{flex:1}
 .tr-title{font-size:12px;font-weight:600;color:var(--t)}
 .tr-sub{font-size:10px;color:var(--gmt);margin-top:2px}
@@ -562,9 +564,12 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
             <div class="tr-left"><div class="tr-title">Email-уведомления</div><div class="tr-sub">Важные события и дайджест раз в неделю</div></div>
             <label class="toggle"><input type="checkbox" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
           </div>
-          <div class="toggle-row" data-setting="notif_push" onclick="toggleCheck(this)">
-            <div class="tr-left"><div class="tr-title">Push-уведомления</div><div class="tr-sub">Мгновенные уведомления в браузере</div></div>
-            <label class="toggle"><input type="checkbox"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <div class="toggle-row" id="pushToggleRow" data-setting="notif_push" onclick="togglePushDevice(event, this)">
+            <div class="tr-left">
+              <div class="tr-title">Push-уведомления</div>
+              <div class="tr-sub" id="pushToggleSub">Мгновенные уведомления на этом устройстве</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="pushToggleInput"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
           </div>
         </div>
 
@@ -923,6 +928,100 @@ initSettingsPanels();
 function toggleCheck(row){
   const inp=row.querySelector('input[type=checkbox]');
   if(inp)inp.checked=!inp.checked;
+}
+
+/* ── PUSH-уведомления на устройстве (P7) ──
+   Перехватывает клик по #pushToggleRow ДО общего toggleCheck.
+   Делегирует подписку/отписку в window.LastopPush API. */
+async function togglePushDevice(event, row){
+  event.preventDefault();
+  event.stopPropagation();
+  const inp = document.getElementById('pushToggleInput');
+  const sub = document.getElementById('pushToggleSub');
+  if (!window.LastopPush) {
+    if (window.lastopToast) window.lastopToast('Push-модуль не загружен', 'error');
+    return;
+  }
+  // Блокируем повторные клики на время операции.
+  if (row.dataset.busy === '1') return;
+  row.dataset.busy = '1';
+  const wasChecked = !!(inp && inp.checked);
+  try {
+    if (!wasChecked) {
+      // Включаем
+      const r = await window.LastopPush.enable();
+      if (r && r.ok) {
+        if (inp) inp.checked = true;
+        if (sub) sub.textContent = 'Push включены на этом устройстве';
+        if (window.lastopToast) window.lastopToast('Push-уведомления включены', 'success');
+      } else {
+        if (inp) inp.checked = false;
+        const reason = r && r.reason;
+        let msg = 'Не удалось включить уведомления';
+        if (reason === 'denied') {
+          msg = 'Уведомления заблокированы в настройках браузера';
+          if (sub) sub.textContent = 'Разрешите уведомления в настройках браузера';
+          row.classList.add('disabled');
+        } else if (reason === 'unsupported') {
+          msg = 'Браузер не поддерживает push-уведомления';
+        } else if (reason === 'no_token') {
+          msg = 'Сессия истекла, войдите снова';
+        }
+        if (window.lastopToast) window.lastopToast(msg, 'error');
+      }
+    } else {
+      // Выключаем
+      await window.LastopPush.disable();
+      if (inp) inp.checked = false;
+      if (sub) sub.textContent = 'Мгновенные уведомления на этом устройстве';
+      if (window.lastopToast) window.lastopToast('Push-уведомления выключены', 'info');
+    }
+  } catch (e) {
+    if (inp) inp.checked = wasChecked;
+    if (window.lastopToast) window.lastopToast('Ошибка: ' + (e.message || e), 'error');
+  } finally {
+    row.dataset.busy = '';
+  }
+}
+
+/* Инициализация состояния push-toggle при загрузке /settings.html */
+async function initPushToggleState(){
+  const row = document.getElementById('pushToggleRow');
+  const inp = document.getElementById('pushToggleInput');
+  const sub = document.getElementById('pushToggleSub');
+  if (!row || !inp || !window.LastopPush) return;
+  try {
+    const st = await window.LastopPush.status();
+    if (!st || !st.supported) {
+      inp.checked = false;
+      inp.disabled = true;
+      row.classList.add('disabled');
+      if (sub) sub.textContent = 'Этот браузер не поддерживает push-уведомления';
+      row.removeAttribute('onclick');
+      return;
+    }
+    if (st.permission === 'denied') {
+      inp.checked = false;
+      row.classList.add('disabled');
+      if (sub) sub.textContent = 'Разрешите уведомления в настройках браузера';
+      return;
+    }
+    // permission default или granted — toggle активен
+    inp.checked = !!st.subscribed;
+    if (sub) {
+      sub.textContent = st.subscribed
+        ? 'Push включены на этом устройстве'
+        : 'Мгновенные уведомления на этом устройстве';
+    }
+  } catch (_) {
+    /* тихо — оставляем дефолтное состояние */
+  }
+}
+// Запускаем после полной загрузки страницы (push-client.js грузится через defer).
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPushToggleState);
+} else {
+  initPushToggleState();
 }
 
 /* ── РАДИО для сообщений ── */
