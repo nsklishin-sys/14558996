@@ -12941,8 +12941,15 @@ func canViewerMessageOwner(db *sql.DB, viewerID, ownerID int64, whoCanMessage st
 }
 
 func hasActiveSession(db *sql.DB, userID int64) bool {
+	// «Онлайн» = у юзера есть сессия, в которой last_seen_at обновлялся
+	// за последние 5 минут. last_seen_at обновляется при каждом
+	// авторизованном запросе (UPDATE sessions SET last_seen_at = NOW()),
+	// поэтому критерий точный: пока юзер активно ходит по платформе —
+	// он «онлайн», когда уходит — через 5 минут гаснет.
+	// Раньше критерием было expires_at > NOW(), но сессии живут 30 дней,
+	// и любой юзер заходивший за месяц считался «онлайн» — это неверно.
 	var isOnline bool
-	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM sessions WHERE user_id=$1 AND expires_at > NOW())`, userID).Scan(&isOnline)
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM sessions WHERE user_id=$1 AND last_seen_at > NOW() - INTERVAL '5 minutes')`, userID).Scan(&isOnline)
 	return err == nil && isOnline
 }
 
