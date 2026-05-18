@@ -751,14 +751,13 @@ a,
     transform: rotate(180deg);
   }
 
-  /* Само меню .settings-menu по умолчанию скрыто (выезжает по тапу).
-     Размещаем absolute под триггером (триггер sticky, но он находится
-     внутри .settings-body, поэтому абсолютное позиционирование от него). */
+  /* Меню привязано к viewport (position:fixed), а не к .settings-body
+     (M-S2, 18.05). Раньше при position:absolute и скролле страницы
+     меню оказывалось выше viewport — оставалось вне видимой области.
+     Координаты top/left/right выставляет JS из mobile-injector через
+     getBoundingClientRect() триггера в момент открытия. */
   .settings-menu {
-    position: absolute;
-    top: 56px; /* высота триггера + небольшой gap */
-    left: 0;
-    right: 0;
+    position: fixed;
     z-index: 7;
     display: flex;
     flex-direction: column;
@@ -811,16 +810,9 @@ a,
     margin: 6px 4px;
   }
 
-  /* Кнопку «Выйти» из меню скрываем — выход доступен в dropdown профиля
-     топбара. На мобиле dropdown и так компактен, не плодим контролы. */
-  .settings-menu .sm-item[onclick*="logout"] {
-    display: none;
-  }
-  /* Заодно скрываем divider который вёл к нему. */
-  .settings-menu .sm-item[onclick*="logout"] + .sm-div,
-  .settings-menu .sm-div:last-child {
-    display: none;
-  }
+  /* «Выйти» виден в выпадашке (M-S2, 18.05) — раньше скрывался, но
+     пользователи ожидают видеть его именно тут. Стиль кнопки уже
+     задан inline (color:var(--red)), достаточно не прятать. */
 
   /* Затемнение фона при открытой выпадашке. */
   .m-set-backdrop {

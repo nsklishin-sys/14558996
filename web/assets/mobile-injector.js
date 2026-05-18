@@ -464,6 +464,14 @@
       syncTriggerLabel();
 
       function open() {
+        // M-S2 (18.05): меню теперь fixed относительно viewport.
+        // Вычисляем координаты под триггером каждый раз при открытии —
+        // это надёжно работает при любом скролле страницы.
+        var rect = trigger.getBoundingClientRect();
+        var gap = 6; // небольшой зазор между триггером и меню
+        menu.style.top = (rect.bottom + gap) + 'px';
+        menu.style.left = rect.left + 'px';
+        menu.style.width = rect.width + 'px';
         menu.classList.add('m-open');
         trigger.classList.add('m-open');
         backdrop.classList.add('m-open');
@@ -479,6 +487,12 @@
         e.stopPropagation();
         if (menu.classList.contains('m-open')) close();
         else open();
+      });
+
+      // M-S2: при ресайзе/повороте — закрываем меню, чтобы оно не
+      // оставалось с устаревшими координатами относительно нового viewport.
+      window.addEventListener('resize', function() {
+        if (menu.classList.contains('m-open')) close();
       });
 
       // Тап на backdrop → закрыть.
