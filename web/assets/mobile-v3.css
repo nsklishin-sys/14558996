@@ -908,9 +908,9 @@ a,
     gap: 8px;
     align-items: stretch;
   }
+  /* На мобиле заголовок раздела дублирует bottom-nav и url — скрываем. */
   .ex-title {
-    /* Не растягиваем — пусть будет inline в первой строке */
-    align-self: flex-start;
+    display: none;
   }
   /* Tabs — горизонтальный скролл. */
   .ex-tabs {
@@ -927,26 +927,12 @@ a,
   .ex-tabs .etab {
     flex-shrink: 0;
   }
-  /* Правая группа: view-btn компактные, кнопки занимают оставшееся пространство. */
+  /* Кнопка «+ Создать выставку», «+ Заявка на стенд» и view-switch
+     (grid/list) на мобиле скрыты: создание доступно через зелёный
+     FAB рядом с аватаром в топбаре (m-fab-action), а list-view на
+     мобиле визуально идентичен grid-view (одна колонка). */
   .ex-toolbar .toolbar-right {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-    justify-content: flex-start;
-  }
-  /* Кнопки «Создать выставку» и «Заявка на стенд» — flex:1 чтобы делили
-     оставшееся место поровну и не обрезались. */
-  .ex-toolbar .toolbar-right > #btnCreateExhibition,
-  .ex-toolbar .toolbar-right > .btn-add {
-    flex: 1 1 calc(50% - 8px);
-    min-width: 0;
-    margin-right: 0 !important;
-    justify-content: center;
-  }
-  /* view-btn (Плитка/Список) — компактные иконки, не растягиваются. */
-  .ex-toolbar .toolbar-right > .view-btn {
-    flex: 0 0 36px;
+    display: none;
   }
 
   /* ─── EXHIBITIONS filter row ─── */
@@ -1443,17 +1429,17 @@ a,
     gap: 8px;
     align-items: stretch;
   }
+  /* На мобиле заголовок раздела дублирует bottom-nav и url — скрываем. */
   .comm-title {
-    align-self: flex-start;
-  }
-  .comm-toolbar .mode-switch {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap;
-  }
-  .comm-toolbar .mode-switch::-webkit-scrollbar {
     display: none;
+  }
+  /* mode-switch не нуждается в overflow — кнопки короткие, помещаются
+     всегда. justify-content:flex-start чтобы прижать к левому краю
+     и убрать «прозрачное поле» справа от скроллбара. */
+  .comm-toolbar .mode-switch {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-self: flex-start;
   }
   .comm-toolbar .mode-switch .mode-btn {
     flex-shrink: 0;
@@ -1469,6 +1455,11 @@ a,
   }
   .comm-tabs .ctab {
     flex-shrink: 0;
+  }
+  /* Кнопка «+ Создать сообщество» дублируется с FAB в топбаре — скрываем.
+     Селектор: последний div внутри .comm-toolbar (там обёрнут btn-create). */
+  .comm-toolbar > div:last-child:has(.btn-create) {
+    display: none;
   }
 
   /* M4 — exhibitions: .ex-toolbar layout уже есть в блоке выше
@@ -1486,8 +1477,9 @@ a,
     gap: 8px;
     align-items: stretch;
   }
+  /* На мобиле заголовок раздела дублирует bottom-nav и url — скрываем. */
   .proj-title {
-    align-self: flex-start;
+    display: none;
   }
   .proj-tabs {
     overflow-x: auto;
@@ -1501,21 +1493,11 @@ a,
   .proj-tabs .ptab {
     flex-shrink: 0;
   }
+  /* Кнопка «+ Создать проект» и view-switch (grid/list) на мобиле скрыты:
+     создание доступно через зелёный FAB рядом с аватаром в топбаре
+     (m-fab-action), а list-view на мобиле визуально идентичен grid-view. */
   .proj-toolbar .toolbar-right {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-  }
-  /* view-btn компактные, не растягиваются */
-  .proj-toolbar .toolbar-right > .view-btn {
-    flex: 0 0 36px;
-  }
-  /* btn-create занимает всё оставшееся место — кнопка читается, не обрезается */
-  .proj-toolbar .toolbar-right > .btn-create {
-    flex: 1 1 auto;
-    min-width: 0;
-    justify-content: center;
+    display: none;
   }
 
   /* M7 — tasks: .t-quickadd (label + input + hint). На мобиле hint
