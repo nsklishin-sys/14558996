@@ -901,6 +901,11 @@ a,
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     gap: 4px;
+    /* M-S1-FIX5: ограничиваем ширину родителем, иначе flex:1 из
+       десктопного CSS раздувает контейнер по сумме детей. */
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
   }
   .ex-tabs::-webkit-scrollbar {
     display: none;
@@ -1431,6 +1436,9 @@ a,
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     flex-wrap: nowrap;
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
   }
   .comm-tabs::-webkit-scrollbar {
     display: none;
@@ -1470,6 +1478,11 @@ a,
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     flex-wrap: nowrap;
+    /* M-S1-FIX5: ограничиваем ширину родителем, иначе flex:1 из
+       десктопного CSS раздувает контейнер по сумме детей. */
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
   }
   .proj-tabs::-webkit-scrollbar {
     display: none;
