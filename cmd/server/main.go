@@ -42,6 +42,7 @@ import (
 	"nhooyr.io/websocket"
 
 	"lastop/internal/captcha"
+	"lastop/internal/pushnotify"
 	"lastop/internal/dadata"
 	"lastop/internal/errtrack"
 	"lastop/internal/mailer"
@@ -13077,6 +13078,16 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 			"title":            title,
 			"preview":          preview,
 		})
+		// Web-push: асинхронно шлём системное уведомление всем устройствам юзера.
+		// Tag = type:source_id — одинаковый tag заменяет предыдущую нотификацию,
+		// чтобы не накапливались дубли при апдейтах.
+		go pushnotify.SendToUser(context.Background(), db, p.RecipientID, pushnotify.Payload{
+			Title:     title,
+			Body:      preview,
+			Tag:       fmt.Sprintf("%s-%d", p.Type, p.SourceID),
+			URL:       pushnotify.URLForNotification(p.Type, p.SourceType, p.SourcePublicID),
+			NotifType: p.Type,
+		})
 	}
 	return err
 }
@@ -22301,6 +22312,15 @@ func notifyOnChatMessage(db *sql.DB, conversationID int64, conversationPublicID 
 			"source_public_id": conversationPublicID,
 			"title":            title,
 			"preview":          preview,
+		})
+		// Web-push: tag для chat одинаковый на диалог-актор, новые сообщения
+		// от того же отправителя заменяют предыдущую нотификацию вместо стека.
+		go pushnotify.SendToUser(context.Background(), db, recipientID, pushnotify.Payload{
+			Title:     title,
+			Body:      preview,
+			Tag:       fmt.Sprintf("chat_message-%d", conversationID),
+			URL:       pushnotify.URLForNotification("chat_message", "chat", conversationPublicID),
+			NotifType: "chat_message",
 		})
 	}
 	if n == 0 {
