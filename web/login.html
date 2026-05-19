@@ -493,8 +493,11 @@ async function handleLogin(e){
     if(!u.public_id && u.id!=null)u.public_id='u'+u.id;
     localStorage.setItem('user',JSON.stringify(u));
     showToast('Добро пожаловать!','success');
-    const nextUrl = new URLSearchParams(location.search).get('next');
-    setTimeout(()=>location.href=nextUrl || '/',900);
+    // SEC: nextUrl должен быть относительным путём (защита от Open Redirect).
+    // Внешние URL и protocol-relative (//evil.com) отбрасываем — редирект на /.
+    const nextRaw = new URLSearchParams(location.search).get('next');
+    const nextUrl = (nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//')) ? nextRaw : '/';
+    setTimeout(()=>location.href=nextUrl,900);
   }catch{
     showToast('Ошибка соединения с сервером','error');
     btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
