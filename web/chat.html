@@ -1985,10 +1985,10 @@ function triggerAttach(){
 }
 
 async function uploadAndSendFile(file){
-  console.log('[upload] start', file?.name, file?.size, file?.type);
-  if (!file) { console.log('[upload] no file'); return; }
+  lastopDebug('[upload] start', file?.name, file?.size, file?.type);
+  if (!file) { lastopDebug('[upload] no file'); return; }
   if (!state.activeConvPublicID) {
-    console.log('[upload] no active conv');
+    lastopDebug('[upload] no active conv');
     showToast('Сначала откройте диалог');
     return;
   }
@@ -2001,7 +2001,7 @@ async function uploadAndSendFile(file){
   let uploadedUrl = '';
   // ── 1. Аплоад файла на /api/upload ──
   try {
-    console.log('[upload] sending FormData to /api/upload');
+    lastopDebug('[upload] sending FormData to /api/upload');
     const fd = new FormData();
     fd.append('file', file);
     const token = localStorage.getItem('token') || '';
@@ -2010,15 +2010,15 @@ async function uploadAndSendFile(file){
       headers: { Authorization: 'Bearer ' + token },
       body: fd
     });
-    console.log('[upload] response status', r.status);
+    lastopDebug('[upload] response status', r.status);
     if (!r.ok) {
       const txt = await r.text().catch(()=>r.status);
-      console.log('[upload] error body', txt);
+      lastopDebug('[upload] error body', txt);
       showToast(`Ошибка загрузки: ${r.status}`);
       return;
     }
     const data = await r.json();
-    console.log('[upload] data', data);
+    lastopDebug('[upload] data', data);
     uploadedUrl = data.url || data.file_url || '';
     if (!uploadedUrl) {
       showToast('Сервер не вернул URL файла');
@@ -2031,7 +2031,7 @@ async function uploadAndSendFile(file){
   }
   // ── 2. Отправка сообщения с вложением ──
   try {
-    console.log('[upload] sending message');
+    lastopDebug('[upload] sending message');
     const token = localStorage.getItem('token') || '';
     const r2 = await fetch(`/api/chat/conversations/${state.activeConvPublicID}/messages`, {
       method: 'POST',
@@ -2044,10 +2044,10 @@ async function uploadAndSendFile(file){
         attachment_size: file.size
       })
     });
-    console.log('[upload] message status', r2.status);
+    lastopDebug('[upload] message status', r2.status);
     if (!r2.ok) {
       const txt = await r2.text().catch(()=>r2.status);
-      console.log('[upload] message error body', txt);
+      lastopDebug('[upload] message error body', txt);
       showToast(`Ошибка отправки: ${r2.status}`);
     }
   } catch(e) {
@@ -2057,23 +2057,23 @@ async function uploadAndSendFile(file){
 }
 
 chatHiddenFile?.addEventListener('change', async (e) => {
-  console.log('[upload] change event fired');
+  lastopDebug('[upload] change event fired');
   const files = Array.from(e.target.files || []);
-  console.log('[upload] files count:', files.length, 'activeConv:', state.activeConvPublicID);
-  if (!files.length) { console.log('[upload] no files'); return; }
+  lastopDebug('[upload] files count:', files.length, 'activeConv:', state.activeConvPublicID);
+  if (!files.length) { lastopDebug('[upload] no files'); return; }
   e.target.value = '';
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
-  console.log('[upload] before showToast');
+  lastopDebug('[upload] before showToast');
   try { showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…'); } catch(e){ console.error('[upload] showToast failed', e); }
-  console.log('[upload] before loop');
+  lastopDebug('[upload] before loop');
   try {
-    for (const f of files) { console.log('[upload] processing file:', f.name); await uploadAndSendFile(f); }
+    for (const f of files) { lastopDebug('[upload] processing file:', f.name); await uploadAndSendFile(f); }
   } catch (e) {
     console.error('[upload] handler crashed', e);
   } finally {
     state.uploading = false;
-    console.log('[upload] state.uploading reset');
+    lastopDebug('[upload] state.uploading reset');
   }
   try { await loadMessages(); } catch {}
   try { await loadConversations(); } catch {}
