@@ -26074,7 +26074,9 @@ func (h *wsHubT) IsOnline(userID int64) bool {
 // handleWebSocket обслуживает соединение: апгрейд, пинг, чтение, запись.
 // Аутентификация — через токен в query (?token=...), т.к. браузерный WS не умеет custom headers.
 func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionStore, db *sql.DB) {
-	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	// Phase 4 (19.05) — auth через HttpOnly cookie, не через ?token= в URL.
+	// Старый способ ?token= утекал в access logs, history, Referrer.
+	token, _ := tokenFromRequest(r)
 	if token == "" {
 		http.Error(w, "no token", http.StatusUnauthorized)
 		return
@@ -26086,9 +26088,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, sessions *sessionSt
 	}
 
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		// Список origin'ов, с которых принимаем апгрейд. Прод — это сам домен.
-		// Для упрощения принимаем всё; при необходимости заменить на InsecureSkipVerify=false + OriginPatterns.
-		InsecureSkipVerify: true,
+		// CSWSH-защита: принимаем апгрейд ТОЛЬКО с нашего домена и его поддоменов.
+		// InsecureSkipVerify=false по умолчанию + OriginPatterns whitelist.
+		// localhost — для разработки.
+		OriginPatterns: []string{"lastop.ru", "*.lastop.ru", "localhost:*", "127.0.0.1:*"},
 	})
 	if err != nil {
 		log.Printf("[ws] accept: %v", err)
