@@ -325,10 +325,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <nav class="nav"></nav>
 
-<div class="main" id="mainArea">
-  <div class="placeholder">Загрузка…</div>
-</div>
-
 <div class="main" id="mainArea" style="overflow-y:auto;padding-bottom:24px">
   <div id="contentRoot">
     <div class="ee-card" style="padding:40px;text-align:center;color:var(--gmt)">Загрузка…</div>
@@ -336,9 +332,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </div>
 
 <aside class="right">
+  <div class="ee-card" id="sidebarChecklist">
+    <div class="ee-section-title" style="margin-bottom:10px;border:none;padding:0">Чеклист</div>
+    <div id="checklistBody" style="display:flex;flex-direction:column;gap:8px">
+      <!-- заполняется renderSidebar() -->
+    </div>
+  </div>
   <div class="ee-card">
-    <div class="ee-section-title" style="margin-bottom:8px;border:none;padding:0">Подсказка</div>
-    <p style="font-size:12px;color:var(--tm);line-height:1.6">После сохранения базовых данных откроются разделы: Локация, Программа (дни и сессии), Билеты, Зоны, Экспоненты.</p>
+    <div class="ee-section-title" style="margin-bottom:10px;border:none;padding:0">Подсказка</div>
+    <p id="sidebarHint" style="font-size:12px;color:var(--tm);line-height:1.55">После сохранения базовых данных откроются разделы: Локация, Программа (дни и сессии), Билеты, Зоны, Экспоненты.</p>
   </div>
 </aside>
 
@@ -355,6 +357,44 @@ const escHtml = window.lastopEsc;
 const avc = window.lastopAvc;
 function ltr(s){return((s||'?')[0]||'?').toUpperCase();}
 function eeToast(msg,kind){const t=document.getElementById('eeToast');t.textContent=msg;t.className='ee-toast show '+(kind||'');setTimeout(()=>t.classList.remove('show'),2400);}
+
+// renderSidebar — заполняет правый сайдбар чеклистом и подсказкой.
+// Вызывается после каждого изменения state.exhibition или при рендере.
+function renderSidebar(){
+  const ex = state.exhibition || {};
+  const isCreate = state.mode === 'create';
+  const body = document.getElementById('checklistBody');
+  if (!body) return;
+  // В режиме create — все пункты пустые (юзер ещё ничего не сохранил).
+  // В режиме edit — отмечаем сделанные.
+  const items = [
+    { label: 'Название и описание', done: !!(ex.title && ex.description) },
+    { label: 'Даты проведения',     done: !!(ex.start_date && ex.end_date) },
+    { label: 'Локация на карте',    done: !!(ex.latitude && ex.longitude) },
+    { label: 'Программа (сессии)',  done: Array.isArray(ex.program_days) && ex.program_days.length > 0 },
+    { label: 'Билеты',              done: Array.isArray(ex.tickets) && ex.tickets.length > 0 },
+    { label: 'Зоны и стенды',       done: Array.isArray(ex.zones) && ex.zones.length > 0 },
+  ];
+  body.innerHTML = items.map(it => `
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:${it.done?'var(--t)':'var(--gmt)'}">
+      <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid ${it.done?'var(--g)':'var(--bdr)'};display:grid;place-items:center;flex-shrink:0;background:${it.done?'var(--g)':'transparent'}">
+        ${it.done ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#fff" stroke-width="2"><polyline points="2,5 4,7 8,3"/></svg>' : ''}
+      </span>
+      <span style="${it.done?'':'opacity:.7'}">${it.label}</span>
+    </div>
+  `).join('');
+
+  // Подсказка — динамическая по режиму
+  const hint = document.getElementById('sidebarHint');
+  if (hint) {
+    if (isCreate) {
+      hint.textContent = 'Заполните базовые данные (название, описание, даты, локацию) и нажмите «Создать». После этого откроются разделы: Программа, Билеты, Зоны, Экспоненты.';
+    } else {
+      const filled = items.filter(i => i.done).length;
+      hint.textContent = `Заполнено ${filled} из ${items.length} разделов. Чем полнее анкета — тем выше выставка в выдаче и тем больше откликов от участников.`;
+    }
+  }
+}
 
 function getPublicID(){const u=new URL(location.href);return u.searchParams.get('id')||u.searchParams.get('public_id')||'';}
 
@@ -1406,7 +1446,7 @@ async function reviewApp(appID,action){
     // если одобрили — перезагружаем выставку, чтобы получить нового экспонента
     if(action==='approve'){
       const fresh=await loadExhibition();
-      if(fresh)state.exhibition=fresh;
+      if(fresh){state.exhibition=fresh;renderSidebar();}
     }
     renderApplications();
     eeToast(action==='approve'?'Заявка одобрена ✓':'Заявка отклонена','ok');
@@ -1440,6 +1480,7 @@ async function deleteExhibition(){
     renderZones();
     loadApplications();
   }
+  renderSidebar();
 })();
 </script>
 <script src="/assets/guest-nav.js" defer></script>
