@@ -23339,9 +23339,11 @@ func accessLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// WebSocket-апгрейду нужен http.Hijacker. Обёртка statusRecorder его не реализует,
 		// поэтому для WS пропускаем оригинальный ResponseWriter без обёртки.
+		// Phase 4 (L-4): IP анонимизируется в access-логах. Полный IP остаётся
+		// в admin_audit_log и в clientIP() для rate-limit (не логируется).
 		if r.URL.Path == "/api/ws" || strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
 			next.ServeHTTP(w, r)
-			log.Printf("%s %s (websocket) ip=%s", r.Method, r.URL.Path, clientIP(r))
+			log.Printf("%s %s (websocket) ip=%s", r.Method, r.URL.Path, anonymizeIP(clientIP(r)))
 			return
 		}
 		start := time.Now()
@@ -23349,7 +23351,7 @@ func accessLog(next http.Handler) http.Handler {
 		next.ServeHTTP(rec, r)
 		dur := time.Since(start)
 		metricsReg.RecordRequest(r.URL.Path, rec.status, dur)
-		log.Printf("%s %s status=%d duration=%s ip=%s", r.Method, r.URL.Path, rec.status, dur, clientIP(r))
+		log.Printf("%s %s status=%d duration=%s ip=%s", r.Method, r.URL.Path, rec.status, dur, anonymizeIP(clientIP(r)))
 	})
 }
 
@@ -23496,6 +23498,32 @@ func xmlEscape(s string) string {
 //     если кто-то откатит nginx-конфиг — последний элемент это тот, что
 //     добавил наш доверенный прокси, а не клиент).
 //  4. Fallback: RemoteAddr.
+// anonymizeIP — обрезает IP для логирования (152-ФЗ / GDPR минимизация ПДн).
+// IPv4: обнуляем последний октет. 192.168.1.42 → 192.168.1.0
+// IPv6: обнуляем последние 80 бит (оставляем /48). 2a02:6b8:c01:413::1 → 2a02:6b8:c01::
+// Используется ТОЛЬКО в access-логах. В admin_audit_log сохраняем полный IP
+// (152-ФЗ ст.6 ч.1 п.6 — обработка для защиты прав, forensics).
+//
+// Phase 4 (19.05) SEC L-4.
+func anonymizeIP(ip string) string {
+	parsed := net.ParseIP(strings.TrimSpace(ip))
+	if parsed == nil {
+		return ip // не парсится — возвращаем как есть (не теряем диагностику)
+	}
+	if v4 := parsed.To4(); v4 != nil {
+		// IPv4 — обнуляем последний октет
+		return fmt.Sprintf("%d.%d.%d.0", v4[0], v4[1], v4[2])
+	}
+	// IPv6 — оставляем первые /48 (6 байт), обнуляем остальные 10 байт
+	v6 := parsed.To16()
+	if v6 == nil {
+		return ip
+	}
+	masked := make(net.IP, 16)
+	copy(masked, v6[:6])
+	return masked.String()
+}
+
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err != nil || host == "" {
