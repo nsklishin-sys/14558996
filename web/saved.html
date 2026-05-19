@@ -187,7 +187,7 @@ let allData = { posts:[], projects:[], jobs:[], resumes:[], catalog:[], events:[
 // HELPERS
 const esc = window.lastopEsc;const escAttr = window.lastopEsc;
 function pluralRu(n,f){const a=[2,0,1,1,1,2];return f[(n%100>4&&n%100<20)?2:a[Math.min(n%10,5)]];}
-function fmtNum(n){ return Number(n).toLocaleString('ru-RU'); }
+const fmtNum = window.lastopFmtNum;
 function fmtPrice(price, cur){
   if (price == null) return null;
   const sym = {RUB:'₽',USD:'$',EUR:'€',CNY:'¥'}[cur] || cur || '';
