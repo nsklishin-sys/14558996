@@ -23040,17 +23040,25 @@ func injectOGTags(html string, meta ogMeta, r *http.Request) string {
 	if title == "" {
 		title = "LASTOP GROUP"
 	}
-	og := `<meta property="og:type" content="` + meta.Type + `">
+	// SEC: cover, ogType, ogURL вставляются в HTML-атрибуты. Хотя сейчас
+	// все три формируются на сервере из контролируемых источников
+	// (cover — путь из БД, Type — литерал из serveDetailWithOG, URL —
+	// sitemapBaseURL+publicID), пропускаем через htmlSafe — защита от
+	// случайных регрессий в будущем.
+	ogType := htmlSafe(meta.Type)
+	ogURL := htmlSafe(meta.URL)
+	ogCover := htmlSafe(cover)
+	og := `<meta property="og:type" content="` + ogType + `">
 <meta property="og:title" content="` + title + ` — LASTOP GROUP">
 <meta property="og:description" content="` + desc + `">
-<meta property="og:url" content="` + meta.URL + `">
-<meta property="og:image" content="` + cover + `">
+<meta property="og:url" content="` + ogURL + `">
+<meta property="og:image" content="` + ogCover + `">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:site_name" content="LASTOP GROUP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="` + title + ` — LASTOP GROUP">
 <meta name="twitter:description" content="` + desc + `">
-<meta name="twitter:image" content="` + cover + `">
+<meta name="twitter:image" content="` + ogCover + `">
 <meta name="description" content="` + desc + `">
 `
 	// Вставляем сразу после открывающего <head>
