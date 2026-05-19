@@ -253,7 +253,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 // ── STATE ──
 const state = {
@@ -280,7 +280,7 @@ function fmtNum(n){
 function fmtPct(n){if(!n)return '0%';return (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,'')+'%';}
 const ago = window.lastopAgo;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');dd.classList.toggle('open');tp.classList.toggle('open');}
 document.addEventListener('click',(e)=>{const dd=document.getElementById('profileDD');if(dd&&!dd.contains(e.target)&&!document.getElementById('topbarProfile').contains(e.target)){dd.classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 
@@ -288,7 +288,7 @@ document.addEventListener('click',(e)=>{const dd=document.getElementById('profil
 async function loadUser(){
   if(!tk()){location.href='/login.html';return;}
   try{
-    const r = await lastopFetch(API+'/me',{headers:{}});
+    const r = await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}} = await r.json();
     state.user = user;
@@ -312,7 +312,7 @@ function populateProfile(u){
 async function loadAvailableScopes(){
   // 1. Получить мои компании (где owner/admin)
   try{
-    const r = await lastopFetch(API+'/companies?tab=my&role_filter=admin&limit=50',{headers:{}});
+    const r = await lastopFetch(API+'/companies?tab=my&role_filter=admin&limit=50',{headers:{Authorization:'Bearer '+tk()}});
     if(r.ok){
       const d = await r.json();
       state.companies = (d.items || d.companies || []);
@@ -320,7 +320,7 @@ async function loadAvailableScopes(){
   }catch{}
   // 2. Получить мои сообщества (где owner/admin/moderator)
   try{
-    const r = await lastopFetch(API+'/communities?tab=my&role_filter=admin&limit=50',{headers:{}});
+    const r = await lastopFetch(API+'/communities?tab=my&role_filter=admin&limit=50',{headers:{Authorization:'Bearer '+tk()}});
     if(r.ok){
       const d = await r.json();
       state.communities = (d.communities || d.items || []);
@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 // ── FETCH ──
 async function fetchAnalytics(url){
-  const r = await lastopFetch(url, {headers:{}});
+  const r = await lastopFetch(url, {headers:{Authorization:'Bearer '+tk()}});
   if(!r.ok){
     return {error: 'HTTP '+r.status, status: r.status};
   }

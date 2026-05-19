@@ -342,7 +342,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token') || '';
 
 let CATEGORIES = [];
 let RES = null;       // текущее резюме
@@ -410,7 +410,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -428,7 +428,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await lastopFetch(API + '/me', { headers: {}});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) return;
     const d = await r.json();
     ME = d.user || d;
@@ -462,7 +462,7 @@ async function loadResume(){
     return;
   }
   try {
-    const opts = tk() ? { headers: {}} : {};
+    const opts = tk() ? { headers: { Authorization: 'Bearer ' + tk() }} : {};
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(PUBLIC_ID), opts);
     if (r.status === 404){
       wrap.innerHTML = '<div class="loader">Резюме не найдено или скрыто. <a href="/jobs.html" style="color:var(--g)">Вернуться к списку</a></div>';
@@ -674,7 +674,7 @@ async function toggleSave(){
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/save', {
       method: 'POST',
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -714,7 +714,7 @@ async function submitContact(){
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/contact', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
     });
     if (!r.ok){
@@ -786,7 +786,7 @@ async function submitEdit(){
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     if (!r.ok){
@@ -820,7 +820,7 @@ async function submitDelete(){
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
       method: 'DELETE',
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok && r.status !== 204){
       const e = await r.json().catch(()=>({}));

@@ -758,11 +758,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-
+const tk=()=>localStorage.getItem('token')||'';
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('profileDD').classList.toggle('open');document.getElementById('topbarProfile').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('#topbarProfile')&&!e.target.closest('#profileDD')){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];
@@ -774,7 +774,7 @@ async function loadMe(){
   if(cached){try{currentUser=JSON.parse(cached);applyMe(currentUser);}catch{}}
   if(!tk())return;
   try{
-    const r=await lastopFetch(API+'/me',{headers:{}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(r.ok){const d=await r.json();if(d.user){currentUser=d.user;localStorage.setItem('user',JSON.stringify(d.user));applyMe(d.user);}}
   }catch{}
 }

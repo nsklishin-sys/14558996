@@ -345,7 +345,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 // ─── State ───
 let CATEGORY_GROUPS = []; // [{key, label, items:[{key, label}]}]
@@ -398,7 +398,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -416,7 +416,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await lastopFetch(API + '/me', { headers: {}});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -535,7 +535,7 @@ async function loadList(){
 
   try {
     const r = await lastopFetch(API + '/catalog?' + params.toString(), {
-      headers: tk() ? {} : {}
+      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -728,7 +728,7 @@ async function submitItem(){
   try {
     const r = await lastopFetch(API + '/catalog', {
       method: 'POST',
-      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
+      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify({
         type, category, title,
         description: desc,

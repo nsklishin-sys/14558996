@@ -21,9 +21,11 @@
   const CACHE_KEY = 'lastop_repost_targets_v1';
   const CACHE_TTL = 5 * 60 * 1000; // 5 минут
 
-  
+  function tk() {
+    return localStorage.getItem('token');
+  }
   function authHeaders(extra) {
-    var h = { '};
+    var h = { 'Authorization': 'Bearer ' + (tk() || '') };
     if (extra) {
       for (var k in extra) h[k] = extra[k];
     }

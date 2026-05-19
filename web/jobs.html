@@ -432,7 +432,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/global-settings.js"></script>
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token') || '';
 
 let CATEGORIES = [];
 let currentMode = 'jobs';
@@ -487,7 +487,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -505,7 +505,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await lastopFetch(API + '/me', { headers: {}});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -589,7 +589,7 @@ async function loadList(){
     if (currentTab && currentTab !== 'all') params.set('tab', currentTab);
     try {
       const r = await lastopFetch(API + '/jobs?' + params.toString(), {
-        headers: tk() ? {} : {}
+        headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       });
       if (!r.ok) throw new Error('http ' + r.status);
       const d = await r.json();
@@ -604,7 +604,7 @@ async function loadList(){
     if (currentTab && currentTab !== 'all') params.set('status', currentTab);
     try {
       const r = await lastopFetch(API + '/resumes?' + params.toString(), {
-        headers: tk() ? {} : {}
+        headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       });
       if (!r.ok) throw new Error('http ' + r.status);
       const d = await r.json();
@@ -782,7 +782,7 @@ async function submitJob(){
   try {
     const r = await lastopFetch(API + '/jobs', {
       method: 'POST',
-      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
+      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify(body)
     });
     if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.error || ('http ' + r.status)); }
@@ -824,7 +824,7 @@ async function submitCv(){
   try {
     const r = await lastopFetch(API + '/resumes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.error || ('http ' + r.status)); }

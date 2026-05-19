@@ -97,7 +97,7 @@
   // ведут на разделы для авторизованных).
   var hasToken = false;
   try {
-    var raw = null || '';
+    var raw = localStorage.getItem('token') || '';
     hasToken = raw.trim().length > 0;
   } catch (_) { /* localStorage недоступен — считаем гостем */ }
 

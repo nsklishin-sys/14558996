@@ -727,7 +727,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api';
+const API='/api', tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
@@ -747,7 +747,7 @@ async function loadRepostFriends(){
   const list=document.getElementById('repostFriendsList');
   if(!list)return;
   try{
-    const r=await lastopFetch('/api/friends',{headers:{}});
+    const r=await lastopFetch('/api/friends',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const friends=d.friends||[];
@@ -782,7 +782,7 @@ async function doRepost(target){
   try{
     const r=await lastopFetch('/api/posts',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({title:'Делюсь мероприятием: '+title,content:'Посмотрите это мероприятие: '+url,type:'event',tags:[]})
     });
     if(!r.ok){const er=await r.json().catch(()=>({}));toast(er.error||'Не удалось опубликовать');return;}
@@ -800,7 +800,7 @@ ${url}`;
   try{
     const dc=await lastopFetch('/api/chat/conversations/direct',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({user_public_id:friendPublicID})
     });
     if(!dc.ok){toast('Не удалось открыть чат');return;}
@@ -809,14 +809,14 @@ ${url}`;
     if(!convPID){toast('Не удалось открыть чат');return;}
     const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({content:message})
     });
     if(!r.ok){const er=await r.json().catch(()=>({}));toast(er.error||'Не удалось отправить');return;}
     toast('Отправлено '+friendName+' ✓',true);
   }catch{toast('Ошибка сети');}
 }
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -827,7 +827,7 @@ const state={currentEvent:null,similar:[]};
 async function toggleSave(){
   if(!state.currentEvent)return;
   const isSaved=!!state.currentEvent.is_saved;
-  const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/save`,{method:isSaved?'DELETE':'POST',headers:{}});
+  const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/save`,{method:isSaved?'DELETE':'POST',headers:{Authorization:'Bearer '+tk()}});
   const d=await r.json().catch(()=>({}));
   if(!r.ok){toast(d.error||'Ошибка');return;}
   state.currentEvent.is_saved=!isSaved;
@@ -876,12 +876,12 @@ function openTicketModal(name='standard',price=0){
   document.getElementById('modalBg').classList.add('open');
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
-async function registerEvent(ticketType='standard'){if(!state.currentEvent)return;const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket_type:ticketType})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось записаться');return false;}state.currentEvent.is_registered=true;applyEvent(state.currentEvent);return true;}
+async function registerEvent(ticketType='standard'){if(!state.currentEvent)return;const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({ticket_type:ticketType})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось записаться');return false;}state.currentEvent.is_registered=true;applyEvent(state.currentEvent);return true;}
 async function submitTicket(){const name=(document.getElementById('mName')?.value||'').trim();const email=(document.getElementById('mEmail')?.value||'').trim();if(!name||!email){toast('Заполните имя и email');return;}const ok=await registerEvent(String(currentTicket.name||'standard').toLowerCase());if(!ok)return;closeModal();toast(currentTicket.price>0?'Счёт отправлен на email, ждите оплаты':'Вы записаны ✓',true);}
 async function clickReg(){
   if(!state.currentEvent)return;
   if(state.currentEvent.is_registered){
-    const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'DELETE',headers:{}});
+    const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){toast('Не удалось отменить');return;}
     state.currentEvent.is_registered=false;
     applyEvent(state.currentEvent);
@@ -895,7 +895,7 @@ async function clickReg(){
 async function loadSimilar(){
   if(!state.currentEvent)return;
   try{
-    const headers=tk()?{}:{};
+    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
     const r=await lastopFetch(`${API}/events?type=${encodeURIComponent(state.currentEvent.type||'')}&limit=4`,{headers});
     if(!r.ok)return;
     const d=await r.json();
@@ -941,7 +941,7 @@ async function messageOrganizer(){
   // Личный организатор — открываем direct-чат как раньше
   const r=await lastopFetch(`${API}/chat/conversations/direct`,{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
     body:JSON.stringify({user_public_id:ev.organizer_public_id})
   });
   const d=await r.json().catch(()=>({}));
@@ -949,7 +949,7 @@ async function messageOrganizer(){
   const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';
   location.href='/chat.html?conv='+encodeURIComponent(conv);
 }
-async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
+async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
 function applyEvent(ev){
   state.currentEvent=ev;
   document.title=ev.title+' · LASTOP';
@@ -1293,7 +1293,7 @@ async function onEvCoverSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ toast(d.error||'Не удалось'); removeEvCover(); return; }
     evCoverUrl = d.url;
@@ -1382,7 +1382,7 @@ async function submitEventEdit(){
   try{
     const r=await lastopFetch(API+'/events/'+encodeURIComponent(ev.public_id),{
       method:'PATCH',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify(body)
     });
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'не удалось сохранить')}
@@ -1403,7 +1403,7 @@ async function deleteCurrentEvent(){
   try{
     const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}`,{
       method:'DELETE',
-      headers:{}
+      headers:{Authorization:'Bearer '+tk()}
     });
     if(!r.ok){
       const d=await r.json().catch(()=>({}));
@@ -1421,7 +1421,7 @@ async function deleteCurrentEvent(){
   await loadEvent();
   if(!tk())return;
   try{
-    const r=await lastopFetch(API+'/me',{headers:{}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -1458,8 +1458,8 @@ async function loadEventMessages(publicID){
   const list = document.getElementById('evDiscList');
   if (!list) return;
   try {
-    
-    const headers = tk ? {} : {};
+    const tk = localStorage.getItem('token');
+    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/events/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
