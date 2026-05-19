@@ -1551,6 +1551,66 @@ func createPasswordResetToken(db *sql.DB, userID int64, ip string) (string, erro
 	return token, nil
 }
 
+// adminAuditMiddleware — оборачивает обработчик /api/admin/* и автоматически
+// логирует каждый запрос в admin_audit_log. Не блокирует выполнение если БД
+// недоступна. Body запроса НЕ логируется (может содержать чувствительные данные
+// типа maintenance message, новые роли пользователей и т.д. — логируем только
+// факт обращения с URL, методом и status code).
+//
+// Phase 4 (19.05) SEC M-6.
+func adminAuditMiddleware(db *sql.DB, sessions *sessionStore, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Извлекаем userID из cookie (если есть). Если запрос анонимный —
+		// логируем как admin_id=0 (анонимная попытка обращения к admin API).
+		var userID int64
+		if token, _ := tokenFromRequest(r); token != "" {
+			if uid, ok := sessions.getUserID(token); ok {
+				userID = uid
+			}
+		}
+
+		// Оборачиваем ResponseWriter чтобы зафиксировать status code.
+		rw := &auditResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		next(rw, r)
+
+		// Логируем после выполнения. Action — "api:METHOD /path", details —
+		// status code + query string (без body — там могут быть секреты).
+		action := fmt.Sprintf("api:%s %s", r.Method, r.URL.Path)
+		details := map[string]any{
+			"status": rw.statusCode,
+		}
+		if r.URL.RawQuery != "" {
+			details["query"] = r.URL.RawQuery
+		}
+		// Не вызываем go-рутиной — logAdminAction уже не блокирует на сетевом IO,
+		// плюс мы хотим чтобы запись успела попасть в БД до закрытия соединения.
+		logAdminAction(db, userID, action, "", 0, clientIP(r), details)
+	}
+}
+
+// auditResponseWriter — обёртка над http.ResponseWriter которая запоминает
+// status code для логирования.
+type auditResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	written    bool
+}
+
+func (a *auditResponseWriter) WriteHeader(code int) {
+	a.statusCode = code
+	a.written = true
+	a.ResponseWriter.WriteHeader(code)
+}
+
+func (a *auditResponseWriter) Write(b []byte) (int, error) {
+	if !a.written {
+		// Если WriteHeader не был вызван явно — Go вернёт 200.
+		a.statusCode = http.StatusOK
+		a.written = true
+	}
+	return a.ResponseWriter.Write(b)
+}
+
 // logAdminAction записывает действие админа в admin_audit_log.
 // Не возвращает ошибку — логирование не должно блокировать основное действие.
 func logAdminAction(db *sql.DB, adminID int64, action, entityType string, entityID int64, ip string, details map[string]any) {
@@ -2238,7 +2298,7 @@ func main() {
 
 	// POST /api/admin/maintenance — включить/выключить. Требует is_admin.
 	// Body: { "active": bool, "message": "optional text" }
-	mux.HandleFunc("/api/admin/maintenance", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/admin/maintenance", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
@@ -2279,7 +2339,7 @@ func main() {
 			"active":  body.Active,
 			"message": body.Message,
 		})
-	})
+	}))
 
 	mux.HandleFunc("/api/captcha/config", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -5536,7 +5596,7 @@ func main() {
 		}
 	})
 
-	mux.HandleFunc("/api/admin/metrics", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/admin/metrics", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
@@ -5545,9 +5605,9 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
-	})
+	}))
 
-	mux.HandleFunc("/api/admin/audit-log", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/admin/audit-log", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
@@ -5617,7 +5677,7 @@ func main() {
 			entries = append(entries, e)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"entries": entries})
-	})
+	}))
 
 	mux.HandleFunc("/api/exhibitions/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/exhibitions/")
@@ -9911,7 +9971,7 @@ func main() {
 	// Admin: подтверждение компании
 	// PATCH /api/admin/companies/{publicID}/verify
 	// Доступно только если у юзера users.is_admin = TRUE.
-	mux.HandleFunc("/api/admin/companies/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/admin/companies/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/admin/companies/")
 		parts := strings.Split(path, "/")
 		if len(parts) != 2 || parts[1] != "verify" {
@@ -9956,7 +10016,7 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"verified": req.Verified})
-	})
+	}))
 
 	// POST /api/invites/accept — принять приглашение по коду
 	// (юзер уже залогинен; добавляется в company_members)
