@@ -377,6 +377,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="block-title">Рекомендации</div>
     <div id="guestRecsList"><div style="font-size:11px;color:var(--gmt);font-style:italic;padding:8px">Загрузка…</div></div>
   </div>
+  <div class="card" id="maintenanceBanner" style="display:none;background:linear-gradient(135deg,#FFF7E6 0%,#FFEFD0 100%);border:1px solid #FAC775">
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B07A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#633806;margin-bottom:4px">Технические работы</div>
+        <div id="maintenanceText" style="font-size:12px;color:#633806;line-height:1.5"></div>
+      </div>
+    </div>
+  </div>
   <div class="ad-block">
     <div class="ad-label">Реклама</div>
     <div class="ad-content"><div class="ad-title">LogisticsPro 2026</div><div class="ad-sub">Выставка · Москва · май</div><button type="button" class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button></div>
@@ -421,6 +434,23 @@ function closeModal(){document.getElementById('modalBg').classList.remove('open'
     setIf('s4', d.jobs);
   } catch {}
 })();
+(async function loadMaintenance(){
+  try {
+    const r = await fetch('/api/maintenance/status', {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.active) {
+      const banner = document.getElementById('maintenanceBanner');
+      const text = document.getElementById('maintenanceText');
+      if (banner && text) {
+        text.textContent = d.message || 'Сейчас проводятся технические работы. Возможны временные сбои в работе платформы.';
+        banner.style.display = 'block';
+      }
+    }
+  } catch {}
+})();
+setInterval(() => location.reload(), 60000);  // обновление статуса раз в минуту — простой fallback
+
 const TAG={news:'t-news',projects:'t-proj',companies:'t-co',forum:'t-forum'};
 const LBL={news:'Новости',projects:'Проекты',companies:'Компании',forum:'Форум'};
 let _feedAll = [];

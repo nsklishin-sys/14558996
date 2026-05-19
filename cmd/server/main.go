@@ -2200,28 +2200,64 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
 
-	// Maintenance banner (19.05) — флаг через файл web/maintenance.txt.
-	// touch maintenance.txt → плашка появляется у всех. rm → исчезает.
-	// Никаких рестартов. Содержимое файла можно использовать как
-	// кастомный текст; если файл пустой — используется текст по умолчанию.
+	// Maintenance banner — состояние в БД (system_settings).
+	// Управляется через POST /api/admin/maintenance (только админ).
 	mux.HandleFunc("/api/maintenance/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
-		data, err := os.ReadFile("web/maintenance.txt")
-		if err != nil {
-			// Файла нет — режим обслуживания выключен
-			writeJSON(w, http.StatusOK, map[string]any{"active": false})
+		var active, message string
+		_ = db.QueryRow(`SELECT value FROM system_settings WHERE key='maintenance_active'`).Scan(&active)
+		_ = db.QueryRow(`SELECT value FROM system_settings WHERE key='maintenance_message'`).Scan(&message)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"active":  active == "1" || active == "true",
+			"message": message,
+		})
+	})
+
+	// POST /api/admin/maintenance — включить/выключить. Требует is_admin.
+	// Body: { "active": bool, "message": "optional text" }
+	mux.HandleFunc("/api/admin/maintenance", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
 		}
-		msg := strings.TrimSpace(string(data))
-		if msg == "" {
-			msg = "Идут технические работы — возможны кратковременные перебои в работе платформы"
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
 		}
+		var isAdmin bool
+		if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&isAdmin); err != nil || !isAdmin {
+			writeError(w, http.StatusForbidden, "Только для админов")
+			return
+		}
+		var body struct {
+			Active  bool   `json:"active"`
+			Message string `json:"message"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeError(w, http.StatusBadRequest, "Невалидный JSON")
+			return
+		}
+		activeStr := "0"
+		if body.Active {
+			activeStr = "1"
+		}
+		_, _ = db.Exec(`
+		  INSERT INTO system_settings (key, value, updated_by, updated_at)
+		  VALUES ('maintenance_active', $1, $2, now())
+		  ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_by=EXCLUDED.updated_by, updated_at=now()
+		`, activeStr, userID)
+		_, _ = db.Exec(`
+		  INSERT INTO system_settings (key, value, updated_by, updated_at)
+		  VALUES ('maintenance_message', $1, $2, now())
+		  ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_by=EXCLUDED.updated_by, updated_at=now()
+		`, body.Message, userID)
 		writeJSON(w, http.StatusOK, map[string]any{
-			"active":  true,
-			"message": msg,
+			"active":  body.Active,
+			"message": body.Message,
 		})
 	})
 
@@ -11830,6 +11866,13 @@ CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id
 -- Sprint 12: Выставки
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by BIGINT REFERENCES users(id) ON DELETE SET NULL
+);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS analytics_visible_in_viewers BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE IF NOT EXISTS analytics_events (
