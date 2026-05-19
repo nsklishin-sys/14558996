@@ -232,7 +232,7 @@
     var communities = targets.filter(function (t) { return t.type === 'community'; });
     var friends = targets.filter(function (t) { return t.type === 'friend'; });
 
-    var html =
+    var html = '';
     personal.forEach(function (t) {
       html += renderItem(t);
     });
@@ -290,8 +290,8 @@
 
     pane.querySelector('#lrpCancel').addEventListener('click', function () {
       pane.classList.add('hidden');
-      pane.innerHTML =
-      body.style.display =
+      pane.innerHTML = '';
+      body.style.display = '';
     });
     pane.querySelector('#lrpSubmit').addEventListener('click', function () {
       submit(target);
@@ -308,7 +308,7 @@
     var pop = current.pop;
     var taEl = pop.querySelector('#lrpComment');
     var btn = pop.querySelector('#lrpSubmit');
-    var comment = taEl ? taEl.value.trim() :
+    var comment = taEl ? taEl.value.trim() : '';
 
     if (btn) {
       btn.disabled = true;

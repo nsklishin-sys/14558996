@@ -65,11 +65,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   overflow:hidden
 }
 .prof-cover::before{
-  content:position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+  content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;
   border-radius:50%;background:rgba(255,255,255,.07)
 }
 .prof-cover::after{
-  content:position:absolute;bottom:-60px;left:20%;width:160px;height:160px;
+  content:'';position:absolute;bottom:-60px;left:20%;width:160px;height:160px;
   border-radius:50%;background:rgba(255,255,255,.05)
 }
 .prof-cover-btn{
@@ -387,7 +387,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   background:conic-gradient(var(--g) calc(var(--pct) * 1%),var(--bdr) 0);
   display:grid;place-items:center;margin:0 auto 10px;position:relative
 }
-.pct-ring::before{content:position:absolute;inset:5px;border-radius:50%;background:var(--w)}
+.pct-ring::before{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--w)}
 .pct-n{font-size:13px;font-weight:900;color:var(--g);position:relative;z-index:1}
 .pct-text{text-align:center;font-size:11px;color:var(--gmt);line-height:1.5;margin-bottom:10px}
 .pct-items{display:flex;flex-direction:column;gap:4px}
@@ -635,7 +635,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 const STUB_PROFILES={
   u_demo_company:{
     type:'company',
@@ -682,8 +682,8 @@ function avatarLetters(name){const parts=String(name||'').trim().split(/\s+/).fi
 const esc = window.lastopEsc;
 const ago = window.lastopAgo;
 function userColor(seed){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[String(seed||'A').charCodeAt(0)%C.length]||C[0];}
-function getViewedUid(){const q=new URLSearchParams(location.search);return q.get('id')||q.get('uid')||}
-function getViewedHandle(){const q=new URLSearchParams(location.search);return q.get('handle')||}
+function getViewedUid(){const q=new URLSearchParams(location.search);return q.get('id')||q.get('uid')||'';}
+function getViewedHandle(){const q=new URLSearchParams(location.search);return q.get('handle')||'';}
 function getCurrentUser(){try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return {}}}
 function getStoredProfiles(){try{return JSON.parse(localStorage.getItem('user_profiles')||'{}')}catch{return {}}}
 
@@ -700,10 +700,10 @@ function applyTopbarUser(){
 
 // ── Кнопка дружбы ─────────────────────────────────────
 let _profileFriendStatus = 'none';
-let _profilePublicID =
+let _profilePublicID = '';
 
 function applyFriendButton(profile){
-  _profilePublicID = profile.public_id ||
+  _profilePublicID = profile.public_id || '';
   _profileFriendStatus = profile.friend_status || 'none';
   const btn = document.getElementById('btnFriend');
   const label = document.getElementById('btnFriendLabel');
@@ -716,7 +716,7 @@ function applyFriendButton(profile){
     return;
   }
 
-  btn.style.display =
+  btn.style.display = '';
   btn.classList.remove('is-outgoing','is-incoming','is-friends');
 
   switch (_profileFriendStatus) {
@@ -746,7 +746,7 @@ async function onFriendButtonClick(){
   const btn = document.getElementById('btnFriend');
   if (btn) btn.disabled = true;
 
-  
+  const tk = localStorage.getItem('token');
   const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
 
   try {
@@ -794,7 +794,7 @@ function applyViewedUserProfile(u){
   const fullName=(u.full_name||`${u.first_name||''} ${u.last_name||''}`.trim()||'Пользователь').trim();
   // B07: роль без fallback (скроем строку если её нет)
   const role=(u.position||u.role||'').trim();
-  const company=u.company_name||
+  const company=u.company_name||'';
   const location=u.location||u.city||'Не указано';
   const phone=u.phone||'Не указан';
   const email=u.email||'Не указан';
@@ -810,11 +810,11 @@ function applyViewedUserProfile(u){
     // Удаляем старый img (если перерисовываем)
     _profAv.querySelectorAll('img.prof-av-img').forEach(i=>i.remove());
     if (u.avatar_url) {
-      _profAv.style.background =
+      _profAv.style.background = '';
       const img = document.createElement('img');
       img.className = 'prof-av-img';
       img.src = u.avatar_url;
-      img.alt =
+      img.alt = '';
       img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:0';
       _profAv.style.position = _profAv.style.position || 'relative';
       _profAv.style.overflow = 'hidden';
@@ -825,7 +825,7 @@ function applyViewedUserProfile(u){
     } else {
       _profAv.style.background = color;
       const txt = document.getElementById('profileAvatarText');
-      if (txt) txt.style.display =
+      if (txt) txt.style.display = '';
     }
   }
   // B-PROFILE-USER-ONLINE (18.05): зелёный значок показываем только
@@ -835,7 +835,7 @@ function applyViewedUserProfile(u){
   const _onlineBadge = document.getElementById('profileOnlineBadge');
   if (_onlineBadge) {
     _onlineBadge.style.display = u.is_online ? '' : 'none';
-    _onlineBadge.title = u.is_online ? 'В сети' :
+    _onlineBadge.title = u.is_online ? 'В сети' : '';
   }
   document.getElementById('profileFullName').textContent=fullName;
   const _shareBtnViewed = document.getElementById('btnShareViewedProfile');
@@ -844,16 +844,16 @@ function applyViewedUserProfile(u){
     _shareBtnViewed.setAttribute('data-share-url', location.origin + location.pathname + location.search);
   }
   const h=(u.handle||'').trim(),hh=document.getElementById('profileHandle');
-  if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent=hh.onclick=null;}
+  if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((n)=>n.textContent=fullName);
   // Вариант B из B07: если ни роли ни компании нет — скрываем строку
   const profileRoleEl=document.getElementById('profileRole');
   if(profileRoleEl){
     if(!role && !company){
       profileRoleEl.style.display='none';
-      profileRoleEl.textContent=
+      profileRoleEl.textContent='';
     } else {
-      profileRoleEl.style.display=
+      profileRoleEl.style.display='';
       profileRoleEl.textContent = (role && company) ? `${role} · ${company}`
                                 : (role ? role : company);
     }
@@ -868,7 +868,7 @@ function applyViewedUserProfile(u){
         const d=new Date(createdAt);
         if(!isNaN(d.getTime())){
           joinedEl.textContent = d.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
-          joinedWrap.style.display=
+          joinedWrap.style.display='';
         }
       }catch{}
     }
@@ -887,7 +887,7 @@ function applyViewedUserProfile(u){
     if(u.is_self||u.can_message===false){
       btnWrite.style.display='none';
     }else{
-      btnWrite.style.display=
+      btnWrite.style.display='';
     }
   }
   applyFriendButton(u);
@@ -946,7 +946,7 @@ async function loadViewedUser(){
     try{
       const r=await lastopFetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
       const d=await r.json().catch(()=>({}));
-      uid=d?.user?.public_id||
+      uid=d?.user?.public_id||'';
     }catch{}
   }
   if(!uid){showToast('Не указан uid профиля');return;}
@@ -979,7 +979,7 @@ function renderUserNotFound(){
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function switchTab(tab, btn){
   if(tab==='communities')renderViewedCommunities();
   if(tab==='events')renderViewedEvents();
@@ -1021,11 +1021,11 @@ function viewedLetter(s){return String(s||'?').trim().slice(0,1).toUpperCase()||
 
 const VIEWED_XP_MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 function fmtViewedXpPeriod(xp){
-  const sm=VIEWED_XP_MONTHS[(xp.start_month||1)-1]||
+  const sm=VIEWED_XP_MONTHS[(xp.start_month||1)-1]||'';
   const start=`${sm} ${xp.start_year}`;
   let end='настоящее время';
   if(!xp.is_current && xp.end_year){
-    const em=VIEWED_XP_MONTHS[(xp.end_month||12)-1]||
+    const em=VIEWED_XP_MONTHS[(xp.end_month||12)-1]||'';
     end=`${em} ${xp.end_year}`;
   }
   const sY=xp.start_year, sM=xp.start_month||1;
@@ -1038,7 +1038,7 @@ function fmtViewedXpPeriod(xp){
   const yy=Math.floor(total/12), mm=total%12;
   const pY=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'лет';if(v===1)return'год';if(v>=2&&v<=4)return'года';return'лет';};
   const pM=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'мес.';if(v===1)return'мес.';if(v>=2&&v<=4)return'мес.';return'мес.';};
-  let dur=
+  let dur='';
   if(yy>0) dur+=yy+' '+pY(yy);
   if(mm>0) dur+=(dur?' ':'')+mm+' '+pM(mm);
   if(!dur) dur='менее месяца';
@@ -1062,7 +1062,7 @@ async function loadViewedExperience(){
       const co=esc(xp.company||'—');
       const ltr=esc(viewedLetter(xp.company||xp.position||'?'));
       const color=viewedColor(xp.company||xp.position||'');
-      const desc=xp.description?`<div style="font-size:11px;color:var(--tm);line-height:1.5;margin-top:6px;white-space:pre-wrap">${esc(xp.description)}</div>`:
+      const desc=xp.description?`<div style="font-size:11px;color:var(--tm);line-height:1.5;margin-top:6px;white-space:pre-wrap">${esc(xp.description)}</div>`:'';
       return `<div class="xp-item">
         <div class="xp-logo" style="background:${color}">${ltr}</div>
         <div class="xp-body">
@@ -1134,7 +1134,7 @@ async function loadViewedFriends(){
     }else{
       grid.innerHTML=friends.slice(0,12).map(f=>{
         const name=f.full_name||f.friend_name||'Участник';
-        const pid=f.public_id||f.friend_id||
+        const pid=f.public_id||f.friend_id||'';
         const avInner=f.avatar_url
           ? `<div class="friend-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${viewedColor(name)}"></div>`
           : `<div class="friend-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>`;
@@ -1155,7 +1155,7 @@ async function loadViewedFriends(){
     } else {
       onlineBlock.innerHTML=online.slice(0,5).map(f=>{
         const name=f.full_name||f.friend_name||'Участник';
-        const pid=f.public_id||f.friend_id||
+        const pid=f.public_id||f.friend_id||'';
         const av=f.avatar_url
           ? `<div class="fmini-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${viewedColor(name)}"><div class="fmini-online"></div></div>`
           : `<div class="fmini-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}<div class="fmini-online"></div></div>`;
@@ -1198,7 +1198,7 @@ function renderViewedCommunities(){
     return;
   }
   root.innerHTML=list.map(c=>{
-    const slug=c.slug||c.public_id||c.id||
+    const slug=c.slug||c.public_id||c.id||'';
     const av=c.avatar_url
       ? `<img src="${esc(c.avatar_url)}" alt="" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`
       : `<div style="width:44px;height:44px;border-radius:12px;background:${viewedColor(c.name||'')};color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800">${esc(viewedLetter(c.name||''))}</div>`;
@@ -1220,11 +1220,11 @@ function renderViewedEvents(){
     return;
   }
   root.innerHTML=list.map(ev=>{
-    const slug=ev.slug||ev.public_id||ev.id||
+    const slug=ev.slug||ev.public_id||ev.id||'';
     const d=ev.starts_at?new Date(ev.starts_at):null;
-    const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):
-    const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):
-    const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:
+    const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):'';
+    const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
+    const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:'';
     return `<a href="/event-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       ${cover}
       <div style="padding:12px">

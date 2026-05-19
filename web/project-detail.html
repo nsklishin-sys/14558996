@@ -70,8 +70,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .proj-cover{height:140px;position:relative;overflow:hidden;display:flex;align-items:flex-start;justify-content:flex-end;padding:14px 18px}
 .proj-cover-bg{position:absolute;inset:0}
 /* декоративные круги */
-.proj-cover::before{content:position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
-.proj-cover::after{content:position:absolute;bottom:-60px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
+.proj-cover::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+.proj-cover::after{content:'';position:absolute;bottom:-60px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
 /* статус + категория поверх обложки */
 .proj-cover-badges{display:flex;align-items:center;gap:6px;position:relative;z-index:1;flex-wrap:wrap;justify-content:flex-end;max-width:70%}
 .proj-status{padding:4px 12px;border-radius:99px;font-size:10px;font-weight:800;display:flex;align-items:center;gap:5px}
@@ -148,7 +148,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* Этапы */
 .stages{display:flex;flex-direction:column;gap:0}
 .stage{display:flex;gap:14px;padding:12px 0;position:relative}
-.stage:not(:last-child)::after{content:position:absolute;left:15px;top:36px;bottom:-12px;width:1.5px;background:var(--bdr)}
+.stage:not(:last-child)::after{content:'';position:absolute;left:15px;top:36px;bottom:-12px;width:1.5px;background:var(--bdr)}
 .stage-dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;position:relative;z-index:1;border:2.5px solid var(--w)}
 .stage-dot svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
 .sd-done{background:var(--g)}
@@ -256,7 +256,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .media-item{position:relative;border-radius:var(--rm);overflow:hidden;background:var(--bg);border:1px solid var(--bdr);cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .media-item:hover{border-color:var(--gb);box-shadow:var(--shm)}
-.media-item::before{content:display:block;padding-top:66%}
+.media-item::before{content:'';display:block;padding-top:66%}
 .media-item-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .media-item-inner img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
 .media-item:hover .media-item-inner img{transform:scale(1.05)}
@@ -268,7 +268,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .media-play svg{width:14px;height:14px;fill:var(--t);stroke:none;margin-left:2px}
 /* кнопка добавить */
 .media-add{border-radius:var(--rm);border:1.5px dashed var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative}
-.media-add::before{content:display:block;padding-top:66%}
+.media-add::before{content:'';display:block;padding-top:66%}
 .media-add-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
 .media-add:hover{border-color:var(--gb);background:var(--gl)}
 .media-add svg{width:20px;height:20px;stroke:var(--gmt);fill:none;stroke-width:1.6;stroke-linecap:round}
@@ -1046,7 +1046,7 @@ function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
 function showToast(msg,type){toast(msg,type==='success')}
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -1088,9 +1088,9 @@ async function loadRepostFriends(){
       return;
     }
     const html = friends.slice(0, 20).map(f => {
-      const pid = f.public_id || f.friend_id ||
+      const pid = f.public_id || f.friend_id || '';
       const name = f.full_name || f.friend_name || f.name || 'Без имени';
-      const sub = f.position || f.company_name || f.email ||
+      const sub = f.position || f.company_name || f.email || '';
       const initials = (name.split(/\s+/).map(s => s[0]||'').join('').slice(0,2).toUpperCase()) || '?';
       const safeName = name.replace(/'/g, '\\\'');
       return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(safeName)}')">
@@ -1245,9 +1245,9 @@ function renderAddMemberList(friends){
   }
   const existingIDs = new Set((currentMembers || []).map(m => m.user_public_id));
   list.innerHTML = friends.map(f => {
-    const pid = f.public_id || f.friend_id ||
+    const pid = f.public_id || f.friend_id || '';
     const name = f.full_name || f.friend_name || f.name || 'Без имени';
-    const sub = f.position || f.company_name || f.email ||
+    const sub = f.position || f.company_name || f.email || '';
     const inits = (name.split(/\s+/).map(s => s[0]||'').join('').slice(0,2).toUpperCase()) || '?';
     const isMember = existingIDs.has(pid);
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;${isMember?'opacity:.5':'cursor:pointer'};transition:background .15s" ${isMember?'':`onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background=''" onclick="addProjectMember('${esc(pid)}','${esc(name).replace(/'/g,"\'")}')"`}>
@@ -1310,7 +1310,7 @@ function openLightbox(idx){
 }
 function closeLightbox(){
   document.getElementById('lightbox').classList.remove('open');
-  document.body.style.overflow=
+  document.body.style.overflow='';
 }
 function lbNav(dir){
   lbIndex=(lbIndex+dir+MEDIA_ITEMS.length)%MEDIA_ITEMS.length;
@@ -1353,7 +1353,7 @@ function handleUpload(input){
   const lbl=document.getElementById('mediaCountLabel');
   if(lbl)lbl.textContent=MEDIA_ITEMS.length+' файлов';
   toast('Добавлено '+(files.length===1?'1 файл':files.length+' файла') +' ✓',true);
-  input.value=
+  input.value='';
 }
 function rebuildMediaGrid(){
   const grid=document.getElementById('mediaGrid');
@@ -1399,16 +1399,16 @@ async function toggleSave(){
 
 /* МОДАЛКА */
 let _currentNeedID = 0;
-let _currentNeedTitle =
+let _currentNeedTitle = '';
 
 function openRespondModal(needID, needTitle){
   _currentNeedID = needID;
-  _currentNeedTitle = needTitle ||
+  _currentNeedTitle = needTitle || '';
   document.getElementById('modalNeedTitle').textContent = 'Отклик: ' + (needTitle || '');
   // Очищаем поля
-  const role = document.getElementById('mRole'); if(role) role.value =
-  const msg = document.getElementById('mMessage'); if(msg) msg.value =
-  const contact = document.getElementById('mContact'); if(contact) contact.value =
+  const role = document.getElementById('mRole'); if(role) role.value = '';
+  const msg = document.getElementById('mMessage'); if(msg) msg.value = '';
+  const contact = document.getElementById('mContact'); if(contact) contact.value = '';
   document.getElementById('modalBg').classList.add('open');
   setTimeout(() => document.getElementById('mRole')?.focus(), 150);
 }
@@ -1424,7 +1424,7 @@ async function submitRespond(){
   if (!role){ document.getElementById('mRole').focus(); return; }
 
   // Собираем единый текст для первого сообщения в чате
-  let fullMessage =
+  let fullMessage = '';
   if (role) fullMessage += 'Роль: ' + role + '\n';
   if (message) fullMessage += '\n' + message + '\n';
   if (contact) fullMessage += '\nКонтакт: ' + contact;
@@ -1471,7 +1471,7 @@ let currentProject = null;
 let currentMembers = [];
 let viewerIsOwner = false;
 let viewerCanManage = false; // owner или admin
-let viewerUserPublicID = // public_id текущего юзера (для определения роли в проекте)
+let viewerUserPublicID = ''; // public_id текущего юзера (для определения роли в проекте)
 
 const STATUS_MAP = {
   planned: { label: 'Планируется', cls: 'ps-planned', color: '#FAEEDA' },
@@ -1489,7 +1489,7 @@ const COVER_GRADIENTS = {
 
 function getProjectIDFromURL(){
   const params = new URLSearchParams(window.location.search);
-  return params.get('id') ||
+  return params.get('id') || '';
 }
 
 async function loadProject(){
@@ -1530,7 +1530,7 @@ async function loadProject(){
     } else if (meRes && meRes.ok) {
       try {
         const me = await meRes.json();
-        viewerUserPublicID = (me.user && me.user.public_id) ||
+        viewerUserPublicID = (me.user && me.user.public_id) || '';
         const myMember = currentMembers.find(m => m.user_public_id === viewerUserPublicID);
         if (myMember && (myMember.role === 'owner' || myMember.role === 'admin')) {
           viewerCanManage = true;
@@ -1585,7 +1585,7 @@ function renderProject(){
   const catBadge = document.getElementById('projCategoryBadge');
   if (catBadge) {
     if (p.category) {
-      catBadge.style.display =
+      catBadge.style.display = '';
       catBadge.textContent = p.category;
     } else {
       catBadge.style.display = 'none';
@@ -1605,8 +1605,8 @@ function renderProject(){
   const ownerSep = document.getElementById('projOwnerSep');
   const ownerNameEl = document.getElementById('projOwnerName');
   if (p.owner_name && ownerMeta) {
-    ownerMeta.style.display =
-    if (ownerSep) ownerSep.style.display =
+    ownerMeta.style.display = '';
+    if (ownerSep) ownerSep.style.display = '';
     if (ownerNameEl) ownerNameEl.textContent = p.owner_name;
   } else if (ownerMeta) {
     ownerMeta.style.display = 'none';
@@ -1617,8 +1617,8 @@ function renderProject(){
   const dlSep = document.getElementById('projDeadlineSep');
   const dlLabel = document.getElementById('projDeadlineLabel');
   if (p.deadline && dlMeta) {
-    dlMeta.style.display =
-    if (dlSep) dlSep.style.display =
+    dlMeta.style.display = '';
+    if (dlSep) dlSep.style.display = '';
     const d = new Date(p.deadline);
     if (dlLabel) dlLabel.textContent = 'Дедлайн: ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   } else if (dlMeta) {
@@ -1645,7 +1645,7 @@ function renderProject(){
     if (p.deadline) {
       const d = new Date(p.deadline);
       sideDeadlineEl.textContent = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
-      sideDeadlineRow.style.display =
+      sideDeadlineRow.style.display = '';
     } else {
       sideDeadlineRow.style.display = 'none';
     }
@@ -1673,7 +1673,7 @@ function renderProject(){
   const tagsWrap = document.getElementById('projTagsWrap');
   if (tagsWrap) {
     if (p.tags && p.tags.length) {
-      tagsWrap.style.display =
+      tagsWrap.style.display = '';
       tagsWrap.innerHTML = p.tags.map(t => `<span class="proj-tag">${esc(t)}</span>`).join('');
     } else {
       tagsWrap.style.display = 'none';
@@ -1804,15 +1804,15 @@ const NEED_CATEGORY_COLORS = {
 };
 
 function formatRuDate(iso){
-  if (!iso) return
+  if (!iso) return '';
   try{
     const d = new Date(iso);
     return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
-  }catch{ return }
+  }catch{ return ''; }
 }
 
 function formatStageDates(start, end){
-  if (!start && !end) return
+  if (!start && !end) return '';
   if (start && end) return formatRuDate(start) + ' — ' + formatRuDate(end);
   if (start) return 'с ' + formatRuDate(start);
   return 'до ' + formatRuDate(end);
@@ -1850,9 +1850,9 @@ async function loadStages(){
             ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="#fff" stroke="none"/></svg>'
             : '');
       const dates = formatStageDates(s.start_date, s.end_date);
-      const assignee = s.assignee_name ? ' · ' + esc(s.assignee_name) :
-      const meta = (dates || assignee) ? '<div class="stage-meta">' + esc(dates) + assignee + '</div>' :
-      const desc = s.description ? '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:6px">' + esc(s.description) + '</div>' :
+      const assignee = s.assignee_name ? ' · ' + esc(s.assignee_name) : '';
+      const meta = (dates || assignee) ? '<div class="stage-meta">' + esc(dates) + assignee + '</div>' : '';
+      const desc = s.description ? '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:6px">' + esc(s.description) + '</div>' : '';
 
       // Подзадачи
       const subtasks = s.subtasks || [];
@@ -1860,10 +1860,10 @@ async function loadStages(){
       const subtasksItems = subtasks.map(st => {
         const deleteBtn = viewerCanManage
           ? `<button type="button" class="subtask-delete" onclick="event.stopPropagation();deleteSubtask(${st.id})" title="Удалить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`
-          :
+          : '';
         const checkClickable = viewerCanManage
           ? `onclick="toggleSubtask(${st.id}, ${!st.is_done})"`
-          :
+          : '';
         return `<div class="subtask-row${st.is_done ? ' done' : ''}" ${checkClickable}>
           <span class="subtask-checkbox">${st.is_done ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span>
           <span class="subtask-text">${esc(st.title)}</span>
@@ -1876,7 +1876,7 @@ async function loadStages(){
             <input class="subtask-add-input" placeholder="+ добавить подзадачу" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtask(${s.id}, this)}">
             <button type="button" onclick="addSubtask(${s.id}, this.previousElementSibling)" style="padding:7px 12px;border-radius:8px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Добавить</button>
           </div>`
-        :
+        : '';
 
       const subtasksHTML = (subtasks.length || viewerCanManage)
         ? `<div style="margin-top:10px;padding:10px 12px;background:var(--gp);border-radius:8px">
@@ -1884,14 +1884,14 @@ async function loadStages(){
             ${subtasksItems}
             ${addSubtaskInput}
           </div>`
-        :
+        : '';
 
       const actions = viewerCanManage
         ? `<div class="item-actions">
             <button type="button" class="item-action" onclick='openStageModal(${JSON.stringify(s).replace(/'/g, "&apos;")})' title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             <button type="button" class="item-action danger" onclick="deleteStage(${s.id}, &quot;${escAttr(s.title)}&quot;)" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
           </div>`
-        :
+        : '';
 
       return `<div class="stage">
         <div class="stage-dot ${dotClass}">${dotInner}</div>
@@ -1940,7 +1940,7 @@ async function loadNeeds(){
     if (sideNeedsRow && sideNeedsEl) {
       if (openCount > 0) {
         sideNeedsEl.textContent = String(openCount);
-        sideNeedsRow.style.display =
+        sideNeedsRow.style.display = '';
       } else {
         sideNeedsRow.style.display = 'none';
       }
@@ -1970,14 +1970,14 @@ async function loadNeeds(){
         ? (viewerCanManage
             ? '<button type="button" class="need-tag" style="background:var(--gl);color:var(--g);border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px" onclick="openResponsesModal(' + n.id + ', &quot;' + escAttr(n.title) + '&quot;)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</button>'
             : '<span class="need-tag" style="background:var(--gl);color:var(--g)"><svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;display:inline-block;vertical-align:-2px;margin-right:3px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + n.responses_count + ' ' + pluralRu(n.responses_count, ['отклик','отклика','откликов']) + '</span>')
-        :
+        : '';
 
       const manageActions = viewerCanManage
         ? `<div class="item-actions" style="margin-left:auto">
             <button type="button" class="item-action" onclick='openNeedModal(${JSON.stringify(n).replace(/'/g, "&apos;")})' title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             <button type="button" class="item-action danger" onclick="deleteNeed(${n.id}, &quot;${escAttr(n.title)}&quot;)" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
           </div>`
-        :
+        : '';
 
       return `<div class="need-card"${isClosed ? ' style="opacity:.6"' : ''}>
         <div class="need-icon ${iconClass}">
@@ -2046,9 +2046,9 @@ function applyManageButtonsVisibility(){
   if(mc) mc.style.display = viewerCanManage ? '' : 'none';
   if (viewerCanManage) {
     const addStage = document.getElementById('btnAddStage');
-    if (addStage) addStage.style.display =
+    if (addStage) addStage.style.display = '';
     const addNeed = document.getElementById('btnAddNeed');
-    if (addNeed) addNeed.style.display =
+    if (addNeed) addNeed.style.display = '';
   }
 }
 
@@ -2056,11 +2056,11 @@ function applyManageButtonsVisibility(){
 function openStageModal(stage){
   _editingStageID = stage ? stage.id : null;
   document.getElementById('stageModalTitle').textContent = stage ? 'Редактировать этап' : 'Новый этап';
-  document.getElementById('stTitle').value = stage ? (stage.title || '') :
-  document.getElementById('stDescription').value = stage ? (stage.description || '') :
+  document.getElementById('stTitle').value = stage ? (stage.title || '') : '';
+  document.getElementById('stDescription').value = stage ? (stage.description || '') : '';
   document.getElementById('stStatus').value = stage ? (stage.status || 'planned') : 'planned';
-  document.getElementById('stStartDate').value = stage ? (stage.start_date || '') :
-  document.getElementById('stEndDate').value = stage ? (stage.end_date || '') :
+  document.getElementById('stStartDate').value = stage ? (stage.start_date || '') : '';
+  document.getElementById('stEndDate').value = stage ? (stage.end_date || '') : '';
 
   // Заполняем select исполнителя из участников проекта
   const sel = document.getElementById('stAssignee');
@@ -2158,7 +2158,7 @@ async function addSubtask(stageID, inputEl){
       body: JSON.stringify({ title })
     });
     if (!r.ok) throw new Error('http ' + r.status);
-    inputEl.value =
+    inputEl.value = '';
     loadStages();
   } catch (err){
     console.error('addSubtask', err);
@@ -2201,8 +2201,8 @@ async function deleteSubtask(subtaskID){
 function openNeedModal(need){
   _editingNeedID = need ? need.id : null;
   document.getElementById('needModalTitle').textContent = need ? 'Редактировать потребность' : 'Новая потребность';
-  document.getElementById('ndTitle').value = need ? (need.title || '') :
-  document.getElementById('ndDescription').value = need ? (need.description || '') :
+  document.getElementById('ndTitle').value = need ? (need.title || '') : '';
+  document.getElementById('ndDescription').value = need ? (need.description || '') : '';
   document.getElementById('ndCategory').value = need ? (need.category_role || 'other') : 'other';
   document.getElementById('ndStatus').value = need ? (need.status || 'open') : 'open';
   document.getElementById('needModalBg').classList.add('open');
@@ -2297,10 +2297,10 @@ async function openResponsesModal(needID, needTitle){
       const date = formatRuDate(rsp.created_at);
       const chatBtn = rsp.chat_conversation_id
         ? `<a href="/chat.html" class="resp-chat-link"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Открыть чат</a>`
-        :
+        : '';
       const profileLink = rsp.responder_public_id
         ? `onclick="location.href='/profile_user.html?id=${esc(rsp.responder_public_id)}'" style="cursor:pointer"`
-        :
+        : '';
       return `<div class="resp-item">
         <div class="resp-head">
           <div class="resp-av" style="background:${color}" ${profileLink}>${esc(initial)}</div>
@@ -2346,22 +2346,22 @@ function openProjectEditModal(){
         wrap.parentNode.insertBefore(cat, wrap);
         wrap.remove();
       }
-      cat.dataset.cpReady =
-      cat.style.display =
+      cat.dataset.cpReady = '';
+      cat.style.display = '';
     }
   }
 
   // Заполняем поля текущими значениями
-  document.getElementById('peTitle').value = currentProject.title ||
-  document.getElementById('peDescription').value = currentProject.description ||
-  if (cat) cat.value = currentProject.category ||
+  document.getElementById('peTitle').value = currentProject.title || '';
+  document.getElementById('peDescription').value = currentProject.description || '';
+  if (cat) cat.value = currentProject.category || '';
   document.getElementById('peStatus').value = currentProject.status || 'planned';
   document.getElementById('peDeadline').value = currentProject.deadline
     ? String(currentProject.deadline).slice(0, 10)
-    :
+    : '';
   document.getElementById('peTags').value = Array.isArray(currentProject.tags)
     ? currentProject.tags.join(', ')
-    :
+    : '';
 
   // Инициализируем picker для категории
   if (window.initCategoryPickers) window.initCategoryPickers();

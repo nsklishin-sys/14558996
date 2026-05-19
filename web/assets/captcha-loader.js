@@ -53,14 +53,14 @@
     return true;
   };
   window.LASTOP_CAPTCHA.getToken = function () {
-    return window.LASTOP_CAPTCHA.token ||
+    return window.LASTOP_CAPTCHA.token || '';
   };
   window.LASTOP_CAPTCHA.reset = function () {
-    window.LASTOP_CAPTCHA.token =
+    window.LASTOP_CAPTCHA.token = '';
     if (window.LASTOP_CAPTCHA.type === 'yandex' && window.smartCaptcha) {
       try {
         const widget = document.getElementById('ya-captcha-container');
-        if (widget) widget.innerHTML =
+        if (widget) widget.innerHTML = '';
         if (typeof window.__lastopYaCaptchaOnLoad === 'function') window.__lastopYaCaptchaOnLoad();
       } catch {}
     } else if (typeof window.newCaptcha === 'function') {

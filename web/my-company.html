@@ -425,7 +425,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 let myCompanies = [];
 let currentCompany = null;
@@ -444,7 +444,7 @@ function stableColor(s){
   return ['#1E8A4C','#0891B2','#7C3AED','#DB2777','#EA580C','#65A30D','#475569','#2563EB','#9333EA','#0EA5E9','#F59E0B'][Math.abs(h) % 11];
 }
 function formatRel(iso){
-  if (!iso) return
+  if (!iso) return '';
   const d = new Date(iso); const now = new Date();
   const diff = (now - d) / 1000;
   if (diff < 60) return 'только что';
@@ -454,7 +454,7 @@ function formatRel(iso){
   return d.toLocaleDateString('ru-RU');
 }
 function fmtDateAbs(iso){
-  if (!iso) return
+  if (!iso) return '';
   return new Date(iso).toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
 }
 function toast(msg, success){
@@ -464,7 +464,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -558,7 +558,7 @@ function renderEmpty(){
         '<button type="button" class="btn btn-secondary" onclick="openAccept()"><svg viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M5 9l7 5 7-5"/></svg>У меня есть приглашение</button>' +
       '</div>' +
     '</div>';
-  document.getElementById('rightArea').innerHTML =
+  document.getElementById('rightArea').innerHTML = '';
 }
 
 function render(){
@@ -569,7 +569,7 @@ function render(){
     ? '<div class="mc-logo"><img src="' + escAttr(c.logo_image) + '" alt=""></div>'
     : '<div class="mc-logo" style="background:' + escAttr(c.accent_color || '#E8F5EE') + ';color:#fff">' + esc(initials(c.name)) + '</div>';
 
-  let selectorHtml =
+  let selectorHtml = '';
   if (myCompanies.length > 1) {
     selectorHtml = '<select class="mc-select" onchange="switchCompany(this.value)">' +
       myCompanies.map(co => '<option value="' + escAttr(co.public_id) + '"' + (co.public_id === c.public_id ? ' selected' : '') + '>' + esc(co.name) + '</option>').join('') +
@@ -701,7 +701,7 @@ function renderAbout(wrap){
 
   // Инициализируем aboutTags и color picker sync
   window.__aboutTags = (c.tags || []).slice();
-  window.__aboutLogo = c.logo_image ||
+  window.__aboutLogo = c.logo_image || '';
   renderAboutTags();
   // sync color → text
   const colorInput = document.getElementById('aboutAccent');
@@ -735,11 +735,11 @@ function onTagKeydown(e){
   const inp = document.getElementById('aboutTagInput');
   const v = inp.value.trim().replace(/,$/, '');
   if (!v) return;
-  if ((window.__aboutTags || []).includes(v)) { inp.value = return; }
+  if ((window.__aboutTags || []).includes(v)) { inp.value = ''; return; }
   if ((window.__aboutTags || []).length >= 20) { toast('Максимум 20 тегов'); return; }
   window.__aboutTags = window.__aboutTags || [];
   window.__aboutTags.push(v);
-  inp.value =
+  inp.value = '';
   renderAboutTags();
 }
 
@@ -770,7 +770,7 @@ function uploadAboutLogo(e){
 }
 
 function clearAboutLogo(){
-  window.__aboutLogo =
+  window.__aboutLogo = '';
   renderTab(); // полный пере-рендер чтобы убрать кнопку «Убрать»
 }
 
@@ -890,11 +890,11 @@ async function editPosition(userID, oldPosition, name){
   }
   if (!matched && oldPosition) {
     sel.value = '__custom__';
-    customWrap.style.display =
+    customWrap.style.display = '';
     customInp.value = oldPosition;
   } else {
     customWrap.style.display = 'none';
-    customInp.value =
+    customInp.value = '';
     if (!matched) sel.selectedIndex = 0;
   }
   document.getElementById('modalPosition').classList.add('open');
@@ -910,7 +910,7 @@ function onPresetChange(){
   const sel = document.getElementById('pPreset');
   const customWrap = document.getElementById('pCustomWrap');
   if (sel.value === '__custom__') {
-    customWrap.style.display =
+    customWrap.style.display = '';
     setTimeout(() => document.getElementById('pCustom').focus(), 50);
   } else {
     customWrap.style.display = 'none';
@@ -921,7 +921,7 @@ async function submitPosition(){
   const ed = window.__pEditing;
   if (!ed) return;
   const sel = document.getElementById('pPreset');
-  let newPos =
+  let newPos = '';
   if (sel.value === '__custom__') {
     newPos = document.getElementById('pCustom').value.trim();
   } else if (sel.value !== '') {
@@ -1049,7 +1049,7 @@ async function renderInvites(wrap){
     }).join('');
     const toggleBtn = inactiveCount > 0
       ? '<button type="button" class="btn btn-ghost" onclick="window.__invShowInactive=!window.__invShowInactive;renderTab()" style="font-size:11px;color:var(--gmt);margin-left:auto">' + (showInactive ? '↑ Скрыть использованные ('+inactiveCount+')' : '↓ Показать использованные ('+inactiveCount+')') + '</button>'
-      :
+      : '';
     wrap.innerHTML =
       '<div class="panel">' +
         '<div class="panel-title" style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24"><path d="M3 7l9 6 9-6"/></svg>Приглашения <span style="font-size:11px;color:var(--gmt);font-weight:600">'+activeCount+'/10</span>' + toggleBtn + '<button type="button" class="btn btn-primary" onclick="openInviteModal()"' + (activeCount >= 10 ? ' disabled style="opacity:.5;cursor:not-allowed"' : '') + '><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать ссылку</button></div>' +
@@ -1123,7 +1123,7 @@ function clearINNStatus() {
   const el = document.getElementById('innStatus');
   if (!el) return;
   el.className = 'inn-status';
-  el.innerHTML =
+  el.innerHTML = '';
 }
 
 function onINNInput() {
@@ -1175,7 +1175,7 @@ async function verifyINNRequest(inn) {
     if (d.ogrn) subParts.push('ОГРН: ' + d.ogrn);
     if (d.kpp) subParts.push('КПП: ' + d.kpp);
     if (d.status && d.status !== 'ACTIVE') subParts.push('⚠ статус: ' + d.status);
-    const subText = subParts.length ? '<div class="inn-status-sub">' + subParts.join(' · ') + '</div>' :
+    const subText = subParts.length ? '<div class="inn-status-sub">' + subParts.join(' · ') + '</div>' : '';
     setINNStatus('success',
       '<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/></svg>' +
       '<div class="inn-status-inner">' +

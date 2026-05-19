@@ -120,7 +120,7 @@
     }
     const t = (type==='ok'||type===true) ? 'success' : (type||'info');
     _lt_toast_el.className = 'lt-toast ' + t;
-    const icon = TOAST_ICONS[t] ||
+    const icon = TOAST_ICONS[t] || '';
     _lt_toast_el.innerHTML = icon + '<span>'+escapeHTML(String(msg||''))+'</span>';
     requestAnimationFrame(()=>_lt_toast_el.classList.add('show'));
     clearTimeout(_lt_toast_timer);

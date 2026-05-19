@@ -168,7 +168,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 const TABS = [
   { key: 'all',      label: 'Все',          countKey: 'total' },
@@ -190,7 +190,7 @@ function pluralRu(n,f){const a=[2,0,1,1,1,2];return f[(n%100>4&&n%100<20)?2:a[Ma
 const fmtNum = window.lastopFmtNum;
 function fmtPrice(price, cur){
   if (price == null) return null;
-  const sym = {RUB:'₽',USD:'$',EUR:'€',CNY:'¥'}[cur] || cur ||
+  const sym = {RUB:'₽',USD:'$',EUR:'€',CNY:'¥'}[cur] || cur || '';
   return fmtNum(price) + ' ' + sym;
 }
 function fmtSalary(from){
@@ -198,7 +198,7 @@ function fmtSalary(from){
   return 'от ' + fmtNum(from) + ' ₽';
 }
 function formatRel(iso){
-  if (!iso) return
+  if (!iso) return '';
   const d = new Date(iso); const now = new Date();
   const diff = (now - d) / 1000;
   if (diff < 60) return 'только что';
@@ -222,7 +222,7 @@ function toast(msg){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -329,7 +329,7 @@ function renderFeed(){
       feed.innerHTML = renderEmpty('all');
       return;
     }
-    let html =
+    let html = '';
     const sections = [
       { key:'posts',    label:'Новости',  icon:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>' },
       { key:'projects', label:'Проекты',  icon:'<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
@@ -373,14 +373,14 @@ function renderCard(type, i){
   if (type === 'resumes') return renderResumeCard(i);
   if (type === 'catalog') return renderCatalogCard(i);
   if (type === 'events') return renderEventCard(i);
-  return
+  return '';
 }
 
 function renderEventCard(e){
   const url = '/event-detail.html?id=' + encodeURIComponent(e.public_id || '');
   const title = e.title || 'Мероприятие';
   const stripe = stableColor(e.type || e.title || '?');
-  const dateStr = e.starts_at ? new Date(e.starts_at).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}) :
+  const dateStr = e.starts_at ? new Date(e.starts_at).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}) : '';
   const fmt = e.format === 'online' ? 'онлайн' : 'офлайн';
   return '<a class="gc" href="' + escAttr(url) + '">' +
     '<div class="gc-stripe" style="background:' + esc(stripe) + '"></div>' +
@@ -396,7 +396,7 @@ function renderPostCard(p){
   if (p.author_company_id && p.author_company_name) author = p.author_company_name;
   else if (p.author_community_id && p.author_community_name) author = p.author_community_name;
   const url = p.public_id ? '/news-detail.html?id=' + encodeURIComponent(p.public_id) : '#';
-  const text = p.content || p.text || p.title ||
+  const text = p.content || p.text || p.title || '';
   const preview = text.length > 200 ? text.slice(0, 200) + '…' : text;
   return '<a class="gc" href="' + escAttr(url) + '">' +
     '<div class="gc-thumb" style="background:' + esc(stableColor(author)) + '"><span style="color:#fff;font-weight:800;font-size:14px">' + esc(initials(author)) + '</span></div>' +
@@ -427,7 +427,7 @@ function renderProjectCard(p){
 
 function renderJobCard(j){
   const url = '/job-detail.html?id=' + encodeURIComponent(j.public_id);
-  const cat = j.category_label || j.category ||
+  const cat = j.category_label || j.category || '';
   const catColor = j.category_color || stableColor(j.category || '?');
   const sal = fmtSalary(j.salary_from);
   return '<a class="gc" href="' + escAttr(url) + '">' +
@@ -449,7 +449,7 @@ function renderJobCard(j){
 
 function renderResumeCard(r){
   const url = '/resume-detail.html?id=' + encodeURIComponent(r.public_id);
-  const cat = r.category_label || r.category ||
+  const cat = r.category_label || r.category || '';
   const catColor = r.category_color || stableColor(r.category || '?');
   const sal = fmtSalary(r.salary_from);
   return '<a class="gc" href="' + escAttr(url) + '">' +
@@ -472,9 +472,9 @@ function renderResumeCard(r){
 function renderCatalogCard(c){
   const isProduct = c.type === 'product';
   const url = (isProduct ? '/product-detail.html?id=' : '/service-detail.html?id=') + encodeURIComponent(c.public_id);
-  const groupLabel = c.category_group ||
+  const groupLabel = c.category_group || '';
   const catColor = stableColor(c.category || '?');
-  const cover = (isProduct && c.cover_image) ? c.cover_image :
+  const cover = (isProduct && c.cover_image) ? c.cover_image : '';
   const price = c.price != null ? fmtPrice(c.price, c.currency) : null;
   const thumb = cover
     ? '<div class="gc-thumb"><img src="' + escAttr(cover) + '" alt="" loading="lazy"></div>'

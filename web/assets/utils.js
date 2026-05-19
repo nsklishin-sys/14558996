@@ -71,9 +71,9 @@
   // ─── ago(timestamp) — «5 мин назад», «2 ч назад» и т.д. ────────────
   // timestamp может быть ISO-строкой, Date или числом ms.
   function lastopAgo(ts) {
-    if (!ts) return
+    if (!ts) return '';
     const d = new Date(ts);
-    if (isNaN(d.getTime())) return
+    if (isNaN(d.getTime())) return '';
     const m = Math.max(1, Math.floor((Date.now() - d.getTime()) / 60000));
     if (m < 60) return m + ' мин назад';
     if (m < 1440) return Math.floor(m / 60) + ' ч назад';
@@ -106,7 +106,7 @@
         return rest.join('=');
       }
     }
-    return
+    return '';
   }
   const WRITE_METHODS = { POST: 1, PUT: 1, DELETE: 1, PATCH: 1 };
   function lastopFetch(url, opts) {
@@ -135,13 +135,4 @@
   }
   global.lastopFetch = lastopFetch;
 
-  // Phase 3v2 (19.05): tk() — no-op заглушка. После миграции на cookies
-  // авторизация идёт через HttpOnly cookie lastop_session, а не через
-  // localStorage.getItem('token'). Чтобы не править 291 место с
-  // Authorization: 'Bearer ' + tk(), оставляем tk() как глобальную
-  // функцию возвращающую '' — header формируется ('Bearer '), но
-  // lastopFetch его стрипает перед отправкой. Серверу приходят
-  // только cookies + X-CSRF-Token.
-  function tk() { return ''; }
-  global.tk = tk;
 })(window);

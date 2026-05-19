@@ -531,11 +531,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-||
+const tk=()=>localStorage.getItem('token')||'';
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');dd.classList.toggle('open');tp.classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('#topbarProfile')&&!e.target.closest('#profileDD')){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 
@@ -596,10 +596,10 @@ function goPage(d){
   document.querySelector('.main').scrollTo({top:0,behavior:'smooth'});
 }
 function clearSearch(){
-  state.query=state.type='all';state.sort='relevance';state.page=1;
+  state.query='';state.type='all';state.sort='relevance';state.page=1;
   state.total=0;state.groups={users:[],posts:[],communities:[],events:[],companies:[],forum:[],jobs:[],resumes:[],catalog:[],chats:[],sections:[]};
   state.perCategory={users:0,posts:0,communities:0,events:0,companies:0,forum:0,jobs:0,resumes:0,catalog:0,chats:0,sections:0};
-  const inp2=document.getElementById('searchInput');if(inp2)inp2.value=
+  const inp2=document.getElementById('searchInput');if(inp2)inp2.value='';
   writeParams();render();
 }
 
@@ -653,7 +653,7 @@ function renderRecent(){
 
 /* Подсветка совпадений */
 function highlight(text,q){
-  if(!text)return
+  if(!text)return '';
   const safeText=esc(String(text));
   if(!q)return safeText;
   const terms=q.toLowerCase().split(/\s+/).filter(Boolean).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
@@ -678,9 +678,9 @@ async function runSearch(){
   state.loading=true;
   state.startedAt=performance.now();
   document.getElementById('resultsRoot').innerHTML=skeletonBlock(5);
-  document.getElementById('searchHead').style.display=
-  document.getElementById('searchTabsRow').style.display=
-  document.getElementById('searchSortRow').style.display=
+  document.getElementById('searchHead').style.display='';
+  document.getElementById('searchTabsRow').style.display='';
+  document.getElementById('searchSortRow').style.display='';
   document.getElementById('searchPrompt').style.display='none';
 
   // Шаг 1: @handle — мгновенный редирект на профиль если первая буква @
@@ -789,13 +789,13 @@ function render(){
     document.getElementById('searchTabsRow').style.display='none';
     document.getElementById('searchSortRow').style.display='none';
     document.getElementById('searchPager').style.display='none';
-    document.getElementById('resultsRoot').innerHTML=
-    document.getElementById('searchPrompt').style.display=
+    document.getElementById('resultsRoot').innerHTML='';
+    document.getElementById('searchPrompt').style.display='';
     return;
   }
-  document.getElementById('searchHead').style.display=
-  document.getElementById('searchTabsRow').style.display=
-  document.getElementById('searchSortRow').style.display=
+  document.getElementById('searchHead').style.display='';
+  document.getElementById('searchTabsRow').style.display='';
+  document.getElementById('searchSortRow').style.display='';
   document.getElementById('searchPrompt').style.display='none';
 
   // Эхо
@@ -835,7 +835,7 @@ function render(){
     return;
   }
 
-  let html=
+  let html='';
   const showAll=state.type==='all';
   const order=['users','posts','communities','events','companies','forum','jobs','resumes','catalog','chats','sections'];
   for(const cat of order){
@@ -879,8 +879,8 @@ const GROUP_META={
 
 function renderGroup(cat,items,total,showAllMode){
   const meta=GROUP_META[cat];
-  const moreBtn=showAllMode&&total>items.length?`<a class="s-group-more" href="javascript:void(0)" onclick="setType('${cat}',document.querySelector('.s-tab[data-type=\\'${cat}\\']'))">Все ${fmtNum(total)} <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></a>`:
-  let body=
+  const moreBtn=showAllMode&&total>items.length?`<a class="s-group-more" href="javascript:void(0)" onclick="setType('${cat}',document.querySelector('.s-tab[data-type=\\'${cat}\\']'))">Все ${fmtNum(total)} <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></a>`:'';
+  let body='';
   for(const it of items){
     body+=renderRow(cat,it);
   }
@@ -898,7 +898,7 @@ function renderRow(cat,it){
   const q=state.query;
   if(cat==='users'){
     const name=it.full_name||((it.first_name||'')+' '+(it.last_name||'')).trim()||it.email||'?';
-    const handle=it.handle?'@'+it.handle:
+    const handle=it.handle?'@'+it.handle:'';
     const sub=[it.position,it.company_name].filter(Boolean).join(' · ');
     const href=`/profile_user.html?id=${encodeURIComponent(it.public_id||it.id)}`;
     return `<a class="s-row" href="${href}">
@@ -940,7 +940,7 @@ function renderRow(cat,it){
   }
   if(cat==='jobs'){
     const href=`/job-detail.html?id=${encodeURIComponent(it.public_id)}`;
-    const sal = it.salary_from || it.salary_to ? [it.salary_from?'от '+it.salary_from:'',it.salary_to?'до '+it.salary_to:''].filter(Boolean).join(' ')+' ₽' :
+    const sal = it.salary_from || it.salary_to ? [it.salary_from?'от '+it.salary_from:'',it.salary_to?'до '+it.salary_to:''].filter(Boolean).join(' ')+' ₽' : '';
     return `<a class="s-row" href="${href}">
       <div class="s-row-av square" style="background:#1E8A4C">
         <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
@@ -979,7 +979,7 @@ function renderRow(cat,it){
   }
   if(cat==='catalog'){
     const href=it.type==='service'?`/service-detail.html?id=${encodeURIComponent(it.public_id)}`:`/product-detail.html?id=${encodeURIComponent(it.public_id)}`;
-    const price = it.price ? it.price.toLocaleString('ru-RU')+' '+(it.currency||'RUB') :
+    const price = it.price ? it.price.toLocaleString('ru-RU')+' '+(it.currency||'RUB') : '';
     return `<a class="s-row" href="${href}">
       <div class="s-row-av square" style="background:${it.cover_image?'transparent':'#C07030'};background-size:cover;background-image:url('${esc(it.cover_image||'')}')">
         ${it.cover_image?'':'<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>'}
@@ -1014,7 +1014,7 @@ function renderRow(cat,it){
     if (it.author_company_id && it.author_company_name) author = it.author_company_name;
     else if (it.author_community_id && it.author_community_name) author = it.author_community_name;
     const cat=it.category||'Публикация';
-    const text=it.content||it.text||
+    const text=it.content||it.text||'';
     const time=it.created_human||(it.created_at?formatTime(it.created_at):'');
     const href=`/news-detail.html?id=${encodeURIComponent(it.public_id||it.id)}`;
     return `<a class="s-row" href="${href}">
@@ -1054,9 +1054,9 @@ function renderRow(cat,it){
   }
   if(cat==='events'){
     const name=it.title||'Мероприятие';
-    const fmt=it.format==='online'?'Онлайн':it.format==='offline'?'Офлайн':it.format==='hybrid'?'Гибрид':
+    const fmt=it.format==='online'?'Онлайн':it.format==='offline'?'Офлайн':it.format==='hybrid'?'Гибрид':'';
     const fmtBadge={online:'blue',offline:'orange',hybrid:'purple'}[it.format]||'gray';
-    const date=it.starts_at?formatDate(it.starts_at):
+    const date=it.starts_at?formatDate(it.starts_at):'';
     const href=`/event-detail.html?id=${encodeURIComponent(it.public_id||it.id)}`;
     return `<a class="s-row" href="${href}">
       <div class="s-row-av square" style="background:${it.banner_color||avc(name)}">${esc(letter(name))}</div>
@@ -1110,7 +1110,7 @@ function renderRow(cat,it){
       </div>
     </a>`;
   }
-  return
+  return '';
 }
 
 function renderEmpty(){
@@ -1148,10 +1148,10 @@ function formatTime(iso){
     if(diff<86400)return Math.floor(diff/3600)+' ч назад';
     if(diff<86400*7)return Math.floor(diff/86400)+' дн назад';
     return d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
-  }catch{return}
+  }catch{return '';}
 }
 function formatDate(iso){
-  try{return new Date(iso).toLocaleDateString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});}catch{return}
+  try{return new Date(iso).toLocaleDateString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});}catch{return '';}
 }
 
 /* === Init === */
@@ -1190,7 +1190,7 @@ async function waitForSearchInput(timeoutMs){
     const v = e.target.value.trim();
     if (v.length < 2) {
       // Слишком короткий запрос — показываем prompt
-      state.query =
+      state.query = '';
       render();
       return;
     }

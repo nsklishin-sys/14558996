@@ -155,18 +155,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/confirm-modal.js" defer></script>
 <script>
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 function colorFor(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(String(s||'').charCodeAt(0)||0)%C.length];}
 const ago = window.lastopAgo;
 
-let _publicID =
+let _publicID = '';
 let _messages = [];
 
 async function loadExhibition(){
   const params = new URLSearchParams(location.search);
-  _publicID = params.get('id') || params.get('public_id') ||
+  _publicID = params.get('id') || params.get('public_id') || '';
   if (!_publicID) { location.href='/exhibitions.html'; return; }
   const backHref = '/exhibition-detail.html?id=' + encodeURIComponent(_publicID);
   document.getElementById('backLink').setAttribute('href', backHref);
@@ -218,7 +218,7 @@ function renderMessages(){
   const list = document.getElementById('messagesList');
   const counter = document.getElementById('listCount');
   if (!list) return;
-  if (counter) counter.textContent = _messages.length ? (_messages.length + ' сообщений') :
+  if (counter) counter.textContent = _messages.length ? (_messages.length + ' сообщений') : '';
   if (!_messages.length) {
     list.innerHTML = '<div class="disc-empty">Пока никто не оставил сообщений. Будьте первым!</div>';
     return;
@@ -236,7 +236,7 @@ function renderMessages(){
       : '<div class="disc-msg-content">' + esc(m.content || '') + '</div>';
     const actions = (m.is_mine && !m.is_deleted)
       ? '<div class="disc-msg-actions"><button type="button" class="disc-msg-del" onclick="deleteMessage(' + m.id + ')">Удалить</button></div>'
-      :
+      : '';
     return '<div class="disc-msg' + (m.is_deleted ? ' deleted' : '') + '" data-msg-id="' + m.id + '">'
       + '<a href="/profile_user.html?id=' + pid + '" class="disc-av" style="' + bg + ';text-decoration:none">'
       + (m.author_avatar ? '' : ltr) + '</a>'
@@ -275,11 +275,11 @@ async function sendMessage(){
       _messages.unshift(d.message);
       renderMessages();
     }
-    inp.value =
+    inp.value = '';
   } catch (e) {
     alert(e.message || 'Не удалось отправить сообщение');
   } finally {
-    btn.disabled = inp.value.trim() ===
+    btn.disabled = inp.value.trim() === '';
     btn.textContent = 'Отправить';
   }
 }
@@ -296,7 +296,7 @@ async function deleteMessage(msgID){
     });
     if (!r.ok) throw 0;
     const m = _messages.find(function(x){ return x.id === msgID; });
-    if (m) { m.is_deleted = true; m.content = }
+    if (m) { m.is_deleted = true; m.content = ''; }
     renderMessages();
   } catch {
     alert('Не удалось удалить сообщение');
@@ -306,10 +306,10 @@ async function deleteMessage(msgID){
 function initComposer(){
   const tk0 = tk();
   if (!tk0) {
-    document.getElementById('guestHint').style.display =
+    document.getElementById('guestHint').style.display = '';
     return;
   }
-  document.getElementById('composerWrap').style.display =
+  document.getElementById('composerWrap').style.display = '';
   try {
     const u = JSON.parse(localStorage.getItem('user') || '{}');
     const av = document.getElementById('composerAv');
@@ -317,7 +317,7 @@ function initComposer(){
       const name = u.full_name || u.name || 'Я';
       if (u.avatar_url) {
         av.style.backgroundImage = 'url("' + u.avatar_url + '")';
-        av.textContent =
+        av.textContent = '';
       } else {
         av.style.background = colorFor(name);
         av.textContent = letter(name);
@@ -327,7 +327,7 @@ function initComposer(){
   const inp = document.getElementById('composerInput');
   const btn = document.getElementById('composerSend');
   if (inp && btn) {
-    inp.addEventListener('input', function(){ btn.disabled = inp.value.trim() === });
+    inp.addEventListener('input', function(){ btn.disabled = inp.value.trim() === ''; });
     inp.addEventListener('keydown', function(e){
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function(){
     window.wsClient.on('discussion:exhibition_deleted', function(d){
       if (!d || d.exhibition_public_id !== _publicID) return;
       const m = _messages.find(function(x){ return x.id === d.message_id; });
-      if (m) { m.is_deleted = true; m.content = renderMessages(); }
+      if (m) { m.is_deleted = true; m.content = ''; renderMessages(); }
     });
     return true;
   }

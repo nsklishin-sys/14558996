@@ -9,7 +9,7 @@
 .lt-sel-btn:hover{border-color:#C0DECA}
 .lt-sel-btn.open,.lt-sel-btn:focus{border-color:#22A05A;background:#fff;outline:none}
 .lt-sel-btn.empty{color:#5A8A6A}
-.lt-sel-btn::after{content:position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:1.8px solid #5A8A6A;border-bottom:1.8px solid #5A8A6A;transform:translateY(-65%) rotate(45deg);transition:transform .15s}
+.lt-sel-btn::after{content:'';position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:1.8px solid #5A8A6A;border-bottom:1.8px solid #5A8A6A;transform:translateY(-65%) rotate(45deg);transition:transform .15s}
 .lt-sel-btn.open::after{transform:translateY(-30%) rotate(-135deg)}
 .lt-sel-pop{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #DDE8E2;border-radius:12px;box-shadow:0 12px 32px rgba(30,138,76,.15);z-index:1000;max-height:320px;overflow:hidden;display:none;flex-direction:column;font-family:'Manrope',sans-serif}
 .lt-sel-pop.open{display:flex}
@@ -54,7 +54,7 @@
 
     function syncLabel(){
       const sel=nativeSel.options[nativeSel.selectedIndex];
-      const txt=sel?sel.textContent:
+      const txt=sel?sel.textContent:'';
       const isPlaceholder=!nativeSel.value || (sel && !sel.value);
       label.textContent=txt||'Выбрать…';
       btn.classList.toggle('empty',isPlaceholder);
@@ -62,7 +62,7 @@
 
     function renderList(filter){
       const f=(filter||'').trim().toLowerCase();
-      let html=
+      let html='';
       let total=0;
       // optgroups
       const groups=nativeSel.querySelectorAll('optgroup');
@@ -108,7 +108,7 @@
       // Закрыть остальные
       document.querySelectorAll('.lt-sel-pop.open').forEach(p=>{if(p!==pop){p.classList.remove('open');const b=p.previousSibling;if(b&&b.classList)b.classList.remove('open');}});
       pop.classList.add('open');btn.classList.add('open');
-      search.value=
+      search.value='';
       renderList('');
       setTimeout(()=>search.focus(),20);
     }

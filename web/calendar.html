@@ -72,7 +72,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cal-day-num{font-size:13px;font-weight:700;color:var(--t);display:flex;align-items:center;justify-content:flex-end;height:22px;padding:0 2px}
 .cal-day-cell.other-month .cal-day-num{color:var(--gb)}
 .cal-day-cell.today .cal-day-num{position:relative}
-.cal-day-cell.today .cal-day-num::before{content:position:absolute;right:0;width:22px;height:22px;border-radius:50%;background:var(--g);z-index:0}
+.cal-day-cell.today .cal-day-num::before{content:'';position:absolute;right:0;width:22px;height:22px;border-radius:50%;background:var(--g);z-index:0}
 .cal-day-cell.today .cal-day-num span{position:relative;z-index:1;color:#fff;font-weight:800;width:22px;text-align:center}
 /* ═══════════ WEEK / DAY VIEW ═══════════ */
 .cal-time-wrap{display:none;flex:1;min-height:0;flex-direction:column;overflow:hidden}
@@ -134,7 +134,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cal-time-allday-chip:hover{filter:brightness(.93)}
 /* Линия «сейчас» */
 .cal-time-now{position:absolute;left:60px;right:0;height:2px;background:#E04040;z-index:3;pointer-events:none;box-shadow:0 0 6px rgba(224,64,64,.4)}
-.cal-time-now::before{content:position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:#E04040;box-shadow:0 0 0 2px var(--w),0 0 8px rgba(224,64,64,.5)}
+.cal-time-now::before{content:'';position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:#E04040;box-shadow:0 0 0 2px var(--w),0 0 8px rgba(224,64,64,.5)}
 .cal-event-chip{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:5px;font-size:10.5px;font-weight:700;line-height:1.2;cursor:pointer;background:rgba(30,138,76,.1);color:#1E8A4C;border-left:3px solid #1E8A4C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:filter .12s}
 .cal-event-chip:hover{filter:brightness(.92)}
 .cal-event-time{font-size:9px;opacity:.75;font-weight:800;flex-shrink:0}
@@ -411,7 +411,7 @@ textarea.form-input{resize:vertical;min-height:70px;line-height:1.5}
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 const esc = window.lastopEsc;
 if(!tk()){location.href='/login.html';}
 
@@ -649,7 +649,7 @@ function renderMonth(){
     }).join('');
     const more = restCount>0
       ? `<div class="cal-more-link" onclick="event.stopPropagation();openDayModal(${c.y},${c.m},${c.d})">ещё ${restCount}</div>`
-      :
+      : '';
     return `<div class="${cls}" onclick="openDayModal(${c.y},${c.m},${c.d})">
       <div class="cal-day-num"><span>${c.d}</span></div>
       ${chipsHTML}
@@ -687,7 +687,7 @@ function renderTimeView(mode, days){
     </div>`;
   }).join('');
   const hoursEl=document.getElementById(mode==='week'?'weekHours':'dayHours');
-  let hoursHTML=
+  let hoursHTML='';
   for(let h=0;h<24;h++)hoursHTML+=`<div class="cal-time-hour-lbl">${String(h).padStart(2,'0')}:00</div>`;
   hoursEl.innerHTML=hoursHTML;
   const daysEl=document.getElementById(mode==='week'?'weekDays':'dayDays');
@@ -896,10 +896,10 @@ function openModal(ev, defaultDate){
   document.getElementById('deleteBtn').style.display = ev ? '' : 'none';
   document.getElementById('readOnlyBanner').style.display='none';
   // Заполняем форму
-  document.getElementById('evTitle').value = ev?.title ||
-  document.getElementById('evDescription').value = ev?.description ||
-  document.getElementById('evLocation').value = ev?.location ||
-  document.getElementById('evReminder').value =
+  document.getElementById('evTitle').value = ev?.title || '';
+  document.getElementById('evDescription').value = ev?.description || '';
+  document.getElementById('evLocation').value = ev?.location || '';
+  document.getElementById('evReminder').value = '';
   if(ev){
     editingId=ev.id;
     modalKind=ev.kind||'personal';
@@ -928,7 +928,7 @@ function openModal(ev, defaultDate){
 function closeModal(){document.getElementById('modalBg').classList.remove('open');editingId=null;}
 
 function toLocalInputDT(d){
-  if(!(d instanceof Date) || isNaN(d))return
+  if(!(d instanceof Date) || isNaN(d))return '';
   const pad=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

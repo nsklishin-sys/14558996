@@ -413,7 +413,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 // ─── State ───
 let CATEGORY_GROUPS = [];
@@ -428,11 +428,11 @@ function pluralRu(n, forms){const a=[2,0,1,1,1,2];return forms[(n%100>4&&n%100<2
 function fmtNumber(n){ return Number(n).toLocaleString('ru-RU'); }
 function fmtPrice(price, currency){
   if (price == null || price === undefined) return null;
-  const sym = {RUB:'₽', USD:'$', EUR:'€', CNY:'¥'}[currency] || currency ||
+  const sym = {RUB:'₽', USD:'$', EUR:'€', CNY:'¥'}[currency] || currency || '';
   return fmtNumber(price) + ' ' + sym;
 }
 function formatRelative(iso){
-  if (!iso) return
+  if (!iso) return '';
   const d = new Date(iso);
   const now = new Date();
   const diff = (now - d) / 1000;
@@ -443,7 +443,7 @@ function formatRelative(iso){
   return d.toLocaleDateString('ru-RU');
 }
 function formatAbs(iso){
-  if (!iso) return
+  if (!iso) return '';
   return new Date(iso).toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'});
 }
 function stableColor(name){
@@ -469,7 +469,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -529,7 +529,7 @@ async function loadItem(){
     if (r.status === 404) {
       document.getElementById('mainContent').innerHTML = '<div class="placeholder">Товар не найден или был удалён.</div>';
       document.getElementById('crumbCurrent').textContent = 'Не найдено';
-      document.getElementById('rightSide').innerHTML =
+      document.getElementById('rightSide').innerHTML = '';
       return;
     }
     if (!r.ok) throw new Error('http ' + r.status);
@@ -601,7 +601,7 @@ function renderHero(){
     const navArrows = allPhotos.length > 1
       ? '<button type="button" class="pd-cover-nav pd-cover-prev" onclick="event.stopPropagation();stepCoverPhoto(-1)"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>'
         + '<button type="button" class="pd-cover-nav pd-cover-next" onclick="event.stopPropagation();stepCoverPhoto(1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>'
-      :
+      : '';
     galleryHtml =
       '<div class="pd-cover" id="pdCover" data-current="0" onclick="openLightbox(parseInt(this.dataset.current||0,10))">' +
       '<img src="' + escAttr(allPhotos[0]) + '" alt="" id="pdCoverImg">' +
@@ -618,8 +618,8 @@ function renderHero(){
 
   // Бейджи
   const catColor = stableColor(item.category || '?');
-  const catLabel = item.category_label || item.category ||
-  const groupLabel = item.category_group ||
+  const catLabel = item.category_label || item.category || '';
+  const groupLabel = item.category_group || '';
   const badges = [];
   if (groupLabel) badges.push('<span class="pd-cat" style="background:' + esc(catColor) + '">' + esc(groupLabel) + '</span>');
   badges.push('<span class="pd-type">Товар</span>');
@@ -731,9 +731,9 @@ function openLightbox(idx){
   const prevBtn = document.getElementById('lbPrev');
   const nextBtn = document.getElementById('lbNext');
   if (all.length > 1) {
-    if (counter) { counter.style.display = counter.textContent = (_lbIdx + 1) + ' / ' + all.length; }
-    if (prevBtn) prevBtn.style.display =
-    if (nextBtn) nextBtn.style.display =
+    if (counter) { counter.style.display = ''; counter.textContent = (_lbIdx + 1) + ' / ' + all.length; }
+    if (prevBtn) prevBtn.style.display = '';
+    if (nextBtn) nextBtn.style.display = '';
   } else {
     if (counter) counter.style.display = 'none';
     if (prevBtn) prevBtn.style.display = 'none';
@@ -767,7 +767,7 @@ document.addEventListener('keydown', function(e){
 function renderSections(){
   const wrap = document.getElementById('sectionsWrap');
   if (!wrap) return;
-  let html =
+  let html = '';
   // Описание
   html +=
     '<div class="section">' +
@@ -895,7 +895,7 @@ function openOrderModal(){
   if (!tk()) { toast('Войдите, чтобы подать заявку'); return; }
   if (item.viewer_has_ordered) { toast('Вы уже подавали заявку на этот товар'); return; }
   if (item.status !== 'active') { toast('Позиция недоступна'); return; }
-  document.getElementById('orderMessage').value =
+  document.getElementById('orderMessage').value = '';
   document.getElementById('orderCounter').textContent = '0 / 2000';
   document.getElementById('modalOrder').classList.add('open');
   setTimeout(() => document.getElementById('orderMessage').focus(), 150);
@@ -940,7 +940,7 @@ async function submitOrder(){
 // ─── Contact modal ───
 function openContactModal(){
   if (!tk()) { toast('Войдите, чтобы написать продавцу'); return; }
-  document.getElementById('contactMessage').value =
+  document.getElementById('contactMessage').value = '';
   document.getElementById('contactCounter').textContent = '0 / 2000';
   document.getElementById('modalContact').classList.add('open');
   setTimeout(() => document.getElementById('contactMessage').focus(), 150);
@@ -981,12 +981,12 @@ async function submitContact(){
 // ─── Edit modal ───
 function openEditModal(){
   fillEditCategorySelect();
-  document.getElementById('eTitle').value = item.title ||
-  document.getElementById('eCategory').value = item.category ||
-  document.getElementById('eDesc').value = item.description ||
-  document.getElementById('ePrice').value = item.price != null ? item.price :
+  document.getElementById('eTitle').value = item.title || '';
+  document.getElementById('eCategory').value = item.category || '';
+  document.getElementById('eDesc').value = item.description || '';
+  document.getElementById('ePrice').value = item.price != null ? item.price : '';
   document.getElementById('eCurrency').value = item.currency || 'RUB';
-  document.getElementById('eCity').value = item.city ||
+  document.getElementById('eCity').value = item.city || '';
   document.getElementById('eInStock').checked = !!item.in_stock;
   document.getElementById('eStatus').value = item.status || 'active';
   document.getElementById('eTags').value = (item.tags || []).join(', ');
@@ -1003,7 +1003,7 @@ function closeEditModal(){
 }
 function renderEditPhotos(){
   const wrap = document.getElementById('ePhotoPicker');
-  let html =
+  let html = '';
   editPhotos.forEach((p, i) => {
     html += '<div class="photo-thumb' + (i === 0 ? ' cover-mark' : '') + '">' +
       '<img src="' + escAttr(p) + '" alt="">' +
@@ -1019,7 +1019,7 @@ function renderEditPhotos(){
 }
 function onEditPhotoSelected(e){
   const files = Array.from(e.target.files || []);
-  e.target.value =
+  e.target.value = '';
   files.forEach(file => {
     if (editPhotos.length >= 6) return;
     if (!file.type.startsWith('image/')) { toast('Только изображения'); return; }
@@ -1050,7 +1050,7 @@ async function submitEdit(){
   if (!title) { toast('Введите название'); return; }
   if (title.length > 200) { toast('Слишком длинное название'); return; }
 
-  const cover = editPhotos[0] ||
+  const cover = editPhotos[0] || '';
   const rest = editPhotos.slice(1);
 
   btn.disabled = true; btn.textContent = 'Сохранение…';
@@ -1130,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!publicID) {
     document.getElementById('mainContent').innerHTML = '<div class="placeholder">Не указан id товара. <a href="/catalog.html" style="color:var(--g)">← К каталогу</a></div>';
     document.getElementById('crumbCurrent').textContent = 'Ошибка';
-    document.getElementById('rightSide').innerHTML =
+    document.getElementById('rightSide').innerHTML = '';
     return;
   }
   await loadProfile();
