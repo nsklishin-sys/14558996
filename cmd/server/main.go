@@ -1317,9 +1317,10 @@ type statusRecorder struct {
 //  3. Редирект залогиненного юзера с /home-guest.html и /index.html
 //     сразу на /home-auth.html, без рендера гостевой.
 const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="alternate icon" href="/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/icon-180.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E8A4C">
 <meta name="apple-mobile-web-app-capable" content="yes">
