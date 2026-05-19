@@ -911,7 +911,7 @@ document.addEventListener('keydown',e=>{
     document.getElementById('topbarProfile').classList.remove('open');
   }
 });
-async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
 
 /* ── ИНИЦИАЛИЗАЦИЯ ── */
 window.addEventListener('DOMContentLoaded',()=>{

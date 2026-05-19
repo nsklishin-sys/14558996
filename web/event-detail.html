@@ -816,7 +816,7 @@ ${url}`;
     toast('Отправлено '+friendName+' ✓',true);
   }catch{toast('Ошибка сети');}
 }
-async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
