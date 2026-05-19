@@ -44,8 +44,9 @@
       '</style>' +
       '<div class="lcb-text">' +
         'Мы используем файлы cookie для работы платформы и аналитики. ' +
-        'Продолжая, вы соглашаетесь с <a href="/privacy.html" target="_blank">Политикой конфиденциальности</a> ' +
-        'и обработкой данных в соответствии с 152-ФЗ.' +
+        'Продолжая, вы соглашаетесь с <a href="/privacy.html" target="_blank">Политикой обработки персональных данных</a> ' +
+        'и <a href="/legal/cookies.html" target="_blank">Политикой использования cookie</a> ' +
+        'в соответствии с 152-ФЗ.' +
       '</div>' +
       '<div class="lcb-actions">' +
         '<button class="lcb-reject" type="button">Только необходимые</button>' +
