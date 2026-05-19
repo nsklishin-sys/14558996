@@ -922,7 +922,7 @@ function _prjFmt(n){if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace('.0
 
 async function loadProjStats(){
   try {
-    const tk = '';
+    // Phase 4: используется window.tk из utils.js
     const headers = tk ? { } : {};
     const r = await lastopFetch('/api/projects/stats', { headers });
     if (!r.ok) throw 0;
@@ -954,7 +954,7 @@ async function loadMyProj(){
   const list = document.getElementById('myProjList');
   const card = document.getElementById('myProjCard');
   if (!list) return;
-  const tk = '';
+  // Phase 4: используется window.tk из utils.js
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
     const r = await lastopFetch('/api/projects?owner=me&limit=3', { headers:{} });
@@ -1030,7 +1030,7 @@ async function loadProjRec(){
   const card = document.getElementById('prjRecCard');
   if (!list) return;
   try {
-    const tk = '';
+    // Phase 4: используется window.tk из utils.js
     const headers = tk ? { } : {};
     const r = await lastopFetch('/api/projects/recommended', { headers });
     if (!r.ok) throw 0;

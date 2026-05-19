@@ -466,7 +466,7 @@ const FORMAT_LABEL={online:'Онлайн',offline:'Офлайн',hybrid:'Гиб�
 const BANNER={webinar:'linear-gradient(90deg,#185FA5,#3A90C0)',conference:'linear-gradient(90deg,#6040A0,#9060C0)',workshop:'linear-gradient(90deg,#B45309,#E09030)',networking:'linear-gradient(90deg,#1E8A4C,#22A05A)',roundtable:'linear-gradient(90deg,#B05090,#9060C0)',default:'linear-gradient(90deg,var(--g),var(--gm))'};
 const NOW=new Date();
 const API='/api';
-function tk(){return localStorage.getItem('token')||''}
+// Phase 4 (L-7): локальный tk() удалён, используется window.tk из utils.js.
 let EVENTS=[];
 let CAL_EVENTS=[];
 const registeredSet=new Set();
@@ -1046,7 +1046,7 @@ function applyCurrentUser(user){
 // ─── Статистика событий (Спринт 12-B-4) ───
 (async function(){
   try {
-    const tk = '';
+    // Phase 4: используется window.tk из utils.js
     const headers = tk ? { } : {};
     const r = await lastopFetch('/api/events/stats', { headers });
     if (!r.ok) return;

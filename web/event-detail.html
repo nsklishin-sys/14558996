@@ -1457,7 +1457,7 @@ async function loadEventMessages(publicID){
   const list = document.getElementById('evDiscList');
   if (!list) return;
   try {
-    const tk = '';
+    // Phase 4: используется window.tk из utils.js
     const headers = tk ? { } : {};
     const r = await lastopFetch('/api/events/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;

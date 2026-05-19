@@ -1355,7 +1355,7 @@ async function loadTopSources(){
   const list = document.getElementById('sourcesList');
   if (!list) return;
   try {
-    const tk = '';
+    // Phase 4: используется window.tk из utils.js
     const headers = tk ? { } : {};
     const r = await lastopFetch('/api/posts/top-authors', { headers });
     if (!r.ok) throw 0;
