@@ -155,7 +155,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/confirm-modal.js" defer></script>
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
+
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 function colorFor(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(String(s||'').charCodeAt(0)||0)%C.length];}
@@ -172,7 +172,7 @@ async function loadEvent(){
   document.getElementById('backLink').setAttribute('href', backHref);
   document.getElementById('openEventLink').setAttribute('href', backHref);
   try {
-    const r = await lastopFetch(API + '/events/' + encodeURIComponent(_publicID), { headers: tk()?{Authorization:'Bearer '+tk()}:{} });
+    const r = await lastopFetch(API + '/events/' + encodeURIComponent(_publicID), { headers: tk()?{}:{} });
     if (!r.ok) throw 0;
     const d = await r.json();
     const ev = d.event || {};
@@ -207,7 +207,7 @@ async function loadMessages(){
   const list = document.getElementById('messagesList');
   if (!list) return;
   try {
-    const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
+    const headers = tk() ? {} : {};
     const r = await lastopFetch(API + '/events/' + encodeURIComponent(_publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
@@ -267,7 +267,7 @@ async function sendMessage(){
   try {
     const r = await lastopFetch(API + '/events/' + encodeURIComponent(_publicID) + '/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
+      headers: { 'Content-Type': 'application/json'},
       body: JSON.stringify({ content: content })
     });
     if (!r.ok) {
@@ -296,7 +296,7 @@ async function deleteMessage(msgID){
   try {
     const r = await lastopFetch(API + '/events/' + encodeURIComponent(_publicID) + '/messages/' + msgID, {
       method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + tk() }
+      headers: {}
     });
     if (!r.ok) throw 0;
     const m = _messages.find(function(x){ return x.id === msgID; });

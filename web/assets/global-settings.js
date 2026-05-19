@@ -20,7 +20,7 @@
 
   function tk() {
     try {
-      return localStorage.getItem('token') || '';
+      return null || '';
     } catch (_) {
       return '';
     }
@@ -46,7 +46,7 @@
   function loadAndApplyGlobalSettings() {
     if (!tk()) return Promise.resolve(null);
 
-    return lastopFetch('/api/settings', { headers: { Authorization: 'Bearer ' + tk() } })
+    return lastopFetch('/api/settings', { headers: {} })
       .then(function (r) {
         return r.ok ? r.json() : null;
       })
@@ -253,7 +253,7 @@
 
   function injectNotifBell() {
     // Инжектим только если юзер залогинен (есть токен)
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    const token = (function(){ try { return null; } catch { return null; } })();
     if (!token) return;
 
     const topbar = document.querySelector('.topbar');
@@ -365,11 +365,11 @@
   }
 
   async function refreshUnreadCount() {
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    const token = (function(){ try { return null; } catch { return null; } })();
     if (!token || !_notifBadgeEl) return;
     try {
       const r = await lastopFetch('/api/notifications/unread_count', {
-        headers: { Authorization: 'Bearer ' + token }
+        headers: {}
       });
       if (!r.ok) return;
       const d = await r.json();
@@ -387,14 +387,14 @@
   async function loadNotifList() {
     const list = document.getElementById('notifList');
     if (!list) return;
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    const token = (function(){ try { return null; } catch { return null; } })();
     if (!token) {
       list.innerHTML = '<div class="notif-empty">Войдите чтобы видеть уведомления</div>';
       return;
     }
     try {
       const r = await lastopFetch('/api/notifications?limit=10', {
-        headers: { Authorization: 'Bearer ' + token }
+        headers: {}
       });
       if (!r.ok) throw 0;
       const d = await r.json();
@@ -432,10 +432,10 @@
           }
           // На фоне отправляем POST
           try {
-            const token = localStorage.getItem('token');
+            const token = null;
             await lastopFetch('/api/notifications/' + id + '/read', {
               method: 'POST',
-              headers: { Authorization: 'Bearer ' + token }
+              headers: {}
             });
           } catch {}
         }
@@ -513,14 +513,14 @@
   }
 
   async function markAllNotifications() {
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
+    const token = (function(){ try { return null; } catch { return null; } })();
     if (!token) return;
     const btn = document.getElementById('notifMarkAll');
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     try {
       await lastopFetch('/api/notifications/read_all', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token }
+        headers: {}
       });
       _notifLastUnread = 0;
       if (_notifBadgeEl) _notifBadgeEl.classList.remove('has-unread');

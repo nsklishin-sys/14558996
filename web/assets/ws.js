@@ -24,7 +24,7 @@
 
   function url() {
     const token = (function () {
-      try { return localStorage.getItem('token'); } catch { return null; }
+      try { return null; } catch { return null; }
     })();
     if (!token) return null;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -124,7 +124,7 @@
   // Автостарт при наличии токена
   function tryStart() {
     try {
-      if (localStorage.getItem('token')) connect();
+      if (null) connect();
     } catch {}
   }
 

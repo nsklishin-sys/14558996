@@ -183,7 +183,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
     document.getElementById('lcmAllDayCb').classList.toggle('on', modalAllDay);
   }
   function getToken(){
-    return (typeof tk === 'function' ? tk() : null) || localStorage.getItem('token') || '';
+    return (typeof tk === 'function' ? tk() : null) || null || '';
   }
 
   function openModal(opts){
@@ -279,7 +279,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
       const method = editingId ? 'PATCH' : 'POST';
       const r = await lastopFetch(url, {
         method,
-        headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken()},
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body)
       });
       if(!r.ok){
@@ -315,7 +315,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
     try{
       const r = await lastopFetch(`/api/calendar/events/${editingId}`, {
         method: 'DELETE',
-        headers: {Authorization: 'Bearer ' + getToken()}
+        headers: {}
       });
       if(r.ok){
         if(window.lastopToast)window.lastopToast('Удалено', 'success');

@@ -485,7 +485,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-function tk(){return localStorage.getItem('token')||''}
+function tk(){return null||''}
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
@@ -505,7 +505,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS={
@@ -567,7 +567,7 @@ async function loadExhibitions(){
   const feedEl = document.getElementById('exFeed') || document.getElementById('feed');
   if (feedEl && window.lastopSkel) feedEl.innerHTML = window.lastopSkel.cards(6);
   try{
-    const r=await lastopFetch(API+'/exhibitions?limit=200',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions?limit=200',{headers:{}});
     if(!r.ok)return;
     const d=await r.json();
     EXPOS=(d.exhibitions||[]).map(mapApiExhibition);
@@ -578,7 +578,7 @@ async function loadExhibitions(){
 
 async function checkAdminAndShowCreateBtn(){
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)return;
     const d=await r.json();
     if(d.user?.is_admin){
@@ -755,7 +755,7 @@ async function toggleFav(id,btn){
   if(wasFav){favSet.delete(id);btn.classList.remove('active');}
   else{favSet.add(id);btn.classList.add('active');}
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(id)+'/save',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(id)+'/save',{method:'POST',headers:{}});
     if(!r.ok){
       // откатываем
       if(wasFav){favSet.add(id);btn.classList.add('active');}
@@ -793,7 +793,7 @@ function submitStand(){
 (async()=>{
   if(!tk())return;
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -860,8 +860,8 @@ async function loadExhHero(){
 
 async function loadExhStats(){
   try {
-    const tk = localStorage.getItem('token');
-    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    
+    const headers = tk ? {} : {};
     const r = await lastopFetch('/api/exhibitions/stats', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
@@ -944,10 +944,10 @@ async function loadMyExhApps(){
   const list = document.getElementById('myAppsList');
   const card = document.getElementById('myAppsCard');
   if (!list) return;
-  const tk = localStorage.getItem('token');
+  
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
-    const r = await lastopFetch('/api/me/exhibition-applications', { headers: { Authorization: 'Bearer ' + tk } });
+    const r = await lastopFetch('/api/me/exhibition-applications', { headers: {} });
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = d.applications || [];

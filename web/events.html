@@ -457,7 +457,7 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html'}
 const TYPE_LABEL={webinar:'Вебинар',conference:'Конференция',workshop:'Воркшоп',networking:'Нетворкинг',roundtable:'Круглый стол'};
 const TYPE_BADGE={webinar:'b-webinar',conference:'b-conference',workshop:'b-workshop',networking:'b-networking',roundtable:'b-roundtable'};
 const TYPE_COLOR={webinar:'#185FA5',conference:'#6040A0',workshop:'#B45309',networking:'#1E8A4C',roundtable:'#B05090'};
@@ -466,7 +466,7 @@ const FORMAT_LABEL={online:'Онлайн',offline:'Офлайн',hybrid:'Гиб�
 const BANNER={webinar:'linear-gradient(90deg,#185FA5,#3A90C0)',conference:'linear-gradient(90deg,#6040A0,#9060C0)',workshop:'linear-gradient(90deg,#B45309,#E09030)',networking:'linear-gradient(90deg,#1E8A4C,#22A05A)',roundtable:'linear-gradient(90deg,#B05090,#9060C0)',default:'linear-gradient(90deg,var(--g),var(--gm))'};
 const NOW=new Date();
 const API='/api';
-function tk(){return localStorage.getItem('token')||''}
+function tk(){return null||''}
 let EVENTS=[];
 let CAL_EVENTS=[];
 const registeredSet=new Set();
@@ -519,7 +519,7 @@ async function loadEvents(){
   if (feedEl && window.lastopSkel) feedEl.innerHTML = window.lastopSkel.cards(6);
   try{
     const url = API+'/events?limit=200';
-    const r = await lastopFetch(url, { headers: tk() ? { Authorization:'Bearer '+tk() } : {} });
+    const r = await lastopFetch(url, { headers: tk() ? {} : {} });
     if(!r.ok){
       console.error('loadEvents HTTP', r.status, url);
       return;
@@ -535,7 +535,7 @@ async function loadEvents(){
 async function loadCalendarEvents(){
   try{
     const from=new Date(); from.setMonth(from.getMonth()-6); from.setHours(0,0,0,0);
-    const r=await lastopFetch(API+'/events?limit=500&from='+encodeURIComponent(from.toISOString()),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/events?limit=500&from='+encodeURIComponent(from.toISOString()),{headers:{}});
     if(!r.ok)return;
     const d=await r.json();
     CAL_EVENTS=(d.events||[]).map(mapApiEvent);
@@ -617,7 +617,7 @@ async function toggleReg(publicID,btn){
   try{
     const r=await lastopFetch(`${API}/events/${encodeURIComponent(publicID)}/register`,{
       method,
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      headers:{'Content-Type':'application/json'},
       body: method==='POST'?JSON.stringify({ticket_type:'standard'}):undefined
     });
     if(!r.ok){
@@ -649,7 +649,7 @@ async function toggleSave(publicID,btn){
   try{
     const r=await lastopFetch(`${API}/events/${encodeURIComponent(publicID)}/save`,{
       method,
-      headers:{Authorization:'Bearer '+tk()}
+      headers:{}
     });
     if(!r.ok){
       showToast('Не удалось сохранить');
@@ -855,7 +855,7 @@ async function onEvCoverSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{},body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ toast(d.error||'Не удалось'); removeEvCover(); return; }
     evCoverUrl = d.url;
@@ -943,7 +943,7 @@ async function submitEvent(){
   }
 
   // Заголовки с активным контекстом (компания/сообщество)
-  const baseH={'Content-Type':'application/json',Authorization:'Bearer '+tk()};
+  const baseH={'Content-Type':'application/json'};
   const headers=(typeof window.withActiveContextHeaders==='function')?window.withActiveContextHeaders(baseH):baseH;
 
   try{
@@ -995,7 +995,7 @@ function applyCurrentUser(user){
     if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}
   }catch{}
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(r.ok){
       const{user={}}=await r.json();
       localStorage.setItem('user',JSON.stringify(user));
@@ -1007,7 +1007,7 @@ function applyCurrentUser(user){
   const editId=new URLSearchParams(location.search).get('edit');
   if(editId){
     lastopFetch(`${API}/events/${encodeURIComponent(editId)}`,{
-      headers:{Authorization:'Bearer '+tk()}
+      headers:{}
     })
       .then(r=>r.json())
       .then(data=>{
@@ -1047,8 +1047,8 @@ function applyCurrentUser(user){
 // ─── Статистика событий (Спринт 12-B-4) ───
 (async function(){
   try {
-    const tk = localStorage.getItem('token');
-    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    
+    const headers = tk ? {} : {};
     const r = await lastopFetch('/api/events/stats', { headers });
     if (!r.ok) return;
     const d = await r.json();

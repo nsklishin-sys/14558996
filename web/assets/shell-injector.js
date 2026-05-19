@@ -178,7 +178,7 @@
   function populateUserFromCache() {
     // Гость — не заполняем (guest-nav.js сам подставит «Войти/Регистрация»)
     let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
+    try { token = null || ''; } catch {}
     if (!token) return;
     let u = {};
     try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
@@ -227,9 +227,9 @@
 
   async function loadDropdownCounters() {
     let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
+    try { token = null || ''; } catch {}
     if (!token) return;
-    const headers = { Authorization: 'Bearer ' + token };
+    const headers = {};
     try {
       const r = await lastopFetch('/api/friends', { headers });
       if (r.ok) {
@@ -252,10 +252,10 @@
 
   async function refreshUserFromServer() {
     let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
+    try { token = null || ''; } catch {}
     if (!token) return;
     try {
-      const r = await lastopFetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+      const r = await lastopFetch('/api/me', { headers: {} });
       if (!r.ok) return;
       const { user } = await r.json();
       if (!user) return;
@@ -403,7 +403,7 @@
     // logout fallback (если страница не определила свою)
     if (!window.logout) {
       window.logout = function () {
-        try { localStorage.removeItem('token'); localStorage.removeItem('user'); } catch {}
+        try {  localStorage.removeItem('user'); } catch {}
         location.href = '/home-guest.html';
       };
     }
