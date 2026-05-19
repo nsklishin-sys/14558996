@@ -212,10 +212,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </style>
 <script>
 (function redirectIfAuthenticated(){
-  const token=localStorage.getItem('token');
-  if(token&&token.trim()){
-    location.replace('/home-auth.html');
-  }
+  try{
+    const user=localStorage.getItem('user');
+    if(user&&user.trim()&&user!=='null'&&user!=='undefined'){
+      location.replace('/home-auth.html');
+    }
+  }catch{}
 })();
 </script>
 <link rel="stylesheet" href="/assets/dark-theme.css">

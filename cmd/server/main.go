@@ -1386,7 +1386,7 @@ html.pt-ready body {
   var html = document.documentElement;
 
   function hasToken(){
-    try { var t = localStorage.getItem('token'); return !!(t && t.trim()); }
+    try { var u = localStorage.getItem('user'); return !!(u && u.trim() && u !== 'null' && u !== 'undefined'); }
     catch(_) { return false; }
   }
   function prm(){
