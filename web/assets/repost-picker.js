@@ -21,8 +21,12 @@
   const CACHE_KEY = 'lastop_repost_targets_v1';
   const CACHE_TTL = 5 * 60 * 1000; // 5 минут
 
+  // Phase 4 (L-7): после cookie-only auth tk() — это просто
+  // isLoggedIn() boolean. Возвращает 'cookie' если есть user в
+  // localStorage, '' если нет.
   function tk() {
-    return localStorage.getItem('token');
+    try { return localStorage.getItem('user') ? 'cookie' : ''; }
+    catch (_) { return ''; }
   }
   function authHeaders(extra) {
     var h = {};

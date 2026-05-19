@@ -18,12 +18,11 @@
 
   var KEY_CACHE = 'lastop_settings_cache_v1';
 
+  // Phase 4 (L-7): после cookie-only auth tk() — это просто
+  // isLoggedIn() boolean.
   function tk() {
-    try {
-      return localStorage.getItem('token') || '';
-    } catch (_) {
-      return '';
-    }
+    try { return localStorage.getItem('user') ? 'cookie' : ''; }
+    catch (_) { return ''; }
   }
 
   function applySettings(s) {
