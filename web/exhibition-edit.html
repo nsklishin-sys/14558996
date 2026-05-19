@@ -361,17 +361,31 @@ function eeToast(msg,kind){const t=document.getElementById('eeToast');t.textCont
 
 // renderSidebar — заполняет правый сайдбар чеклистом и подсказкой.
 // Вызывается после каждого изменения state.exhibition или при рендере.
+// readField — возвращает trimmed value инпута по id, либо ''.
+function readField(id){
+  const el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+}
+
 function renderSidebar(){
   const ex = state.exhibition || {};
   const isCreate = state.mode === 'create';
   const body = document.getElementById('checklistBody');
   if (!body) return;
-  // В режиме create — все пункты пустые (юзер ещё ничего не сохранил).
-  // В режиме edit — отмечаем сделанные.
+  // Phase 4: чеклист "живой" — читаем значения напрямую из формы
+  // (по id инпутов из renderForm), чтобы галочки появлялись по мере
+  // ввода, не дожидаясь сохранения. Если форма ещё не отрисована —
+  // fallback на state.exhibition.
+  const formTitle      = readField('fTitle');
+  const formDesc       = readField('fDesc');
+  const formStartsAt   = readField('fStartsAt');
+  const formEndsAt     = readField('fEndsAt');
+  const hasLocation    = !!(state.pendingLat && state.pendingLng) ||
+                         !!(ex.latitude && ex.longitude);
   const items = [
-    { label: 'Название и описание', done: !!(ex.title && ex.description) },
-    { label: 'Даты проведения',     done: !!(ex.start_date && ex.end_date) },
-    { label: 'Локация на карте',    done: !!(ex.latitude && ex.longitude) },
+    { label: 'Название и описание', done: !!((formTitle || ex.title) && (formDesc || ex.description)) },
+    { label: 'Даты проведения',     done: !!((formStartsAt || ex.starts_at) && (formEndsAt || ex.ends_at)) },
+    { label: 'Локация на карте',    done: hasLocation },
     { label: 'Программа (сессии)',  done: Array.isArray(ex.program_days) && ex.program_days.length > 0 },
     { label: 'Билеты',              done: Array.isArray(ex.tickets) && ex.tickets.length > 0 },
     { label: 'Зоны и стенды',       done: Array.isArray(ex.zones) && ex.zones.length > 0 },
@@ -1482,6 +1496,20 @@ async function deleteExhibition(){
     loadApplications();
   }
   renderSidebar();
+
+  // Phase 4: "живой" чеклист — слушаем input/change на главном контейнере
+  // и перерисовываем сайдбар с debounce 200мс. Listener вешается на
+  // contentRoot (он стабильный, форма перерисовывается внутри него).
+  const _live = document.getElementById('contentRoot');
+  if (_live) {
+    let _liveT = null;
+    const _fire = () => {
+      clearTimeout(_liveT);
+      _liveT = setTimeout(renderSidebar, 200);
+    };
+    _live.addEventListener('input', _fire);
+    _live.addEventListener('change', _fire);
+  }
 })();
 </script>
 <script src="/assets/guest-nav.js" defer></script>
