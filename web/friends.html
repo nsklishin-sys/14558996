@@ -308,7 +308,7 @@ function ltr(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2800)}
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
