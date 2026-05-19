@@ -46,7 +46,7 @@
   function loadAndApplyGlobalSettings() {
     if (!tk()) return Promise.resolve(null);
 
-    return lastopFetch('/api/settings', { headers: { Authorization: 'Bearer ' + tk() } })
+    return lastopFetch('/api/settings', { headers:{} })
       .then(function (r) {
         return r.ok ? r.json() : null;
       })
@@ -369,7 +369,7 @@
     if (!token || !_notifBadgeEl) return;
     try {
       const r = await lastopFetch('/api/notifications/unread_count', {
-        headers: { Authorization: 'Bearer ' + token }
+        headers:{}
       });
       if (!r.ok) return;
       const d = await r.json();
@@ -394,7 +394,7 @@
     }
     try {
       const r = await lastopFetch('/api/notifications?limit=10', {
-        headers: { Authorization: 'Bearer ' + token }
+        headers:{}
       });
       if (!r.ok) throw 0;
       const d = await r.json();
@@ -434,8 +434,7 @@
           try {
             const token = localStorage.getItem('token');
             await lastopFetch('/api/notifications/' + id + '/read', {
-              method: 'POST',
-              headers: { Authorization: 'Bearer ' + token }
+              method: 'POST'
             });
           } catch {}
         }
@@ -519,8 +518,7 @@
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     try {
       await lastopFetch('/api/notifications/read_all', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + token }
+        method: 'POST'
       });
       _notifLastUnread = 0;
       if (_notifBadgeEl) _notifBadgeEl.classList.remove('has-unread');

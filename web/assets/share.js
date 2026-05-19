@@ -53,7 +53,7 @@
   async function loadFriends(){
     if (_friendsLoaded) return _friendsHTML;
     try {
-      const r = await lastopFetch('/api/friends', { headers: { Authorization: 'Bearer ' + tk() } });
+      const r = await lastopFetch('/api/friends', { headers:{} });
       if (!r.ok) throw 0;
       const d = await r.json();
       const friends = d.friends || [];
@@ -88,7 +88,7 @@
     try {
       const r = await lastopFetch('/api/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({
           title: 'Делюсь ' + labelAttr + ': ' + titleAttr,
           content: 'Посмотрите: ' + url,
@@ -110,7 +110,7 @@
     try {
       const dc = await lastopFetch('/api/chat/conversations/direct', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ user_public_id: friendPID })
       });
       if (!dc.ok){ toast('Не удалось открыть чат'); return; }
@@ -119,7 +119,7 @@
       if (!convPID){ toast('Не удалось открыть чат'); return; }
       const r = await lastopFetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
+        headers: { 'Content-Type': 'application/json'},
         body: JSON.stringify({ content: message })
       });
       if (!r.ok){ const er = await r.json().catch(()=>({})); toast(er.error || 'Не удалось отправить'); return; }

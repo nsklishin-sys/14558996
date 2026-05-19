@@ -773,7 +773,7 @@ async function loadMe(){
   if(cached){try{currentUser=JSON.parse(cached);applyMe(currentUser);}catch{}}
   if(!tk())return;
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(r.ok){const d=await r.json();if(d.user){currentUser=d.user;localStorage.setItem('user',JSON.stringify(d.user));applyMe(d.user);}}
   }catch{}
 }

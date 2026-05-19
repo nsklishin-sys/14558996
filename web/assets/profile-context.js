@@ -349,7 +349,7 @@
     if (!document.getElementById('profileContextSlot')) return;
     styles();
     try {
-      var headers = { Authorization: 'Bearer ' + tk() };
+      var headers={};
       var responses = await Promise.all([
         lastopFetch(API + '/companies?tab=my&limit=50', { headers: headers }).catch(function(){ return null; }),
         lastopFetch(API + '/communities?limit=200', { headers: headers }).catch(function(){ return null; })

@@ -415,7 +415,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    const r = await lastopFetch(API + '/me', { headers:{}});
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -534,7 +534,7 @@ async function loadList(){
 
   try {
     const r = await lastopFetch(API + '/catalog?' + params.toString(), {
-      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
+      headers: {}
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -727,7 +727,7 @@ async function submitItem(){
   try {
     const r = await lastopFetch(API + '/catalog', {
       method: 'POST',
-      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
+      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify({
         type, category, title,
         description: desc,

@@ -890,7 +890,7 @@ let handleCheckTimer=null,handleAvailable=false;
 (async()=>{
   if(!tk()){location.href='/login.html';return;}
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     currentUser=user;
@@ -1147,7 +1147,7 @@ function markThemeCard(theme){
 
 async function loadSessions(){
   try{
-    const r = await lastopFetch(API+'/me/sessions', {headers:{Authorization:'Bearer '+tk()}});
+    const r = await lastopFetch(API+'/me/sessions', {headers:{}});
     if(!r.ok) return;
     const d = await r.json();
     renderSessions(d.sessions || []);
@@ -1224,7 +1224,7 @@ async function revokeSession(tokenHash){
     lastopDebug('[revokeSession] sending POST /api/me/sessions/revoke');
     const r = await lastopFetch(API+'/me/sessions/revoke', {
       method:'POST',
-      headers:{'Content-Type':'application/json', Authorization:'Bearer '+tk()},
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({token_hash: tokenHash})
     });
     lastopDebug('[revokeSession] response status:', r.status);
@@ -1244,7 +1244,7 @@ async function revokeSession(tokenHash){
 
 async function loadStorageInfo(){
   try{
-    const r = await lastopFetch(API+'/me/storage', {headers:{Authorization:'Bearer '+tk()}});
+    const r = await lastopFetch(API+'/me/storage', {headers:{}});
     if(!r.ok) return;
     const d = await r.json();
     renderStorageInfo(d);
@@ -1322,8 +1322,7 @@ async function resendVerifyEmail(){
   btn.textContent = 'Отправка…';
   try{
     const r = await lastopFetch(API+'/auth/resend-verification', {
-      method:'POST',
-      headers:{Authorization:'Bearer '+tk()}
+      method:'POST'
     });
     const d = await r.json().catch(()=>({}));
     if(!r.ok){
@@ -1366,7 +1365,7 @@ function selectTheme(card, theme){
       localStorage.setItem('lastop-theme', theme);
     }
   }
-  lastopFetch(API+'/settings/appearance',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({theme})}).catch(()=>{});
+  lastopFetch(API+'/settings/appearance',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({theme})}).catch(()=>{});
   showToast('Тема сохранена');
 }
 
@@ -1392,7 +1391,7 @@ async function previewAvatar(input){
   try{
     const fd=new FormData();
     fd.append('file',file);
-    const r=await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
     if(!r.ok){throw new Error(await r.text()||'Upload error');}
     const d=await r.json();
     pendingAvatarURL=d.url||d.file_url||'';
@@ -1467,7 +1466,7 @@ async function saveProfile(){
   let synced=true;
   if(tk()){
     try{
-      const r=await lastopFetch(API+'/profile',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(payload)});
+      const r=await lastopFetch(API+'/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!r.ok){synced=false;}
       else{
         const {user={}}=await r.json();
@@ -1500,7 +1499,7 @@ async function executeEmailChange(){
   const btn=document.getElementById('emailModalConfirm');
   btn.disabled=true;btn.textContent='…';
   try{
-    const r=await lastopFetch(API+'/account/email',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({email,current_password})});
+    const r=await lastopFetch(API+'/account/email',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,current_password})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){err.textContent=d.error||'Не удалось сменить email';err.style.display='block';btn.disabled=false;btn.textContent='Подтвердить';return;}
     currentUser={...currentUser,email};localStorage.setItem('user',JSON.stringify(currentUser));updateWebsiteField();
@@ -1525,7 +1524,7 @@ async function saveSettings(section){
     body.date_format=document.getElementById('dateFormatSelect').value;
   }
   try{
-    const r=await lastopFetch(API+`/settings/${section}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(API+`/settings/${section}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
       showToast(d.error||'Ошибка сохранения');
@@ -1537,7 +1536,7 @@ async function saveSettings(section){
     if (window.LastopSettings && window.LastopSettings.apply) {
       // Сначала перечитаем все настройки с бэка (бэк мог дополнить дефолтами)
       try {
-        const fresh = await lastopFetch(API + '/settings', { headers: { Authorization: 'Bearer ' + tk() } });
+        const fresh = await lastopFetch(API + '/settings', { headers:{} });
         if (fresh.ok) {
           const data = await fresh.json();
           if (data.settings) window.LastopSettings.apply(data.settings);
@@ -1574,7 +1573,7 @@ async function executeDelAcc(){
   const btn=document.getElementById('delAccBtn');
   btn.disabled=true;btn.textContent='Удаление…';
   try{
-    const r=await lastopFetch(API+'/account',{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({current_password,confirmation})});
+    const r=await lastopFetch(API+'/account',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password,confirmation})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){err.textContent=d.error||'Не удалось удалить аккаунт';err.style.display='block';btn.disabled=false;btn.textContent='Удалить навсегда';return;}
     localStorage.clear();
@@ -1596,7 +1595,7 @@ document.getElementById('handleField').addEventListener('input',()=>{
 async function checkHandleNow(h){
   const hc=document.getElementById('handleCheck');hc.textContent='проверяем…';hc.style.color='var(--gmt)';
   try{
-    const r=await lastopFetch(API+'/handle/check?handle='+encodeURIComponent(h),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/handle/check?handle='+encodeURIComponent(h),{headers:{}});
     const d=await r.json();
     if(d.available){hc.textContent='✓ свободен';hc.style.color='var(--g)';handleAvailable=true;document.getElementById('saveHandleBtn').disabled=false;}
     else{hc.textContent='✗ '+(d.reason||'занят');hc.style.color='var(--red)';handleAvailable=false;}
@@ -1605,14 +1604,14 @@ async function checkHandleNow(h){
 async function saveHandle(){
   const h=document.getElementById('handleField').value.trim().replace(/^@/,'');
   if(!h||!handleAvailable)return;
-  const r=await lastopFetch(API+'/profile/handle',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({handle:h})});
+  const r=await lastopFetch(API+'/profile/handle',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:h})});
   const d=await r.json().catch(()=>({}));
   if(!r.ok){showToast(d.error||'Не удалось сохранить');return;}
   currentUser.handle=d.user.handle;localStorage.setItem('user',JSON.stringify(currentUser));showToast('Идентификатор @'+d.user.handle+' сохранён ✓');
 }
 async function loadSettings(){
   try{
-    const r=await lastopFetch(API+'/settings',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/settings',{headers:{}});
     if(!r.ok)return;
     const {settings={}}=await r.json();applySettingsToUI(settings);
   }catch{}
@@ -1661,7 +1660,7 @@ async function executePwdChange(){
   const btn=document.getElementById('pwdSubmitBtn');
   btn.disabled=true;btn.textContent='…';
   try{
-    const r=await lastopFetch(API+'/account/password',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({current_password:cur,new_password:nw})});
+    const r=await lastopFetch(API+'/account/password',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:cur,new_password:nw})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){err.textContent=d.error||'Не удалось сменить пароль';err.style.display='block';btn.disabled=false;btn.textContent='Сменить';return;}
     closePwdModal();
@@ -1675,7 +1674,7 @@ async function executePwdChange(){
   if(!cb)return;
   if(!tk())return;
   try{
-    const r=await lastopFetch('/api/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch('/api/me',{headers:{}});
     if(!r.ok)return;
     const{user={}}=await r.json();
     cb.checked=user.analytics_visible_in_viewers!==false;
@@ -1683,7 +1682,7 @@ async function executePwdChange(){
   cb.addEventListener('change',async()=>{
     cb.disabled=true;
     try{
-      const r=await lastopFetch('/api/me/privacy',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({analytics_visible_in_viewers:cb.checked})});
+      const r=await lastopFetch('/api/me/privacy',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({analytics_visible_in_viewers:cb.checked})});
       if(!r.ok)cb.checked=!cb.checked;
     }catch{cb.checked=!cb.checked;}
     finally{cb.disabled=false;}

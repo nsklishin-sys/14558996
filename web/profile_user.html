@@ -746,7 +746,7 @@ async function onFriendButtonClick(){
   if (btn) btn.disabled = true;
 
   const tk = '';
-  const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
+  const headers = { 'Content-Type': 'application/json' };
 
   try {
     if (_profileFriendStatus === 'none') {
@@ -943,14 +943,14 @@ async function loadViewedUser(){
   }catch{}
   if(!uid&&getViewedHandle()){
     try{
-      const r=await lastopFetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+      const r=await lastopFetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:{}});
       const d=await r.json().catch(()=>({}));
       uid=d?.user?.public_id||'';
     }catch{}
   }
   if(!uid){showToast('Не указан uid профиля');return;}
   try{
-    const r=await lastopFetch(API+'/users/'+encodeURIComponent(uid),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    const r=await lastopFetch(API+'/users/'+encodeURIComponent(uid),{headers:{}});
     const d=await r.json().catch(()=>({}));
     const fallback=enrichViewedUser({},uid);
     if(!r.ok||!d.user){
@@ -999,7 +999,7 @@ async function loadViewedPublications(){
   const uid=getViewedUid(); if(!uid)return;
   const list=document.getElementById('publicationsList');
   try{
-    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/posts?limit=20`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/posts?limit=20`,{headers:{}});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(d.error||'err');
     const posts=d.posts||[];
@@ -1049,7 +1049,7 @@ async function loadViewedExperience(){
   const box=document.getElementById('viewedExperience');
   if(!box)return;
   try{
-    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/experience`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/experience`,{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.experience||[];
@@ -1082,7 +1082,7 @@ async function loadViewedExperience(){
 
 async function safeFetch(url){
   try{
-    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
+    const headers={};
     const r=await lastopFetch(API+url,{headers});
     if(!r.ok)return null;
     return await r.json();

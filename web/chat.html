@@ -1026,7 +1026,7 @@ async function loadChatPeerStatus(peerPublicID){
   _chatPeerPublicID = peerPublicID;
   try {
     const r = await lastopFetch('/api/users/' + encodeURIComponent(peerPublicID), {
-      headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+      headers:{}
     });
     if (!r.ok) throw 0;
     const d = await r.json();
@@ -1087,7 +1087,7 @@ async function chatFriendClick(){
   if (btn) btn.disabled = true;
 
   const tk = '';
-  const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
+  const headers = { 'Content-Type': 'application/json' };
 
   try {
     if (_chatPeerFriendStatus === 'none') {
@@ -1151,7 +1151,7 @@ async function loadLinkPreview(url){
   const p = (async () => {
     try {
       const r = await lastopFetch('/api/link-preview?url=' + encodeURIComponent(url),
-        { headers: { Authorization: 'Bearer ' + tk() } });
+        { headers:{} });
       if (!r.ok) return null;
       const d = await r.json();
       if (!d.ok || !d.preview) return null;
@@ -1196,7 +1196,7 @@ async function hydrateLinkPreviews(msgEl, urls){
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
 async function api(path,opt={}){
-  const h={...(opt.headers||{}),Authorization:`Bearer ${tk()}`};
+  const h={...(opt.headers||{})};
   if(opt.body&&!(opt.body instanceof FormData)){h['Content-Type']='application/json';opt.body=JSON.stringify(opt.body)}
   // A2.1R: для ВСЕХ запросов /chat/* — добавляем заголовок активного контекста.
   // Это влияет и на чтение списка диалогов (фильтр по owner), и на отправку (запись sender_company_id).
@@ -1831,8 +1831,7 @@ async function confirmDeleteChat(){
   if(!await lastopConfirm({title:'Удалить чат?',message:'Сообщения у вас исчезнут, у собеседника останутся.',danger:true}))return;
   try{
     const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(c.public_id)}`,{
-      method:'DELETE',
-      headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}
+      method:'DELETE'
     });
     if(!r.ok){showToast('Не удалось удалить');return;}
     showToast('Чат удалён');
@@ -1853,7 +1852,7 @@ async function loadInfoAttachments(publicID){
     if(el)el.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:14px 8px;text-align:center">Загрузка…</div>';
   });
   try{
-    const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(publicID)}/attachments`,{headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(publicID)}/attachments`,{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const imgs=d.images||[], files=d.files||[], links=d.links||[], audio=d.audio||[];
@@ -1899,7 +1898,7 @@ async function renderInfoPanel(){
   sectionEl.style.display='';
   fieldsEl.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:8px 0">Загрузка…</div>';
   try{
-    const r=await lastopFetch(`/api/users/${encodeURIComponent(c.other_public_id)}`,{headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    const r=await lastopFetch(`/api/users/${encodeURIComponent(c.other_public_id)}`,{headers:{}});
     if(!r.ok){fieldsEl.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:8px 0">Не удалось загрузить</div>';return;}
     const d=await r.json();
     const u=d.user||d.profile||d;
@@ -2007,7 +2006,6 @@ async function uploadAndSendFile(file){
     const token = localStorage.getItem('token') || '';
     const r = await lastopFetch('/api/upload', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
       body: fd
     });
     lastopDebug('[upload] response status', r.status);
@@ -2035,7 +2033,7 @@ async function uploadAndSendFile(file){
     const token = localStorage.getItem('token') || '';
     const r2 = await lastopFetch(`/api/chat/conversations/${state.activeConvPublicID}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token },
+      headers: { 'Content-Type':'application/json'},
       body: JSON.stringify({
         content: '',
         attachment_url: uploadedUrl,
@@ -2097,7 +2095,6 @@ chatHiddenFile?.addEventListener('change', async (e) => {
     fd.append('file', file);
     const r = await lastopFetch('/api/upload', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') },
       body: fd
     });
     if (!r.ok) {
@@ -2303,7 +2300,7 @@ async function sendVoiceMessage(){
     const ext=(_voiceRec.blob.type||'').includes('mp4')?'m4a':(_voiceRec.blob.type||'').includes('ogg')?'ogg':'webm';
     const ts=new Date();const filename='Voice_'+ts.toISOString().replace(/[:.]/g,'-').slice(0,19)+'.'+ext;
     const fd=new FormData();fd.append('file',new File([_voiceRec.blob],filename,{type:_voiceRec.blob.type||'audio/webm'}));
-    const r=await lastopFetch('/api/upload',{method:'POST',headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')},body:fd});
+    const r=await lastopFetch('/api/upload',{method:'POST',body:fd});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Не удалось загрузить голосовое');}
     const data=await r.json();
     pendingAttachment={url:data.url,name:'Голосовое сообщение ('+Math.floor(_voiceRec.duration/60)+':'+String(_voiceRec.duration%60).padStart(2,'0')+')',size:data.size,type:data.type||_voiceRec.blob.type||'audio/webm'};
@@ -2869,7 +2866,7 @@ async function cmLoadMembers(){
   if(!cmConv) return;
   try{
     const r = await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members`,{
-      headers:{Authorization:'Bearer '+localStorage.getItem('token')}
+      headers:{}
     });
     const d = await r.json();
     const members = d.members || [];
@@ -2902,8 +2899,8 @@ async function cmLoadMembers(){
     };
   }catch(e){}
 }
-async function cmSaveTitle(){if(!cmConv)return;const newTitle=document.getElementById('cmTitle').value.trim();if(!newTitle)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('token')},body:JSON.stringify({title:newTitle})});if(r.ok){cmConv.title=newTitle;cmConv.name=newTitle;renderConversations();if(window.lastopToast)lastopToast('Сохранено');}else{const d=await r.json().catch(()=>({}));if(window.lastopToast)lastopToast(d.error||'Ошибка');}}catch(e){}}
-async function cmRemoveMember(userPublicID,userName){if(!cmConv)return;if(window.lastopConfirm){const ok=await lastopConfirm({title:'Удалить из группы?',text:`Удалить ${userName} из группы?`,okText:'Удалить',danger:true});if(!ok)return;}else if(!confirm(`Удалить ${userName} из группы?`))return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members/${encodeURIComponent(userPublicID)}`,{method:'DELETE',headers:{Authorization:'Bearer '+localStorage.getItem('token')}});if(r.ok){cmLoadMembers();if(window.lastopToast)lastopToast('Удалён');}}catch(e){}}
+async function cmSaveTitle(){if(!cmConv)return;const newTitle=document.getElementById('cmTitle').value.trim();if(!newTitle)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle})});if(r.ok){cmConv.title=newTitle;cmConv.name=newTitle;renderConversations();if(window.lastopToast)lastopToast('Сохранено');}else{const d=await r.json().catch(()=>({}));if(window.lastopToast)lastopToast(d.error||'Ошибка');}}catch(e){}}
+async function cmRemoveMember(userPublicID,userName){if(!cmConv)return;if(window.lastopConfirm){const ok=await lastopConfirm({title:'Удалить из группы?',text:`Удалить ${userName} из группы?`,okText:'Удалить',danger:true});if(!ok)return;}else if(!confirm(`Удалить ${userName} из группы?`))return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members/${encodeURIComponent(userPublicID)}`,{method:'DELETE'});if(r.ok){cmLoadMembers();if(window.lastopToast)lastopToast('Удалён');}}catch(e){}}
 let cmSearchTimer = null;
 function cmSearchFriends(q){
   clearTimeout(cmSearchTimer);
@@ -2916,7 +2913,7 @@ function cmSearchFriends(q){
       const params = new URLSearchParams({ search: q });
       if (cmConv?.public_id) params.set('exclude_conv', cmConv.public_id);
       const r = await lastopFetch(`/api/friends?${params.toString()}`,{
-        headers:{Authorization:'Bearer '+localStorage.getItem('token')}
+        headers:{}
       });
       const d = await r.json();
       const friends = d.friends || [];
@@ -2940,7 +2937,7 @@ function cmSearchFriends(q){
     }catch(e){}
   }, 300);
 }
-async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('token')},body:JSON.stringify({user_public_id:userPublicID})});if(r.ok){document.getElementById('cmInviteSearch').value='';document.getElementById('cmInviteList').innerHTML='';cmLoadMembers();if(window.lastopToast)lastopToast(userName+' добавлен(а)');}}catch(e){}}
+async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_public_id:userPublicID})});if(r.ok){document.getElementById('cmInviteSearch').value='';document.getElementById('cmInviteList').innerHTML='';cmLoadMembers();if(window.lastopToast)lastopToast(userName+' добавлен(а)');}}catch(e){}}
 
 </script>
 <script src="/site-search.js" defer></script>

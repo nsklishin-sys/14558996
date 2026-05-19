@@ -616,7 +616,7 @@ function joinCommunity(id){
   }
   return (async()=>{
     try{
-      const r=await lastopFetch(API+'/communities/'+id+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+      const r=await lastopFetch(API+'/communities/'+id+'/join',{method:'POST'});
       if(isUnauthorizedResponse(r)){
         forceRelogin('Сессия истекла. Войдите снова');
         return;
@@ -795,7 +795,7 @@ async function onCommunityAvatarSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ toast(d.error||'Не удалось загрузить'); removeCommunityAvatar(); return; }
     communityAvatarUrl = d.url;
@@ -831,7 +831,7 @@ async function submitCommunity(){
   const submitBtn=document.querySelector('.btn-submit');
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Создаём…'}
   try{
-    const r=await lastopFetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,region,website,email,phone,avatar_url,color,tags,privacy_level:selectedPriv})});
+    const r=await lastopFetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category:cat,description:desc,region,website,email,phone,avatar_url,color,tags,privacy_level:selectedPriv})});
     if(isUnauthorizedResponse(r)){
       forceRelogin('Сессия истекла. Войдите снова');
       return;
@@ -864,7 +864,7 @@ async function submitJoinRequest(){
   if(!joinReqCommunityID)return;
   const message=(document.getElementById('joinReqMsg')?.value||'').trim();
   try{
-    const r=await lastopFetch(API+'/communities/'+joinReqCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({message})});
+    const r=await lastopFetch(API+'/communities/'+joinReqCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})});
     if(!r.ok){
       const d=await r.json().catch(()=>null);
       toast(d?.error||'Не удалось отправить заявку');
@@ -888,7 +888,7 @@ async function fetchCommunitiesByRegion(region){
   const grid = document.getElementById('communitiesGrid') || document.getElementById('feed') || document.getElementById('communityList');
   if (grid && window.lastopSkel) grid.innerHTML = window.lastopSkel.cards(6);
   try{
-    const r=await lastopFetch(API+'/communities?region='+encodeURIComponent(region),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/communities?region='+encodeURIComponent(region),{headers:{}});
     if(!r.ok)return;
     const data=await r.json();
     const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
@@ -901,7 +901,7 @@ async function fetchCommunitiesByRegion(region){
 /* ── АВТОРИЗАЦИЯ ── */
 (async()=>{
   if(tk()){try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(isUnauthorizedResponse(r)){forceRelogin('Сессия истекла. Войдите снова');return}
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
@@ -915,7 +915,7 @@ async function fetchCommunitiesByRegion(region){
     ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
   }catch{}}
   try{
-    const r=await lastopFetch(API+'/communities',{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    const r=await lastopFetch(API+'/communities',{headers:{}});
     if(r.ok){
       const data=await r.json();
       const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);

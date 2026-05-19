@@ -229,7 +229,7 @@
     let token = '';
     try { token = localStorage.getItem('token') || ''; } catch {}
     if (!token) return;
-    const headers = { Authorization: 'Bearer ' + token };
+    const headers={};
     try {
       const r = await lastopFetch('/api/friends', { headers });
       if (r.ok) {
@@ -255,7 +255,7 @@
     try { token = localStorage.getItem('token') || ''; } catch {}
     if (!token) return;
     try {
-      const r = await lastopFetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+      const r = await lastopFetch('/api/me', { headers:{} });
       if (!r.ok) return;
       const { user } = await r.json();
       if (!user) return;

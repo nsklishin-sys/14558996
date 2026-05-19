@@ -427,7 +427,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    const r = await lastopFetch(API + '/me', { headers:{}});
     if (!r.ok) return;
     const d = await r.json();
     ME = d.user || d;
@@ -461,7 +461,7 @@ async function loadResume(){
     return;
   }
   try {
-    const opts = tk() ? { headers: { Authorization: 'Bearer ' + tk() }} : {};
+    const opts = tk() ? { headers:{}} : {};
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(PUBLIC_ID), opts);
     if (r.status === 404){
       wrap.innerHTML = '<div class="loader">Резюме не найдено или скрыто. <a href="/jobs.html" style="color:var(--g)">Вернуться к списку</a></div>';
@@ -672,8 +672,7 @@ async function toggleSave(){
   if (btn) btn.disabled = true;
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/save', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + tk() }
+      method: 'POST'
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -713,7 +712,7 @@ async function submitContact(){
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/contact', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
     });
     if (!r.ok){
@@ -785,7 +784,7 @@ async function submitEdit(){
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
       method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     if (!r.ok){
@@ -818,8 +817,7 @@ async function submitDelete(){
   btn.disabled = true; btn.textContent = 'Удаление…';
   try {
     const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + tk() }
+      method: 'DELETE'
     });
     if (!r.ok && r.status !== 204){
       const e = await r.json().catch(()=>({}));

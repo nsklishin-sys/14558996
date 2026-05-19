@@ -368,7 +368,7 @@ function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:tr
 async function loadProfile(){
   if(!tk()){location.href='/login.html';return;}
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -387,7 +387,7 @@ async function uploadFileToInput(fileInput,targetInputID){
   const target=document.getElementById(targetInputID);
   if(target){target.disabled=true;target.placeholder='Загружаем…';}
   try{
-    const r=await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка загрузки: '+(t||r.status),'err');return;}
     const data=await r.json();
     const url=data.url||data.URL||'';
@@ -402,7 +402,7 @@ async function loadOrgCompanies(){
   const sel=document.getElementById('fOrgCompanyID');
   if(!sel)return;
   try{
-    const r=await lastopFetch(API+'/companies?limit=200',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/companies?limit=200',{headers:{}});
     if(!r.ok)return;
     const d=await r.json();
     const list=d.companies||d.items||[];
@@ -414,7 +414,7 @@ async function loadOrgCompanies(){
 async function loadExhibition(){
   if(!state.publicID)return null;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{headers:{}});
     if(!r.ok)return null;
     const data=await r.json();
     return data.exhibition||data;
@@ -661,7 +661,7 @@ async function saveBasic(){
   try{
     const url=state.mode==='edit'?API+'/exhibitions/'+encodeURIComponent(state.publicID):API+'/exhibitions';
     const method=state.mode==='edit'?'PATCH':'POST';
-    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const txt=await r.text().catch(()=>'');console.error('save failed',r.status,txt);eeToast('Ошибка: '+(txt||r.status),'err');btn.disabled=false;btn.textContent=oldText;return;}
     const data=await r.json();const ex=data.exhibition||data;
     eeToast(state.mode==='edit'?'Сохранено ✓':'Выставка создана ✓','ok');
@@ -817,7 +817,7 @@ async function saveSpeaker(speakerID){
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers'+(speakerID?'/'+speakerID:'');
   const method=speakerID?'PATCH':'POST';
   try{
-    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
     const data=await r.json();
     const sp=data.speaker||data;
@@ -836,7 +836,7 @@ async function saveSpeaker(speakerID){
 async function deleteSpeaker(speakerID){
   if(!await lastopConfirm({title:'Удалить спикера?',message:'Сессии с этим спикером сохранятся, но без привязки.',danger:true}))return;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers/'+speakerID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/speakers/'+speakerID,{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
     state.exhibition.speakers=(state.exhibition.speakers||[]).filter(s=>s.id!==speakerID);
     // также убираем из speaker_ids в сессиях локально
@@ -953,7 +953,7 @@ async function saveDay(dayID){
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/days'+(dayID?'/'+dayID:'');
   const method=dayID?'PATCH':'POST';
   try{
-    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
     const data=await r.json();
     const d=data.day||data;
@@ -968,7 +968,7 @@ async function saveDay(dayID){
 async function deleteDay(dayID){
   if(!await lastopConfirm({title:'Удалить день?',message:'Все сессии этого дня будут удалены.',danger:true}))return;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/days/'+dayID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/days/'+dayID,{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
     state.exhibition.days=(state.exhibition.days||[]).filter(d=>d.id!==dayID);
     state.exhibition.sessions=(state.exhibition.sessions||[]).filter(s=>s.day_id!==dayID);
@@ -1069,7 +1069,7 @@ async function saveSession(dayID,sessionID){
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/sessions'+(sessionID?'/'+sessionID:'');
   const method=sessionID?'PATCH':'POST';
   try{
-    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
     const data=await r.json();
     const ses=data.session||data;
@@ -1084,7 +1084,7 @@ async function saveSession(dayID,sessionID){
 async function deleteSession(sessionID){
   if(!await lastopConfirm({title:'Удалить сессию?',danger:true}))return;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/sessions/'+sessionID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/sessions/'+sessionID,{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
     state.exhibition.sessions=(state.exhibition.sessions||[]).filter(s=>s.id!==sessionID);
     renderDays();eeToast('Удалено','ok');
@@ -1202,7 +1202,7 @@ async function saveTicket(ticketID){
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets'+(ticketID?'/'+ticketID:'');
   const method=ticketID?'PATCH':'POST';
   try{
-    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');btns.forEach(b=>b.disabled=false);return;}
     const data=await r.json();
     const tk2=data.ticket||data;
@@ -1217,7 +1217,7 @@ async function saveTicket(ticketID){
 async function deleteTicket(ticketID){
   if(!await lastopConfirm({title:'Удалить билет?',danger:true}))return;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets/'+ticketID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/tickets/'+ticketID,{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
     state.exhibition.tickets=(state.exhibition.tickets||[]).filter(t=>t.id!==ticketID);
     renderTickets();eeToast('Удалено','ok');
@@ -1294,7 +1294,7 @@ async function saveZone(zoneID){
   const url=API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/zones'+(zoneID?'/'+zoneID:'');
   const method=zoneID?'PATCH':'POST';
   try{
-    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
     const data=await r.json();
     const z=data.zone||data;
@@ -1309,7 +1309,7 @@ async function saveZone(zoneID){
 async function deleteZone(zoneID){
   if(!await lastopConfirm({title:'Удалить зону?',danger:true}))return;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/zones/'+zoneID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/zones/'+zoneID,{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
     state.exhibition.zones=(state.exhibition.zones||[]).filter(z=>z.id!==zoneID);
     renderZones();eeToast('Удалено','ok');
@@ -1321,7 +1321,7 @@ const APP_STATUS={pending:'Ожидает',approved:'Одобрена',rejected:
 
 async function loadApplications(){
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-applications',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-applications',{headers:{}});
     if(!r.ok)return;
     const data=await r.json();
     state.applications=data.applications||[];
@@ -1398,7 +1398,7 @@ async function reviewApp(appID,action){
   }
   const body={action,review_message:reviewMessage,booth_number:boothNumber,pavilion};
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-applications/'+appID+'/review',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify(body)});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-applications/'+appID+'/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка: '+(t||r.status),'err');return;}
     const data=await r.json();
     const upd=data.application||data;
@@ -1417,7 +1417,7 @@ async function deleteExhibition(){
   if(!state.publicID)return;
   if(!await lastopConfirm({title:'Удалить выставку?',message:`«${state.exhibition?.title||''}» — действие необратимо.`,danger:true}))return;
   try{
-    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
     eeToast('Выставка удалена','ok');setTimeout(()=>{location.href='/exhibitions.html';},800);
   }catch{eeToast('Ошибка сети','err');}

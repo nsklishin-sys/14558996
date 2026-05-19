@@ -519,7 +519,7 @@ async function loadEvents(){
   if (feedEl && window.lastopSkel) feedEl.innerHTML = window.lastopSkel.cards(6);
   try{
     const url = API+'/events?limit=200';
-    const r = await lastopFetch(url, { headers: tk() ? { Authorization:'Bearer '+tk() } : {} });
+    const r = await lastopFetch(url, { headers: {} });
     if(!r.ok){
       console.error('loadEvents HTTP', r.status, url);
       return;
@@ -535,7 +535,7 @@ async function loadEvents(){
 async function loadCalendarEvents(){
   try{
     const from=new Date(); from.setMonth(from.getMonth()-6); from.setHours(0,0,0,0);
-    const r=await lastopFetch(API+'/events?limit=500&from='+encodeURIComponent(from.toISOString()),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/events?limit=500&from='+encodeURIComponent(from.toISOString()),{headers:{}});
     if(!r.ok)return;
     const d=await r.json();
     CAL_EVENTS=(d.events||[]).map(mapApiEvent);
@@ -617,7 +617,7 @@ async function toggleReg(publicID,btn){
   try{
     const r=await lastopFetch(`${API}/events/${encodeURIComponent(publicID)}/register`,{
       method,
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
+      headers:{'Content-Type':'application/json'},
       body: method==='POST'?JSON.stringify({ticket_type:'standard'}):undefined
     });
     if(!r.ok){
@@ -648,8 +648,7 @@ async function toggleSave(publicID,btn){
   btn.disabled=true;
   try{
     const r=await lastopFetch(`${API}/events/${encodeURIComponent(publicID)}/save`,{
-      method,
-      headers:{Authorization:'Bearer '+tk()}
+      method
     });
     if(!r.ok){
       showToast('Не удалось сохранить');
@@ -855,7 +854,7 @@ async function onEvCoverSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ toast(d.error||'Не удалось'); removeEvCover(); return; }
     evCoverUrl = d.url;
@@ -943,7 +942,7 @@ async function submitEvent(){
   }
 
   // Заголовки с активным контекстом (компания/сообщество)
-  const baseH={'Content-Type':'application/json',Authorization:'Bearer '+tk()};
+  const baseH={'Content-Type':'application/json'};
   const headers=(typeof window.withActiveContextHeaders==='function')?window.withActiveContextHeaders(baseH):baseH;
 
   try{
@@ -995,7 +994,7 @@ function applyCurrentUser(user){
     if(cached&&(cached.id||cached.full_name||cached.name)){applyCurrentUser(cached);}
   }catch{}
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(r.ok){
       const{user={}}=await r.json();
       localStorage.setItem('user',JSON.stringify(user));
@@ -1007,7 +1006,7 @@ function applyCurrentUser(user){
   const editId=new URLSearchParams(location.search).get('edit');
   if(editId){
     lastopFetch(`${API}/events/${encodeURIComponent(editId)}`,{
-      headers:{Authorization:'Bearer '+tk()}
+      headers:{}
     })
       .then(r=>r.json())
       .then(data=>{
@@ -1048,7 +1047,7 @@ function applyCurrentUser(user){
 (async function(){
   try {
     const tk = '';
-    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const headers = tk ? { } : {};
     const r = await lastopFetch('/api/events/stats', { headers });
     if (!r.ok) return;
     const d = await r.json();
