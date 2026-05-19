@@ -1483,10 +1483,7 @@ async function executeDelAcc(){
 }
 document.getElementById('emailField').addEventListener('input',updateWebsiteField);
 
-function logout(){
-  localStorage.removeItem('user');
-  location.href='/home-guest.html';
-}
+async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
 
 document.getElementById('handleField').addEventListener('input',()=>{
   const v=document.getElementById('handleField').value.trim().replace(/^@/,'');
