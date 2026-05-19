@@ -21220,12 +21220,65 @@ func listEvents(db *sql.DB, viewerID int64, hasAuth bool, f listEventsFilter) ([
 		if err != nil {
 			return nil, 0, err
 		}
-		if hasAuth {
-			_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM event_registrations WHERE event_id=$1 AND user_id=$2 AND status='confirmed')`, item.ID, viewerID).Scan(&item.IsRegistered)
-			_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM event_saves WHERE event_id=$1 AND user_id=$2)`, item.ID, viewerID).Scan(&item.IsSaved)
-			item.IsMine = item.OrganizerID == viewerID
-		}
 		items = append(items, item)
+	}
+
+	// PERF (18.05): is_registered/is_saved — два batch-запроса вместо
+	// 2*N EXISTS. Сначала собираем ID всех событий, потом одним SQL для
+	// регистраций и одним для сохранений достаём виденные viewerID-ом.
+	// Результаты складываем в map для O(1) проставления флагов.
+	if hasAuth && len(items) > 0 {
+		ids := make([]int64, len(items))
+		for i, it := range items {
+			ids[i] = it.ID
+		}
+		// Строим $1, $2, ... и slice аргументов для IN-списка.
+		// Безопасно: ids — int64 из БД, не user input. viewerID идёт
+		// отдельным placeholder'ом.
+		placeholders := make([]string, len(ids))
+		args := make([]any, 0, len(ids)+1)
+		for i, id := range ids {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args = append(args, id)
+		}
+		args = append(args, viewerID)
+		viewerPH := fmt.Sprintf("$%d", len(ids)+1)
+
+		registered := make(map[int64]bool, len(ids))
+		regRows, regErr := db.Query(
+			`SELECT event_id FROM event_registrations WHERE event_id IN (`+strings.Join(placeholders, ",")+`) AND user_id=`+viewerPH+` AND status='confirmed'`,
+			args...,
+		)
+		if regErr == nil {
+			for regRows.Next() {
+				var eid int64
+				if scanErr := regRows.Scan(&eid); scanErr == nil {
+					registered[eid] = true
+				}
+			}
+			regRows.Close()
+		}
+
+		saved := make(map[int64]bool, len(ids))
+		savRows, savErr := db.Query(
+			`SELECT event_id FROM event_saves WHERE event_id IN (`+strings.Join(placeholders, ",")+`) AND user_id=`+viewerPH,
+			args...,
+		)
+		if savErr == nil {
+			for savRows.Next() {
+				var eid int64
+				if scanErr := savRows.Scan(&eid); scanErr == nil {
+					saved[eid] = true
+				}
+			}
+			savRows.Close()
+		}
+
+		for i := range items {
+			items[i].IsRegistered = registered[items[i].ID]
+			items[i].IsSaved = saved[items[i].ID]
+			items[i].IsMine = items[i].OrganizerID == viewerID
+		}
 	}
 	return items, 0, nil
 }
