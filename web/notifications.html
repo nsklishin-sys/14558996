@@ -127,8 +127,8 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   background:linear-gradient(135deg,var(--g) 0%,#146A38 60%,#0E5128 100%);
   position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:16px
 }
-.nh-cover::before{content:position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
-.nh-cover::after{content:position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+.nh-cover::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.nh-cover::after{content:'';position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
 .nh-badge{
   display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;
   background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
@@ -210,7 +210,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden
 }
 /* clearfix для float */
-.nc-body::after{content:display:table;clear:both}
+.nc-body::after{content:'';display:table;clear:both}
 .nc-foot{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--bdr)}
 .nc-action{
   display:inline-flex;align-items:center;gap:4px;font-size:11px;
@@ -449,7 +449,7 @@ document.addEventListener('click',e=>{
   if(!dd||!p)return;
   if(!dd.contains(e.target)&&!p.contains(e.target)){dd.classList.remove('open');p.classList.remove('open');}
 });
-function logout(){location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html';}
 </script>
 <script src="/site-search.js" defer></script>
 <script>
@@ -495,7 +495,7 @@ const SOURCE_TYPE_TO_GROUP = (() => {
 })();
 
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 const escHtml = window.lastopEsc;
 function showToast(msg){
   let toast=document.getElementById('toast');
@@ -716,14 +716,14 @@ function itemHTML(n){
   const initial=(n.actor_name||'С').charAt(0).toUpperCase();
   const avBg=isSystem?'var(--gl)':escHtml(n.actor_color||'#1E8A4C');
   const avColor=isSystem?'var(--g)':'#fff';
-  const avBorder=isSystem?'border:1px solid var(--gb);':
+  const avBorder=isSystem?'border:1px solid var(--gb);':'';
   const avContent=isSystem
     ? '<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
     : escHtml(initial);
   const href=buildHref(n);
   const time=formatTime(n.created_at);
   const bg=isUnread?'rgba(30,138,76,.04)':'transparent';
-  const dot=isUnread?'<div class="n-unread-dot" style="position:absolute;left:9px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--g);transform:translateY(-50%)"></div>':
+  const dot=isUnread?'<div class="n-unread-dot" style="position:absolute;left:9px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--g);transform:translateY(-50%)"></div>':'';
   return '<div class="n-item" data-id="'+escHtml(String(n.id))+'" data-href="'+escHtml(href)+'" data-unread="'+(isUnread?'1':'0')+'" '+
     'style="display:flex;gap:12px;padding:14px 18px 14px 24px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .12s;position:relative;background:'+bg+'" '+
     'onmouseover="this.style.background=\'var(--gp)\'" '+
@@ -763,7 +763,7 @@ function buildHref(n){
 }
 
 function formatTime(iso){
-  if(!iso)return
+  if(!iso)return '';
   try{
     const d=new Date(iso);
     const now=new Date();
@@ -773,7 +773,7 @@ function formatTime(iso){
     if(diff<86400)return Math.floor(diff/3600)+' ч назад';
     if(diff<86400*7)return Math.floor(diff/86400)+' д назад';
     return d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'});
-  }catch{return}
+  }catch{return '';}
 }
 
 async function pageMarkAll(){

@@ -191,7 +191,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 let identifier = null;
 let company = null;
@@ -207,7 +207,7 @@ function stableColor(s){
   return ['#1E8A4C','#0891B2','#7C3AED','#DB2777','#EA580C','#65A30D','#475569','#2563EB','#9333EA','#0EA5E9','#F59E0B'][Math.abs(h)%11];
 }
 function formatRel(iso){
-  if(!iso) return
+  if(!iso) return '';
   const d=new Date(iso); const diff=(new Date()-d)/1000;
   if(diff<60) return 'только что';
   if(diff<3600) return Math.floor(diff/60)+' '+pluralRu(Math.floor(diff/60),['минута','минуты','минут'])+' назад';
@@ -215,7 +215,7 @@ function formatRel(iso){
   if(diff<86400*30) return Math.floor(diff/86400)+' '+pluralRu(Math.floor(diff/86400),['день','дня','дней'])+' назад';
   return d.toLocaleDateString('ru-RU');
 }
-function fmtDateAbs(iso){ if(!iso) return return new Date(iso).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}); }
+function fmtDateAbs(iso){ if(!iso) return ''; return new Date(iso).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}); }
 function toast(msg, success){
   const t=document.getElementById('toast');
   t.textContent=msg;
@@ -223,7 +223,7 @@ function toast(msg, success){
   requestAnimationFrame(()=>t.classList.add('show'));
   setTimeout(()=>t.classList.remove('show'),2500);
 }
-function logout(){  location.href='/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href='/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -467,7 +467,7 @@ function renderAbout(wrap){
   const c = company;
   const tagsHtml = (c.tags && c.tags.length)
     ? '<div class="tag-list">'+c.tags.map(t=>'<span class="tag-chip">'+esc(t)+'</span>').join('')+'</div>'
-    :
+    : '';
   wrap.innerHTML =
     '<div class="panel">'+
       '<h3><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>О компании</h3>'+
@@ -481,7 +481,7 @@ function renderAbout(wrap){
 async function renderPubs(wrap){
   wrap.innerHTML = '<div class="panel"><h3>Публикации</h3><div class="placeholder">Загрузка…</div></div>';
   try {
-    
+    const tk = localStorage.getItem('token');
     const authH = tk ? { Authorization: 'Bearer ' + tk } : {};
     const [jobsR, catR, feedR, topicsR] = await Promise.all([
       lastopFetch(API+'/jobs?limit=100').then(r=>r.json()).catch(()=>({jobs:[]})),

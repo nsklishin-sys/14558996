@@ -68,8 +68,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .comm-hero:hover{box-shadow:var(--shm);transform:translateY(-1px)}
 .ch-cover{height:120px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:14px 18px;
   background:linear-gradient(135deg,#1E8A4C 0%,#146A38 60%,#0E5128 100%)}
-.ch-cover::before{content:position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08)}
-.ch-cover::after{content:position:absolute;bottom:-50px;left:10%;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.05)}
+.ch-cover::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08)}
+.ch-cover::after{content:'';position:absolute;bottom:-50px;left:10%;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.05)}
 .ch-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-size:10px;font-weight:700;color:#fff;position:relative;z-index:1}
 .ch-body{padding:16px 18px}
 .ch-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:10px}
@@ -100,7 +100,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* ── КАРТОЧКА СООБЩЕСТВА (grid) ── */
 .comm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .comm-section-label{font-size:12px;font-weight:800;color:var(--tm);letter-spacing:.02em;padding:4px 0;display:flex;align-items:center;gap:10px;grid-column:1/-1}
-.comm-section-label::after{content:flex:1;height:1px;background:var(--bdr)}
+.comm-section-label::after{content:'';flex:1;height:1px;background:var(--bdr)}
 .comm-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);cursor:pointer;transition:box-shadow .18s,transform .14s,border-color .15s;animation:fadeUp .3s ease both;display:flex;flex-direction:column}
 .comm-card:hover{
   box-shadow:0 6px 20px rgba(30,138,76,.12);
@@ -425,7 +425,7 @@ const API='/api', tk=()=>localStorage.getItem('token');
 function isUnauthorizedResponse(r){return r&&r.status===401}
 function forceRelogin(message){
   if(message)toast(message);
-  
+  localStorage.removeItem('token');
   localStorage.removeItem('user');
   setTimeout(()=>{location.href='/login.html'},400);
 }
@@ -452,7 +452,7 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html'}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];
@@ -460,21 +460,21 @@ const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135d
 const COMMUNITIES=[];
 const joinedSet=new Set();
 let currentMode = (new URLSearchParams(location.search).get('filter') === 'my') ? 'my' : 'all';
-let currentTab=
+let currentTab='';
 let currentType='all'; /* second toggle: all | user | corp */
 let currentView='grid';
-let activeTag=
+let activeTag='';
 let selectedPriv='open';
 let selectedColor='#1E8A4C';
 let isCreatingCommunity=false;
-let myRegion=
+let myRegion='';
 let joinReqCommunityID=0;
 
 /* ── РЕНДЕР КАРТОЧКИ (grid) ── */
 function renderCard(c,i){
   const isJoined=joinedSet.has(c.id);
   const joinText=isJoined?'Участник':(c.privacy==='closed'?'Подать заявку':'Вступить');
-  const roleBadge=c.myRole?`<span class="cc-tag">${c.myRole==='owner'?'👑 Владелец':c.myRole==='admin'?'⭐ Админ':c.myRole==='moderator'?'🛡 Модератор':'Участник'}</span>`:
+  const roleBadge=c.myRole?`<span class="cc-tag">${c.myRole==='owner'?'👑 Владелец':c.myRole==='admin'?'⭐ Админ':c.myRole==='moderator'?'🛡 Модератор':'Участник'}</span>`:'';
   const gi=c.id%GRADIENTS.length;
   return`<div class="comm-card" style="animation-delay:${i*.05}s" onclick="openCommunity(COMMUNITIES.find(x=>x.id===${c.id}))">
     <div class="cc-cover">
@@ -589,7 +589,7 @@ function setTab(tab,btn){
   applyFilters();
 }
 function filterByTag(chip,tag){
-  if(activeTag===tag){activeTag=chip.classList.remove('active')}
+  if(activeTag===tag){activeTag='';chip.classList.remove('active')}
   else{activeTag=tag;document.querySelectorAll('.tag-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active')}
   applyFilters();
 }
@@ -610,7 +610,7 @@ function joinCommunity(id){
   if(joinedSet.has(id))return Promise.resolve();
   if(c.privacy==='closed'){
     joinReqCommunityID=id;
-    document.getElementById('joinReqMsg').value=
+    document.getElementById('joinReqMsg').value='';
     document.getElementById('joinReqBg').classList.add('open');
     return Promise.resolve();
   }
@@ -773,19 +773,19 @@ function syncSidebar(){
     </div>`).join(''):'<div style="font-size:12px;color:var(--gmt);padding:6px 4px">Нет рекомендаций.</div>';
 }
 function avHTML(c){
-  const u=c?.avatar_url||
+  const u=c?.avatar_url||'';
   if(u && (u.startsWith('http://')||u.startsWith('https://')||u.startsWith('/uploads/'))){
     return `<img src="${esc(u)}" alt="" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`;
   }
   return c?.icon||'💬';
 }
 
-let communityAvatarUrl =
+let communityAvatarUrl = '';
 async function onCommunityAvatarSelected(e){
   const file = e.target.files && e.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value= return; }
-  if(file.size > 10*1024*1024){ toast('Макс. 10 МБ'); e.target.value= return; }
+  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value=''; return; }
+  if(file.size > 10*1024*1024){ toast('Макс. 10 МБ'); e.target.value=''; return; }
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('mAvatarImg').src = ev.target.result;
@@ -803,14 +803,14 @@ async function onCommunityAvatarSelected(e){
   }catch{
     toast('Ошибка сети');
     removeCommunityAvatar();
-  }finally{ e.target.value= }
+  }finally{ e.target.value=''; }
 }
 function removeCommunityAvatar(){
-  communityAvatarUrl =
+  communityAvatarUrl = '';
   const p=document.getElementById('mAvatarPreview'); if(p) p.style.display='none';
-  const i=document.getElementById('mAvatarImg'); if(i) i.src=
+  const i=document.getElementById('mAvatarImg'); if(i) i.src='';
   const u=document.getElementById('mAvatarUploading'); if(u) u.style.display='none';
-  const f=document.getElementById('mAvatarInput'); if(f) f.value=
+  const f=document.getElementById('mAvatarInput'); if(f) f.value='';
 }
 
 async function submitCommunity(){
@@ -818,12 +818,12 @@ async function submitCommunity(){
   const name=(document.getElementById('mName')?.value||'').trim();
   if(name.length<3){toast('Название должно быть не короче 3 символов');return}
   const cat=document.getElementById('mCat')?.value||'Другое';
-  const desc=document.getElementById('mDesc')?.value||
+  const desc=document.getElementById('mDesc')?.value||'';
   const region=(document.getElementById('mRegion')?.value||'').trim();
   const website=(document.getElementById('mWebsite')?.value||'').trim();
   const email=(document.getElementById('mEmail')?.value||'').trim();
   const phone=(document.getElementById('mPhone')?.value||'').trim();
-  const avatar_url=communityAvatarUrl||
+  const avatar_url=communityAvatarUrl||'';
   const tags=(document.getElementById('mTags')?.value||'').split(',').map(t=>t.trim()).filter(Boolean);
   const color=document.getElementById('mColor')?.value||selectedColor;
   const icons={Логистика:'🚛',ВЭД:'🛃',IT:'💻',Регионы:'🌍',Карьера:'💼',Другое:'💬'};
@@ -878,10 +878,10 @@ async function submitJoinRequest(){
 }
 function filterMyRegion(btn){
   if(!myRegion){toast('В профиле не указан город');return}
-  currentTab=
+  currentTab='';
   document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('searchInput').value=
+  document.getElementById('searchInput').value='';
   fetchCommunitiesByRegion(myRegion);
 }
 async function fetchCommunitiesByRegion(region){

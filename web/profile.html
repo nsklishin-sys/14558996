@@ -65,11 +65,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   overflow:hidden
 }
 .prof-cover::before{
-  content:position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+  content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;
   border-radius:50%;background:rgba(255,255,255,.07)
 }
 .prof-cover::after{
-  content:position:absolute;bottom:-60px;left:20%;width:160px;height:160px;
+  content:'';position:absolute;bottom:-60px;left:20%;width:160px;height:160px;
   border-radius:50%;background:rgba(255,255,255,.05)
 }
 .prof-cover-btn{
@@ -398,7 +398,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
   background:conic-gradient(var(--g) calc(var(--pct) * 1%),var(--bdr) 0);
   display:grid;place-items:center;margin:0 auto 10px;position:relative
 }
-.pct-ring::before{content:position:absolute;inset:5px;border-radius:50%;background:var(--w)}
+.pct-ring::before{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--w)}
 .pct-n{font-size:13px;font-weight:900;color:var(--g);position:relative;z-index:1}
 .pct-text{text-align:center;font-size:11px;color:var(--gmt);line-height:1.5;margin-bottom:10px}
 .pct-items{display:flex;flex-direction:column;gap:4px}
@@ -715,15 +715,15 @@ function avatarLetters(name){
 const esc = window.lastopEsc;
 const ago = window.lastopAgo;
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 let profilePosts=[];
 
 function profileStorageKey(userLike){
-  const publicID=userLike?.public_id||
+  const publicID=userLike?.public_id||'';
   if(publicID)return `user_profile:${publicID}`;
   const id=userLike?.id;
   if(id!=null)return `user_profile:u${id}`;
-  return
+  return '';
 }
 
 async function loadCurrentUser(){
@@ -783,7 +783,7 @@ async function applyCurrentUserProfile(){
   const profileAvatar=document.querySelector('.prof-av');
   if(mergedUser.avatar_url){
     profileAvatar.innerHTML=`<img src="${mergedUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
-    profileAvatar.style.background=
+    profileAvatar.style.background='';
   }else{
     document.getElementById('profileAvatarText').textContent=initials;
     profileAvatar.style.background = (typeof colorFor === 'function' ? colorFor(fullName) : (typeof userColor === 'function' ? userColor(fullName) : 'var(--g)'));
@@ -792,12 +792,12 @@ async function applyCurrentUserProfile(){
   const _shareBtnSelf = document.getElementById('btnShareMyProfile');
   if (_shareBtnSelf) {
     _shareBtnSelf.setAttribute('data-share-title', 'Профиль ' + fullName);
-    const _myPid = (JSON.parse(localStorage.getItem('user')||'{}')).public_id ||
+    const _myPid = (JSON.parse(localStorage.getItem('user')||'{}')).public_id || '';
     _shareBtnSelf.setAttribute('data-share-url', location.origin + '/profile_user.html?id=' + encodeURIComponent(_myPid));
   }
   const h=(mergedUser.handle||'').trim();
   const hh=document.getElementById('profileHandle');
-  if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent=hh.onclick=null;}
+  if(h){hh.textContent='@'+h;hh.onclick=()=>lastopCopy('@'+h,'Скопировано','Не удалось скопировать');}else{hh.textContent='';hh.onclick=null;}
   document.querySelectorAll('.profile-post-name').forEach((node)=>{node.textContent=fullName;});
 
   // Topbar и dropdown — оставляем fallback «Участник LASTOP» чтобы
@@ -812,9 +812,9 @@ async function applyCurrentUserProfile(){
   if(profileRoleEl){
     if(!role && (!company || company==='—')){
       profileRoleEl.style.display='none';
-      profileRoleEl.textContent=
+      profileRoleEl.textContent='';
     } else {
-      profileRoleEl.style.display=
+      profileRoleEl.style.display='';
       profileRoleEl.textContent = (role && company!=='—') ? `${role} · ${company}`
                                 : (role ? role : company);
     }
@@ -829,7 +829,7 @@ async function applyCurrentUserProfile(){
         const d=new Date(createdAt);
         if(!isNaN(d.getTime())){
           joinedEl.textContent = d.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
-          joinedWrap.style.display=
+          joinedWrap.style.display='';
         }
       }catch{}
     }
@@ -870,7 +870,7 @@ async function loadProfileFriends(){
       } else {
         el.innerHTML = friends.slice(0,12).map(function(f){
           var name = f.full_name || f.friend_name || 'Участник';
-          var pid = f.public_id || f.friend_id ||
+          var pid = f.public_id || f.friend_id || '';
           var ltr = (name[0] || '?').toUpperCase();
           var bg = colorFor(name);
           var av = f.avatar_url
@@ -890,7 +890,7 @@ async function loadProfileFriends(){
       } else {
         onlineBlock.innerHTML = online.map(function(f){
           var name = f.full_name || f.friend_name || 'Участник';
-          var pid = f.public_id || f.friend_id ||
+          var pid = f.public_id || f.friend_id || '';
           var ltr = (name[0] || '?').toUpperCase();
           var bg = colorFor(name);
           var avInner = f.avatar_url
@@ -957,7 +957,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 
 function switchTab(tab, btn){
   // Подгрузка списков для новых табов
@@ -1027,7 +1027,7 @@ async function loadAllProfileCounts(){
     } else {
       onlineBlock.innerHTML=online.slice(0,5).map(f=>{
         const name=f.full_name||f.friend_name||'Участник';
-        const pid=f.public_id||f.friend_id||
+        const pid=f.public_id||f.friend_id||'';
         // Используем классы .fmini-* (единообразно с profile_user.html) —
         // даёт hover-эффект и аккуратное отображение позиции/компании.
         const av=f.avatar_url
@@ -1067,7 +1067,7 @@ function renderProfileCommunities(){
     return;
   }
   root.innerHTML=list.map(c=>{
-    const slug=c.slug||c.public_id||c.id||
+    const slug=c.slug||c.public_id||c.id||'';
     const av=c.avatar_url
       ? `<img src="${esc(c.avatar_url)}" alt="" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`
       : `<div style="width:44px;height:44px;border-radius:12px;background:${colorFor(c.name||'')};color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800">${esc(letter(c.name||''))}</div>`;
@@ -1089,11 +1089,11 @@ function renderProfileEvents(){
     return;
   }
   root.innerHTML=list.map(ev=>{
-    const slug=ev.slug||ev.public_id||ev.id||
+    const slug=ev.slug||ev.public_id||ev.id||'';
     const d=ev.starts_at?new Date(ev.starts_at):null;
-    const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):
-    const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):
-    const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:
+    const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):'';
+    const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
+    const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:'';
     return `<a href="/event-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       ${cover}
       <div style="padding:12px">
@@ -1112,11 +1112,11 @@ const XP_MONTHS=['Январь','Февраль','Март','Апрель','Ма
 let _xpEditPid=null;
 
 function fmtXpPeriod(xp){
-  const sm=XP_MONTHS[(xp.start_month||1)-1]||
+  const sm=XP_MONTHS[(xp.start_month||1)-1]||'';
   const start=`${sm} ${xp.start_year}`;
   let end='настоящее время';
   if(!xp.is_current && xp.end_year){
-    const em=XP_MONTHS[(xp.end_month||12)-1]||
+    const em=XP_MONTHS[(xp.end_month||12)-1]||'';
     end=`${em} ${xp.end_year}`;
   }
   // Длительность
@@ -1130,7 +1130,7 @@ function fmtXpPeriod(xp){
   const yy=Math.floor(total/12), mm=total%12;
   const pluralY=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'лет';if(v===1)return'год';if(v>=2&&v<=4)return'года';return'лет';};
   const pluralM=n=>{const v=n%10,h=n%100;if(h>=11&&h<=19)return'мес.';if(v===1)return'мес.';if(v>=2&&v<=4)return'мес.';return'мес.';};
-  let dur=
+  let dur='';
   if(yy>0) dur+=yy+' '+pluralY(yy);
   if(mm>0) dur+=(dur?' ':'')+mm+' '+pluralM(mm);
   if(!dur) dur='менее месяца';
@@ -1154,7 +1154,7 @@ async function loadOwnExperience(){
       const co=esc(xp.company||'—');
       const ltr=esc((xp.company||xp.position||'?').charAt(0).toUpperCase());
       const color=colorFor(xp.company||xp.position||'');
-      const desc=xp.description?`<div style="font-size:11px;color:var(--tm);line-height:1.5;margin-top:6px;white-space:pre-wrap">${esc(xp.description)}</div>`:
+      const desc=xp.description?`<div style="font-size:11px;color:var(--tm);line-height:1.5;margin-top:6px;white-space:pre-wrap">${esc(xp.description)}</div>`:'';
       return `<div class="xp-item">
         <div class="xp-logo" style="background:${color}">${ltr}</div>
         <div class="xp-body">
@@ -1189,24 +1189,24 @@ function openXpModal(xp){
   if(xp&&xp.public_id){
     _xpEditPid=xp.public_id;
     document.getElementById('xpmTitle').textContent='Редактировать опыт работы';
-    document.getElementById('xpmPosition').value=xp.position||
-    document.getElementById('xpmCompany').value=xp.company||
-    document.getElementById('xpmDescription').value=xp.description||
-    document.getElementById('xpmStartYear').value=xp.start_year||
+    document.getElementById('xpmPosition').value=xp.position||'';
+    document.getElementById('xpmCompany').value=xp.company||'';
+    document.getElementById('xpmDescription').value=xp.description||'';
+    document.getElementById('xpmStartYear').value=xp.start_year||'';
     sM.value=String(xp.start_month||1);
     document.getElementById('xpmIsCurrent').checked=!!xp.is_current;
-    document.getElementById('xpmEndYear').value=xp.end_year||
+    document.getElementById('xpmEndYear').value=xp.end_year||'';
     eM.value=String(xp.end_month||12);
   } else {
     _xpEditPid=null;
     document.getElementById('xpmTitle').textContent='Добавить опыт работы';
-    document.getElementById('xpmPosition').value=
-    document.getElementById('xpmCompany').value=
-    document.getElementById('xpmDescription').value=
-    document.getElementById('xpmStartYear').value=
+    document.getElementById('xpmPosition').value='';
+    document.getElementById('xpmCompany').value='';
+    document.getElementById('xpmDescription').value='';
+    document.getElementById('xpmStartYear').value='';
     sM.value='1';
     document.getElementById('xpmIsCurrent').checked=false;
-    document.getElementById('xpmEndYear').value=
+    document.getElementById('xpmEndYear').value='';
     eM.value='12';
   }
   toggleXpEnd(document.getElementById('xpmIsCurrent').checked);
@@ -1214,7 +1214,7 @@ function openXpModal(xp){
   setTimeout(()=>document.getElementById('xpmPosition').focus(),120);
 }
 function closeXpModal(){document.getElementById('xpmBg').classList.remove('open');}
-function toggleXpEnd(isCurrent){document.getElementById('xpmEndRow').style.display=isCurrent?'none':}
+function toggleXpEnd(isCurrent){document.getElementById('xpmEndRow').style.display=isCurrent?'none':'';}
 
 async function submitXpForm(){
   const pos=document.getElementById('xpmPosition').value.trim();

@@ -117,7 +117,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cal-day.has-event:not(.today){background:var(--gl);color:var(--g);font-weight:700}
 .cal-day.has-event:not(.today):hover{background:var(--gb)}
 .cal-day.selected:not(.today){background:var(--gb);color:var(--t)}
-.cal-day.has-event::after{content:position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--g)}
+.cal-day.has-event::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--g)}
 .cal-day.today.has-event::after{background:#fff}
 
 .cal-events-list{margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr);display:flex;flex-direction:column;gap:5px}
@@ -457,7 +457,7 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html'}
 const TYPE_LABEL={webinar:'Вебинар',conference:'Конференция',workshop:'Воркшоп',networking:'Нетворкинг',roundtable:'Круглый стол'};
 const TYPE_BADGE={webinar:'b-webinar',conference:'b-conference',workshop:'b-workshop',networking:'b-networking',roundtable:'b-roundtable'};
 const TYPE_COLOR={webinar:'#185FA5',conference:'#6040A0',workshop:'#B45309',networking:'#1E8A4C',roundtable:'#B05090'};
@@ -542,10 +542,10 @@ async function loadCalendarEvents(){
     renderSidebarCalendar();
   }catch(err){console.error('loadCalendarEvents',err)}
 }
-let currentType= let currentMode='all'; let calYear=NOW.getFullYear(); let calMonth=NOW.getMonth(); let selectedDay=null;
+let currentType=''; let currentMode='all'; let calYear=NOW.getFullYear(); let calMonth=NOW.getMonth(); let selectedDay=null;
 function renderCard(ev,i){
   const d=ev.date instanceof Date?ev.date:new Date(ev.date); const day=d.getDate();
-  const mon=d.toLocaleDateString('ru-RU',{month:'short'}).replace('.',''); const pid=ev.public_id|| const isReg=registeredSet.has(pid); const isSav=savedSet.has(pid);
+  const mon=d.toLocaleDateString('ru-RU',{month:'short'}).replace('.',''); const pid=ev.public_id||''; const isReg=registeredSet.has(pid); const isSav=savedSet.has(pid);
   return`<div class="ev-card" style="animation-delay:${i*.05}s" onclick="openEvent('${esc(ev.public_id||'')}')"><div class="ev-banner" style="background:${BANNER[ev.type]||BANNER.default}"></div><div class="ev-body"><div class="ev-head"><div class="ev-date-box"><div class="ev-date-day">${day}</div><div class="ev-date-month" style="background:${TYPE_COLOR[ev.type]||'var(--g)'}">${mon}</div></div><div class="ev-meta"><div class="ev-badges"><span class="ev-badge ${TYPE_BADGE[ev.type]||''}">${TYPE_LABEL[ev.type]||ev.type}</span><span class="ev-badge ${FORMAT_BADGE[ev.format]||''}">${FORMAT_LABEL[ev.format]||ev.format}</span></div><div class="ev-title">${esc(ev.title)}</div></div></div><div class="ev-info-row"><span class="ev-info-item">${ev.timeStart}–${ev.timeEnd}</span><span class="ev-info-item">${num(ev.registered)} зарег.</span></div><div class="ev-desc">${esc(ev.desc)}</div><div class="ev-foot"><span class="ev-stat" title="Просмотры"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${num(ev.views)} просм.</span><span class="ev-price${ev.fee===0?' free':''}">${price(ev.fee)}</span><button type="button" class="btn-save${isSav?' saved':''}" onclick="event.stopPropagation();toggleSave('${esc(ev.public_id||'')}',this)"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></button><button type="button" class="btn-reg${isReg?' registered':''}" onclick="event.stopPropagation();toggleReg('${esc(ev.public_id||'')}',this)">${isReg?'✓ Вы записаны':'Записаться'}</button></div></div></div>`;
 }
 function renderList(items){const c=document.getElementById('evContent'); c.innerHTML=items.map((ev,i)=>renderCard(ev,i)).join('');}
@@ -585,7 +585,7 @@ function renderSidebarCalendar(){
   const totalDays=new Date(calYear,calMonth+1,0).getDate();
   const prevLast=new Date(calYear,calMonth,0).getDate();
   const eventDays=new Set(calendarEventsForMonth(calYear,calMonth).map(e=>(e.date instanceof Date?e.date:new Date(e.date)).getDate()));
-  let html=
+  let html='';
   for(let i=firstDow-1;i>=0;i--)html+=`<div class="cal-day other">${prevLast-i}</div>`;
   for(let d=1;d<=totalDays;d++){
     const cls=['cal-day'];
@@ -603,7 +603,7 @@ function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}closePopup(f
 function calGoToday(){calYear=NOW.getFullYear();calMonth=NOW.getMonth();selectedDay=NOW.getDate();renderSidebarCalendar();openDayPopup(calYear,calMonth,selectedDay);}
 function openFullCalendar(){
   const pad=n=>String(n).padStart(2,'0');
-  const d=selectedDay ? `?date=${calYear}-${pad(calMonth+1)}-${pad(selectedDay)}` :
+  const d=selectedDay ? `?date=${calYear}-${pad(calMonth+1)}-${pad(selectedDay)}` : '';
   location.href='/calendar.html'+d;
 }
 function setMode(mode,btn){currentMode=mode;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');applyFilters()}
@@ -751,7 +751,7 @@ function addTicket(prefill){
   const wrap=document.getElementById('ticketsList');
   if(!wrap)return;
   const data=prefill||{};
-  const checkedFeatured=data.featured?' checked':
+  const checkedFeatured=data.featured?' checked':'';
   const item=document.createElement('div');
   item.className='mf-list-item'+(data.featured?' featured':'');
   item.id=id;
@@ -811,7 +811,7 @@ function collectListData(listId){
 function resetEventModal(){
   ['speakersList','programList','ticketsList'].forEach(function(id){
     const el=document.getElementById(id);
-    if(el)el.innerHTML=
+    if(el)el.innerHTML='';
   });
   speakerCounter=0;
   programCounter=0;
@@ -839,13 +839,13 @@ async function geocodeAddress(addr){
   }
 }
 
-let evCoverUrl =
+let evCoverUrl = '';
 
 async function onEvCoverSelected(e){
   const file = e.target.files && e.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value= return; }
-  if(file.size > 25*1024*1024){ toast('Макс. 25 МБ'); e.target.value= return; }
+  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value=''; return; }
+  if(file.size > 25*1024*1024){ toast('Макс. 25 МБ'); e.target.value=''; return; }
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('evCoverImg').src = ev.target.result;
@@ -861,15 +861,15 @@ async function onEvCoverSelected(e){
     evCoverUrl = d.url;
     document.getElementById('evCoverUploading').style.display = 'none';
   }catch{ toast('Ошибка сети'); removeEvCover(); }
-  finally{ e.target.value= }
+  finally{ e.target.value=''; }
 }
 
 function removeEvCover(){
-  evCoverUrl =
+  evCoverUrl = '';
   const p=document.getElementById('evCoverPreview'); if(p) p.style.display='none';
-  const i=document.getElementById('evCoverImg'); if(i) i.src=
+  const i=document.getElementById('evCoverImg'); if(i) i.src='';
   const u=document.getElementById('evCoverUploading'); if(u) u.style.display='none';
-  const f=document.getElementById('evCoverInput'); if(f) f.value=
+  const f=document.getElementById('evCoverInput'); if(f) f.value='';
 }
 
 async function submitEvent(){
@@ -1014,7 +1014,7 @@ function applyCurrentUser(user){
         const ev=data.event;
         if(!ev)return;
         openModal();
-        const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||};
+        const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
         setVal('mTitle',ev.title);
         setVal('mDesc',ev.description);
         setVal('mCity',ev.city);
@@ -1047,7 +1047,7 @@ function applyCurrentUser(user){
 // ─── Статистика событий (Спринт 12-B-4) ───
 (async function(){
   try {
-    
+    const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/events/stats', { headers });
     if (!r.ok) return;

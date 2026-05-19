@@ -2,7 +2,7 @@
 // Загружается только при наличии cookie-согласия (cookie-banner.js должен быть загружен).
 // Counter ID берётся из window.LASTOP_YA_METRIKA_ID, который инжектится сервером.
 (function(){
-  var counterID = window.LASTOP_YA_METRIKA_ID ||
+  var counterID = window.LASTOP_YA_METRIKA_ID || '';
   if (!counterID) return;
 
   function loadMetrica(){

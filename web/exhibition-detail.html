@@ -60,8 +60,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .btn-open-expo:hover{background:linear-gradient(135deg,#1E3A2A,var(--gm));box-shadow:0 4px 18px rgba(30,138,76,.4);transform:translateY(-1px)}
 .btn-open-expo svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
 .ex-cover-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-.ex-cover-ph::before{content:position:absolute;top:-60px;right:-60px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.06)}
-.ex-cover-ph::after{content:position:absolute;bottom:-80px;left:3%;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
+.ex-cover-ph::before{content:'';position:absolute;top:-60px;right:-60px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.06)}
+.ex-cover-ph::after{content:'';position:absolute;bottom:-80px;left:3%;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
 .ex-cover-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.5) 0%,transparent 55%)}
 .ex-cover-badges{position:absolute;top:16px;left:18px;display:flex;gap:6px;flex-wrap:wrap;z-index:2}
 .ex-badge{padding:4px 12px;border-radius:99px;font-size:10px;font-weight:800;backdrop-filter:blur(6px)}
@@ -616,7 +616,7 @@ const esc = window.lastopEsc;
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -653,7 +653,7 @@ function loadMap(){
   const widgetSrc='https://yandex.ru/map-widget/v1/?ll='+lng+'%2C'+lat+'&z=15&pt='+lng+','+lat+',pm2rdm';
   if(ph)ph.style.display='none';
   // Очищаем контейнер на случай повторного вызова
-  mc.innerHTML=
+  mc.innerHTML='';
   mc.style.position='relative';
   mc.style.height='320px';
   mc.style.maxHeight='320px';
@@ -741,7 +741,7 @@ const state={exhibition:null,publicID:''};
 /* АВТОРИЗАЦИЯ + ЗАГРУЗКА */
 function getPublicID(){
   const u=new URL(location.href);
-  return u.searchParams.get('id')||u.searchParams.get('public_id')||
+  return u.searchParams.get('id')||u.searchParams.get('public_id')||'';
 }
 
 const fmtNum = window.lastopFmtNum;
@@ -771,8 +771,8 @@ function renderHead(ex){
   document.title=ex.title+' — LASTOP GROUP';
 
   // Заголовок
-  document.getElementById('exTitle').textContent=ex.title||
-  document.getElementById('bcTitle').textContent=ex.title||
+  document.getElementById('exTitle').textContent=ex.title||'';
+  document.getElementById('bcTitle').textContent=ex.title||'';
   if(ex.category){
     const bc=document.getElementById('bcCategory');
     bc.textContent=ex.category;
@@ -894,14 +894,14 @@ const TICKET_CLS_DET={visitor:'r-visitor',premium:'r-premium',exhibitor:'r-exhib
 
 const escD = window.lastopEsc;
 function fmtPriceDet(c,cur){if(!c)return 'Бесплатно';const sym=cur==='USD'?'$':(cur==='EUR'?'€':'₽');return new Intl.NumberFormat('ru-RU').format(c/100)+' '+sym;}
-function fmtTimeDet(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
-function fmtDayDateDet(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst M=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return d.getDate()+' '+M[d.getMonth()];}
-function fmtDayWeekday(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst W=['вс','пн','вт','ср','чт','пт','сб'];return W[d.getDay()];}
+function fmtTimeDet(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
+function fmtDayDateDet(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const M=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return d.getDate()+' '+M[d.getMonth()];}
+function fmtDayWeekday(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const W=['вс','пн','вт','ср','чт','пт','сб'];return W[d.getDay()];}
 
 function renderDescription(ex){
   const el=document.getElementById('exDescription');
   if(!el)return;
-  const desc=ex.description||
+  const desc=ex.description||'';
   if(desc){
     // разбиваем на параграфы по двойному переводу строки
     const paras=desc.split(/\n\n+/).filter(p=>p.trim());
@@ -923,7 +923,7 @@ function renderZones(ex){
   if(!sec||!grid)return;
   const zones=(ex.zones||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   if(!zones.length){sec.style.display='none';return;}
-  sec.style.display=
+  sec.style.display='';
   grid.innerHTML=zones.map(z=>{
     const color=z.color||'#1E8A4C';
     return `<div style="padding:12px 14px;background:var(--w);border:1px solid var(--bdr);border-left:4px solid ${color};border-radius:var(--rm);display:flex;align-items:center;gap:12px;transition:box-shadow .15s" onmouseover="this.style.boxShadow='var(--sh)'" onmouseout="this.style.boxShadow='none'">
@@ -944,12 +944,12 @@ function renderProgram(ex){
   // если есть спикеры но нет дней — показываем секцию спикеров отдельно
   if(!days.length){
     if(speakers.length){
-      sec.style.display=
+      sec.style.display='';
       const tabsEl=document.getElementById('programDayTabs');
-      tabsEl.innerHTML=
+      tabsEl.innerHTML='';
       const content=document.getElementById('programContent');
       content.innerHTML='<div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Спикеры</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'+speakers.map(s=>{
-        const photo=s.photo_url?`background-image:url(${escD(s.photo_url)});background-size:cover;background-position:center;color:transparent`:
+        const photo=s.photo_url?`background-image:url(${escD(s.photo_url)});background-size:cover;background-position:center;color:transparent`:'';
         const initial=((s.full_name||'?')[0]||'?').toUpperCase();
         const subText=[s.role,s.company].filter(Boolean).join(' · ');
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm)">
@@ -961,7 +961,7 @@ function renderProgram(ex){
     }
     sec.style.display='none';return;
   }
-  sec.style.display=
+  sec.style.display='';
 
   const tabsEl=document.getElementById('programDayTabs');
   tabsEl.innerHTML=days.map((d,i)=>`<button type="button" class="prog-day-tab${i===0?' active':''}" data-day="${d.id}" onclick="switchProgramDay(${d.id})">
@@ -980,11 +980,11 @@ window.switchProgramDay=function(dayID){
   const content=document.getElementById('programContent');
   if(!sessions.length){content.innerHTML='<div style="padding:14px;text-align:center;color:var(--gmt);font-size:12px">В этом дне сессии пока не добавлены</div>';return;}
   content.innerHTML=sessions.map(s=>{
-    const cls=SESSION_CLS_DET[s.session_type]||
-    const typeLbl=SESSION_TYPES_DET[s.session_type]||
+    const cls=SESSION_CLS_DET[s.session_type]||'';
+    const typeLbl=SESSION_TYPES_DET[s.session_type]||'';
     const speakerChips=(s.speaker_ids||[]).map(id=>{
-      const sp=speakers.find(x=>x.id===id);if(!sp)return
-      const photo=sp.photo_url?`background-image:url(${escD(sp.photo_url)})`:
+      const sp=speakers.find(x=>x.id===id);if(!sp)return '';
+      const photo=sp.photo_url?`background-image:url(${escD(sp.photo_url)})`:'';
       const initial=sp.photo_url?'':(sp.full_name||'?')[0].toUpperCase();
       const subText=[sp.role,sp.company].filter(Boolean).join(' · ');
       return `<span class="prog-spk" title="${escD(subText)}"><span class="prog-spk-photo" style="${photo}">${initial}</span>${escD(sp.full_name)}</span>`;
@@ -999,7 +999,7 @@ function renderTickets(ex){
   if(!sec||!grid)return;
   const tickets=(ex.tickets||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   if(!tickets.length){sec.style.display='none';return;}
-  sec.style.display=
+  sec.style.display='';
   grid.innerHTML=tickets.map(t=>{
     const cls=TICKET_CLS_DET[t.role]||'r-visitor';
     const lbl=TICKET_ROLES_DET[t.role]||t.role;
@@ -1032,10 +1032,10 @@ function renderExhibitors(ex){
   if(!sec||!grid)return;
   const exhs=(ex.exhibitors||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   if(!exhs.length){sec.style.display='none';return;}
-  sec.style.display=
+  sec.style.display='';
   if(cnt)cnt.textContent='· '+exhs.length;
   grid.innerHTML=exhs.map(e=>{
-    const photo=e.company_logo?`background-image:url(${escD(e.company_logo)})`:
+    const photo=e.company_logo?`background-image:url(${escD(e.company_logo)})`:'';
     const initial=e.company_logo?'':((e.company_name||'?')[0]||'?').toUpperCase();
     const href=e.company_slug?'/company-detail.html?slug='+encodeURIComponent(e.company_slug):'#';
     return `<a class="exh-card" href="${href}">
@@ -1054,9 +1054,9 @@ function renderLocation(ex){
   // Скрываем для онлайн-выставок
   if(ex.format==='online'){sec.style.display='none';return;}
   if(!ex.city && !ex.address && !ex.venue){sec.style.display='none';return;}
-  sec.style.display=
-  const addrMain=[ex.venue,ex.address].filter(Boolean).join(', ')||ex.city||
-  const addrSub=ex.city&&ex.venue?ex.city:
+  sec.style.display='';
+  const addrMain=[ex.venue,ex.address].filter(Boolean).join(', ')||ex.city||'';
+  const addrSub=ex.city&&ex.venue?ex.city:'';
   document.getElementById('mapAddrMain').textContent=addrMain;
   document.getElementById('mapAddrSub').textContent=addrSub;
   // Если координат нет — заменим placeholder подсказкой
@@ -1071,7 +1071,7 @@ function renderLocation(ex){
 
 window.openInYandex=function(){
   const ex=state.exhibition||{};
-  const q=[ex.venue,ex.address,ex.city].filter(Boolean).join(', ')||ex.city||
+  const q=[ex.venue,ex.address,ex.city].filter(Boolean).join(', ')||ex.city||'';
   if(!q)return;
   window.open('https://yandex.ru/maps/?text='+encodeURIComponent(q),'_blank');
 };
@@ -1082,7 +1082,7 @@ function renderTags(ex){
   if(!sec||!list)return;
   const tags=ex.tags||[];
   if(!tags.length){sec.style.display='none';return;}
-  sec.style.display=
+  sec.style.display='';
   list.innerHTML=tags.map(t=>`<a class="ex-tag" href="/exhibitions.html?tag=${encodeURIComponent(t)}"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${escD(t)}</a>`).join('');
 }
 
@@ -1113,10 +1113,10 @@ function renderSidebar(ex){
   }
   const orgCard=document.getElementById('sidebarOrgCard');
   const orgEl=document.getElementById('sidebarOrg');
-  const orgName=ex.organizer_company_name||ex.organizer_label||
+  const orgName=ex.organizer_company_name||ex.organizer_label||'';
   if(orgName&&orgEl&&orgCard){
-    orgCard.style.display=
-    const logoBG=ex.organizer_company_logo?`background-image:url(${escD(ex.organizer_company_logo)});background-size:cover;background-position:center;color:transparent`:
+    orgCard.style.display='';
+    const logoBG=ex.organizer_company_logo?`background-image:url(${escD(ex.organizer_company_logo)});background-size:cover;background-position:center;color:transparent`:'';
     const initial=((orgName||'?')[0]||'?').toUpperCase();
     const subText=ex.organizer_company_slug?'Открыть профиль':'Организатор';
     const isLink=!!ex.organizer_company_slug;
@@ -1149,7 +1149,7 @@ async function renderAdminControls(){
     const link=document.getElementById('sidebarEditLink');
     if(card&&link){
       link.href='/exhibition-edit.html?id='+encodeURIComponent(state.publicID);
-      card.style.display=
+      card.style.display='';
     }
   }catch{}
 }
@@ -1167,7 +1167,7 @@ window.writeOrganizer=function(companyID,companySlug){
 
 async function loadSimilar(ex){
   try{
-    const cat=ex.category||
+    const cat=ex.category||'';
     const url=API+'/exhibitions?limit=4'+(cat?'&category='+encodeURIComponent(cat):'');
     const r=await lastopFetch(url,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
     if(!r.ok)return;
@@ -1176,9 +1176,9 @@ async function loadSimilar(ex){
     const card=document.getElementById('sidebarSimilarCard');
     const el=document.getElementById('sidebarSimilar');
     if(!list.length||!el||!card)return;
-    card.style.display=
+    card.style.display='';
     el.innerHTML=list.map(e=>{
-      const logoBG=e.cover_url?`background-image:url(${escD(e.cover_url)});background-size:cover;background-position:center;color:transparent`:
+      const logoBG=e.cover_url?`background-image:url(${escD(e.cover_url)});background-size:cover;background-position:center;color:transparent`:'';
       const initial=((e.title||'?')[0]||'?').toUpperCase();
       const cityDates=[e.city,fmtDateRange(e.starts_at,e.ends_at)].filter(Boolean).join(' · ');
       return `<a href="/exhibition-detail.html?id=${encodeURIComponent(e.public_id)}" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--rm);text-decoration:none;color:var(--t);transition:background .15s;cursor:pointer;margin-bottom:4px" onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
@@ -1210,8 +1210,8 @@ window.openVisitorModal=function(ticketID){
   if(!t){toast('Билет не найден',false);return;}
   if(ex.is_registered){toast('Вы уже зарегистрированы',false);return;}
   state.currentTicket=t;
-  document.getElementById('vmExName').textContent=ex.title||
-  document.getElementById('vmTicket').textContent=t.title||
+  document.getElementById('vmExName').textContent=ex.title||'';
+  document.getElementById('vmTicket').textContent=t.title||'';
   document.getElementById('vmPrice').textContent=fmtPriceDet(t.price_cents,t.currency);
   // префилл из user (если есть)
   try{
@@ -1221,7 +1221,7 @@ window.openVisitorModal=function(ticketID){
   }catch{}
   // hybrid → показать выбор формата
   const wrap=document.getElementById('vmModeWrap');
-  if(ex.format==='hybrid'){wrap.style.display=}else{wrap.style.display='none';document.getElementById('vmMode').value=ex.format==='online'?'online':'in_person';}
+  if(ex.format==='hybrid'){wrap.style.display='';}else{wrap.style.display='none';document.getElementById('vmMode').value=ex.format==='online'?'online':'in_person';}
   // note
   const note=document.getElementById('vmNote');
   if((t.price_cents||0)>0){
@@ -1270,7 +1270,7 @@ window.submitVisitor=async function(){
 window.openExhibitorModal=async function(){
   if(!tk()){toast('Войдите чтобы подать заявку',false);return;}
   const ex=state.exhibition||{};
-  document.getElementById('emExName').textContent=ex.title||
+  document.getElementById('emExName').textContent=ex.title||'';
   // префилл контакта
   try{
     const u=JSON.parse(localStorage.getItem('user')||'{}');
@@ -1365,12 +1365,12 @@ window.submitExhibitor=async function(){
 })();
 // ─── Обсуждение выставки (превью в сайдбаре, Спринт 10.3-Б) ───
 let _exhDiscMessages = [];
-let _exhDiscPublicID =
+let _exhDiscPublicID = '';
 function _exhDiscEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function _exhDiscLetter(s){return ((s||'?').trim()[0]||'?').toUpperCase();}
 function _exhDiscColor(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(String(s||'').charCodeAt(0)||0)%C.length];}
 function _exhDiscAgo(ts){
-  if(!ts)return
+  if(!ts)return '';
   const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));
   if(m<60)return m+'м';
   if(m<1440)return Math.floor(m/60)+'ч';
@@ -1382,7 +1382,7 @@ async function _loadExhDiscPreview(publicID){
   const list = document.getElementById('exhDiscList');
   if (!list) return;
   try {
-    
+    const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/exhibitions/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
@@ -1397,7 +1397,7 @@ function _renderExhDiscPreview(){
   const list = document.getElementById('exhDiscList');
   const counter = document.getElementById('exhDiscCount');
   if (!list) return;
-  if (counter) counter.textContent = _exhDiscMessages.length ? '· ' + _exhDiscMessages.length :
+  if (counter) counter.textContent = _exhDiscMessages.length ? '· ' + _exhDiscMessages.length : '';
   if (!_exhDiscMessages.length) {
     list.innerHTML = '<div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px;line-height:1.5">Сообщений пока нет.<br>Будьте первым!</div>';
     return;

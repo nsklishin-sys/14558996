@@ -82,7 +82,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* KPI CARDS */
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .kpi-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
-.kpi-card::before{content:position:absolute;top:0;left:0;width:4px;height:100%;background:var(--g)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--g)}
 .kpi-card.kpi-blue::before{background:#3A90C0}
 .kpi-card.kpi-orange::before{background:#C07030}
 .kpi-card.kpi-purple::before{background:#9060C0}
@@ -253,7 +253,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 // ── STATE ──
 const state = {
@@ -280,7 +280,7 @@ function fmtNum(n){
 function fmtPct(n){if(!n)return '0%';return (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,'')+'%';}
 const ago = window.lastopAgo;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');dd.classList.toggle('open');tp.classList.toggle('open');}
 document.addEventListener('click',(e)=>{const dd=document.getElementById('profileDD');if(dd&&!dd.contains(e.target)&&!document.getElementById('topbarProfile').contains(e.target)){dd.classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 
@@ -644,7 +644,7 @@ async function renderCompanyDashboard(){
       : `Не удалось загрузить. ${esc(overview.error)}`;
     const icon = isForbidden
       ? '<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--gb)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:12px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
-      :
+      : '';
     document.getElementById('dashContainer').innerHTML = `<div class="panel"><div class="panel-empty" style="padding:36px 16px;text-align:center">${icon}<div style="font-size:14px;font-weight:700;color:var(--tm);margin-bottom:6px">${isForbidden?'Доступ ограничен':'Ошибка загрузки'}</div><div style="font-size:12px;color:var(--gmt);max-width:380px;margin:0 auto;line-height:1.5">${msg}</div></div></div>`;
     return;
   }
@@ -752,7 +752,7 @@ async function renderCommunityDashboard(){
       : `Не удалось загрузить. ${esc(r.error)}`;
     const icon = isForbidden
       ? '<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--gb)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:12px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
-      :
+      : '';
     document.getElementById('dashContainer').innerHTML = `<div class="panel"><div class="panel-empty" style="padding:36px 16px;text-align:center">${icon}<div style="font-size:14px;font-weight:700;color:var(--tm);margin-bottom:6px">${isForbidden?'Доступ ограничен':'Ошибка загрузки'}</div><div style="font-size:12px;color:var(--gmt);max-width:380px;margin:0 auto;line-height:1.5">${msg}</div></div></div>`;
     return;
   }
@@ -953,11 +953,11 @@ function renderSummary(daily, extra){
     el.innerHTML = '<div class="block-title">Ключевая динамика</div><div class="sb-summary-empty">Нет данных за период</div>';
     return;
   }
-  let growthRow =
+  let growthRow = '';
   if(sum.growth !== null){
     const positive = sum.growth >= 0;
     const cls = positive ? '' : 'neg';
-    const sign = positive ? '+' :
+    const sign = positive ? '+' : '';
     const arrow = positive ? '↗' : '↘';
     growthRow = `<div class="sb-summary-row">
       <span class="sb-summary-icon">${arrow}</span>
@@ -976,7 +976,7 @@ function renderSummary(daily, extra){
   const d = new Date(sum.bestDay);
   const dayLabel = isNaN(d) ? sum.bestDay : d.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
 
-  let extraRow =
+  let extraRow = '';
   if(extra){
     extraRow = `<div class="sb-summary-row">
       <span class="sb-summary-icon">${extra.icon||'•'}</span>
@@ -1018,7 +1018,7 @@ function renderTopBlock(title, rows, moreLabel, moreHref){
       <span class="sb-top-num">${esc(r.value||'')}</span>
     </a>`;
   }).join('');
-  const more = (moreLabel && moreHref) ? `<a class="sb-top-more" href="${esc(moreHref)}">${esc(moreLabel)} →</a>` :
+  const more = (moreLabel && moreHref) ? `<a class="sb-top-more" href="${esc(moreHref)}">${esc(moreLabel)} →</a>` : '';
   el.innerHTML = `<div class="block-title">${esc(title)}</div>${rowsHtml}${more}`;
 }
 
@@ -1077,7 +1077,7 @@ function renderSidebarCompany(jobsData, productsData){
     };
   });
   renderTopBlock('Топ вакансий по конверсии', jobs, 'Все вакансии', '/jobs.html');
-  const slug = state.selectedCompanySlug||
+  const slug = state.selectedCompanySlug||'';
   renderActionsBlock([
     {label:'Профиль компании', href:`/company.html?slug=${encodeURIComponent(slug)}`, svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'},
     {label:'Мои вакансии', href:'/jobs.html', svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/>'},
@@ -1096,7 +1096,7 @@ function renderSidebarCommunity(overviewData){
     href: '/dashboard.html'
   }));
   renderTopBlock('Топ постов сообщества', posts, 'Открыть сообщество', `/communities.html`);
-  const cmId = state.selectedCommunityId ||
+  const cmId = state.selectedCommunityId || '';
   renderActionsBlock([
     {label:'Открыть сообщество', href:`/communities.html`, svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
     {label:'Все сообщества', href:'/communities.html', svg:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>'},

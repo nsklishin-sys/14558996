@@ -138,8 +138,8 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   background:linear-gradient(135deg,var(--g) 0%,#146A38 60%,#0E5128 100%);
   position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:16px
 }
-.nh-cover::before{content:position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
-.nh-cover::after{content:position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+.nh-cover::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.nh-cover::after{content:'';position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
 .nh-badge{
   display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;
   background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
@@ -241,7 +241,7 @@ a.nc-author{text-decoration:none}
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden
 }
 /* clearfix для float */
-.nc-body::after{content:display:table;clear:both}
+.nc-body::after{content:'';display:table;clear:both}
 .nc-foot{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--bdr)}
 .nc-action{
   display:inline-flex;align-items:center;gap:4px;font-size:11px;
@@ -579,7 +579,7 @@ a.nc-author{text-decoration:none}
 
 <script>
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
 const escAttr = window.lastopEsc;
@@ -603,7 +603,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const BADGE={
@@ -717,8 +717,8 @@ function renderCard(n,idx){
 
   // Блок плашки репоста (если это репост)
   const isRepost = !!(n.reposted_from_id || n.repost);
-  let repostTagHtml =
-  let origCardHtml =
+  let repostTagHtml = '';
+  let origCardHtml = '';
   if (isRepost) {
     const reposterName = fromCompany ? n.author_company_name : (fromCommunity ? n.community_name : (n.author || 'Пользователь'));
     repostTagHtml = `<div class="nc-repost-tag">
@@ -734,7 +734,7 @@ function renderCard(n,idx){
         : (orig.author || 'Участник');
       const origAuthorRole = (orig.community_id && orig.community_name) ? 'Сообщество'
         : (orig.author_company_id && orig.author_company_name) ? 'Компания'
-        :
+        : '';
       const origCover = orig.cover_url ? `<div class="nc-orig-cover" style="background-image:url('${esc(orig.cover_url)}')"></div>`
         : `<div class="nc-orig-cover"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
       const origLink = orig.public_id ? `event.stopPropagation();window.location.href='/news-detail.html?id=${esc(orig.public_id)}'` : 'event.stopPropagation()';
@@ -828,7 +828,7 @@ function applyFilters(){
   renderFeed();
 }
 
-let searchQuery=
+let searchQuery='';
 function filterNews(q){searchQuery=q.toLowerCase();applyFilters();}
 function setTab(tab,btn){
   currentTab=tab;
@@ -928,13 +928,13 @@ function closeCompose(){
   removeComposeCover();
   removeComposeCover();
   document.getElementById('composeBox').style.display='none';
-  document.getElementById('composeTitleInput').value=
-  document.getElementById('composeTextInput').value=
+  document.getElementById('composeTitleInput').value='';
+  document.getElementById('composeTextInput').value='';
   // Очищаем теги и счётчик
   composeTags = [];
   renderComposeTags();
   const tagInput = document.getElementById('composeTagInput');
-  if (tagInput) tagInput.value =
+  if (tagInput) tagInput.value = '';
   const tagBlock = document.getElementById('composeTagsBlock');
   if (tagBlock) tagBlock.style.display = 'none';
   updateComposeCounter();
@@ -959,19 +959,19 @@ function updateComposeCounter(){
 
 // ── Теги: состояние и операции ─────────────────────────────────────
 let composeTags = [];
-let composeCoverUrl =
+let composeCoverUrl = '';
 
 async function onComposeCoverSelected(e){
   const file = e.target.files && e.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){ showToast('Можно загрузить только изображение'); e.target.value = return; }
-  if(file.size > 25 * 1024 * 1024){ showToast('Файл слишком большой (макс. 25 МБ)'); e.target.value = return; }
+  if(!file.type.startsWith('image/')){ showToast('Можно загрузить только изображение'); e.target.value = ''; return; }
+  if(file.size > 25 * 1024 * 1024){ showToast('Файл слишком большой (макс. 25 МБ)'); e.target.value = ''; return; }
   const reader = new FileReader();
   reader.onload = (ev)=>{ const img = document.getElementById('composeCoverImg'); if(img) img.src = ev.target.result; document.getElementById('composeCoverPreview').style.display = 'block'; document.getElementById('composeCoverUploading').style.display = 'flex'; };
   reader.readAsDataURL(file);
-  try{ const fd = new FormData(); fd.append('file', file); const r = await lastopFetch(API + '/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd}); const d = await r.json().catch(()=>({})); if(!r.ok || !d.url){ showToast(d.error || 'Не удалось загрузить'); removeComposeCover(); return; } composeCoverUrl = d.url; document.getElementById('composeCoverUploading').style.display = 'none'; }catch(err){ showToast('Ошибка сети при загрузке'); removeComposeCover(); }finally{ e.target.value = }}
+  try{ const fd = new FormData(); fd.append('file', file); const r = await lastopFetch(API + '/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd}); const d = await r.json().catch(()=>({})); if(!r.ok || !d.url){ showToast(d.error || 'Не удалось загрузить'); removeComposeCover(); return; } composeCoverUrl = d.url; document.getElementById('composeCoverUploading').style.display = 'none'; }catch(err){ showToast('Ошибка сети при загрузке'); removeComposeCover(); }finally{ e.target.value = ''; }}
 
-function removeComposeCover(){ composeCoverUrl = const prev = document.getElementById('composeCoverPreview'); if(prev) prev.style.display = 'none'; const img = document.getElementById('composeCoverImg'); if(img) img.src = const up = document.getElementById('composeCoverUploading'); if(up) up.style.display = 'none'; const inp = document.getElementById('composeCoverInput'); if(inp) inp.value = }
+function removeComposeCover(){ composeCoverUrl = ''; const prev = document.getElementById('composeCoverPreview'); if(prev) prev.style.display = 'none'; const img = document.getElementById('composeCoverImg'); if(img) img.src = ''; const up = document.getElementById('composeCoverUploading'); if(up) up.style.display = 'none'; const inp = document.getElementById('composeCoverInput'); if(inp) inp.value = ''; }
 
 function toggleComposeTags(){
   const block = document.getElementById('composeTagsBlock');
@@ -1015,7 +1015,7 @@ function addComposeTagFromInput(){
   }
   if (composeTags.includes(tag)) {
     showToast('Такой тег уже добавлен');
-    input.value =
+    input.value = '';
     return;
   }
   if (composeTags.length >= 5) {
@@ -1023,7 +1023,7 @@ function addComposeTagFromInput(){
     return;
   }
   composeTags.push(tag);
-  input.value =
+  input.value = '';
   renderComposeTags();
 }
 
@@ -1050,7 +1050,7 @@ function renderComposeTags(){
 async function submitPost(){
   const title=document.getElementById('composeTitleInput').value.trim();
   const text=document.getElementById('composeTextInput').value.trim();
-  const category=document.getElementById('composeCategoryInput')?.value||
+  const category=document.getElementById('composeCategoryInput')?.value||'';
   if(title.length<3){showToast('Заголовок должен быть не короче 3 символов');return;}
   if(text.length<10){showToast('Текст должен быть не короче 10 символов');return;}
   const btn=document.querySelector('.c-submit');
@@ -1177,7 +1177,7 @@ function renderTopList(posts){
     const author = esc(n.author || 'Пользователь');
     const cat = (n.tags && n.tags.length ? '#' + esc(n.tags[0]) : 'Публикация');
     const views = num(n.views_count || 0);
-    const pid = n.public_id ||
+    const pid = n.public_id || '';
     return `<div class="top-item" onclick="location.href='/news-detail.html?id=${encodeURIComponent(pid)}'">
       <div class="top-num ${medals[i] || ''}">${i + 1}</div>
       <div class="top-body">
@@ -1242,7 +1242,7 @@ function toggleFollow(btn){
           displayRole = 'Компания';
         } else {
           displayAuthor = n.author || 'Пользователь';
-          displayRole = n.author_role ||
+          displayRole = n.author_role || '';
         }
         return {
           id: n.id || Math.random(),
@@ -1356,7 +1356,7 @@ async function loadTopSources(){
   const list = document.getElementById('sourcesList');
   if (!list) return;
   try {
-    
+    const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/posts/top-authors', { headers });
     if (!r.ok) throw 0;

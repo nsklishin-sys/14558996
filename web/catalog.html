@@ -345,12 +345,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 // ─── State ───
 let CATEGORY_GROUPS = []; // [{key, label, items:[{key, label}]}]
 let currentMode = 'product';        // product / service
-let currentCategoryGroup =      // ключ группы из сайдбара (industry / agro / ...)
+let currentCategoryGroup = '';      // ключ группы из сайдбара (industry / agro / ...)
 let currentTab = 'all';
 let allItems = [];
 let photos = []; // base64 strings; index 0 = cover
@@ -367,11 +367,11 @@ function pluralRu(n, forms){const a=[2,0,1,1,1,2];return forms[(n%100>4&&n%100<2
 function fmtNumber(n){ return Number(n).toLocaleString('ru-RU'); }
 function fmtPrice(price, currency){
   if (price == null || price === undefined) return null;
-  const sym = {RUB:'₽', USD:'$', EUR:'€', CNY:'¥'}[currency] || currency ||
+  const sym = {RUB:'₽', USD:'$', EUR:'€', CNY:'¥'}[currency] || currency || '';
   return fmtNumber(price) + ' ' + sym;
 }
 function formatRelative(dateStr){
-  if (!dateStr) return
+  if (!dateStr) return '';
   const d = new Date(dateStr);
   const now = new Date();
   const diff = (now - d) / 1000;
@@ -398,7 +398,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -589,7 +589,7 @@ function renderFeed(items){
 function renderCard(it){
   const isProduct = it.type === 'product';
   const detailUrl = isProduct ? '/product-detail.html?id=' : '/service-detail.html?id=';
-  const cover = (isProduct && it.cover_image) ? it.cover_image :
+  const cover = (isProduct && it.cover_image) ? it.cover_image : '';
   const stripeColor = stableColor(it.category_group || it.category || '?');
   const priceHtml = it.price != null
     ? '<span class="cat-price">' + esc(fmtPrice(it.price, it.currency)) + '</span>'
@@ -601,11 +601,11 @@ function renderCard(it){
   if (it.status === 'paused') badges.push('<span class="cat-status-tag cat-status-paused">На паузе</span>');
   if (it.status === 'hidden') badges.push('<span class="cat-status-tag cat-status-hidden">Скрыто</span>');
 
-  const groupLabel = it.category_group ||
-  const catLabel = it.category_label ||
+  const groupLabel = it.category_group || '';
+  const catLabel = it.category_label || '';
   const catTag = groupLabel
     ? '<span class="cat-cat-tag" style="background:' + esc(stableColor(it.category_group||it.category||'?')) + '">' + esc(groupLabel) + '</span>'
-    :
+    : '';
   const typeTag = '<span class="cat-type-tag">' + (isProduct ? 'Товар' : 'Услуга') + '</span>';
 
   const tags = (it.tags || []).slice(0, 5).map(t => '<span class="cat-tag">' + esc(t) + '</span>').join('');
@@ -614,7 +614,7 @@ function renderCard(it){
     ? (cover
         ? '<div class="cat-cover"><img src="' + escAttr(cover) + '" alt="" loading="lazy"></div>'
         : '<div class="cat-cover cat-cover-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg></div>')
-    :
+    : '';
 
   return '<a class="cat-card" href="' + detailUrl + escAttr(it.public_id) + '">' +
     coverHtml +
@@ -642,14 +642,14 @@ function openCreateModal(){
   if (!tk()) { toast('Войдите, чтобы создать публикацию'); return; }
   // Сбросим форму
   document.getElementById('ciType').value = currentMode;
-  document.getElementById('ciTitle').value =
-  document.getElementById('ciDesc').value =
-  document.getElementById('ciPrice').value =
+  document.getElementById('ciTitle').value = '';
+  document.getElementById('ciDesc').value = '';
+  document.getElementById('ciPrice').value = '';
   document.getElementById('ciCurrency').value = 'RUB';
-  document.getElementById('ciCity').value =
+  document.getElementById('ciCity').value = '';
   document.getElementById('ciInStock').checked = true;
   document.getElementById('ciStatus').value = 'active';
-  document.getElementById('ciTags').value =
+  document.getElementById('ciTags').value = '';
   photos = [];
   renderPhotos();
   onTypeChange();
@@ -668,7 +668,7 @@ function onTypeChange(){
 // ─── Photo picker ───
 function renderPhotos(){
   const wrap = document.getElementById('photoPicker');
-  let html =
+  let html = '';
   photos.forEach((p, i) => {
     html += '<div class="photo-thumb' + (i === 0 ? ' cover-mark' : '') + '">' +
       '<img src="' + escAttr(p) + '" alt="">' +
@@ -684,7 +684,7 @@ function renderPhotos(){
 }
 function onPhotoSelected(e){
   const files = Array.from(e.target.files || []);
-  e.target.value = // сбросить input
+  e.target.value = ''; // сбросить input
   files.forEach(file => {
     if (photos.length >= 6) return;
     if (!file.type.startsWith('image/')) { toast('Только изображения'); return; }
@@ -721,7 +721,7 @@ async function submitItem(){
   if (!title) { toast('Введите название'); document.getElementById('ciTitle').focus(); return; }
   if (title.length > 200) { toast('Слишком длинное название'); return; }
 
-  const cover = photos[0] ||
+  const cover = photos[0] || '';
   const rest = photos.slice(1);
 
   btn.disabled = true; btn.textContent = 'Публикация…';

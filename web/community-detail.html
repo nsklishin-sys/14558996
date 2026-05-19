@@ -49,8 +49,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .hero-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);animation:fadeUp .3s ease both;flex-shrink:0}
 .hero-banner{height:140px;position:relative;overflow:hidden}
 .hero-banner-bg{position:absolute;inset:0}
-.hero-banner::before{content:position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
-.hero-banner::after{content:position:absolute;bottom:-50px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
+.hero-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+.hero-banner::after{content:'';position:absolute;bottom:-50px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none}
 .hero-body{padding:0 22px 20px}
 .hero-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap}
 /* Аватарка сообщества */
@@ -405,10 +405,10 @@ async function openContactPicker(){
     const d=await r.json();
     const members=(d&&d.members)||[];
     if(!members.length){list.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">В сообществе нет участников</div>';return;}
-    const currentContactPID=currentCommunity?.contact_user_public_id||
+    const currentContactPID=currentCommunity?.contact_user_public_id||'';
     list.innerHTML=members.map(m=>{
       const name=m.full_name||'Участник';
-      const upid=m.user_public_id||
+      const upid=m.user_public_id||'';
       const isCurrent=upid===currentContactPID;
       const av=m.avatar_url?`<img src="${esc(m.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`:ltr(name);
       return `<button type="button" onclick="setContactPerson('${esc(upid)}','${esc(name)}')" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid ${isCurrent?'var(--g)':'var(--bdr)'};background:${isCurrent?'var(--gl)':'#fff'};border-radius:var(--rm);cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .12s" onmouseover="if(!this.dataset.current)this.style.borderColor='var(--gb)'" onmouseout="if(!this.dataset.current)this.style.borderColor='var(--bdr)'" ${isCurrent?'data-current="1"':''}>
@@ -475,7 +475,7 @@ const API='/api',tk=()=>localStorage.getItem('token');
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
@@ -508,14 +508,14 @@ function renderContacts(c){
   if(email)rows.push(`<div class="contact-row"><span class="contact-key">Email</span><a class="contact-val" href="mailto:${esc(email)}">${esc(email)}</a></div>`);
   if(phone)rows.push(`<div class="contact-row"><span class="contact-key">Телефон</span><a class="contact-val" href="tel:${esc(phone)}">${esc(phone)}</a></div>`);
   if(rows.length){
-    card.style.display=
+    card.style.display='';
     wrap.innerHTML=rows.join('');
   }else{
     card.style.display='none';
   }
 }
 function renderPostCard(p){
-  const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||
+  const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||'';
   const canDelete=(p.author_public_id===myPublicID)||['owner','admin','moderator'].includes(myRole);
   const isLiked=!!p.is_liked;
   const likesCount=p.likes_count||0;
@@ -526,7 +526,7 @@ function renderPostCard(p){
   const communityAvHtml = p.community_avatar
     ? `<img src="${esc(p.community_avatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
     : ltr(communityName);
-  const authorLine = p.author ? `опубликовал ${esc(p.author)}` :
+  const authorLine = p.author ? `опубликовал ${esc(p.author)}` : '';
   return `<div class="post-card" id="post-${esc(p.public_id)}">
     <div class="post-head">
       <div class="post-av" style="background:${communityColor};border-radius:8px;overflow:hidden">${communityAvHtml}</div>
@@ -588,7 +588,7 @@ async function loadMembers(){
     if(!r.ok){wrap.innerHTML='<div class="comments-empty">Нет доступа</div>';return;}
     const d=await r.json();const members=d?.members||[];
     if(!members.length){wrap.innerHTML='<div class="comments-empty">Список пуст</div>';return;}
-    const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||
+    const myPublicID=JSON.parse(localStorage.getItem('user')||'{}').public_id||'';
     const isOwner=myRole==='owner';
     wrap.innerHTML=members.map(m=>{
       const name=m.full_name||'Участник';
@@ -598,9 +598,9 @@ async function loadMembers(){
         :role==='admin'?'<span class="member-role-badge admin">Админ</span>'
         :role==='moderator'?'<span class="member-role-badge moderator">Модератор</span>'
         :role&&role!=='member'?'<span class="member-role-badge">Участник</span>'
-        :
+        :'';
       // Кнопки управления — только owner и только для не-owner-ов и не себя
-      let actions=
+      let actions='';
       if(isOwner && role!=='owner' && !isMe){
         const upid=esc(m.user_public_id||'');
         if(role==='moderator'){
@@ -662,10 +662,10 @@ function renderContactPerson(c){
   const isOwner=myRole==='owner';
   const hasContact=!!(c.contact_user_public_id&&c.contact_user_name);
   if(!hasContact && !isOwner){card.style.display='none';return;}
-  card.style.display=
+  card.style.display='';
   if(hasContact){
     const name=c.contact_user_name||'Контакт';
-    const upid=c.contact_user_public_id||
+    const upid=c.contact_user_public_id||'';
     const av=c.contact_user_avatar
       ? `<img src="${esc(c.contact_user_avatar)}" alt="" style="width:100%;height:100%;object-fit:cover">`
       : ltr(name);
@@ -692,7 +692,7 @@ function renderContactPerson(c){
 let joined=false;
 let communityTitle='Сообщество';
 let currentCommunityID=null;
-let myRole=
+let myRole='';
 let currentCommunity=null;
 function syncCommunityCache(memberState,membersCount){
   if(!currentCommunityID)return;
@@ -729,7 +729,7 @@ function updateMembersCount(nextValue){
 }
 async function toggleJoin(){
   if(!joined && currentCommunity?.privacy_level==='closed'){
-    const message=(await lastopPrompt({title:'Заявка в сообщество',message:'Сообщество закрытое. Сообщение для заявки (опционально)',placeholder:'Ваше сообщение'}))||
+    const message=(await lastopPrompt({title:'Заявка в сообщество',message:'Сообщество закрытое. Сообщение для заявки (опционально)',placeholder:'Ваше сообщение'}))||'';
     try{
       const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({message})});
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.error||'Не удалось отправить заявку')}
@@ -862,7 +862,7 @@ async function submitComment(publicID,btn){
       body:JSON.stringify({content})
     });
     if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось отправить');return;}
-    input.value=
+    input.value='';
     // Обновим список комментариев
     loadComments(publicID);
     // И увеличим счётчик в кнопке-комментариях
@@ -893,7 +893,7 @@ function buildCommunityPersona(c){
 function renderCommunityProfile(c){
   if(!c)return;
   currentCommunity=c;
-  myRole=c.my_role||
+  myRole=c.my_role||'';
   const persona=buildCommunityPersona(c);
   const name=c.name||'Сообщество';
   communityTitle=name;
@@ -902,7 +902,7 @@ function renderCommunityProfile(c){
   const desc=(c.description||'').trim()||'У этого сообщества пока нет описания.';
   const tags=Array.isArray(c.tags)?c.tags.filter(Boolean):[];
   document.title=`LASTOP GROUP — ${name}`;
-  const roleIcon=myRole==='owner'?' 👑':myRole==='admin'?' ⭐':myRole==='moderator'?' 🛡':
+  const roleIcon=myRole==='owner'?' 👑':myRole==='admin'?' ⭐':myRole==='moderator'?' 🛡':'';
   const nameNode=document.getElementById('communityName');if(nameNode)nameNode.textContent=name+roleIcon;
   const bcNode=document.getElementById('breadcrumbCommunityName');if(bcNode)bcNode.textContent=name;
   const catNode=document.getElementById('communityCategory');if(catNode)catNode.textContent=category;
@@ -918,7 +918,7 @@ function renderCommunityProfile(c){
   }
   const banner=document.getElementById('heroBannerBg');
   if(banner){
-    const cu=c.cover_url||
+    const cu=c.cover_url||'';
     if(cu && (cu.startsWith('http://')||cu.startsWith('https://')||cu.startsWith('/uploads/'))){
       banner.style.background=`url('${esc(cu)}') center/cover no-repeat`;
     }else{
