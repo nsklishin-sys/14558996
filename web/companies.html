@@ -197,7 +197,7 @@ let viewerID = null;
 
 const esc = window.lastopEsc;const escAttr = window.lastopEsc;
 function pluralRu(n,f){const a=[2,0,1,1,1,2];return f[(n%100>4&&n%100<20)?2:a[Math.min(n%10,5)]];}
-function fmtNum(n){return Number(n||0).toLocaleString('ru-RU');}
+const fmtNum = window.lastopFmtNum;
 function initials(name){if(!name)return '?';return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase();}
 function stableColor(s){
   let h=0;const n=String(s||'?');

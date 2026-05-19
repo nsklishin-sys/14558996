@@ -396,9 +396,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const esc = window.lastopEsc;
-function letter(s){return((s||'?')[0]).toUpperCase();}
-function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];return C[(s||'').charCodeAt(0)%C.length]||C[0];}
-function ago(ts){if(!ts)return'';const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));if(m<60)return m+' мин назад';if(m<1440)return Math.floor(m/60)+' ч назад';if(m<10080)return Math.floor(m/1440)+' д назад';return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});}
+const letter = window.lastopLetter;
+const avc = window.lastopAvc;
+const ago = window.lastopAgo;
 const MODALS={locked:{h:'Раздел только для участников',p:'Зарегистрируйтесь, чтобы открыть все разделы: Резюме, Чат, Товары и услуги, Профиль.'},write:{h:'Публикация доступна участникам',p:'Чтобы писать посты и делиться новостями, создайте аккаунт — это займёт меньше 2 минут.'},search:{h:'Расширенный поиск после входа',p:'Авторизованные пользователи ищут по всем разделам: компаниям, специалистам, вакансиям и проектам.'}};
 function openModal(t){const m=MODALS[t]||MODALS.locked;document.getElementById('modalH').textContent=m.h;document.getElementById('modalP').textContent=m.p;document.getElementById('modalBg').classList.add('open');}
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}

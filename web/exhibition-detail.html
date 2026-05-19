@@ -614,7 +614,7 @@ a.sb-org-card:hover{border-color:var(--gb);text-decoration:none!important}
 const API='/api',tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 function ltr(s){return((s||'?')[0]).toUpperCase()}
-function avc(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090'];return C[(s||'').charCodeAt(0)%C.length]||C[0]}
+const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
 function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 
@@ -744,7 +744,7 @@ function getPublicID(){
   return u.searchParams.get('id')||u.searchParams.get('public_id')||'';
 }
 
-function fmtNum(n){return new Intl.NumberFormat('ru-RU').format(n||0);}
+const fmtNum = window.lastopFmtNum;
 
 function fmtDateRange(starts,ends){
   if(!starts||!ends)return '—';

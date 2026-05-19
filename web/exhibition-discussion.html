@@ -157,16 +157,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API='/api';
 const tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
-function letter(s){return ((s||'?').trim()[0]||'?').toUpperCase();}
+const letter = window.lastopLetter;
 function colorFor(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(String(s||'').charCodeAt(0)||0)%C.length];}
-function ago(ts){
-  if(!ts)return '';
-  const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));
-  if(m<60)return m+' мин назад';
-  if(m<1440)return Math.floor(m/60)+' ч назад';
-  if(m<10080)return Math.floor(m/1440)+' д назад';
-  return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});
-}
+const ago = window.lastopAgo;
 
 let _publicID = '';
 let _messages = [];
