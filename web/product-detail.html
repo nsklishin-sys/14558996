@@ -490,7 +490,7 @@ function authHeaders(){
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await fetch(API + '/me', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/me', { headers: authHeaders() });
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -507,7 +507,7 @@ async function loadProfile(){
 // ─── Categories ───
 async function loadCategories(){
   try {
-    const r = await fetch(API + '/catalog/categories');
+    const r = await lastopFetch(API + '/catalog/categories');
     const d = await r.json();
     CATEGORY_GROUPS = d.groups || [];
   } catch (err) { console.error('loadCategories', err); }
@@ -525,7 +525,7 @@ function fillEditCategorySelect(){
 // ─── Load item ───
 async function loadItem(){
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID), { headers: authHeaders() });
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID), { headers: authHeaders() });
     if (r.status === 404) {
       document.getElementById('mainContent').innerHTML = '<div class="placeholder">Товар не найден или был удалён.</div>';
       document.getElementById('crumbCurrent').textContent = 'Не найдено';
@@ -834,7 +834,7 @@ function renderRight(){
 // ─── Orders (только автору) ───
 async function loadOrders(){
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID) + '/orders', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID) + '/orders', { headers: authHeaders() });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
     const orders = d.orders || [];
@@ -873,7 +873,7 @@ async function toggleSave(){
   if (!btn) return;
   btn.disabled = true;
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID) + '/save', {
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID) + '/save', {
       method: 'POST', headers: authHeaders()
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -910,7 +910,7 @@ async function submitOrder(){
   if (msg.length > 2000) { toast('Слишком длинное сообщение'); return; }
   btn.disabled = true; btn.textContent = 'Отправка…';
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID) + '/order', {
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID) + '/order', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
@@ -955,7 +955,7 @@ async function submitContact(){
   if (msg.length > 2000) { toast('Слишком длинное сообщение'); return; }
   btn.disabled = true; btn.textContent = 'Отправка…';
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID) + '/contact', {
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID) + '/contact', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
@@ -1055,7 +1055,7 @@ async function submitEdit(){
 
   btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID), {
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID), {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1099,7 +1099,7 @@ async function submitDelete(){
   const btn = document.getElementById('deleteSubmitBtn');
   btn.disabled = true; btn.textContent = 'Удаление…';
   try {
-    const r = await fetch(API + '/catalog/' + encodeURIComponent(publicID), {
+    const r = await lastopFetch(API + '/catalog/' + encodeURIComponent(publicID), {
       method: 'DELETE', headers: authHeaders()
     });
     if (!r.ok) throw new Error('http ' + r.status);

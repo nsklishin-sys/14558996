@@ -482,7 +482,7 @@ function authHeaders(){ return tk() ? { Authorization: 'Bearer ' + tk() } : {}; 
 async function loadProfile(){
   if (!tk()) { location.href = '/login.html'; return; }
   try {
-    const r = await fetch(API + '/me', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/me', { headers: authHeaders() });
     if (!r.ok) { location.href = '/login.html'; return; }
     const d = await r.json();
     const u = d.user || d;
@@ -498,7 +498,7 @@ async function loadProfile(){
 
 async function loadCompanies(){
   try {
-    const r = await fetch(API + '/companies?tab=my&limit=50', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/companies?tab=my&limit=50', { headers: authHeaders() });
     const d = await r.json();
     myCompanies = d.items || [];
     if (!myCompanies.length) {
@@ -540,7 +540,7 @@ async function loadCompanies(){
 async function loadCurrentCompanyFull(){
   if (!currentCompany) return;
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id), {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id), {
       headers: authHeaders()
     });
     const d = await r.json();
@@ -794,7 +794,7 @@ async function saveAbout(){
       accent_color: /^#[0-9A-Fa-f]{6}$/.test(accent) ? accent : '#1E8A4C',
       tags:         (window.__aboutTags || []).slice(),
     };
-    const r = await fetch(API + '/companies/' + encodeURIComponent(c.public_id), {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(c.public_id), {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -817,7 +817,7 @@ async function saveAbout(){
 async function deleteCompany(){
   if (!await lastopConfirm({title:'Удалить компанию?',message:'Все приглашения и связи с сотрудниками будут отменены.',danger:true})) return;
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id), {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id), {
       method: 'DELETE',
       headers: authHeaders()
     });
@@ -833,7 +833,7 @@ async function deleteCompany(){
 async function renderMembers(wrap){
   wrap.innerHTML = '<div class="panel"><div class="panel-title">Сотрудники</div><div class="placeholder">Загрузка…</div></div>';
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members', { headers: authHeaders() });
     const d = await r.json();
     const members = d.members || [];
     const isOwner = !!currentCompany.viewer_is_owner;
@@ -930,7 +930,7 @@ async function submitPosition(){
   const btn = document.getElementById('pSubmit');
   btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + ed.userID, {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + ed.userID, {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ position: newPos })
@@ -948,7 +948,7 @@ async function submitPosition(){
 
 async function togglePublic(userID, isPublic){
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + userID, {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + userID, {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_public: isPublic })
@@ -983,7 +983,7 @@ async function submitRights(){
       can_publish:        document.getElementById('rPublish').checked,
       can_chat:           document.getElementById('rChat').checked,
     };
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + ed.userID, {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + ed.userID, {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1002,7 +1002,7 @@ async function submitRights(){
 async function removeMember(userID, name){
   if (!await lastopConfirm({title:'Удалить из компании?',message:name,danger:true})) return;
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + userID, {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/members/' + userID, {
       method: 'DELETE',
       headers: authHeaders()
     });
@@ -1015,7 +1015,7 @@ async function removeMember(userID, name){
 async function renderInvites(wrap){
   wrap.innerHTML = '<div class="panel"><div class="panel-title">Приглашения</div><div class="placeholder">Загрузка…</div></div>';
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites', { headers: authHeaders() });
     const d = await r.json();
     const invites = d.invites || [];
     const showInactive = window.__invShowInactive || false;
@@ -1065,7 +1065,7 @@ function copyText(s){ lastopCopy(s,'Ссылка скопирована','Не �
 async function deactivateInvite(id){
   if (!await lastopConfirm({title:'Деактивировать ссылку?',message:'Новые регистрации по ней будут невозможны.',danger:true})) return;
   try {
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites/' + id, {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites/' + id, {
       method: 'DELETE',
       headers: authHeaders()
     });
@@ -1079,8 +1079,8 @@ async function renderPubs(wrap){
   wrap.innerHTML = '<div class="panel"><div class="panel-title">Публикации компании</div><div class="placeholder">Загрузка…</div></div>';
   try {
     const [jobsR, catR] = await Promise.all([
-      fetch(API + '/jobs?limit=100', { headers: authHeaders() }).then(r => r.json()),
-      fetch(API + '/catalog?limit=100', { headers: authHeaders() }).then(r => r.json()),
+      lastopFetch(API + '/jobs?limit=100', { headers: authHeaders() }).then(r => r.json()),
+      lastopFetch(API + '/catalog?limit=100', { headers: authHeaders() }).then(r => r.json()),
     ]);
     const cid = currentCompany.id;
     const jobs = (jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid);
@@ -1154,7 +1154,7 @@ function onINNInput() {
 
 async function verifyINNRequest(inn) {
   try {
-    const r = await fetch(API + '/companies/verify-inn', {
+    const r = await lastopFetch(API + '/companies/verify-inn', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ inn })
@@ -1218,7 +1218,7 @@ async function submitCreate(){
       email:       document.getElementById('cEmail').value.trim(),
       phone:       document.getElementById('cPhone').value.trim(),
     };
-    const r = await fetch(API + '/companies', {
+    const r = await lastopFetch(API + '/companies', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1249,7 +1249,7 @@ async function submitAccept(){
   if (!code) { toast('Введите код'); return; }
   btn.disabled = true; btn.textContent = 'Принятие…';
   try {
-    const r = await fetch(API + '/invites/accept', {
+    const r = await lastopFetch(API + '/invites/accept', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ code })
@@ -1277,7 +1277,7 @@ async function submitInvite(){
       max_uses:        parseInt(document.getElementById('iMaxUses').value, 10) || 1,
       expires_in_days: parseInt(document.getElementById('iExpires').value, 10) || 30,
     };
-    const r = await fetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites', {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/invites', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

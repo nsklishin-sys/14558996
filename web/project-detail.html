@@ -1076,7 +1076,7 @@ async function loadRepostFriends(){
   const listBottom = document.getElementById('repostFriendsListBottom');
   if(!list && !listBottom) return;
   try{
-    const r = await fetch('/api/friends', {headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    const r = await lastopFetch('/api/friends', {headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
     if(!r.ok) throw 0;
     const d = await r.json();
     const friends = d.friends || [];
@@ -1120,7 +1120,7 @@ async function doRepost(target){
     const title = (project && project.title) || document.getElementById('projTitle')?.textContent || 'Проект';
     const url = location.href;
     try{
-      const r = await fetch('/api/posts', {
+      const r = await lastopFetch('/api/posts', {
         method:'POST',
         headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
         body: JSON.stringify({
@@ -1152,7 +1152,7 @@ async function doRepostToFriend(friendPublicID, friendName){
   const message = `📎 Делюсь проектом: ${title}
 ${url}`;
   try{
-    const dc = await fetch('/api/chat/conversations/direct', {
+    const dc = await lastopFetch('/api/chat/conversations/direct', {
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
       body: JSON.stringify({user_public_id: friendPublicID})
@@ -1165,7 +1165,7 @@ ${url}`;
     const dd = await dc.json();
     const convPID = dd.conversation && dd.conversation.public_id;
     if(!convPID){toast('Не удалось открыть чат');return;}
-    const r = await fetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
+    const r = await lastopFetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
       body: JSON.stringify({content: message})
@@ -1226,7 +1226,7 @@ async function loadFriendsForMembers(){
   if(!list) return;
   list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gmt);font-size:12px">Загрузка друзей…</div>';
   try{
-    const r = await fetch('/api/friends', {headers:{Authorization:'Bearer '+tk()}});
+    const r = await lastopFetch('/api/friends', {headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok) throw 0;
     const d = await r.json();
     _membersFriendsCache = d.friends || [];
@@ -1276,7 +1276,7 @@ async function addProjectMember(userPublicID, name){
   if(!userPublicID) return;
   const projectPID = new URLSearchParams(location.search).get('id');
   try{
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/members`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/members`, {
       method: 'POST',
       headers: {'Content-Type':'application/json', Authorization:'Bearer '+tk()},
       body: JSON.stringify({user_public_id: userPublicID, role: 'member'})
@@ -1381,7 +1381,7 @@ async function toggleSave(){
   const btn=document.getElementById('btnSave');
   if(btn)btn.disabled=true;
   try{
-    const r=await fetch(API+'/projects/'+encodeURIComponent(currentProject.public_id)+'/save',{
+    const r=await lastopFetch(API+'/projects/'+encodeURIComponent(currentProject.public_id)+'/save',{
       method:'POST',
       headers:{Authorization:'Bearer '+tk()}
     });
@@ -1441,7 +1441,7 @@ async function submitRespond(){
   if (submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Отправка…'; }
 
   try{
-    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs/' + _currentNeedID + '/respond', {
+    const r = await lastopFetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs/' + _currentNeedID + '/respond', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: fullMessage })
@@ -1504,8 +1504,8 @@ async function loadProject(){
   try {
     // Параллельно: данные проекта + текущий пользователь
     const [projRes, meRes] = await Promise.all([
-      fetch(API + '/projects/' + encodeURIComponent(pid), { headers }),
-      tk() ? fetch(API + '/me', { headers }).catch(() => null) : Promise.resolve(null)
+      lastopFetch(API + '/projects/' + encodeURIComponent(pid), { headers }),
+      tk() ? lastopFetch(API + '/me', { headers }).catch(() => null) : Promise.resolve(null)
     ]);
 
     if (!projRes.ok) {
@@ -1737,7 +1737,7 @@ async function confirmDeleteProject(){
   if (!await lastopConfirm({title:'Удалить проект?',message:'«' + currentProject.title + '» — действие необратимо.',danger:true})) return;
 
   try {
-    const r = await fetch(API + '/projects/' + encodeURIComponent(currentProject.public_id), {
+    const r = await lastopFetch(API + '/projects/' + encodeURIComponent(currentProject.public_id), {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -1827,7 +1827,7 @@ async function loadStages(){
   applyManageButtonsVisibility();
 
   try{
-    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/stages', {
+    const r = await lastopFetch(API + '/projects/' + encodeURIComponent(projectPID) + '/stages', {
       headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -1924,7 +1924,7 @@ async function loadNeeds(){
   applyManageButtonsVisibility();
 
   try{
-    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs', {
+    const r = await lastopFetch(API + '/projects/' + encodeURIComponent(projectPID) + '/needs', {
       headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -2016,7 +2016,7 @@ function pluralRu(n, forms){
 (async()=>{
   if(!tk())return;
   try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -2109,7 +2109,7 @@ async function submitStage(){
   const btn = document.getElementById('stSubmitBtn');
   btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
-    const r = await fetch(url, {
+    const r = await lastopFetch(url, {
       method,
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -2133,7 +2133,7 @@ async function deleteStage(stageID, title){
   if (!await lastopConfirm({title:'Удалить этап?',message:`«${title}» — все подзадачи также удалятся.`,danger:true})) return;
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -2152,7 +2152,7 @@ async function addSubtask(stageID, inputEl){
   if (!title) return;
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}/subtasks`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/${stageID}/subtasks`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ title })
@@ -2169,7 +2169,7 @@ async function addSubtask(stageID, inputEl){
 async function toggleSubtask(subtaskID, isDone){
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/subtasks/${subtaskID}`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/subtasks/${subtaskID}`, {
       method: 'PATCH',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_done: isDone })
@@ -2185,7 +2185,7 @@ async function toggleSubtask(subtaskID, isDone){
 async function deleteSubtask(subtaskID){
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/subtasks/${subtaskID}`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/stages/subtasks/${subtaskID}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -2234,7 +2234,7 @@ async function submitNeed(){
   const btn = document.getElementById('ndSubmitBtn');
   btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
-    const r = await fetch(url, {
+    const r = await lastopFetch(url, {
       method,
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -2258,7 +2258,7 @@ async function deleteNeed(needID, title){
   if (!await lastopConfirm({title:'Удалить потребность?',message:`«${title}» — действие необратимо.`,danger:true})) return;
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}`, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -2281,7 +2281,7 @@ async function openResponsesModal(needID, needTitle){
 
   const projectPID = new URLSearchParams(location.search).get('id');
   try {
-    const r = await fetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}/responses`, {
+    const r = await lastopFetch(`${API}/projects/${encodeURIComponent(projectPID)}/needs/${needID}/responses`, {
       headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -2400,7 +2400,7 @@ async function submitProjectEdit(){
   btn.textContent = 'Сохранение…';
 
   try {
-    const r = await fetch(API + '/projects/' + encodeURIComponent(projectPID), {
+    const r = await lastopFetch(API + '/projects/' + encodeURIComponent(projectPID), {
       method: 'PATCH',
       headers: {
         Authorization: 'Bearer ' + tk(),

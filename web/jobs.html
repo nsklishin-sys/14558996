@@ -505,7 +505,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -521,7 +521,7 @@ async function loadProfile(){
 // ─── Categories ───
 async function loadCategories(){
   try {
-    const r = await fetch(API + '/jobs/categories');
+    const r = await lastopFetch(API + '/jobs/categories');
     const d = await r.json();
     CATEGORIES = d.categories || [];
     renderCategorySidebar();
@@ -588,7 +588,7 @@ async function loadList(){
     if (exp) params.set('experience_max', exp);
     if (currentTab && currentTab !== 'all') params.set('tab', currentTab);
     try {
-      const r = await fetch(API + '/jobs?' + params.toString(), {
+      const r = await lastopFetch(API + '/jobs?' + params.toString(), {
         headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       });
       if (!r.ok) throw new Error('http ' + r.status);
@@ -603,7 +603,7 @@ async function loadList(){
     if (exp) params.set('experience_min', exp);
     if (currentTab && currentTab !== 'all') params.set('status', currentTab);
     try {
-      const r = await fetch(API + '/resumes?' + params.toString(), {
+      const r = await lastopFetch(API + '/resumes?' + params.toString(), {
         headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       });
       if (!r.ok) throw new Error('http ' + r.status);
@@ -780,7 +780,7 @@ async function submitJob(){
   const btn = document.getElementById('jobSubmitBtn');
   btn.disabled = true; btn.textContent = 'Создание…';
   try {
-    const r = await fetch(API + '/jobs', {
+    const r = await lastopFetch(API + '/jobs', {
       method: 'POST',
       headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify(body)
@@ -822,7 +822,7 @@ async function submitCv(){
   const btn = document.getElementById('cvSubmitBtn');
   btn.disabled = true; btn.textContent = 'Создание…';
   try {
-    const r = await fetch(API + '/resumes', {
+    const r = await lastopFetch(API + '/resumes', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

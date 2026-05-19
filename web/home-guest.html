@@ -279,7 +279,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     const items = [];
     // 1. Выставки
     try {
-      const r = await fetch('/api/exhibitions/upcoming?limit=6');
+      const r = await lastopFetch('/api/exhibitions/upcoming?limit=6');
       if (r.ok) {
         const d = await r.json();
         (d.upcoming || []).forEach(it => items.push({
@@ -291,7 +291,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     } catch {}
     // 2. Ближайшие события
     try {
-      const r = await fetch('/api/events?limit=6&upcoming=1');
+      const r = await lastopFetch('/api/events?limit=6&upcoming=1');
       if (r.ok) {
         const d = await r.json();
         (d.events || d.items || []).forEach(ev => items.push({
@@ -404,7 +404,7 @@ function openModal(t){const m=MODALS[t]||MODALS.locked;document.getElementById('
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
 (async()=>{
   try{
-    const r = await fetch('/api/stats');
+    const r = await lastopFetch('/api/stats');
     if (!r.ok) throw 0;
     const d = await r.json();
     const fmt = n => (Number(n)||0).toLocaleString('ru-RU');
@@ -429,7 +429,7 @@ async function loadFeed(){
   const empty='<div style="padding:30px 20px;text-align:center;color:var(--gmt);font-size:13px">Пока нет публикаций</div>';
   try{
     // Берём до 10 постов чтобы было что крутить
-    const r=await fetch('/api/feed?limit=10');
+    const r=await lastopFetch('/api/feed?limit=10');
     if(!r.ok)throw 0;
     const d=await r.json();
     const p=d.posts||d.items||[];
@@ -496,7 +496,7 @@ window.addEventListener('DOMContentLoaded',loadFeed);
   if (!root) return;
   const items = [];
   try {
-    const r = await fetch('/api/companies?limit=2&verified=1');
+    const r = await lastopFetch('/api/companies?limit=2&verified=1');
     if (r.ok) {
       const d = await r.json();
       const list = (d.companies || d.items || []).slice(0, 2);
@@ -512,7 +512,7 @@ window.addEventListener('DOMContentLoaded',loadFeed);
     }
   } catch {}
   try {
-    const r = await fetch('/api/events?limit=1&upcoming=1');
+    const r = await lastopFetch('/api/events?limit=1&upcoming=1');
     if (r.ok) {
       const d = await r.json();
       const ev = (d.events || d.items || [])[0];

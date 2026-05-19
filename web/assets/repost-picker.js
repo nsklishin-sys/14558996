@@ -60,7 +60,7 @@
       } catch (e) {}
     }
     try {
-      var r = await fetch(API + '/repost-targets', { headers: authHeaders() });
+      var r = await lastopFetch(API + '/repost-targets', { headers: authHeaders() });
       if (!r.ok) throw new Error('http ' + r.status);
       var d = await r.json();
       var targets = Array.isArray(d.targets) ? d.targets : [];
@@ -319,7 +319,7 @@
     if (target.type === 'friend') {
       try {
         // 1) Открыть direct-чат
-        var dc = await fetch(API + '/chat/conversations/direct', {
+        var dc = await lastopFetch(API + '/chat/conversations/direct', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ user_public_id: target.public_id })
@@ -339,7 +339,7 @@
         // 2) Сообщение со ссылкой на пост
         var link = location.origin + '/news-detail.html?id=' + encodeURIComponent(current.opts.postPublicID);
         var msg = comment ? (comment + '\\n\\n' + link) : link;
-        var mr = await fetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
+        var mr = await lastopFetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ content: msg })
@@ -369,7 +369,7 @@
     if (target.type === 'community') body.target_community_id = target.id;
 
     try {
-      var r = await fetch(API + '/posts/' + encodeURIComponent(current.opts.postPublicID) + '/repost', {
+      var r = await lastopFetch(API + '/posts/' + encodeURIComponent(current.opts.postPublicID) + '/repost', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body)

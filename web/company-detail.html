@@ -241,7 +241,7 @@ function authHeaders(){ return tk()?{Authorization:'Bearer '+tk()}:{}; }
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await fetch(API+'/me', { headers: authHeaders() });
+    const r = await lastopFetch(API+'/me', { headers: authHeaders() });
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -257,7 +257,7 @@ async function loadProfile(){
 
 async function loadCompany(){
   try {
-    const r = await fetch(API+'/companies/'+encodeURIComponent(identifier), { headers: authHeaders() });
+    const r = await lastopFetch(API+'/companies/'+encodeURIComponent(identifier), { headers: authHeaders() });
     if (r.status === 404) {
       document.getElementById('mainContent').innerHTML = '<div class="placeholder">Компания не найдена.</div>';
       document.getElementById('crumbCurrent').textContent = 'Не найдено';
@@ -402,7 +402,7 @@ async function renderSidebar(){
 
   // Подгружаем команду
   try {
-    const r = await fetch(API+'/companies/'+encodeURIComponent(c.public_id)+'/members');
+    const r = await lastopFetch(API+'/companies/'+encodeURIComponent(c.public_id)+'/members');
     const d = await r.json();
     const allMembers = d.members || [];
     // На публичной странице показываем только members с is_public !== false (по умолчанию true).
@@ -484,10 +484,10 @@ async function renderPubs(wrap){
     const tk = localStorage.getItem('token');
     const authH = tk ? { Authorization: 'Bearer ' + tk } : {};
     const [jobsR, catR, feedR, topicsR] = await Promise.all([
-      fetch(API+'/jobs?limit=100').then(r=>r.json()).catch(()=>({jobs:[]})),
-      fetch(API+'/catalog?limit=100').then(r=>r.json()).catch(()=>({items:[]})),
-      fetch(API+'/feed?type=news&limit=100', { headers: authH }).then(r=>r.ok?r.json():{posts:[]}).catch(()=>({posts:[]})),
-      fetch(API+'/forum/topics?limit=100', { headers: authH }).then(r=>r.ok?r.json():{topics:[]}).catch(()=>({topics:[]})),
+      lastopFetch(API+'/jobs?limit=100').then(r=>r.json()).catch(()=>({jobs:[]})),
+      lastopFetch(API+'/catalog?limit=100').then(r=>r.json()).catch(()=>({items:[]})),
+      lastopFetch(API+'/feed?type=news&limit=100', { headers: authH }).then(r=>r.ok?r.json():{posts:[]}).catch(()=>({posts:[]})),
+      lastopFetch(API+'/forum/topics?limit=100', { headers: authH }).then(r=>r.ok?r.json():{topics:[]}).catch(()=>({topics:[]})),
     ]);
     const cid = company.id;
     const items = [
@@ -610,7 +610,7 @@ async function acceptInvite(code){
   if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Принимаем…'; }
   if (rejectBtn) rejectBtn.disabled = true;
   try {
-    const r = await fetch(API + '/invites/accept', {
+    const r = await lastopFetch(API + '/invites/accept', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ code })

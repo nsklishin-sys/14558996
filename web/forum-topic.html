@@ -359,7 +359,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) {
       if (r.status === 401) { /* не залогинен — но страница работает */ }
       return;
@@ -381,7 +381,7 @@ async function loadProfile(){
 // ─── Категории (для цветов) ───
 async function loadCategoryColors(){
   try {
-    const r = await fetch(API + '/forum/categories');
+    const r = await lastopFetch(API + '/forum/categories');
     if (!r.ok) return;
     const d = await r.json();
     (d.categories || []).forEach(c => { categoryColors[c.key] = c.color; });
@@ -395,7 +395,7 @@ async function loadTopic(){
     return;
   }
   try {
-    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+    const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
     });
     if (r.status === 404) {
@@ -505,7 +505,7 @@ function renderTopicSidebar(){
 async function loadIsSubscribed(){
   if (!tk()) return;
   try {
-    const r = await fetch(API + '/forum/subscriptions', {
+    const r = await lastopFetch(API + '/forum/subscriptions', {
       headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) return;
@@ -530,7 +530,7 @@ function updateSubscribeBtn(subscribed){
 async function toggleSubscribe(){
   if (!tk()){ toast('Войдите чтобы подписаться'); return; }
   try {
-    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/subscribe', {
+    const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/subscribe', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -550,7 +550,7 @@ async function toggleClosedTopic(){
   const newClosed = !currentTopic.is_closed;
   if (!await lastopConfirm(newClosed ? {title:'Закрыть тему?',message:'Никто не сможет писать новые ответы.',danger:true} : {title:'Открыть тему?'})) return;
   try {
-    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+    const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       method: 'PATCH',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_closed: newClosed })
@@ -571,7 +571,7 @@ async function toggleClosedTopic(){
 async function deleteTopic(){
   if (!await lastopConfirm({title:'Удалить тему?',message:`«${currentTopic.title}» — действие нельзя отменить.`,danger:true})) return;
   try {
-    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+    const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -587,7 +587,7 @@ async function deleteTopic(){
 // ─── Сообщения ───
 async function loadMessages(){
   try {
-    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
+    const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
       headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -710,7 +710,7 @@ function scrollToMessage(publicID){
 async function toggleLike(msgPublicID){
   if (!tk()){ toast('Войдите чтобы лайкать'); return; }
   try {
-    const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID) + '/like', {
+    const r = await lastopFetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID) + '/like', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -756,7 +756,7 @@ async function saveEditMessage(msgPublicID){
   if (!newContent){ toast('Сообщение не может быть пустым'); return; }
   if (newContent.length > 10000){ toast('Слишком длинное'); return; }
   try {
-    const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
+    const r = await lastopFetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
       method: 'PATCH',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: newContent })
@@ -773,7 +773,7 @@ async function saveEditMessage(msgPublicID){
 async function deleteMessage(msgPublicID){
   if (!await lastopConfirm({title:'Удалить сообщение?',danger:true})) return;
   try {
-    const r = await fetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
+    const r = await lastopFetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -879,7 +879,7 @@ async function onReplyAttachSelected(e){
     addReplyAttachThumb(tempId, URL.createObjectURL(file), true);
     try {
       const fd = new FormData(); fd.append('file', file);
-      const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+      const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
       const d = await r.json().catch(()=>({}));
       if(!r.ok || !d.url){ toast(d.error||'Не загрузилось'); removeReplyAttachThumb(tempId); continue; }
       replyAttachUrls.push(d.url);
@@ -935,7 +935,7 @@ async function submitReply(){
     if (replyParentMsgID) body.parent_public_id = replyParentMsgID;
     if (replyAttachUrls.length) body.attachments = replyAttachUrls;
     const headers = window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' });
-    const r = await fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
+    const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
       method: 'POST',
       headers,
       body: JSON.stringify(body)
@@ -993,10 +993,10 @@ async function pollTopicUpdates(){
   try {
     // Получаем текущее состояние темы и сообщений параллельно
     const [tRes, mRes] = await Promise.all([
-      fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
+      lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
         headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       }),
-      fetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
+      lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
         headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       })
     ]);

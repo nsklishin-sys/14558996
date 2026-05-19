@@ -856,7 +856,7 @@ async function toggleLike(postKey,btn){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);if(!n)return;
   if(!n.public_id){showToast('Лайк доступен только для публикаций из базы');return;}
   try{
-    const r=await fetch(`${API}/posts/${encodeURIComponent(n.public_id)}/like`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(`${API}/posts/${encodeURIComponent(n.public_id)}/like`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){showToast(d.error||'Не удалось поставить лайк');return;}
     if(d.is_liked){likedSet.add(postKey);btn.classList.add('liked');btn.querySelector('svg path')?.setAttribute('fill','var(--red)');}
@@ -877,7 +877,7 @@ async function toggleSave(postKey,btn){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
   if(!n||!n.public_id){showToast('Публикация недоступна');return;}
   try{
-    const r=await fetch(`${API}/posts/${encodeURIComponent(n.public_id)}/save`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(`${API}/posts/${encodeURIComponent(n.public_id)}/save`,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){showToast(d.error||'Не удалось сохранить');return;}
     if(d.is_saved){
@@ -969,7 +969,7 @@ async function onComposeCoverSelected(e){
   const reader = new FileReader();
   reader.onload = (ev)=>{ const img = document.getElementById('composeCoverImg'); if(img) img.src = ev.target.result; document.getElementById('composeCoverPreview').style.display = 'block'; document.getElementById('composeCoverUploading').style.display = 'flex'; };
   reader.readAsDataURL(file);
-  try{ const fd = new FormData(); fd.append('file', file); const r = await fetch(API + '/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd}); const d = await r.json().catch(()=>({})); if(!r.ok || !d.url){ showToast(d.error || 'Не удалось загрузить'); removeComposeCover(); return; } composeCoverUrl = d.url; document.getElementById('composeCoverUploading').style.display = 'none'; }catch(err){ showToast('Ошибка сети при загрузке'); removeComposeCover(); }finally{ e.target.value = ''; }}
+  try{ const fd = new FormData(); fd.append('file', file); const r = await lastopFetch(API + '/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd}); const d = await r.json().catch(()=>({})); if(!r.ok || !d.url){ showToast(d.error || 'Не удалось загрузить'); removeComposeCover(); return; } composeCoverUrl = d.url; document.getElementById('composeCoverUploading').style.display = 'none'; }catch(err){ showToast('Ошибка сети при загрузке'); removeComposeCover(); }finally{ e.target.value = ''; }}
 
 function removeComposeCover(){ composeCoverUrl = ''; const prev = document.getElementById('composeCoverPreview'); if(prev) prev.style.display = 'none'; const img = document.getElementById('composeCoverImg'); if(img) img.src = ''; const up = document.getElementById('composeCoverUploading'); if(up) up.style.display = 'none'; const inp = document.getElementById('composeCoverInput'); if(inp) inp.value = ''; }
 
@@ -1056,7 +1056,7 @@ async function submitPost(){
   const btn=document.querySelector('.c-submit');
   if(btn)btn.disabled=true;
   try{
-    const r=await fetch(API+'/posts',{method:'POST',headers:window.withActiveContextHeaders ? window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}) : {'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags,cover_url:composeCoverUrl,category})});
+    const r=await lastopFetch(API+'/posts',{method:'POST',headers:window.withActiveContextHeaders ? window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}) : {'Content-Type':'application/json',Authorization:'Bearer '+tk(),...(window.getActiveCompanyID && window.getActiveCompanyID() ? {'X-Active-Company-Id':String(window.getActiveCompanyID())} : {})},body:JSON.stringify({title,content:text,type:'news',privacy_level:'public',tags:composeTags,cover_url:composeCoverUrl,category})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok||!d.post){showToast(d.error||'Не удалось опубликовать');return;}
     const p=d.post;
@@ -1092,7 +1092,7 @@ async function loadHeroNews(){
 
   try {
     const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
-    const r = await fetch(API + '/posts/top?period=day&limit=1', {headers});
+    const r = await lastopFetch(API + '/posts/top?period=day&limit=1', {headers});
     if (!r.ok) throw 0;
     const d = await r.json();
     const post = (d.posts && d.posts[0]) || null;
@@ -1151,7 +1151,7 @@ async function loadTopWeek(){
 
   try {
     const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
-    const r = await fetch(API + '/posts/top?period=week&limit=5', {headers});
+    const r = await lastopFetch(API + '/posts/top?period=week&limit=5', {headers});
     if (!r.ok) throw 0;
     const d = await r.json();
     const posts = d.posts || [];
@@ -1199,8 +1199,8 @@ function toggleFollow(btn){
 /* ── АВТОРИЗАЦИЯ + ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА ── */
 (async()=>{
   // Запускаем оба запроса параллельно, не блокируем рендер ленты ожиданием /me
-  const mePromise = tk() ? fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}}).then(r=>r.ok?r.json():null).catch(()=>null) : Promise.resolve(null);
-  const feedPromise = fetch(API+'/feed?limit=30&type=news',{headers:{Authorization:'Bearer '+tk()}}).then(r=>r.ok?r.json():null).catch(()=>null);
+  const mePromise = tk() ? lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}}).then(r=>r.ok?r.json():null).catch(()=>null) : Promise.resolve(null);
+  const feedPromise = lastopFetch(API+'/feed?limit=30&type=news',{headers:{Authorization:'Bearer '+tk()}}).then(r=>r.ok?r.json():null).catch(()=>null);
 
   // Обработка /me — обновляем юзера в топбаре когда придёт (не блокирует ленту)
   mePromise.then(meData=>{
@@ -1330,7 +1330,7 @@ async function loadTrends(){
   const list = document.getElementById('trendsList');
   if (!list) return;
   try {
-    const r = await fetch('/api/posts/trends');
+    const r = await lastopFetch('/api/posts/trends');
     if (!r.ok) throw 0;
     const d = await r.json();
     const trends = d.trends || [];
@@ -1358,7 +1358,7 @@ async function loadTopSources(){
   try {
     const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
-    const r = await fetch('/api/posts/top-authors', { headers });
+    const r = await lastopFetch('/api/posts/top-authors', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
     const authors = d.authors || [];

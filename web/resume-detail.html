@@ -428,7 +428,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) return;
     const d = await r.json();
     ME = d.user || d;
@@ -444,7 +444,7 @@ async function loadProfile(){
 // ─── Categories ───
 async function loadCategories(){
   try {
-    const r = await fetch(API + '/jobs/categories');
+    const r = await lastopFetch(API + '/jobs/categories');
     const d = await r.json();
     CATEGORIES = d.categories || [];
   } catch (err) { console.error('loadCategories', err); }
@@ -463,7 +463,7 @@ async function loadResume(){
   }
   try {
     const opts = tk() ? { headers: { Authorization: 'Bearer ' + tk() }} : {};
-    const r = await fetch(API + '/resumes/' + encodeURIComponent(PUBLIC_ID), opts);
+    const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(PUBLIC_ID), opts);
     if (r.status === 404){
       wrap.innerHTML = '<div class="loader">Резюме не найдено или скрыто. <a href="/jobs.html" style="color:var(--g)">Вернуться к списку</a></div>';
       document.getElementById('bcTitle').textContent = 'Не найдено';
@@ -672,7 +672,7 @@ async function toggleSave(){
   const btn = document.getElementById('btnSave');
   if (btn) btn.disabled = true;
   try {
-    const r = await fetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/save', {
+    const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/save', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk() }
     });
@@ -712,7 +712,7 @@ async function submitContact(){
   const btn = document.getElementById('contactSubmitBtn');
   btn.disabled = true; btn.textContent = 'Отправка…';
   try {
-    const r = await fetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/contact', {
+    const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id) + '/contact', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
@@ -784,7 +784,7 @@ async function submitEdit(){
   const btn = document.getElementById('editSubmitBtn');
   btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
-    const r = await fetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
+    const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
       method: 'PATCH',
       headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -818,7 +818,7 @@ async function submitDelete(){
   const btn = document.getElementById('deleteSubmitBtn');
   btn.disabled = true; btn.textContent = 'Удаление…';
   try {
-    const r = await fetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
+    const r = await lastopFetch(API + '/resumes/' + encodeURIComponent(RES.public_id), {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });

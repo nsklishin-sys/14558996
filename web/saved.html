@@ -241,7 +241,7 @@ function authHeaders(){ return tk() ? { Authorization: 'Bearer ' + tk() } : {}; 
 async function loadProfile(){
   if (!tk()) { location.href = '/login.html'; return; }
   try {
-    const r = await fetch(API + '/me', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/me', { headers: authHeaders() });
     if (!r.ok) return;
     const d = await r.json();
     const u = d.user || d;
@@ -257,7 +257,7 @@ async function loadProfile(){
 // LOAD
 async function loadAll(){
   try {
-    const r = await fetch(API + '/me/saved', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/me/saved', { headers: authHeaders() });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
     counts = d.counts || counts;
@@ -283,7 +283,7 @@ async function loadTab(tabKey){
   if (tabKey === 'all') { renderFeed(); return; }
   // Перезагружаем конкретную секцию полным списком (не превью)
   try {
-    const r = await fetch(API + '/me/saved?tab=' + encodeURIComponent(tabKey) + '&limit=100', { headers: authHeaders() });
+    const r = await lastopFetch(API + '/me/saved?tab=' + encodeURIComponent(tabKey) + '&limit=100', { headers: authHeaders() });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
     allData[tabKey] = d[tabKey] || [];

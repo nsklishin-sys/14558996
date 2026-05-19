@@ -388,7 +388,7 @@ const API='/api';
 // Подгружаем общие числа платформы для правой панели
 (async()=>{
   try{
-    const r=await fetch(API+'/stats');
+    const r=await lastopFetch(API+'/stats');
     if(!r.ok)return;
     const d=await r.json();
     const fmt=n=>(n||0).toLocaleString('ru-RU');
@@ -480,7 +480,7 @@ async function handleLogin(e){
 
   try{
     const captchaToken=(window.LASTOP_CAPTCHA&&window.LASTOP_CAPTCHA.getToken)?window.LASTOP_CAPTCHA.getToken():'';
-    const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,captcha_token:captchaToken})});
+    const r=await lastopFetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,captcha_token:captchaToken})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
       showToast(d.error||'Неверный email или пароль','error');

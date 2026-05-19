@@ -40,7 +40,7 @@
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: 'Bearer ' + token } : {};
-      fetch(url, { headers, credentials: 'same-origin' }).catch(() => {});
+      lastopFetch(url, { headers, credentials: 'same-origin' }).catch(() => {});
     } catch {}
   }
 

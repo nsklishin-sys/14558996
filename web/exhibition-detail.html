@@ -631,7 +631,7 @@ async function toggleSave(){
   const btn=document.getElementById('btnSave'),icon=document.getElementById('saveIcon');
   if(btn)btn.disabled=true;
   try{
-    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/save',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/save',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){toast('Ошибка',false);return;}
     const data=await r.json().catch(()=>({}));
     saved=!!data.saved;
@@ -865,7 +865,7 @@ async function loadExhibition(){
   state.publicID=pid;
   try{
     const headers=tk()?{Authorization:'Bearer '+tk()}:{};
-    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(pid),{headers});
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(pid),{headers});
     if(!r.ok){toast('Выставка не найдена',false);return;}
     const data=await r.json();
     state.exhibition=data.exhibition||data;
@@ -1141,7 +1141,7 @@ function renderSidebar(ex){
 async function renderAdminControls(){
   try{
     if(!tk())return;
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)return;
     const{user={}}=await r.json();
     if(!user.is_admin)return;
@@ -1169,7 +1169,7 @@ async function loadSimilar(ex){
   try{
     const cat=ex.category||'';
     const url=API+'/exhibitions?limit=4'+(cat?'&category='+encodeURIComponent(cat):'');
-    const r=await fetch(url,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    const r=await lastopFetch(url,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
     if(!r.ok)return;
     const d=await r.json();
     const list=(d.exhibitions||[]).filter(e=>e.public_id!==ex.public_id).slice(0,3);
@@ -1248,7 +1248,7 @@ window.submitVisitor=async function(){
   const btn=document.getElementById('vmSubmit');
   btn.disabled=true;const old=btn.textContent;btn.textContent='Регистрируем…';
   try{
-    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/register',{
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/register',{
       method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify(body)
     });
@@ -1292,7 +1292,7 @@ async function loadMyCompaniesForExhibitor(){
   sel.innerHTML='<option value="">Загрузка…</option>';
   try{
     // эндпоинт /api/companies/my вернёт массив компаний пользователя
-    const r=await fetch(API+'/companies/my',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/companies/my',{headers:{Authorization:'Bearer '+tk()}});
     if(r.ok){
       const d=await r.json();
       const list=d.companies||d.items||[];
@@ -1327,7 +1327,7 @@ window.submitExhibitor=async function(){
   const btn=document.getElementById('emSubmit');
   btn.disabled=true;const old=btn.textContent;btn.textContent='Отправляем…';
   try{
-    const r=await fetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-application',{
+    const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID)+'/exhibitor-application',{
       method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify(body)
     });
@@ -1349,7 +1349,7 @@ window.submitExhibitor=async function(){
 (async()=>{
   if(tk()){
     try{
-      const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+      const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
       if(r.ok){
         const{user={}}=await r.json();
         const name=user.full_name||user.name||'Пользователь';
@@ -1384,7 +1384,7 @@ async function _loadExhDiscPreview(publicID){
   try {
     const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
-    const r = await fetch('/api/exhibitions/' + encodeURIComponent(publicID) + '/messages', { headers });
+    const r = await lastopFetch('/api/exhibitions/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
     _exhDiscMessages = d.messages || [];

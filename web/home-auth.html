@@ -838,7 +838,7 @@ let currentUser={};
 (async()=>{
   if(!tk()){location.href='/home-guest.html';return;}
   try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     currentUser=user;
@@ -927,7 +927,7 @@ async function loadRecentProjects(){
   if (!list || !widget) return;
   try {
     const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
-    const r = await fetch(API + '/projects?limit=5', { headers });
+    const r = await lastopFetch(API + '/projects?limit=5', { headers });
     if (!r.ok) throw 0;
     const data = await r.json();
     const items = data.projects || [];
@@ -964,7 +964,7 @@ async function loadPlatformStats(){
     // Эндпоинт не требует авторизации — но передаём токен если есть
     // (на случай если в будущем мы добавим персональные поля типа my_contacts).
     const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
-    const r = await fetch(API + '/stats', {headers});
+    const r = await lastopFetch(API + '/stats', {headers});
     if (!r.ok) throw 0;
     const d = await r.json();
 
@@ -1279,7 +1279,7 @@ async function loadChats(){
     document.getElementById('chatsList').innerHTML=skels(3,42);
   }
   try{
-    const r=await fetch(API+'/chat/conversations?limit=4',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/chat/conversations?limit=4',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.conversations||[];
@@ -1346,7 +1346,7 @@ function formatTimeShort(iso){
 async function loadForumThreads(){
   document.getElementById('forumList').innerHTML=skels(3,38);
   try{
-    const r=await fetch(API+'/forum/topics?limit=5');
+    const r=await lastopFetch(API+'/forum/topics?limit=5');
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.topics||[];
@@ -1399,7 +1399,7 @@ async function loadCalendarMonth(year,month){
   const from=`${fromDate.getFullYear()}-${pad(fromDate.getMonth()+1)}-${pad(fromDate.getDate())}`;
   const to=`${toDate.getFullYear()}-${pad(toDate.getMonth()+1)}-${pad(toDate.getDate())}`;
   try{
-    const r=await fetch(`${API}/calendar?from=${from}&to=${to}`,{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(`${API}/calendar?from=${from}&to=${to}`,{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
     CAL_STATE.events=d.events||[];
@@ -1460,8 +1460,8 @@ async function loadRec(){
   const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
   try {
     const [coRes, evRes] = await Promise.all([
-      fetch(API + '/companies?limit=2', {headers}).then(r => r.ok ? r.json() : {companies:[]}).catch(() => ({companies:[]})),
-      fetch(API + '/events?limit=1', {headers}).then(r => r.ok ? r.json() : {events:[]}).catch(() => ({events:[]}))
+      lastopFetch(API + '/companies?limit=2', {headers}).then(r => r.ok ? r.json() : {companies:[]}).catch(() => ({companies:[]})),
+      lastopFetch(API + '/events?limit=1', {headers}).then(r => r.ok ? r.json() : {events:[]}).catch(() => ({events:[]}))
     ]);
     const items = [];
     (coRes.companies || []).slice(0, 2).forEach(c => {
@@ -1521,7 +1521,7 @@ async function loadFeed(){
     }
   }
   try{
-    const r = await fetch(API + '/feed?limit=30', { headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await lastopFetch(API + '/feed?limit=30', { headers: { Authorization: 'Bearer ' + tk() } });
     if (!r.ok) throw 0;
     const d = await r.json();
     allPosts = d.posts || d.items || [];
@@ -1639,7 +1639,7 @@ function renderFeedStub(container, icon, title, subtitle){
 async function loadFeedProjects(feed){
   feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Загрузка проектов…</span></div>`;
   try{
-    const r = await fetch('/api/projects?limit=10', { headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await lastopFetch('/api/projects?limit=10', { headers: { Authorization: 'Bearer ' + tk() } });
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = d.projects || d.items || [];
@@ -1665,7 +1665,7 @@ async function loadFeedProjects(feed){
 async function loadFeedForum(feed){
   feed.innerHTML = `<div class="skeleton" style="height:70px;display:flex;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--gmt)">Загрузка тем форума…</span></div>`;
   try{
-    const r = await fetch('/api/forum/topics?limit=10', { headers: { Authorization: 'Bearer ' + tk() } });
+    const r = await lastopFetch('/api/forum/topics?limit=10', { headers: { Authorization: 'Bearer ' + tk() } });
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = d.topics || d.items || [];
@@ -1695,7 +1695,7 @@ async function loadFeedCompanies(container){
   container.innerHTML = skels(3, 80);
   try {
     const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
-    const r = await fetch(API + '/companies?limit=10', {headers});
+    const r = await lastopFetch(API + '/companies?limit=10', {headers});
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = (d.companies || d.items || []).slice(0, 10);
@@ -1739,7 +1739,7 @@ async function loadFeedCommunities(container){
   container.innerHTML = skels(3, 80);
   try {
     const headers = tk() ? {Authorization: 'Bearer ' + tk()} : {};
-    const r = await fetch(API + '/communities?limit=10', {headers});
+    const r = await lastopFetch(API + '/communities?limit=10', {headers});
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = (d.communities || []).slice(0, 10);
