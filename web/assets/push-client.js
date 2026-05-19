@@ -10,7 +10,7 @@
 
   // ── Утилиты ────────────────────────────────────────────────
   function tk() {
-    try { return null; } catch (_) { return null; }
+    try { return localStorage.getItem('token'); } catch (_) { return null; }
   }
 
   function isSupported() {
@@ -73,7 +73,7 @@
     if (!token) return Promise.resolve({ ok: false, reason: 'no_token' });
     return lastopFetch(API + '/push/subscribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
       body: JSON.stringify(serializeSubscription(sub)),
     }).then(function (r) { return { ok: r.ok, status: r.status }; })
       .catch(function () { return { ok: false, reason: 'network' }; });
@@ -84,7 +84,7 @@
     if (!token) return Promise.resolve({ ok: false, reason: 'no_token' });
     return lastopFetch(API + '/push/unsubscribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
       body: JSON.stringify({ endpoint: endpoint }),
     }).then(function (r) { return { ok: r.ok, status: r.status }; })
       .catch(function () { return { ok: false, reason: 'network' }; });

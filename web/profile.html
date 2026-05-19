@@ -715,7 +715,7 @@ function avatarLetters(name){
 const esc = window.lastopEsc;
 const ago = window.lastopAgo;
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 let profilePosts=[];
 
 function profileStorageKey(userLike){
@@ -729,7 +729,7 @@ function profileStorageKey(userLike){
 async function loadCurrentUser(){
   if(!tk())return JSON.parse(localStorage.getItem('user')||'{}');
   try{
-    const r=await lastopFetch(API+'/me',{headers:{}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const {user={}}=await r.json();
     localStorage.setItem('user',JSON.stringify(user));
@@ -853,9 +853,9 @@ async function loadProfileFriends(){
   const el = document.getElementById('profileFriendsList');
   const onlineBlock = document.getElementById('profileFriendsOnline');
   try {
-    const t = null;
+    const t = localStorage.getItem('token');
     const r = await lastopFetch('/api/friends', {
-      headers: t ? {} : {}
+      headers: t ? {Authorization: 'Bearer ' + t} : {}
     });
     if (!r.ok) throw 0;
     const d = await r.json();
@@ -916,7 +916,7 @@ async function loadOwnPublications(force=false){
   if(!pid)return;
   const list=document.getElementById('publicationsList');
   try{
-    const r=await lastopFetch(`${API}/users/${encodeURIComponent(pid)}/posts?limit=20`,{headers:{}});
+    const r=await lastopFetch(`${API}/users/${encodeURIComponent(pid)}/posts?limit=20`,{headers:{Authorization:'Bearer '+tk()}});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(d.error||'err');
     profilePosts=d.posts||[];
@@ -938,7 +938,7 @@ async function loadOwnPublications(force=false){
 function openProfilePost(publicID,type){location.href=(type==='news'?'/news-detail.html':'/dashboard.html')+'?id='+encodeURIComponent(publicID);}
 async function deleteProfilePost(publicID){
   if(!await lastopConfirm({title:'Удалить публикацию?',danger:true}))return;
-  const r=await lastopFetch(`${API}/posts/${encodeURIComponent(publicID)}`,{method:'DELETE',headers:{}});
+  const r=await lastopFetch(`${API}/posts/${encodeURIComponent(publicID)}`,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
   if(!r.ok){showToast('Не удалось удалить публикацию');return;}
   profilePosts=profilePosts.filter(p=>p.public_id!==publicID);
   await loadOwnPublications(true);
@@ -957,7 +957,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 
 function switchTab(tab, btn){
   // Подгрузка списков для новых табов
@@ -983,13 +983,13 @@ function switchTab(tab, btn){
 const COLORS=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
 function colorFor(s){return COLORS[(String(s||'').charCodeAt(0)||0)%COLORS.length];}
 
-async function loadOwnProjects(){const grid=document.getElementById('profileProjectsGrid');if(!grid)return;try{const r=await lastopFetch(`${API}/projects?owner_only=1&limit=50`,{headers:{}});if(!r.ok)throw 0;const d=await r.json();const projects=d.projects||[];document.getElementById('psProjects').textContent=String(projects.length);const cnt=document.getElementById('ptabCntProjs');if(cnt)cnt.textContent=String(projects.length);if(!projects.length){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У вас пока нет проектов. <a href="/projects.html" style="color:var(--g);font-weight:700">Создать →</a></div>';return;}grid.innerHTML=projects.map(p=>{const status=p.status||'active';const statusLbl={active:'Активный',planned:'Планируется',done:'Завершён',completed:'Завершён',paused:'На паузе'}[status]||status;const team=(p.members||p.team||[]).slice(0,3);const memberCount=p.members_count||p.team_count||team.length||0;const teamHtml=team.map(m=>{const name=m.full_name||m.name||'?';return `<div class="proj-team-av" style="background:${colorFor(name)}">${esc(letter(name))}</div>`;}).join('');return `<div class="proj-card" onclick="location.href='/project-detail.html?id=${encodeURIComponent(p.public_id||p.id)}'"><span class="proj-status ${esc(status)}">${esc(statusLbl)}</span><div class="proj-title">${esc(p.title||p.name||'Проект')}</div><div class="proj-desc">${esc(p.short_description||p.description||'')}</div><div class="proj-foot"><div class="proj-team">${teamHtml}</div><div class="proj-meta">${memberCount?memberCount+' участник'+(memberCount===1?'':(memberCount<5?'а':'ов')):''}</div></div></div>`;}).join('');}catch(e){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">Не удалось загрузить проекты</div>';}}
+async function loadOwnProjects(){const grid=document.getElementById('profileProjectsGrid');if(!grid)return;try{const r=await lastopFetch(`${API}/projects?owner_only=1&limit=50`,{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw 0;const d=await r.json();const projects=d.projects||[];document.getElementById('psProjects').textContent=String(projects.length);const cnt=document.getElementById('ptabCntProjs');if(cnt)cnt.textContent=String(projects.length);if(!projects.length){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У вас пока нет проектов. <a href="/projects.html" style="color:var(--g);font-weight:700">Создать →</a></div>';return;}grid.innerHTML=projects.map(p=>{const status=p.status||'active';const statusLbl={active:'Активный',planned:'Планируется',done:'Завершён',completed:'Завершён',paused:'На паузе'}[status]||status;const team=(p.members||p.team||[]).slice(0,3);const memberCount=p.members_count||p.team_count||team.length||0;const teamHtml=team.map(m=>{const name=m.full_name||m.name||'?';return `<div class="proj-team-av" style="background:${colorFor(name)}">${esc(letter(name))}</div>`;}).join('');return `<div class="proj-card" onclick="location.href='/project-detail.html?id=${encodeURIComponent(p.public_id||p.id)}'"><span class="proj-status ${esc(status)}">${esc(statusLbl)}</span><div class="proj-title">${esc(p.title||p.name||'Проект')}</div><div class="proj-desc">${esc(p.short_description||p.description||'')}</div><div class="proj-foot"><div class="proj-team">${teamHtml}</div><div class="proj-meta">${memberCount?memberCount+' участник'+(memberCount===1?'':(memberCount<5?'а':'ов')):''}</div></div></div>`;}).join('');}catch(e){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">Не удалось загрузить проекты</div>';}}
 
 // loadOwnFriends удалён — функционал перенесён в loadProfileFriends (ID profileFriendsList)
 
 async function loadAllProfileCounts(){
   const me=JSON.parse(localStorage.getItem('user')||'{}');
-  const headers=tk()?{}:{};
+  const headers=tk()?{Authorization:'Bearer '+tk()}:{};
   // Параллельно тянем все 5 счётчиков
   const safe=async(url)=>{
     try{
@@ -1142,7 +1142,7 @@ async function loadOwnExperience(){
   const box=document.getElementById('profileExperience');
   if(!me.public_id||!box)return;
   try{
-    const r=await lastopFetch(`${API}/users/${encodeURIComponent(me.public_id)}/experience`,{headers:{}});
+    const r=await lastopFetch(`${API}/users/${encodeURIComponent(me.public_id)}/experience`,{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.experience||[];
@@ -1245,13 +1245,13 @@ async function submitXpForm(){
       if(isCurrent){body.clear_end=true;}
       r=await lastopFetch(`${API}/me/experience/${encodeURIComponent(_xpEditPid)}`,{
         method:'PATCH',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
         body:JSON.stringify(body)
       });
     } else {
       r=await lastopFetch(`${API}/me/experience`,{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
         body:JSON.stringify(body)
       });
     }
@@ -1282,7 +1282,7 @@ async function deleteXp(pid){
   try{
     const r=await lastopFetch(`${API}/me/experience/${encodeURIComponent(pid)}`,{
       method:'DELETE',
-      headers:{}
+      headers:{Authorization:'Bearer '+tk()}
     });
     if(r.ok){void loadOwnExperience();}
     else {showToast&&showToast('Не удалось удалить');}

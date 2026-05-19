@@ -94,7 +94,7 @@
   //  1. credentials: 'include' — браузер шлёт cookies нашего домена
   //  2. На write-методах (POST/PUT/DELETE/PATCH) добавляет
   //     X-CSRF-Token header из cookie lastop_csrf
-  //  3. Сохраняет любые existing headers (включая Bearer
+  //  3. Сохраняет любые existing headers (включая Authorization: Bearer
   //     которые фронт пока продолжает слать — bearer на бэке fallback).
   //
   // Использование: const r = await lastopFetch('/api/...', { method, body });

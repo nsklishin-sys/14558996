@@ -575,8 +575,8 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api';
-const authHeaders=(extra)=>{const t=tk();const h=Object.assign({},extra||{});if(t)return h;};
+const API='/api', tk=()=>localStorage.getItem('token');
+const authHeaders=(extra)=>{const t=tk();const h=Object.assign({},extra||{});if(t)h.Authorization='Bearer '+t;return h;};
 const postPublicID=new URLSearchParams(location.search).get('id');
 
 // ── Редактирование поста ──
@@ -639,7 +639,7 @@ function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,ok){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 
 /* DROPDOWN профиля */
 function toggleDD(e){e.stopPropagation();const tp=document.getElementById('topbarProfile');const pd=document.getElementById('profileDD');if(tp)tp.classList.toggle('open');if(pd)pd.classList.toggle('open')}
@@ -1288,7 +1288,7 @@ if(commentInputEl){
 (async () => {
   if(!tk())return;
   try{
-    const r=await lastopFetch(API + '/me',{headers:{}});
+    const r=await lastopFetch(API + '/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     window._currentUserPID = user.public_id || '';

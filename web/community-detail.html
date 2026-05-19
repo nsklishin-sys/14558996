@@ -401,7 +401,7 @@ async function openContactPicker(){
   modal.style.display='flex';
   list.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">Загрузка участников…</div>';
   try{
-    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/members?limit=200',{headers:{}});
+    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/members?limit=200',{headers:{Authorization:'Bearer '+tk()}});
     const d=await r.json();
     const members=(d&&d.members)||[];
     if(!members.length){list.innerHTML='<div style="text-align:center;padding:20px;color:var(--gmt);font-size:12px">В сообществе нет участников</div>';return;}
@@ -433,7 +433,7 @@ async function setContactPerson(userPublicID,name){
   try{
     const r=await lastopFetch(API+'/communities/'+currentCommunityID,{
       method:'PATCH',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({contact_user_public_id:userPublicID})
     });
     if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось');return;}
@@ -453,7 +453,7 @@ async function clearContactPerson(){
   try{
     const r=await lastopFetch(API+'/communities/'+currentCommunityID,{
       method:'PATCH',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({contact_user_public_id:''})
     });
     if(!r.ok){toast('Не удалось');return;}
@@ -471,11 +471,11 @@ async function clearContactPerson(){
 </script>
 
 <script>
-const API='/api';
+const API='/api',tk=()=>localStorage.getItem('token');
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
@@ -563,7 +563,7 @@ async function loadPosts(){
   if(!currentCommunityID)return;
   const wrap=document.getElementById('newsFeed');if(!wrap)return;
   try{
-    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/posts?limit=20',{headers:{}});
+    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/posts?limit=20',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){wrap.innerHTML='<div class="section-card">Нет доступа к постам.</div>';return;}
     const d=await r.json();
     const posts=d?.posts||[];
@@ -576,7 +576,7 @@ function openCompose(){
 }
 async function deleteCommunityPost(publicID){
   if(!await lastopConfirm({title:'Удалить пост?',danger:true}))return;
-  const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/posts/'+publicID,{method:'DELETE',headers:{}});
+  const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/posts/'+publicID,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
   if(!r.ok){toast('Не удалось удалить пост');return;}
   const el=document.getElementById('post-'+publicID);if(el)el.remove();
 }
@@ -584,7 +584,7 @@ async function loadMembers(){
   const wrap=document.getElementById('membersList');if(!wrap)return;
   wrap.innerHTML='<div class="comments-empty">Загрузка…</div>';
   try{
-    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/members?limit=100',{headers:{}});
+    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/members?limit=100',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){wrap.innerHTML='<div class="comments-empty">Нет доступа</div>';return;}
     const d=await r.json();const members=d?.members||[];
     if(!members.length){wrap.innerHTML='<div class="comments-empty">Список пуст</div>';return;}
@@ -630,7 +630,7 @@ async function changeMemberRole(userPublicID,newRole,name){
   try{
     const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/members/'+encodeURIComponent(userPublicID)+'/role',{
       method:'PUT',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({role:newRole})
     });
     if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось');return;}
@@ -643,7 +643,7 @@ async function changeMemberRole(userPublicID,newRole,name){
 async function loadRequests(){
   const wrap=document.getElementById('requestsList');if(!wrap)return;
   try{
-    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests',{headers:{}});
+    const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){wrap.innerHTML='Нет доступа';return;}
     const d=await r.json();const items=d?.requests||[];
     document.getElementById('requestsTabBtn').textContent='Заявки ('+items.length+')';
@@ -651,7 +651,7 @@ async function loadRequests(){
   }catch{wrap.innerHTML='Ошибка загрузки';}
 }
 async function decideReq(id,action){
-  const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests/'+id+'/'+action,{method:'POST',headers:{}});
+  const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests/'+id+'/'+action,{method:'POST',headers:{Authorization:'Bearer '+tk()}});
   if(!r.ok){toast('Не удалось обработать заявку');return;}
   loadRequests();loadMembers();
 }
@@ -731,7 +731,7 @@ async function toggleJoin(){
   if(!joined && currentCommunity?.privacy_level==='closed'){
     const message=(await lastopPrompt({title:'Заявка в сообщество',message:'Сообщество закрытое. Сообщение для заявки (опционально)',placeholder:'Ваше сообщение'}))||'';
     try{
-      const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})});
+      const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({message})});
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.error||'Не удалось отправить заявку')}
       toast('Заявка отправлена',true);
     }catch(e){toast(e.message||'Не удалось отправить заявку')}
@@ -741,7 +741,7 @@ async function toggleJoin(){
   if(nextJoined){
     try{
       if(currentCommunityID){
-        const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join',{method:'POST',headers:{}});
+        const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
         if(!r.ok)throw 0;
       }
       joined=true;
@@ -766,7 +766,7 @@ async function toggleJoin(){
 
   try{
     if(currentCommunityID){
-      const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/leave',{method:'POST',headers:{}});
+      const r=await lastopFetch(API+'/communities/'+currentCommunityID+'/leave',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
       if(!r.ok)throw 0;
     }
     joined=false;
@@ -791,7 +791,7 @@ async function togglePostLike(publicID,btn){
   if(span)span.textContent=String(oldCount+(wasLiked?-1:1));
   if(!wasLiked){btn.style.animation='heartPop .3s ease';setTimeout(()=>btn.style.animation='',300);}
   try{
-    const r=await lastopFetch(API+'/posts/'+encodeURIComponent(publicID)+'/like',{method:'POST',headers:{}});
+    const r=await lastopFetch(API+'/posts/'+encodeURIComponent(publicID)+'/like',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){throw new Error('Не удалось');}
     const d=await r.json();
     // Синхронизируем со сервером (на случай рассинхрона)
@@ -823,7 +823,7 @@ async function loadComments(publicID){
   if(!list)return;
   list.innerHTML='<div class="comments-empty">Загрузка…</div>';
   try{
-    const r=await lastopFetch(API+'/posts/'+encodeURIComponent(publicID)+'/comments?limit=50',{headers:tk()?{}:{}});
+    const r=await lastopFetch(API+'/posts/'+encodeURIComponent(publicID)+'/comments?limit=50',{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
     if(!r.ok){list.innerHTML='<div class="comments-empty">Не удалось загрузить</div>';return;}
     const d=await r.json();
     const comments=d.comments||[];
@@ -858,7 +858,7 @@ async function submitComment(publicID,btn){
   try{
     const r=await lastopFetch(API+'/posts/'+encodeURIComponent(publicID)+'/comments',{
       method:'POST',
-      headers:window.withActiveContextHeaders({'Content-Type':'application/json'}),
+      headers:window.withActiveContextHeaders({'Content-Type':'application/json',Authorization:'Bearer '+tk()}),
       body:JSON.stringify({content})
     });
     if(!r.ok){const d=await r.json().catch(()=>null);toast(d?.error||'Не удалось отправить');return;}
@@ -983,7 +983,7 @@ async function loadCommunityProfile(){
   const cached=readCachedCommunity(id);
   if(cached)renderCommunityProfile(cached);
   try{
-    const r=await lastopFetch(API+'/communities/'+id,{headers:{}});
+    const r=await lastopFetch(API+'/communities/'+id,{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)return;
     const data=await r.json();
     const fromAPI=data?.community;
@@ -994,12 +994,12 @@ async function loadCommunityProfile(){
     }
   }catch{}
 }
-(async()=>{if(!tk())return;try{const r=await lastopFetch(API+'/me',{headers:{}});if(!r.ok)throw 0;const{user={}}=await r.json();const name=user.full_name||user.name||'Пользователь';const color=avc(name);const L=ltr(name);["topbarAv","pddAv"].forEach(id=>{if(window.LASTOP_SET_AV)window.LASTOP_SET_AV(id,L,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||"")); else{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color;}}});['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});const role=user.role||user.position||'Участник LASTOP';['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});}catch{}})();
+(async()=>{if(!tk())return;try{const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});if(!r.ok)throw 0;const{user={}}=await r.json();const name=user.full_name||user.name||'Пользователь';const color=avc(name);const L=ltr(name);["topbarAv","pddAv"].forEach(id=>{if(window.LASTOP_SET_AV)window.LASTOP_SET_AV(id,L,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||"")); else{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color;}}});['topbarName','pddName'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=name});const role=user.role||user.position||'Участник LASTOP';['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});}catch{}})();
 
 async function loadCommunityProjects(){
   const wrap=document.getElementById('communityProjects');if(!wrap)return;
   try{
-    const r=await lastopFetch(`/api/communities/${state.community.id}/projects?limit=30`,{headers:tk()?{}: {}});
+    const r=await lastopFetch(`/api/communities/${state.community.id}/projects?limit=30`,{headers:tk()?{Authorization:'Bearer '+tk()}: {}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.projects||[];
@@ -1017,7 +1017,7 @@ async function loadCommunityProjects(){
 async function loadCommunityEvents(){
   const wrap=document.getElementById('communityEvents');if(!wrap)return;
   try{
-    const r=await lastopFetch(`/api/communities/${state.community.id}/events?limit=30`,{headers:tk()?{}: {}});
+    const r=await lastopFetch(`/api/communities/${state.community.id}/events?limit=30`,{headers:tk()?{Authorization:'Bearer '+tk()}: {}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.events||[];
@@ -1038,7 +1038,7 @@ async function loadCommunityEvents(){
 async function loadCommunityResumes(){
   const wrap=document.getElementById('communityResumes');if(!wrap)return;
   try{
-    const r=await lastopFetch(`/api/communities/${state.community.id}/resumes?limit=30`,{headers:tk()?{}: {}});
+    const r=await lastopFetch(`/api/communities/${state.community.id}/resumes?limit=30`,{headers:tk()?{Authorization:'Bearer '+tk()}: {}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.resumes||[];

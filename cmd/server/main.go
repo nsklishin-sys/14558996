@@ -13127,7 +13127,9 @@ func requireAdmin(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *
 // значение csrf-cookie в header X-CSRF-Token. Сервер сверяет хедер
 // с csrf_token из таблицы sessions для текущей session-cookie.
 //
-// CSRF-проверка применяется к cookie-auth запросам.
+// Гибридный режим: проверка CSRF запускается ТОЛЬКО для запросов
+// которые авторизовались через cookie (не через Authorization: Bearer).
+// Bearer сам по себе защищает от CSRF, поэтому не требует доп. проверки.
 
 const (
 	authCookieName = "lastop_session"
@@ -13145,14 +13147,13 @@ func clearAuthCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: "", Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 }
 
-// tokenFromRequest — токен ТОЛЬКО из cookie. Phase 3 (19.05) убрала
-// Bearer fallback — авторизация полностью через HttpOnly cookies.
-// Сохраняем сигнатуру с fromCookie для backward compat в логике
-// authenticatedUserID, но возвращаем true всегда (раз есть токен —
-// он из cookie).
 func tokenFromRequest(r *http.Request) (token string, fromCookie bool) {
 	if c, err := r.Cookie(authCookieName); err == nil && c.Value != "" {
 		return c.Value, true
+	}
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer ")), false
 	}
 	return "", false
 }

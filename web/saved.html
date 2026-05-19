@@ -168,7 +168,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token');
 
 const TABS = [
   { key: 'all',      label: 'Все',          countKey: 'total' },
@@ -222,7 +222,7 @@ function toast(msg){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -235,7 +235,7 @@ document.addEventListener('click', e => {
     dd.classList.remove('open'); tp.classList.remove('open');
   }
 });
-function authHeaders(){ return tk() ? {} : {}; }
+function authHeaders(){ return tk() ? { Authorization: 'Bearer ' + tk() } : {}; }
 
 // PROFILE
 async function loadProfile(){

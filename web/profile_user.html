@@ -635,7 +635,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-
+const tk=()=>localStorage.getItem('token');
 const STUB_PROFILES={
   u_demo_company:{
     type:'company',
@@ -711,7 +711,7 @@ function applyFriendButton(profile){
   if (!btn || !label) return;
 
   // Не показываем анонимам и самому себе
-  if (!null || _profileFriendStatus === 'self' || profile.is_self) {
+  if (!localStorage.getItem('token') || _profileFriendStatus === 'self' || profile.is_self) {
     btn.style.display = 'none';
     return;
   }
@@ -746,8 +746,8 @@ async function onFriendButtonClick(){
   const btn = document.getElementById('btnFriend');
   if (btn) btn.disabled = true;
 
-  
-  const headers = { 'Content-Type': 'application/json' };
+  const tk = localStorage.getItem('token');
+  const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
 
   try {
     if (_profileFriendStatus === 'none') {
@@ -944,14 +944,14 @@ async function loadViewedUser(){
   }catch{}
   if(!uid&&getViewedHandle()){
     try{
-      const r=await lastopFetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:tk()?{}:{}});
+      const r=await lastopFetch(API+'/users/by-handle/'+encodeURIComponent(getViewedHandle()),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
       const d=await r.json().catch(()=>({}));
       uid=d?.user?.public_id||'';
     }catch{}
   }
   if(!uid){showToast('Не указан uid профиля');return;}
   try{
-    const r=await lastopFetch(API+'/users/'+encodeURIComponent(uid),{headers:tk()?{}:{}});
+    const r=await lastopFetch(API+'/users/'+encodeURIComponent(uid),{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
     const d=await r.json().catch(()=>({}));
     const fallback=enrichViewedUser({},uid);
     if(!r.ok||!d.user){
@@ -979,7 +979,7 @@ function renderUserNotFound(){
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
 function switchTab(tab, btn){
   if(tab==='communities')renderViewedCommunities();
   if(tab==='events')renderViewedEvents();
@@ -1000,7 +1000,7 @@ async function loadViewedPublications(){
   const uid=getViewedUid(); if(!uid)return;
   const list=document.getElementById('publicationsList');
   try{
-    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/posts?limit=20`,{headers:tk()?{}:{}});
+    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/posts?limit=20`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(d.error||'err');
     const posts=d.posts||[];
@@ -1050,7 +1050,7 @@ async function loadViewedExperience(){
   const box=document.getElementById('viewedExperience');
   if(!box)return;
   try{
-    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/experience`,{headers:tk()?{}:{}});
+    const r=await lastopFetch(`${API}/users/${encodeURIComponent(uid)}/experience`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.experience||[];
@@ -1083,7 +1083,7 @@ async function loadViewedExperience(){
 
 async function safeFetch(url){
   try{
-    const headers=tk()?{}:{};
+    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
     const r=await lastopFetch(API+url,{headers});
     if(!r.ok)return null;
     return await r.json();

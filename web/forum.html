@@ -263,7 +263,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/global-settings.js"></script>
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token') || '';
 
 // ─── Категории форума (грузим с бэка) ───
 let FORUM_CATEGORIES = [];
@@ -308,7 +308,7 @@ function toast(msg, success){
 }
 
 function showToast(msg){ toast(msg); }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 
 function toggleProfileDD(e){
   e.stopPropagation();
@@ -329,7 +329,7 @@ document.addEventListener('click', e => {
 // ─── Профиль в шапке ───
 async function loadProfile(){
   try {
-    const r = await lastopFetch(API + '/me', { headers: {}});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) {
       return;
     }
@@ -503,7 +503,7 @@ function renderTopics(topics){
 async function loadSubscriptions(){
   try {
     const r = await lastopFetch(API + '/forum/subscriptions', {
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) {
       document.getElementById('subscriptionsList').innerHTML = '<div class="no-subs">Войдите чтобы видеть подписки</div>';
@@ -581,7 +581,7 @@ async function submitNewTopic(){
   try {
     const r = await lastopFetch(API + '/forum/topics', {
       method: 'POST',
-      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
+      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify({ category_key: cat, title, content })
     });
     if (!r.ok) {

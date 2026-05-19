@@ -29,7 +29,7 @@
   document.head.appendChild(style);
 
   // ───── helpers ─────
-  
+  const tk = () => localStorage.getItem('token');
   const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const initials = name => (name||'?').split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase() || '?';
 
@@ -54,7 +54,7 @@
   async function loadFriends(){
     if (_friendsLoaded) return _friendsHTML;
     try {
-      const r = await lastopFetch('/api/friends', { headers: {} });
+      const r = await lastopFetch('/api/friends', { headers: { Authorization: 'Bearer ' + tk() } });
       if (!r.ok) throw 0;
       const d = await r.json();
       const friends = d.friends || [];
@@ -89,7 +89,7 @@
     try {
       const r = await lastopFetch('/api/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
         body: JSON.stringify({
           title: 'Делюсь ' + labelAttr + ': ' + titleAttr,
           content: 'Посмотрите: ' + url,
@@ -111,7 +111,7 @@
     try {
       const dc = await lastopFetch('/api/chat/conversations/direct', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
         body: JSON.stringify({ user_public_id: friendPID })
       });
       if (!dc.ok){ toast('Не удалось открыть чат'); return; }
@@ -120,7 +120,7 @@
       if (!convPID){ toast('Не удалось открыть чат'); return; }
       const r = await lastopFetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
         body: JSON.stringify({ content: message })
       });
       if (!r.ok){ const er = await r.json().catch(()=>({})); toast(er.error || 'Не удалось отправить'); return; }

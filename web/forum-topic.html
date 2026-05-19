@@ -247,7 +247,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/global-settings.js"></script>
 <script>
 const API = '/api';
-
+const tk = () => localStorage.getItem('token') || '';
 const TOPIC_PUBLIC_ID = new URLSearchParams(location.search).get('id') || '';
 
 let currentTopic = null;
@@ -339,7 +339,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){  location.href = '/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
 
 function toggleProfileDD(e){
   e.stopPropagation();
@@ -359,7 +359,7 @@ document.addEventListener('click', e => {
 async function loadProfile(){
   if (!tk()) return;
   try {
-    const r = await lastopFetch(API + '/me', { headers: {}});
+    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
     if (!r.ok) {
       if (r.status === 401) { /* не залогинен — но страница работает */ }
       return;
@@ -396,7 +396,7 @@ async function loadTopic(){
   }
   try {
     const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
-      headers: tk() ? {} : {}
+      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
     });
     if (r.status === 404) {
       document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не найдена или удалена. <a href="/forum.html">К списку тем →</a></div>';
@@ -506,7 +506,7 @@ async function loadIsSubscribed(){
   if (!tk()) return;
   try {
     const r = await lastopFetch(API + '/forum/subscriptions', {
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) return;
     const d = await r.json();
@@ -532,7 +532,7 @@ async function toggleSubscribe(){
   try {
     const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/subscribe', {
       method: 'POST',
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -552,7 +552,7 @@ async function toggleClosedTopic(){
   try {
     const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_closed: newClosed })
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -573,7 +573,7 @@ async function deleteTopic(){
   try {
     const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
       method: 'DELETE',
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
     toast('Тема удалена', true);
@@ -588,7 +588,7 @@ async function deleteTopic(){
 async function loadMessages(){
   try {
     const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
-      headers: tk() ? {} : {}
+      headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -712,7 +712,7 @@ async function toggleLike(msgPublicID){
   try {
     const r = await lastopFetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID) + '/like', {
       method: 'POST',
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
     const d = await r.json();
@@ -758,7 +758,7 @@ async function saveEditMessage(msgPublicID){
   try {
     const r = await lastopFetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: newContent })
     });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -775,7 +775,7 @@ async function deleteMessage(msgPublicID){
   try {
     const r = await lastopFetch(API + '/forum/messages/' + encodeURIComponent(msgPublicID), {
       method: 'DELETE',
-      headers: {}
+      headers: { Authorization: 'Bearer ' + tk() }
     });
     if (!r.ok) throw new Error('http ' + r.status);
     toast('Удалено', true);
@@ -879,7 +879,7 @@ async function onReplyAttachSelected(e){
     addReplyAttachThumb(tempId, URL.createObjectURL(file), true);
     try {
       const fd = new FormData(); fd.append('file', file);
-      const r = await lastopFetch(API+'/upload',{method:'POST',headers:{},body:fd});
+      const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
       const d = await r.json().catch(()=>({}));
       if(!r.ok || !d.url){ toast(d.error||'Не загрузилось'); removeReplyAttachThumb(tempId); continue; }
       replyAttachUrls.push(d.url);
@@ -934,7 +934,7 @@ async function submitReply(){
     const body = { content };
     if (replyParentMsgID) body.parent_public_id = replyParentMsgID;
     if (replyAttachUrls.length) body.attachments = replyAttachUrls;
-    const headers = window.withActiveContextHeaders({ 'Content-Type': 'application/json' });
+    const headers = window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' });
     const r = await lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
       method: 'POST',
       headers,
@@ -994,10 +994,10 @@ async function pollTopicUpdates(){
     // Получаем текущее состояние темы и сообщений параллельно
     const [tRes, mRes] = await Promise.all([
       lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID), {
-        headers: tk() ? {} : {}
+        headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       }),
       lastopFetch(API + '/forum/topics/' + encodeURIComponent(TOPIC_PUBLIC_ID) + '/messages', {
-        headers: tk() ? {} : {}
+        headers: tk() ? { Authorization: 'Bearer ' + tk() } : {}
       })
     ]);
 

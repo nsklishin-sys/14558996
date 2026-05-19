@@ -16,7 +16,7 @@
   'use strict';
 
   var API = '/api';
-  
+  function tk() { return localStorage.getItem('token'); }
 
   function getActiveCompanyID() {
     var v = localStorage.getItem('active_company_id');
@@ -349,7 +349,7 @@
     if (!document.getElementById('profileContextSlot')) return;
     styles();
     try {
-      var headers = {};
+      var headers = { Authorization: 'Bearer ' + tk() };
       var responses = await Promise.all([
         lastopFetch(API + '/companies?tab=my&limit=50', { headers: headers }).catch(function(){ return null; }),
         lastopFetch(API + '/communities?limit=200', { headers: headers }).catch(function(){ return null; })
