@@ -23,7 +23,7 @@
     var items=document.querySelectorAll('.nav-item[href]');
     var lockSvg='<svg class="nav-lock" viewBox="0 0 24 24" style="width:14px;height:14px;flex-shrink:0;fill:none;stroke:#C8D8D0;stroke-width:1.6;stroke-linecap:round;margin-left:auto"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
     items.forEach(function(it){
-      var href=it.getAttribute('href')||'';
+      var href=it.getAttribute('href')||
       // Точное совпадение по пути (без query/hash)
       var path=href.split('?')[0].split('#')[0];
       if(BLOCKED.indexOf(path)===-1)return;
@@ -111,7 +111,7 @@
       el.style.display='none';
     });
     document.querySelectorAll('[data-guest-only]').forEach(function(el){
-      el.style.display='';
+      el.style.display=
     });
     // Снять inline onclick с action-кнопок чтобы не было двойного срабатывания
     var actionSel='.act-btn,.btn-save,.btn-save-ex,.btn-share,.btn-share-co,.btn-reg,.btn-respond,.btn-follow,.btn-msg,.ci-btn-send';

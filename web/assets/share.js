@@ -29,7 +29,7 @@
   document.head.appendChild(style);
 
   // ───── helpers ─────
-  const tk = () => localStorage.getItem('token');
+  
   const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const initials = name => (name||'?').split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase() || '?';
 
@@ -49,7 +49,7 @@
 
   // ───── состояние friends-cache ─────
   let _friendsLoaded = false;
-  let _friendsHTML = '';
+  let _friendsHTML =
 
   async function loadFriends(){
     if (_friendsLoaded) return _friendsHTML;
@@ -62,9 +62,9 @@
         _friendsHTML = '<div style="padding:14px 8px;text-align:center;font-size:11px;color:#5A8A6A">У вас пока нет друзей</div>';
       } else {
         _friendsHTML = friends.slice(0,20).map(f => {
-          const pid = f.public_id || f.friend_id || '';
+          const pid = f.public_id || f.friend_id ||
           const name = f.full_name || f.friend_name || f.name || 'Без имени';
-          const sub = f.position || f.company_name || f.email || '';
+          const sub = f.position || f.company_name || f.email ||
           return `<div class="lp-share-item" data-friend-pid="${esc(pid)}" data-friend-name="${esc(name)}">
             <div class="lp-share-av" style="background:#3A90C0">${esc(initials(name))}</div>
             <div class="lp-share-body">

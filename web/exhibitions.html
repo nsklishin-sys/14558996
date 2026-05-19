@@ -106,8 +106,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     linear-gradient(135deg,#3A90C0 0%,#185FA5 50%,#0D3F7A 100%);
   display:flex;align-items:flex-end;padding:16px 20px
 }
-.eh-cover::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)}
-.eh-cover::after{content:'';position:absolute;bottom:-60px;left:15%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+.eh-cover::before{content:position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)}
+.eh-cover::after{content:position:absolute;bottom:-60px;left:15%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
 .eh-badges{display:flex;align-items:center;gap:8px;position:relative;z-index:1}
 .eh-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font-size:10px;font-weight:700;color:#fff}
 .eh-body{padding:18px 20px}
@@ -505,7 +505,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS={
@@ -583,7 +583,7 @@ async function checkAdminAndShowCreateBtn(){
     const d=await r.json();
     if(d.user?.is_admin){
       const btn=document.getElementById('btnCreateExhibition');
-      if(btn)btn.style.display='';
+      if(btn)btn.style.display=
     }
   }catch(err){}
 }
@@ -681,7 +681,7 @@ function applyFilters(){
     if(!el)return;
     el.classList.toggle('active',el.value!==''&&el.id!=='filterSort');
   });
-  const hasActive=FILTER_IDS.filter(id=>id!=='filterSort').some(id=>{const el=document.getElementById(id);return el&&el.value!=='';});
+  const hasActive=FILTER_IDS.filter(id=>id!=='filterSort').some(id=>{const el=document.getElementById(id);return el&&el.value!==});
   document.getElementById('filterReset').classList.toggle('visible',hasActive);
 
   let items=[...EXPOS];
@@ -721,7 +721,7 @@ function applyFilters(){
 }
 
 function resetFilters(){
-  FILTER_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  FILTER_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.value=});
   document.querySelectorAll('.pf-select').forEach(el=>el.classList.remove('active'));
   document.getElementById('filterReset').classList.remove('visible');
   applyFilters();
@@ -832,7 +832,7 @@ async function loadExhHero(){
     const coverStyle = item.cover_url
       ? `background-image:url("${_exEsc(item.cover_url)}");background-size:cover;background-position:center`
       : 'background:linear-gradient(135deg,#3A90C0,#185FA5)';
-    block.style.display = '';
+    block.style.display =
     block.innerHTML = `<div class="ex-hero" data-pid="${_exEsc(item.public_id)}" style="cursor:pointer">
       <div class="eh-cover" style="${coverStyle}">
         <div class="eh-badges"><span class="eh-badge">🏆 Главное событие сезона</span><span class="eh-badge">${_exEsc(dateRange)}</span></div>
@@ -860,7 +860,7 @@ async function loadExhHero(){
 
 async function loadExhStats(){
   try {
-    const tk = localStorage.getItem('token');
+    
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/exhibitions/stats', { headers });
     if (!r.ok) throw 0;
@@ -931,7 +931,7 @@ async function loadExhCities(){
     }).join('');
     list.querySelectorAll('.city-item').forEach(function(item){
       item.addEventListener('click', function(){
-        const name = item.getAttribute('data-city-name') || '';
+        const name = item.getAttribute('data-city-name') ||
         const f = document.getElementById('filterCity');
         if (f) { f.value = name; if (typeof applyFilters === 'function') applyFilters(); }
       });
@@ -944,7 +944,7 @@ async function loadMyExhApps(){
   const list = document.getElementById('myAppsList');
   const card = document.getElementById('myAppsCard');
   if (!list) return;
-  const tk = localStorage.getItem('token');
+  
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
     const r = await lastopFetch('/api/me/exhibition-applications', { headers: { Authorization: 'Bearer ' + tk } });
@@ -999,7 +999,7 @@ async function loadExhSelectOptions(){
     sel.innerHTML = items.map(function(it){
       const date = new Date(it.starts_at);
       const dt = date.getDate() + ' ' + _exMonShort(date).toLowerCase();
-      const city = it.city ? ', ' + it.city : '';
+      const city = it.city ? ', ' + it.city :
       return '<option value="' + _exEsc(it.public_id) + '">' + _exEsc(it.title) + ' — ' + _exEsc(dt) + _exEsc(city) + '</option>';
     }).join('');
   } catch {

@@ -156,7 +156,7 @@ function tk(){ return localStorage.getItem('token'); }
 const esc = window.lastopEsc;function ltr(name){ if(!name)return '?'; return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase(); }
 const avc = window.lastopAvc;
 function toast(msg, ok){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(ok?' success':''); requestAnimationFrame(()=>t.classList.add('show')); setTimeout(()=>t.classList.remove('show'),2500); }
-function logout(){ localStorage.removeItem('token'); location.href='/home-guest.html'; }
+function logout(){  location.href='/home-guest.html'; }
 
 function toggleProfileDD(e){
   e.stopPropagation();
@@ -215,7 +215,7 @@ function renderEmpty(){
     '<div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Нет сообществ для управления</div>'+
     '<p style="font-size:13px;color:var(--tm);line-height:1.5">Вы не являетесь владельцем ни одного сообщества. Создайте новое сообщество, чтобы получить возможность им управлять.</p>'+
     '<a class="btn btn-primary" href="/communities.html?create=1" style="align-self:flex-start"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать сообщество</a></div>';
-  document.getElementById('rightArea').innerHTML = '';
+  document.getElementById('rightArea').innerHTML =
 }
 
 function render(){
@@ -225,7 +225,7 @@ function render(){
     ? '<select class="mc-select" onchange="switchCommunity(parseInt(this.value))">'
       + myCommunities.map(co => '<option value="'+co.id+'"'+(co.id===c.id?' selected':'')+'>'+esc(co.name)+'</option>').join('')
       + '</select>'
-    : '';
+    :
   const avatarHtml = c.avatar_url
     ? '<img src="'+esc(c.avatar_url)+'" alt="">'
     : esc(ltr(c.name));
@@ -351,28 +351,28 @@ async function _uploadEditImage(file, hiddenID, imgID, previewID, uploadingID){
   }
 }
 async function onEditAvatarSelected(e){
-  const f = e.target.files && e.target.files[0]; e.target.value='';
+  const f = e.target.files && e.target.files[0]; e.target.value=
   if(f) await _uploadEditImage(f,'fAvatar','fAvatarImg','fAvatarPreview','fAvatarUploading');
 }
 async function onEditCoverSelected(e){
-  const f = e.target.files && e.target.files[0]; e.target.value='';
+  const f = e.target.files && e.target.files[0]; e.target.value=
   if(f) await _uploadEditImage(f,'fCover','fCoverImg','fCoverPreview','fCoverUploading');
 }
 function removeEditAvatar(){
-  document.getElementById('fAvatar').value = '';
-  document.getElementById('fAvatarImg').src = '';
+  document.getElementById('fAvatar').value =
+  document.getElementById('fAvatarImg').src =
   document.getElementById('fAvatarPreview').style.display = 'none';
   document.getElementById('fAvatarUploading').style.display = 'none';
 }
 function removeEditCover(){
-  document.getElementById('fCover').value = '';
-  document.getElementById('fCoverImg').src = '';
+  document.getElementById('fCover').value =
+  document.getElementById('fCoverImg').src =
   document.getElementById('fCoverPreview').style.display = 'none';
   document.getElementById('fCoverUploading').style.display = 'none';
 }
 
 async function saveAbout(){
-  const tagsRaw = document.getElementById('fTags').value || '';
+  const tagsRaw = document.getElementById('fTags').value ||
   const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
   const body = {
     name: document.getElementById('fName').value.trim(),
@@ -418,9 +418,9 @@ async function renderMembers(wrap){
     const rows = members.map(m => {
       const role = m.role || 'member';
       const roleLabel = role === 'owner' ? 'Владелец' : role === 'admin' ? 'Администратор' : role === 'moderator' ? 'Модератор' : 'Участник';
-      const badge = role !== 'member' ? '<span class="member-role-badge '+role+'">'+esc(roleLabel)+'</span>' : '';
+      const badge = role !== 'member' ? '<span class="member-role-badge '+role+'">'+esc(roleLabel)+'</span>' :
       const avSrc = m.avatar_url ? '<img src="'+esc(m.avatar_url)+'" alt="">' : esc(ltr(m.full_name));
-      let actions = '';
+      let actions =
       if (isOwner && role !== 'owner'){
         const isMod = role === 'moderator';
         actions += '<button type="button" class="btn btn-ghost" onclick="toggleModerator(\''+esc(m.user_public_id)+'\','+(!isMod)+',\''+esc(m.full_name||'')+'\')">'+(isMod?'Снять модератора':'Назначить модератором')+'</button>';
@@ -486,8 +486,8 @@ async function renderRequests(wrap){
     }
     const rows = reqs.map(rq => {
       const userName = rq.user_name || rq.full_name || 'Пользователь';
-      const upid = rq.user_public_id || '';
-      const msg = rq.message || '';
+      const upid = rq.user_public_id ||
+      const msg = rq.message ||
       const avSrc = rq.user_avatar ? '<img src="'+esc(rq.user_avatar)+'" alt="">' : esc(ltr(userName));
       return '<div class="req-row">'+
         '<a class="member-av" href="/profile_user.html?id='+encodeURIComponent(upid)+'" style="background:'+esc(avc(userName))+'">'+avSrc+'</a>'+
@@ -526,7 +526,7 @@ function deleteCommunity(){
   const c=currentCommunity;
   if(!c)return;
   document.getElementById('deleteModalExpected').textContent=c.name;
-  document.getElementById('deleteModalInput').value='';
+  document.getElementById('deleteModalInput').value=
   document.getElementById('deleteModalConfirm').disabled=true;
   document.getElementById('deleteModalConfirm').style.opacity='.5';
   document.getElementById('deleteModalBg').classList.add('open');
@@ -560,7 +560,7 @@ async function executeDelete(){
 
 function renderSidebar(){
   const c = currentCommunity;
-  if (!c){ document.getElementById('rightArea').innerHTML = ''; return; }
+  if (!c){ document.getElementById('rightArea').innerHTML = return; }
   document.getElementById('rightArea').innerHTML =
     '<div class="panel">'+
       '<div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg>Статистика</div>'+

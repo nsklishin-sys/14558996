@@ -208,7 +208,7 @@
     });
     fab.addEventListener('mouseleave', function () {
       this.style.transform = 'scale(1)';
-      this.style.boxShadow = '';
+      this.style.boxShadow =
     });
 
     bindHandlers();

@@ -327,8 +327,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   color:#fff;border-radius:var(--rl);padding:16px;
   position:relative;overflow:hidden
 }
-.t-today-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
-.t-today-card::after{content:'';position:absolute;bottom:-50px;left:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.05)}
+.t-today-card::before{content:position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.t-today-card::after{content:position:absolute;bottom:-50px;left:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.05)}
 .t-today-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;opacity:.7;position:relative}
 .t-today-num{font-size:32px;font-weight:900;letter-spacing:-.02em;position:relative;line-height:1.1;margin:6px 0 2px}
 .t-today-text{font-size:11px;opacity:.85;position:relative;line-height:1.4}
@@ -758,11 +758,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token')||'';
+||
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('profileDD').classList.toggle('open');document.getElementById('topbarProfile').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('#topbarProfile')&&!e.target.closest('#profileDD')){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];
@@ -866,7 +866,7 @@ function dayDiff(iso){
   return Math.round((d-today)/86400000);
 }
 function humanDue(iso){
-  if(!iso)return '';
+  if(!iso)return
   const diff=dayDiff(iso);
   if(diff===0)return 'Сегодня';
   if(diff===1)return 'Завтра';
@@ -1004,7 +1004,7 @@ function renderCalMini(){
   if(!list.length){root.innerHTML='<span style="font-size:11px;color:var(--gmt);font-style:italic;padding:6px">Нет задач со сроками</span>';return;}
   root.innerHTML=list.map(g=>{
     const d=new Date(g.iso);
-    const cls=g.diff<0?'overdue':g.diff===0?'today':'';
+    const cls=g.diff<0?'overdue':g.diff===0?'today':
     const lbl=g.diff<0?`Просрочено · ${-g.diff} дн.`:g.diff===0?'Сегодня':g.diff===1?'Завтра':`Через ${g.diff} ${plural(g.diff,'день','дня','дней')}`;
     return `<div class="t-cal-mini-item" onclick="filterByDate('${g.iso}')">
       <div class="t-cal-mini-day ${cls}">
@@ -1019,7 +1019,7 @@ function renderCalMini(){
   }).join('');
 }
 function filterByDate(iso){
-  state.query='';document.getElementById('taskSearch').value='';
+  state.query=document.getElementById('taskSearch').value=
   state.filter='all';
   document.querySelectorAll('.t-tab').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));
   // Подсветка через query
@@ -1095,8 +1095,8 @@ function renderSection(s){
 
 function renderRow(t){
   const tags=(t.tags||[]).map(tg=>`<span class="t-tag ${tg}">${TAG_LABELS[tg]||tg}</span>`).join('');
-  const dueClass=t.due&&!t.done?(dayDiff(t.due)<0?'overdue':dayDiff(t.due)===0?'today':dayDiff(t.due)===1?'tomorrow':''):'';
-  const dueText=t.due?humanDue(t.due)+(t.time?' · '+t.time:''):'';
+  const dueClass=t.due&&!t.done?(dayDiff(t.due)<0?'overdue':dayDiff(t.due)===0?'today':dayDiff(t.due)===1?'tomorrow':''):
+  const dueText=t.due?humanDue(t.due)+(t.time?' · '+t.time:''):
   const cl=(t.checklist||[]);
   const clDone=cl.filter(c=>c.done).length;
   const clPct=cl.length?Math.round((clDone/cl.length)*100):0;
@@ -1156,7 +1156,7 @@ function renderKanban(arr,root){
 }
 function renderCard(t){
   const tags=(t.tags||[]).slice(0,3).map(tg=>`<span class="t-tag ${tg}">${TAG_LABELS[tg]||tg}</span>`).join('');
-  const dueClass=t.due&&!t.done?(dayDiff(t.due)<0?'overdue':dayDiff(t.due)===0?'today':''):'';
+  const dueClass=t.due&&!t.done?(dayDiff(t.due)<0?'overdue':dayDiff(t.due)===0?'today':''):
   return `<div class="t-card ${t.done?'done':''}" draggable="true" data-id="${t.id}">
     <div class="t-card-pri-bar ${t.pri||'lo'}"></div>
     <div class="t-card-title">${esc(t.title||'(без названия)')}</div>
@@ -1236,7 +1236,7 @@ function setView(v,btn){
   document.querySelectorAll('.t-view-btn').forEach(b=>b.classList.toggle('active',b===btn));
   // Скрываем строку вкладок-фильтров в режиме канбан
   const tabsRow=document.querySelector('.t-tabs')||document.querySelector('[class*="t-tab"]')?.parentElement;
-  if(tabsRow) tabsRow.style.display = (v==='kanban') ? 'none' : '';
+  if(tabsRow) tabsRow.style.display = (v==='kanban') ? 'none' :
   render();
 }
 
@@ -1247,10 +1247,10 @@ function openModal(id){
   document.getElementById('btnDelete').style.display=id?'inline-flex':'none';
   let t={title:'',desc:'',due:'',time:'',pri:'md',tags:[],checklist:[]};
   if(id){const found=tasks.find(x=>x.id===id);if(found)t=found;}
-  document.getElementById('mTitle').value=t.title||'';
-  document.getElementById('mDesc').value=t.desc||'';
-  document.getElementById('mDue').value=t.due||'';
-  document.getElementById('mTime').value=t.time||'';
+  document.getElementById('mTitle').value=t.title||
+  document.getElementById('mDesc').value=t.desc||
+  document.getElementById('mDue').value=t.due||
+  document.getElementById('mTime').value=t.time||
   pickPri(t.pri||'md');
   state.modalTags=new Set(t.tags||[]);
   document.querySelectorAll('.t-tag-pick').forEach(el=>{
@@ -1331,7 +1331,7 @@ quickInput.addEventListener('keydown',e=>{
     const parsed=parseQuick(v);
     tasks.unshift({...parsed,id:newId(),done:false,status:'todo',created:Date.now(),updated:Date.now(),checklist:[],desc:''});
     saveTasks();render();updateStats();
-    quickInput.value='';showToast('Задача добавлена ✓');
+    quickInput.value=showToast('Задача добавлена ✓');
   }
 });
 
@@ -1347,9 +1347,9 @@ function parseQuick(text){
     else if(['личное','personal'].includes(lower))tags.push('personal');
     else if(['срочно','urgent'].includes(lower))tags.push('urgent');
     else if(['идея','idea'].includes(lower))tags.push('idea');
-    return '';
+    return
   }).trim();
-  let due='';
+  let due=
   const today=startOfToday();
   if(/\bсегодня\b/i.test(text)){due=isoDay(today);text=text.replace(/\bсегодня\b/gi,'').trim();}
   else if(/\bзавтра\b/i.test(text)){const d=new Date(today);d.setDate(d.getDate()+1);due=isoDay(d);text=text.replace(/\bзавтра\b/gi,'').trim();}

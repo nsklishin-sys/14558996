@@ -127,7 +127,7 @@
       : esc(initials(opts.name));
     var checkHtml = opts.isActive
       ? '<span class="pcx-row-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>'
-      : '';
+      :
     return (
       '<div class="pcx-row' + (opts.isActive ? ' active' : '') + '" ' + opts.onClickAttr + '>' +
         '<div class="pcx-row-av" style="background:' + escAttr(opts.color || '#5A8A6A') + '">' + avHtml + '</div>' +
@@ -202,7 +202,7 @@
       if (!cached.length && kind !== 'company') {
         anchors[i].style.display = 'none';
       } else {
-        anchors[i].style.display = '';
+        anchors[i].style.display =
       }
       if (activeCompany && activeCompany.slug) {
         anchors[i].setAttribute('href', '/my-company.html?id=' + encodeURIComponent(activeCompany.slug));
@@ -282,7 +282,7 @@
     if (kind === 'company') {
       if (friendsItem) friendsItem.style.display = 'none';
       if (communityItem) communityItem.style.display = 'none';
-      if (companyItem) companyItem.style.display = '';
+      if (companyItem) companyItem.style.display =
       if (viewBtn) {
         var co = (window.__pcxCompaniesCache || []).find(function(c){ return c.id === getActiveCompanyID(); });
         viewBtn.textContent = 'Профиль компании';
@@ -291,16 +291,16 @@
     } else if (kind === 'community') {
       if (friendsItem) friendsItem.style.display = 'none';
       if (companyItem) companyItem.style.display = 'none';
-      if (communityItem) communityItem.style.display = '';
+      if (communityItem) communityItem.style.display =
       if (viewBtn) {
         viewBtn.textContent = 'Профиль сообщества';
         viewBtn.setAttribute('href', '/community-detail.html?id=' + getActiveCommunityID());
       }
     } else {
       // Личный — восстановить всё
-      if (friendsItem) friendsItem.style.display = '';
-      if (companyItem) companyItem.style.display = '';
-      if (communityItem) communityItem.style.display = '';
+      if (friendsItem) friendsItem.style.display =
+      if (companyItem) companyItem.style.display =
+      if (communityItem) communityItem.style.display =
       if (viewBtn) {
         viewBtn.textContent = 'Открыть профиль';
         viewBtn.setAttribute('href', '/profile.html');

@@ -46,7 +46,7 @@
   function cards(n) {
     injectCSS();
     n = Math.max(1, Math.min(n || 4, 20));
-    let html = '';
+    let html =
     for (let i = 0; i < n; i++) {
       html += `
         <div class="lt-skel-card">

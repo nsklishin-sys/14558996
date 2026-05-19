@@ -57,8 +57,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ev-cover img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
 .ev-cover:hover img{transform:scale(1.02)}
 .ev-cover-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-.ev-cover-ph::before{content:'';position:absolute;top:-50px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.07)}
-.ev-cover-ph::after{content:'';position:absolute;bottom:-60px;left:5%;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05)}
+.ev-cover-ph::before{content:position:absolute;top:-50px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.07)}
+.ev-cover-ph::after{content:position:absolute;bottom:-60px;left:5%;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05)}
 .ev-cover-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 50%)}
 /* бейджи поверх обложки */
 .ev-cover-badges{position:absolute;top:14px;left:16px;display:flex;gap:6px;flex-wrap:wrap;z-index:2}
@@ -756,9 +756,9 @@ async function loadRepostFriends(){
       _repostFriendsLoaded=true;return;
     }
     list.innerHTML=friends.slice(0,20).map(f=>{
-      const pid=f.public_id||f.friend_id||'';
+      const pid=f.public_id||f.friend_id||
       const name=f.full_name||f.friend_name||f.name||'Без имени';
-      const sub=f.position||f.company_name||f.email||'';
+      const sub=f.position||f.company_name||f.email||
       const initials=(name.split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase())||'?';
       const safeName=name.split("'").join("\\'");
       return `<div class="repost-item" onclick="doRepostToFriend('${esc(pid)}','${esc(safeName)}')">
@@ -816,7 +816,7 @@ ${url}`;
     toast('Отправлено '+friendName+' ✓',true);
   }catch{toast('Ошибка сети');}
 }
-function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
+function logout(){location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -848,7 +848,7 @@ function loadMap(){
   const ph=document.getElementById('mapPlaceholder');
   const mc=document.getElementById('mapContainer');
   if(ph)ph.style.display='none';
-  const addr=[ev.city,ev.address].filter(Boolean).join(', ')||'';
+  const addr=[ev.city,ev.address].filter(Boolean).join(', ')||
   const ymapsLink='https://yandex.ru/maps/?ll='+lon+'%2C'+lat+'&z=16&pt='+lon+','+lat+',pm2rdm';
   const widgetSrc='https://yandex.ru/map-widget/v1/?ll='+lon+'%2C'+lat+'&z=16&pt='+lon+','+lat+',pm2rdm';
   mc.innerHTML='<div style="position:relative;width:100%;height:300px;border-radius:var(--rm);overflow:hidden;border:1px solid var(--bdr)">'
@@ -908,7 +908,7 @@ async function loadSimilar(){
     list.innerHTML=state.similar.map(ev=>{
       const d=ev.starts_at?new Date(ev.starts_at):null;
       const day=d?d.getDate():'—';
-      const mon=d?MONTHS[d.getMonth()]:'';
+      const mon=d?MONTHS[d.getMonth()]:
       const fmt=ev.format==='online'?'Онлайн':(ev.city||'Офлайн');
       const fee=(ev.fee_cents||0)>0?'от '+new Intl.NumberFormat('ru-RU').format(Math.round(ev.fee_cents/100))+' ₽':'Бесплатно';
       const title=(ev.title||'').replace(/"/g,'&quot;');
@@ -917,7 +917,7 @@ async function loadSimilar(){
         <div class="sim-body"><div class="sim-title">${title}</div><div class="sim-meta">${fmt} · ${fee}</div></div>
       </div>`;
     }).join('');
-    block.style.display='';
+    block.style.display=
   }catch{}
 }
 function openSimilar(el){const pid=el?.dataset?.pid;if(pid)location.href='/event-detail.html?id='+encodeURIComponent(pid)}
@@ -946,7 +946,7 @@ async function messageOrganizer(){
   });
   const d=await r.json().catch(()=>({}));
   if(!r.ok){toast(d.error||'Не удалось открыть чат');return;}
-  const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';
+  const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||
   location.href='/chat.html?conv='+encodeURIComponent(conv);
 }
 async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
@@ -971,7 +971,7 @@ function applyEvent(ev){
     partWrap.style.display=regCount>0?'':'none';
   }
   if(avWrap){
-    avWrap.innerHTML='';
+    avWrap.innerHTML=
     // Если бэк отдаёт ev.participants — рисуем реальные аватарки;
     // иначе — нейтральные кружки по числу регистраций (макс 5).
     const list=Array.isArray(ev.participants)?ev.participants.slice(0,4):[];
@@ -999,7 +999,7 @@ function applyEvent(ev){
         const div=document.createElement('div');
         div.className='ep-av';
         div.style.background=COL[i%COL.length];
-        div.textContent='';
+        div.textContent=
         avWrap.appendChild(div);
       }
     }
@@ -1069,7 +1069,7 @@ function applyEvent(ev){
   if(seatsLeftEl){
     if(seatsTotal>0){
       seatsLeftEl.textContent=seatsLeft;
-      seatsLeftEl.parentElement.style.display='';
+      seatsLeftEl.parentElement.style.display=
     }else{
       // Если лимита нет — скрыть "осталось N мест"
       if(seatsLeftEl.parentElement)seatsLeftEl.parentElement.style.display='none';
@@ -1084,12 +1084,12 @@ function applyEvent(ev){
   const programList=document.getElementById('evProgramList');
   if(programSec && programList){
     if(programArr.length){
-      programSec.style.display='';
+      programSec.style.display=
       programList.innerHTML=programArr.map(function(p){
         const time=esc(p.time||'');
         const title=esc(p.title||'');
-        const desc=p.description?'<div class="program-desc">'+esc(p.description)+'</div>':'';
-        const speaker=p.speaker?'<div class="program-speaker">'+esc(p.speaker)+'</div>':'';
+        const desc=p.description?'<div class="program-desc">'+esc(p.description)+'</div>':
+        const speaker=p.speaker?'<div class="program-speaker">'+esc(p.speaker)+'</div>':
         return '<div class="program-item"><div class="program-time">'+time+'</div><div class="program-body"><div class="program-name">'+title+'</div>'+desc+speaker+'</div></div>';
       }).join('');
     }else{
@@ -1104,7 +1104,7 @@ function applyEvent(ev){
   const speakersTitle=document.getElementById('evSpeakersTitle');
   if(speakersSec && speakersGrid){
     if(speakersArr.length){
-      speakersSec.style.display='';
+      speakersSec.style.display=
       if(speakersTitle)speakersTitle.textContent='Спикеры · '+speakersArr.length;
       speakersGrid.innerHTML=speakersArr.map(function(s){
         const name=esc(s.name||'Спикер');
@@ -1126,16 +1126,16 @@ function applyEvent(ev){
   const ticketsGrid=document.getElementById('evTicketsGrid');
   if(ticketsSec && ticketsGrid){
     if(ticketsArr.length){
-      ticketsSec.style.display='';
+      ticketsSec.style.display=
       ticketsGrid.innerHTML=ticketsArr.map(function(t,i){
         const name=esc(t.name||'Билет');
         const priceVal=parseInt(t.price||0,10);
         const priceStr=priceVal>0?new Intl.NumberFormat('ru-RU').format(priceVal)+' ₽':'Бесплатно';
-        const desc=t.description?'<div class="ticket-desc">'+esc(t.description)+'</div>':'';
+        const desc=t.description?'<div class="ticket-desc">'+esc(t.description)+'</div>':
         const perksArr=Array.isArray(t.perks)?t.perks:[];
-        const perks=perksArr.length?'<ul class="ticket-perks">'+perksArr.map(function(p){return '<li>'+esc(p)+'</li>'}).join('')+'</ul>':'';
-        const featured=t.featured?' featured':'';
-        const limit=t.limit?'<div class="ticket-limit">'+(t.sold||0)+' / '+t.limit+' мест</div>':'';
+        const perks=perksArr.length?'<ul class="ticket-perks">'+perksArr.map(function(p){return '<li>'+esc(p)+'</li>'}).join('')+'</ul>':
+        const featured=t.featured?' featured':
+        const limit=t.limit?'<div class="ticket-limit">'+(t.sold||0)+' / '+t.limit+' мест</div>':
         const btnLabel=priceVal>0?'Купить билет':'Зарегистрироваться';
         return '<div class="ticket-card'+featured+'" data-ticket-name="'+esc(name)+'" data-ticket-price="'+priceVal+'"><div class="ticket-body"><div class="ticket-name">'+name+'</div><div class="ticket-price">'+priceStr+'</div>'+desc+perks+limit+'</div><div class="ticket-foot"><button class="btn-ticket" type="button">'+btnLabel+'</button></div></div>';
       }).join('');
@@ -1161,11 +1161,11 @@ function applyEvent(ev){
     if(isOnline){
       mapSection.style.display='none';
     }else{
-      mapSection.style.display='';
+      mapSection.style.display=
       const addrMain=document.querySelector('.map-addr-main');
       const addrSub=document.querySelector('.map-addr-sub');
       if(addrMain)addrMain.textContent=[ev.city,ev.address].filter(Boolean).join(', ')||'Адрес не указан';
-      if(addrSub)addrSub.textContent=ev.venue||'';
+      if(addrSub)addrSub.textContent=ev.venue||
       // Если координаты есть — автоматически загрузить карту (placeholder убираем)
       if(hasCoords){
         // requestAnimationFrame — ждём пока браузер отрисует layout
@@ -1182,7 +1182,7 @@ function applyEvent(ev){
 
   const orgName=ev.community_name||ev.author_company_name||ev.organizer_name||'Организатор';
   const orgLetter=(orgName[0]||'?').toUpperCase();
-  const orgAvUrl=ev.community_avatar||ev.author_company_logo||'';
+  const orgAvUrl=ev.community_avatar||ev.author_company_logo||
   document.getElementById('organizerName').textContent=orgName;
   const orgAv=document.getElementById('organizerAvatar');
   if(orgAvUrl){
@@ -1191,7 +1191,7 @@ function applyEvent(ev){
   }else{
     orgAv.textContent=orgLetter;
   }
-  let subtitle='';
+  let subtitle=
   if(ev.community_id)subtitle='Сообщество';
   else if(ev.author_company_id)subtitle='Компания';
   else subtitle='Участник LASTOP';
@@ -1277,13 +1277,13 @@ async function geocodeAddressEvt(addr){
     const parts=pos.split(' ');return{latitude:parseFloat(parts[1]),longitude:parseFloat(parts[0])};
   }catch{return null}
 }
-let evCoverUrl = '';
+let evCoverUrl =
 
 async function onEvCoverSelected(e){
   const file = e.target.files && e.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value=''; return; }
-  if(file.size > 25*1024*1024){ toast('Макс. 25 МБ'); e.target.value=''; return; }
+  if(!file.type.startsWith('image/')){ toast('Только изображения'); e.target.value= return; }
+  if(file.size > 25*1024*1024){ toast('Макс. 25 МБ'); e.target.value= return; }
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('evCoverImg').src = ev.target.result;
@@ -1299,21 +1299,21 @@ async function onEvCoverSelected(e){
     evCoverUrl = d.url;
     document.getElementById('evCoverUploading').style.display = 'none';
   }catch{ toast('Ошибка сети'); removeEvCover(); }
-  finally{ e.target.value=''; }
+  finally{ e.target.value= }
 }
 
 function removeEvCover(){
-  evCoverUrl = '';
+  evCoverUrl =
   const p=document.getElementById('evCoverPreview'); if(p) p.style.display='none';
-  const i=document.getElementById('evCoverImg'); if(i) i.src='';
+  const i=document.getElementById('evCoverImg'); if(i) i.src=
   const u=document.getElementById('evCoverUploading'); if(u) u.style.display='none';
-  const f=document.getElementById('evCoverInput'); if(f) f.value='';
+  const f=document.getElementById('evCoverInput'); if(f) f.value=
 }
 
 function openEditEventModal(){
   const ev=state.currentEvent;if(!ev||!ev.public_id)return;
   resetEventModal();
-  document.getElementById('mTitle').value=ev.title||'';
+  document.getElementById('mTitle').value=ev.title||
   document.getElementById('mType').value=ev.type||'webinar';
   document.getElementById('mFormat').value=ev.format||'online';
   if(ev.starts_at){
@@ -1322,13 +1322,13 @@ function openEditEventModal(){
     document.getElementById('mTimeStart').value=d.toTimeString().slice(0,5);
   }
   if(ev.ends_at){const d=new Date(ev.ends_at);document.getElementById('mTimeEnd').value=d.toTimeString().slice(0,5)}
-  document.getElementById('mCity').value=ev.city||'';
-  document.getElementById('mAddress').value=ev.address||'';
-  document.getElementById('mOnlineURL').value=ev.online_url||'';
-  document.getElementById('mFee').value=ev.fee_cents?Math.round(ev.fee_cents/100):'';
-  document.getElementById('mSeats').value=ev.seats_total||'';
-  document.getElementById('mCat').value=ev.category||'';
-  document.getElementById('mDesc').value=ev.description||'';
+  document.getElementById('mCity').value=ev.city||
+  document.getElementById('mAddress').value=ev.address||
+  document.getElementById('mOnlineURL').value=ev.online_url||
+  document.getElementById('mFee').value=ev.fee_cents?Math.round(ev.fee_cents/100):
+  document.getElementById('mSeats').value=ev.seats_total||
+  document.getElementById('mCat').value=ev.category||
+  document.getElementById('mDesc').value=ev.description||
   document.getElementById('mTags').value=(ev.tags||[]).join(', ');
   const _parseList=(v)=>{
     if(!v)return [];
@@ -1439,13 +1439,13 @@ async function deleteCurrentEvent(){
 <script>
 // ─── Обсуждение мероприятия (превью в сайдбаре, Спринт 10.3-A) ───
 let _evDiscMessages = [];
-let _evDiscPublicID = '';
+let _evDiscPublicID =
 
 function _evDiscEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function _evDiscLetter(s){return ((s||'?').trim()[0]||'?').toUpperCase();}
 function _evDiscColor(s){const C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090'];return C[(String(s||'').charCodeAt(0)||0)%C.length];}
 function _evDiscAgo(ts){
-  if(!ts)return '';
+  if(!ts)return
   const m=Math.max(1,Math.floor((Date.now()-new Date(ts))/60000));
   if(m<60)return m+' мин назад';
   if(m<1440)return Math.floor(m/60)+' ч назад';
@@ -1458,7 +1458,7 @@ async function loadEventMessages(publicID){
   const list = document.getElementById('evDiscList');
   if (!list) return;
   try {
-    const tk = localStorage.getItem('token');
+    
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/events/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
@@ -1474,7 +1474,7 @@ function renderEventMessages(){
   const list = document.getElementById('evDiscList');
   const counter = document.getElementById('evDiscCount');
   if (!list) return;
-  if (counter) counter.textContent = _evDiscMessages.length ? '· ' + _evDiscMessages.length : '';
+  if (counter) counter.textContent = _evDiscMessages.length ? '· ' + _evDiscMessages.length :
   if (!_evDiscMessages.length) {
     list.innerHTML = '<div style="padding:18px 8px;text-align:center;color:var(--gmt);font-size:12px;line-height:1.5">Сообщений пока нет.<br>Будьте первым!</div>';
     return;

@@ -7,7 +7,7 @@
 
   // size: 'inline' (рядом с именем, мелкая иконка) | 'card' (полноценный pill в карточке) | 'full' (большая плашка статуса)
   function badge(c, size) {
-    if (!c) return '';
+    if (!c) return
     size = size || 'inline';
     var st = c.verification_status || (c.is_verified ? 'verified' : 'none');
     // Конфиг: { color, bg, bdr, icon (svg path), label, hint }
@@ -39,7 +39,7 @@
       none: null
     };
     var conf = cfg[st];
-    if (!conf) return '';
+    if (!conf) return
 
     if (size === 'inline') {
       // Маленькая круглая иконка возле имени
@@ -72,7 +72,7 @@
              '</div>' +
              '</div>';
     }
-    return '';
+    return
   }
 
   window.lastopCompanyBadge = badge;

@@ -174,7 +174,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
   }
 
   function toLocalInputDT(d){
-    if(!(d instanceof Date) || isNaN(d))return '';
+    if(!(d instanceof Date) || isNaN(d))return
     const pad = n => String(n).padStart(2,'0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
@@ -183,7 +183,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
     document.getElementById('lcmAllDayCb').classList.toggle('on', modalAllDay);
   }
   function getToken(){
-    return (typeof tk === 'function' ? tk() : null) || localStorage.getItem('token') || '';
+    return (typeof tk === 'function' ? tk() : null) || localStorage.getItem('token') ||
   }
 
   function openModal(opts){
@@ -202,10 +202,10 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
     document.getElementById('lcmSaveBtn').textContent = ev ? 'Сохранить' : 'Создать';
     document.getElementById('lcmDeleteBtn').style.display = ev ? '' : 'none';
 
-    document.getElementById('lcmTitle').value = ev?.title || '';
-    document.getElementById('lcmDescription').value = ev?.description || '';
-    document.getElementById('lcmLocation').value = ev?.location || '';
-    document.getElementById('lcmReminder').value = '';
+    document.getElementById('lcmTitle').value = ev?.title ||
+    document.getElementById('lcmDescription').value = ev?.description ||
+    document.getElementById('lcmLocation').value = ev?.location ||
+    document.getElementById('lcmReminder').value =
 
     if(ev){
       editingId = ev.id;

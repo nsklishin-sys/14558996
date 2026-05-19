@@ -177,8 +177,8 @@
 
   function populateUserFromCache() {
     // Гость — не заполняем (guest-nav.js сам подставит «Войти/Регистрация»)
-    let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
+    let token =
+    try { token = localStorage.getItem('token') || } catch {}
     if (!token) return;
     let u = {};
     try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
@@ -201,7 +201,7 @@
     setText('topbarRole', role);
     setText('pddName', name);
     setText('pddRole', role);
-    const avatarUrl = u.avatar_url || '';
+    const avatarUrl = u.avatar_url ||
     setAv('topbarAv', ltr, color, avatarUrl);
     setAv('pddAv', ltr, color, avatarUrl);
     loadDropdownCounters();
@@ -226,8 +226,8 @@
   }
 
   async function loadDropdownCounters() {
-    let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
+    let token =
+    try { token = localStorage.getItem('token') || } catch {}
     if (!token) return;
     const headers = { Authorization: 'Bearer ' + token };
     try {
@@ -251,8 +251,8 @@
   }
 
   async function refreshUserFromServer() {
-    let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
+    let token =
+    try { token = localStorage.getItem('token') || } catch {}
     if (!token) return;
     try {
       const r = await lastopFetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
@@ -279,7 +279,7 @@
     // Если avatarUrl не передан — пробуем взять из localStorage.user.avatar_url
     // (только для аватарок текущего пользователя: topbarAv, pddAv, composeAv, profileAv).
     if (avatarUrl !== undefined) {
-      window.LASTOP_AVATARS[id] = avatarUrl || '';
+      window.LASTOP_AVATARS[id] = avatarUrl ||
     } else if (['topbarAv','pddAv','composeAv','profileAv'].includes(id)) {
       try {
         const cached = JSON.parse(localStorage.getItem('user') || 'null');
@@ -288,7 +288,7 @@
         }
       } catch {}
     }
-    const url = window.LASTOP_AVATARS[id] || '';
+    const url = window.LASTOP_AVATARS[id] ||
     // Базовая буква и цвет
     if (ltr !== undefined && ltr !== null) {
       // Записываем букву через textContent; если img снесут страничные скрипты,
@@ -305,7 +305,7 @@
       const img = document.createElement('img');
       img.className = 'lastop-av-img';
       img.src = url;
-      img.alt = '';
+      img.alt =
       img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
       el.appendChild(img);
     }
@@ -323,13 +323,13 @@
     if (!el || el._lastopWatched) return;
     el._lastopWatched = true;
     const observer = new MutationObserver(() => {
-      const url = window.LASTOP_AVATARS[id] || '';
+      const url = window.LASTOP_AVATARS[id] ||
       if (!url) return;
       if (!el.querySelector('img.lastop-av-img')) {
         const img = document.createElement('img');
         img.className = 'lastop-av-img';
         img.src = url;
-        img.alt = '';
+        img.alt =
         img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
         el.style.position = el.style.position || 'relative';
         el.style.overflow = 'hidden';
@@ -356,7 +356,7 @@
             const img = document.createElement('img');
             img.className = 'lastop-av-img';
             img.src = cached.avatar_url;
-            img.alt = '';
+            img.alt =
             img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;pointer-events:none';
             el.style.position = el.style.position || 'relative';
             el.style.overflow = 'hidden';
@@ -403,7 +403,7 @@
     // logout fallback (если страница не определила свою)
     if (!window.logout) {
       window.logout = function () {
-        try { localStorage.removeItem('token'); localStorage.removeItem('user'); } catch {}
+        try {  localStorage.removeItem('user'); } catch {}
         location.href = '/home-guest.html';
       };
     }

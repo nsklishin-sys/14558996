@@ -97,7 +97,7 @@
   // ведут на разделы для авторизованных).
   var hasToken = false;
   try {
-    var raw = localStorage.getItem('token') || '';
+    var raw = localStorage.getItem('token') ||
     hasToken = raw.trim().length > 0;
   } catch (_) { /* localStorage недоступен — считаем гостем */ }
 
@@ -107,7 +107,7 @@
     // показываем сразу login (компактная страница которая работает).
     // /login.html, /register.html и другие auth-страницы оставляем
     // как есть — на них bottom-nav просто не появится.
-    var path = location.pathname || '';
+    var path = location.pathname ||
     if (path === '/home-guest.html') {
       location.replace('/login.html');
       return;
@@ -233,7 +233,7 @@
       '/dashboard.html':   ['.news-toolbar .btn-write']
     };
 
-    var path = location.pathname || '';
+    var path = location.pathname ||
     var selectors = PAGE_ACTIONS[path];
     if (!selectors) return; // эта страница без FAB
 
@@ -529,7 +529,7 @@
   // тап на день с событиями → выезжает блок с событиями этого дня.
   // Привязываемся только к /home-auth.html (главная для авторизованных).
   (function initHomeCalDaySheet() {
-    var path = location.pathname || '';
+    var path = location.pathname ||
     if (path !== '/home-auth.html' && path !== '/') return;
 
     // Контейнер dom-grid пересоздаётся при каждом renderHomeCalendar(),
@@ -568,7 +568,7 @@
       try {
         return new Date(ev.starts_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
       } catch (_) {
-        return '';
+        return
       }
     }
     function evHref(ev) {
@@ -611,7 +611,7 @@
         list.innerHTML = dayEvents.map(function(ev) {
           var color = ev.color || ev._color || '#1E8A4C';
           var time = fmtTime(ev);
-          var loc = ev.location ? ' · ' + escapeHtml(ev.location) : '';
+          var loc = ev.location ? ' · ' + escapeHtml(ev.location) :
           return '<a class="m-cal-evrow" href="' + escapeHtml(evHref(ev)) + '">' +
             '<span class="m-cal-evrow-dot" style="background:' + escapeHtml(color) + '"></span>' +
             '<div class="m-cal-evrow-body">' +
@@ -633,7 +633,7 @@
       if (location.pathname !== '/home-auth.html' && location.pathname !== '/') return;
 
       // Парсим число из onclick="pickDay(d, 'YYYY-MM-DD')"
-      var onclick = dayBtn.getAttribute('onclick') || '';
+      var onclick = dayBtn.getAttribute('onclick') ||
       var m = onclick.match(/pickDay\((\d+)/);
       if (!m) return;
       var day = parseInt(m[1], 10);

@@ -196,7 +196,7 @@
     // Рендер списка опций (с фильтром)
     function renderList(query) {
       query = (query || '').trim().toLowerCase();
-      list.innerHTML = '';
+      list.innerHTML =
       let total = 0;
 
       groups.forEach(g => {
@@ -239,7 +239,7 @@
 
     function updateTrigger() {
       const v = select.value;
-      let label = '';
+      let label =
       groups.forEach(g => g.items.forEach(it => {
         if (it.value === v) label = it.text;
       }));
@@ -265,7 +265,7 @@
     function open() {
       trigger.classList.add('cp-open');
       popup.classList.add('cp-open');
-      searchInput.value = '';
+      searchInput.value =
       renderList('');
       setTimeout(() => searchInput.focus(), 50);
     }
