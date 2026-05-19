@@ -812,7 +812,6 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 
 <script>
 const API = '/api';
-const tk = () => localStorage.getItem('token');
 const USER_NAME_TO_PUBLIC_ID = {
   'Загрузка...': 'u_demo_nikita',
   'Мария Захарова': 'u_demo_maria',
@@ -913,7 +912,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 function logout(){
-  localStorage.removeItem('token');
+  
   localStorage.removeItem('user');
   location.href='/home-guest.html';
 }

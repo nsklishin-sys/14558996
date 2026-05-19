@@ -135,4 +135,25 @@
   }
   global.lastopFetch = lastopFetch;
 
+
+
+  // Phase 3 (19.05): tk() возвращает truthy/falsy флаг авторизации.
+  // После миграции на HttpOnly cookies токен в JS НЕ ДОСТУПЕН — поэтому
+  // tk() не возвращает реальное значение токена. Но многие места кода
+  // используют if (tk()) / if (!tk()) для проверки залогиненности.
+  // Чтобы они продолжали работать, tk() возвращает:
+  //   - '' (falsy) если пользователь НЕ залогинен (нет user в localStorage)
+  //   - 'cookie' (truthy) если залогинен (есть user в localStorage)
+  // В местах вида Authorization: 'Bearer ' + tk() получится 'Bearer cookie'
+  // или 'Bearer ' — оба невалидны для бэка, но он их и не использует
+  // (auth идёт через cookies). Серверу приходят только cookies + CSRF.
+  function tk() {
+    try {
+      return localStorage.getItem('user') ? 'cookie' : '';
+    } catch (e) {
+      return '';
+    }
+  }
+  global.tk = tk;
+
 })(window);

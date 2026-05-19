@@ -579,7 +579,6 @@ a.nc-author{text-decoration:none}
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
 const escAttr = window.lastopEsc;
@@ -603,7 +602,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const BADGE={
@@ -1356,7 +1355,7 @@ async function loadTopSources(){
   const list = document.getElementById('sourcesList');
   if (!list) return;
   try {
-    const tk = localStorage.getItem('token');
+    const tk = '';
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/posts/top-authors', { headers });
     if (!r.ok) throw 0;

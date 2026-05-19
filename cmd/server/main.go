@@ -5392,7 +5392,7 @@ func main() {
 					f.To = &t
 				}
 			}
-			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			token, _ := tokenFromRequest(r)
 			viewerID, hasAuth := sessions.getUserID(token)
 			items, total, err := listExhibitions(db, viewerID, hasAuth, f)
 			if err != nil {
@@ -5508,7 +5508,7 @@ func main() {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 				return
 			}
-			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			token, _ := tokenFromRequest(r)
 			userID, hasAuth := sessions.getUserID(token)
 			if !hasAuth {
 				writeError(w, http.StatusUnauthorized, "Требуется авторизация")
@@ -5549,7 +5549,7 @@ func main() {
 
 		// Регистрация посетителем — POST/DELETE доступны любому залогиненному
 		if len(parts) >= 2 && parts[1] == "register" {
-			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			token, _ := tokenFromRequest(r)
 			userID, hasAuth := sessions.getUserID(token)
 			if !hasAuth {
 				writeError(w, http.StatusUnauthorized, "Требуется авторизация")
@@ -5606,7 +5606,7 @@ func main() {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 				return
 			}
-			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			token, _ := tokenFromRequest(r)
 			userID, hasAuth := sessions.getUserID(token)
 			if !hasAuth {
 				writeError(w, http.StatusUnauthorized, "Требуется авторизация")
@@ -5638,7 +5638,7 @@ func main() {
 		if len(parts) >= 2 && parts[1] == "messages" {
 			if len(parts) == 2 {
 				if r.Method == http.MethodGet {
-					token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+					token, _ := tokenFromRequest(r)
 					viewerID, _ := sessions.getUserID(token)
 					items, err := listExhibitionMessages(db, publicID, viewerID)
 					if err != nil {
@@ -5816,7 +5816,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Не найдено")
 				return
 			}
-			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			token, _ := tokenFromRequest(r)
 			viewerID, hasAuth := sessions.getUserID(token)
 			item, err := getExhibitionFull(db, publicID, viewerID, hasAuth)
 			if err != nil {
@@ -13172,13 +13172,12 @@ func clearAuthCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: "", Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 }
 
+// tokenFromRequest — токен ТОЛЬКО из cookie (Phase 3 19.05).
+// Bearer fallback убран — авторизация полностью через HttpOnly cookies.
+// Сохраняем сигнатуру с fromCookie для совместимости (всегда true).
 func tokenFromRequest(r *http.Request) (token string, fromCookie bool) {
 	if c, err := r.Cookie(authCookieName); err == nil && c.Value != "" {
 		return c.Value, true
-	}
-	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer ")), false
 	}
 	return "", false
 }

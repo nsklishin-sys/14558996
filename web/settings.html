@@ -807,7 +807,6 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
@@ -1485,7 +1484,7 @@ async function executeDelAcc(){
 document.getElementById('emailField').addEventListener('input',updateWebsiteField);
 
 function logout(){
-  localStorage.removeItem('token');localStorage.removeItem('user');
+  localStorage.removeItem('user');
   location.href='/home-guest.html';
 }
 
@@ -1575,7 +1574,6 @@ async function executePwdChange(){
 (async function initPrivacySettings(){
   const cb=document.getElementById('prvVisibleInViewers');
   if(!cb)return;
-  const tk=()=>localStorage.getItem('token');
   if(!tk())return;
   try{
     const r=await lastopFetch('/api/me',{headers:{Authorization:'Bearer '+tk()}});

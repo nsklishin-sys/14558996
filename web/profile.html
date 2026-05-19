@@ -715,7 +715,6 @@ function avatarLetters(name){
 const esc = window.lastopEsc;
 const ago = window.lastopAgo;
 const API='/api';
-const tk=()=>localStorage.getItem('token');
 let profilePosts=[];
 
 function profileStorageKey(userLike){
@@ -957,7 +956,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 function switchTab(tab, btn){
   // Подгрузка списков для новых табов
