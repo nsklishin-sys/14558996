@@ -143,6 +143,17 @@ func (s *S3Storage) Serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	// SEC (Phase 4): SVG/XML более не отдаём — защита от XSS через inline-рендер.
+	// Новые SVG не загружаются (заблокированы в /api/upload). Если в S3 остались
+	// старые — превращаем в 404. Если нужно вернуть доступ — реализовать
+	// проксирование с принудительным Content-Disposition: attachment.
+	keyLower := strings.ToLower(key)
+	if strings.HasSuffix(keyLower, ".svg") || strings.HasSuffix(keyLower, ".svgz") ||
+		strings.HasSuffix(keyLower, ".xml") || strings.HasSuffix(keyLower, ".xhtml") {
+		http.NotFound(w, r)
+		return
+	}
 	target := s.PublicURL(key)
 	if target == "" {
 		http.NotFound(w, r)

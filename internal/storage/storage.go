@@ -101,6 +101,17 @@ func (s *LocalStorage) Serve(w http.ResponseWriter, r *http.Request) {
 	// Кешируем на сутки + immutable.
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 
+	// SEC (Phase 4): SVG и XML отдаём как attachment — защита от XSS через
+	// inline-рендеринг скриптов в SVG. Новые SVG больше не загружаются (заблокированы
+	// в /api/upload), но если в БД остались старые — браузер не выполнит их JS.
+	pathLower := strings.ToLower(r.URL.Path)
+	if strings.HasSuffix(pathLower, ".svg") || strings.HasSuffix(pathLower, ".svgz") ||
+		strings.HasSuffix(pathLower, ".xml") || strings.HasSuffix(pathLower, ".xhtml") {
+		w.Header().Set("Content-Disposition", "attachment")
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+	}
+
 	// Если есть ?download=имя — отдаём как attachment с оригинальным именем.
 	// Имя в URL должно быть URL-encoded (encodeURIComponent на фронте).
 	if dl := r.URL.Query().Get("download"); dl != "" {
