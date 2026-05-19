@@ -421,11 +421,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api', tk=()=>localStorage.getItem('token');
+const API='/api';
 function isUnauthorizedResponse(r){return r&&r.status===401}
 function forceRelogin(message){
   if(message)toast(message);
-  localStorage.removeItem('token');
+  
   localStorage.removeItem('user');
   setTimeout(()=>{location.href='/login.html'},400);
 }
@@ -452,7 +452,7 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html'}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html'}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];
@@ -616,7 +616,7 @@ function joinCommunity(id){
   }
   return (async()=>{
     try{
-      const r=await lastopFetch(API+'/communities/'+id+'/join',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+      const r=await lastopFetch(API+'/communities/'+id+'/join',{method:'POST',headers:{}});
       if(isUnauthorizedResponse(r)){
         forceRelogin('Сессия истекла. Войдите снова');
         return;
@@ -795,7 +795,7 @@ async function onCommunityAvatarSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{},body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ toast(d.error||'Не удалось загрузить'); removeCommunityAvatar(); return; }
     communityAvatarUrl = d.url;
@@ -831,7 +831,7 @@ async function submitCommunity(){
   const submitBtn=document.querySelector('.btn-submit');
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Создаём…'}
   try{
-    const r=await lastopFetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({name,category:cat,description:desc,region,website,email,phone,avatar_url,color,tags,privacy_level:selectedPriv})});
+    const r=await lastopFetch(API+'/communities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category:cat,description:desc,region,website,email,phone,avatar_url,color,tags,privacy_level:selectedPriv})});
     if(isUnauthorizedResponse(r)){
       forceRelogin('Сессия истекла. Войдите снова');
       return;
@@ -864,7 +864,7 @@ async function submitJoinRequest(){
   if(!joinReqCommunityID)return;
   const message=(document.getElementById('joinReqMsg')?.value||'').trim();
   try{
-    const r=await lastopFetch(API+'/communities/'+joinReqCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({message})});
+    const r=await lastopFetch(API+'/communities/'+joinReqCommunityID+'/join-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})});
     if(!r.ok){
       const d=await r.json().catch(()=>null);
       toast(d?.error||'Не удалось отправить заявку');
@@ -888,7 +888,7 @@ async function fetchCommunitiesByRegion(region){
   const grid = document.getElementById('communitiesGrid') || document.getElementById('feed') || document.getElementById('communityList');
   if (grid && window.lastopSkel) grid.innerHTML = window.lastopSkel.cards(6);
   try{
-    const r=await lastopFetch(API+'/communities?region='+encodeURIComponent(region),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/communities?region='+encodeURIComponent(region),{headers:{}});
     if(!r.ok)return;
     const data=await r.json();
     const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);
@@ -901,7 +901,7 @@ async function fetchCommunitiesByRegion(region){
 /* ── АВТОРИЗАЦИЯ ── */
 (async()=>{
   if(tk()){try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(isUnauthorizedResponse(r)){forceRelogin('Сессия истекла. Войдите снова');return}
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
@@ -915,7 +915,7 @@ async function fetchCommunitiesByRegion(region){
     ['topbarRole','pddRole'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=role});
   }catch{}}
   try{
-    const r=await lastopFetch(API+'/communities',{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+    const r=await lastopFetch(API+'/communities',{headers:tk()?{}:{}});
     if(r.ok){
       const data=await r.json();
       const fromAPI=(data?.communities||[]).map(mapAPICommunityToUI);

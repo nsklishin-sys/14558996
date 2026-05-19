@@ -5,7 +5,7 @@
 
   function hasToken(){
     try{
-      var t=localStorage.getItem('token');
+      var t=null;
       return !!(t&&t.trim());
     }catch{return false;}
   }

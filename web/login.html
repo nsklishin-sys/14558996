@@ -490,7 +490,7 @@ async function handleLogin(e){
     }
     const u=d.user||{};
     if(!u.public_id && u.id!=null)u.public_id='u'+u.id;
-    localStorage.setItem('token',d.token);
+    
     localStorage.setItem('user',JSON.stringify(u));
     showToast('Добро пожаловать!','success');
     const nextUrl = new URLSearchParams(location.search).get('next');

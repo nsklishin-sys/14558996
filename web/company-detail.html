@@ -191,7 +191,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-const tk = () => localStorage.getItem('token');
+
 
 let identifier = null;
 let company = null;
@@ -223,7 +223,7 @@ function toast(msg, success){
   requestAnimationFrame(()=>t.classList.add('show'));
   setTimeout(()=>t.classList.remove('show'),2500);
 }
-function logout(){ localStorage.removeItem('token'); location.href='/home-guest.html'; }
+function logout(){  location.href='/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -236,7 +236,7 @@ document.addEventListener('click', e=>{
     dd.classList.remove('open'); tp.classList.remove('open');
   }
 });
-function authHeaders(){ return tk()?{Authorization:'Bearer '+tk()}:{}; }
+function authHeaders(){ return tk()?{}:{}; }
 
 async function loadProfile(){
   if (!tk()) return;
@@ -481,8 +481,8 @@ function renderAbout(wrap){
 async function renderPubs(wrap){
   wrap.innerHTML = '<div class="panel"><h3>Публикации</h3><div class="placeholder">Загрузка…</div></div>';
   try {
-    const tk = localStorage.getItem('token');
-    const authH = tk ? { Authorization: 'Bearer ' + tk } : {};
+    
+    const authH = tk ? {} : {};
     const [jobsR, catR, feedR, topicsR] = await Promise.all([
       lastopFetch(API+'/jobs?limit=100').then(r=>r.json()).catch(()=>({jobs:[]})),
       lastopFetch(API+'/catalog?limit=100').then(r=>r.json()).catch(()=>({items:[]})),

@@ -302,13 +302,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api', tk=()=>localStorage.getItem('token');
+const API='/api';
 const esc = window.lastopEsc;
 function ltr(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.length)return '?';if(p.length>=2)return (p[0][0]+p[1][0]).toUpperCase();return p[0][0].toUpperCase();}
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2800)}
-function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
+function logout(){location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -470,7 +470,7 @@ function renderRecommendations(){
 
 /* ══ API ДЕЙСТВИЯ ══ */
 async function apiFetch(url, method='GET', body=null){
-  const opts={method,headers:{Authorization:'Bearer '+tk()}};
+  const opts={method,headers:{}};
   if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   const r=await lastopFetch(API+url,opts);
   const j=await r.json().catch(()=>({}));
@@ -516,7 +516,7 @@ async function runAddSearch(q){
     let url;
     if(q.startsWith('@')) url=`/api/users/search?prefix_handle=${encodeURIComponent(q.slice(1))}`;
     else url=`/api/users/search?q=${encodeURIComponent(q)}`;
-    const r=await lastopFetch(url,{headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    const r=await lastopFetch(url,{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const users=(d.users||[]).slice(0,10);
@@ -559,7 +559,7 @@ async function sendRequestByPublicID(publicID, name, btn){
   if(!publicID||btn.classList.contains('sent'))return;
   btn.disabled=true;btn.textContent='…';
   try{
-    const r=await lastopFetch('/api/friends/request/'+encodeURIComponent(publicID),{method:'POST',headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    const r=await lastopFetch('/api/friends/request/'+encodeURIComponent(publicID),{method:'POST',headers:{}});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Не удалось');}
     btn.classList.add('sent');btn.textContent='✓ Отправлено';
     toast('Заявка отправлена '+name,'ok');
@@ -656,7 +656,7 @@ function goChat(id,name){
 (async()=>{
   if(!tk())return;
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
