@@ -22925,12 +22925,20 @@ func securityHeaders(h http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(self), camera=(self), payment=(), usb=(), magnetometer=(), accelerometer=()")
 		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+		// Phase 4 (19.05) SEC M-3: Cross-Origin-Resource-Policy запрещает
+		// другим origin'ам встраивать наши ресурсы (изображения, шрифты,
+		// скрипты) кроме как через no-cors (тогда содержимое для них недоступно).
+		// Защита от Spectre и cross-origin утечек.
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 		// HSTS — обязывает браузер всегда использовать HTTPS на этом домене
 		// в течение года, включая поддомены. Включается только когда запрос реально
 		// пришёл по HTTPS (TLS либо X-Forwarded-Proto=https за прокси Railway).
+		// Phase 4 (19.05) SEC M-4: добавлен preload — после регистрации сайта
+		// на hstspreload.org Chrome/Edge/Safari/Firefox принудительно используют
+		// HTTPS для lastop.ru ДО первого визита юзера.
 		isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 		if isHTTPS {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 		}
 		// CSP применяем только к HTML-ответам — не нужно ставить на /uploads/*, /api/* и т.п.
 		// Точно определить тип ответа здесь нельзя, поэтому ориентируемся на путь.
