@@ -12284,6 +12284,13 @@ ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_show_online BOOLEAN N
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_show_last_seen BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS privacy_who_can_message TEXT NOT NULL DEFAULT 'all';
 
+-- Phase 4 (19.05) SEC M-1: backfill user_settings для юзеров без записи.
+-- Гарантирует что email/phone скрыты по умолчанию у всех старых юзеров
+-- (PrivacyShowEmail=false, PrivacyShowPhone=false из DDL).
+INSERT INTO user_settings(user_id)
+SELECT id FROM users WHERE is_deleted = FALSE
+ON CONFLICT (user_id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS user_experience (
     id BIGSERIAL PRIMARY KEY,
     public_id TEXT UNIQUE NOT NULL,
