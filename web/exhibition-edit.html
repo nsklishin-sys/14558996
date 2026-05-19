@@ -383,7 +383,8 @@ function renderSidebar(){
   const hasLocation    = !!(state.pendingLat && state.pendingLng) ||
                          !!(ex.latitude && ex.longitude);
   const items = [
-    { label: 'Название и описание', done: !!((formTitle || ex.title) && (formDesc || ex.description)) },
+    { label: 'Название',            done: !!(formTitle || ex.title) },
+    { label: 'Подробное описание',  done: !!(formDesc || ex.description) },
     { label: 'Даты проведения',     done: !!((formStartsAt || ex.starts_at) && (formEndsAt || ex.ends_at)) },
     { label: 'Локация на карте',    done: hasLocation },
     { label: 'Программа (сессии)',  done: Array.isArray(ex.program_days) && ex.program_days.length > 0 },
