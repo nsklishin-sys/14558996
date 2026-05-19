@@ -2542,6 +2542,22 @@ func main() {
 			return
 		}
 
+		// Phase 4 (19.05) SEC: captcha на login — защита от brute-force.
+		// До этого был только rate limit, но он обходится подменой XFF (см. C-4).
+		// Yandex SmartCaptcha валидирует токен от фронта. Если cap не инициализирован
+		// (LASTOP_CAPTCHA_SERVER_KEY не задан в env) — Verify сразу возвращает true,
+		// чтобы не блокировать локальную разработку.
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ok, cErr := cap.Verify(ctx, req.CaptchaToken, clientIP(r))
+		cancel()
+		if cErr != nil {
+			log.Printf("[auth/login] captcha verify error: %v", cErr)
+		}
+		if !ok {
+			writeError(w, http.StatusBadRequest, "Капча не пройдена. Обновите страницу и попробуйте снова.")
+			return
+		}
+
 		authUser, err := loginUser(db, req)
 		if err != nil {
 			if errors.Is(err, errInvalidCredentials) {
