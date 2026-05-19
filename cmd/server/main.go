@@ -7486,7 +7486,14 @@ func main() {
 			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content, resolvedCompanyID, resolvedCommunityID)
 			if err != nil {
 				log.Printf("createForumTopic: %v", err)
-				writeError(w, http.StatusBadRequest, err.Error())
+				// Phase 4 (19.05) SEC M-7: бизнес-ошибки валидации содержат
+				// безопасные для клиента сообщения. Системные (БД, IO) —
+				// могут утечь через err.Error() и раскрыть схему БД.
+				if errors.Is(err, errValidation) {
+					writeError(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				writeError(w, http.StatusInternalServerError, "Не удалось создать тему")
 				return
 			}
 			writeJSON(w, http.StatusCreated, map[string]any{"topic": topic})
@@ -7687,7 +7694,15 @@ func main() {
 						writeError(w, http.StatusForbidden, "Тема закрыта для ответов")
 						return
 					}
-					writeError(w, http.StatusBadRequest, err.Error())
+					// Phase 4 (19.05) SEC M-7: только бизнес-ошибки валидации
+					// безопасно отдавать клиенту. Остальные могут раскрыть
+					// схему БД.
+					log.Printf("addForumMessage: %v", err)
+					if errors.Is(err, errValidation) {
+						writeError(w, http.StatusBadRequest, err.Error())
+						return
+					}
+					writeError(w, http.StatusInternalServerError, "Не удалось отправить сообщение")
 					return
 				}
 				writeJSON(w, http.StatusCreated, map[string]any{"message": msg})
