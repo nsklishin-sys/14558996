@@ -1225,7 +1225,7 @@ function openOrganizerProfile(){
 }
 const YANDEX_KEY_EVT='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 let speakerCounter=0,programCounter=0,ticketCounter=0;
-function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+const escAttr = window.lastopEsc;
 function buildRemoveBtn(fn,id){return '<button type="button" class="mf-list-remove" onclick="'+fn+'(\''+id+'\')" title="Удалить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'}
 function addSpeaker(prefill){
   speakerCounter++;const id='sp'+speakerCounter;const wrap=document.getElementById('speakersList');if(!wrap)return;

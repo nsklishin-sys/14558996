@@ -892,7 +892,7 @@ const SESSION_CLS_DET={panel:'t-panel',workshop:'t-workshop',break:'t-break',awa
 const TICKET_ROLES_DET={visitor:'Посетитель',premium:'Премиум',exhibitor:'Экспонент'};
 const TICKET_CLS_DET={visitor:'r-visitor',premium:'r-premium',exhibitor:'r-exhibitor'};
 
-function escD(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+const escD = window.lastopEsc;
 function fmtPriceDet(c,cur){if(!c)return 'Бесплатно';const sym=cur==='USD'?'$':(cur==='EUR'?'€':'₽');return new Intl.NumberFormat('ru-RU').format(c/100)+' '+sym;}
 function fmtTimeDet(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
 function fmtDayDateDet(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const M=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return d.getDate()+' '+M[d.getMonth()];}

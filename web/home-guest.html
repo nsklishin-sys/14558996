@@ -533,8 +533,8 @@ window.addEventListener('DOMContentLoaded',loadFeed);
     root.innerHTML = '<div style="font-size:11px;color:var(--gmt);font-style:italic;padding:8px">Пока нет рекомендаций</div>';
     return;
   }
-  function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
-  function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  const escAttr = window.lastopEsc;
+  const escHtml = window.lastopEsc;
   root.innerHTML = items.map(i => `
     <div class="rec-item" onclick="location.href='${escAttr(i.href)}'">
       <div class="rec-av" style="background:${escAttr(i.color)}">${escHtml(i.letter)}</div>
