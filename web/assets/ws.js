@@ -23,12 +23,15 @@
   const handlers = {}; // type -> Set<callback>
 
   function url() {
-    const token = (function () {
-      try { return localStorage.getItem('token'); } catch { return null; }
-    })();
-    if (!token) return null;
+    // Phase 4 (19.05) — auth через HttpOnly cookie. JS не имеет доступа к токену.
+    // Проверяем что юзер залогинен через наличие user в localStorage.
+    // Если не залогинен — WebSocket не подключаем (бессмысленно).
+    try {
+      if (!localStorage.getItem('user')) return null;
+    } catch { return null; }
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return proto + '//' + location.host + '/api/ws?token=' + encodeURIComponent(token);
+    // Cookies (lastop_session) браузер шлёт автоматически на same-origin WebSocket.
+    return proto + '//' + location.host + '/api/ws';
   }
 
   function emit(type, data) {
@@ -121,10 +124,10 @@
     _connect: connect, // для ручного reconnect
   };
 
-  // Автостарт при наличии токена
+  // Автостарт при наличии user в localStorage
   function tryStart() {
     try {
-      if (localStorage.getItem('token')) connect();
+      if (localStorage.getItem('user')) connect();
     } catch {}
   }
 
