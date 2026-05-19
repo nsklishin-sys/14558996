@@ -25,7 +25,7 @@
     return localStorage.getItem('token');
   }
   function authHeaders(extra) {
-    var h = { 'Authorization': 'Bearer ' + (tk() || '') };
+    var h = {};
     if (extra) {
       for (var k in extra) h[k] = extra[k];
     }

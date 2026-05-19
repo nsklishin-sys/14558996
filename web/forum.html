@@ -328,7 +328,7 @@ document.addEventListener('click', e => {
 // ─── Профиль в шапке ───
 async function loadProfile(){
   try {
-    const r = await lastopFetch(API + '/me', { headers: { Authorization: 'Bearer ' + tk() }});
+    const r = await lastopFetch(API + '/me', { headers:{}});
     if (!r.ok) {
       return;
     }
@@ -502,7 +502,7 @@ function renderTopics(topics){
 async function loadSubscriptions(){
   try {
     const r = await lastopFetch(API + '/forum/subscriptions', {
-      headers: { Authorization: 'Bearer ' + tk() }
+      headers:{}
     });
     if (!r.ok) {
       document.getElementById('subscriptionsList').innerHTML = '<div class="no-subs">Войдите чтобы видеть подписки</div>';
@@ -580,7 +580,7 @@ async function submitNewTopic(){
   try {
     const r = await lastopFetch(API + '/forum/topics', {
       method: 'POST',
-      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json' }) : { Authorization: 'Bearer ' + tk(), 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
+      headers: window.withActiveContextHeaders ? window.withActiveContextHeaders({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json', ...(window.getActiveCompanyID && window.getActiveCompanyID() ? { 'X-Active-Company-Id': String(window.getActiveCompanyID()) } : {}) },
       body: JSON.stringify({ category_key: cat, title, content })
     });
     if (!r.ok) {

@@ -576,7 +576,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 
 <script>
 const API='/api', tk=()=>localStorage.getItem('token');
-const authHeaders=(extra)=>{const t=tk();const h=Object.assign({},extra||{});if(t)h.Authorization='Bearer '+t;return h;};
+const authHeaders=(extra)=>Object.assign({},extra||{});
 const postPublicID=new URLSearchParams(location.search).get('id');
 
 // ── Редактирование поста ──
@@ -1288,7 +1288,7 @@ if(commentInputEl){
 (async () => {
   if(!tk())return;
   try{
-    const r=await lastopFetch(API + '/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API + '/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     window._currentUserPID = user.public_id || '';

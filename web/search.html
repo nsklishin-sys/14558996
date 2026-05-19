@@ -608,7 +608,7 @@ async function loadMe(){
   if(cached){try{applyMe(JSON.parse(cached));}catch{}}
   if(!tk())return;
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)return;
     const d=await r.json();
     if(d.user){localStorage.setItem('user',JSON.stringify(d.user));applyMe(d.user);}
@@ -686,7 +686,7 @@ async function runSearch(){
   if(q.startsWith('@')){
     try{
       const handle=q.slice(1);
-      const r=await lastopFetch(`${API}/users/search?prefix_handle=${encodeURIComponent(handle)}`,{headers:tk()?{Authorization:'Bearer '+tk()}: {}});
+      const r=await lastopFetch(`${API}/users/search?prefix_handle=${encodeURIComponent(handle)}`,{headers:{}});
       if(r.ok){
         const d=await r.json();
         const u=(d.users||[])[0];
@@ -700,7 +700,7 @@ async function runSearch(){
   let mainOk=false;
   try{
     const url=`${API}/search?q=${encodeURIComponent(q)}&type=${encodeURIComponent(state.type)}&sort=${encodeURIComponent(state.sort)}&limit=50`;
-    const r=await lastopFetch(url,{headers:tk()?{Authorization:'Bearer '+tk()}: {}});
+    const r=await lastopFetch(url,{headers:{}});
     if(r.ok){
       const d=await r.json();
       state.groups={
@@ -738,7 +738,7 @@ async function runSearch(){
     // Fallback: только пользователи (этот эндпоинт уже существует)
     state.groups={users:[],posts:[],communities:[],events:[],companies:[],forum:[],jobs:[],resumes:[],catalog:[],chats:[],sections:[]};
     try{
-      const r=await lastopFetch(`${API}/users/search?q=${encodeURIComponent(q)}&limit=20`,{headers:tk()?{Authorization:'Bearer '+tk()}: {}});
+      const r=await lastopFetch(`${API}/users/search?q=${encodeURIComponent(q)}&limit=20`,{headers:{}});
       if(r.ok){const d=await r.json();state.groups.users=d.users||[];}
     }catch{}
     // Локальные «разделы» — навигация по сайту
@@ -1134,7 +1134,7 @@ async function openChat(uid){
   if(!uid){showToast('Не удалось открыть чат');return;}
   if(!tk()){location.href='/login.html';return;}
   try{
-    const r=await lastopFetch(API+'/chat/conversations/direct',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({user_public_id:uid})});
+    const r=await lastopFetch(API+'/chat/conversations/direct',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_public_id:uid})});
     if(r.ok){const d=await r.json();location.href='/chat.html'+(d.public_id?'?conv='+d.public_id:'?uid='+uid);return;}
   }catch{}
   location.href='/chat.html?uid='+encodeURIComponent(uid);

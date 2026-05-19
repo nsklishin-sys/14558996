@@ -520,7 +520,7 @@ if(!tk()){ location.href='/login.html'; }
 (async function(){
   // Загружаем профиль для шапки
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(r.ok){
       const d=await r.json();
       if(d.user){
@@ -587,7 +587,7 @@ async function fetchNotifications(){
   if(lastLoadedID>0)params.set('before_id',lastLoadedID);
   if(currentFilter==='unread')params.set('unread','1');
   try{
-    const r=await lastopFetch(API+'/notifications?'+params.toString(),{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/notifications?'+params.toString(),{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.notifications||[];
@@ -659,7 +659,7 @@ function renderGroups(){
         const item=allLoadedItems.find(n=>String(n.id)===String(id));
         if(item){item.is_read=true;updateHeadSub();updateGroupCounts();}
         try{
-          await lastopFetch(API+'/notifications/'+id+'/read',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+          await lastopFetch(API+'/notifications/'+id+'/read',{method:'POST'});
         }catch{}
       }
       if(href&&href!=='#')location.href=href;
@@ -781,7 +781,7 @@ async function pageMarkAll(){
   btn.disabled=true;
   btn.textContent='...';
   try{
-    await lastopFetch(API+'/notifications/read_all',{method:'POST',headers:{Authorization:'Bearer '+tk()}});
+    await lastopFetch(API+'/notifications/read_all',{method:'POST'});
     showToast('Все уведомления прочитаны');
     document.querySelectorAll('.n-item[data-unread="1"]').forEach(el=>{
       el.setAttribute('data-unread','0');

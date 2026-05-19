@@ -144,8 +144,7 @@
   // Чтобы они продолжали работать, tk() возвращает:
   //   - '' (falsy) если пользователь НЕ залогинен (нет user в localStorage)
   //   - 'cookie' (truthy) если залогинен (есть user в localStorage)
-  // В местах вида Authorization: 'Bearer ' + tk() получится 'Bearer cookie'
-  // или 'Bearer ' — оба невалидны для бэка, но он их и не использует
+  // В местах вида но он их и не использует
   // (auth идёт через cookies). Серверу приходят только cookies + CSRF.
   function tk() {
     try {

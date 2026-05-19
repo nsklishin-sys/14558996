@@ -144,7 +144,7 @@
       if(q.startsWith('@')){
         try{
           const handle=q.slice(1);
-          const r=await fetch(`${API}/users/search?prefix_handle=${encodeURIComponent(handle)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+          const r=await fetch(`${API}/users/search?prefix_handle=${encodeURIComponent(handle)}`,{headers:{}});
           const d=r.ok?await r.json():{users:[]};
           render({users:d.users||[],posts:[],communities:[],events:[],companies:[]},q,true);
           return;
@@ -156,7 +156,7 @@
 
       // Главный эндпоинт
       try{
-        const r=await fetch(`${API}/search?q=${encodeURIComponent(q)}&limit=8`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+        const r=await fetch(`${API}/search?q=${encodeURIComponent(q)}&limit=8`,{headers:{}});
         if(r.ok){
           const d=await r.json();
           render(d,q,false);
@@ -166,7 +166,7 @@
 
       // Fallback: только пользователи + переход на полный поиск
       try{
-        const r=await fetch(`${API}/users/search?q=${encodeURIComponent(q)}&limit=5`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});
+        const r=await fetch(`${API}/users/search?q=${encodeURIComponent(q)}&limit=5`,{headers:{}});
         const d=r.ok?await r.json():{users:[]};
         render({users:d.users||[],posts:[],communities:[],events:[],companies:[]},q,false);
       }catch(_){

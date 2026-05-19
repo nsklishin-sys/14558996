@@ -171,7 +171,7 @@ async function loadExhibition(){
   document.getElementById('backLink').setAttribute('href', backHref);
   document.getElementById('openExhLink').setAttribute('href', backHref);
   try {
-    const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID), { headers: tk()?{Authorization:'Bearer '+tk()}:{} });
+    const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID), { headers: {} });
     if (!r.ok) throw 0;
     const d = await r.json();
     const ex = d.exhibition || {};
@@ -202,7 +202,7 @@ async function loadMessages(){
   const list = document.getElementById('messagesList');
   if (!list) return;
   try {
-    const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
+    const headers = {};
     const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
@@ -262,7 +262,7 @@ async function sendMessage(){
   try {
     const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
+      headers: { 'Content-Type': 'application/json'},
       body: JSON.stringify({ content: content })
     });
     if (!r.ok) {
@@ -290,8 +290,7 @@ async function deleteMessage(msgID){
   if (!confirmed) return;
   try {
     const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages/' + msgID, {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + tk() }
+      method: 'DELETE'
     });
     if (!r.ok) throw 0;
     const m = _messages.find(function(x){ return x.id === msgID; });

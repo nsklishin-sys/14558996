@@ -640,7 +640,7 @@ async function loadProjects(){
   params.set('limit','50');
 
   try{
-    const headers=tk()?{Authorization:'Bearer '+tk()}:{};
+    const headers={};
     const r=await lastopFetch(API+'/projects?'+params.toString(),{headers});
     if(!r.ok)throw new Error('Ошибка загрузки');
     const data=await r.json();
@@ -754,8 +754,8 @@ async function loadMyCompaniesForAuthor(){
   if(sel.dataset.loaded==='1') return;
   try{
     const [coRes, cmRes] = await Promise.all([
-      lastopFetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null),
-      lastopFetch(API+'/communities?limit=200',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null)
+      lastopFetch(API+'/companies?tab=my&limit=50',{headers:{}}).catch(()=>null),
+      lastopFetch(API+'/communities?limit=200',{headers:{}}).catch(()=>null)
     ]);
     if(coRes && coRes.ok){
       const d = await coRes.json();
@@ -811,7 +811,7 @@ async function onPrjCoverSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ if(window.showToast)showToast(d.error||'Не удалось');else alert(d.error||'Не удалось'); removePrjCover(); return; }
     prjCoverUrl = d.url;
@@ -858,7 +858,7 @@ async function submitProject(){
   try{
     const r=await lastopFetch(API+'/projects',{
       method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk(),...((()=>{const raw=document.getElementById('mAuthor')?.value||'0';if(raw.startsWith('company:'))return{'X-Active-Company-Id':raw.slice(8)};if(raw.startsWith('community:'))return{'X-Active-Community-Id':raw.slice(10)};return{};})())},
+      headers:{'Content-Type':'application/json',...((()=>{const raw=document.getElementById('mAuthor')?.value||'0';if(raw.startsWith('company:'))return{'X-Active-Company-Id':raw.slice(8)};if(raw.startsWith('community:'))return{'X-Active-Community-Id':raw.slice(10)};return{};})())},
       body:JSON.stringify(body)
     });
     if(!r.ok){
@@ -898,7 +898,7 @@ function resetCreateForm(){
 (async()=>{
   // гость может смотреть проекты
   try{
-    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -923,7 +923,7 @@ function _prjFmt(n){if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace('.0
 async function loadProjStats(){
   try {
     const tk = '';
-    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const headers = tk ? { } : {};
     const r = await lastopFetch('/api/projects/stats', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
@@ -957,7 +957,7 @@ async function loadMyProj(){
   const tk = '';
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
-    const r = await lastopFetch('/api/projects?owner=me&limit=3', { headers: { Authorization: 'Bearer ' + tk } });
+    const r = await lastopFetch('/api/projects?owner=me&limit=3', { headers:{} });
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = (d.projects || d.items || []).slice(0, 3);
@@ -1031,7 +1031,7 @@ async function loadProjRec(){
   if (!list) return;
   try {
     const tk = '';
-    const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
+    const headers = tk ? { } : {};
     const r = await lastopFetch('/api/projects/recommended', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();

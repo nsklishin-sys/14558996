@@ -287,7 +287,7 @@ document.addEventListener('click',(e)=>{const dd=document.getElementById('profil
 async function loadUser(){
   if(!tk()){location.href='/login.html';return;}
   try{
-    const r = await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r = await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
     const{user={}} = await r.json();
     state.user = user;
@@ -311,7 +311,7 @@ function populateProfile(u){
 async function loadAvailableScopes(){
   // 1. Получить мои компании (где owner/admin)
   try{
-    const r = await lastopFetch(API+'/companies?tab=my&role_filter=admin&limit=50',{headers:{Authorization:'Bearer '+tk()}});
+    const r = await lastopFetch(API+'/companies?tab=my&role_filter=admin&limit=50',{headers:{}});
     if(r.ok){
       const d = await r.json();
       state.companies = (d.items || d.companies || []);
@@ -319,7 +319,7 @@ async function loadAvailableScopes(){
   }catch{}
   // 2. Получить мои сообщества (где owner/admin/moderator)
   try{
-    const r = await lastopFetch(API+'/communities?tab=my&role_filter=admin&limit=50',{headers:{Authorization:'Bearer '+tk()}});
+    const r = await lastopFetch(API+'/communities?tab=my&role_filter=admin&limit=50',{headers:{}});
     if(r.ok){
       const d = await r.json();
       state.communities = (d.communities || d.items || []);
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 // ── FETCH ──
 async function fetchAnalytics(url){
-  const r = await lastopFetch(url, {headers:{Authorization:'Bearer '+tk()}});
+  const r = await lastopFetch(url, {headers:{}});
   if(!r.ok){
     return {error: 'HTTP '+r.status, status: r.status};
   }
