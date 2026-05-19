@@ -3713,10 +3713,59 @@ func main() {
 		now := time.Now()
 		key := fmt.Sprintf("%04d/%02d/%s", now.Year(), int(now.Month()), randName)
 
-		// Определяем MIME-type из заголовков формы (или fallback)
-		mimeType := header.Header.Get("Content-Type")
-		if mimeType == "" {
-			mimeType = "application/octet-stream"
+		// SEC (18.05): MIME определяем по реальному содержимому файла
+		// через http.DetectContentType (sniff первых 512 байт), а не
+		// доверяем header.Header.Get("Content-Type") который контролирует
+		// клиент. Защита от загрузки HTML/JS под видом image/png.
+		sniffBuf := make([]byte, 512)
+		n, sniffErr := io.ReadFull(file, sniffBuf)
+		if sniffErr != nil && sniffErr != io.EOF && sniffErr != io.ErrUnexpectedEOF {
+			writeError(w, http.StatusBadRequest, "Не удалось прочитать файл")
+			return
+		}
+		// Возвращаем курсор в начало — Put() прочитает файл с нуля.
+		if seeker, ok := file.(io.Seeker); ok {
+			if _, sErr := seeker.Seek(0, io.SeekStart); sErr != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка обработки файла")
+				return
+			}
+		} else {
+			writeError(w, http.StatusInternalServerError, "Файл не поддерживает чтение с начала")
+			return
+		}
+		mimeType := http.DetectContentType(sniffBuf[:n])
+
+		// Проверка: семейство MIME должно соответствовать расширению.
+		// Защита от файлов вроде «evil.png» с HTML внутри.
+		extMimeFamily := map[string]string{
+			".jpg": "image/", ".jpeg": "image/", ".png": "image/", ".gif": "image/",
+			".webp": "image/", ".bmp": "image/", ".svg": "image/",
+			".mp4": "video/", ".webm": "video/", ".mov": "video/", ".m4v": "video/",
+			".mp3": "audio/", ".wav": "audio/", ".ogg": "audio/", ".m4a": "audio/",
+			".pdf": "application/pdf",
+		}
+		if family, ok := extMimeFamily[ext]; ok {
+			if family == "application/pdf" {
+				if mimeType != "application/pdf" {
+					writeError(w, http.StatusUnsupportedMediaType,
+						fmt.Sprintf("Содержимое файла не соответствует расширению %s", ext))
+					return
+				}
+			} else if !strings.HasPrefix(mimeType, family) {
+				writeError(w, http.StatusUnsupportedMediaType,
+					fmt.Sprintf("Содержимое файла не соответствует расширению %s (обнаружен %s)", ext, mimeType))
+				return
+			}
+		}
+		// Дополнительная страховка: даже если расширение неизвестно
+		// (нет в map), запрещаем text/html и application/javascript
+		// которые DetectContentType может определить.
+		if strings.HasPrefix(mimeType, "text/html") ||
+			strings.HasPrefix(mimeType, "application/x-javascript") ||
+			strings.HasPrefix(mimeType, "application/javascript") {
+			writeError(w, http.StatusUnsupportedMediaType,
+				"Файлы такого типа не разрешены")
+			return
 		}
 
 		// Проверяем квоту юзера ДО загрузки. Используем header.Size как ожидаемый размер.
