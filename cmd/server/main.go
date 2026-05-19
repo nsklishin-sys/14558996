@@ -3847,6 +3847,12 @@ func main() {
 			".exe": true, ".bat": true, ".cmd": true, ".sh": true,
 			".html": true, ".htm": true, ".js": true, ".php": true,
 			".jsp": true, ".dll": true, ".scr": true, ".com": true,
+			// SEC: SVG может содержать <script> и выполняться inline в браузере.
+			// Phase 4 (19.05) — запрет к загрузке. Векторные ассеты лежат в /assets/.
+			".svg": true, ".svgz": true,
+			// SEC: другие потенциально опасные форматы с активным контентом
+			".xml": true, ".xhtml": true, ".xht": true,
+			".swf": true, // Flash — устарел, но рендерится в старых браузерах
 		}
 		if blocked[ext] {
 			writeError(w, http.StatusUnsupportedMediaType, "Тип файла не поддерживается")
@@ -3898,7 +3904,8 @@ func main() {
 		// Защита от файлов вроде «evil.png» с HTML внутри.
 		extMimeFamily := map[string]string{
 			".jpg": "image/", ".jpeg": "image/", ".png": "image/", ".gif": "image/",
-			".webp": "image/", ".bmp": "image/", ".svg": "image/",
+			".webp": "image/", ".bmp": "image/",
+			// .svg намеренно НЕ в whitelist — заблокирован в blocked выше.
 			".mp4": "video/", ".webm": "video/", ".mov": "video/", ".m4v": "video/",
 			".mp3": "audio/", ".wav": "audio/", ".ogg": "audio/", ".m4a": "audio/",
 			".pdf": "application/pdf",
