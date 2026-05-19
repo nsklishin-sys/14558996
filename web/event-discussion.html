@@ -118,7 +118,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <textarea class="disc-input" id="composerInput" placeholder="Поделитесь мыслью или задайте вопрос…" maxlength="4000"></textarea>
           <div class="disc-actions">
             <span class="disc-hint">Ctrl+Enter — отправить</span>
-            <button class="disc-send" id="composerSend" onclick="sendMessage()" disabled>Отправить</button>
+            <button type="button" class="disc-send" id="composerSend" onclick="sendMessage()" disabled>Отправить</button>
           </div>
         </div>
       </div>
@@ -246,7 +246,7 @@ function renderMessages(){
       ? '<div class="disc-msg-content deleted-text">[сообщение удалено]</div>'
       : '<div class="disc-msg-content">' + esc(m.content || '') + '</div>';
     const actions = (m.is_mine && !m.is_deleted)
-      ? '<div class="disc-msg-actions"><button class="disc-msg-del" onclick="deleteMessage(' + m.id + ')">Удалить</button></div>'
+      ? '<div class="disc-msg-actions"><button type="button" class="disc-msg-del" onclick="deleteMessage(' + m.id + ')">Удалить</button></div>'
       : '';
     return '<div class="disc-msg' + (m.is_deleted ? ' deleted' : '') + '" data-msg-id="' + m.id + '">'
       + '<a href="/profile_user.html?id=' + pid + '" class="disc-av" style="' + bg + ';text-decoration:none">'

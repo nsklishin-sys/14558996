@@ -301,20 +301,20 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="proj-toolbar">
     <span class="proj-title">Проекты</span>
     <div class="proj-tabs" id="projTabs">
-      <button class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">0</span></button>
-      <button class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">0</span></button>
-      <button class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">0</span></button>
-      <button class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">0</span></button>
-      <button class="ptab" onclick="setTab('done',this)">Завершённые<span class="ptab-count" id="tc-done">0</span></button>
+      <button type="button" class="ptab active" onclick="setTab('all',this)">Все<span class="ptab-count" id="tc-all">0</span></button>
+      <button type="button" class="ptab" onclick="setTab('my',this)">Мои<span class="ptab-count" id="tc-my">0</span></button>
+      <button type="button" class="ptab" onclick="setTab('active',this)">Активные<span class="ptab-count" id="tc-active">0</span></button>
+      <button type="button" class="ptab" onclick="setTab('planned',this)">Планируемые<span class="ptab-count" id="tc-planned">0</span></button>
+      <button type="button" class="ptab" onclick="setTab('done',this)">Завершённые<span class="ptab-count" id="tc-done">0</span></button>
     </div>
     <div class="toolbar-right">
-      <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
+      <button type="button" class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       </button>
-      <button class="view-btn" id="viewList" onclick="setView('list',this)" title="Список">
+      <button type="button" class="view-btn" id="viewList" onclick="setView('list',this)" title="Список">
         <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       </button>
-      <button class="btn-create" onclick="openModal()">
+      <button type="button" class="btn-create" onclick="openModal()">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Создать проект
       </button>
@@ -402,7 +402,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Создать проект</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <label class="mf-label">От лица</label>
@@ -458,8 +458,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-submit" onclick="submitProject()">Создать проект</button>
+      <button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button type="button" class="btn-submit" onclick="submitProject()">Создать проект</button>
     </div>
   </div>
 </div>
@@ -592,7 +592,7 @@ function renderRow(p,i){
         <span class="pr-deadline${isSoon?' soon':''}">${p.deadline?esc(p.deadline):'Дедлайн не задан'}</span>
         <div class="pr-team">${renderTeamSmall(p.members)}</div>
       </div>
-      <button class="pr-btn" onclick="event.stopPropagation();openProject('${esc(p.id)}')">Открыть</button>
+      <button type="button" class="pr-btn" onclick="event.stopPropagation();openProject('${esc(p.id)}')">Открыть</button>
     </div>
   </div>`;
 }
@@ -600,7 +600,7 @@ function renderRow(p,i){
 function renderFeed(projects){
   const feed=document.getElementById('projFeed');
   if(!projects.length){
-    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Проекты не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте изменить фильтры или <button onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создать новый проект</button></div></div>';
+    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Проекты не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте изменить фильтры или <button type="button" onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создать новый проект</button></div></div>';
     return;
   }
   if(currentView==='grid'){

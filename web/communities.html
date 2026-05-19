@@ -266,24 +266,24 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="comm-toolbar">
     <span class="comm-title">Сообщества</span>
     <div class="mode-switch">
-      <button class="mode-btn active" id="modeAll" onclick="setMode('all',this)">Все</button>
-      <button class="mode-btn" id="modeMy" onclick="setMode('my',this)">Мои</button>
+      <button type="button" class="mode-btn active" id="modeAll" onclick="setMode('all',this)">Все</button>
+      <button type="button" class="mode-btn" id="modeMy" onclick="setMode('my',this)">Мои</button>
     </div>
     <div class="mode-switch">
-      <button class="mode-btn active" id="modeUser" onclick="setType('user',this)">Пользовательские</button>
-      <button class="mode-btn" id="modeCorp" onclick="setType('corp',this)">Корпоративные</button>
+      <button type="button" class="mode-btn active" id="modeUser" onclick="setType('user',this)">Пользовательские</button>
+      <button type="button" class="mode-btn" id="modeCorp" onclick="setType('corp',this)">Корпоративные</button>
     </div>
     <div class="comm-tabs" id="commTabs">
-      <button class="ctab active" onclick="setTab('',this)">Все</button>
-      <button class="ctab" id="myRegionBtn" onclick="filterMyRegion(this)">Мой регион</button>
-      <button class="ctab" onclick="setTab('Логистика',this)">Логистика</button>
-      <button class="ctab" onclick="setTab('ВЭД',this)">ВЭД</button>
-      <button class="ctab" onclick="setTab('IT',this)">IT</button>
-      <button class="ctab" onclick="setTab('Регионы',this)">Региональные</button>
-      <button class="ctab" onclick="setTab('Карьера',this)">Карьера</button>
+      <button type="button" class="ctab active" onclick="setTab('',this)">Все</button>
+      <button type="button" class="ctab" id="myRegionBtn" onclick="filterMyRegion(this)">Мой регион</button>
+      <button type="button" class="ctab" onclick="setTab('Логистика',this)">Логистика</button>
+      <button type="button" class="ctab" onclick="setTab('ВЭД',this)">ВЭД</button>
+      <button type="button" class="ctab" onclick="setTab('IT',this)">IT</button>
+      <button type="button" class="ctab" onclick="setTab('Регионы',this)">Региональные</button>
+      <button type="button" class="ctab" onclick="setTab('Карьера',this)">Карьера</button>
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0">
-      <button class="btn-create" onclick="openModal()">
+      <button type="button" class="btn-create" onclick="openModal()">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Создать сообщество
       </button>
@@ -312,7 +312,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="block-title">Мои сообщества</div>
     <div id="myCommunities"></div>
     <div style="padding:8px 6px 0;text-align:center">
-      <button onclick="setMode('my',document.getElementById('modeMy'))" style="font-size:11px;font-weight:700;color:var(--g);background:none;border:none;cursor:pointer;font-family:inherit">Все мои сообщества →</button>
+      <button type="button" onclick="setMode('my',document.getElementById('modeMy'))" style="font-size:11px;font-weight:700;color:var(--g);background:none;border:none;cursor:pointer;font-family:inherit">Все мои сообщества →</button>
     </div>
   </div>
 
@@ -330,7 +330,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Создать сообщество</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div><label class="mf-label">Название сообщества *</label><input class="mf-input" id="mName" placeholder="Например: Логисты Екатеринбурга"></div>
@@ -395,8 +395,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-submit" onclick="submitCommunity()">Создать сообщество</button>
+      <button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button type="button" class="btn-submit" onclick="submitCommunity()">Создать сообщество</button>
     </div>
   </div>
 </div>
@@ -405,14 +405,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Заявка на вступление</span>
-      <button class="modal-close" onclick="closeJoinRequestModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeJoinRequestModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div><label class="mf-label">Сообщение (опционально)</label><textarea class="mf-textarea" id="joinReqMsg" style="height:100px" placeholder="Коротко расскажите зачем хотите вступить"></textarea></div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeJoinRequestModal()">Отмена</button>
-      <button class="btn-submit" onclick="submitJoinRequest()">Отправить</button>
+      <button type="button" class="btn-cancel" onclick="closeJoinRequestModal()">Отмена</button>
+      <button type="button" class="btn-submit" onclick="submitJoinRequest()">Отправить</button>
     </div>
   </div>
 </div>
@@ -492,7 +492,7 @@ function renderCard(c,i){
     </div>
     <div class="cc-foot">
       <span class="cc-stat"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${membersLabel(c.members)}</span>
-      <button class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${joinText}</button>
+      <button type="button" class="cc-join-btn${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="cjb-${c.id}">${joinText}</button>
     </div>
   </div>`;
 }
@@ -513,7 +513,7 @@ function renderRow(c,i){
       </div>
     </div>
     <div class="cr-right">
-      <button class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="crb-${c.id}">${joinText}</button>
+      <button type="button" class="cr-join${isJoined?' joined':''}" onclick="event.stopPropagation();joinCommunity(${c.id})" id="crb-${c.id}">${joinText}</button>
     </div>
   </div>`;
 }
@@ -521,7 +521,7 @@ function renderRow(c,i){
 function renderFeed(items){
   const feed=document.getElementById('commFeed');
   if(!items.length){
-    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Сообщества не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте другой фильтр или <button onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создайте своё</button></div></div>';
+    feed.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:40px;text-align:center;box-shadow:var(--sh)"><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Сообщества не найдены</div><div style="font-size:12px;color:var(--gmt)">Попробуйте другой фильтр или <button type="button" onclick="openModal()" style="color:var(--g);font-weight:700;background:none;border:none;cursor:pointer;font-size:12px;font-family:inherit">создайте своё</button></div></div>';
     return;
   }
   let html='<div class="comm-grid">';
@@ -769,7 +769,7 @@ function syncSidebar(){
   recWrap.innerHTML=recItems.length?recItems.map(c=>`<div class="rec-comm">
       <div class="rc-av" style="background:${c.color}">${avHTML(c)}</div>
       <div class="rc-body"><div class="rc-name">${esc(c.name)}</div><div class="rc-meta">${num(c.members)} участников</div></div>
-      <button class="rc-btn" onclick="joinRec(${c.id})">Вступить</button>
+      <button type="button" class="rc-btn" onclick="joinRec(${c.id})">Вступить</button>
     </div>`).join(''):'<div style="font-size:12px;color:var(--gmt);padding:6px 4px">Нет рекомендаций.</div>';
 }
 function avHTML(c){

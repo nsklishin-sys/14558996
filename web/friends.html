@@ -216,7 +216,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <input class="add-input" id="addInput" placeholder="Имя или @handle…" autocomplete="off" oninput="onAddInput(this.value)" onkeydown="if(event.key==='Enter')sendRequest();else if(event.key==='Escape')closeAddDD()" onfocus="if(this.value.trim())runAddSearch(this.value)" onblur="setTimeout(closeAddDD,180)">
         <div class="add-dd" id="addDD"></div>
       </div>
-      <button class="btn-add" onclick="sendRequest()">
+      <button type="button" class="btn-add" onclick="sendRequest()">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Отправить заявку
       </button>
@@ -226,19 +226,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- Табы -->
   <div class="tabs-bar">
-    <button class="tab-btn active" id="tabFriends" onclick="switchTab('friends',this)">
+    <button type="button" class="tab-btn active" id="tabFriends" onclick="switchTab('friends',this)">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       Друзья <span class="tab-count" id="cntFriends">—</span>
     </button>
-    <button class="tab-btn" id="tabIncoming" onclick="switchTab('incoming',this)">
+    <button type="button" class="tab-btn" id="tabIncoming" onclick="switchTab('incoming',this)">
       <svg viewBox="0 0 24 24"><polyline points="19 14 12 21 5 14"/><path d="M12 3v18"/></svg>
       Входящие <span class="tab-count tab-count-red" id="cntIncoming">—</span>
     </button>
-    <button class="tab-btn" id="tabOutgoing" onclick="switchTab('outgoing',this)">
+    <button type="button" class="tab-btn" id="tabOutgoing" onclick="switchTab('outgoing',this)">
       <svg viewBox="0 0 24 24"><polyline points="5 10 12 3 19 10"/><path d="M12 3v18"/></svg>
       Исходящие <span class="tab-count" id="cntOutgoing">—</span>
     </button>
-    <button class="tab-btn" id="tabSearch" onclick="switchTab('search',this)">
+    <button type="button" class="tab-btn" id="tabSearch" onclick="switchTab('search',this)">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Найти людей <span class="tab-count" id="cntSearch">—</span>
     </button>
@@ -340,26 +340,26 @@ function buildCard(user, type){
   let actions='';
   if(type==='friend'){
     actions=`
-      <button class="fc-btn fc-btn-msg" onclick="goChat('${esc(id)}','${esc(name)}')">
+      <button type="button" class="fc-btn fc-btn-msg" onclick="goChat('${esc(id)}','${esc(name)}')">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать
       </button>
-      <button class="fc-btn fc-btn-remove" onclick="removeFriend('${esc(id)}','${esc(name)}',this)">
+      <button type="button" class="fc-btn fc-btn-remove" onclick="removeFriend('${esc(id)}','${esc(name)}',this)">
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Удалить
       </button>`;
   } else if(type==='incoming'){
     actions=`
-      <button class="fc-btn fc-btn-accept" onclick="acceptFriend('${esc(id)}','${esc(name)}',this)">
+      <button type="button" class="fc-btn fc-btn-accept" onclick="acceptFriend('${esc(id)}','${esc(name)}',this)">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Принять
       </button>
-      <button class="fc-btn fc-btn-reject" onclick="rejectFriend('${esc(id)}','${esc(name)}',this)">Отклонить</button>`;
+      <button type="button" class="fc-btn fc-btn-reject" onclick="rejectFriend('${esc(id)}','${esc(name)}',this)">Отклонить</button>`;
   } else if(type==='outgoing'){
     actions=`
-      <button class="fc-btn fc-btn-cancel" style="width:100%" onclick="cancelRequest('${esc(id)}','${esc(name)}',this)">
+      <button type="button" class="fc-btn fc-btn-cancel" style="width:100%" onclick="cancelRequest('${esc(id)}','${esc(name)}',this)">
         Отменить заявку
       </button>`;
   } else if(type==='candidate'){
     actions=`
-      <button class="fc-btn fc-btn-add" style="width:100%" onclick="addFriend('${esc(id)}','${esc(name)}',this)">
+      <button type="button" class="fc-btn fc-btn-add" style="width:100%" onclick="addFriend('${esc(id)}','${esc(name)}',this)">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить в друзья
       </button>`;
   }
@@ -463,7 +463,7 @@ function renderRecommendations(){
         <div class="rec-name">${esc(name)}</div>
         <div class="rec-meta">${esc(u.position||u.company_name||'Участник LASTOP')}</div>
       </div>
-      <button class="rec-add" onclick="event.stopPropagation();addFriend('${esc(id)}','${esc(name)}',this)">+ Добавить</button>
+      <button type="button" class="rec-add" onclick="event.stopPropagation();addFriend('${esc(id)}','${esc(name)}',this)">+ Добавить</button>
     </div>`;
   }).join('');
 }
@@ -533,10 +533,10 @@ async function runAddSearch(q){
       const color=(typeof stableColor==='function')?stableColor(u.full_name):'#5AB080';
       const ltr=(u.full_name||'?').trim().charAt(0).toUpperCase();
       let btn;
-      if(isFriend) btn='<button class="add-dd-btn sent">✓ Уже друзья</button>';
-      else if(isSent) btn='<button class="add-dd-btn sent">✓ Отправлено</button>';
-      else if(isIncoming) btn='<button class="add-dd-btn sent">↓ Входящая</button>';
-      else btn=`<button class="add-dd-btn" onclick="sendRequestByPublicID('${escAttr(u.public_id)}','${escAttr(u.full_name||'')}',this)">+ В друзья</button>`;
+      if(isFriend) btn='<button type="button" class="add-dd-btn sent">✓ Уже друзья</button>';
+      else if(isSent) btn='<button type="button" class="add-dd-btn sent">✓ Отправлено</button>';
+      else if(isIncoming) btn='<button type="button" class="add-dd-btn sent">↓ Входящая</button>';
+      else btn=`<button type="button" class="add-dd-btn" onclick="sendRequestByPublicID('${escAttr(u.public_id)}','${escAttr(u.full_name||'')}',this)">+ В друзья</button>`;
       return `<div class="add-dd-row">
         <div class="add-dd-av" style="background:${color}">${escHTML(ltr)}</div>
         <div class="add-dd-info" onclick="location.href='/profile_user.html?id=${encodeURIComponent(u.public_id)}'">

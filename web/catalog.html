@@ -199,10 +199,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="cat-title">Товары и услуги</span>
     <span class="cat-subtitle">B2B-маркет: предложения от компаний и специалистов</span>
     <div class="mode-switch">
-      <button class="mode-btn active" id="modeProducts" onclick="setMode('product')">Товары</button>
-      <button class="mode-btn" id="modeServices" onclick="setMode('service')">Услуги</button>
+      <button type="button" class="mode-btn active" id="modeProducts" onclick="setMode('product')">Товары</button>
+      <button type="button" class="mode-btn" id="modeServices" onclick="setMode('service')">Услуги</button>
     </div>
-    <button class="btn-create" onclick="openCreateModal()">
+    <button type="button" class="btn-create" onclick="openCreateModal()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <span id="createBtnLabel">Создать товар</span>
     </button>
@@ -267,7 +267,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title" id="modalTitle">Создать товар</span>
-      <button class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="mf-row">
@@ -335,8 +335,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
-      <button class="btn-submit" id="ciSubmitBtn" onclick="submitItem()">Опубликовать</button>
+      <button type="button" class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
+      <button type="button" class="btn-submit" id="ciSubmitBtn" onclick="submitItem()">Опубликовать</button>
     </div>
   </div>
 </div>
@@ -503,7 +503,7 @@ function setMode(mode){
 }
 function renderTabs(){
   document.getElementById('tabsRow').innerHTML = TABS.map(t =>
-    '<button class="jtab' + (t.key === currentTab ? ' active' : '') + '" onclick="setTab(\'' + escAttr(t.key) + '\')">' + esc(t.label) + '</button>'
+    '<button type="button" class="jtab' + (t.key === currentTab ? ' active' : '') + '" onclick="setTab(\'' + escAttr(t.key) + '\')">' + esc(t.label) + '</button>'
   ).join('');
 }
 function setTab(key){

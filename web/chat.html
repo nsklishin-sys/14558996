@@ -804,7 +804,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="dialogs-head">
       <div class="dh-row">
         <div class="dh-title">Сообщения</div>
-        <button class="dh-btn" onclick="openNewDialogModal()" title="Новый диалог">
+        <button type="button" class="dh-btn" onclick="openNewDialogModal()" title="Новый диалог">
           <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
@@ -815,9 +815,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
 
     <div class="d-tabs">
-      <button class="d-tab active" onclick="filterTab('all', this)">Все <span class="d-tab-count" id="dTabCntAll">0</span></button>
-      <button class="d-tab" onclick="filterTab('unread', this)">Непрочитанные <span class="d-tab-count" id="dTabCntUnread">0</span></button>
-      <button class="d-tab" onclick="filterTab('companies', this)">Компании <span class="d-tab-count" id="dTabCntCompanies">0</span></button>
+      <button type="button" class="d-tab active" onclick="filterTab('all', this)">Все <span class="d-tab-count" id="dTabCntAll">0</span></button>
+      <button type="button" class="d-tab" onclick="filterTab('unread', this)">Непрочитанные <span class="d-tab-count" id="dTabCntUnread">0</span></button>
+      <button type="button" class="d-tab" onclick="filterTab('companies', this)">Компании <span class="d-tab-count" id="dTabCntCompanies">0</span></button>
     </div>
 
     <div class="d-list" id="dialogList"></div>
@@ -837,23 +837,23 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="ch-status" id="chatStatus"></div>
       </div>
       <div class="ch-actions">
-        <button class="chat-friend-btn" id="chatFriendBtn" onclick="chatFriendClick()" style="display:none" title="">
+        <button type="button" class="chat-friend-btn" id="chatFriendBtn" onclick="chatFriendClick()" style="display:none" title="">
           <svg id="chatFriendIcon" viewBox="0 0 24 24"></svg>
           <span id="chatFriendLabel"></span>
         </button>
-        <button class="ch-act" id="chatManageBtn" onclick="event.stopPropagation();openChatManage()" style="display:none" title="Управление группой">
+        <button type="button" class="ch-act" id="chatManageBtn" onclick="event.stopPropagation();openChatManage()" style="display:none" title="Управление группой">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
-        <button class="ch-act" title="Поиск в диалоге" onclick="openChatSearch()">
+        <button type="button" class="ch-act" title="Поиск в диалоге" onclick="openChatSearch()">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
-        <button class="ch-act" title="Аудиозвонок" onclick="showToast('Аудиозвонки будут доступны в следующей версии')">
+        <button type="button" class="ch-act" title="Аудиозвонок" onclick="showToast('Аудиозвонки будут доступны в следующей версии')">
           <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
         </button>
-        <button class="ch-act" title="Видеозвонок" onclick="showToast('Видеозвонки будут доступны в следующей версии')">
+        <button type="button" class="ch-act" title="Видеозвонок" onclick="showToast('Видеозвонки будут доступны в следующей версии')">
           <svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         </button>
-        <button class="ch-act" title="Сведения о диалоге" onclick="openInfoPanel()">
+        <button type="button" class="ch-act" title="Сведения о диалоге" onclick="openInfoPanel()">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>
       </div>
@@ -864,10 +864,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <input type="text" id="chatSearchInput" placeholder="Поиск в диалоге..." oninput="searchInChat(this.value)">
       <span class="chat-search-counter" id="chatSearchCounter"></span>
       <div class="chat-search-nav">
-        <button id="chatSearchPrev" onclick="searchNavigate(-1)" title="Предыдущее"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></button>
-        <button id="chatSearchNext" onclick="searchNavigate(1)" title="Следующее"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button type="button" id="chatSearchPrev" onclick="searchNavigate(-1)" title="Предыдущее"><svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg></button>
+        <button type="button" id="chatSearchNext" onclick="searchNavigate(1)" title="Следующее"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
       </div>
-      <button class="chat-search-close" onclick="closeChatSearch()">✕</button>
+      <button type="button" class="chat-search-close" onclick="closeChatSearch()">✕</button>
     </div>
     <div class="chat-body" id="chatBody">
       <div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>
@@ -880,7 +880,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="reply-to" id="replyToTitle">Ответ</div>
         <div class="reply-text" id="replyText"></div>
       </div>
-      <button class="reply-close" onclick="closeReply()">
+      <button type="button" class="reply-close" onclick="closeReply()">
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -890,21 +890,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
     <!-- Инпут -->
     <div class="chat-input-wrap">
-      <button class="ci-attach" onclick="triggerAttach()" title="Прикрепить">
+      <button type="button" class="ci-attach" onclick="triggerAttach()" title="Прикрепить">
         <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </button>
       <div class="ci-input-box">
         <textarea class="ci-textarea" id="msgInput" placeholder="Написать сообщение…" rows="1" oninput="autoGrow(this)" onkeydown="handleEnter(event)"></textarea>
         <div class="ci-inline-btns">
-          <button class="ci-inline" onclick="toggleEmojiPicker()" title="Эмодзи">
+          <button type="button" class="ci-inline" onclick="toggleEmojiPicker()" title="Эмодзи">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
           </button>
-          <button class="ci-inline" onclick="startVoiceRecord()" title="Голосовое сообщение">
+          <button type="button" class="ci-inline" onclick="startVoiceRecord()" title="Голосовое сообщение">
             <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
         </div>
       </div>
-      <button class="ci-send" onclick="sendMessage()" title="Отправить">
+      <button type="button" class="ci-send" onclick="sendMessage()" title="Отправить">
         <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
@@ -919,18 +919,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <!-- Lightbox для картинок чата (12-D) -->
 <div class="chat-lightbox" id="chatLightbox" onclick="closeChatLightbox(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:2000;padding:40px;cursor:zoom-out">
-  <button class="cl-nav cl-prev" id="clPrev" onclick="event.stopPropagation();clStep(-1)" style="display:none;position:absolute;left:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">‹</button>
+  <button type="button" class="cl-nav cl-prev" id="clPrev" onclick="event.stopPropagation();clStep(-1)" style="display:none;position:absolute;left:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">‹</button>
   <img id="chatLightboxImg" src="" alt="" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-  <button class="cl-nav cl-next" id="clNext" onclick="event.stopPropagation();clStep(1)" style="display:none;position:absolute;right:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">›</button>
+  <button type="button" class="cl-nav cl-next" id="clNext" onclick="event.stopPropagation();clStep(1)" style="display:none;position:absolute;right:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">›</button>
   <div id="chatLightboxCount" style="position:absolute;top:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;font-weight:600;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:99px;backdrop-filter:blur(10px);display:none"></div>
-  <button onclick="closeChatLightbox(event)" style="position:absolute;top:24px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;backdrop-filter:blur(10px);font-size:18px">✕</button>
+  <button type="button" onclick="closeChatLightbox(event)" style="position:absolute;top:24px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;backdrop-filter:blur(10px);font-size:18px">✕</button>
 </div>
 
 <!-- ═══ ВЫПАДАЮЩАЯ ПАНЕЛЬ СВЕДЕНИЙ ═══ -->
 <div class="info-overlay" id="infoOverlay" onclick="closeInfoPanel()"></div>
 <aside class="info-panel" id="infoPanel">
   <div class="info-head">
-    <button class="info-close" onclick="closeInfoPanel()">
+    <button type="button" class="info-close" onclick="closeInfoPanel()">
       <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
     <div class="info-head-t">Сведения о диалоге</div>
@@ -944,11 +944,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="ip-name" id="ipName"></div>
       <div class="ip-role" id="ipRole"></div>
       <div class="ip-actions">
-        <button class="ip-btn primary" id="ipOpenProfileBtn" onclick="openPeerProfile()">
+        <button type="button" class="ip-btn primary" id="ipOpenProfileBtn" onclick="openPeerProfile()">
           <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Открыть профиль
         </button>
-        <button class="ip-btn" id="ipAddFriendBtn" onclick="sendFriendRequest()">
+        <button type="button" class="ip-btn" id="ipAddFriendBtn" onclick="sendFriendRequest()">
           <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           В друзья
         </button>
@@ -963,19 +963,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
     <!-- Вложения из переписки -->
     <div class="ip-tabs">
-      <button class="ip-tab active" data-tab="images" onclick="switchInfoTab('images',this)">
+      <button type="button" class="ip-tab active" data-tab="images" onclick="switchInfoTab('images',this)">
         <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><circle cx="5" cy="5" r="1"/><polyline points="12.5 9 9.5 6 1.5 12.5"/></svg>
         Изображения <span class="ip-tab-n" id="ipCntImages">0</span>
       </button>
-      <button class="ip-tab" data-tab="files" onclick="switchInfoTab('files',this)">
+      <button type="button" class="ip-tab" data-tab="files" onclick="switchInfoTab('files',this)">
         <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><path d="M8 1H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5"/><polyline points="8 1 8 5 12 5"/></svg>
         Файлы <span class="ip-tab-n" id="ipCntFiles">0</span>
       </button>
-      <button class="ip-tab" data-tab="links" onclick="switchInfoTab('links',this)">
+      <button type="button" class="ip-tab" data-tab="links" onclick="switchInfoTab('links',this)">
         <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><path d="M6 8a3 3 0 0 0 4 0l2-2a3 3 0 0 0-4-4L7 3"/><path d="M8 6a3 3 0 0 0-4 0L2 8a3 3 0 0 0 4 4l1-1"/></svg>
         Ссылки <span class="ip-tab-n" id="ipCntLinks">0</span>
       </button>
-      <button class="ip-tab" data-tab="audio" onclick="switchInfoTab('audio',this)">
+      <button type="button" class="ip-tab" data-tab="audio" onclick="switchInfoTab('audio',this)">
         <svg viewBox="0 0 14 14" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"><path d="M7 1a2 2 0 0 0-2 2v4a2 2 0 0 0 4 0V3a2 2 0 0 0-2-2z"/><path d="M11 6v1a4 4 0 0 1-8 0V6"/><line x1="7" y1="11" x2="7" y2="13"/></svg>
         Аудио <span class="ip-tab-n" id="ipCntAudio">0</span>
       </button>
@@ -990,7 +990,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
     <!-- Опасная зона -->
     <div class="ip-section" style="margin-top:auto;border-top:1px solid var(--bdr);padding-top:14px">
-      <button class="ip-btn" id="ipDeleteChatBtn" onclick="confirmDeleteChat()" style="width:100%;color:var(--red);border-color:#FABCBC;background:#FFF5F5">
+      <button type="button" class="ip-btn" id="ipDeleteChatBtn" onclick="confirmDeleteChat()" style="width:100%;color:var(--red);border-color:#FABCBC;background:#FFF5F5">
         <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         Удалить чат
       </button>
@@ -1000,14 +1000,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <div class="nd-overlay" id="newDialogOverlay" onclick="closeNewDialog()"></div>
 <div class="nd-modal" id="newDialogModal">
-  <div class="nd-head"><span>Новый диалог</span><button class="nd-close" onclick="closeNewDialog()">✕</button></div>
+  <div class="nd-head"><span>Новый диалог</span><button type="button" class="nd-close" onclick="closeNewDialog()">✕</button></div>
   <div class="nd-tabs">
-    <button class="nd-tab active" onclick="ndSwitchTab('direct', this)">Личный</button>
-    <button class="nd-tab" onclick="ndSwitchTab('group', this)">Группа</button>
+    <button type="button" class="nd-tab active" onclick="ndSwitchTab('direct', this)">Личный</button>
+    <button type="button" class="nd-tab" onclick="ndSwitchTab('group', this)">Группа</button>
   </div>
   <div class="nd-body">
     <div class="nd-pane active" id="nd-direct"><input class="nd-search" id="ndSearchUsers" placeholder="Поиск друзей…" oninput="ndSearchFriends(this.value)"><div class="nd-list" id="ndFriendList"></div></div>
-    <div class="nd-pane" id="nd-group"><input class="nd-input" id="ndGroupTitle" placeholder="Название группы"><input class="nd-search" id="ndGroupSearch" placeholder="Добавить участников…" oninput="ndSearchForGroup(this.value)"><div class="nd-list" id="ndGroupList"></div><div class="nd-selected" id="ndGroupSelected"></div><button class="nd-submit" onclick="ndCreateGroup()">Создать группу</button></div>
+    <div class="nd-pane" id="nd-group"><input class="nd-input" id="ndGroupTitle" placeholder="Название группы"><input class="nd-search" id="ndGroupSearch" placeholder="Добавить участников…" oninput="ndSearchForGroup(this.value)"><div class="nd-list" id="ndGroupList"></div><div class="nd-selected" id="ndGroupSelected"></div><button type="button" class="nd-submit" onclick="ndCreateGroup()">Создать группу</button></div>
   </div>
 </div>
 <input id="chatHiddenFile" type="file" hidden multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt">
@@ -1257,7 +1257,7 @@ function renderComposeBanner(){
     ? `<div class="cab-av" style="background-image:url('${esc(avatar)}');background-color:${color}"></div>`
     : `<div class="cab-av" style="background:${color}">${esc(letter(name))}</div>`;
   banner.innerHTML = avHtml + `<span>Отправляете как <b>${esc(name)}</b> — ${kind}</span>` +
-    `<button class="cab-reset" onclick="resetActiveContext()" title="Вернуться в личный контекст">Сбросить</button>`;
+    `<button type="button" class="cab-reset" onclick="resetActiveContext()" title="Вернуться в личный контекст">Сбросить</button>`;
   banner.style.display='flex';
 }
 function resetActiveContext(){
@@ -1513,11 +1513,11 @@ function renderMessages(){
             ${previewSlotsHTML}
             ${attachHTML}
             ${m.is_deleted ? '' : `<div class='msg-actions'>
-              <button title='Ответить' onclick='event.stopPropagation();openReply(${m.id})'><svg viewBox='0 0 24 24'><polyline points='9 17 4 12 9 7'/><path d='M20 18v-2a4 4 0 0 0-4-4H4'/></svg></button>
-              <button title='Скопировать' onclick='event.stopPropagation();copyMessage(${m.id})'><svg viewBox='0 0 24 24'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg></button>
-              <button title='Переслать' onclick='event.stopPropagation();forwardMessage(${m.id})'><svg viewBox='0 0 24 24'><polyline points='15 17 20 12 15 7'/><path d='M4 18v-2a4 4 0 0 1 4-4h12'/></svg></button>
-              ${mine ? `<button title='Изменить' onclick='event.stopPropagation();editMessage(${m.id})'><svg viewBox='0 0 24 24'><path d='M12 20h9'/><path d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z'/></svg></button>` : ''}
-              ${mine ? `<button class='danger' title='Удалить' onclick='event.stopPropagation();deleteMessage(${m.id})'><svg viewBox='0 0 24 24'><polyline points='3 6 5 6 21 6'/><path d='M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6'/></svg></button>` : ''}
+              <button type="button" title='Ответить' onclick='event.stopPropagation();openReply(${m.id})'><svg viewBox='0 0 24 24'><polyline points='9 17 4 12 9 7'/><path d='M20 18v-2a4 4 0 0 0-4-4H4'/></svg></button>
+              <button type="button" title='Скопировать' onclick='event.stopPropagation();copyMessage(${m.id})'><svg viewBox='0 0 24 24'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg></button>
+              <button type="button" title='Переслать' onclick='event.stopPropagation();forwardMessage(${m.id})'><svg viewBox='0 0 24 24'><polyline points='15 17 20 12 15 7'/><path d='M4 18v-2a4 4 0 0 1 4-4h12'/></svg></button>
+              ${mine ? `<button type="button" title='Изменить' onclick='event.stopPropagation();editMessage(${m.id})'><svg viewBox='0 0 24 24'><path d='M12 20h9'/><path d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z'/></svg></button>` : ''}
+              ${mine ? `<button type="button" class='danger' title='Удалить' onclick='event.stopPropagation();deleteMessage(${m.id})'><svg viewBox='0 0 24 24'><polyline points='3 6 5 6 21 6'/><path d='M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6'/></svg></button>` : ''}
             </div>`}
           </div>
           <div class='msg-meta'>
@@ -2239,7 +2239,7 @@ function showVoiceRecBar(){
   const oldPrev=document.getElementById('voicePrevBar');if(oldPrev)oldPrev.remove();
   const wrap=document.querySelector('.chat-input-wrap');if(!wrap||!wrap.parentNode)return;
   const bar=document.createElement('div');bar.id='voiceRecBar';bar.className='voice-rec-bar';
-  bar.innerHTML=`<button class="voice-rec-cancel" onclick="cancelVoiceRecord()" title="Отменить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><span class="voice-rec-dot"></span><span class="voice-rec-time" id="voiceRecTime">00:00</span><div class="voice-rec-wave" id="voiceRecWave">${Array.from({length:24}).map(()=>'<div class="vw-bar" style="height:3px"></div>').join('')}</div><button class="voice-rec-stop" onclick="stopVoiceRecord()" title="Остановить"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>`;
+  bar.innerHTML=`<button type="button" class="voice-rec-cancel" onclick="cancelVoiceRecord()" title="Отменить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><span class="voice-rec-dot"></span><span class="voice-rec-time" id="voiceRecTime">00:00</span><div class="voice-rec-wave" id="voiceRecWave">${Array.from({length:24}).map(()=>'<div class="vw-bar" style="height:3px"></div>').join('')}</div><button type="button" class="voice-rec-stop" onclick="stopVoiceRecord()" title="Остановить"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>`;
   wrap.parentNode.insertBefore(bar,wrap);wrap.style.display='none';
 }
 
@@ -2267,7 +2267,7 @@ function showVoicePreview(){
   const bar=document.createElement('div');bar.id='voicePrevBar';bar.className='voice-prev-bar';
   const m=Math.floor(_voiceRec.duration/60),s=_voiceRec.duration%60;
   const dur=(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);
-  bar.innerHTML=`<button class="voice-rec-cancel" onclick="cancelVoiceRecord()" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button><button class="voice-prev-play" onclick="toggleVoicePreviewPlay()" id="voicePrevPlayBtn" title="Прослушать"><svg viewBox="0 0 24 24" id="voicePrevPlayIcon"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="voice-prev-track" onclick="seekVoicePreview(event)" id="voicePrevTrack"><div class="voice-prev-progress" id="voicePrevProgress"></div></div><span class="voice-prev-time" id="voicePrevTime">${dur}</span><button class="voice-rec-send" onclick="sendVoiceMessage()" title="Отправить"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>`;
+  bar.innerHTML=`<button type="button" class="voice-rec-cancel" onclick="cancelVoiceRecord()" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button><button type="button" class="voice-prev-play" onclick="toggleVoicePreviewPlay()" id="voicePrevPlayBtn" title="Прослушать"><svg viewBox="0 0 24 24" id="voicePrevPlayIcon"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="voice-prev-track" onclick="seekVoicePreview(event)" id="voicePrevTrack"><div class="voice-prev-progress" id="voicePrevProgress"></div></div><span class="voice-prev-time" id="voicePrevTime">${dur}</span><button type="button" class="voice-rec-send" onclick="sendVoiceMessage()" title="Отправить"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>`;
   wrap.parentNode.insertBefore(bar,wrap);wrap.style.display='none';
   _voiceRec.previewAudio=new Audio(_voiceRec.blobUrl);
   _voiceRec.previewAudio.addEventListener('timeupdate',updateVoicePreviewTime);
@@ -2432,7 +2432,7 @@ document.addEventListener('durationchange',function(e){
   }
 },true);
 const emojis=['😀','😁','😂','🤣','😊','😍','😘','😎','🤝','👍','👏','🙏','🔥','✅','📦','🚚','📍','📄','💼','📊','📞','💬','🧠','⚙️','🎯','⏰','🌍','🧾','📌','💡','❤️','😅','😢','😡','😴','🤔','🙌','🎉','🚀','👀'];
-function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button onclick="insertEmoji('${e}')">${e}</button>`).join('');
+function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button type="button" onclick="insertEmoji('${e}')">${e}</button>`).join('');
 function insertEmoji(e){const i=msgInput;const s=i.selectionStart||i.value.length;const v=i.value;i.value=v.slice(0,s)+e+v.slice(s);i.focus();i.selectionStart=i.selectionEnd=s+e.length;autoGrow(i)}
 let typeDeb;
 let _lastTypingSent=0;
@@ -2890,7 +2890,7 @@ async function cmLoadMembers(){
           `<div style="font-size:13px;font-weight:700;color:#1A2A22">${esc(m.name||'')}${isMe?' (вы)':''}</div>`+
           `<div style="font-size:11px;color:#5A8A6A">${roleLabel}</div>`+
         `</div>`+
-        (canDelete ? `<button data-action="cm-remove" data-pid="${esc(m.public_id||'')}" data-name="${esc(m.name||'')}" style="background:#FBEAEA;border:1px solid #EFC2C2;color:#A03030;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700">Удалить</button>` : '')+
+        (canDelete ? `<button type="button" data-action="cm-remove" data-pid="${esc(m.public_id||'')}" data-name="${esc(m.name||'')}" style="background:#FBEAEA;border:1px solid #EFC2C2;color:#A03030;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700">Удалить</button>` : '')+
       `</div>`;
     }).join('');
     // Один listener на весь список — не плодим inline onclick.
@@ -2949,7 +2949,7 @@ async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=awa
   <div class="fwd-modal">
     <div class="fwd-head">
       <h3>Переслать в...</h3>
-      <button class="fwd-x" onclick="closeForward()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="fwd-x" onclick="closeForward()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="fwd-search">
       <input id="fwdSearch" type="search" placeholder="Поиск диалога..." autocomplete="off">
@@ -2958,6 +2958,6 @@ async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=awa
   </div>
 </div>
 
-<div id="chatManageModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeChatManage()"><div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:22px;font-family:Manrope,sans-serif"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="font-size:16px;font-weight:800;color:#1A2A22;margin:0">Управление группой</h3><button onclick="closeChatManage()" style="background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;color:#5A8A6A"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Название группы</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmTitle" maxlength="100" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4"><button onclick="cmSaveTitle()" style="padding:9px 16px;border-radius:10px;background:#1E8A4C;color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Сохранить</button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Добавить участника</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmInviteSearch" placeholder="Имя или email друга…" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4" oninput="cmSearchFriends(this.value)"></div><div id="cmInviteList" style="margin-bottom:18px;max-height:160px;overflow-y:auto"></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Участники</label><div id="cmMembersList" style="max-height:240px;overflow-y:auto"></div></div></div>
+<div id="chatManageModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeChatManage()"><div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:22px;font-family:Manrope,sans-serif"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="font-size:16px;font-weight:800;color:#1A2A22;margin:0">Управление группой</h3><button type="button" onclick="closeChatManage()" style="background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;color:#5A8A6A"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Название группы</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmTitle" maxlength="100" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4"><button type="button" onclick="cmSaveTitle()" style="padding:9px 16px;border-radius:10px;background:#1E8A4C;color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Сохранить</button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Добавить участника</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmInviteSearch" placeholder="Имя или email друга…" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4" oninput="cmSearchFriends(this.value)"></div><div id="cmInviteList" style="margin-bottom:18px;max-height:160px;overflow-y:auto"></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Участники</label><div id="cmMembersList" style="max-height:240px;overflow-y:auto"></div></div></div>
 </body>
 </html>

@@ -249,7 +249,7 @@ function render(){
   }
 
   const tabsHtml = '<div class="mc-tabs">'+
-    tabs.map(t => '<button class="mc-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+
+    tabs.map(t => '<button type="button" class="mc-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+
     '</div>';
 
   document.getElementById('mainArea').innerHTML = headerHtml + tabsHtml + '<div id="tabContent"></div>';
@@ -318,13 +318,13 @@ function renderAbout(wrap){
         '<div class="fld"><label class="fld-label">Телефон</label><input class="fld-input" id="fPhone" value="'+esc(c.phone||'')+'"></div>'+
       '</div>'+
       '<div class="fld"><label class="fld-label">Теги (через запятую)</label><input class="fld-input" id="fTags" value="'+esc(tagsValue)+'" placeholder="логистика, перевозки, склад"></div>'+
-      '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-primary" onclick="saveAbout()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Сохранить изменения</button></div>'+
+      '<div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="btn btn-primary" onclick="saveAbout()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Сохранить изменения</button></div>'+
     '</div>'+
     (c.my_role === 'owner' ?
       '<div class="panel" style="border:1.5px solid #FFD5D2;background:#FFFAFA;margin-top:10px">'+
         '<div class="panel-title" style="color:var(--red)"><svg viewBox="0 0 24 24" style="stroke:var(--red)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Удаление сообщества</div>'+
         '<p style="font-size:12px;color:var(--tm);line-height:1.5">Удаление сообщества — необратимое действие. Все посты, обсуждения и связанные данные будут удалены навсегда. Восстановить сообщество после удаления невозможно.</p>'+
-        '<div><button class="btn btn-danger" onclick="deleteCommunity()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Удалить сообщество</button></div>'+
+        '<div><button type="button" class="btn btn-danger" onclick="deleteCommunity()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Удалить сообщество</button></div>'+
       '</div>' : '');
 }
 
@@ -423,8 +423,8 @@ async function renderMembers(wrap){
       let actions = '';
       if (isOwner && role !== 'owner'){
         const isMod = role === 'moderator';
-        actions += '<button class="btn btn-ghost" onclick="toggleModerator(\''+esc(m.user_public_id)+'\','+(!isMod)+',\''+esc(m.full_name||'')+'\')">'+(isMod?'Снять модератора':'Назначить модератором')+'</button>';
-        actions += '<button class="btn btn-ghost" onclick="kickMember(\''+esc(m.user_public_id)+'\',\''+esc(m.full_name||'')+'\')" style="color:var(--red);border-color:#FFD5D2">Исключить</button>';
+        actions += '<button type="button" class="btn btn-ghost" onclick="toggleModerator(\''+esc(m.user_public_id)+'\','+(!isMod)+',\''+esc(m.full_name||'')+'\')">'+(isMod?'Снять модератора':'Назначить модератором')+'</button>';
+        actions += '<button type="button" class="btn btn-ghost" onclick="kickMember(\''+esc(m.user_public_id)+'\',\''+esc(m.full_name||'')+'\')" style="color:var(--red);border-color:#FFD5D2">Исключить</button>';
       }
       return '<div class="member-row">'+
         '<a class="member-av" href="/profile_user.html?id='+encodeURIComponent(m.user_public_id||'')+'" style="background:'+esc(avc(m.full_name))+'">'+avSrc+'</a>'+
@@ -496,8 +496,8 @@ async function renderRequests(wrap){
           (msg ? '<div class="req-message">«'+esc(msg)+'»</div>' : '<div class="member-role-line">Без сообщения</div>')+
         '</div>'+
         '<div class="member-actions">'+
-          '<button class="btn btn-ghost" onclick="answerRequest('+rq.id+',\'approve\')" style="color:var(--g);border-color:var(--gb)">Принять</button>'+
-          '<button class="btn btn-ghost" onclick="answerRequest('+rq.id+',\'reject\')" style="color:var(--red);border-color:#FFD5D2">Отклонить</button>'+
+          '<button type="button" class="btn btn-ghost" onclick="answerRequest('+rq.id+',\'approve\')" style="color:var(--g);border-color:var(--gb)">Принять</button>'+
+          '<button type="button" class="btn btn-ghost" onclick="answerRequest('+rq.id+',\'reject\')" style="color:var(--red);border-color:#FFD5D2">Отклонить</button>'+
         '</div>'+
       '</div>';
     }).join('');
@@ -612,8 +612,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     <div id="deleteModalExpected" style="font-size:13px;font-weight:700;color:var(--t);padding:8px 10px;background:var(--gp);border-radius:8px;margin-bottom:10px"></div>
     <input type="text" id="deleteModalInput" placeholder="Название..." style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:14px" oninput="checkDeleteInput()">
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="closeDeleteModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
-      <button id="deleteModalConfirm" onclick="executeDelete()" disabled style="padding:9px 16px;border-radius:10px;border:none;background:var(--red);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;opacity:.5">Удалить</button>
+      <button type="button" onclick="closeDeleteModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
+      <button type="button" id="deleteModalConfirm" onclick="executeDelete()" disabled style="padding:9px 16px;border-radius:10px;border:none;background:var(--red);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;opacity:.5">Удалить</button>
     </div>
   </div>
 </div>

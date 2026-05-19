@@ -556,7 +556,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="t-stat"><span class="t-stat-num ok" id="stDone">0</span><span class="t-stat-lbl">Выполнено</span></div>
     </div>
     <div class="t-head-actions">
-      <button class="btn-add" onclick="openModal()">
+      <button type="button" class="btn-add" onclick="openModal()">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Новая задача
       </button>
@@ -570,27 +570,27 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <input type="search" id="taskSearch" placeholder="Поиск задач…" autocomplete="off">
     </div>
     <div class="t-tabs" id="taskTabs">
-      <button class="t-tab active" data-filter="active" onclick="setFilter('active',this)">
+      <button type="button" class="t-tab active" data-filter="active" onclick="setFilter('active',this)">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Активные <span class="t-tab-count" id="cnt-active">0</span>
       </button>
-      <button class="t-tab" data-filter="today" onclick="setFilter('today',this)">
+      <button type="button" class="t-tab" data-filter="today" onclick="setFilter('today',this)">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Сегодня <span class="t-tab-count" id="cnt-today">0</span>
       </button>
-      <button class="t-tab" data-filter="week" onclick="setFilter('week',this)">
+      <button type="button" class="t-tab" data-filter="week" onclick="setFilter('week',this)">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
         Неделя <span class="t-tab-count" id="cnt-week">0</span>
       </button>
-      <button class="t-tab" data-filter="overdue" onclick="setFilter('overdue',this)">
+      <button type="button" class="t-tab" data-filter="overdue" onclick="setFilter('overdue',this)">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
         Просрочено <span class="t-tab-count" id="cnt-overdue">0</span>
       </button>
-      <button class="t-tab" data-filter="done" onclick="setFilter('done',this)">
+      <button type="button" class="t-tab" data-filter="done" onclick="setFilter('done',this)">
         <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/></svg>
         Выполнено <span class="t-tab-count" id="cnt-done">0</span>
       </button>
-      <button class="t-tab" data-filter="all" onclick="setFilter('all',this)">
+      <button type="button" class="t-tab" data-filter="all" onclick="setFilter('all',this)">
         Все <span class="t-tab-count" id="cnt-all">0</span>
       </button>
     </div>
@@ -606,11 +606,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </select>
     </div>
     <div class="t-view-toggle">
-      <button class="t-view-btn active" data-view="list" onclick="setView('list',this)">
+      <button type="button" class="t-view-btn active" data-view="list" onclick="setView('list',this)">
         <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         Список
       </button>
-      <button class="t-view-btn" data-view="kanban" onclick="setView('kanban',this)">
+      <button type="button" class="t-view-btn" data-view="kanban" onclick="setView('kanban',this)">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="9" y="3" width="6" height="14" rx="1"/><rect x="15" y="3" width="6" height="10" rx="1"/></svg>
         Канбан
       </button>
@@ -690,7 +690,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="t-modal-head">
     <div class="t-modal-icon"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/></svg></div>
     <div class="t-modal-title" id="modalTitle">Новая задача</div>
-    <button class="t-modal-close" onclick="closeModal()">
+    <button type="button" class="t-modal-close" onclick="closeModal()">
       <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -720,9 +720,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="t-field">
       <label class="t-field-label">Приоритет</label>
       <div class="t-pri-picker" id="mPriPicker">
-        <button class="t-pri-opt" data-pri="hi" onclick="pickPri('hi')"><span class="t-pri-dot"></span>Высокий</button>
-        <button class="t-pri-opt active" data-pri="md" onclick="pickPri('md')"><span class="t-pri-dot"></span>Средний</button>
-        <button class="t-pri-opt" data-pri="lo" onclick="pickPri('lo')"><span class="t-pri-dot"></span>Низкий</button>
+        <button type="button" class="t-pri-opt" data-pri="hi" onclick="pickPri('hi')"><span class="t-pri-dot"></span>Высокий</button>
+        <button type="button" class="t-pri-opt active" data-pri="md" onclick="pickPri('md')"><span class="t-pri-dot"></span>Средний</button>
+        <button type="button" class="t-pri-opt" data-pri="lo" onclick="pickPri('lo')"><span class="t-pri-dot"></span>Низкий</button>
       </div>
     </div>
 
@@ -747,10 +747,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   </div>
   <div class="t-modal-foot">
-    <button class="btn-secondary" id="btnDelete" onclick="deleteEditing()" style="display:none">Удалить</button>
+    <button type="button" class="btn-secondary" id="btnDelete" onclick="deleteEditing()" style="display:none">Удалить</button>
     <div class="spacer"></div>
-    <button class="btn-secondary" onclick="closeModal()">Отмена</button>
-    <button class="btn-primary" onclick="saveTask()">Сохранить</button>
+    <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
+    <button type="button" class="btn-primary" onclick="saveTask()">Сохранить</button>
   </div>
 </div>
 
@@ -1102,7 +1102,7 @@ function renderRow(t){
   const clPct=cl.length?Math.round((clDone/cl.length)*100):0;
   return `<div class="t-row ${t.done?'done':''}" data-id="${t.id}" draggable="true">
     <div class="t-pri-bar ${t.pri||'lo'}"></div>
-    <button class="t-check" onclick="toggleDone('${t.id}',event)" aria-label="Завершить"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
+    <button type="button" class="t-check" onclick="toggleDone('${t.id}',event)" aria-label="Завершить"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
     <div class="t-body" onclick="openModal('${t.id}')">
       <div class="t-line1">
         <span class="t-title">${esc(t.title||'(без названия)')}</span>
@@ -1116,9 +1116,9 @@ function renderRow(t){
       </div>
     </div>
     <div class="t-actions">
-      <button class="t-action" onclick="openModal('${t.id}');event.stopPropagation()" title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-      <button class="t-action" onclick="duplicate('${t.id}');event.stopPropagation()" title="Дублировать"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-      <button class="t-action danger" onclick="removeTask('${t.id}');event.stopPropagation()" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+      <button type="button" class="t-action" onclick="openModal('${t.id}');event.stopPropagation()" title="Редактировать"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button type="button" class="t-action" onclick="duplicate('${t.id}');event.stopPropagation()" title="Дублировать"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+      <button type="button" class="t-action danger" onclick="removeTask('${t.id}');event.stopPropagation()" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
     </div>
   </div>`;
 }
@@ -1143,7 +1143,7 @@ function renderKanban(arr,root){
         <span class="t-col-dot ${c.dot}"></span>
         <span class="t-col-title">${c.title}</span>
         <span class="t-col-count">${byStatus[c.key].length}</span>
-        <button class="t-col-add" onclick="quickAddInCol('${c.key}')" title="Добавить">
+        <button type="button" class="t-col-add" onclick="quickAddInCol('${c.key}')" title="Добавить">
           <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
@@ -1283,7 +1283,7 @@ function renderChecklistInModal(){
     <div class="t-checklist-item ${c.done?'done':''}">
       <div class="t-checklist-check ${c.done?'done':''}" onclick="toggleClItem(${i})"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
       <input class="t-checklist-text" value="${esc(c.text)}" placeholder="Подзадача…" oninput="state.modalChecklist[${i}].text=this.value">
-      <button class="t-checklist-x" onclick="removeClItem(${i})"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="t-checklist-x" onclick="removeClItem(${i})"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
   `).join('');
 }

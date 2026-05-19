@@ -197,10 +197,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="an-title">Аналитика</span>
     <span class="an-subtitle">Активность и метрики на платформе</span>
     <div class="period-switch" id="periodSwitch">
-      <button class="period-btn" data-period="7d">7д</button>
-      <button class="period-btn active" data-period="30d">30д</button>
-      <button class="period-btn" data-period="90d">90д</button>
-      <button class="period-btn" data-period="all">всё</button>
+      <button type="button" class="period-btn" data-period="7d">7д</button>
+      <button type="button" class="period-btn active" data-period="30d">30д</button>
+      <button type="button" class="period-btn" data-period="90d">90д</button>
+      <button type="button" class="period-btn" data-period="all">всё</button>
     </div>
   </div>
 
@@ -242,7 +242,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="ad-content">
       <div class="ad-title">LogisticsPro 2026</div>
       <div class="ad-sub">Выставка · Москва · май</div>
-      <button class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button>
+      <button type="button" class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button>
     </div>
   </div>
 </aside>
@@ -347,7 +347,7 @@ function renderScopeTabs(){
   }
   // Селекторы (компания / сообщество)
   document.getElementById('scopeTabs').innerHTML =
-    tabs.map(t=>`<button class="scope-tab${t.key===state.scope?' active':''}" data-scope="${t.key}" onclick="setScope('${t.key}')">
+    tabs.map(t=>`<button type="button" class="scope-tab${t.key===state.scope?' active':''}" data-scope="${t.key}" onclick="setScope('${t.key}')">
       <svg viewBox="0 0 24 24">${t.svg}</svg>${t.label}
     </button>`).join('');
   if(state.companies.length){
@@ -1028,7 +1028,7 @@ function renderActionsBlock(actions){
     if(a.href){
       return `<a class="sb-action-btn" href="${esc(a.href)}"><svg viewBox="0 0 24 24">${a.svg}</svg>${esc(a.label)}</a>`;
     }
-    return `<button class="sb-action-btn" onclick="${esc(a.onclick||'')}"><svg viewBox="0 0 24 24">${a.svg}</svg>${esc(a.label)}</button>`;
+    return `<button type="button" class="sb-action-btn" onclick="${esc(a.onclick||'')}"><svg viewBox="0 0 24 24">${a.svg}</svg>${esc(a.label)}</button>`;
   }).join('');
 }
 
