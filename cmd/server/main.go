@@ -1221,7 +1221,11 @@ type statsCache struct {
 
 const sessionCacheTTL = 10 * time.Minute
 const statsCacheTTL = 60 * time.Second
-const sessionLifetime = 30 * 24 * time.Hour
+// Phase 4 (19.05) SEC: сессия живёт 14 дней с момента последнего
+// продления. Sliding renewal в sessionStore.getUserID продлевает срок
+// если истекло больше половины окна. Активные юзеры живут пока активны;
+// неактивные — истекают за 14 дней.
+const sessionLifetime = 14 * 24 * time.Hour
 
 // Rate limit constants. Format: (max_requests, time_window).
 // Centralized here so they can be tuned in one place.
@@ -1812,8 +1816,23 @@ func (s *sessionStore) getUserID(token string) (int64, bool) {
 		return 0, false
 	}
 
+	// Phase 4 (19.05) SEC: sliding renewal.
+	// Если до expires_at осталось менее половины полного срока — продлеваем
+	// сессию (UPDATE expires_at = NOW() + sessionLifetime). Активный юзер
+	// живёт пока активен, неактивный истекает за sessionLifetime.
+	timeLeft := time.Until(expiresAt)
+	shouldRenew := timeLeft < sessionLifetime/2
+
 	go func() {
-		_, _ = s.db.Exec(`UPDATE sessions SET last_seen_at = NOW() WHERE token_hash = $1`, th)
+		if shouldRenew {
+			newExpiry := time.Now().Add(sessionLifetime)
+			_, _ = s.db.Exec(
+				`UPDATE sessions SET last_seen_at = NOW(), expires_at = $1 WHERE token_hash = $2`,
+				newExpiry, th,
+			)
+		} else {
+			_, _ = s.db.Exec(`UPDATE sessions SET last_seen_at = NOW() WHERE token_hash = $1`, th)
+		}
 	}()
 
 	s.cache.mu.Lock()
