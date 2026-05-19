@@ -1115,20 +1115,20 @@ function renderSessions(list){
 }
 
 async function revokeSession(tokenHash){
-  console.log('[revokeSession] start, tokenHash:', tokenHash);
+  lastopDebug('[revokeSession] start, tokenHash:', tokenHash);
   const confirmed = await lastopConfirm({title:'Завершить сессию?',message:'Устройство выйдет из аккаунта при следующем запросе.',danger:true});
-  console.log('[revokeSession] confirmed:', confirmed);
+  lastopDebug('[revokeSession] confirmed:', confirmed);
   if(!confirmed) return;
   try{
-    console.log('[revokeSession] sending POST /api/me/sessions/revoke');
+    lastopDebug('[revokeSession] sending POST /api/me/sessions/revoke');
     const r = await fetch(API+'/me/sessions/revoke', {
       method:'POST',
       headers:{'Content-Type':'application/json', Authorization:'Bearer '+tk()},
       body: JSON.stringify({token_hash: tokenHash})
     });
-    console.log('[revokeSession] response status:', r.status);
+    lastopDebug('[revokeSession] response status:', r.status);
     const d = await r.json().catch(()=>({}));
-    console.log('[revokeSession] response body:', d);
+    lastopDebug('[revokeSession] response body:', d);
     if(!r.ok){
       showToast(d.error || ('Не удалось завершить сессию (HTTP '+r.status+')'), 'error');
       return;
