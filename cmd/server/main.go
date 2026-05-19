@@ -2186,6 +2186,31 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	})
 
+	// Maintenance banner (19.05) — флаг через файл web/maintenance.txt.
+	// touch maintenance.txt → плашка появляется у всех. rm → исчезает.
+	// Никаких рестартов. Содержимое файла можно использовать как
+	// кастомный текст; если файл пустой — используется текст по умолчанию.
+	mux.HandleFunc("/api/maintenance/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		data, err := os.ReadFile("web/maintenance.txt")
+		if err != nil {
+			// Файла нет — режим обслуживания выключен
+			writeJSON(w, http.StatusOK, map[string]any{"active": false})
+			return
+		}
+		msg := strings.TrimSpace(string(data))
+		if msg == "" {
+			msg = "Идут технические работы — возможны кратковременные перебои в работе платформы"
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"active":  true,
+			"message": msg,
+		})
+	})
+
 	mux.HandleFunc("/api/captcha/config", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"type":     cap.Type(),
