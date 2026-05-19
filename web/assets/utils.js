@@ -21,4 +21,25 @@
   }
 
   global.lastopEsc = lastopEsc;
+
+  // Debug-логирование. По умолчанию выключено в проде. Включить
+  // в DevTools: localStorage.setItem('lastop_debug', '1') и
+  // перезагрузить страницу. Выключить: localStorage.removeItem('lastop_debug')
+  // или localStorage.setItem('lastop_debug', '0').
+  // Использование: lastopDebug('[upload] start', file.name)
+  const LASTOP_DEBUG = (function() {
+    try {
+      const v = localStorage.getItem('lastop_debug');
+      return v === '1' || v === 'true';
+    } catch (e) {
+      return false;
+    }
+  })();
+  function lastopDebug(...args) {
+    if (LASTOP_DEBUG) {
+      console.log(...args);
+    }
+  }
+  global.LASTOP_DEBUG = LASTOP_DEBUG;
+  global.lastopDebug = lastopDebug;
 })(window);
