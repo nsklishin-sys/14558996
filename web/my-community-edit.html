@@ -156,7 +156,7 @@ function tk(){ return localStorage.getItem('token'); }
 const esc = window.lastopEsc;function ltr(name){ if(!name)return '?'; return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase(); }
 const avc = window.lastopAvc;
 function toast(msg, ok){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(ok?' success':''); requestAnimationFrame(()=>t.classList.add('show')); setTimeout(()=>t.classList.remove('show'),2500); }
-function logout(){ location.href='/home-guest.html'; }
+function logout(){ localStorage.removeItem('token'); location.href='/home-guest.html'; }
 
 function toggleProfileDD(e){
   e.stopPropagation();

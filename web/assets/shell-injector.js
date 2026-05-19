@@ -403,7 +403,7 @@
     // logout fallback (если страница не определила свою)
     if (!window.logout) {
       window.logout = function () {
-        try { localStorage.removeItem('user'); } catch {}
+        try { localStorage.removeItem('token'); localStorage.removeItem('user'); } catch {}
         location.href = '/home-guest.html';
       };
     }
