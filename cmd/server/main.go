@@ -23333,21 +23333,69 @@ func xmlEscape(s string) string {
 	return r.Replace(s)
 }
 
+// clientIP возвращает IP клиента. Phase 4 (19.05) SEC: не доверяем
+// заголовкам от ненадёжного источника.
+//
+// Иерархия:
+//  1. RemoteAddr должен быть из доверенной сети (loopback) — иначе это
+//     прямое подключение клиента в обход прокси, и любые X-* заголовки
+//     контролирует он сам, доверять им нельзя.
+//  2. Если RemoteAddr из доверенной сети — берём X-Real-IP (его выставляет
+//     ТОЛЬКО nginx, заголовок не leakнется через клиентский XFF).
+//  3. Если X-Real-IP нет — берём ПОСЛЕДНИЙ элемент X-Forwarded-For
+//     (после правки nginx он содержит только $remote_addr, но на случай
+//     если кто-то откатит nginx-конфиг — последний элемент это тот, что
+//     добавил наш доверенный прокси, а не клиент).
+//  4. Fallback: RemoteAddr.
 func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+	if err != nil || host == "" {
+		host = strings.TrimSpace(r.RemoteAddr)
+	}
+
+	// Доверенные прокси: только loopback (nginx ходит на бэк по 127.0.0.1).
+	// Если запрос пришёл напрямую (не через nginx) — игнорируем X-* заголовки.
+	trusted := isTrustedProxy(host)
+	if !trusted {
+		return host
+	}
+
+	// nginx гарантированно выставляет X-Real-IP = $remote_addr (реальный
+	// IP клиента, не контролируемый им).
+	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+		return realIP
+	}
+
+	// Fallback: последний элемент X-Forwarded-For. После правки nginx
+	// (Шаг 2) там только $remote_addr, но даже если nginx-конфиг откатят
+	// и XFF снова станет append'ом — последний элемент это IP, добавленный
+	// нашим доверенным nginx, а не клиентом.
 	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
 		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			ip := strings.TrimSpace(parts[0])
+		for i := len(parts) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(parts[i])
 			if ip != "" {
 				return ip
 			}
 		}
 	}
-	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
-	if err == nil && host != "" {
-		return host
+
+	return host
+}
+
+// isTrustedProxy — true если IP из доверенной сети.
+// На текущей архитектуре nginx и бэк работают на одной VM, nginx ходит
+// на бэк через localhost. Если в будущем появится отдельный балансировщик —
+// добавить его IP сюда.
+func isTrustedProxy(ip string) bool {
+	if ip == "127.0.0.1" || ip == "::1" || ip == "localhost" {
+		return true
 	}
-	return strings.TrimSpace(r.RemoteAddr)
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
+	return parsed.IsLoopback()
 }
 
 func newToken() (string, error) {
