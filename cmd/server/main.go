@@ -25555,22 +25555,67 @@ var ogDescRE = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:description["'
 var ogImageRE = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`)
 var titleTagRE = regexp.MustCompile(`(?is)<title[^>]*>([^<]+)</title>`)
 
+// safeDialContext — Dial для http.Transport который проверяет IP
+// ПОСЛЕ DNS-резолва но ДО открытия TCP-соединения.
+// Защита от DNS Rebinding (Phase 4 M-2): даже если DNS сначала
+// вернул внешний IP, а потом внутренний — мы не подключаемся.
+var safeDialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	// Резолвим хост заново и проверяем что ВСЕ полученные IP — публичные.
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+	if err != nil {
+		return nil, err
+	}
+	if len(ips) == 0 {
+		return nil, errors.New("host has no addresses")
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+			ip.IsUnspecified() || ip.IsMulticast() || ip.IsLinkLocalMulticast() ||
+			ip.IsInterfaceLocalMulticast() {
+			return nil, fmt.Errorf("blocked IP %s (internal/loopback/multicast)", ip.String())
+		}
+	}
+	// Все IP проверены — теперь подключаемся к ПЕРВОМУ из них напрямую,
+	// минуя ещё один DNS-резолв (закрывает окно DNS Rebinding).
+	dialer := &net.Dialer{Timeout: 4 * time.Second}
+	return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
+}
+
+// safePreviewClient — http.Client для link preview с защитой от DNS Rebinding.
+// Использует safeDialContext: проверка IP происходит на этапе TCP-connect.
+var safePreviewClient = &http.Client{
+	Timeout: 4 * time.Second,
+	Transport: &http.Transport{
+		DialContext:           safeDialContext,
+		TLSHandshakeTimeout:   3 * time.Second,
+		ResponseHeaderTimeout: 4 * time.Second,
+		DisableKeepAlives:     true,
+		MaxIdleConns:          0,
+	},
+	CheckRedirect: func(r *http.Request, via []*http.Request) error {
+		if len(via) >= 3 {
+			return errors.New("too many redirects")
+		}
+		// Каждый redirect должен пройти DialContext заново — Transport
+		// сам это обеспечит (DialContext вызывается для нового хоста).
+		return nil
+	},
+}
+
 func fetchExternalPreview(urlStr string) (map[string]any, bool) {
 	parsed, err := neturl.Parse(urlStr)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return nil, false
 	}
-	// SSRF: резолв и проверка private IP
-	host := parsed.Hostname()
-	ips, err := net.LookupIP(host)
-	if err != nil || len(ips) == 0 {
-		return nil, false
-	}
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
-			return nil, false
-		}
-	}
+	// Phase 4 (19.05) SEC M-2: SSRF + DNS Rebinding защита через
+	// safePreviewClient. Проверка IP теперь на этапе TCP-соединения
+	// (см. safeDialContext), не до отдельного LookupIP. Это закрывает
+	// окно атаки, при котором DNS-сервер атакующего отвечает разными IP
+	// на разные запросы (TTL=0 + rebinding).
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
@@ -25579,13 +25624,7 @@ func fetchExternalPreview(urlStr string) (map[string]any, bool) {
 	}
 	req.Header.Set("User-Agent", "LASTOP-LinkPreview/1.0")
 	req.Header.Set("Accept", "text/html")
-	client := &http.Client{Timeout: 4 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
-		if len(via) >= 3 {
-			return errors.New("too many redirects")
-		}
-		return nil
-	}}
-	resp, err := client.Do(req)
+	resp, err := safePreviewClient.Do(req)
 	if err != nil {
 		return nil, false
 	}
