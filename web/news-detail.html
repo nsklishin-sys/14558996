@@ -169,7 +169,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
   width:220px;background:var(--w);border:1px solid var(--bdr);
   border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);
   opacity:0;pointer-events:none;transform:translateY(6px);
-  transition:opacity .18s,transform .18s;z-index:100;overflow:hidden
+  transition:opacity .18s,transform .18s;z-index:var(--z-sticky);overflow:hidden
 }
 .repost-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .repost-dd-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bdr)}
@@ -294,7 +294,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .btn-follow.following{background:var(--gp);border-color:var(--bdr);color:var(--gmt)}
 
 /* Toast */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:var(--z-panel);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.ok{background:var(--g)}
 
@@ -1426,7 +1426,7 @@ async function copyPostLink(){
 }
 </script>
 <!-- Модалка редактирования публикации -->
-<div class="modal-bg" id="editPostModal" style="position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s">
+<div class="modal-bg" id="editPostModal" style="position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-dropdown);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s">
   <div style="background:var(--w);border-radius:24px;border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <h3 style="font-size:16px;font-weight:800">Редактировать публикацию</h3>

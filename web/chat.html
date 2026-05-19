@@ -150,7 +150,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 
 /* Шапка чата */
-.chat-dropzone{position:absolute;inset:0;background:rgba(30,138,76,.12);border:3px dashed var(--g);border-radius:14px;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--g);pointer-events:none;z-index:50}
+.chat-dropzone{position:absolute;inset:0;background:rgba(30,138,76,.12);border:3px dashed var(--g);border-radius:14px;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--g);pointer-events:none;z-index:var(--z-sticky)}
 .chat-dropzone.active{display:flex}
 .chat-head{
   padding:12px 16px;border-bottom:1px solid var(--bdr);
@@ -523,7 +523,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* ═══ ВЫПАДАЮЩАЯ ПАНЕЛЬ СВЕДЕНИЙ ═══ */
 .info-overlay{
   position:fixed;inset:0;background:rgba(15,25,18,.3);backdrop-filter:blur(3px);
-  z-index:150;opacity:0;pointer-events:none;transition:opacity .2s
+  z-index:var(--z-dropdown);opacity:0;pointer-events:none;transition:opacity .2s
 }
 .info-overlay.open{opacity:1;pointer-events:all}
 .info-panel{
@@ -531,7 +531,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   width:340px;max-width:calc(100vw - 20px);
   background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);
   box-shadow:-4px 10px 40px rgba(30,138,76,.18);
-  z-index:160;transform:translateX(calc(100% + 20px));transition:transform .3s cubic-bezier(.4,0,.2,1);
+  z-index:var(--z-dropdown);transform:translateX(calc(100% + 20px));transition:transform .3s cubic-bezier(.4,0,.2,1);
   display:flex;flex-direction:column;overflow:hidden
 }
 .info-panel.open{transform:translateX(0)}
@@ -710,7 +710,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ch-info{cursor:pointer;transition:opacity .15s}
 .ch-info:hover{opacity:.7}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:var(--z-dropdown);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:1200px){.shell{grid-template-columns:220px 1fr}.chat-panel{grid-template-columns:260px 1fr}}
@@ -736,8 +736,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </style>
 
 <style>
-.nd-overlay{position:fixed;inset:0;background:rgba(10,20,16,.35);backdrop-filter:blur(2px);z-index:300;opacity:0;pointer-events:none;transition:.2s}
-.nd-overlay.open{opacity:1;pointer-events:auto}.nd-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);width:min(560px,92vw);background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--shm);z-index:301;opacity:0;pointer-events:none;transition:.2s}.nd-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.nd-overlay{position:fixed;inset:0;background:rgba(10,20,16,.35);backdrop-filter:blur(2px);z-index:var(--z-dropdown);opacity:0;pointer-events:none;transition:.2s}
+.nd-overlay.open{opacity:1;pointer-events:auto}.nd-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);width:min(560px,92vw);background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--shm);z-index:var(--z-dropdown);opacity:0;pointer-events:none;transition:.2s}.nd-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
 .nd-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--bdr);font-weight:800}.nd-close{border:0;background:transparent;cursor:pointer}.nd-tabs{display:flex;gap:8px;padding:12px}.nd-tab{padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);cursor:pointer}.nd-tab.active{background:var(--g);color:#fff;border-color:var(--g)}
 .nd-item.nd-pickable{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:8px;transition:background .12s}
 .nd-item.nd-pickable:hover{background:var(--gp)}
@@ -761,7 +761,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .msg-bubble{position:relative}
 
 /* Forward модалка */
-.fwd-overlay{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.fwd-overlay{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-dropdown);display:none;align-items:center;justify-content:center;padding:20px}
 .fwd-overlay.open{display:flex}
 .fwd-modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:460px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
 .fwd-head{padding:18px 20px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
@@ -918,7 +918,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </div><!-- /shell -->
 
 <!-- Lightbox для картинок чата (12-D) -->
-<div class="chat-lightbox" id="chatLightbox" onclick="closeChatLightbox(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:2000;padding:40px;cursor:zoom-out">
+<div class="chat-lightbox" id="chatLightbox" onclick="closeChatLightbox(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:var(--z-overlay);padding:40px;cursor:zoom-out">
   <button type="button" class="cl-nav cl-prev" id="clPrev" onclick="event.stopPropagation();clStep(-1)" style="display:none;position:absolute;left:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">‹</button>
   <img id="chatLightboxImg" src="" alt="" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
   <button type="button" class="cl-nav cl-next" id="clNext" onclick="event.stopPropagation();clStep(1)" style="display:none;position:absolute;right:24px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:24px;cursor:pointer;backdrop-filter:blur(10px)">›</button>
@@ -2537,7 +2537,7 @@ function showChatToast(msg, type){
   // Fallback (confirm-modal.js не загрузился). Минимальный стиль платформы.
   var el = document.createElement('div');
   el.textContent = msg;
-  el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--w,#fff);color:var(--t,#1A2A22);padding:10px 16px;border:1px solid var(--bdr,#DDE8E2);border-left:3px solid var(--red,#E04040);border-radius:10px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 6px 24px rgba(30,138,76,.13);max-width:90vw;text-align:center;font-family:inherit';
+  el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--w,#fff);color:var(--t,#1A2A22);padding:10px 16px;border:1px solid var(--bdr,#DDE8E2);border-left:3px solid var(--red,#E04040);border-radius:10px;font-size:13px;font-weight:600;z-index:var(--z-toast);box-shadow:0 6px 24px rgba(30,138,76,.13);max-width:90vw;text-align:center;font-family:inherit';
   document.body.appendChild(el);
   setTimeout(function(){ el.style.transition='opacity .25s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 300); }, 3000);
 }
@@ -2958,6 +2958,6 @@ async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=awa
   </div>
 </div>
 
-<div id="chatManageModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeChatManage()"><div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:22px;font-family:Manrope,sans-serif"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="font-size:16px;font-weight:800;color:#1A2A22;margin:0">Управление группой</h3><button type="button" onclick="closeChatManage()" style="background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;color:#5A8A6A"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Название группы</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmTitle" maxlength="100" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4"><button type="button" onclick="cmSaveTitle()" style="padding:9px 16px;border-radius:10px;background:#1E8A4C;color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Сохранить</button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Добавить участника</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmInviteSearch" placeholder="Имя или email друга…" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4" oninput="cmSearchFriends(this.value)"></div><div id="cmInviteList" style="margin-bottom:18px;max-height:160px;overflow-y:auto"></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Участники</label><div id="cmMembersList" style="max-height:240px;overflow-y:auto"></div></div></div>
+<div id="chatManageModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-modal);align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeChatManage()"><div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:22px;font-family:Manrope,sans-serif"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="font-size:16px;font-weight:800;color:#1A2A22;margin:0">Управление группой</h3><button type="button" onclick="closeChatManage()" style="background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;color:#5A8A6A"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Название группы</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmTitle" maxlength="100" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4"><button type="button" onclick="cmSaveTitle()" style="padding:9px 16px;border-radius:10px;background:#1E8A4C;color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Сохранить</button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Добавить участника</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmInviteSearch" placeholder="Имя или email друга…" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4" oninput="cmSearchFriends(this.value)"></div><div id="cmInviteList" style="margin-bottom:18px;max-height:160px;overflow-y:auto"></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Участники</label><div id="cmMembersList" style="max-height:240px;overflow-y:auto"></div></div></div>
 </body>
 </html>
