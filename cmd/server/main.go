@@ -2589,6 +2589,8 @@ func main() {
 	// Logout — Phase 3 (19.05). Очищает cookies + удаляет сессию из БД.
 	// Раньше logout был чисто фронтовый (localStorage.removeItem), теперь
 	// с HttpOnly cookies JS не может сам очистить cookie — нужен сервер.
+	// Phase 4 (19.05): CSRF-защита — write-операция должна быть подтверждена
+	// токеном из double-submit cookie pattern.
 	mux.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -2598,6 +2600,13 @@ func main() {
 		// и чистим cookies (idempotent — повторный logout не должен падать).
 		token, _ := tokenFromRequest(r)
 		if token != "" {
+			// Если юзер залогинен — проверяем CSRF. Если не залогинен (нет токена) —
+			// logout всё равно отвечает 200 (idempotent), но и в БД ничего не трогает.
+			_, csrfToken, ok := sessions.getUserIDWithCSRF(token)
+			if !ok || !checkCSRF(r, csrfToken) {
+				writeError(w, http.StatusForbidden, "CSRF-токен невалиден")
+				return
+			}
 			sessions.delete(token)
 		}
 		clearAuthCookies(w)
