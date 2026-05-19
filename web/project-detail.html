@@ -206,7 +206,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .need-respond.applied{background:var(--gp);color:var(--g);border:1.5px solid var(--gb);box-shadow:none}
 
 /* ── МОДАЛКА ОТКЛИКА ── */
-.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.42);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.42);backdrop-filter:blur(4px);z-index:var(--z-dropdown);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-bg.open{opacity:1;pointer-events:all}
 .modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .25s}
 .modal-bg.open .modal{transform:translateY(0)}
@@ -276,7 +276,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .media-add span{font-size:10px;font-weight:700;color:var(--gmt)}
 .media-add:hover span{color:var(--g)}
 /* lightbox */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:var(--z-panel);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
 .lightbox.open{opacity:1;pointer-events:all}
 .lightbox-inner{position:relative;max-width:900px;max-height:90vh;width:100%}
 .lightbox-inner img,.lightbox-inner video{width:100%;max-height:80vh;object-fit:contain;border-radius:var(--rm);display:block}
@@ -298,7 +298,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   width:280px;max-height:60vh;background:var(--w);border:1px solid var(--bdr);
   border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);
   opacity:0;pointer-events:none;transform:translateY(6px);
-  transition:opacity .18s,transform .18s;z-index:100;overflow-y:auto
+  transition:opacity .18s,transform .18s;z-index:var(--z-sticky);overflow-y:auto
 }
 .repost-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
 .repost-dd-head{padding:10px 14px 8px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bdr)}
@@ -310,7 +310,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .repost-item-sub{font-size:10px;color:var(--gmt)}
 .repost-div{height:1px;background:var(--bdr)}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 18px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:var(--z-panel);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.ok{background:var(--g)}
 
@@ -433,7 +433,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .mng-modal-bg{
   position:fixed;inset:0;background:rgba(0,0,0,.4);
   display:none;align-items:center;justify-content:center;
-  z-index:1000;padding:20px;
+  z-index:var(--z-modal);padding:20px;
   backdrop-filter:blur(2px)
 }
 .mng-modal-bg.open{display:flex}
@@ -1188,7 +1188,7 @@ async function openAddMemberModal(){
     modal = document.createElement('div');
     modal.id = 'addMemberModalBg';
     modal.className = 'modal-bg';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-dropdown);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s';
     modal.innerHTML = `
       <div style="background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);width:100%;max-width:480px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;transform:translateY(14px);transition:transform .2s" id="addMemberModalCard">
         <div style="padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between">

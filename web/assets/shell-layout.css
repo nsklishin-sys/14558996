@@ -13,6 +13,19 @@ html[data-theme="dark"] body {
   background: #0F1A14;
 }
 
+:root{
+  /* Z-index система (18.05): один source of truth для всей платформы.
+     Используем семантические уровни вместо магических чисел.
+     Шаг между уровнями 200-1000 чтобы между ними можно было вставить
+     промежуточный без переделки. */
+  --z-sticky: 100;
+  --z-dropdown: 300;
+  --z-panel: 500;
+  --z-modal: 1000;
+  --z-overlay: 2000;
+  --z-toast: 3000;
+}
+
 /*
  * ══════════════════════════════════════════════════════════════
  *  LASTOP GROUP — Shell Layout (unified)
@@ -612,7 +625,7 @@ html[data-theme="dark"] .ad-sub{color:#9080C0}
   pointer-events:none;
   transform:translateY(-6px);
   transition:opacity .2s,transform .2s;
-  z-index:200;
+  z-index:var(--z-dropdown);
   overflow:hidden
 }
 .notif-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
@@ -805,7 +818,7 @@ html.lt-shell-2col .profile-dd{
   width:280px;background:var(--w);border:1px solid var(--bdr);
   border-radius:var(--rl);box-shadow:0 12px 36px rgba(30,138,76,.15);
   opacity:0;pointer-events:none;transform:translateY(-6px);
-  transition:opacity .2s,transform .2s;z-index:200;overflow:hidden
+  transition:opacity .2s,transform .2s;z-index:var(--z-dropdown);overflow:hidden
 }
 html.lt-shell .profile-dd.open,
 html.lt-shell-2col .profile-dd.open{opacity:1;pointer-events:all;transform:translateY(0)}
