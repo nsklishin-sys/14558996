@@ -574,15 +574,16 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .right::-webkit-scrollbar{display:none}
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh);transition:box-shadow .2s ease,transform .2s ease}
 .card:hover{box-shadow:var(--shm);transform:translateY(-3px)}
+#maintenanceBanner{cursor:default}
 #maintenanceBanner:hover{transform:none;box-shadow:var(--sh)}
 .block-title{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
 
 /* Сейчас на главной */
-.live-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr)}
+.live-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);min-width:0}
 .live-row:last-child{border-bottom:none;padding-bottom:0}
 .live-emoji{font-size:14px;width:20px;text-align:center;flex-shrink:0}
-.live-label{font-size:12px;color:var(--gmt);flex:1}
-.live-val{font-size:12px;font-weight:700;color:var(--g);text-decoration:none;flex-shrink:0}
+.live-label{font-size:12px;color:var(--gmt);flex-shrink:0;white-space:nowrap}
+.live-val{font-size:12px;font-weight:700;color:var(--g);text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 .live-val:hover{text-decoration:underline}
 .live-dot{width:8px;height:8px;border-radius:50%;background:#22CC66;flex-shrink:0;animation:blink 2s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
