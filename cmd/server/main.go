@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -42,11 +43,11 @@ import (
 	"nhooyr.io/websocket"
 
 	"lastop/internal/captcha"
-	"lastop/internal/pushnotify"
 	"lastop/internal/dadata"
 	"lastop/internal/errtrack"
 	"lastop/internal/mailer"
 	"lastop/internal/metrics"
+	"lastop/internal/pushnotify"
 	"lastop/internal/storage"
 )
 
@@ -1205,8 +1206,9 @@ type sessionCache struct {
 }
 
 type sessionCacheEntry struct {
-	userID   int64
-	cachedAt time.Time
+	userID    int64
+	cachedAt  time.Time
+	csrfToken string
 }
 
 // statsCache — простой in-memory кеш для /api/stats.
@@ -1747,20 +1749,29 @@ func (s *sessionStore) putWithMeta(token string, userID int64, userAgent, ipAddr
 	if len(userAgent) > 500 {
 		userAgent = userAgent[:500]
 	}
+	// CSRF-токен генерируется один раз на сессию. 32 случайных байта
+	// → 64 hex-символа. Связан с сессией в БД, при cookie-auth сверяем
+	// его с X-CSRF-Token header (Double-Submit Cookie pattern).
+	csrfBytes := make([]byte, 32)
+	if _, err := rand.Read(csrfBytes); err != nil {
+		log.Printf("[sessions] csrf rand failed: %v", err)
+		return
+	}
+	csrfToken := hex.EncodeToString(csrfBytes)
 	_, err := s.db.Exec(`
-		INSERT INTO sessions (token_hash, user_id, expires_at, last_seen_at, user_agent, ip_address)
-		VALUES ($1, $2, $3, NOW(), NULLIF($4, ''), NULLIF($5, ''))
+		INSERT INTO sessions (token_hash, user_id, expires_at, last_seen_at, user_agent, ip_address, csrf_token)
+		VALUES ($1, $2, $3, NOW(), NULLIF($4, ''), NULLIF($5, ''), $6)
 		ON CONFLICT (token_hash) DO UPDATE
 		SET last_seen_at = NOW(), expires_at = EXCLUDED.expires_at,
 		    user_agent = COALESCE(EXCLUDED.user_agent, sessions.user_agent),
 		    ip_address = COALESCE(EXCLUDED.ip_address, sessions.ip_address)
-	`, th, userID, expires, userAgent, ipAddress)
+	`, th, userID, expires, userAgent, ipAddress, csrfToken)
 	if err != nil {
 		log.Printf("[sessions] put failed: %v", err)
 	}
 
 	s.cache.mu.Lock()
-	s.cache.items[th] = sessionCacheEntry{userID: userID, cachedAt: time.Now()}
+	s.cache.items[th] = sessionCacheEntry{userID: userID, cachedAt: time.Now(), csrfToken: csrfToken}
 	s.cache.mu.Unlock()
 }
 
@@ -1809,6 +1820,56 @@ func (s *sessionStore) getUserID(token string) (int64, bool) {
 	s.cache.mu.Unlock()
 
 	return userID, true
+}
+
+// getUserIDWithCSRF — как getUserID, но дополнительно возвращает
+// csrf_token из БД. Используется при cookie-аутентификации для
+// сверки X-CSRF-Token header.
+func (s *sessionStore) getUserIDWithCSRF(token string) (int64, string, bool) {
+	if token == "" {
+		return 0, "", false
+	}
+	th := hashToken(token)
+
+	s.cache.mu.RLock()
+	if entry, ok := s.cache.items[th]; ok {
+		if time.Since(entry.cachedAt) < sessionCacheTTL && entry.csrfToken != "" {
+			s.cache.mu.RUnlock()
+			return entry.userID, entry.csrfToken, true
+		}
+	}
+	s.cache.mu.RUnlock()
+
+	var userID int64
+	var expiresAt time.Time
+	var csrfToken sql.NullString
+	err := s.db.QueryRow(`
+		SELECT user_id, expires_at, csrf_token FROM sessions WHERE token_hash = $1
+	`, th).Scan(&userID, &expiresAt, &csrfToken)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("[sessions] getUserIDWithCSRF failed: %v", err)
+		}
+		return 0, "", false
+	}
+	if time.Now().After(expiresAt) {
+		_, _ = s.db.Exec(`DELETE FROM sessions WHERE token_hash = $1`, th)
+		s.cache.mu.Lock()
+		delete(s.cache.items, th)
+		s.cache.mu.Unlock()
+		return 0, "", false
+	}
+
+	csrf := csrfToken.String
+	s.cache.mu.Lock()
+	s.cache.items[th] = sessionCacheEntry{
+		userID:    userID,
+		cachedAt:  time.Now(),
+		csrfToken: csrf,
+	}
+	s.cache.mu.Unlock()
+
+	return userID, csrf, true
 }
 
 func (s *sessionStore) invalidateUser(userID int64) {
@@ -2021,6 +2082,8 @@ func main() {
 		}
 
 		sessions.putWithMeta(token, createdUser.ID, r.UserAgent(), clientIP(r))
+		_, csrfToken, _ := sessions.getUserIDWithCSRF(token)
+		setAuthCookies(w, token, csrfToken, sessionLifetime)
 		go func(userID int64, toEmail, name string, baseURL string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
@@ -2427,6 +2490,8 @@ func main() {
 		}
 
 		sessions.putWithMeta(token, authUser.ID, r.UserAgent(), clientIP(r))
+		_, csrfToken, _ := sessions.getUserIDWithCSRF(token)
+		setAuthCookies(w, token, csrfToken, sessionLifetime)
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
 	})
 
@@ -3430,7 +3495,8 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
-		if err := changeUserPassword(db, sessions, userID, req.CurrentPassword, req.NewPassword, tokenFromRequest(r)); err != nil {
+		currentToken, _ := tokenFromRequest(r)
+		if err := changeUserPassword(db, sessions, userID, req.CurrentPassword, req.NewPassword, currentToken); err != nil {
 			handleAccountError(w, err)
 			return
 		}
@@ -3822,7 +3888,8 @@ func main() {
 		if !ok {
 			return
 		}
-		currentTokenHash := hashToken(tokenFromRequest(r))
+		currentToken, _ := tokenFromRequest(r)
+		currentTokenHash := hashToken(currentToken)
 		rows, err := db.Query(`
 			SELECT token_hash, COALESCE(user_agent, ''), COALESCE(ip_address, ''),
 			       created_at, last_seen_at, expires_at
@@ -3881,7 +3948,8 @@ func main() {
 			writeError(w, http.StatusBadRequest, "token_hash обязателен")
 			return
 		}
-		if hashToken(tokenFromRequest(r)) == req.TokenHash {
+		currentToken, _ := tokenFromRequest(r)
+		if hashToken(currentToken) == req.TokenHash {
 			writeError(w, http.StatusBadRequest, "Нельзя отозвать текущую сессию. Используйте «Выход».")
 			return
 		}
@@ -9859,59 +9927,59 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"public_key": key,
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"public_key": key,
+		})
 	})
-})
 
-// Push-уведомления: подписка устройства на пуши.
-// POST { endpoint, keys: { p256dh, auth }, user_agent } — авторизованно.
-// ON CONFLICT по endpoint UPDATE — поддерживает refresh подписки и смену юзера на устройстве.
-mux.HandleFunc("/api/push/subscribe", func(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
-		return
-	}
-	userID, ok := authenticatedUserID(w, r, sessions)
-	if !ok {
-		return
-	}
-	var body struct {
-		Endpoint  string `json:"endpoint"`
-		Keys      struct {
-			P256dh string `json:"p256dh"`
-			Auth   string `json:"auth"`
-		} `json:"keys"`
-		UserAgent string `json:"user_agent"`
-	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "Некорректный JSON")
-		return
-	}
-	endpoint := strings.TrimSpace(body.Endpoint)
-	p256dh := strings.TrimSpace(body.Keys.P256dh)
-	authKey := strings.TrimSpace(body.Keys.Auth)
-	userAgent := strings.TrimSpace(body.UserAgent)
+	// Push-уведомления: подписка устройства на пуши.
+	// POST { endpoint, keys: { p256dh, auth }, user_agent } — авторизованно.
+	// ON CONFLICT по endpoint UPDATE — поддерживает refresh подписки и смену юзера на устройстве.
+	mux.HandleFunc("/api/push/subscribe", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST")
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var body struct {
+			Endpoint string `json:"endpoint"`
+			Keys     struct {
+				P256dh string `json:"p256dh"`
+				Auth   string `json:"auth"`
+			} `json:"keys"`
+			UserAgent string `json:"user_agent"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024)).Decode(&body); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		endpoint := strings.TrimSpace(body.Endpoint)
+		p256dh := strings.TrimSpace(body.Keys.P256dh)
+		authKey := strings.TrimSpace(body.Keys.Auth)
+		userAgent := strings.TrimSpace(body.UserAgent)
 
-	// Валидация по CHECK constraints таблицы push_subscriptions.
-	if len(endpoint) < 10 || len(endpoint) > 2000 {
-		writeError(w, http.StatusBadRequest, "Некорректный endpoint")
-		return
-	}
-	if len(p256dh) < 10 || len(p256dh) > 200 {
-		writeError(w, http.StatusBadRequest, "Некорректный ключ p256dh")
-		return
-	}
-	if len(authKey) < 10 || len(authKey) > 100 {
-		writeError(w, http.StatusBadRequest, "Некорректный ключ auth")
-		return
-	}
-	if len(userAgent) > 500 {
-		userAgent = userAgent[:500]
-	}
+		// Валидация по CHECK constraints таблицы push_subscriptions.
+		if len(endpoint) < 10 || len(endpoint) > 2000 {
+			writeError(w, http.StatusBadRequest, "Некорректный endpoint")
+			return
+		}
+		if len(p256dh) < 10 || len(p256dh) > 200 {
+			writeError(w, http.StatusBadRequest, "Некорректный ключ p256dh")
+			return
+		}
+		if len(authKey) < 10 || len(authKey) > 100 {
+			writeError(w, http.StatusBadRequest, "Некорректный ключ auth")
+			return
+		}
+		if len(userAgent) > 500 {
+			userAgent = userAgent[:500]
+		}
 
-	_, err := db.ExecContext(r.Context(), `
+		_, err := db.ExecContext(r.Context(), `
 		INSERT INTO push_subscriptions (user_id, endpoint, p256dh_key, auth_key, user_agent, last_seen_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		ON CONFLICT (endpoint) DO UPDATE SET
@@ -9923,51 +9991,51 @@ mux.HandleFunc("/api/push/subscribe", func(w http.ResponseWriter, r *http.Reques
 			last_error_at = NULL,
 			last_error_msg = ''
 	`, userID, endpoint, p256dh, authKey, userAgent)
-	if err != nil {
-		log.Printf("push subscribe: db error user=%d: %v", userID, err)
-		writeError(w, http.StatusInternalServerError, "Не удалось сохранить подписку")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-})
+		if err != nil {
+			log.Printf("push subscribe: db error user=%d: %v", userID, err)
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить подписку")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
 
-// Push-уведомления: отписка устройства от пушей.
-// POST { endpoint } — авторизованно. Идемпотентно (200 даже если записи не было).
-// Удаляет только подписки текущего юзера — защита от удаления чужой подписки.
-mux.HandleFunc("/api/push/unsubscribe", func(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
-		return
-	}
-	userID, ok := authenticatedUserID(w, r, sessions)
-	if !ok {
-		return
-	}
-	var body struct {
-		Endpoint string `json:"endpoint"`
-	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4*1024)).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "Некорректный JSON")
-		return
-	}
-	endpoint := strings.TrimSpace(body.Endpoint)
-	if endpoint == "" {
-		writeError(w, http.StatusBadRequest, "Не указан endpoint")
-		return
-	}
-	_, err := db.ExecContext(r.Context(), `
+	// Push-уведомления: отписка устройства от пушей.
+	// POST { endpoint } — авторизованно. Идемпотентно (200 даже если записи не было).
+	// Удаляет только подписки текущего юзера — защита от удаления чужой подписки.
+	mux.HandleFunc("/api/push/unsubscribe", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST")
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var body struct {
+			Endpoint string `json:"endpoint"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4*1024)).Decode(&body); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		endpoint := strings.TrimSpace(body.Endpoint)
+		if endpoint == "" {
+			writeError(w, http.StatusBadRequest, "Не указан endpoint")
+			return
+		}
+		_, err := db.ExecContext(r.Context(), `
 		DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2
 	`, endpoint, userID)
-	if err != nil {
-		log.Printf("push unsubscribe: db error user=%d: %v", userID, err)
-		writeError(w, http.StatusInternalServerError, "Не удалось удалить подписку")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-})
+		if err != nil {
+			log.Printf("push unsubscribe: db error user=%d: %v", userID, err)
+			writeError(w, http.StatusInternalServerError, "Не удалось удалить подписку")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
 
-mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/notifications", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
@@ -11412,7 +11480,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 ALTER TABLE sessions
     ADD COLUMN IF NOT EXISTS user_agent TEXT,
-    ADD COLUMN IF NOT EXISTS ip_address TEXT;
+    ADD COLUMN IF NOT EXISTS ip_address TEXT,
+    ADD COLUMN IF NOT EXISTS csrf_token TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
@@ -13026,7 +13095,7 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 // requireAdmin проверяет что у юзера is_admin = true.
 // Возвращает userID и true если ок. Если нет — пишет ошибку в ResponseWriter и возвращает false.
 func requireAdmin(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *sessionStore) (int64, bool) {
-	token := tokenFromRequest(r)
+	token, _ := tokenFromRequest(r)
 	if token == "" {
 		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
 		return 0, false
@@ -13048,16 +13117,79 @@ func requireAdmin(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *
 	return userID, true
 }
 
-func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessionStore) (int64, bool) {
-	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
-		return 0, false
+// SEC-COOKIE-AUTH (18.05): двойная-cookie аутентификация с CSRF-защитой.
+//
+// При login/register сервер ставит:
+//   lastop_session  — HttpOnly + Secure + SameSite=Lax (JS не видит)
+//   lastop_csrf     — НЕ HttpOnly + Secure + SameSite=Lax (JS читает)
+//
+// На write-запросах (POST/PUT/DELETE/PATCH) фронт обязан положить
+// значение csrf-cookie в header X-CSRF-Token. Сервер сверяет хедер
+// с csrf_token из таблицы sessions для текущей session-cookie.
+//
+// Гибридный режим: проверка CSRF запускается ТОЛЬКО для запросов
+// которые авторизовались через cookie (не через Authorization: Bearer).
+// Bearer сам по себе защищает от CSRF, поэтому не требует доп. проверки.
+
+const (
+	authCookieName = "lastop_session"
+	csrfCookieName = "lastop_csrf"
+	csrfHeaderName = "X-CSRF-Token"
+)
+
+func setAuthCookies(w http.ResponseWriter, sessionToken, csrfToken string, maxAge time.Duration) {
+	http.SetCookie(w, &http.Cookie{Name: authCookieName, Value: sessionToken, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: int(maxAge.Seconds())})
+	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: csrfToken, Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: int(maxAge.Seconds())})
+}
+
+func clearAuthCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{Name: authCookieName, Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: "", Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+}
+
+func tokenFromRequest(r *http.Request) (token string, fromCookie bool) {
+	if c, err := r.Cookie(authCookieName); err == nil && c.Value != "" {
+		return c.Value, true
 	}
-	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer ")), false
+	}
+	return "", false
+}
+
+func isWriteMethod(m string) bool {
+	return m == http.MethodPost || m == http.MethodPut || m == http.MethodDelete || m == http.MethodPatch
+}
+
+func checkCSRF(r *http.Request, expected string) bool {
+	if expected == "" {
+		return false
+	}
+	provided := r.Header.Get(csrfHeaderName)
+	if provided == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
+}
+
+func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessionStore) (int64, bool) {
+	token, fromCookie := tokenFromRequest(r)
 	if token == "" {
 		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
 		return 0, false
+	}
+	if fromCookie && isWriteMethod(r.Method) {
+		userID, csrf, ok := sessions.getUserIDWithCSRF(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Сессия не найдена")
+			return 0, false
+		}
+		if !checkCSRF(r, csrf) {
+			writeError(w, http.StatusForbidden, "Недействительный CSRF-токен")
+			return 0, false
+		}
+		return userID, true
 	}
 	userID, ok := sessions.getUserID(token)
 	if !ok {
@@ -13068,11 +13200,7 @@ func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessi
 }
 
 func optionalAuthenticatedUserID(r *http.Request, sessions *sessionStore) (int64, bool) {
-	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return 0, false
-	}
-	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	token, _ := tokenFromRequest(r)
 	if token == "" {
 		return 0, false
 	}
@@ -13081,14 +13209,6 @@ func optionalAuthenticatedUserID(r *http.Request, sessions *sessionStore) (int64
 		return 0, false
 	}
 	return userID, true
-}
-
-func tokenFromRequest(r *http.Request) string {
-	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return ""
-	}
-	return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 }
 
 // createNotification создаёт уведомление для recipient'а.
