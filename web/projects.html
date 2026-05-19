@@ -642,7 +642,7 @@ async function loadProjects(){
 
   try{
     const headers=tk()?{Authorization:'Bearer '+tk()}:{};
-    const r=await fetch(API+'/projects?'+params.toString(),{headers});
+    const r=await lastopFetch(API+'/projects?'+params.toString(),{headers});
     if(!r.ok)throw new Error('Ошибка загрузки');
     const data=await r.json();
     allProjects=(data.projects||[]).map(mapProjectFromAPI);
@@ -755,8 +755,8 @@ async function loadMyCompaniesForAuthor(){
   if(sel.dataset.loaded==='1') return;
   try{
     const [coRes, cmRes] = await Promise.all([
-      fetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null),
-      fetch(API+'/communities?limit=200',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null)
+      lastopFetch(API+'/companies?tab=my&limit=50',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null),
+      lastopFetch(API+'/communities?limit=200',{headers:{Authorization:'Bearer '+tk()}}).catch(()=>null)
     ]);
     if(coRes && coRes.ok){
       const d = await coRes.json();
@@ -812,7 +812,7 @@ async function onPrjCoverSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ if(window.showToast)showToast(d.error||'Не удалось');else alert(d.error||'Не удалось'); removePrjCover(); return; }
     prjCoverUrl = d.url;
@@ -857,7 +857,7 @@ async function submitProject(){
   if(btn){btn.disabled=true;btn.textContent='Создание…';}
 
   try{
-    const r=await fetch(API+'/projects',{
+    const r=await lastopFetch(API+'/projects',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk(),...((()=>{const raw=document.getElementById('mAuthor')?.value||'0';if(raw.startsWith('company:'))return{'X-Active-Company-Id':raw.slice(8)};if(raw.startsWith('community:'))return{'X-Active-Community-Id':raw.slice(10)};return{};})())},
       body:JSON.stringify(body)
@@ -899,7 +899,7 @@ function resetCreateForm(){
 (async()=>{
   // гость может смотреть проекты
   try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -925,7 +925,7 @@ async function loadProjStats(){
   try {
     const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
-    const r = await fetch('/api/projects/stats', { headers });
+    const r = await lastopFetch('/api/projects/stats', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
     // Сайдбар
@@ -958,7 +958,7 @@ async function loadMyProj(){
   const tk = localStorage.getItem('token');
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
-    const r = await fetch('/api/projects?owner=me&limit=3', { headers: { Authorization: 'Bearer ' + tk } });
+    const r = await lastopFetch('/api/projects?owner=me&limit=3', { headers: { Authorization: 'Bearer ' + tk } });
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = (d.projects || d.items || []).slice(0, 3);
@@ -1001,7 +1001,7 @@ async function loadProjCats(){
   const card = document.getElementById('prjCatsCard');
   if (!list) return;
   try {
-    const r = await fetch('/api/projects/categories');
+    const r = await lastopFetch('/api/projects/categories');
     if (!r.ok) throw 0;
     const d = await r.json();
     const cats = d.categories || [];
@@ -1033,7 +1033,7 @@ async function loadProjRec(){
   try {
     const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
-    const r = await fetch('/api/projects/recommended', { headers });
+    const r = await lastopFetch('/api/projects/recommended', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
     const items = d.recommended || [];

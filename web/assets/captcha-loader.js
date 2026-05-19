@@ -7,7 +7,7 @@
 
   async function init() {
     try {
-      const r = await fetch('/api/captcha/config');
+      const r = await lastopFetch('/api/captcha/config');
       if (!r.ok) return;
       const d = await r.json();
       if (d.type !== 'yandex' || !d.site_key) return;

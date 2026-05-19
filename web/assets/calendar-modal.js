@@ -277,7 +277,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
     try{
       const url = editingId ? `/api/calendar/events/${editingId}` : `/api/calendar/events`;
       const method = editingId ? 'PATCH' : 'POST';
-      const r = await fetch(url, {
+      const r = await lastopFetch(url, {
         method,
         headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken()},
         body: JSON.stringify(body)
@@ -313,7 +313,7 @@ textarea.lcm-form-input{resize:vertical;min-height:70px;line-height:1.5}
       : confirm('Удалить событие?');
     if(!confirmed)return;
     try{
-      const r = await fetch(`/api/calendar/events/${editingId}`, {
+      const r = await lastopFetch(`/api/calendar/events/${editingId}`, {
         method: 'DELETE',
         headers: {Authorization: 'Bearer ' + getToken()}
       });

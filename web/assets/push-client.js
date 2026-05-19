@@ -47,7 +47,7 @@
   var cachedVapidKey = null;
   function fetchVapidPublicKey() {
     if (cachedVapidKey) return Promise.resolve(cachedVapidKey);
-    return fetch(API + '/push/vapid-public-key')
+    return lastopFetch(API + '/push/vapid-public-key')
       .then(function (r) { if (!r.ok) throw new Error('vapid ' + r.status); return r.json(); })
       .then(function (d) {
         var key = d && (d.public_key || d.publicKey);
@@ -71,7 +71,7 @@
   function sendSubscribe(sub) {
     var token = tk();
     if (!token) return Promise.resolve({ ok: false, reason: 'no_token' });
-    return fetch(API + '/push/subscribe', {
+    return lastopFetch(API + '/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
       body: JSON.stringify(serializeSubscription(sub)),
@@ -82,7 +82,7 @@
   function sendUnsubscribe(endpoint) {
     var token = tk();
     if (!token) return Promise.resolve({ ok: false, reason: 'no_token' });
-    return fetch(API + '/push/unsubscribe', {
+    return lastopFetch(API + '/push/unsubscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
       body: JSON.stringify({ endpoint: endpoint }),

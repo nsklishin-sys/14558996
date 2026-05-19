@@ -46,7 +46,7 @@
   function loadAndApplyGlobalSettings() {
     if (!tk()) return Promise.resolve(null);
 
-    return fetch('/api/settings', { headers: { Authorization: 'Bearer ' + tk() } })
+    return lastopFetch('/api/settings', { headers: { Authorization: 'Bearer ' + tk() } })
       .then(function (r) {
         return r.ok ? r.json() : null;
       })
@@ -368,7 +368,7 @@
     const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
     if (!token || !_notifBadgeEl) return;
     try {
-      const r = await fetch('/api/notifications/unread_count', {
+      const r = await lastopFetch('/api/notifications/unread_count', {
         headers: { Authorization: 'Bearer ' + token }
       });
       if (!r.ok) return;
@@ -393,7 +393,7 @@
       return;
     }
     try {
-      const r = await fetch('/api/notifications?limit=10', {
+      const r = await lastopFetch('/api/notifications?limit=10', {
         headers: { Authorization: 'Bearer ' + token }
       });
       if (!r.ok) throw 0;
@@ -433,7 +433,7 @@
           // На фоне отправляем POST
           try {
             const token = localStorage.getItem('token');
-            await fetch('/api/notifications/' + id + '/read', {
+            await lastopFetch('/api/notifications/' + id + '/read', {
               method: 'POST',
               headers: { Authorization: 'Bearer ' + token }
             });
@@ -518,7 +518,7 @@
     const btn = document.getElementById('notifMarkAll');
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     try {
-      await fetch('/api/notifications/read_all', {
+      await lastopFetch('/api/notifications/read_all', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token }
       });

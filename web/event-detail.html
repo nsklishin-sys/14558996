@@ -747,7 +747,7 @@ async function loadRepostFriends(){
   const list=document.getElementById('repostFriendsList');
   if(!list)return;
   try{
-    const r=await fetch('/api/friends',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch('/api/friends',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const friends=d.friends||[];
@@ -780,7 +780,7 @@ async function doRepost(target){
   const title=ev.title||document.getElementById('evTitle')?.textContent||'Мероприятие';
   const url=location.href;
   try{
-    const r=await fetch('/api/posts',{
+    const r=await lastopFetch('/api/posts',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({title:'Делюсь мероприятием: '+title,content:'Посмотрите это мероприятие: '+url,type:'event',tags:[]})
@@ -798,7 +798,7 @@ async function doRepostToFriend(friendPublicID,friendName){
   const message=`📅 Делюсь мероприятием: ${title}
 ${url}`;
   try{
-    const dc=await fetch('/api/chat/conversations/direct',{
+    const dc=await lastopFetch('/api/chat/conversations/direct',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({user_public_id:friendPublicID})
@@ -807,7 +807,7 @@ ${url}`;
     const dd=await dc.json();
     const convPID=dd.conversation&&dd.conversation.public_id;
     if(!convPID){toast('Не удалось открыть чат');return;}
-    const r=await fetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
+    const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`,{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify({content:message})
@@ -827,7 +827,7 @@ const state={currentEvent:null,similar:[]};
 async function toggleSave(){
   if(!state.currentEvent)return;
   const isSaved=!!state.currentEvent.is_saved;
-  const r=await fetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/save`,{method:isSaved?'DELETE':'POST',headers:{Authorization:'Bearer '+tk()}});
+  const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/save`,{method:isSaved?'DELETE':'POST',headers:{Authorization:'Bearer '+tk()}});
   const d=await r.json().catch(()=>({}));
   if(!r.ok){toast(d.error||'Ошибка');return;}
   state.currentEvent.is_saved=!isSaved;
@@ -876,12 +876,12 @@ function openTicketModal(name='standard',price=0){
   document.getElementById('modalBg').classList.add('open');
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
-async function registerEvent(ticketType='standard'){if(!state.currentEvent)return;const r=await fetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({ticket_type:ticketType})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось записаться');return false;}state.currentEvent.is_registered=true;applyEvent(state.currentEvent);return true;}
+async function registerEvent(ticketType='standard'){if(!state.currentEvent)return;const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},body:JSON.stringify({ticket_type:ticketType})});const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Не удалось записаться');return false;}state.currentEvent.is_registered=true;applyEvent(state.currentEvent);return true;}
 async function submitTicket(){const name=(document.getElementById('mName')?.value||'').trim();const email=(document.getElementById('mEmail')?.value||'').trim();if(!name||!email){toast('Заполните имя и email');return;}const ok=await registerEvent(String(currentTicket.name||'standard').toLowerCase());if(!ok)return;closeModal();toast(currentTicket.price>0?'Счёт отправлен на email, ждите оплаты':'Вы записаны ✓',true);}
 async function clickReg(){
   if(!state.currentEvent)return;
   if(state.currentEvent.is_registered){
-    const r=await fetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}/register`,{method:'DELETE',headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok){toast('Не удалось отменить');return;}
     state.currentEvent.is_registered=false;
     applyEvent(state.currentEvent);
@@ -896,7 +896,7 @@ async function loadSimilar(){
   if(!state.currentEvent)return;
   try{
     const headers=tk()?{Authorization:'Bearer '+tk()}:{};
-    const r=await fetch(`${API}/events?type=${encodeURIComponent(state.currentEvent.type||'')}&limit=4`,{headers});
+    const r=await lastopFetch(`${API}/events?type=${encodeURIComponent(state.currentEvent.type||'')}&limit=4`,{headers});
     if(!r.ok)return;
     const d=await r.json();
     state.similar=(d.events||[]).filter(x=>x.public_id!==state.currentEvent.public_id).slice(0,3);
@@ -939,7 +939,7 @@ async function messageOrganizer(){
     return;
   }
   // Личный организатор — открываем direct-чат как раньше
-  const r=await fetch(`${API}/chat/conversations/direct`,{
+  const r=await lastopFetch(`${API}/chat/conversations/direct`,{
     method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
     body:JSON.stringify({user_public_id:ev.organizer_public_id})
@@ -949,7 +949,7 @@ async function messageOrganizer(){
   const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';
   location.href='/chat.html?conv='+encodeURIComponent(conv);
 }
-async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await fetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
+async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:tk()?{Authorization:'Bearer '+tk()}:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
 function applyEvent(ev){
   state.currentEvent=ev;
   document.title=ev.title+' · LASTOP';
@@ -1270,7 +1270,7 @@ function resetEventModal(){['speakersList','programList','ticketsList'].forEach(
 async function geocodeAddressEvt(addr){
   if(!addr||!addr.trim())return null;
   try{
-    const r=await fetch('https://geocode-maps.yandex.ru/v1/?apikey='+YANDEX_KEY_EVT+'&geocode='+encodeURIComponent(addr)+'&format=json&results=1');
+    const r=await lastopFetch('https://geocode-maps.yandex.ru/v1/?apikey='+YANDEX_KEY_EVT+'&geocode='+encodeURIComponent(addr)+'&format=json&results=1');
     if(!r.ok)return null;
     const d=await r.json();const member=d?.response?.GeoObjectCollection?.featureMember?.[0];if(!member)return null;
     const pos=member.GeoObject?.Point?.pos;if(!pos)return null;
@@ -1293,7 +1293,7 @@ async function onEvCoverSelected(e){
   reader.readAsDataURL(file);
   try{
     const fd = new FormData(); fd.append('file', file);
-    const r = await fetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
+    const r = await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !d.url){ toast(d.error||'Не удалось'); removeEvCover(); return; }
     evCoverUrl = d.url;
@@ -1380,7 +1380,7 @@ async function submitEventEdit(){
   const btn=document.getElementById('submitEventBtn');
   btn.disabled=true;btn.textContent='Сохранение…';
   try{
-    const r=await fetch(API+'/events/'+encodeURIComponent(ev.public_id),{
+    const r=await lastopFetch(API+'/events/'+encodeURIComponent(ev.public_id),{
       method:'PATCH',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+tk()},
       body:JSON.stringify(body)
@@ -1401,7 +1401,7 @@ async function deleteCurrentEvent(){
   if(!state.currentEvent||!state.currentEvent.public_id)return;
   if(!await lastopConfirm({title:'Удалить мероприятие?',message:`«${state.currentEvent.title}» — действие необратимо.`,danger:true}))return;
   try{
-    const r=await fetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}`,{
+    const r=await lastopFetch(`${API}/events/${encodeURIComponent(state.currentEvent.public_id)}`,{
       method:'DELETE',
       headers:{Authorization:'Bearer '+tk()}
     });
@@ -1421,7 +1421,7 @@ async function deleteCurrentEvent(){
   await loadEvent();
   if(!tk())return;
   try{
-    const r=await fetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
+    const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
     const name=user.full_name||user.name||'Пользователь';
@@ -1460,7 +1460,7 @@ async function loadEventMessages(publicID){
   try {
     const tk = localStorage.getItem('token');
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
-    const r = await fetch('/api/events/' + encodeURIComponent(publicID) + '/messages', { headers });
+    const r = await lastopFetch('/api/events/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
     _evDiscMessages = d.messages || [];

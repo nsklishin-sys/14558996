@@ -54,7 +54,7 @@
   async function loadFriends(){
     if (_friendsLoaded) return _friendsHTML;
     try {
-      const r = await fetch('/api/friends', { headers: { Authorization: 'Bearer ' + tk() } });
+      const r = await lastopFetch('/api/friends', { headers: { Authorization: 'Bearer ' + tk() } });
       if (!r.ok) throw 0;
       const d = await r.json();
       const friends = d.friends || [];
@@ -87,7 +87,7 @@
     const titleAttr = wrap.dataset.shareTitle || document.title || 'Публикация';
     const labelAttr = wrap.dataset.shareLabel || 'публикацией';
     try {
-      const r = await fetch('/api/posts', {
+      const r = await lastopFetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
         body: JSON.stringify({
@@ -109,7 +109,7 @@
     const emoji = wrap.dataset.shareEmoji || '🔗';
     const message = `${emoji} ${titleAttr}\n${url}`;
     try {
-      const dc = await fetch('/api/chat/conversations/direct', {
+      const dc = await lastopFetch('/api/chat/conversations/direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
         body: JSON.stringify({ user_public_id: friendPID })
@@ -118,7 +118,7 @@
       const dd = await dc.json();
       const convPID = dd.conversation && dd.conversation.public_id;
       if (!convPID){ toast('Не удалось открыть чат'); return; }
-      const r = await fetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`, {
+      const r = await lastopFetch(`/api/chat/conversations/${encodeURIComponent(convPID)}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
         body: JSON.stringify({ content: message })

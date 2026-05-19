@@ -82,7 +82,7 @@ function show(id) {
 if (!token) {
   show('failState');
 } else {
-  fetch('/api/auth/verify-email?token=' + encodeURIComponent(token))
+  lastopFetch('/api/auth/verify-email?token=' + encodeURIComponent(token))
     .then(r => r.json().then(d => ({r, d})))
     .then(({r, d}) => {
       if (r.ok) { show('okState'); return; }

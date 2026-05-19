@@ -88,4 +88,51 @@
     return (Number(n) || 0).toLocaleString('ru-RU');
   }
   global.lastopFmtNum = lastopFmtNum;
+
+  // ─── lastopFetch — drop-in замена fetch с cookies и CSRF ──────────
+  // Автоматически:
+  //  1. credentials: 'include' — браузер шлёт cookies нашего домена
+  //  2. На write-методах (POST/PUT/DELETE/PATCH) добавляет
+  //     X-CSRF-Token header из cookie lastop_csrf
+  //  3. Сохраняет любые existing headers (включая Authorization: Bearer
+  //     которые фронт пока продолжает слать — bearer на бэке fallback).
+  //
+  // Использование: const r = await lastopFetch('/api/...', { method, body });
+  function getCsrfFromCookie() {
+    const all = document.cookie.split(';');
+    for (const c of all) {
+      const [name, ...rest] = c.trim().split('=');
+      if (name === 'lastop_csrf') {
+        return rest.join('=');
+      }
+    }
+    return '';
+  }
+  const WRITE_METHODS = { POST: 1, PUT: 1, DELETE: 1, PATCH: 1 };
+  function lastopFetch(url, opts) {
+    opts = opts || {};
+    // Сливаем credentials: 'include' — для cookie-auth обязательно.
+    if (opts.credentials === undefined) opts.credentials = 'include';
+
+    // Определяем method (по умолчанию GET)
+    const method = String(opts.method || 'GET').toUpperCase();
+
+    // На write-методах подкладываем X-CSRF-Token (если cookie есть)
+    if (WRITE_METHODS[method]) {
+      const csrf = getCsrfFromCookie();
+      if (csrf) {
+        // Объект Headers vs plain object — обрабатываем оба варианта
+        if (opts.headers instanceof Headers) {
+          opts.headers.set('X-CSRF-Token', csrf);
+        } else {
+          opts.headers = Object.assign({}, opts.headers || {}, {
+            'X-CSRF-Token': csrf
+          });
+        }
+      }
+    }
+    return fetch(url, opts);
+  }
+  global.lastopFetch = lastopFetch;
+
 })(window);

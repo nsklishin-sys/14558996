@@ -172,7 +172,7 @@ async function loadExhibition(){
   document.getElementById('backLink').setAttribute('href', backHref);
   document.getElementById('openExhLink').setAttribute('href', backHref);
   try {
-    const r = await fetch(API + '/exhibitions/' + encodeURIComponent(_publicID), { headers: tk()?{Authorization:'Bearer '+tk()}:{} });
+    const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID), { headers: tk()?{Authorization:'Bearer '+tk()}:{} });
     if (!r.ok) throw 0;
     const d = await r.json();
     const ex = d.exhibition || {};
@@ -204,7 +204,7 @@ async function loadMessages(){
   if (!list) return;
   try {
     const headers = tk() ? { Authorization: 'Bearer ' + tk() } : {};
-    const r = await fetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages', { headers });
+    const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages', { headers });
     if (!r.ok) throw 0;
     const d = await r.json();
     _messages = d.messages || [];
@@ -261,7 +261,7 @@ async function sendMessage(){
   btn.disabled = true;
   btn.textContent = 'Отправка…';
   try {
-    const r = await fetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages', {
+    const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk() },
       body: JSON.stringify({ content: content })
@@ -290,7 +290,7 @@ async function deleteMessage(msgID){
     : confirm('Удалить сообщение?');
   if (!confirmed) return;
   try {
-    const r = await fetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages/' + msgID, {
+    const r = await lastopFetch(API + '/exhibitions/' + encodeURIComponent(_publicID) + '/messages/' + msgID, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + tk() }
     });

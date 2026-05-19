@@ -230,7 +230,7 @@ async function submitContact(){
   btn.disabled=true;
   btn.textContent='Отправка…';
   try{
-    const r=await fetch(API+'/contact', {
+    const r=await lastopFetch(API+'/contact', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({name, email, subject, message})

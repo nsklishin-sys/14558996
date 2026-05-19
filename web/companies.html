@@ -212,7 +212,7 @@ function authHeaders(){return tk()?{Authorization:'Bearer '+tk()}:{};}
 async function loadProfile(){
   if(!tk())return;
   try{
-    const r=await fetch(API+'/me',{headers:authHeaders()});
+    const r=await lastopFetch(API+'/me',{headers:authHeaders()});
     if(!r.ok)return;
     const d=await r.json();
     const u=d.user||d;
@@ -231,9 +231,9 @@ async function loadAll(){
   if (grid && window.lastopSkel) grid.innerHTML = window.lastopSkel.cards(6);
   try{
     const [allR,myR,catR]=await Promise.all([
-      fetch(API+'/companies?limit=100',{headers:authHeaders()}).then(r=>r.json()),
-      tk()?fetch(API+'/companies?tab=my&limit=50',{headers:authHeaders()}).then(r=>r.json()):Promise.resolve({items:[]}),
-      fetch(API+'/catalog/categories').then(r=>r.json()).catch(()=>({groups:[]}))
+      lastopFetch(API+'/companies?limit=100',{headers:authHeaders()}).then(r=>r.json()),
+      tk()?lastopFetch(API+'/companies?tab=my&limit=50',{headers:authHeaders()}).then(r=>r.json()):Promise.resolve({items:[]}),
+      lastopFetch(API+'/catalog/categories').then(r=>r.json()).catch(()=>({groups:[]}))
     ]);
     allCompanies=allR.items||[];
     myCompanies=myR.items||[];

@@ -351,8 +351,8 @@
     try {
       var headers = { Authorization: 'Bearer ' + tk() };
       var responses = await Promise.all([
-        fetch(API + '/companies?tab=my&limit=50', { headers: headers }).catch(function(){ return null; }),
-        fetch(API + '/communities?limit=200', { headers: headers }).catch(function(){ return null; })
+        lastopFetch(API + '/companies?tab=my&limit=50', { headers: headers }).catch(function(){ return null; }),
+        lastopFetch(API + '/communities?limit=200', { headers: headers }).catch(function(){ return null; })
       ]);
       var companiesResp = responses[0];
       var communitiesResp = responses[1];

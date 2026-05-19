@@ -231,7 +231,7 @@
     if (!token) return;
     const headers = { Authorization: 'Bearer ' + token };
     try {
-      const r = await fetch('/api/friends', { headers });
+      const r = await lastopFetch('/api/friends', { headers });
       if (r.ok) {
         const d = await r.json();
         const n = (d.friends || []).length;
@@ -240,7 +240,7 @@
       }
     } catch {}
     try {
-      const r = await fetch('/api/communities?filter=my', { headers });
+      const r = await lastopFetch('/api/communities?filter=my', { headers });
       if (r.ok) {
         const d = await r.json();
         const n = (d.communities || []).length;
@@ -255,7 +255,7 @@
     try { token = localStorage.getItem('token') || ''; } catch {}
     if (!token) return;
     try {
-      const r = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+      const r = await lastopFetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
       if (!r.ok) return;
       const { user } = await r.json();
       if (!user) return;
