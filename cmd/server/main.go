@@ -13035,6 +13035,18 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			// Phase 4 (19.05) SEC: dummy bcrypt-compare для уравнивания
+			// времени отклика. Без этого атакующий по разнице в latency
+			// (несколько мс vs ~100мс) детектирует существование email
+			// в базе (user enumeration через timing attack).
+			//
+			// Hash сгенерирован один раз через bcrypt("dummy-password", DefaultCost).
+			// Сам пароль не важен — главное чтобы Compare выполнял полный
+			// объём работы (cost=10 ≈ 100мс), не отличимый от реального.
+			_ = bcrypt.CompareHashAndPassword(
+				[]byte("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"),
+				[]byte(req.Password),
+			)
 			return user{}, errInvalidCredentials
 		}
 		return user{}, err
