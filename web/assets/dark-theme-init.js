@@ -135,6 +135,7 @@
   }
 
   function injectThemeButton() {
+    if (!document.body) return;
     if (document.body.dataset.darkNoFab !== undefined) return;
     if (document.getElementById('darkFab')) return;
 

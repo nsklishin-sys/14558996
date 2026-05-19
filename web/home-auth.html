@@ -852,7 +852,7 @@ function skels(n,h=50){return Array(n).fill(0).map(()=>`
 /* ── АВТОРИЗАЦИЯ ── */
 let currentUser={};
 (async()=>{
-  if(!tk()){location.href='/home-guest.html';return;}
+  if(!tk()){location.replace('/home-guest.html');return;}
   try{
     const r=await lastopFetch(API+'/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
