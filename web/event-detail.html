@@ -816,7 +816,7 @@ ${url}`;
     toast('Отправлено '+friendName+' ✓',true);
   }catch{toast('Ошибка сети');}
 }
-function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
+function logout(){location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -1458,7 +1458,7 @@ async function loadEventMessages(publicID){
   const list = document.getElementById('evDiscList');
   if (!list) return;
   try {
-    const tk = localStorage.getItem('token');
+    const tk = '';
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/events/' + encodeURIComponent(publicID) + '/messages', { headers });
     if (!r.ok) throw 0;

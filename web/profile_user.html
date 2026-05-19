@@ -635,7 +635,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
 const STUB_PROFILES={
   u_demo_company:{
     type:'company',
@@ -746,7 +745,7 @@ async function onFriendButtonClick(){
   const btn = document.getElementById('btnFriend');
   if (btn) btn.disabled = true;
 
-  const tk = localStorage.getItem('token');
+  const tk = '';
   const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
 
   try {
@@ -979,7 +978,7 @@ function renderUserNotFound(){
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 function switchTab(tab, btn){
   if(tab==='communities')renderViewedCommunities();
   if(tab==='events')renderViewedEvents();

@@ -1015,7 +1015,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api';const tk=()=>localStorage.getItem('token');
+const API='/api';
 const state={conversations:[],allConversationsForCounts:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[],uploading:false,myCompanies:[],myCommunities:[]};
 // ── Кнопка дружбы в шапке диалога ───────────────────────
 let _chatPeerPublicID = '';
@@ -1086,7 +1086,7 @@ async function chatFriendClick(){
   const btn = document.getElementById('chatFriendBtn');
   if (btn) btn.disabled = true;
 
-  const tk = localStorage.getItem('token');
+  const tk = '';
   const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
 
   try {
@@ -1204,7 +1204,7 @@ async function api(path,opt={}){
     Object.assign(h, window.withActiveContextHeaders({}));
   }
   const r=await lastopFetch(API+path,{...opt,headers:h});
-  if(r.status===401){localStorage.removeItem('token');location.href='/login.html';throw new Error('401')}
+  if(r.status===401){location.href='/login.html';throw new Error('401')}
   if(r.status===429)showToast('Слишком часто, подождите секунду');
   if(!r.ok)throw new Error((await r.text())||r.status);
   return r.status===204?{}:r.json()
@@ -1220,7 +1220,7 @@ function loadCachedConversations(){const cached=cacheRead(cacheKeyConversations(
 function saveCachedConversations(){cacheWrite(cacheKeyConversations(),sortConversationsByLastMessage(state.conversations||[]))}
 function loadCachedMessages(pid){const cached=cacheRead(cacheKeyMessages(pid),[]);if(Array.isArray(cached)&&cached.length){state.messages=cached;renderMessages();return true}return false}
 function saveCachedMessages(pid){if(pid)cacheWrite(cacheKeyMessages(pid),state.messages||[])}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
 // ════════════════════════════════════════════

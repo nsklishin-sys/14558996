@@ -469,7 +469,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
@@ -489,7 +488,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const ICON_SETS={
@@ -923,7 +922,7 @@ function _prjFmt(n){if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace('.0
 
 async function loadProjStats(){
   try {
-    const tk = localStorage.getItem('token');
+    const tk = '';
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/projects/stats', { headers });
     if (!r.ok) throw 0;
@@ -955,7 +954,7 @@ async function loadMyProj(){
   const list = document.getElementById('myProjList');
   const card = document.getElementById('myProjCard');
   if (!list) return;
-  const tk = localStorage.getItem('token');
+  const tk = '';
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
     const r = await lastopFetch('/api/projects?owner=me&limit=3', { headers: { Authorization: 'Bearer ' + tk } });
@@ -1031,7 +1030,7 @@ async function loadProjRec(){
   const card = document.getElementById('prjRecCard');
   if (!list) return;
   try {
-    const tk = localStorage.getItem('token');
+    const tk = '';
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/projects/recommended', { headers });
     if (!r.ok) throw 0;

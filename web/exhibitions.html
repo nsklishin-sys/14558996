@@ -505,7 +505,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS={
@@ -860,7 +860,7 @@ async function loadExhHero(){
 
 async function loadExhStats(){
   try {
-    const tk = localStorage.getItem('token');
+    const tk = '';
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/exhibitions/stats', { headers });
     if (!r.ok) throw 0;
@@ -944,7 +944,7 @@ async function loadMyExhApps(){
   const list = document.getElementById('myAppsList');
   const card = document.getElementById('myAppsCard');
   if (!list) return;
-  const tk = localStorage.getItem('token');
+  const tk = '';
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
     const r = await lastopFetch('/api/me/exhibition-applications', { headers: { Authorization: 'Bearer ' + tk } });

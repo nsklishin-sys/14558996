@@ -29,7 +29,6 @@
   document.head.appendChild(style);
 
   // ───── helpers ─────
-  const tk = () => localStorage.getItem('token');
   const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const initials = name => (name||'?').split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase() || '?';
 

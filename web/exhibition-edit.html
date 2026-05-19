@@ -347,7 +347,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token')||'';
 const ADMIN_OK={ok:false};
 const state={mode:'create',publicID:'',exhibition:null,pendingLat:0,pendingLng:0,applications:[]};
 const YANDEX_API_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
@@ -364,7 +363,7 @@ function dateTimeLocalToISO(v){if(!v)return '';const d=new Date(v);if(isNaN(d))r
 
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('profileDD').classList.toggle('open');document.getElementById('topbarProfile').classList.toggle('open');}
 document.addEventListener('click',()=>{document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');});
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 async function loadProfile(){
   if(!tk()){location.href='/login.html';return;}
