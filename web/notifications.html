@@ -496,7 +496,7 @@ const SOURCE_TYPE_TO_GROUP = (() => {
 
 const API='/api';
 const tk=()=>localStorage.getItem('token');
-function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+const escHtml = window.lastopEsc;
 function showToast(msg){
   let toast=document.getElementById('toast');
   if(!toast){

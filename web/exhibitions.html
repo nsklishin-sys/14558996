@@ -811,7 +811,7 @@ function submitStand(){
 })();
 
 // ─── Динамические блоки выставок (Спринт 12-B-3) ───
-function _exEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const _exEsc = window.lastopEsc;
 function _exFmt(n){if (n >= 1000) return (n/1000).toFixed(n>=10000?0:1).replace('.0','') + 'к'; return String(n);}
 function _exMonShort(d){const M=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];return M[d.getMonth()];}
 function _exDaysLeft(d){const ms=new Date(d)-new Date();const days=Math.ceil(ms/86400000);if(days<0)return 'Завершено';if(days===0)return 'Сегодня';if(days===1)return 'Завтра';return 'До начала: '+days+' '+(days%10===1&&days%100!==11?'день':(days%10>=2&&days%10<=4&&(days%100<10||days%100>=20)?'дня':'дней'));}

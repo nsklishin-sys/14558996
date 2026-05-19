@@ -1698,8 +1698,8 @@ async function loadFeedForum(feed){
   }
 }
 
-function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+const escHtml = window.lastopEsc;
+const escAttr = window.lastopEsc;
 
 async function loadFeedCompanies(container){
   container.innerHTML = skels(3, 80);

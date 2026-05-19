@@ -553,8 +553,8 @@ async function runAddSearch(q){
   }
 }
 function closeAddDD(){const dd=document.getElementById('addDD');if(dd)dd.classList.remove('open');}
-function escHTML(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function escAttr(s){return escHTML(s).replace(/'/g,'&#39;');}
+const escHTML = window.lastopEsc;
+const escAttr = window.lastopEsc;
 async function sendRequestByPublicID(publicID, name, btn){
   if(!publicID||btn.classList.contains('sent'))return;
   btn.disabled=true;btn.textContent='…';
