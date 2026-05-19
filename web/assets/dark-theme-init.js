@@ -45,6 +45,7 @@
     document.documentElement.setAttribute('data-theme', theme);
 
     function applyToBody() {
+      if (!document.body) return;
       if (isDark) {
         document.body.classList.add('dark-theme');
       } else {
