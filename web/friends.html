@@ -308,7 +308,7 @@ function ltr(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2800)}
-function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
+function logout(){location.href='/home-guest.html'}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -328,16 +328,16 @@ let friends=[], incoming=[], outgoing=[], candidates=[];
 
 function buildCard(user, type){
   const name=user.friend_name||user.full_name||'Пользователь';
-  const id=user.friend_id||user.user_id||user.id||'';
+  const id=user.friend_id||user.user_id||user.id||
   const color=avc(name);
   const letter=ltr(name);
-  const avatarURL=user.avatar_url||'';
-  const pos=user.position||user.role||user.email||'';
-  const company=user.company_name||'';
+  const avatarURL=user.avatar_url||
+  const pos=user.position||user.role||user.email||
+  const company=user.company_name||
   const online=user.is_online||false;
   const mutual=user.mutual_friends||0;
 
-  let actions='';
+  let actions=
   if(type==='friend'){
     actions=`
       <button type="button" class="fc-btn fc-btn-msg" onclick="goChat('${esc(id)}','${esc(name)}')">
@@ -454,9 +454,9 @@ function renderRecommendations(){
   if(!pool.length){rec.innerHTML='<div style="font-size:12px;color:var(--gmt)">Нет рекомендаций</div>';return;}
   rec.innerHTML=pool.map(u=>{
     const name=u.full_name||u.friend_name||'Пользователь';
-    const id=u.id||u.friend_id||'';
+    const id=u.id||u.friend_id||
     const color=avc(name);
-    const avatarURL=u.avatar_url||'';
+    const avatarURL=u.avatar_url||
     return`<div class="rec-item" style="cursor:pointer" onclick="if(!event.target.closest('button'))location.href='/profile_user.html?id=${encodeURIComponent(id)}'">
       <div class="rec-av" style="background:${color}${avatarURL?`;background-image:url('${esc(avatarURL)}');background-size:cover;background-position:center`:''}">${avatarURL?'':ltr(name)}</div>
       <div class="rec-body">
@@ -578,7 +578,7 @@ async function sendRequest(){
     if(val.startsWith('@')) await apiFetch('/friends/request-by-handle','POST',{handle:val.slice(1)});
     else await apiFetch('/friends/request-by-name','POST',{name:val});
     msg.className='add-msg ok';msg.textContent='✓ Заявка отправлена пользователю «'+val+'»';
-    document.getElementById('addInput').value='';
+    document.getElementById('addInput').value=
     setTimeout(()=>msg.className='add-msg',3000);
     loadData();
   }catch(e){

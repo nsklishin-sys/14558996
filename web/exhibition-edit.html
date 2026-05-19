@@ -347,7 +347,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token')||'';
+||
 const ADMIN_OK={ok:false};
 const state={mode:'create',publicID:'',exhibition:null,pendingLat:0,pendingLng:0,applications:[]};
 const YANDEX_API_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
@@ -357,14 +357,14 @@ const avc = window.lastopAvc;
 function ltr(s){return((s||'?')[0]||'?').toUpperCase();}
 function eeToast(msg,kind){const t=document.getElementById('eeToast');t.textContent=msg;t.className='ee-toast show '+(kind||'');setTimeout(()=>t.classList.remove('show'),2400);}
 
-function getPublicID(){const u=new URL(location.href);return u.searchParams.get('id')||u.searchParams.get('public_id')||'';}
+function getPublicID(){const u=new URL(location.href);return u.searchParams.get('id')||u.searchParams.get('public_id')||}
 
-function isoToDateTimeLocal(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return '';const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;}
-function dateTimeLocalToISO(v){if(!v)return '';const d=new Date(v);if(isNaN(d))return '';return d.toISOString();}
+function isoToDateTimeLocal(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+function dateTimeLocalToISO(v){if(!v)returnconst d=new Date(v);if(isNaN(d))returnreturn d.toISOString();}
 
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('profileDD').classList.toggle('open');document.getElementById('topbarProfile').classList.toggle('open');}
 document.addEventListener('click',()=>{document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');});
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 async function loadProfile(){
   if(!tk()){location.href='/login.html';return;}
@@ -383,7 +383,7 @@ async function loadProfile(){
 async function uploadFileToInput(fileInput,targetInputID){
   const file=fileInput.files&&fileInput.files[0];
   if(!file)return;
-  if(file.size>5*1024*1024){eeToast('Файл больше 5 МБ','err');fileInput.value='';return;}
+  if(file.size>5*1024*1024){eeToast('Файл больше 5 МБ','err');fileInput.value=return;}
   const fd=new FormData();fd.append('file',file);
   const target=document.getElementById(targetInputID);
   if(target){target.disabled=true;target.placeholder='Загружаем…';}
@@ -391,12 +391,12 @@ async function uploadFileToInput(fileInput,targetInputID){
     const r=await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
     if(!r.ok){const t=await r.text().catch(()=>'');eeToast('Ошибка загрузки: '+(t||r.status),'err');return;}
     const data=await r.json();
-    const url=data.url||data.URL||'';
+    const url=data.url||data.URL||
     if(!url){eeToast('Сервер не вернул URL файла','err');return;}
     if(target){target.value=url;target.placeholder='https://… или загрузите файл';}
     eeToast('Файл загружен ✓','ok');
   }catch(e){console.error('upload',e);eeToast('Ошибка сети при загрузке','err');}
-  finally{if(target)target.disabled=false;fileInput.value='';}
+  finally{if(target)target.disabled=false;fileInput.value=}
 }
 
 async function loadOrgCompanies(){
@@ -671,8 +671,8 @@ async function saveBasic(){
       state.exhibition=ex;btn.disabled=false;btn.textContent=oldText;
       // обновляем values input'ов чтобы отразить сохранённые данные
       const fields={fTitle:'title',fShortDesc:'short_description',fDesc:'description',fCategory:'category',fFormat:'format',fStatus:'status',fTimezone:'timezone',fCoverURL:'cover_url',fOrgLabel:'organizer_label',fExpoURL:'external_expo_url',fCity:'city',fAddress:'address',fVenue:'venue',fOnlineURL:'online_url'};
-      Object.keys(fields).forEach(id=>{const el=document.getElementById(id);if(el)el.value=ex[fields[id]]||'';});
-      const fOrg=document.getElementById('fOrgCompanyID');if(fOrg)fOrg.value=ex.organizer_company_id||'';
+      Object.keys(fields).forEach(id=>{const el=document.getElementById(id);if(el)el.value=ex[fields[id]]||});
+      const fOrg=document.getElementById('fOrgCompanyID');if(fOrg)fOrg.value=ex.organizer_company_id||
       const fTags=document.getElementById('fTags');if(fTags)fTags.value=(ex.tags||[]).join(', ');
     }
   }catch(e){console.error('save error',e);eeToast('Ошибка сети','err');btn.disabled=false;btn.textContent=oldText;}
@@ -691,10 +691,10 @@ async function geocodeAddress(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const data=await r.json();
     const members=data?.response?.GeoObjectCollection?.featureMember||[];
-    if(!members.length){eeToast('Адрес не найден','err');resBox.innerHTML='';resBox.classList.remove('active');return;}
+    if(!members.length){eeToast('Адрес не найден','err');resBox.innerHTML=resBox.classList.remove('active');return;}
     resBox.innerHTML=members.map((m,i)=>{
       const obj=m.GeoObject;
-      const text=obj.metaDataProperty?.GeocoderMetaData?.text||obj.name||'';
+      const text=obj.metaDataProperty?.GeocoderMetaData?.text||obj.name||
       const pos=(obj.Point?.pos||'').split(' ');
       const lng=parseFloat(pos[0])||0,lat=parseFloat(pos[1])||0;
       return `<div class="ee-loc-result" onclick="selectGeocodeResult(${lat},${lng},'${escHtml(text).replace(/'/g,"\\'")}')">${escHtml(text)}<div class="lr-coords">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div>`;
@@ -711,7 +711,7 @@ async function geocodeAddress(){
 function selectGeocodeResult(lat,lng,text){
   state.pendingLat=lat;state.pendingLng=lng;
   document.getElementById('locResults').classList.remove('active');
-  document.getElementById('locResults').innerHTML='';
+  document.getElementById('locResults').innerHTML=
   // Опционально подставим текст в адрес если поле пустое
   const addrInput=document.getElementById('fAddress');
   if(addrInput&&!addrInput.value.trim())addrInput.value=text;
@@ -726,7 +726,7 @@ function selectGeocodeResult(lat,lng,text){
 function clearCoords(){
   state.pendingLat=0;state.pendingLng=0;
   if(state.exhibition){state.exhibition.latitude=0;state.exhibition.longitude=0;}
-  const conf=document.getElementById('locConfirmed');if(conf)conf.innerHTML='';
+  const conf=document.getElementById('locConfirmed');if(conf)conf.innerHTML=
   eeToast('Координаты сброшены','ok');
 }
 
@@ -735,8 +735,8 @@ function clearCoords(){
 const SESSION_TYPES={talk:'Доклад',panel:'Панель',workshop:'Воркшоп',break:'Перерыв',award:'Награждение'};
 const SESSION_TYPE_CLASS={panel:'t-panel',workshop:'t-workshop',break:'t-break',award:'t-award'};
 
-function fmtTime(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
-function fmtDayDate(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const MM=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return d.getDate()+' '+MM[d.getMonth()];}
+function fmtTime(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
+function fmtDayDate(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst MM=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return d.getDate()+' '+MM[d.getMonth()];}
 
 function renderProgram(){
   renderSpeakers();
@@ -748,7 +748,7 @@ function renderSpeakers(){
   const el=document.getElementById('speakersList');if(!el)return;
   if(!sps.length){el.innerHTML='<div class="ee-prog-empty">Спикеры пока не добавлены</div>';return;}
   el.innerHTML='<div class="ee-spk-grid">'+sps.map(s=>{
-    const photo=s.photo_url?`background-image:url(${escHtml(s.photo_url)})`:'';
+    const photo=s.photo_url?`background-image:url(${escHtml(s.photo_url)})`:
     const initial=s.photo_url?'':((s.full_name||'?')[0]||'?').toUpperCase();
     return `<div class="ee-spk-card">
       <div class="ee-spk-photo" style="${photo}">${initial}</div>
@@ -803,7 +803,7 @@ function openSpeakerForm(speakerID){
       </div>
     </div>`;
 }
-function closeSpeakerForm(){document.getElementById('speakerFormSlot').innerHTML='';}
+function closeSpeakerForm(){document.getElementById('speakerFormSlot').innerHTML=}
 
 async function saveSpeaker(speakerID){
   const body={
@@ -878,11 +878,11 @@ function renderDay(d,num){
 }
 
 function renderSession(s){
-  const cls=SESSION_TYPE_CLASS[s.session_type]||'';
+  const cls=SESSION_TYPE_CLASS[s.session_type]||
   const typeLabel=SESSION_TYPES[s.session_type]||s.session_type||'Сессия';
   const speakerNames=(s.speaker_ids||[]).map(id=>{
     const sp=(state.exhibition.speakers||[]).find(x=>x.id===id);
-    return sp?escHtml(sp.full_name):'';
+    return sp?escHtml(sp.full_name):
   }).filter(Boolean).join(', ');
   return `<div class="ee-session">
     <div class="ee-session-time">${fmtTime(s.starts_at)}–${fmtTime(s.ends_at)}</div>
@@ -901,7 +901,7 @@ function renderSession(s){
   </div>`;
 }
 
-function dateToInput(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const pad=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function dateToInput(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst pad=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 
 function openDayForm(dayID){
   const slot=document.getElementById('dayFormSlot');
@@ -914,7 +914,7 @@ function openDayForm(dayID){
     if(!d.title)d.title='День '+d.sort_order;
   }
   // Подсказка: дата по умолчанию = starts_at выставки + (количество дней)
-  let defaultDate='';
+  let defaultDate=
   if(!isEdit){
     const exStart=state.exhibition?.starts_at;
     if(exStart){
@@ -941,7 +941,7 @@ function openDayForm(dayID){
       </div>
     </div>`;
 }
-function closeDayForm(){document.getElementById('dayFormSlot').innerHTML='';}
+function closeDayForm(){document.getElementById('dayFormSlot').innerHTML=}
 
 async function saveDay(dayID){
   const dateStr=document.getElementById('dayDate').value;
@@ -979,10 +979,10 @@ async function deleteDay(dayID){
 
 /* SESSIONS */
 function combineDateTime(dateStr,timeStr){
-  if(!dateStr||!timeStr)return'';
+  if(!dateStr||!timeStr)return
   return new Date(dateStr+'T'+timeStr+':00').toISOString();
 }
-function isoToTime(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
+function isoToTime(iso){if(!iso)returnconst d=new Date(iso);if(isNaN(d))returnconst pad=n=>String(n).padStart(2,'0');return pad(d.getHours())+':'+pad(d.getMinutes());}
 
 function openSessionForm(dayID,sessionID){
   const slot=document.getElementById('sessionFormSlot-'+dayID);
@@ -990,7 +990,7 @@ function openSessionForm(dayID,sessionID){
   const isEdit=!!sessionID;
   const s=isEdit?(state.exhibition.sessions||[]).find(x=>x.id===sessionID)||{}:{};
   const day=(state.exhibition.days||[]).find(d=>d.id===dayID);
-  const dayDateStr=day?dateToInput(day.day_date):'';
+  const dayDateStr=day?dateToInput(day.day_date):
   const speakers=(state.exhibition.speakers||[]);
   const selectedIDs=new Set(s.speaker_ids||[]);
 
@@ -1038,7 +1038,7 @@ function openSessionForm(dayID,sessionID){
       </div>
     </div>`;
 }
-function closeSessionForm(dayID){const s=document.getElementById('sessionFormSlot-'+dayID);if(s)s.innerHTML='';}
+function closeSessionForm(dayID){const s=document.getElementById('sessionFormSlot-'+dayID);if(s)s.innerHTML=}
 
 async function saveSession(dayID,sessionID){
   const dateStr=document.getElementById('sesDayDate-'+dayID).value;
@@ -1113,7 +1113,7 @@ function renderTickets(){
     const roleLabel=TICKET_ROLES[t.role]||t.role;
     const price=fmtPrice(t.price_cents,t.currency);
     const isFree=(t.price_cents||0)===0;
-    const seats=t.seats_limit?` · ${t.seats_taken||0}/${t.seats_limit} мест`:'';
+    const seats=t.seats_limit?` · ${t.seats_taken||0}/${t.seats_limit} мест`:
     const perks=(t.perks||[]).map(p=>`<span class="ee-ticket-perk">${escHtml(p)}</span>`).join('');
     return `<div class="ee-ticket">
       <span class="ee-ticket-role ${cls}">${roleLabel}</span>
@@ -1180,7 +1180,7 @@ function openTicketForm(ticketID){
       </div>
     </div>`;
 }
-function closeTicketForm(){document.getElementById('ticketFormSlot').innerHTML='';}
+function closeTicketForm(){document.getElementById('ticketFormSlot').innerHTML=}
 
 async function saveTicket(ticketID){
   const perks=(document.getElementById('tckPerks').value||'').split(',').map(p=>p.trim()).filter(Boolean);
@@ -1275,7 +1275,7 @@ function openZoneForm(zoneID){
       </div>
     </div>`;
 }
-function closeZoneForm(){document.getElementById('zoneFormSlot').innerHTML='';}
+function closeZoneForm(){document.getElementById('zoneFormSlot').innerHTML=}
 
 function selectZnColor(c){
   document.getElementById('znColor').value=c;
@@ -1339,7 +1339,7 @@ function renderApplications(){
   const el=document.getElementById('applicationsList');if(!el)return;
   if(!list.length){el.innerHTML='<div class="ee-prog-empty">Заявок ещё нет. Они появятся, когда компании отправят заявку через деталку выставки.</div>';renderExhibitorsApproved();return;}
   el.innerHTML=list.map(a=>{
-    const logo=a.company_logo?`background-image:url(${escHtml(a.company_logo)})`:'';
+    const logo=a.company_logo?`background-image:url(${escHtml(a.company_logo)})`:
     const initial=a.company_logo?'':((a.company_name||'?')[0]||'?').toUpperCase();
     const cls='s-'+(a.status||'pending');
     const lbl=APP_STATUS[a.status]||a.status;
@@ -1375,7 +1375,7 @@ function renderExhibitorsApproved(){
   const el=document.getElementById('exhibitorsList');if(!el)return;
   if(!exhibitors.length){el.innerHTML='<div class="ee-prog-empty">Одобренных экспонентов пока нет.</div>';return;}
   el.innerHTML='<div class="ee-exh-grid">'+exhibitors.map(e=>{
-    const logo=e.company_logo?`background-image:url(${escHtml(e.company_logo)})`:'';
+    const logo=e.company_logo?`background-image:url(${escHtml(e.company_logo)})`:
     const initial=e.company_logo?'':((e.company_name||'?')[0]||'?').toUpperCase();
     return `<div class="ee-exh-card">
       <div class="ee-exh-logo" style="${logo}">${initial}</div>
@@ -1388,14 +1388,14 @@ function renderExhibitorsApproved(){
 }
 
 async function reviewApp(appID,action){
-  let reviewMessage='';
-  let boothNumber='';
-  let pavilion='';
+  let reviewMessage=
+  let boothNumber=
+  let pavilion=
   if(action==='approve'){
-    boothNumber=(await lastopPrompt({title:'Одобрение заявки',message:'Номер стенда (опционально)',placeholder:'A-12'}))||'';
-    pavilion=(await lastopPrompt({title:'Одобрение заявки',message:'Павильон (опционально)',placeholder:'Павильон 1'}))||'';
+    boothNumber=(await lastopPrompt({title:'Одобрение заявки',message:'Номер стенда (опционально)',placeholder:'A-12'}))||
+    pavilion=(await lastopPrompt({title:'Одобрение заявки',message:'Павильон (опционально)',placeholder:'Павильон 1'}))||
   }else{
-    reviewMessage=(await lastopPrompt({title:'Отклонение заявки',message:'Причина (опционально)',placeholder:'Введите причину'}))||'';
+    reviewMessage=(await lastopPrompt({title:'Отклонение заявки',message:'Причина (опционально)',placeholder:'Введите причину'}))||
   }
   const body={action,review_message:reviewMessage,booth_number:boothNumber,pavilion};
   try{

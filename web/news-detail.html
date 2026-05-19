@@ -63,8 +63,8 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .news-img-wrap img{width:100%;max-height:400px;object-fit:cover;display:block;transition:transform .4s ease}
 .news-img-wrap:hover img{transform:scale(1.02)}
 .news-img-placeholder{height:320px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1E8A4C 0%,#22A05A 60%,#3B8A5A 100%);position:relative;overflow:hidden;border-radius:var(--rxl) var(--rxl) 0 0}
-.news-img-placeholder::before{content:'';position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)}
-.news-img-placeholder::after{content:'';position:absolute;bottom:-60px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+.news-img-placeholder::before{content:position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)}
+.news-img-placeholder::after{content:position:absolute;bottom:-60px;left:5%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
 .news-img-icon{position:relative;z-index:1}
 .news-img-icon svg{width:64px;height:64px;stroke:rgba(255,255,255,.4);fill:none;stroke-width:1;stroke-linecap:round}
 
@@ -582,8 +582,8 @@ const postPublicID=new URLSearchParams(location.search).get('id');
 // ── Редактирование поста ──
 function openEditPost(){
   // Берём текущие значения с страницы
-  const title = document.getElementById('newsTitle')?.textContent?.trim() || '';
-  const content = document.getElementById('newsContent')?.innerText?.trim() || '';
+  const title = document.getElementById('newsTitle')?.textContent?.trim() ||
+  const content = document.getElementById('newsContent')?.innerText?.trim() ||
   const modal = document.getElementById('editPostModal');
   if (!modal) return;
   document.getElementById('editPostTitle').value = title;
@@ -639,7 +639,7 @@ function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,ok){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){localStorage.removeItem('token');location.href='/home-guest.html'}
+function logout(){location.href='/home-guest.html'}
 
 /* DROPDOWN профиля */
 function toggleDD(e){e.stopPropagation();const tp=document.getElementById('topbarProfile');const pd=document.getElementById('profileDD');if(tp)tp.classList.toggle('open');if(pd)pd.classList.toggle('open')}
@@ -894,7 +894,7 @@ function focusComment(){
 function cancelComment(){
   const ta=document.getElementById('commentInput');
   if(!ta)return;
-  ta.value='';ta.style.minHeight='44px';
+  ta.value=ta.style.minHeight='44px';
   const actions=document.getElementById('ciActions');
   if(actions)actions.style.display='none';
   clearReplyState();
@@ -949,8 +949,8 @@ async function sendComment(){
       if (el) el.textContent = commentCount;
     });
     renderComments();
-    input.value = '';
-    input.style.minHeight = '';
+    input.value =
+    input.style.minHeight =
     const actions = document.getElementById('ciActions');
     if (actions) actions.style.display = 'none';
     clearReplyState();
@@ -1070,8 +1070,8 @@ function pickPostAuthor(p){
 }
 
 function renderPost(p){
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? ''; };
-  const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? ''; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? };
+  const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? };
 
   set('newsTitle', p.title || '');
   // Расчёт времени чтения: ~200 слов в минуту
@@ -1094,7 +1094,7 @@ function renderPost(p){
       if (!img) {
         img = document.createElement('img');
         img.className = 'news-img-real';
-        img.alt = '';
+        img.alt =
         img.style.cssText = 'width:100%;height:auto;display:block;object-fit:cover;max-height:480px';
         imgWrap.insertBefore(img, imgWrap.firstChild);
       }
@@ -1103,7 +1103,7 @@ function renderPost(p){
       const existingImg = imgWrap.querySelector('img.news-img-real');
       if (existingImg) existingImg.remove();
       const placeholder = imgWrap.querySelector('.news-img-placeholder');
-      if (placeholder) placeholder.style.display = '';
+      if (placeholder) placeholder.style.display =
     }
   }
 
@@ -1111,11 +1111,11 @@ function renderPost(p){
   if (leadEl) {
     const leadSrc = String(p.content || p.text || '').replace(/\s+/g, ' ').trim();
     if (leadSrc) {
-      leadEl.style.display = '';
+      leadEl.style.display =
       leadEl.textContent = leadSrc.slice(0, 220) + (leadSrc.length > 220 ? '…' : '');
     } else {
       leadEl.style.display = 'none';
-      leadEl.textContent = '';
+      leadEl.textContent =
     }
   }
 
@@ -1126,7 +1126,7 @@ function renderPost(p){
   const fromCompany = pickedAuthor.fromCompany;
   const authorName = pickedAuthor.name || 'Участник';
   const authorRole = pickedAuthor.subline || 'Участник LASTOP';
-  const authorPublicID = (!fromCommunity && !fromCompany) ? (author.author_public_id || '') : '';
+  const authorPublicID = (!fromCommunity && !fromCompany) ? (author.author_public_id || '') :
   const authorAvatar = pickedAuthor.avatar;
   const authorColor = pickedAuthor.bgColor;
 
@@ -1135,7 +1135,7 @@ function renderPost(p){
   // Кликабельный автор: на профиль/сообщество/компанию
   const newsAuthorLink = document.getElementById('newsAuthorLink');
   if (newsAuthorLink) {
-    let authorHref = '';
+    let authorHref =
     if (fromCommunity && (author.community_public_id || author.community_id)) {
       authorHref = '/community-detail.html?id=' + encodeURIComponent(author.community_public_id || author.community_id);
     } else if (fromCompany && (author.company_slug || author.company_public_id)) {
@@ -1172,7 +1172,7 @@ function renderPost(p){
       tagsEl.innerHTML = tags.map(t => `<a class="news-tag" href="/search.html?q=${encodeURIComponent('#' + t)}">#${esc(t)}</a>`).join('');
     } else {
       tagsEl.style.display = 'none';
-      tagsEl.innerHTML = '';
+      tagsEl.innerHTML =
     }
   }
 
@@ -1291,7 +1291,7 @@ if(commentInputEl){
     const r=await lastopFetch(API + '/me',{headers:{Authorization:'Bearer '+tk()}});
     if(!r.ok)throw 0;
     const{user={}}=await r.json();
-    window._currentUserPID = user.public_id || '';
+    window._currentUserPID = user.public_id ||
     const name=user.full_name||user.name||'Пользователь';
     const color=avc(name);const L=ltr(name);
     ['topbarAv','pddAv','ciAv'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=L;el.style.background=color}});
@@ -1307,7 +1307,7 @@ if(commentInputEl){
 // ─── Похожие новости (Спринт 12-B-2) ───
 function _ndlEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function _ndlAgo(ts){
-  if(!ts)return '';
+  if(!ts)return
   const d = new Date(ts);
   const m = Math.floor((Date.now()-d)/60000);
   if (m < 1440) return 'сегодня';
@@ -1369,8 +1369,8 @@ document.addEventListener('DOMContentLoaded', function(){
   function getPostPublicID(){
     try {
       const params = new URLSearchParams(location.search);
-      return params.get('id') || params.get('public_id') || '';
-    } catch { return ''; }
+      return params.get('id') || params.get('public_id') ||
+    } catch { return }
   }
   function trySubscribe(){
     const pid = getPostPublicID();

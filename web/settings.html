@@ -159,7 +159,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 .radio-row:hover{background:var(--gp)}
 .radio-row .rr-circle{width:16px;height:16px;border-radius:50%;border:2px solid var(--bdr);flex-shrink:0;display:grid;place-items:center;transition:border-color .15s}
 .radio-row.active .rr-circle{border-color:var(--g)}
-.radio-row.active .rr-circle::after{content:'';width:7px;height:7px;border-radius:50%;background:var(--g)}
+.radio-row.active .rr-circle::after{content:width:7px;height:7px;border-radius:50%;background:var(--g)}
 .radio-row .rr-label{font-size:13px;font-weight:500;color:var(--t)}
 .radio-row.active .rr-label{font-weight:600}
 .toggle{
@@ -807,7 +807,7 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
+
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
@@ -830,16 +830,16 @@ function setSelectValue(selectID,value,fallback){
   select.value=hasOption?value:fallback;
 }
 function getPublicID(userLike){
-  if(!userLike)return '';
+  if(!userLike)return
   if(userLike.public_id)return userLike.public_id;
   if(userLike.id!=null)return 'u'+userLike.id;
-  return '';
+  return
 }
 function profileStorageKey(userLike){
-  const publicID=userLike?.public_id||'';
+  const publicID=userLike?.public_id||
   if(publicID)return `user_profile:${publicID}`;
   if(userLike?.id!=null)return `user_profile:u${userLike.id}`;
-  return '';
+  return
 }
 function profileHref(userLike){
   const uid=getPublicID(userLike)||getPublicID(currentUser);
@@ -889,20 +889,20 @@ function populateUI(){
   if(currentUser.avatar_url){av.innerHTML=`<img src="${currentUser.avatar_url}" alt="${esc(name)}">`;} else{av.textContent=ltr;av.style.background=color;}
   /* Поля профиля */
   const parts=(name).split(' ');
-  document.getElementById('firstName').value=parts[0]||'';
-  document.getElementById('lastName').value=parts.slice(1).join(' ')||'';
-  document.getElementById('position').value=currentUser.position||'';
-  document.getElementById('company').value=currentUser.company_name||'';
-  document.getElementById('bio').value=currentUser.bio||'';
-  document.getElementById('phone').value=currentUser.phone||'';
-  document.getElementById('city').value=currentUser.location||currentUser.city||'';
-  document.getElementById('emailField').value=currentUser.email||'';
+  document.getElementById('firstName').value=parts[0]||
+  document.getElementById('lastName').value=parts.slice(1).join(' ')||
+  document.getElementById('position').value=currentUser.position||
+  document.getElementById('company').value=currentUser.company_name||
+  document.getElementById('bio').value=currentUser.bio||
+  document.getElementById('phone').value=currentUser.phone||
+  document.getElementById('city').value=currentUser.location||currentUser.city||
+  document.getElementById('emailField').value=currentUser.email||
   renderEmailVerifyStatus();
   loadStorageInfo();
   loadSessions();
-  document.getElementById('handleField').value=currentUser.handle||'';
+  document.getElementById('handleField').value=currentUser.handle||
   updateWebsiteField();
-  pendingAvatarURL=currentUser.avatar_url||'';
+  pendingAvatarURL=currentUser.avatar_url||
   /* Настройки внешнего вида */
   const initialTheme=(window.LastopTheme && typeof window.LastopTheme.current==='function')?window.LastopTheme.current():(localStorage.getItem('lastop-theme')||'light');
   markThemeCard(initialTheme);
@@ -981,7 +981,7 @@ async function togglePushDevice(event, row){
     if (inp) inp.checked = wasChecked;
     if (window.lastopToast) window.lastopToast('Ошибка: ' + (e.message || e), 'error');
   } finally {
-    row.dataset.busy = '';
+    row.dataset.busy =
   }
 }
 
@@ -1055,7 +1055,7 @@ async function loadSessions(){
 
 function parseUserAgent(ua){
   if(!ua) return {device:'Неизвестное устройство', browser:'', icon:'desktop'};
-  let device = 'Компьютер', icon = 'desktop', browser = '';
+  let device = 'Компьютер', icon = 'desktop', browser =
   if(/iPhone|iPad/.test(ua)){ device = /iPad/.test(ua)?'iPad':'iPhone'; icon='mobile'; }
   else if(/Android/.test(ua)){ device = 'Android'; icon='mobile'; }
   else if(/Mac OS X/.test(ua)){ device = 'Mac'; }
@@ -1270,7 +1270,7 @@ function selectTheme(card, theme){
 }
 
 /* ── АВАТАР ── */
-let pendingAvatarURL='';
+let pendingAvatarURL=
 
 function updateWebsiteField(){
   const websiteInput=document.getElementById('website');
@@ -1294,15 +1294,15 @@ async function previewAvatar(input){
     const r=await lastopFetch(API+'/upload',{method:'POST',headers:{Authorization:'Bearer '+tk()},body:fd});
     if(!r.ok){throw new Error(await r.text()||'Upload error');}
     const d=await r.json();
-    pendingAvatarURL=d.url||d.file_url||'';
+    pendingAvatarURL=d.url||d.file_url||
     if(!pendingAvatarURL)throw new Error('Сервер не вернул URL файла');
     URL.revokeObjectURL(localPreview);
     av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;
   }catch(e){
     URL.revokeObjectURL(localPreview);
     showToast('Не удалось загрузить файл: '+(e.message||e),'error');
-    pendingAvatarURL=currentUser.avatar_url||'';
-    if(pendingAvatarURL){av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;}else{av.innerHTML='';av.textContent=initials(currentUser.full_name||'?');av.style.background=avc(currentUser.full_name||'?');}
+    pendingAvatarURL=currentUser.avatar_url||
+    if(pendingAvatarURL){av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;}else{av.innerHTML=av.textContent=initials(currentUser.full_name||'?');av.style.background=avc(currentUser.full_name||'?');}
   }
 }
 
@@ -1384,7 +1384,7 @@ function saveAccount(){
   const email=document.getElementById('emailField').value.trim();
   if(!email){showToast('Введите email');return;}
   document.getElementById('emailModalNew').textContent=email;
-  document.getElementById('emailModalPwd').value='';
+  document.getElementById('emailModalPwd').value=
   document.getElementById('emailModalError').style.display='none';
   document.getElementById('emailModalBg').classList.add('open');
   setTimeout(()=>document.getElementById('emailModalPwd').focus(),100);
@@ -1448,8 +1448,8 @@ async function saveSettings(section){
   }
 }
 function confirmDelete(){
-  document.getElementById('delAccPwd').value='';
-  document.getElementById('delAccConfirm').value='';
+  document.getElementById('delAccPwd').value=
+  document.getElementById('delAccConfirm').value=
   document.getElementById('delAccError').style.display='none';
   document.getElementById('delAccBtn').disabled=true;
   document.getElementById('delAccBtn').style.opacity='.5';
@@ -1485,13 +1485,13 @@ async function executeDelAcc(){
 document.getElementById('emailField').addEventListener('input',updateWebsiteField);
 
 function logout(){
-  localStorage.removeItem('token');localStorage.removeItem('user');
+  localStorage.removeItem('user');
   location.href='/home-guest.html';
 }
 
 document.getElementById('handleField').addEventListener('input',()=>{
   const v=document.getElementById('handleField').value.trim().replace(/^@/,'');
-  clearTimeout(handleCheckTimer);document.getElementById('saveHandleBtn').disabled=true;document.getElementById('handleCheck').textContent='';
+  clearTimeout(handleCheckTimer);document.getElementById('saveHandleBtn').disabled=true;document.getElementById('handleCheck').textContent=
   if(!v)return;
   handleCheckTimer=setTimeout(()=>checkHandleNow(v),400);
 });
@@ -1575,7 +1575,7 @@ async function executePwdChange(){
 (async function initPrivacySettings(){
   const cb=document.getElementById('prvVisibleInViewers');
   if(!cb)return;
-  const tk=()=>localStorage.getItem('token');
+  
   if(!tk())return;
   try{
     const r=await lastopFetch('/api/me',{headers:{Authorization:'Bearer '+tk()}});

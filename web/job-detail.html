@@ -106,7 +106,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .section-text{font-size:14px;color:var(--t);line-height:1.65;white-space:pre-wrap;word-break:break-word}
 .section ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
 .section ul li{position:relative;padding-left:20px;font-size:13.5px;color:var(--t);line-height:1.55}
-.section ul li::before{content:"";position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:50%;background:var(--g)}
+.section ul li::before{content:position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:50%;background:var(--g)}
 .addr-line{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;color:var(--t);line-height:1.55}
 .addr-line svg{width:16px;height:16px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-top:2px}
 
@@ -369,14 +369,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API = '/api';
-const tk = () => localStorage.getItem('token') || '';
+||
 
 let CATEGORIES = [];
 let JOB = null;            // текущая вакансия
 let ME = null;             // текущий пользователь (если залогинен)
 let APPS = [];             // отклики (только для автора)
 
-const PUBLIC_ID = new URLSearchParams(location.search).get('id') || '';
+const PUBLIC_ID = new URLSearchParams(location.search).get('id') ||
 
 // ─── Helpers ───
 const esc = window.lastopEsc;const escAttr = window.lastopEsc;
@@ -437,7 +437,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
+function logout(){  location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -558,7 +558,7 @@ function pickAuthor(item){
 }
 
 function renderAll(){
-  document.getElementById('bcTitle').textContent = JOB.title || '';
+  document.getElementById('bcTitle').textContent = JOB.title ||
   document.title = 'LASTOP GROUP — ' + (JOB.title || 'Вакансия');
   document.getElementById('contentWrap').innerHTML = renderHero() + renderSections();
   renderRight();
@@ -568,7 +568,7 @@ function renderHero(){
   const j = JOB;
   const cat = categoryByKey(j.category);
   const catColor = j.category_color || (cat && cat.color) || '#1E8A4C';
-  const catLabel = j.category_label || (cat && cat.label) || j.category || '';
+  const catLabel = j.category_label || (cat && cat.label) || j.category ||
   const author = pickAuthor(j);
   const auName = author.name;
   const auCompany = author.kind === 'company' ? 'Компания' : (author.kind === 'community' ? 'Сообщество' : 'Участник LASTOP');
@@ -587,7 +587,7 @@ function renderHero(){
   }
 
   // Кнопки
-  let actions = '';
+  let actions =
   if (j.viewer_is_author){
     actions =
       '<button type="button" class="btn-ghost" onclick="openEditModal()"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Изменить</button>' +
@@ -644,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
   _shareObserverJ.observe(target, { childList: true, subtree: true });
 });
 function renderSaveBtn(){
-  if (!JOB) return '';
+  if (!JOB) return
   const saved = !!JOB.viewer_has_saved;
   const cls = saved ? 'btn-ghost saved' : 'btn-ghost';
   const label = saved ? 'Сохранено' : 'Сохранить';
@@ -708,7 +708,7 @@ function renderSections(){
 
 function renderRight(){
   const right = document.getElementById('rightWrap');
-  if (!JOB){ right.innerHTML = ''; return; }
+  if (!JOB){ right.innerHTML = return; }
   const j = JOB;
   const author = pickAuthor(j);
   const auName = author.name;
@@ -718,7 +718,7 @@ function renderRight(){
 
   const tagsHtml = (Array.isArray(j.tags) && j.tags.length)
     ? '<div class="tag-list" style="margin-top:8px">' + j.tags.map(t => '<span class="tag-pill">' + esc(t) + '</span>').join('') + '</div>'
-    : '';
+    :
 
   // Карточка «О вакансии»
   const aboutCard =
@@ -746,9 +746,9 @@ function renderRight(){
     '</div>';
 
   // Отклики (только автор)
-  let appsCard = '';
+  let appsCard =
   if (j.viewer_is_author){
-    let appsBody = '';
+    let appsBody =
     if (!APPS || APPS.length === 0){
       appsBody = '<div class="app-empty">Откликов пока нет</div>';
     } else {
@@ -805,7 +805,7 @@ async function toggleSave(){
 function openApplyModal(){
   if(!tk())return;
   if (!JOB || JOB.viewer_has_applied || JOB.status === 'closed' || JOB.viewer_is_author) return;
-  document.getElementById('applyMessage').value = '';
+  document.getElementById('applyMessage').value =
   updateApplyCounter();
   document.getElementById('modalApply').classList.add('open');
   setTimeout(() => document.getElementById('applyMessage').focus(), 50);
@@ -861,17 +861,17 @@ function fillEditCategorySelect(){
 function openEditModal(){
   if (!JOB || !JOB.viewer_is_author) return;
   fillEditCategorySelect();
-  document.getElementById('edTitle').value = JOB.title || '';
-  document.getElementById('edCategory').value = JOB.category || '';
+  document.getElementById('edTitle').value = JOB.title ||
+  document.getElementById('edCategory').value = JOB.category ||
   document.getElementById('edExp').value = JOB.experience_min_years || 0;
-  document.getElementById('edCity').value = JOB.city || '';
+  document.getElementById('edCity').value = JOB.city ||
   document.getElementById('edFormat').value = JOB.work_format || 'office';
-  document.getElementById('edAddress').value = JOB.address || '';
-  document.getElementById('edSalFrom').value = JOB.salary_from || '';
-  document.getElementById('edSalTo').value = JOB.salary_to || '';
+  document.getElementById('edAddress').value = JOB.address ||
+  document.getElementById('edSalFrom').value = JOB.salary_from ||
+  document.getElementById('edSalTo').value = JOB.salary_to ||
   document.getElementById('edEmpl').value = JOB.employment_type || 'full';
   document.getElementById('edStatus').value = JOB.status || 'active';
-  document.getElementById('edDesc').value = JOB.description || '';
+  document.getElementById('edDesc').value = JOB.description ||
   document.getElementById('edResp').value = (JOB.responsibilities || []).join('\n');
   document.getElementById('edReq').value = (JOB.requirements || []).join('\n');
   document.getElementById('edCond').value = (JOB.conditions || []).join('\n');

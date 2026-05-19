@@ -78,11 +78,11 @@ window.renderProjectCategoriesInto = function(selectEl, firstOption) {
   if (!selectEl) return;
   // Сохраняем текущее значение чтобы восстановить после перерисовки
   const currentValue = selectEl.value;
-  selectEl.innerHTML = '';
+  selectEl.innerHTML =
 
   if (firstOption !== null && firstOption !== undefined) {
     const opt = document.createElement('option');
-    opt.value = '';
+    opt.value =
     opt.textContent = firstOption;
     selectEl.appendChild(opt);
   }

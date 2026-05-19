@@ -263,13 +263,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/global-settings.js"></script>
 <script>
 const API = '/api';
-const tk = () => localStorage.getItem('token') || '';
+||
 
 // ─── Категории форума (грузим с бэка) ───
 let FORUM_CATEGORIES = [];
 let allTopics = [];
-let currentCategory = '';
-let searchQuery = '';
+let currentCategory =
+let searchQuery =
 
 // ─── Helpers ───
 const esc = window.lastopEsc;
@@ -308,7 +308,7 @@ function toast(msg, success){
 }
 
 function showToast(msg){ toast(msg); }
-function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
+function logout(){  location.href = '/home-guest.html'; }
 
 function toggleProfileDD(e){
   e.stopPropagation();
@@ -363,7 +363,7 @@ function renderCategoryChips(){
   const wrap = document.getElementById('catChips');
   // Первая чипса — "Все категории" уже в HTML, добавляем остальные
   const allChip = wrap.querySelector('.cat-chip[data-cat=""]');
-  wrap.innerHTML = '';
+  wrap.innerHTML =
   wrap.appendChild(allChip);
   FORUM_CATEGORIES.forEach(c => {
     const btn = document.createElement('button');
@@ -377,7 +377,7 @@ function renderCategoryChips(){
 
 function renderCategorySidebar(){
   const wrap = document.getElementById('catSidebar');
-  wrap.innerHTML = '';
+  wrap.innerHTML =
   FORUM_CATEGORIES.forEach(c => {
     const a = document.createElement('a');
     a.className = 'sub-item';
@@ -464,8 +464,8 @@ function renderTopics(topics){
 
   feed.innerHTML = topics.map(t => {
     const color = t.category_color || '#5A8A6A';
-    const pinned = t.is_pinned ? '<span class="topic-pinned-icon" title="Закреплено"><svg viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-3V5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v9z"/></svg></span>' : '';
-    const closed = t.is_closed ? '<span class="topic-closed-icon" title="Тема закрыта"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>' : '';
+    const pinned = t.is_pinned ? '<span class="topic-pinned-icon" title="Закреплено"><svg viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-3V5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v9z"/></svg></span>' :
+    const closed = t.is_closed ? '<span class="topic-closed-icon" title="Тема закрыта"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>' :
     return '<div class="topic-card' + (t.is_pinned ? ' pinned' : '') + '" onclick="location.href=\'/forum-topic.html?id=' + esc(t.public_id) + '\'">' +
       '<div class="topic-cat-stripe" style="background:' + esc(color) + '"></div>' +
       '<div class="topic-body">' +
@@ -538,9 +538,9 @@ function openCreateModal(){
     setTimeout(() => location.href = '/login.html', 1200);
     return;
   }
-  document.getElementById('newTopicCategory').value = currentCategory || '';
-  document.getElementById('newTopicTitle').value = '';
-  document.getElementById('newTopicContent').value = '';
+  document.getElementById('newTopicCategory').value = currentCategory ||
+  document.getElementById('newTopicTitle').value =
+  document.getElementById('newTopicContent').value =
   updateCounters();
   document.getElementById('createModalBg').classList.add('open');
   setTimeout(() => document.getElementById('newTopicTitle').focus(), 150);

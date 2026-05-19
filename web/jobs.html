@@ -432,12 +432,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/global-settings.js"></script>
 <script>
 const API = '/api';
-const tk = () => localStorage.getItem('token') || '';
+||
 
 let CATEGORIES = [];
 let currentMode = 'jobs';
 let currentTab = 'all';
-let currentCategory = '';
+let currentCategory =
 let allItems = [];
 
 const TABS_JOBS = [
@@ -487,7 +487,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){ localStorage.removeItem('token'); location.href = '/home-guest.html'; }
+function logout(){  location.href = '/home-guest.html'; }
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -677,7 +677,7 @@ function renderJobCard(j){
     ? '<span class="jc-status-tag jc-status-' + j.status + '">' +
       ({hot:'🔥 Срочно', new:'Новая', paused:'На паузе'}[j.status]) +
       '</span>'
-    : '';
+    :
   const tagsHtml = (j.tags || []).slice(0, 6).map(t => '<span class="jc-tag">' + esc(t) + '</span>').join('');
   const author = pickAuthor(j);
   return '<div class="job-card" onclick="location.href=\'/job-detail.html?id=' + esc(j.public_id) + '\'">' +

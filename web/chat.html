@@ -133,7 +133,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   width:12px;height:12px;color:var(--gmt);flex-shrink:0
 }
 .d-item.pinned::before{
-  content:'';position:absolute;top:8px;right:8px;
+  content:position:absolute;top:8px;right:8px;
   width:4px;height:4px;border-radius:50%;background:var(--g)
 }
 .d-tag{
@@ -1015,10 +1015,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api';const tk=()=>localStorage.getItem('token');
+const API='/api';
 const state={conversations:[],allConversationsForCounts:[],activeConvPublicID:null,messages:[],typingUsers:[],activeFilter:'all',searchQuery:'',replyTo:null,editing:null,pollTimer:null,typingTimer:null,currentUser:null,groupSelected:[],uploading:false,myCompanies:[],myCommunities:[]};
 // ── Кнопка дружбы в шапке диалога ───────────────────────
-let _chatPeerPublicID = '';
+let _chatPeerPublicID =
 let _chatPeerFriendStatus = 'none';
 
 async function loadChatPeerStatus(peerPublicID){
@@ -1052,7 +1052,7 @@ function applyChatFriendButton(){
     return;
   }
 
-  btn.style.display = '';
+  btn.style.display =
   btn.classList.remove('is-outgoing','is-incoming','is-friends');
 
   switch (_chatPeerFriendStatus) {
@@ -1086,7 +1086,7 @@ async function chatFriendClick(){
   const btn = document.getElementById('chatFriendBtn');
   if (btn) btn.disabled = true;
 
-  const tk = localStorage.getItem('token');
+  
   const headers = { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' };
 
   try {
@@ -1129,7 +1129,7 @@ function linkifyContent(s){
   return esc(s).replace(/(^|\s)(\/[a-z][a-z0-9\-]*\.html\?[^\s<]+|https?:\/\/[^\s<]+)/gi,
     (_,p,u)=>{
       const isInternal = u.startsWith('/');
-      const target = isInternal ? '' : ' target="_blank" rel="noopener"';
+      const target = isInternal ? '' : ' target="_blank" rel="noopener
       return `${p}<a href="${u}" class="msg-link"${target}>${u}</a>`;
     });
 }
@@ -1167,12 +1167,12 @@ async function loadLinkPreview(url){
 }
 
 function renderLinkPreviewCard(p){
-  if (!p) return '';
+  if (!p) return
   const img = p.image
     ? `<div class="lp-img" style="background-image:url('${esc(p.image)}')"></div>`
     : `<div class="lp-img lp-img-ph">${esc((p.badge||'?')[0])}</div>`;
-  const sub = p.subtitle ? `<div class="lp-sub">${esc(p.subtitle)}</div>` : '';
-  const target = p.url.startsWith('/') ? '' : ' target="_blank" rel="noopener"';
+  const sub = p.subtitle ? `<div class="lp-sub">${esc(p.subtitle)}</div>` :
+  const target = p.url.startsWith('/') ? '' : ' target="_blank" rel="noopener
   return `<a href="${esc(p.url)}" class="lp-card"${target}>
     ${img}
     <div class="lp-body">
@@ -1204,7 +1204,7 @@ async function api(path,opt={}){
     Object.assign(h, window.withActiveContextHeaders({}));
   }
   const r=await lastopFetch(API+path,{...opt,headers:h});
-  if(r.status===401){localStorage.removeItem('token');location.href='/login.html';throw new Error('401')}
+  if(r.status===401){location.href='/login.html';throw new Error('401')}
   if(r.status===429)showToast('Слишком часто, подождите секунду');
   if(!r.ok)throw new Error((await r.text())||r.status);
   return r.status===204?{}:r.json()
@@ -1220,7 +1220,7 @@ function loadCachedConversations(){const cached=cacheRead(cacheKeyConversations(
 function saveCachedConversations(){cacheWrite(cacheKeyConversations(),sortConversationsByLastMessage(state.conversations||[]))}
 function loadCachedMessages(pid){const cached=cacheRead(cacheKeyMessages(pid),[]);if(Array.isArray(cached)&&cached.length){state.messages=cached;renderMessages();return true}return false}
 function saveCachedMessages(pid){if(pid)cacheWrite(cacheKeyMessages(pid),state.messages||[])}
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
 // ════════════════════════════════════════════
@@ -1244,13 +1244,13 @@ function renderComposeBanner(){
   const coId = localStorage.getItem('active_company_id');
   const cmId = localStorage.getItem('active_community_id');
   if(!coId && !cmId){ banner.style.display='none'; return; }
-  let name='', avatar='', color='var(--g)', kind='';
+  let name='', avatar='', color='var(--g)', kind=
   if(coId){
     const co = findMyCompany(coId);
-    if(co){ name = co.name||co.title||''; avatar = co.logo_image||co.logo_url||co.avatar_url||''; kind='компании'; }
+    if(co){ name = co.name||co.title|| avatar = co.logo_image||co.logo_url||co.avatar_url|| kind='компании'; }
   } else if(cmId){
     const cm = findMyCommunity(cmId);
-    if(cm){ name = cm.name||cm.title||''; avatar = cm.avatar_url||cm.cover_image||''; color='#9060C0'; kind='сообщества'; }
+    if(cm){ name = cm.name||cm.title|| avatar = cm.avatar_url||cm.cover_image|| color='#9060C0'; kind='сообщества'; }
   }
   if(!name){ banner.style.display='none'; return; }
   const avHtml = avatar
@@ -1272,18 +1272,18 @@ function _a21rOnContextChange(){
   state.activeConvPublicID = null;
   state.activeConversation = null;
   state.messages = [];
-  renderCache.conversationsSig = '';
-  renderCache.messagesSig = '';
+  renderCache.conversationsSig =
+  renderCache.messagesSig =
   if(typeof loadConversations === 'function') loadConversations();
   const cb = document.getElementById('chatBody');
   if(cb) cb.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>';
   const chName = document.getElementById('chatName');
   const chStatus = document.getElementById('chatStatus');
-  if(chName) chName.textContent = '';
-  if(chStatus) chStatus.textContent = '';
+  if(chName) chName.textContent =
+  if(chStatus) chStatus.textContent =
   // A2.1R: скрываем аватар собеседника когда нет активного диалога
   const chAv = document.getElementById('chatAv');
-  if(chAv){ chAv.innerHTML=''; chAv.style.background='transparent'; }
+  if(chAv){ chAv.innerHTML= chAv.style.background='transparent'; }
   const chDot = document.getElementById('chatOnlineDot');
   if(chDot) chDot.style.display='none';
   const chFriendBtn = document.getElementById('chatFriendBtn');
@@ -1307,14 +1307,14 @@ async function loadCurrentUser(){
     const el = document.getElementById(id);
     if (el) el.textContent = value;
   };
-  const fullName = d.user.full_name || ((d.user.first_name || '') + ' ' + (d.user.last_name || '')).trim() || d.user.email || '';
+  const fullName = d.user.full_name || ((d.user.first_name || '') + ' ' + (d.user.last_name || '')).trim() || d.user.email ||
   set('topbarName', fullName);
   set('topbarRole', d.user.position || d.user.company_name || 'Участник LASTOP');
   // pdd-элементы (выпадающее меню профиля)
   set('pddName', fullName);
   set('pddRole', d.user.position || d.user.company_name || 'Участник LASTOP');
   // Аватарки — через LASTOP_SET_AV (учитывает avatar_url, фолбэк на букву)
-  const avatarUrl = d.user.avatar_url || '';
+  const avatarUrl = d.user.avatar_url ||
   const color = (window.avc ? window.avc(fullName) : '');
   if (window.LASTOP_SET_AV) {
     window.LASTOP_SET_AV('topbarAv', letter(fullName), color, avatarUrl);
@@ -1391,7 +1391,7 @@ function renderConversations(){
   }
   list.innerHTML = state.conversations.map(c => {
     // A2.1: если последнее сообщение от компании/сообщества — подменяем префикс автора в превью
-    let authorPrefix = c.last_message_author ? `<span class='me-prefix'>${esc(c.last_message_author)}: </span>` : '';
+    let authorPrefix = c.last_message_author ? `<span class='me-prefix'>${esc(c.last_message_author)}: </span>` :
     if(c.last_message_sender_company_name){
       authorPrefix = `<span class='me-prefix' style="color:var(--g)">${esc(c.last_message_sender_company_name)}: </span>`;
     } else if(c.last_message_sender_community_name){
@@ -1419,7 +1419,7 @@ function refreshChatHeaderStatus(){
       chatStatus.textContent = names ? `${names} печатает…` : 'печатает…';
       chatStatus.className = 'ch-status typing';
     } else {
-      chatStatus.textContent = conv.members_count ? `${conv.members_count} участников` : '';
+      chatStatus.textContent = conv.members_count ? `${conv.members_count} участников` :
       chatStatus.className = 'ch-status';
     }
   }
@@ -1440,7 +1440,7 @@ function applyConversation(c){
   if(c.type==='direct'){
     chatStatus.textContent=c.is_online?'в сети':'был(а) недавно';
   }else{
-    chatStatus.textContent=c.members_count?`${c.members_count} участников`:'';
+    chatStatus.textContent=c.members_count?`${c.members_count} участников`:
   }
   // Видимость шестерёнки управления группой — единый источник истины,
   // независимо от типа диалога. Раньше код стоял только в else-ветке,
@@ -1449,7 +1449,7 @@ function applyConversation(c){
   if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   state.activeConversation=c;
 }
-async function selectConversation(pid){if(typeof cancelVoiceRecord==='function'&&_voiceRec&&_voiceRec.mediaRecorder)cancelVoiceRecord();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){if(typeof cancelVoiceRecord==='function'&&_voiceRec&&_voiceRec.mediaRecorder)cancelVoiceRecord();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig=renderCache.messagesSig=renderCache.typingSig=window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID=_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID=_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
@@ -1463,7 +1463,7 @@ function renderMessages(){
   const wasAtBottom=justSelected?true:(el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true);
   const prevScroll=el?el.scrollTop:0;
   if(justSelected)window._chatJustSelected=false;
-  el.innerHTML='';let prevDate='';state.messages.forEach(m=>{
+  el.innerHTML=let prevDate=state.messages.forEach(m=>{
     const createdAt = new Date(m.created_at);
     const date = createdAt.toDateString();
     if(date!==prevDate){
@@ -1474,14 +1474,14 @@ function renderMessages(){
     const mine=m.author_public_id===state.currentUser.public_id;
     const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
     const attachHTML = renderAttachment(m);
-    const contentHTML = m.content ? linkifyContent(m.content).replace(/\n/g,'<br>') : '';
+    const contentHTML = m.content ? linkifyContent(m.content).replace(/\n/g,'<br>') :
     const _urls = m.content ? extractURLs(m.content) : [];
     const previewSlotsHTML = _urls.map(u=>`<div class="lp-slot" data-url="${esc(u)}"></div>`).join('');
-    const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
-    const replyHTML = m.reply_to ? `<div class='msg-reply' onclick='scrollToMessage(${m.reply_to.id})'><div class='msg-reply-bar'></div><div class='msg-reply-body'><div class='msg-reply-author'>${esc(m.reply_to.author_name)}</div><div class='msg-reply-text'>${esc(m.reply_to.content_preview||'—')}</div></div></div>` : '';
+    const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' :
+    const replyHTML = m.reply_to ? `<div class='msg-reply' onclick='scrollToMessage(${m.reply_to.id})'><div class='msg-reply-bar'></div><div class='msg-reply-body'><div class='msg-reply-author'>${esc(m.reply_to.author_name)}</div><div class='msg-reply-text'>${esc(m.reply_to.content_preview||'—')}</div></div></div>` :
 
     // A2.1: вычисляем effective автора и аватар с учётом контекста
-    let avatarHtml = '';
+    let avatarHtml =
     let displayName = m.author_name;
     if(m.sender_company_id && m.sender_company_name){
       displayName = m.sender_company_name;
@@ -1501,7 +1501,7 @@ function renderMessages(){
         : `<div class='msg-av' style='background:${m.author_color}'>${esc(letter(m.author_name))}</div>`;
     }
     const showName = !mine && (m.sender_company_id || m.sender_community_id);
-    const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` : '';
+    const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` :
     el.insertAdjacentHTML('beforeend', `
       <div class='msg ${mine?'me':'them'}' data-msg-id='${m.id}'>
         ${avatarHtml}
@@ -1562,10 +1562,10 @@ function renderMsgStatus(m){
 }
 
 function renderAttachment(m){
-  if (!m.attachment_url) return '';
+  if (!m.attachment_url) return
   const url = m.attachment_url;
   const name = m.attachment_name || 'файл';
-  const type = m.attachment_type || '';
+  const type = m.attachment_type ||
   const size = m.attachment_size || 0;
   const isImage = type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
   // ВАЖНО: audio проверяется ПЕРЕД video, чтобы .webm от MediaRecorder (голосовые) попадали в audio-ветку
@@ -1664,7 +1664,7 @@ function closeReply(){
   state.replyTo=null;
   if(state.editing){
     state.editing=null;
-    msgInput.value='';
+    msgInput.value=
     autoGrow(msgInput);
   }
   replyBar.classList.remove('active');
@@ -1696,14 +1696,14 @@ function editMessage(id){
     showToast('Срок редактирования истёк (15 минут)');return;
   }
   state.editing={id:m.id, original:m.content||''};
-  msgInput.value=m.content||'';
+  msgInput.value=m.content||
   msgInput.focus();
   autoGrow(msgInput);
   // Визуальная подсказка через replyBar (переиспользуем UI)
   state.replyTo=null;
   replyBar.classList.add('active');
   const rn=document.getElementById('replyName');if(rn)rn.textContent='Редактирование';
-  const rt=document.getElementById('replyText');if(rt)rt.textContent=m.content||'';
+  const rt=document.getElementById('replyText');if(rt)rt.textContent=m.content||
 }
 
 async function deleteMessage(id){
@@ -1731,7 +1731,7 @@ function forwardMessage(id){
   overlay.classList.add('open');
   renderForwardList('');
   const inp=document.getElementById('fwdSearch');
-  if(inp){inp.value='';inp.focus();inp.oninput=e=>renderForwardList(e.target.value.trim().toLowerCase());}
+  if(inp){inp.value=inp.focus();inp.oninput=e=>renderForwardList(e.target.value.trim().toLowerCase());}
 }
 function closeForward(){
   const overlay=document.getElementById('fwdOverlay');
@@ -1759,7 +1759,7 @@ async function doForward(targetPublicID){
   try{
     // Добавляем указание автора оригинального сообщения в виде префикса.
     const author = m.author_name || 'Пользователь';
-    const origContent = m.content || '';
+    const origContent = m.content ||
     const content = origContent
       ? `↪ Переслано от ${author}:
 ${origContent}`
@@ -1798,7 +1798,7 @@ async function submitMessage(){
       }
       await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method: 'POST', body});
     }
-    msgInput.value = '';
+    msgInput.value =
     autoGrow(msgInput);
     closeReply();
     pendingAttachment = null;
@@ -1811,9 +1811,9 @@ async function submitMessage(){
 }
 async function sendMessage(){return submitMessage()}
 async function markRead(){if(!state.messages.length)return;await api(`/chat/conversations/${state.activeConvPublicID}/read`,{method:'POST',body:{message_id:state.messages[state.messages.length-1].id}}).catch(()=>{})}
-async function changeFilter(tab,btn){state.activeFilter=tab;renderCache.conversationsSig='';document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
+async function changeFilter(tab,btn){state.activeFilter=tab;renderCache.conversationsSig=document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
 function filterTab(tab,btn){changeFilter(tab,btn)}
-let sd; function filterDialogs(q){clearTimeout(sd);sd=setTimeout(async()=>{state.searchQuery=q||'';renderCache.conversationsSig='';await loadConversations()},300)}
+let sd; function filterDialogs(q){clearTimeout(sd);sd=setTimeout(async()=>{state.searchQuery=q||renderCache.conversationsSig=await loadConversations()},300)}
 async function openOrCreateDirectByPublicID(uid){const d=await api('/chat/conversations/direct',{method:'POST',body:{user_public_id:uid}});await loadConversations();return d.conversation}
 async function openCommunityConv(id){const d=await api(`/chat/conversations/community/${id}`,{method:'POST'});await loadConversations();return d.conversation}
 function openInfoPanel(){infoPanel.classList.add('open');infoOverlay.classList.add('open')} function closeInfoPanel(){infoPanel.classList.remove('open');infoOverlay.classList.remove('open')}
@@ -1837,13 +1837,13 @@ async function confirmDeleteChat(){
     if(!r.ok){showToast('Не удалось удалить');return;}
     showToast('Чат удалён');
     closeInfoPanel();
-    state.activeConvPublicID='';
+    state.activeConvPublicID=
     state.activeConversation=null;
     state.conversations=state.conversations.filter(x=>x.public_id!==c.public_id);
-    renderCache.conversationsSig='';
+    renderCache.conversationsSig=
     renderConversations();
     chatBody.innerHTML='<div style="text-align:center;color:var(--gmt);padding:40px 20px;font-size:13px">Выберите диалог</div>';
-    chatName.textContent='';chatStatus.textContent='';
+    chatName.textContent=chatStatus.textContent=
   }catch{showToast('Ошибка сети');}
 }
 async function loadInfoAttachments(publicID){
@@ -1891,12 +1891,12 @@ async function renderInfoPanel(){
   ipOpenProfileBtn.style.display=c.other_public_id?'inline-flex':'none';
   // Кнопка "В друзья" — показываем только если есть peer и НЕ являемся уже друзьями.
   // Текст и поведение зависят от _chatPeerFriendStatus.
-  (function(){const fb=document.getElementById('ipAddFriendBtn');if(!fb)return;if(!c.other_public_id||_chatPeerFriendStatus==='self'){fb.style.display='none';return;}fb.style.display='inline-flex';const svg=fb.querySelector('svg');const setLabel=(text,disabled)=>{fb.innerHTML='';if(svg)fb.appendChild(svg);fb.appendChild(document.createTextNode(' '+text));fb.disabled=!!disabled;};if(_chatPeerFriendStatus==='friends')setLabel('Уже в друзьях',true);else if(_chatPeerFriendStatus==='outgoing')setLabel('Запрос отправлен',true);else if(_chatPeerFriendStatus==='incoming')setLabel('Принять заявку',false);else setLabel('В друзья',false);})();
+  (function(){const fb=document.getElementById('ipAddFriendBtn');if(!fb)return;if(!c.other_public_id||_chatPeerFriendStatus==='self'){fb.style.display='none';return;}fb.style.display='inline-flex';const svg=fb.querySelector('svg');const setLabel=(text,disabled)=>{fb.innerHTML=if(svg)fb.appendChild(svg);fb.appendChild(document.createTextNode(' '+text));fb.disabled=!!disabled;};if(_chatPeerFriendStatus==='friends')setLabel('Уже в друзьях',true);else if(_chatPeerFriendStatus==='outgoing')setLabel('Запрос отправлен',true);else if(_chatPeerFriendStatus==='incoming')setLabel('Принять заявку',false);else setLabel('В друзья',false);})();
   const fieldsEl=document.getElementById('ipUserFields');
   const sectionEl=document.getElementById('ipUserInfoSection');
   if(!fieldsEl||!sectionEl)return;
   if(c.type!=='direct'||!c.other_public_id){sectionEl.style.display='none';return;}
-  sectionEl.style.display='';
+  sectionEl.style.display=
   fieldsEl.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:8px 0">Загрузка…</div>';
   try{
     const r=await lastopFetch(`/api/users/${encodeURIComponent(c.other_public_id)}`,{headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
@@ -1998,13 +1998,13 @@ async function uploadAndSendFile(file){
     showToast(`${file.name}: слишком большой файл`);
     return;
   }
-  let uploadedUrl = '';
+  let uploadedUrl =
   // ── 1. Аплоад файла на /api/upload ──
   try {
     lastopDebug('[upload] sending FormData to /api/upload');
     const fd = new FormData();
     fd.append('file', file);
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('token') ||
     const r = await lastopFetch('/api/upload', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token },
@@ -2019,7 +2019,7 @@ async function uploadAndSendFile(file){
     }
     const data = await r.json();
     lastopDebug('[upload] data', data);
-    uploadedUrl = data.url || data.file_url || '';
+    uploadedUrl = data.url || data.file_url ||
     if (!uploadedUrl) {
       showToast('Сервер не вернул URL файла');
       return;
@@ -2032,7 +2032,7 @@ async function uploadAndSendFile(file){
   // ── 2. Отправка сообщения с вложением ──
   try {
     lastopDebug('[upload] sending message');
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('token') ||
     const r2 = await lastopFetch(`/api/chat/conversations/${state.activeConvPublicID}/messages`, {
       method: 'POST',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token },
@@ -2061,7 +2061,7 @@ chatHiddenFile?.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files || []);
   lastopDebug('[upload] files count:', files.length, 'activeConv:', state.activeConvPublicID);
   if (!files.length) { lastopDebug('[upload] no files'); return; }
-  e.target.value = '';
+  e.target.value =
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
   state.uploading = true;
   lastopDebug('[upload] before showToast');
@@ -2185,7 +2185,7 @@ function pickVoiceMime(){
   // На Chrome/Firefox audio/mp4 в MediaRecorder обычно недоступен → fallback на webm/opus
   const candidates=['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'];
   for(const m of candidates){if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))return m;}
-  return '';
+  return
 }
 
 async function startVoiceRecord(){
@@ -2252,7 +2252,7 @@ function cancelVoiceRecord(){
   if(_voiceRec.blobUrl)URL.revokeObjectURL(_voiceRec.blobUrl);
   _voiceRec={mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};
   const bar=document.getElementById('voiceRecBar');if(bar)bar.remove();
-  const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display='';
+  const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display=
 }
 
 function stopVoiceRecord(){
@@ -2308,7 +2308,7 @@ async function sendVoiceMessage(){
     const data=await r.json();
     pendingAttachment={url:data.url,name:'Голосовое сообщение ('+Math.floor(_voiceRec.duration/60)+':'+String(_voiceRec.duration%60).padStart(2,'0')+')',size:data.size,type:data.type||_voiceRec.blob.type||'audio/webm'};
     const bar=document.getElementById('voicePrevBar');if(bar)bar.remove();
-    const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display='';
+    const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display=
     if(_voiceRec.blobUrl)URL.revokeObjectURL(_voiceRec.blobUrl);
     _voiceRec={mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};
     await submitMessage();
@@ -2576,9 +2576,9 @@ async function ndPickDirect(id){
   try {
     c = await openOrCreateDirectByPublicID(id);
   } catch (e) {
-    let msg = '';
-    const raw = (e && e.message) ? String(e.message) : '';
-    try { const j = JSON.parse(raw); msg = (j && j.error) ? String(j.error) : ''; } catch (_) {}
+    let msg =
+    const raw = (e && e.message) ? String(e.message) :
+    try { const j = JSON.parse(raw); msg = (j && j.error) ? String(j.error) : } catch (_) {}
     if(!msg){
       if(raw.includes('403')) msg = 'Этот пользователь ограничил приём сообщений';
       else if(raw.includes('404')) msg = 'Пользователь не найден';
@@ -2609,8 +2609,8 @@ async function ndSearchForGroup(q){
     return;
   }
   ndGroupList.innerHTML=users.map(u=>{
-    const pid=u.public_id||u.friend_id||u.id||'';
-    const name=u.full_name||u.friend_name||'';
+    const pid=u.public_id||u.friend_id||u.id||
+    const name=u.full_name||u.friend_name||
     const sub=u.position||u.company_name||(u.handle?'@'+u.handle:'');
     const sel=state.groupSelected.find(x=>x.id===pid);
     return `<div class='nd-item nd-pickable${sel?' selected':''}' onclick="ndToggleGroupMember('${esc(pid)}','${esc(name)}')">
@@ -2650,7 +2650,7 @@ function openChatSearch(){
   const bar=document.getElementById('chatSearchBar');
   const inp=document.getElementById('chatSearchInput');
   if(bar)bar.classList.add('open');
-  if(inp){inp.value='';inp.focus();}
+  if(inp){inp.value=inp.focus();}
   _chatSearchResults=[];
   _chatSearchIndex=-1;
   updateSearchUI();
@@ -2671,7 +2671,7 @@ function updateSearchUI(){
   const next=document.getElementById('chatSearchNext');
   const total=_chatSearchResults.length;
   if(cnt){
-    if(total===0)cnt.textContent='';
+    if(total===0)cnt.textContent=
     else cnt.textContent=`${_chatSearchIndex+1} / ${total}`;
   }
   if(prev)prev.disabled=total===0;
@@ -2829,13 +2829,13 @@ function _renderClFrame(){
   const next = document.getElementById('clNext');
   const cnt = document.getElementById('chatLightboxCount');
   if (!img) return;
-  img.src = _clImages[_clIdx] || '';
+  img.src = _clImages[_clIdx] ||
   const multi = _clImages.length > 1;
   if (prev) prev.style.display = multi ? '' : 'none';
   if (next) next.style.display = multi ? '' : 'none';
   if (cnt) {
     if (multi) {
-      cnt.style.display = '';
+      cnt.style.display =
       cnt.textContent = (_clIdx + 1) + ' / ' + _clImages.length;
     } else {
       cnt.style.display = 'none';
@@ -2863,7 +2863,7 @@ document.addEventListener('keydown', function(e){
 
 // ── Управление группой
 let cmConv = null;
-function openChatManage(){const c=state.conversations.find(x=>x.public_id===state.activeConvPublicID);if(!c||c.type!=='group')return;cmConv=c;document.getElementById('cmTitle').value=c.title||c.name||'';document.getElementById('chatManageModal').style.display='flex';cmLoadMembers();}
+function openChatManage(){const c=state.conversations.find(x=>x.public_id===state.activeConvPublicID);if(!c||c.type!=='group')return;cmConv=c;document.getElementById('cmTitle').value=c.title||c.name||document.getElementById('chatManageModal').style.display='flex';cmLoadMembers();}
 function closeChatManage(){document.getElementById('chatManageModal').style.display='none';cmConv=null;}
 async function cmLoadMembers(){
   if(!cmConv) return;
@@ -2909,7 +2909,7 @@ function cmSearchFriends(q){
   clearTimeout(cmSearchTimer);
   cmSearchTimer = setTimeout(async () => {
     const listEl = document.getElementById('cmInviteList');
-    if(!q || q.length < 2){ listEl.innerHTML = ''; return; }
+    if(!q || q.length < 2){ listEl.innerHTML = return; }
     try{
       // search — фильтр по подстроке имени/email на бэке.
       // exclude_conv — исключить друзей которые уже в этой группе.
@@ -2924,8 +2924,8 @@ function cmSearchFriends(q){
         // /api/friends отдаёт friendDTO с полями friend_name / friend_id
         // (json-теги). Используем их в первую очередь; fallback оставлен
         // на случай если payload в будущем переименуют.
-        const displayName = f.friend_name || f.full_name || f.name || '';
-        const pid = f.friend_id || f.public_id || '';
+        const displayName = f.friend_name || f.full_name || f.name ||
+        const pid = f.friend_id || f.public_id ||
         return `<div data-action="cm-invite" data-pid="${esc(pid)}" data-name="${esc(displayName)}" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:4px;background:#F0FAF4;cursor:pointer">`+
           `<div style="width:28px;height:28px;border-radius:7px;background:#3A90C0;color:#fff;display:grid;place-items:center;font-weight:800;font-size:11px">${esc((displayName||'?').charAt(0).toUpperCase())}</div>`+
           `<div style="flex:1;font-size:12px;color:#1A2A22">${esc(displayName)}</div>`+
@@ -2940,7 +2940,7 @@ function cmSearchFriends(q){
     }catch(e){}
   }, 300);
 }
-async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('token')},body:JSON.stringify({user_public_id:userPublicID})});if(r.ok){document.getElementById('cmInviteSearch').value='';document.getElementById('cmInviteList').innerHTML='';cmLoadMembers();if(window.lastopToast)lastopToast(userName+' добавлен(а)');}}catch(e){}}
+async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('token')},body:JSON.stringify({user_public_id:userPublicID})});if(r.ok){document.getElementById('cmInviteSearch').value=document.getElementById('cmInviteList').innerHTML=cmLoadMembers();if(window.lastopToast)lastopToast(userName+' добавлен(а)');}}catch(e){}}
 
 </script>
 <script src="/site-search.js" defer></script>

@@ -469,7 +469,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
-const tk=()=>localStorage.getItem('token');
+
 const esc = window.lastopEsc;
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
@@ -489,7 +489,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){localStorage.removeItem('token');localStorage.removeItem('user');location.href='/home-guest.html';}
+function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const ICON_SETS={
@@ -527,8 +527,8 @@ function fillFilterCategories(){
         wrap.parentNode.insertBefore(sel, wrap);
         wrap.remove();
       }
-      sel.dataset.cpReady = '';
-      sel.style.display = '';
+      sel.dataset.cpReady =
+      sel.style.display =
     }
     if (window.initCategoryPickers) window.initCategoryPickers();
   }
@@ -548,7 +548,7 @@ function renderTeamSmall(members){
 function renderCard(p,i){
   const ico=getIcon(p.cat);
   const st=STATUS[p.status]||{cls:'s-planned',label:p.status};
-  const deadlineHtml=p.deadline?`<span class="pc-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(p.deadline)}</span>`:'';
+  const deadlineHtml=p.deadline?`<span class="pc-meta-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(p.deadline)}</span>`:
   return`<div class="proj-card" style="animation-delay:${i*.05}s" onclick="openProject('${esc(p.id)}')">
     <div class="pc-top">
       <div class="pc-icon" style="background:${ico.bg};border:1px solid ${ico.bc}">
@@ -630,10 +630,10 @@ async function loadProjects(){
   const q=(document.getElementById('searchInput')?.value||'').trim();
   if(q)params.set('search',q);
 
-  const cat=document.getElementById('filterCat')?.value||'';
+  const cat=document.getElementById('filterCat')?.value||
   if(cat)params.set('category',cat);
 
-  const sort=document.getElementById('filterSort')?.value||'';
+  const sort=document.getElementById('filterSort')?.value||
   if(sort==='deadline'||sort==='members'){
     params.set('sort',sort);
   }
@@ -740,8 +740,8 @@ function openModal(){
         wrap.parentNode.insertBefore(mCat, wrap);
         wrap.remove();
       }
-      mCat.dataset.cpReady = '';
-      mCat.style.display = '';
+      mCat.dataset.cpReady =
+      mCat.style.display =
     }
     if (window.initCategoryPickers) window.initCategoryPickers();
   }
@@ -796,13 +796,13 @@ async function loadMyCompaniesForAuthor(){
     sel.dataset.loaded = '1';
   }catch{}
 }
-let prjCoverUrl = '';
+let prjCoverUrl =
 
 async function onPrjCoverSelected(e){
   const file = e.target.files && e.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){ if(window.showToast)showToast('Только изображения');else alert('Только изображения'); e.target.value=''; return; }
-  if(file.size > 25*1024*1024){ if(window.showToast)showToast('Макс. 25 МБ');else alert('Макс. 25 МБ'); e.target.value=''; return; }
+  if(!file.type.startsWith('image/')){ if(window.showToast)showToast('Только изображения');else alert('Только изображения'); e.target.value= return; }
+  if(file.size > 25*1024*1024){ if(window.showToast)showToast('Макс. 25 МБ');else alert('Макс. 25 МБ'); e.target.value= return; }
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('prjCoverImg').src = ev.target.result;
@@ -820,21 +820,21 @@ async function onPrjCoverSelected(e){
   }catch{
     if(window.showToast)showToast('Ошибка сети');else alert('Ошибка сети');
     removePrjCover();
-  }finally{ e.target.value=''; }
+  }finally{ e.target.value= }
 }
 
 function removePrjCover(){
-  prjCoverUrl = '';
+  prjCoverUrl =
   const p=document.getElementById('prjCoverPreview'); if(p) p.style.display='none';
-  const i=document.getElementById('prjCoverImg'); if(i) i.src='';
+  const i=document.getElementById('prjCoverImg'); if(i) i.src=
   const u=document.getElementById('prjCoverUploading'); if(u) u.style.display='none';
-  const f=document.getElementById('prjCoverInput'); if(f) f.value='';
+  const f=document.getElementById('prjCoverInput'); if(f) f.value=
 }
 
 async function submitProject(){
   const title=document.getElementById('mTitle').value.trim();
   const desc=document.getElementById('mDesc').value.trim();
-  const cat=document.getElementById('mCat').value||'';
+  const cat=document.getElementById('mCat').value||
   const status=document.getElementById('mStatus').value||'planned';
   const deadline=document.getElementById('mDeadline').value;
 
@@ -890,7 +890,7 @@ function resetCreateForm(){
     if(el.tagName==='SELECT'){
       el.selectedIndex=0;
     }else{
-      el.value='';
+      el.value=
     }
   });
 }
@@ -923,7 +923,7 @@ function _prjFmt(n){if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace('.0
 
 async function loadProjStats(){
   try {
-    const tk = localStorage.getItem('token');
+    
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/projects/stats', { headers });
     if (!r.ok) throw 0;
@@ -955,7 +955,7 @@ async function loadMyProj(){
   const list = document.getElementById('myProjList');
   const card = document.getElementById('myProjCard');
   if (!list) return;
-  const tk = localStorage.getItem('token');
+  
   if (!tk) { if (card) card.style.display = 'none'; return; }
   try {
     const r = await lastopFetch('/api/projects?owner=me&limit=3', { headers: { Authorization: 'Bearer ' + tk } });
@@ -1016,7 +1016,7 @@ async function loadProjCats(){
     }).join('');
     list.querySelectorAll('.cat-item').forEach(function(item){
       item.addEventListener('click', function(){
-        const name = item.getAttribute('data-cat-name') || '';
+        const name = item.getAttribute('data-cat-name') ||
         const f = document.getElementById('filterCat');
         if (f) { f.value = name; if (typeof applyFilters === 'function') applyFilters(); }
       });
@@ -1031,7 +1031,7 @@ async function loadProjRec(){
   const card = document.getElementById('prjRecCard');
   if (!list) return;
   try {
-    const tk = localStorage.getItem('token');
+    
     const headers = tk ? { Authorization: 'Bearer ' + tk } : {};
     const r = await lastopFetch('/api/projects/recommended', { headers });
     if (!r.ok) throw 0;

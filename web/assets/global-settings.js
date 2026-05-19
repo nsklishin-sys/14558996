@@ -20,9 +20,9 @@
 
   function tk() {
     try {
-      return localStorage.getItem('token') || '';
+      return localStorage.getItem('token') ||
     } catch (_) {
-      return '';
+      return
     }
   }
 
@@ -125,7 +125,7 @@
   // Полная дата и время: "26 апр. 2026, 17:30"
   function formatDateTime(iso) {
     var d = safeDate(iso);
-    if (!d) return '';
+    if (!d) return
     var s = getFormatSettings();
     var loc = fullLocale(s.locale);
     try {
@@ -145,7 +145,7 @@
   // Только дата: "26 апр. 2026" или "26.04.2026" в зависимости от формата
   function formatDate(iso) {
     var d = safeDate(iso);
-    if (!d) return '';
+    if (!d) return
     var s = getFormatSettings();
     var loc = fullLocale(s.locale);
     try {
@@ -163,7 +163,7 @@
   // Короткая дата без года: "26 апр" — для постов, комментариев свежих
   function formatDateShort(iso) {
     var d = safeDate(iso);
-    if (!d) return '';
+    if (!d) return
     var s = getFormatSettings();
     var loc = fullLocale(s.locale);
     try {
@@ -180,7 +180,7 @@
   // Только время: "17:30"
   function formatTime(iso) {
     var d = safeDate(iso);
-    if (!d) return '';
+    if (!d) return
     var s = getFormatSettings();
     var loc = fullLocale(s.locale);
     try {
@@ -499,7 +499,7 @@
   }
 
   function formatNotifTime(iso) {
-    if (!iso) return '';
+    if (!iso) return
     try {
       const d = new Date(iso);
       const now = new Date();
@@ -509,7 +509,7 @@
       if (diff < 86400) return Math.floor(diff / 3600) + ' ч';
       if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' д';
       return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    } catch { return ''; }
+    } catch { return }
   }
 
   async function markAllNotifications() {
