@@ -9,8 +9,11 @@
   var SW_SCOPE = '/';
 
   // ── Утилиты ────────────────────────────────────────────────
+  // Phase 4 (L-7): после cookie-only auth tk() — это просто
+  // isLoggedIn() boolean.
   function tk() {
-    try { return localStorage.getItem('token'); } catch (_) { return null; }
+    try { return localStorage.getItem('user') ? 'cookie' : ''; }
+    catch (_) { return ''; }
   }
 
   function isSupported() {

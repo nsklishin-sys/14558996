@@ -152,7 +152,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <script src="/assets/profile-context.js" defer></script>
 <script>
 const API = '/api';
-function tk(){ return localStorage.getItem('token'); }
+// Phase 4 (L-7): локальный tk() удалён, используется window.tk из utils.js
+// (определена как 'cookie' если залогинен, '' если нет).
 const esc = window.lastopEsc;function ltr(name){ if(!name)return '?'; return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase(); }
 const avc = window.lastopAvc;
 function toast(msg, ok){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(ok?' success':''); requestAnimationFrame(()=>t.classList.add('show')); setTimeout(()=>t.classList.remove('show'),2500); }
