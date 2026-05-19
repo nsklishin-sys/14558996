@@ -1872,6 +1872,20 @@ func (s *sessionStore) getUserIDWithCSRF(token string) (int64, string, bool) {
 	return userID, csrf, true
 }
 
+// delete — удалить ОДНУ конкретную сессию по токену (logout текущей).
+// invalidateUser удалил БЫ ВСЕ сессии юзера со всех устройств — это для
+// "logout с всех устройств". Для обычного logout нужна только текущая.
+func (s *sessionStore) delete(token string) {
+	th := hashToken(token)
+	_, err := s.db.Exec(`DELETE FROM sessions WHERE token_hash = $1`, th)
+	if err != nil {
+		log.Printf("[sessions] delete failed: %v", err)
+	}
+	s.cache.mu.Lock()
+	delete(s.cache.items, th)
+	s.cache.mu.Unlock()
+}
+
 func (s *sessionStore) invalidateUser(userID int64) {
 	_, err := s.db.Exec(`DELETE FROM sessions WHERE user_id = $1`, userID)
 	if err != nil {
@@ -2518,6 +2532,24 @@ func main() {
 		_, csrfToken, _ := sessions.getUserIDWithCSRF(token)
 		setAuthCookies(w, token, csrfToken, sessionLifetime)
 		writeJSON(w, http.StatusOK, authResponse{Token: token, User: authUser})
+	})
+
+	// Logout — Phase 3 (19.05). Очищает cookies + удаляет сессию из БД.
+	// Раньше logout был чисто фронтовый (localStorage.removeItem), теперь
+	// с HttpOnly cookies JS не может сам очистить cookie — нужен сервер.
+	mux.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		// Пытаемся достать токен из cookie. Если нет — всё равно отвечаем 200
+		// и чистим cookies (idempotent — повторный logout не должен падать).
+		token, _ := tokenFromRequest(r)
+		if token != "" {
+			sessions.delete(token)
+		}
+		clearAuthCookies(w)
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 	})
 
 	mux.HandleFunc("/api/analytics/me/overview", func(w http.ResponseWriter, r *http.Request) {

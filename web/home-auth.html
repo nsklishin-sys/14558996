@@ -911,11 +911,7 @@ document.addEventListener('keydown',e=>{
     document.getElementById('topbarProfile').classList.remove('open');
   }
 });
-function logout(){
-  
-  localStorage.removeItem('user');
-  location.href='/home-guest.html';
-}
+async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ИНИЦИАЛИЗАЦИЯ ── */
 window.addEventListener('DOMContentLoaded',()=>{

@@ -452,7 +452,7 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html'}
+async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];

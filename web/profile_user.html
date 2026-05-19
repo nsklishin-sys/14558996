@@ -978,7 +978,7 @@ function renderUserNotFound(){
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){localStorage.removeItem('user');location.href='/home-guest.html';}
+async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
 function switchTab(tab, btn){
   if(tab==='communities')renderViewedCommunities();
   if(tab==='events')renderViewedEvents();

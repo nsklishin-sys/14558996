@@ -449,7 +449,7 @@ document.addEventListener('click',e=>{
   if(!dd||!p)return;
   if(!dd.contains(e.target)&&!p.contains(e.target)){dd.classList.remove('open');p.classList.remove('open');}
 });
-function logout(){location.href='/home-guest.html';}
+async function logout(){try{await lastopFetch('/api/auth/logout',{method:'POST'});}catch{}localStorage.removeItem('user');location.href='/home-guest.html';}
 </script>
 <script src="/site-search.js" defer></script>
 <script>

@@ -402,7 +402,8 @@
     }
     // logout fallback (если страница не определила свою)
     if (!window.logout) {
-      window.logout = function () {
+      window.logout = async function () {
+        try { await lastopFetch('/api/auth/logout', { method: 'POST' }); } catch {}
         try { localStorage.removeItem('user'); } catch {}
         location.href = '/home-guest.html';
       };
