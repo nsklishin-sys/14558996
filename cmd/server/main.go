@@ -2398,6 +2398,9 @@ func main() {
 			return
 		}
 		// Инвалидируем все старые сессии и создаём новую (auto-login).
+		// Phase 4 (19.05): добавлен setAuthCookies — без него autologin
+		// фронта не работал (фронт ставил user в localStorage, но cookies
+		// от сервера не приходили → 401 на следующем API call).
 		sessions.invalidateUser(userID)
 		newTok, terr := newToken()
 		if terr != nil {
@@ -2405,15 +2408,19 @@ func main() {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
 			return
 		}
-		sessions.put(newTok, userID)
+		sessions.putWithMeta(newTok, userID, r.UserAgent(), clientIP(r))
+		_, csrfToken, _ := sessions.getUserIDWithCSRF(newTok)
+		setAuthCookies(w, newTok, csrfToken, sessionLifetime)
 		u, gErr := getUserByID(db, userID)
 		if gErr != nil {
 			log.Printf("[auth/reset] getUserByID: %v", gErr)
-			// Пароль сменили — отдадим хотя бы токен без user, фронт перенесёт на login
-			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "token": newTok})
+			// Пароль сменили + cookies выставлены, но user не получили.
+			// Фронт перенесёт на login — он сможет залогиниться по cookie
+			// или повторно ввести пароль.
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "token": newTok, "user": u})
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "user": u})
 	})
 
 	mux.HandleFunc("/api/auth/verify-email", func(w http.ResponseWriter, r *http.Request) {
