@@ -13270,12 +13270,20 @@ const (
 )
 
 func setAuthCookies(w http.ResponseWriter, sessionToken, csrfToken string, maxAge time.Duration) {
-	http.SetCookie(w, &http.Cookie{Name: authCookieName, Value: sessionToken, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: int(maxAge.Seconds())})
+	// Phase 4 (19.05) SEC: session cookie — SameSite=Strict. Защита от CSRF
+	// и других cross-site атак, при которых cookie может попасть в запрос с
+	// внешнего origin. Архитектура платформы это позволяет:
+	//   - Home-страница (auth/guest) выбирается JS-роутером по localStorage,
+	//     не зависит от наличия cookie на первом GET с внешнего origin.
+	//   - Все API calls идут с lastop.ru (same-origin) — cookies всегда придут.
+	http.SetCookie(w, &http.Cookie{Name: authCookieName, Value: sessionToken, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: int(maxAge.Seconds())})
+	// CSRF cookie оставляем Lax: она НЕ HttpOnly, JS читает её сам и кладёт
+	// в X-CSRF-Token header — поведение SameSite не критично.
 	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: csrfToken, Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: int(maxAge.Seconds())})
 }
 
 func clearAuthCookies(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: authCookieName, Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: authCookieName, Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
 	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: "", Path: "/", HttpOnly: false, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 }
 
