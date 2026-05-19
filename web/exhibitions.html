@@ -320,20 +320,20 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="ex-toolbar">
     <span class="ex-title">Выставки</span>
     <div class="ex-tabs" id="exTabs">
-      <button class="etab active" onclick="setTab('all',this)">Все</button>
-      <button class="etab" onclick="setTab('upcoming',this)">Предстоящие</button>
-      <button class="etab" data-auth-only onclick="setTab('registered',this)">Мои заявки</button>
-      <button class="etab" onclick="setTab('past',this)">Прошедшие</button>
+      <button type="button" class="etab active" onclick="setTab('all',this)">Все</button>
+      <button type="button" class="etab" onclick="setTab('upcoming',this)">Предстоящие</button>
+      <button type="button" class="etab" data-auth-only onclick="setTab('registered',this)">Мои заявки</button>
+      <button type="button" class="etab" onclick="setTab('past',this)">Прошедшие</button>
     </div>
     <div class="toolbar-right">
       <a id="btnCreateExhibition" href="/exhibition-edit.html" style="display:none;background:var(--g);color:#fff;border:none;border-radius:99px;padding:8px 16px;font-size:13px;font-weight:700;text-decoration:none;display:none;align-items:center;gap:6px;font-family:inherit;cursor:pointer;margin-right:8px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать выставку</a>
-      <button class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
+      <button type="button" class="view-btn active" id="viewGrid" onclick="setView('grid',this)" title="Плитка">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       </button>
-      <button class="view-btn" id="viewList" onclick="setView('list',this)" title="Список">
+      <button type="button" class="view-btn" id="viewList" onclick="setView('list',this)" title="Список">
         <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       </button>
-      <button class="btn-add" onclick="openStandModal()">
+      <button type="button" class="btn-add" onclick="openStandModal()">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Заявка на стенд
       </button>
@@ -368,7 +368,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <select class="pf-select" id="filterSort" onchange="applyFilters()">
         <option value="date">По дате</option><option value="visitors">Посетители</option><option value="exhibitors">Экспоненты</option><option value="alpha">А–Я</option>
       </select></div>
-    <button class="pf-reset" id="filterReset" onclick="resetFilters()">
+    <button type="button" class="pf-reset" id="filterReset" onclick="resetFilters()">
       <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       Сбросить
     </button>
@@ -426,7 +426,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Заявка на участие / стенд</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <label class="mf-label">Выставка</label>
@@ -474,8 +474,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <textarea class="mf-textarea" id="mComment" placeholder="Опишите ваши цели участия, размер стенда, дополнительные пожелания…"></textarea>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-submit" onclick="submitStand()">Отправить заявку</button>
+      <button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button type="button" class="btn-submit" onclick="submitStand()">Отправить заявку</button>
     </div>
   </div>
 </div>
@@ -613,7 +613,7 @@ function renderCard(ex,i){
       <div class="ec-foot">
         <span class="ec-stat"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>${ex.exhibitors} экспон.</span>
         <span class="ec-stat" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>${ex.visitors}</span>
-        <button class="ec-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition('${ex.id}','ec-reg-${ex.id}')" id="ec-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
+        <button type="button" class="ec-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition('${ex.id}','ec-reg-${ex.id}')" id="ec-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
       </div>
     </div>
   </div>`;
@@ -639,7 +639,7 @@ function renderRow(ex,i){
       </div>
     </div>
     <div class="er-right">
-      <button class="er-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition('${ex.id}','er-reg-${ex.id}')" id="er-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
+      <button type="button" class="er-btn${isReg?' registered':''}" onclick="event.stopPropagation();registerExhibition('${ex.id}','er-reg-${ex.id}')" id="er-reg-${ex.id}">${isReg?'Зарегистрирован':'Участвовать'}</button>
     </div>
   </div>`;
 }

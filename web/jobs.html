@@ -195,10 +195,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="jobs-title">Резюме и вакансии</span>
     <span class="jobs-subtitle">B2B-найм для бизнеса</span>
     <div class="mode-switch">
-      <button class="mode-btn active" id="modeJobs" onclick="setMode('jobs')">Вакансии</button>
-      <button class="mode-btn" id="modeCvs" onclick="setMode('cvs')">Резюме</button>
+      <button type="button" class="mode-btn active" id="modeJobs" onclick="setMode('jobs')">Вакансии</button>
+      <button type="button" class="mode-btn" id="modeCvs" onclick="setMode('cvs')">Резюме</button>
     </div>
-    <button class="btn-create-job" onclick="openCreateModal()">
+    <button type="button" class="btn-create-job" onclick="openCreateModal()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <span id="createBtnLabel">Создать вакансию</span>
     </button>
@@ -261,7 +261,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Создать вакансию</span>
-      <button class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div>
@@ -336,8 +336,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
-      <button class="btn-submit" id="jobSubmitBtn" onclick="submitJob()">Опубликовать</button>
+      <button type="button" class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
+      <button type="button" class="btn-submit" id="jobSubmitBtn" onclick="submitJob()">Опубликовать</button>
     </div>
   </div>
 </div>
@@ -347,7 +347,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Создать резюме</span>
-      <button class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeCreateModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div>
@@ -420,8 +420,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
-      <button class="btn-submit" id="cvSubmitBtn" onclick="submitCv()">Опубликовать</button>
+      <button type="button" class="btn-cancel" onclick="closeCreateModal()">Отмена</button>
+      <button type="button" class="btn-submit" id="cvSubmitBtn" onclick="submitCv()">Опубликовать</button>
     </div>
   </div>
 </div>
@@ -563,7 +563,7 @@ function setMode(mode){
 function renderTabs(){
   const tabs = currentMode === 'jobs' ? TABS_JOBS : TABS_CVS;
   document.getElementById('tabsRow').innerHTML = tabs.map(t =>
-    '<button class="jtab' + (t.key === currentTab ? ' active' : '') + '" onclick="setTab(\'' + esc(t.key) + '\')">' + esc(t.label) + '</button>'
+    '<button type="button" class="jtab' + (t.key === currentTab ? ' active' : '') + '" onclick="setTab(\'' + esc(t.key) + '\')">' + esc(t.label) + '</button>'
   ).join('');
 }
 function setTab(key){

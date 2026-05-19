@@ -443,33 +443,33 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
       <div class="news-actions">
 
         <!-- Лайк -->
-        <button class="act-btn like" id="btnLike" onclick="toggleLike()">
+        <button type="button" class="act-btn like" id="btnLike" onclick="toggleLike()">
           <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           <span class="act-label">Нравится</span>
           <span class="act-count" id="btnLikeCount">0</span>
         </button>
 
         <!-- Комментарий -->
-        <button class="act-btn comment-cta" onclick="focusComment()">
+        <button type="button" class="act-btn comment-cta" onclick="focusComment()">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="act-label">Комментировать</span>
           <span class="act-count" id="btnComCount">0</span>
         </button>
 
         <!-- Сохранить -->
-        <button class="act-btn save" id="btnSave" onclick="toggleSave()">
+        <button type="button" class="act-btn save" id="btnSave" onclick="toggleSave()">
           <svg viewBox="0 0 24 24" id="saveIcon"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           <span class="act-label">Сохранить</span>
           <span class="act-count" id="btnSaveCount">0</span>
         </button>
 
-        <button class="act-btn repost" id="btnRepost" onclick="doRepost()">
+        <button type="button" class="act-btn repost" id="btnRepost" onclick="doRepost()">
           <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
           <span>Репост</span>
           <span class="act-count" id="btnRepostCount">0</span>
         </button>
 
-        <button class="act-btn share" id="btnCopyLink" onclick="copyPostLink()">
+        <button type="button" class="act-btn share" id="btnCopyLink" onclick="copyPostLink()">
           <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           <span>Ссылка</span>
         </button>
@@ -496,8 +496,8 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
             </div>
             <textarea class="ci-textarea" id="commentInput" placeholder="Напишите комментарий…" rows="1"></textarea>
             <div class="ci-actions" id="ciActions" style="display:none">
-              <button class="ci-btn-cancel" onclick="cancelComment()">Отмена</button>
-              <button class="ci-btn-send" onclick="sendComment()">Отправить</button>
+              <button type="button" class="ci-btn-cancel" onclick="cancelComment()">Отмена</button>
+              <button type="button" class="ci-btn-send" onclick="sendComment()">Отправить</button>
             </div>
           </div>
         </div>
@@ -529,17 +529,17 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
         <div class="author-role-lg" id="sidebarAuthorRole"></div>
       </div>
     </div>
-    <button class="btn-follow" id="btnFollow" onclick="toggleFollow()">+ Подписаться</button>
+    <button type="button" class="btn-follow" id="btnFollow" onclick="toggleFollow()">+ Подписаться</button>
   </div>
 
   <!-- Управление публикацией (только автору) -->
   <div class="card" id="ownerControlsCard" style="display:none">
     <div class="block-title">Управление</div>
-    <button class="btn-follow" style="background:var(--g);color:#fff;border:none;margin-bottom:8px" onclick="openEditPost()">
+    <button type="button" class="btn-follow" style="background:var(--g);color:#fff;border:none;margin-bottom:8px" onclick="openEditPost()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:6px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Редактировать
     </button>
-    <button class="btn-follow" style="background:#fff;color:var(--red);border:1.5px solid var(--red)" onclick="deleteThisPost()">
+    <button type="button" class="btn-follow" style="background:#fff;color:var(--red);border:1.5px solid var(--red)" onclick="deleteThisPost()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:6px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
       Удалить
     </button>
@@ -796,11 +796,11 @@ function renderComments(){
         </a>`:''}
         <div class="com-text">${esc(c.text)}</div>
         <div class="com-actions">
-          <button class="com-act${c.liked?' liked':''}" onclick="likeComment(${c.id})">
+          <button type="button" class="com-act${c.liked?' liked':''}" onclick="likeComment(${c.id})">
             <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${c.liked?'fill="var(--red)"':''}></path></svg>
             ${c.likes}
           </button>
-          <button class="com-act" onclick="replyTo('${c.id}','${esc(c.name)}','${esc(String(c.text||'').replace(/\s+/g,' ').trim().slice(0,200))}')">
+          <button type="button" class="com-act" onclick="replyTo('${c.id}','${esc(c.name)}','${esc(String(c.text||'').replace(/\s+/g,' ').trim().slice(0,200))}')">
             <svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
             Ответить
           </button>
@@ -820,7 +820,7 @@ function renderComments(){
               </a>
               <div class="com-text">${esc(r.text)}</div>
               <div class="com-actions">
-                <button class="com-act${r.liked?' liked':''}" onclick="likeReply(${c.id},${r.id})">
+                <button type="button" class="com-act${r.liked?' liked':''}" onclick="likeReply(${c.id},${r.id})">
                   <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" ${r.liked?'fill="var(--red)"':''}></path></svg>
                   ${r.likes}
                 </button>
@@ -1430,7 +1430,7 @@ async function copyPostLink(){
   <div style="background:var(--w);border-radius:24px;border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
       <h3 style="font-size:16px;font-weight:800">Редактировать публикацию</h3>
-      <button onclick="closeEditPost()" style="width:30px;height:30px;border-radius:8px;background:var(--gp);border:none;cursor:pointer;font-size:18px">×</button>
+      <button type="button" onclick="closeEditPost()" style="width:30px;height:30px;border-radius:8px;background:var(--gp);border:none;cursor:pointer;font-size:18px">×</button>
     </div>
     <div style="margin-bottom:14px">
       <label style="font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:5px">Заголовок</label>
@@ -1441,8 +1441,8 @@ async function copyPostLink(){
       <textarea id="editPostContent" style="width:100%;border:1.5px solid var(--bdr);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13px;outline:none;background:var(--gp);min-height:200px;resize:vertical"></textarea>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)">
-      <button onclick="closeEditPost()" style="padding:8px 18px;border-radius:12px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
-      <button id="btnSaveEdit" onclick="saveEditPost()" style="padding:8px 22px;border-radius:12px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Сохранить</button>
+      <button type="button" onclick="closeEditPost()" style="padding:8px 18px;border-radius:12px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
+      <button type="button" id="btnSaveEdit" onclick="saveEditPost()" style="padding:8px 22px;border-radius:12px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Сохранить</button>
     </div>
   </div>
 </div>

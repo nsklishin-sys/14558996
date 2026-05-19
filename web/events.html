@@ -304,19 +304,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="ev-toolbar">
     <span class="ev-title">Мероприятия</span>
     <div class="mode-switch">
-      <button class="mode-btn active" id="modeAll" onclick="setMode('all',this)">Все</button>
-      <button class="mode-btn" id="modeMy" onclick="setMode('my',this)">Мои</button>
-      <button class="mode-btn" id="modeSaved" onclick="setMode('saved',this)">Сохранённые</button>
+      <button type="button" class="mode-btn active" id="modeAll" onclick="setMode('all',this)">Все</button>
+      <button type="button" class="mode-btn" id="modeMy" onclick="setMode('my',this)">Мои</button>
+      <button type="button" class="mode-btn" id="modeSaved" onclick="setMode('saved',this)">Сохранённые</button>
     </div>
     <div class="ev-tabs" id="evTabs">
-      <button class="etab active" onclick="setType('',this)">Все</button>
-      <button class="etab" onclick="setType('webinar',this)">Вебинары</button>
-      <button class="etab" onclick="setType('conference',this)">Конференции</button>
-      <button class="etab" onclick="setType('workshop',this)">Воркшопы</button>
-      <button class="etab" onclick="setType('networking',this)">Нетворкинг</button>
-      <button class="etab" onclick="setType('roundtable',this)">Круглые столы</button>
+      <button type="button" class="etab active" onclick="setType('',this)">Все</button>
+      <button type="button" class="etab" onclick="setType('webinar',this)">Вебинары</button>
+      <button type="button" class="etab" onclick="setType('conference',this)">Конференции</button>
+      <button type="button" class="etab" onclick="setType('workshop',this)">Воркшопы</button>
+      <button type="button" class="etab" onclick="setType('networking',this)">Нетворкинг</button>
+      <button type="button" class="etab" onclick="setType('roundtable',this)">Круглые столы</button>
     </div>
-    <button class="btn-create" onclick="openModal()">
+    <button type="button" class="btn-create" onclick="openModal()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <span>Создать событие</span>
     </button>
@@ -326,10 +326,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <aside class="right">
   <div class="cal-card">
     <div class="cal-nav">
-      <button class="cal-nav-btn" onclick="calPrev()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <button type="button" class="cal-nav-btn" onclick="calPrev()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
       <span class="cal-month-label" id="calMonthLabel"></span>
-      <button class="cal-today-btn" onclick="calGoToday()">Сегодня</button>
-      <button class="cal-nav-btn" onclick="calNext()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <button type="button" class="cal-today-btn" onclick="calGoToday()">Сегодня</button>
+      <button type="button" class="cal-nav-btn" onclick="calNext()"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
     </div>
     <div class="cal-dows" id="calDows"></div>
     <div class="cal-grid" id="calGrid"></div>
@@ -341,7 +341,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="cal-popup" id="calPopup">
       <div class="cal-popup-head">
         <span class="cal-popup-date" id="calPopupDate"></span>
-        <button class="cal-popup-close" onclick="closePopup()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <button type="button" class="cal-popup-close" onclick="closePopup()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="cal-popup-list" id="calPopupList"></div>
     </div>
@@ -366,7 +366,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title" id="eventModalTitle">Создать мероприятие</span>
-      <button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div><label class="mf-label">Название *</label><input class="mf-input" id="mTitle" placeholder="Вебинар по таможенному оформлению…"></div>
@@ -440,8 +440,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div><label class="mf-label">Теги через запятую</label><input class="mf-input" id="mTags" placeholder="таможня, вэд, еаэс…"></div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-submit" id="submitEventBtn" onclick="submitEvent()">Создать мероприятие</button>
+      <button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button type="button" class="btn-submit" id="submitEventBtn" onclick="submitEvent()">Создать мероприятие</button>
     </div>
   </div>
 </div>
@@ -546,7 +546,7 @@ let currentType=''; let currentMode='all'; let calYear=NOW.getFullYear(); let ca
 function renderCard(ev,i){
   const d=ev.date instanceof Date?ev.date:new Date(ev.date); const day=d.getDate();
   const mon=d.toLocaleDateString('ru-RU',{month:'short'}).replace('.',''); const pid=ev.public_id||''; const isReg=registeredSet.has(pid); const isSav=savedSet.has(pid);
-  return`<div class="ev-card" style="animation-delay:${i*.05}s" onclick="openEvent('${esc(ev.public_id||'')}')"><div class="ev-banner" style="background:${BANNER[ev.type]||BANNER.default}"></div><div class="ev-body"><div class="ev-head"><div class="ev-date-box"><div class="ev-date-day">${day}</div><div class="ev-date-month" style="background:${TYPE_COLOR[ev.type]||'var(--g)'}">${mon}</div></div><div class="ev-meta"><div class="ev-badges"><span class="ev-badge ${TYPE_BADGE[ev.type]||''}">${TYPE_LABEL[ev.type]||ev.type}</span><span class="ev-badge ${FORMAT_BADGE[ev.format]||''}">${FORMAT_LABEL[ev.format]||ev.format}</span></div><div class="ev-title">${esc(ev.title)}</div></div></div><div class="ev-info-row"><span class="ev-info-item">${ev.timeStart}–${ev.timeEnd}</span><span class="ev-info-item">${num(ev.registered)} зарег.</span></div><div class="ev-desc">${esc(ev.desc)}</div><div class="ev-foot"><span class="ev-stat" title="Просмотры"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${num(ev.views)} просм.</span><span class="ev-price${ev.fee===0?' free':''}">${price(ev.fee)}</span><button class="btn-save${isSav?' saved':''}" onclick="event.stopPropagation();toggleSave('${esc(ev.public_id||'')}',this)"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></button><button class="btn-reg${isReg?' registered':''}" onclick="event.stopPropagation();toggleReg('${esc(ev.public_id||'')}',this)">${isReg?'✓ Вы записаны':'Записаться'}</button></div></div></div>`;
+  return`<div class="ev-card" style="animation-delay:${i*.05}s" onclick="openEvent('${esc(ev.public_id||'')}')"><div class="ev-banner" style="background:${BANNER[ev.type]||BANNER.default}"></div><div class="ev-body"><div class="ev-head"><div class="ev-date-box"><div class="ev-date-day">${day}</div><div class="ev-date-month" style="background:${TYPE_COLOR[ev.type]||'var(--g)'}">${mon}</div></div><div class="ev-meta"><div class="ev-badges"><span class="ev-badge ${TYPE_BADGE[ev.type]||''}">${TYPE_LABEL[ev.type]||ev.type}</span><span class="ev-badge ${FORMAT_BADGE[ev.format]||''}">${FORMAT_LABEL[ev.format]||ev.format}</span></div><div class="ev-title">${esc(ev.title)}</div></div></div><div class="ev-info-row"><span class="ev-info-item">${ev.timeStart}–${ev.timeEnd}</span><span class="ev-info-item">${num(ev.registered)} зарег.</span></div><div class="ev-desc">${esc(ev.desc)}</div><div class="ev-foot"><span class="ev-stat" title="Просмотры"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${num(ev.views)} просм.</span><span class="ev-price${ev.fee===0?' free':''}">${price(ev.fee)}</span><button type="button" class="btn-save${isSav?' saved':''}" onclick="event.stopPropagation();toggleSave('${esc(ev.public_id||'')}',this)"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></button><button type="button" class="btn-reg${isReg?' registered':''}" onclick="event.stopPropagation();toggleReg('${esc(ev.public_id||'')}',this)">${isReg?'✓ Вы записаны':'Записаться'}</button></div></div></div>`;
 }
 function renderList(items){const c=document.getElementById('evContent'); c.innerHTML=items.map((ev,i)=>renderCard(ev,i)).join('');}
 function renderSidebar(){const now=new Date(); const upcoming=[...EVENTS].filter(e=>(e.date instanceof Date?e.date:new Date(e.date))>=now); const soon=document.getElementById('soonList'); if(soon){soon.innerHTML=upcoming.map(ev=>`<div class="soon-item">${esc(ev.title)}</div>`).join('')||'<div style="font-size:12px;color:var(--gmt)">Нет событий</div>';}

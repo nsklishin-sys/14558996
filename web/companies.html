@@ -137,9 +137,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="toolbar">
     <span class="toolbar-title">Компании</span>
     <div class="mode-switch">
-      <button class="mode-btn active" id="mAll" onclick="setMode('all')">Все</button>
-      <button class="mode-btn" id="mMy" onclick="setMode('my')">Мои</button>
-      <button class="mode-btn" id="mVer" onclick="setMode('verified')">Верифицированные ✓</button>
+      <button type="button" class="mode-btn active" id="mAll" onclick="setMode('all')">Все</button>
+      <button type="button" class="mode-btn" id="mMy" onclick="setMode('my')">Мои</button>
+      <button type="button" class="mode-btn" id="mVer" onclick="setMode('verified')">Верифицированные ✓</button>
     </div>
     <a href="/my-company.html?create=1" class="btn-create">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -254,9 +254,9 @@ function renderCatBar(){
   const bar=document.getElementById('catBar');
   if(!categoryGroups.length){bar.style.display='none';return;}
   const chips=[
-    '<button class="cat-chip'+(activeGroup===''?' active':'')+'" onclick="setGroup(\'\')">Все отрасли</button>',
+    '<button type="button" class="cat-chip'+(activeGroup===''?' active':'')+'" onclick="setGroup(\'\')">Все отрасли</button>',
     ...categoryGroups.map(g=>
-      '<button class="cat-chip'+(activeGroup===g.label?' active':'')+'" onclick="setGroup('+JSON.stringify(g.label).replace(/"/g,'&quot;')+')">'+esc(g.label)+'</button>'
+      '<button type="button" class="cat-chip'+(activeGroup===g.label?' active':'')+'" onclick="setGroup('+JSON.stringify(g.label).replace(/"/g,'&quot;')+')">'+esc(g.label)+'</button>'
     )
   ];
   bar.innerHTML=chips.join('');

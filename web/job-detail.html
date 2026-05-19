@@ -232,7 +232,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal modal-sm">
     <div class="modal-head">
       <span class="modal-title">Откликнуться на вакансию</span>
-      <button class="modal-close" onclick="closeApplyModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeApplyModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div>
@@ -243,8 +243,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-hint">💬 После отправки откроется приватный чат с автором вакансии. Сообщение придёт ему первым — там же можно продолжить переписку.</div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeApplyModal()">Отмена</button>
-      <button class="btn-submit" id="applySubmitBtn" onclick="submitApply()">Отправить отклик</button>
+      <button type="button" class="btn-cancel" onclick="closeApplyModal()">Отмена</button>
+      <button type="button" class="btn-submit" id="applySubmitBtn" onclick="submitApply()">Отправить отклик</button>
     </div>
   </div>
 </div>
@@ -254,7 +254,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal">
     <div class="modal-head">
       <span class="modal-title">Редактировать вакансию</span>
-      <button class="modal-close" onclick="closeEditModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeEditModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div>
@@ -342,8 +342,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeEditModal()">Отмена</button>
-      <button class="btn-submit" id="editSubmitBtn" onclick="submitEdit()">Сохранить</button>
+      <button type="button" class="btn-cancel" onclick="closeEditModal()">Отмена</button>
+      <button type="button" class="btn-submit" id="editSubmitBtn" onclick="submitEdit()">Сохранить</button>
     </div>
   </div>
 </div>
@@ -353,14 +353,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="modal modal-sm">
     <div class="modal-head">
       <span class="modal-title">Удалить вакансию?</span>
-      <button class="modal-close" onclick="closeDeleteModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button type="button" class="modal-close" onclick="closeDeleteModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="confirm-text">Вы действительно хотите удалить вакансию <strong id="delTitle">…</strong>? Это действие нельзя отменить — все полученные отклики останутся в чатах, но сама вакансия будет скрыта.</div>
     </div>
     <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeDeleteModal()">Отмена</button>
-      <button class="btn-submit danger" id="deleteSubmitBtn" onclick="submitDelete()">Удалить</button>
+      <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Отмена</button>
+      <button type="button" class="btn-submit danger" id="deleteSubmitBtn" onclick="submitDelete()">Удалить</button>
     </div>
   </div>
 </div>
@@ -590,22 +590,22 @@ function renderHero(){
   let actions = '';
   if (j.viewer_is_author){
     actions =
-      '<button class="btn-ghost" onclick="openEditModal()"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Изменить</button>' +
-      '<button class="btn-ghost danger" onclick="openDeleteModal()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Удалить</button>';
+      '<button type="button" class="btn-ghost" onclick="openEditModal()"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Изменить</button>' +
+      '<button type="button" class="btn-ghost danger" onclick="openDeleteModal()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Удалить</button>';
   } else if (!tk()){
     actions =
       '<a class="btn-primary" href="/login.html"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Войти, чтобы откликнуться</a>';
   } else if (j.status === 'closed'){
     actions =
-      '<button class="btn-primary" disabled><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Вакансия закрыта</button>' +
+      '<button type="button" class="btn-primary" disabled><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Вакансия закрыта</button>' +
       renderSaveBtn();
   } else if (j.viewer_has_applied){
     actions =
-      '<button class="btn-primary" disabled><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Вы откликнулись</button>' +
+      '<button type="button" class="btn-primary" disabled><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Вы откликнулись</button>' +
       renderSaveBtn();
   } else {
     actions =
-      '<button class="btn-primary" data-guest-block onclick="openApplyModal()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Откликнуться</button>' +
+      '<button type="button" class="btn-primary" data-guest-block onclick="openApplyModal()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Откликнуться</button>' +
       renderSaveBtn() +
       '<button type="button" class="btn-ghost" data-share data-share-title="' + esc(j.title || 'Вакансия') + '" data-share-label="вакансией" data-share-emoji="💼"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Поделиться</button>';
   }
@@ -651,7 +651,7 @@ function renderSaveBtn(){
   const icon = saved
     ? '<svg viewBox="0 0 24 24" style="fill:currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
     : '<svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
-  return '<button class="' + cls + '" id="btnSave" onclick="toggleSave()">' + icon + label + '</button>';
+  return '<button type="button" class="' + cls + '" id="btnSave" onclick="toggleSave()">' + icon + label + '</button>';
 }
 
 function renderSections(){

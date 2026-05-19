@@ -309,7 +309,7 @@ function render(){
     { key:'about', label:'О компании' },
     { key:'pubs',  label:'Публикации' },
   ];
-  const tabsHtml = '<div class="co-tabs">'+tabs.map(t=>'<button class="co-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+'</div>';
+  const tabsHtml = '<div class="co-tabs">'+tabs.map(t=>'<button type="button" class="co-tab'+(currentTab===t.key?' active':'')+'" onclick="setTab(\''+t.key+'\')">'+esc(t.label)+'</button>').join('')+'</div>';
 
   document.getElementById('mainContent').innerHTML = heroHtml + tabsHtml + '<div id="tabContent"></div>';
   window.LASTOPShareInit?.();
@@ -515,7 +515,7 @@ async function renderPubs(wrap){
     ];
     const activeFilter = window.__pubsFilter || 'all';
     const filterTabs = '<div class="pub-filters">' + filterDefs.map(([k,label,n]) =>
-      '<button class="pub-filter'+(activeFilter===k?' active':'')+'" data-filter="'+k+'">'+esc(label)+' <span class="pub-filter-cnt">'+n+'</span></button>'
+      '<button type="button" class="pub-filter'+(activeFilter===k?' active':'')+'" data-filter="'+k+'">'+esc(label)+' <span class="pub-filter-cnt">'+n+'</span></button>'
     ).join('') + '</div>';
 
     const filtered = activeFilter === 'all' ? items : items.filter(i => i.type === activeFilter);
@@ -597,8 +597,8 @@ function showInviteBanner(code){
       '<div style="font-size:15px;font-weight:800">Вас пригласили в '+esc(c ? c.name : 'компанию')+'</div>'+
       '<div style="font-size:12px;opacity:.85;margin-top:3px">Принимая приглашение, вы становитесь сотрудником этой компании.</div>'+
     '</div>'+
-    '<button class="btn" id="inviteRejectBtn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4)" onclick="rejectInvite()">Отклонить</button>'+
-    '<button class="btn" id="inviteAcceptBtn" style="background:#fff;color:'+accent+'" onclick="acceptInvite('+JSON.stringify(code).replace(/"/g,'&quot;')+')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2"><polyline points="20 6 9 17 4 12"/></svg>Принять</button>';
+    '<button type="button" class="btn" id="inviteRejectBtn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4)" onclick="rejectInvite()">Отклонить</button>'+
+    '<button type="button" class="btn" id="inviteAcceptBtn" style="background:#fff;color:'+accent+'" onclick="acceptInvite('+JSON.stringify(code).replace(/"/g,'&quot;')+')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2"><polyline points="20 6 9 17 4 12"/></svg>Принять</button>';
   // вставляем в начало main, перед хлебными крошками
   const main = document.querySelector('.main');
   main.insertBefore(bn, main.firstChild);
