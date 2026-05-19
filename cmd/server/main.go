@@ -22812,7 +22812,10 @@ func isValidEmail(s string) bool {
 //	https://*.yandexcloud.net — S3-redirect для аватаров и медиа
 //	data:               — base64 в превью
 const cspPolicy = "default-src 'self'; " +
-	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://api-maps.yandex.ru https://mc.yandex.ru https://yastatic.net https://*.yandex.net https://smartcaptcha.yandexcloud.net; " +
+	// SEC (Phase 4): 'unsafe-eval' убран — eval()/new Function/setTimeout(string)
+	// в коде не используются. 'unsafe-inline' остаётся как техдолг — требует
+	// рефакторинга всех inline <script>/<style> или переход на nonce-based CSP.
+	"script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api-maps.yandex.ru https://mc.yandex.ru https://yastatic.net https://*.yandex.net https://smartcaptcha.yandexcloud.net; " +
 	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://yastatic.net; " +
 	"font-src 'self' data: https://fonts.gstatic.com https://yastatic.net; " +
 	"img-src 'self' data: blob: https: http:; " +
