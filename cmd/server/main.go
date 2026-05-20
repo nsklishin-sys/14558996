@@ -6908,11 +6908,17 @@ func main() {
 		for rows.Next() {
 			var pub, title, content, cat string
 			var cover sql.NullString
-			var tags []string
+			var tagsJSON []byte
 			var likes, comments, views int
 			var created, updated time.Time
-			if err := rows.Scan(&pub, &title, &content, &cover, &tags, &likes, &comments, &views, &created, &updated, &cat); err != nil {
+			if err := rows.Scan(&pub, &title, &content, &cover, &tagsJSON, &likes, &comments, &views, &created, &updated, &cat); err != nil {
+				log.Printf("platform-updates list row scan: %v", err)
 				continue
+			}
+			var tags []string
+			_ = json.Unmarshal(tagsJSON, &tags)
+			if tags == nil {
+				tags = []string{}
 			}
 			out = append(out, map[string]any{
 				"public_id":      pub,
