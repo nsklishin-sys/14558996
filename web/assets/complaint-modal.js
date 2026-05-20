@@ -1,5 +1,5 @@
 (function(){
-  if (window.lastopComplain) return;
+  if (window.lastopComplain && window.lastopComplainSidebar) return;
 
   const REASONS = [
     { key: 'spam',      label: 'Спам или реклама' },
@@ -59,22 +59,166 @@
 
   function showToast(msg, isError){
     let t = document.querySelector('.complaint-toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.className = 'complaint-toast';
-      document.body.appendChild(t);
-    }
+    if (!t) { t = document.createElement('div'); t.className = 'complaint-toast'; document.body.appendChild(t); }
     t.classList.toggle('err', !!isError);
-    const icoSVG = isError
+    const ico = isError
       ? '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
       : '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
-    t.innerHTML = '<span class="ct-ico">' + icoSVG + '</span><span>' + String(msg) + '</span>';
+    t.innerHTML = '<span class="ct-ico">' + ico + '</span><span>' + String(msg) + '</span>';
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 3500);
   }
 
   window.lastopComplain = function(targetType, targetID){
     injectStyles();
-    return Promise.resolve(true);
+    return new Promise(resolve => {
+      let selectedReason = null;
+      let screenshotData = '';
+      const bg = document.createElement('div');
+      bg.className = 'complaint-bg';
+      bg.innerHTML = '<div class="complaint-modal">'+
+        '<div class="complaint-head"><h3>Пожаловаться</h3><button class="complaint-x" type="button">×</button></div>'+
+        '<label class="complaint-label">Причина жалобы</label>'+
+        '<div class="complaint-reasons">'+
+          REASONS.map(r=>'<label class="complaint-reason" data-reason="'+r.key+'"><input type="radio" name="complaint-reason" value="'+r.key+'"><span>'+r.label+'</span></label>').join('')+
+        '</div>'+
+        '<label class="complaint-label">Комментарий (необязательно)</label>'+
+        '<textarea class="complaint-textarea" maxlength="1000" placeholder="Опишите подробнее…"></textarea>'+
+        '<label class="complaint-label">Скриншот (необязательно)</label>'+
+        '<div class="complaint-screenshot-area"></div>'+
+        '<div class="complaint-footer">'+
+          '<button class="complaint-btn-sec" type="button" data-act="cancel">Отмена</button>'+
+          '<button class="complaint-btn-pri" type="button" data-act="submit" disabled>Отправить</button>'+
+        '</div></div>';
+      document.body.appendChild(bg);
+      requestAnimationFrame(() => bg.classList.add('open'));
+
+      const modal = bg.querySelector('.complaint-modal');
+      const submitBtn = bg.querySelector('[data-act="submit"]');
+      const textarea = bg.querySelector('.complaint-textarea');
+      const screenshotArea = bg.querySelector('.complaint-screenshot-area');
+
+      function close(result){ bg.classList.remove('open'); setTimeout(() => { bg.remove(); resolve(result); }, 200); }
+
+      function renderScreenshot(){
+        if (!screenshotData) {
+          screenshotArea.innerHTML = '<button class="complaint-screenshot-btn" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Прикрепить изображение</button><input type="file" accept="image/*" style="display:none">';
+          const btn = screenshotArea.querySelector('button');
+          const inp = screenshotArea.querySelector('input');
+          btn.addEventListener('click', () => inp.click());
+          inp.addEventListener('change', e => {
+            const f = e.target.files && e.target.files[0]; if (!f) return;
+            if (!f.type.startsWith('image/')) { showToast('Только изображения', true); return; }
+            if (f.size > 5*1024*1024) { showToast('Файл больше 5 МБ', true); return; }
+            const reader = new FileReader();
+            reader.onload = () => { screenshotData = reader.result; renderScreenshot(); };
+            reader.readAsDataURL(f);
+          });
+        } else {
+          screenshotArea.innerHTML = '<div class="complaint-screenshot-preview"><img src="'+screenshotData+'" alt=""><button class="complaint-screenshot-remove" type="button" title="Удалить">×</button></div>';
+          screenshotArea.querySelector('.complaint-screenshot-remove').addEventListener('click', () => { screenshotData = ''; renderScreenshot(); });
+        }
+      }
+      renderScreenshot();
+
+      bg.addEventListener('click', e => { if (e.target === bg) close(false); });
+      modal.querySelector('.complaint-x').addEventListener('click', () => close(false));
+      modal.querySelector('[data-act="cancel"]').addEventListener('click', () => close(false));
+      bg.querySelectorAll('.complaint-reason').forEach(el => {
+        el.addEventListener('click', () => {
+          bg.querySelectorAll('.complaint-reason').forEach(x => x.classList.remove('active'));
+          el.classList.add('active');
+          el.querySelector('input').checked = true;
+          selectedReason = el.dataset.reason;
+          submitBtn.disabled = false;
+        });
+      });
+
+      submitBtn.addEventListener('click', async () => {
+        if (!selectedReason) return;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка…';
+        try {
+          const token = localStorage.getItem('token') || '';
+          const fetchFn = (typeof window.lastopFetch === 'function') ? window.lastopFetch : fetch;
+          const r = await fetchFn('/api/complaints', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+              target_type: targetType,
+              target_id: Number(targetID),
+              reason: selectedReason,
+              comment: textarea.value.trim(),
+              screenshot: screenshotData || '',
+            }),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok) { showToast(d.message || 'Жалоба отправлена', false); close(true); }
+          else { showToast(d.message || d.error || 'Не удалось отправить', true); submitBtn.disabled = false; submitBtn.textContent = 'Отправить'; }
+        } catch (e) {
+          showToast('Ошибка соединения', true);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Отправить';
+        }
+      });
+    });
+  };
+
+  // Виджет в правом сайдбаре. Кнопка красная по умолчанию.
+  window.lastopComplainSidebar = function(opts){
+    function tryRender(){
+      if (typeof opts.shouldShow === 'function' && !opts.shouldShow()) return;
+      const sidebar = document.querySelector('aside.right, .right');
+      if (!sidebar) return;
+      if (sidebar.querySelector('[data-complaint-card]')) return;
+      const id = typeof opts.targetID === 'function' ? opts.targetID() : opts.targetID;
+      if (!id || Number(id) <= 0) return;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.setAttribute('data-complaint-card', '1');
+      card.innerHTML =
+        '<div class="block-title">' + (opts.label || 'Действия') + '</div>' +
+        '<button type="button" class="complaint-sidebar-btn" style="' +
+          'width:100%;padding:10px 12px;border-radius:10px;' +
+          'background:#E04040;border:1.5px solid #E04040;' +
+          'color:#fff;font-family:inherit;font-size:13px;font-weight:600;' +
+          'cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;' +
+          'transition:all .15s">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>' +
+          'Пожаловаться' +
+        '</button>';
+      const btn = card.querySelector('button');
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = '#C03030';
+        btn.style.borderColor = '#C03030';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = '#E04040';
+        btn.style.borderColor = '#E04040';
+      });
+      btn.addEventListener('click', () => {
+        const currentID = typeof opts.targetID === 'function' ? opts.targetID() : opts.targetID;
+        if (!currentID || Number(currentID) <= 0) return;
+        window.lastopComplain(opts.targetType, Number(currentID));
+      });
+      sidebar.appendChild(card);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryRender);
+    } else {
+      tryRender();
+    }
+    let tries = 0;
+    const interval = setInterval(() => {
+      if (++tries > 25) { clearInterval(interval); return; }
+      const sidebar = document.querySelector('aside.right, .right');
+      if (sidebar && sidebar.querySelector('[data-complaint-card]')) {
+        clearInterval(interval);
+        return;
+      }
+      tryRender();
+    }, 200);
   };
 })();
