@@ -1449,7 +1449,7 @@ function applyConversation(c){
   if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   state.activeConversation=c;
 }
-async function selectConversation(pid){if(typeof cancelVoiceRecord==='function'&&_voiceRec&&_voiceRec.mediaRecorder)cancelVoiceRecord();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
@@ -2238,17 +2238,25 @@ function showVoiceRecBar(){
   wrap.parentNode.insertBefore(bar,wrap);wrap.style.display='none';
 }
 
-function cancelVoiceRecord(){
-  if(_voiceRec.mediaRecorder&&_voiceRec.mediaRecorder.state!=='inactive'){try{_voiceRec.mediaRecorder.onstop=null;_voiceRec.mediaRecorder.stop();}catch{}}
+function resetVoiceRecorder(){
+  // Универсальная очистка: и активная запись, и preview-bar, и DOM.
+  // Вызывается из cancel/send/selectConversation — всегда возвращает 
+  // чат к начальному состоянию ввода.
+  if(_voiceRec.mediaRecorder&&_voiceRec.mediaRecorder.state!=='inactive'){
+    try{_voiceRec.mediaRecorder.onstop=null;_voiceRec.mediaRecorder.stop();}catch{}
+  }
   if(_voiceRec.stream)_voiceRec.stream.getTracks().forEach(t=>t.stop());
   if(_voiceRec.audioContext)try{_voiceRec.audioContext.close();}catch{}
   if(_voiceRec.rafId)cancelAnimationFrame(_voiceRec.rafId);
   if(_voiceRec.timerInterval)clearInterval(_voiceRec.timerInterval);
+  if(_voiceRec.previewAudio){try{_voiceRec.previewAudio.pause();}catch{}_voiceRec.previewAudio=null;}
   if(_voiceRec.blobUrl)URL.revokeObjectURL(_voiceRec.blobUrl);
   _voiceRec={mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};
-  const bar=document.getElementById('voiceRecBar');if(bar)bar.remove();
+  const recBar=document.getElementById('voiceRecBar');if(recBar)recBar.remove();
+  const prevBar=document.getElementById('voicePrevBar');if(prevBar)prevBar.remove();
   const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display='';
 }
+function cancelVoiceRecord(){resetVoiceRecorder();}
 
 function stopVoiceRecord(){
   if(!_voiceRec.mediaRecorder||_voiceRec.mediaRecorder.state==='inactive')return;
@@ -2294,20 +2302,24 @@ function seekVoicePreview(ev){
 async function sendVoiceMessage(){
   if(!_voiceRec.blob||state.uploading)return;
   state.uploading=true;
+  // Сохраняем blob и duration ДО reset, иначе данные потеряются.
+  const blob=_voiceRec.blob;
+  const dur=_voiceRec.duration;
   try{
-    const ext=(_voiceRec.blob.type||'').includes('mp4')?'m4a':(_voiceRec.blob.type||'').includes('ogg')?'ogg':'webm';
+    const ext=(blob.type||'').includes('mp4')?'m4a':(blob.type||'').includes('ogg')?'ogg':'webm';
     const ts=new Date();const filename='Voice_'+ts.toISOString().replace(/[:.]/g,'-').slice(0,19)+'.'+ext;
-    const fd=new FormData();fd.append('file',new File([_voiceRec.blob],filename,{type:_voiceRec.blob.type||'audio/webm'}));
+    const fd=new FormData();fd.append('file',new File([blob],filename,{type:blob.type||'audio/webm'}));
     const r=await lastopFetch('/api/upload',{method:'POST',body:fd});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Не удалось загрузить голосовое');}
     const data=await r.json();
-    pendingAttachment={url:data.url,name:'Голосовое сообщение ('+Math.floor(_voiceRec.duration/60)+':'+String(_voiceRec.duration%60).padStart(2,'0')+')',size:data.size,type:data.type||_voiceRec.blob.type||'audio/webm'};
-    const bar=document.getElementById('voicePrevBar');if(bar)bar.remove();
-    const wrap=document.querySelector('.chat-input-wrap');if(wrap)wrap.style.display='';
-    if(_voiceRec.blobUrl)URL.revokeObjectURL(_voiceRec.blobUrl);
-    _voiceRec={mediaRecorder:null,stream:null,chunks:[],startTime:0,timerInterval:null,audioContext:null,analyser:null,rafId:null,blob:null,blobUrl:null,duration:0,previewAudio:null};
+    pendingAttachment={url:data.url,name:'Голосовое сообщение ('+Math.floor(dur/60)+':'+String(dur%60).padStart(2,'0')+')',size:data.size,type:data.type||blob.type||'audio/webm'};
+    resetVoiceRecorder();
     await submitMessage();
-  }catch(e){showToast(e.message||'Не удалось отправить голосовое');}
+  }catch(e){
+    showToast(e.message||'Не удалось отправить голосовое');
+    // При ошибке НЕ сбрасываем — оставляем preview-bar, чтобы юзер мог 
+    // попробовать ещё раз или сохранить запись.
+  }
   finally{state.uploading=false;}
 }
 
