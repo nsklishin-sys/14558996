@@ -4067,6 +4067,48 @@ func main() {
 		}
 		mimeType := http.DetectContentType(sniffBuf[:n])
 
+		// SEC + Phase 5 fix: http.DetectContentType в Go не распознаёт
+		// некоторые аудио/видео контейнеры (MP4-Audio aka m4a, WebM-Opus,
+		// Ogg-Opus от MediaRecorder браузера) и возвращает
+		// application/octet-stream или просто video/mp4 для m4a.
+		// Добавляем ручное распознавание magic bytes:
+		//
+		//   ftyp...M4A_/M4B_/mp42 → audio/mp4   (MP4-Audio из Safari)
+		//   ftyp...isom/mp42/mp41 → video/mp4   (если расширение видео — оставляем)
+		//   1A 45 DF A3            → webm/matroska
+		//   OggS                   → ogg (audio или video)
+		//
+		// Если расширение явно аудио (.m4a/.webm/.ogg от MediaRecorder),
+		// принудительно проставляем audio/<format>.
+		if n >= 12 && string(sniffBuf[4:8]) == "ftyp" {
+			brand := string(sniffBuf[8:12])
+			// M4A / M4B — чисто аудио бренды
+			if brand == "M4A " || brand == "M4B " {
+				mimeType = "audio/mp4"
+			} else if ext == ".m4a" {
+				// Любой ftyp с расширением .m4a — это аудио-контейнер mp4
+				mimeType = "audio/mp4"
+			} else if strings.HasPrefix(mimeType, "application/") {
+				// Если DetectContentType не справился — для ftyp по умолчанию video/mp4
+				mimeType = "video/mp4"
+			}
+		}
+		if n >= 4 && sniffBuf[0] == 0x1A && sniffBuf[1] == 0x45 && sniffBuf[2] == 0xDF && sniffBuf[3] == 0xA3 {
+			// EBML заголовок (Matroska/WebM). Различаем по расширению,
+			// потому что одна сигнатура для аудио и видео.
+			if ext == ".webm" {
+				// MediaRecorder обычно генерирует audio/webm для голосовых
+				mimeType = "audio/webm"
+			} else {
+				mimeType = "video/webm"
+			}
+		}
+		if n >= 4 && string(sniffBuf[0:4]) == "OggS" {
+			if ext == ".ogg" || ext == ".opus" {
+				mimeType = "audio/ogg"
+			}
+		}
+
 		// Проверка: семейство MIME должно соответствовать расширению.
 		// Защита от файлов вроде «evil.png» с HTML внутри.
 		extMimeFamily := map[string]string{
