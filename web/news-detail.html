@@ -575,7 +575,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api', tk=()=>localStorage.getItem('token');
+const API='/api', tk=()=>{try{return JSON.parse(localStorage.getItem('user')||'{}').id?'cookie':'';}catch(_){return '';}};
 const authHeaders=(extra)=>Object.assign({},extra||{});
 const postPublicID=new URLSearchParams(location.search).get('id');
 

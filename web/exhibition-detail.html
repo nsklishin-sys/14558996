@@ -611,7 +611,7 @@ a.sb-org-card:hover{border-color:var(--gb);text-decoration:none!important}
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api',tk=()=>localStorage.getItem('token');
+const API='/api',tk=()=>{try{return JSON.parse(localStorage.getItem('user')||'{}').id?'cookie':'';}catch(_){return '';}};
 const esc = window.lastopEsc;
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;

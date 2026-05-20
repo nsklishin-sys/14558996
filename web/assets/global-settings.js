@@ -431,7 +431,6 @@
           }
           // На фоне отправляем POST
           try {
-            const token = localStorage.getItem('token');
             await lastopFetch('/api/notifications/' + id + '/read', {
               method: 'POST'
             });
