@@ -1000,6 +1000,14 @@ async function loadCommunityProfile(){
     const fromAPI=data?.community;
     if(fromAPI){
       renderCommunityProfile(fromAPI);
+      if (currentCommunity && currentCommunity.id && typeof window.lastopComplainSidebar === 'function') {
+        window.lastopComplainSidebar({
+          targetType: 'community',
+          targetID: () => (currentCommunity && currentCommunity.id) || 0,
+          label: 'Действия',
+          shouldShow: () => true,
+        });
+      }
       try{sessionStorage.setItem('lastop_community_cache_'+String(id),JSON.stringify(fromAPI));}catch{}
       loadPosts();
     }
@@ -1076,5 +1084,6 @@ loadCommunityProfile();
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script src="/assets/complaint-modal.js" defer></script>
 </body>
 </html>
