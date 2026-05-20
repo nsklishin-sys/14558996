@@ -499,7 +499,6 @@ a.nc-author{text-decoration:none}
       <div class="nh-text" id="heroText">—</div>
       <div class="nh-foot">
         <div class="nh-author">
-          <div class="nh-av" id="heroAv" style="background:#1E8A4C">L</div>
           <span class="nh-name" id="heroName">LASTOP</span>
         </div>
         <div class="nh-stats">
@@ -1116,17 +1115,8 @@ async function loadHeroNews(){
     }
 
     // Используем общий хелпер pickPostAuthor — он корректно различает
-    // сообщество / компанию / юзера и подбирает имя+аватарку.
+    // сообщество / компанию / юзера и подбирает имя автора.
     const authorMeta = pickPostAuthor(post);
-    console.log('[HERO]', {
-      author_company_id: post.author_company_id,
-      author_company_name: post.author_company_name,
-      author_company_logo_len: (post.author_company_logo||'').length,
-      author_avatar_len: (post.author_avatar||'').length,
-      picked_avatar_len: (authorMeta.avatar||'').length,
-      picked_name: authorMeta.name,
-      fromCompany: authorMeta.fromCompany,
-    });
 
     document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + authorMeta.name;
 
@@ -1152,28 +1142,10 @@ async function loadHeroNews(){
     document.getElementById('heroText').textContent = (post.text || post.content || '').slice(0, 240);
     document.getElementById('heroName').textContent = authorMeta.name;
 
-    // Аватарка hero: 32x32 кружок. Для логотипов компаний — белая 
-    // подложка (класс has-img), для буквенных аватарок — цветной 
-    // фон с буквой.
-    const av = document.getElementById('heroAv');
-    if (av) {
-      const url = (authorMeta.avatar || '').trim();
-      const ltr = letter(authorMeta.name || 'L');
-      const bg = authorMeta.bgColor || avc(authorMeta.name || 'L');
-      av.classList.remove('has-img');
-      av.style.cssText = '';
-      if (url) {
-        av.classList.add('has-img');
-        av.innerHTML = '<img src="' + url.replace(/"/g, '&quot;') + 
-          '" alt="" onerror="this.parentNode.classList.remove(\'has-img\');' +
-          'this.parentNode.style.background=\'' + bg + '\';' +
-          'this.parentNode.textContent=\'' + ltr.replace(/'/g, "\\'") + '\'">';
-      } else {
-        av.innerHTML = '';
-        av.textContent = ltr;
-        av.style.background = bg;
-      }
-    }
+    // Аватарка в hero временно убрана — в БД у компании logo_image
+    // содержит фото вместо логотипа. Техдолг: добавить отдельное
+    // поле avatar_url для компаний или валидацию пропорций логотипа
+    // при загрузке, затем вернуть аватарку обратно.
     document.getElementById('heroViews').textContent = num(post.views_count || 0);
     document.getElementById('heroLikes').textContent = num(post.likes_count || 0);
     document.getElementById('heroComments').textContent = num(post.comments_count || 0);
