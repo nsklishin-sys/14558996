@@ -1145,12 +1145,24 @@ async function loadHeroNews(){
     // показываем её, иначе — букву на цветной плашке.
     const av = document.getElementById('heroAv');
     if (av) {
-      if (authorMeta.avatar) {
-        av.innerHTML = '';
-        av.style.backgroundImage = 'url("' + authorMeta.avatar + '")';
-        av.style.backgroundSize = 'cover';
-        av.style.backgroundPosition = 'center';
-        av.style.background = (av.style.backgroundColor = '') || av.style.backgroundImage;
+      const avatarUrl = (authorMeta.avatar || '').trim();
+      if (avatarUrl) {
+        // Проверяем что картинка реально грузится. Если 404 /
+        // не-картинка — откатываемся на букву.
+        const testImg = new Image();
+        testImg.onload = () => {
+          av.innerHTML = '';
+          av.style.backgroundImage = 'url("' + avatarUrl + '")';
+          av.style.backgroundSize = 'cover';
+          av.style.backgroundPosition = 'center';
+          av.style.backgroundColor = '';
+        };
+        testImg.onerror = () => {
+          av.style.backgroundImage = '';
+          av.textContent = letter(authorMeta.name || 'L');
+          av.style.background = authorMeta.bgColor || avc(authorMeta.name || 'L');
+        };
+        testImg.src = avatarUrl;
       } else {
         av.style.backgroundImage = '';
         av.textContent = letter(authorMeta.name || 'L');

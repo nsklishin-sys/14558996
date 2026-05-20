@@ -780,10 +780,14 @@ let commentCount=38;
 
 function commentAvHtml(c, size){
   // Картинка приоритетнее буквы. Размер передаётся для replies (мельче).
-  const img = c.avatar || '';
+  // Trim пробелов: если URL пришёл с whitespace, картинка не загрузится.
+  const img = (c.avatar || '').trim();
   const sizeStyle = size ? `width:${size}px;height:${size}px;font-size:${size===30?'11':'13'}px;` : '';
   if (img) {
-    return `<div class="com-av" style="${sizeStyle}background:${c.color}"><img src="${esc(img)}" alt=""></div>`;
+    // onerror: если URL битый (404 / запрещён), вместо крестика
+    // показываем букву — родитель .com-av уже имеет background:color.
+    const fallback = esc(c.av || '?');
+    return `<div class="com-av" style="${sizeStyle}background:${c.color}"><img src="${esc(img)}" alt="" onerror="this.outerHTML='${fallback}'"></div>`;
   }
   return `<div class="com-av" style="${sizeStyle}background:${c.color}">${c.av}</div>`;
 }

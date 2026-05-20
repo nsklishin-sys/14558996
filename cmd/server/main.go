@@ -19547,6 +19547,8 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 	return isLiked, likesCount, nil
 }
 
+// listComments — выбирает комментарии к посту, включая avatar_url автора,
+// логотип компании-отправителя и аватарку сообщества-отправителя.
 func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, error) {
 	rows, err := db.Query(`
 		SELECT pc.id, u.public_id, u.full_name, COALESCE(u.avatar_url, ''), pc.content, pc.parent_id, pc.created_at,
