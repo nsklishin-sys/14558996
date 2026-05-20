@@ -1000,13 +1000,20 @@ async function loadCommunityProfile(){
     const fromAPI=data?.community;
     if(fromAPI){
       renderCommunityProfile(fromAPI);
-      if (currentCommunity && currentCommunity.id && typeof window.lastopComplainSidebar === 'function') {
-        window.lastopComplainSidebar({
-          targetType: 'community',
-          targetID: () => (currentCommunity && currentCommunity.id) || 0,
-          label: 'Действия',
-          shouldShow: () => true,
-        });
+      if (currentCommunity && currentCommunity.id) {
+        const initWidget = () => {
+          if (typeof window.lastopComplainSidebar === 'function') {
+            window.lastopComplainSidebar({
+              targetType: 'community',
+              targetID: () => (currentCommunity && currentCommunity.id) || 0,
+              label: 'Действия',
+              shouldShow: () => true,
+            });
+          } else {
+            setTimeout(initWidget, 150);
+          }
+        };
+        initWidget();
       }
       try{sessionStorage.setItem('lastop_community_cache_'+String(id),JSON.stringify(fromAPI));}catch{}
       loadPosts();

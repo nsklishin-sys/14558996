@@ -959,18 +959,30 @@ async function loadViewedUser(){
       return;
     }
     applyViewedUserProfile(enrichViewedUser(d.user,uid));
-    // Виджет жалоб для просмотра чужого профиля
+    // Виджет жалоб для просмотра чужого профиля.
+    // ВАЖНО: сохраняем данные в глобал БЕЗУСЛОВНО, потому что
+    // complaint-modal.js загружается через defer и может ещё не
+    // экспортировать lastopComplainSidebar к моменту loadViewedUser.
+    // Сам виджет внутри себя делает retry через setInterval —
+    // он подхватит данные когда будет готов.
     try {
       const u = d && d.user;
-      if (u && u.id && typeof window.lastopComplainSidebar === 'function') {
+      if (u && u.id) {
         window.__viewedUserID = u.id;
         window.__viewedUserIsSelf = !!u.is_self;
-        window.lastopComplainSidebar({
-          targetType: 'user',
-          targetID: () => window.__viewedUserID || 0,
-          label: 'Действия',
-          shouldShow: () => !window.__viewedUserIsSelf,
-        });
+        const initWidget = () => {
+          if (typeof window.lastopComplainSidebar === 'function') {
+            window.lastopComplainSidebar({
+              targetType: 'user',
+              targetID: () => window.__viewedUserID || 0,
+              label: 'Действия',
+              shouldShow: () => !window.__viewedUserIsSelf,
+            });
+          } else {
+            setTimeout(initWidget, 150);
+          }
+        };
+        initWidget();
       }
     } catch (e) {}
   }catch(e){

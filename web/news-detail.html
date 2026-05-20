@@ -1099,18 +1099,22 @@ function renderPost(p){
   // Сохраняем id поста в глобал — виджет жалоб его читает.
   window.__currentPostID = p && p.id ? p.id : 0;
   window.__currentPostAuthorPID = p && p.author_public_id ? p.author_public_id : '';
-  if (typeof window.lastopComplainSidebar === 'function') {
-    window.lastopComplainSidebar({
-      targetType: 'post',
-      targetID: () => window.__currentPostID || 0,
-      label: 'Действия',
-      shouldShow: () => {
-        // Не показывать автору поста
-        const myPid = window._currentUserPID || '';
-        return !myPid || myPid !== window.__currentPostAuthorPID;
-      },
-    });
-  }
+  const initPostWidget = () => {
+    if (typeof window.lastopComplainSidebar === 'function') {
+      window.lastopComplainSidebar({
+        targetType: 'post',
+        targetID: () => window.__currentPostID || 0,
+        label: 'Действия',
+        shouldShow: () => {
+          const myPid = window._currentUserPID || '';
+          return !myPid || myPid !== window.__currentPostAuthorPID;
+        },
+      });
+    } else {
+      setTimeout(initPostWidget, 150);
+    }
+  };
+  initPostWidget();
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? ''; };
   const setHTML = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v ?? ''; };
 
