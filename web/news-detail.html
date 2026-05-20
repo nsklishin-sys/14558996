@@ -817,6 +817,9 @@ function renderComments(){
             <svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
             Ответить
           </button>
+          <button type="button" class="com-act" onclick="reportComment(${c.id})" title="Пожаловаться" style="margin-left:auto;color:var(--gmt)">
+            🚩
+          </button>
         </div>
         ${c.replies&&c.replies.length?`<div class="com-reply">`+c.replies.map(r=>`
           <div class="comment" id="comment-${c.id}-${r.id}">
@@ -849,6 +852,15 @@ function likeComment(id){
   c.liked=!c.liked;c.likes+=c.liked?1:-1;
   renderComments();
 }
+
+async function reportComment(commentID){
+  if (typeof window.lastopComplain !== 'function') {
+    alert('Модалка жалоб не загружена');
+    return;
+  }
+  await window.lastopComplain('comment', commentID);
+}
+
 function likeReply(cid,rid){
   const c=comments.find(x=>x.id===cid);if(!c)return;
   const r=c.replies.find(x=>x.id===rid);if(!r)return;
@@ -1474,5 +1486,6 @@ async function copyPostLink(){
 <style>
 .modal-bg.open{opacity:1!important;pointer-events:all!important}
 </style>
+<script src="/assets/complaint-modal.js" defer></script>
 </body>
 </html>
