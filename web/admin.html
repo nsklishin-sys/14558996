@@ -1,0 +1,15 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Админ-панель — LASTOP GROUP</title><script src="/assets/utils.js"></script><script src="/assets/dark-theme-init.js"></script><link rel="stylesheet" href="/assets/shell-layout.css"><script>document.documentElement.classList.add('lt-shell');</script></head><body>
+<div style="padding:16px;font-family:Manrope,sans-serif">
+<h1>Админ-панель</h1>
+<div><button onclick="switchTab('overview')">Обзор</button><button onclick="switchTab('users')">Пользователи</button><button onclick="switchTab('audit')">Журнал</button></div>
+<div id="paneOverview"></div><div id="paneUsers" style="display:none"><input id="q" placeholder="поиск"><button onclick="loadUsers()">Найти</button><div id="users"></div></div><div id="paneAudit" style="display:none"><div id="audit"></div></div>
+</div>
+<script>
+(function(){let u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')}catch{}if(!u||!u.is_admin){location.replace('/');return}})();
+let tab='overview'; function switchTab(t){tab=t;document.getElementById('paneOverview').style.display=t==='overview'?'block':'none';document.getElementById('paneUsers').style.display=t==='users'?'block':'none';document.getElementById('paneAudit').style.display=t==='audit'?'block':'none';if(t==='overview')loadOverview();if(t==='users')loadUsers();if(t==='audit')loadAudit();}
+async function loadOverview(){const r=await lastopFetch('/api/admin/overview');if(!r.ok)return;const d=await r.json();document.getElementById('paneOverview').innerHTML='<pre>'+JSON.stringify(d,null,2)+'</pre>';}
+async function loadUsers(){let url='/api/admin/users?limit=100';const q=document.getElementById('q').value.trim();if(q)url+='&q='+encodeURIComponent(q);const r=await lastopFetch(url);if(!r.ok)return;const d=await r.json();document.getElementById('users').innerHTML=(d.users||[]).map(u=>`<div><a href='#' onclick='openUser(${u.id});return false'>${u.full_name} (${u.email})</a> ${u.is_banned?'[banned]':''}</div>`).join('');}
+async function openUser(id){const r=await lastopFetch('/api/admin/users/'+id);if(!r.ok)return;const u=await r.json();alert(JSON.stringify(u,null,2));}
+async function loadAudit(){const r=await lastopFetch('/api/admin/audit-log?limit=100');if(!r.ok)return;const d=await r.json();document.getElementById('audit').innerHTML='<pre>'+JSON.stringify(d.entries||[],null,2)+'</pre>';}
+loadOverview();
+</script><script src="/assets/shell-injector.js" defer></script><script src="/assets/profile-context.js" defer></script></body></html>

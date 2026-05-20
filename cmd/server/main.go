@@ -2702,6 +2702,10 @@ func main() {
 				writeError(w, http.StatusUnauthorized, "Неверный email или пароль")
 				return
 			}
+			if errors.Is(err, errForbidden) {
+				writeError(w, http.StatusForbidden, "Аккаунт заблокирован")
+				return
+			}
 			if errors.Is(err, errValidation) {
 				writeError(w, http.StatusBadRequest, err.Error())
 				return
@@ -5665,6 +5669,252 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
+	}))
+
+	mux.HandleFunc("/api/admin/overview", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		out := map[string]any{}
+		var n int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_deleted = FALSE`).Scan(&n)
+		out["users_total"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_deleted = FALSE AND created_at > NOW() - INTERVAL '1 day'`).Scan(&n)
+		out["users_new_24h"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_deleted = FALSE AND created_at > NOW() - INTERVAL '7 days'`).Scan(&n)
+		out["users_new_7d"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE banned_at IS NOT NULL`).Scan(&n)
+		out["users_banned"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL`).Scan(&n)
+		out["companies_total"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL AND is_verified = FALSE`).Scan(&n)
+		out["companies_unverified"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE is_deleted = FALSE`).Scan(&n)
+		out["posts_total"] = n
+		_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE is_deleted = FALSE AND created_at > NOW() - INTERVAL '1 day'`).Scan(&n)
+		out["posts_new_24h"] = n
+		_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_used_at > NOW() - INTERVAL '1 day'`).Scan(&n)
+		out["active_24h"] = n
+		var maintActive bool
+		_ = db.QueryRow(`SELECT COALESCE((SELECT (value::jsonb->>'active')::boolean FROM system_settings WHERE key='maintenance'), FALSE)`).Scan(&maintActive)
+		out["maintenance_active"] = maintActive
+		writeJSON(w, http.StatusOK, out)
+	}))
+
+	mux.HandleFunc("/api/admin/users", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		status := strings.TrimSpace(r.URL.Query().Get("status"))
+		limit := 50
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
+		}
+		offset := 0
+		if v := r.URL.Query().Get("offset"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+				offset = n
+			}
+		}
+		sqlQuery := `SELECT id, public_id, full_name, email, COALESCE(avatar_url,''), COALESCE(position,''),
+		               created_at, COALESCE(is_admin,false),
+		               banned_at, COALESCE(banned_reason,''),
+		               COALESCE(email_verified_at IS NOT NULL, false) AS email_verified
+		        FROM users WHERE is_deleted = FALSE`
+		args := []any{}
+		i := 1
+		if q != "" {
+			sqlQuery += fmt.Sprintf(" AND (full_name ILIKE $%d OR email ILIKE $%d)", i, i)
+			args = append(args, "%"+q+"%")
+			i++
+		}
+		switch status {
+		case "active":
+			sqlQuery += " AND banned_at IS NULL AND is_admin = FALSE"
+		case "banned":
+			sqlQuery += " AND banned_at IS NOT NULL"
+		case "admin":
+			sqlQuery += " AND is_admin = TRUE"
+		}
+		sqlQuery += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, limit, offset)
+		rows, err := db.Query(sqlQuery, args...)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		users := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var pub, name, email, avatar, position string
+			var createdAt time.Time
+			var isAdmin, emailVerified bool
+			var bannedAt sql.NullTime
+			var bannedReason string
+			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &position, &createdAt, &isAdmin, &bannedAt, &bannedReason, &emailVerified); err != nil {
+				continue
+			}
+			u := map[string]any{"id": id, "public_id": pub, "full_name": name, "email": email, "avatar_url": avatar, "position": position, "created_at": createdAt, "is_admin": isAdmin, "email_verified": emailVerified, "is_banned": bannedAt.Valid}
+			if bannedAt.Valid {
+				u["banned_at"] = bannedAt.Time
+				u["banned_reason"] = bannedReason
+			}
+			users = append(users, u)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"users": users})
+	}))
+
+	mux.HandleFunc("/api/admin/users/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		path := strings.TrimPrefix(r.URL.Path, "/api/admin/users/")
+		parts := strings.Split(path, "/")
+		if len(parts) < 1 || parts[0] == "" {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		targetID, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		var name, email string
+		var isAdminTarget bool
+		if err := db.QueryRow(`SELECT full_name, email, COALESCE(is_admin,false) FROM users WHERE id=$1 AND is_deleted = FALSE`, targetID).Scan(&name, &email, &isAdminTarget); err != nil {
+			writeError(w, http.StatusNotFound, "Пользователь не найден")
+			return
+		}
+		guard := func() bool {
+			if isAdminTarget && targetID != actorID {
+				writeError(w, http.StatusForbidden, "Нельзя изменять других администраторов")
+				return false
+			}
+			if targetID == actorID {
+				writeError(w, http.StatusBadRequest, "Нельзя выполнять это действие над собой")
+				return false
+			}
+			return true
+		}
+		if len(parts) == 1 {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			row := db.QueryRow(`SELECT id, public_id, full_name, email, COALESCE(avatar_url,''), COALESCE(position,''), COALESCE(bio,''), COALESCE(phone,''), COALESCE(city,''), created_at, COALESCE(is_admin,false), email_verified_at, banned_at, COALESCE(banned_reason,''), banned_by FROM users WHERE id=$1 AND is_deleted = FALSE`, targetID)
+			var u struct {
+				ID                                                     int64
+				PubID, Name, Email, Avatar, Position, Bio, Phone, City string
+				CreatedAt                                              time.Time
+				IsAdmin                                                bool
+				EmailVerified                                          sql.NullTime
+				BannedAt                                               sql.NullTime
+				BannedReason                                           string
+				BannedBy                                               sql.NullInt64
+			}
+			if err := row.Scan(&u.ID, &u.PubID, &u.Name, &u.Email, &u.Avatar, &u.Position, &u.Bio, &u.Phone, &u.City, &u.CreatedAt, &u.IsAdmin, &u.EmailVerified, &u.BannedAt, &u.BannedReason, &u.BannedBy); err != nil {
+				writeError(w, http.StatusNotFound, "Пользователь не найден")
+				return
+			}
+			var posts, companies, sessionsCount int
+			_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE author_id=$1 AND is_deleted = FALSE`, targetID).Scan(&posts)
+			_ = db.QueryRow(`SELECT COUNT(*) FROM company_members WHERE user_id=$1`, targetID).Scan(&companies)
+			_ = db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE user_id=$1`, targetID).Scan(&sessionsCount)
+			out := map[string]any{"id": u.ID, "public_id": u.PubID, "full_name": u.Name, "email": u.Email, "avatar_url": u.Avatar, "position": u.Position, "bio": u.Bio, "phone": u.Phone, "city": u.City, "created_at": u.CreatedAt, "is_admin": u.IsAdmin, "email_verified": u.EmailVerified.Valid, "is_banned": u.BannedAt.Valid, "posts_count": posts, "companies_count": companies, "sessions_count": sessionsCount}
+			if u.BannedAt.Valid {
+				out["banned_at"] = u.BannedAt.Time
+				out["banned_reason"] = u.BannedReason
+				if u.BannedBy.Valid {
+					out["banned_by"] = u.BannedBy.Int64
+				}
+			}
+			writeJSON(w, http.StatusOK, out)
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		action := parts[1]
+		switch action {
+		case "ban":
+			if !guard() {
+				return
+			}
+			var req struct {
+				Reason string `json:"reason"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			reason := strings.TrimSpace(req.Reason)
+			if reason == "" {
+				writeError(w, http.StatusBadRequest, "Укажите причину блокировки")
+				return
+			}
+			if _, err := db.Exec(`UPDATE users SET banned_at=NOW(), banned_reason=$1, banned_by=$2 WHERE id=$3`, reason, actorID, targetID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			_, _ = db.Exec(`DELETE FROM sessions WHERE user_id=$1`, targetID)
+			logAdminAction(db, actorID, "user.ban", "user", targetID, clientIP(r), map[string]any{"reason": reason, "email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"banned": true})
+		case "unban":
+			if !guard() {
+				return
+			}
+			if _, err := db.Exec(`UPDATE users SET banned_at=NULL, banned_reason=NULL, banned_by=NULL WHERE id=$1`, targetID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "user.unban", "user", targetID, clientIP(r), map[string]any{"email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"banned": false})
+		case "grant-admin":
+			if !guard() {
+				return
+			}
+			if _, err := db.Exec(`UPDATE users SET is_admin=TRUE WHERE id=$1`, targetID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "user.grant_admin", "user", targetID, clientIP(r), map[string]any{"email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"is_admin": true})
+		case "revoke-admin":
+			if targetID == actorID {
+				writeError(w, http.StatusBadRequest, "Нельзя снять права администратора с себя")
+				return
+			}
+			if _, err := db.Exec(`UPDATE users SET is_admin=FALSE WHERE id=$1`, targetID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "user.revoke_admin", "user", targetID, clientIP(r), map[string]any{"email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"is_admin": false})
+		case "terminate-sessions":
+			if !guard() {
+				return
+			}
+			res, _ := db.Exec(`DELETE FROM sessions WHERE user_id=$1`, targetID)
+			n := int64(0)
+			if res != nil {
+				n, _ = res.RowsAffected()
+			}
+			logAdminAction(db, actorID, "user.terminate_sessions", "user", targetID, clientIP(r), map[string]any{"email": email, "deleted": n})
+			writeJSON(w, http.StatusOK, map[string]any{"terminated": n})
+		default:
+			writeError(w, http.StatusNotFound, "Действие не поддерживается")
+		}
 	}))
 
 	mux.HandleFunc("/api/admin/audit-log", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
@@ -12213,6 +12463,12 @@ CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Admin panel Этап A: блокировка юзеров
+ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_reason TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_users_banned ON users(banned_at) WHERE banned_at IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS system_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL DEFAULT '',
@@ -13338,14 +13594,16 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 
 	var u user
 	var passwordHash string
+	var bannedAt sql.NullTime
+	var bannedReason string
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
 			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''),
-			password_hash
+			password_hash, banned_at, COALESCE(banned_reason, '')
 		FROM users
 		WHERE email = $1 AND is_deleted = FALSE
-	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &passwordHash)
+	`, email).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &passwordHash, &bannedAt, &bannedReason)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Phase 4 (19.05) SEC: dummy bcrypt-compare для уравнивания
@@ -13367,6 +13625,12 @@ func loginUser(db *sql.DB, req loginRequest) (user, error) {
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
 		return user{}, errInvalidCredentials
+	}
+	if bannedAt.Valid {
+		if strings.TrimSpace(bannedReason) == "" {
+			bannedReason = "Аккаунт заблокирован"
+		}
+		return user{}, fmt.Errorf("%w: %s", errForbidden, bannedReason)
 	}
 
 	return u, nil
@@ -13590,6 +13854,16 @@ func isUserAdmin(db *sql.DB, userID int64) (bool, error) {
 	return isAdmin, nil
 }
 
+// isUserBanned проверяет, заблокирован ли юзер (banned_at IS NOT NULL).
+func isUserBanned(db *sql.DB, userID int64) (bool, string, error) {
+	var bannedAt sql.NullTime
+	var reason sql.NullString
+	if err := db.QueryRow(`SELECT banned_at, banned_reason FROM users WHERE id = $1`, userID).Scan(&bannedAt, &reason); err != nil {
+		return false, "", err
+	}
+	return bannedAt.Valid, reason.String, nil
+}
+
 // SEC-COOKIE-AUTH (18.05): двойная-cookie аутентификация с CSRF-защитой.
 //
 // При login/register сервер ставит:
@@ -13669,11 +13943,19 @@ func authenticatedUserID(w http.ResponseWriter, r *http.Request, sessions *sessi
 			writeError(w, http.StatusForbidden, "Недействительный CSRF-токен")
 			return 0, false
 		}
+		if banned, _, err := isUserBanned(sessions.db, userID); err == nil && banned {
+			writeError(w, http.StatusForbidden, "Аккаунт заблокирован")
+			return 0, false
+		}
 		return userID, true
 	}
 	userID, ok := sessions.getUserID(token)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "Сессия не найдена")
+		return 0, false
+	}
+	if banned, _, err := isUserBanned(sessions.db, userID); err == nil && banned {
+		writeError(w, http.StatusForbidden, "Аккаунт заблокирован")
 		return 0, false
 	}
 	return userID, true
