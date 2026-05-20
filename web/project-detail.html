@@ -1039,7 +1039,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api', tk=()=>localStorage.getItem('token');
+const API='/api', tk=()=>{try{return JSON.parse(localStorage.getItem('user')||'{}').id?'cookie':'';}catch(_){return '';}};
 const esc = window.lastopEsc;
 const escAttr = window.lastopEsc;
 function ltr(s){return((s||'?')[0]).toUpperCase()}

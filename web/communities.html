@@ -421,7 +421,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <div class="toast" id="toast"></div>
 
 <script>
-const API='/api', tk=()=>localStorage.getItem('token');
+const API='/api', tk=()=>{try{return JSON.parse(localStorage.getItem('user')||'{}').id?'cookie':'';}catch(_){return '';}};
 function isUnauthorizedResponse(r){return r&&r.status===401}
 function forceRelogin(message){
   if(message)toast(message);

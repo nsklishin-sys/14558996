@@ -38,9 +38,7 @@
     if (!url || _prefetched.has(url)) return;
     _prefetched.add(url);
     try {
-      const token = localStorage.getItem('token');
-      const headers = token ? { } : {};
-      lastopFetch(url, { headers, credentials: 'same-origin' }).catch(() => {});
+      lastopFetch(url, { credentials: 'same-origin' }).catch(() => {});
     } catch {}
   }
 

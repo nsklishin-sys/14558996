@@ -2003,7 +2003,6 @@ async function uploadAndSendFile(file){
     lastopDebug('[upload] sending FormData to /api/upload');
     const fd = new FormData();
     fd.append('file', file);
-    const token = localStorage.getItem('token') || '';
     const r = await lastopFetch('/api/upload', {
       method: 'POST',
       body: fd
@@ -2030,7 +2029,6 @@ async function uploadAndSendFile(file){
   // ── 2. Отправка сообщения с вложением ──
   try {
     lastopDebug('[upload] sending message');
-    const token = localStorage.getItem('token') || '';
     const r2 = await lastopFetch(`/api/chat/conversations/${state.activeConvPublicID}/messages`, {
       method: 'POST',
       headers: { 'Content-Type':'application/json'},

@@ -2,7 +2,7 @@
   'use strict';
 
   const API='/api';
-  const tk=()=>localStorage.getItem('token')||'';
+  const tk=()=>{try{return JSON.parse(localStorage.getItem('user')||'{}').id?'cookie':'';}catch(_){return '';}};
   const DEBOUNCE_MS=280;
 
   function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}

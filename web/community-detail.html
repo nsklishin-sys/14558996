@@ -471,7 +471,7 @@ async function clearContactPerson(){
 </script>
 
 <script>
-const API='/api',tk=()=>localStorage.getItem('token');
+const API='/api',tk=()=>{try{return JSON.parse(localStorage.getItem('user')||'{}').id?'cookie':'';}catch(_){return '';}};
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
