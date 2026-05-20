@@ -10015,6 +10015,7 @@ func main() {
 			TargetID   int64  `json:"target_id"`
 			Reason     string `json:"reason"`
 			Comment    string `json:"comment"`
+			Screenshot string `json:"screenshot"`
 		}
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
@@ -10918,7 +10919,8 @@ func main() {
 			row := db.QueryRow(`
 				SELECT c.id, c.reporter_id, COALESCE(u.full_name, ''), COALESCE(u.email, ''),
 				       c.target_type, c.target_id, c.target_public_id, c.reason, c.comment,
-				       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, '')
+				       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, ''),
+				       COALESCE(c.screenshot_url, '')
 				FROM complaints c
 				LEFT JOIN users u ON u.id = c.reporter_id
 				WHERE c.id = $1
@@ -10937,10 +10939,11 @@ func main() {
 				CreatedAt      time.Time
 				ResolvedAt     sql.NullTime
 				ResolutionNote string
+				ScreenshotURL  string
 			}
 			if err := row.Scan(&it.ID, &it.ReporterID, &it.ReporterName, &it.ReporterEmail,
 				&it.TargetType, &it.TargetID, &it.TargetPublicID, &it.Reason, &it.Comment,
-				&it.Status, &it.CreatedAt, &it.ResolvedAt, &it.ResolutionNote); err != nil {
+				&it.Status, &it.CreatedAt, &it.ResolvedAt, &it.ResolutionNote, &it.ScreenshotURL); err != nil {
 				writeError(w, http.StatusNotFound, "Жалоба не найдена")
 				return
 			}
@@ -11028,6 +11031,7 @@ func main() {
 				"status":           it.Status,
 				"created_at":       it.CreatedAt,
 				"resolution_note":  it.ResolutionNote,
+				"screenshot_url":   it.ScreenshotURL,
 				"preview":          preview,
 			}
 			if it.ResolvedAt.Valid {
@@ -14105,6 +14109,9 @@ ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS hidden_by_admin_reason TEXT N
 
 CREATE INDEX IF NOT EXISTS posts_hidden_by_admin_idx ON posts(is_hidden_by_admin) WHERE is_hidden_by_admin = TRUE;
 CREATE INDEX IF NOT EXISTS post_comments_hidden_by_admin_idx ON post_comments(is_hidden_by_admin) WHERE is_hidden_by_admin = TRUE;
+
+-- B-2.6: скриншот к жалобе (URL загруженного файла или base64 data-URI)
+ALTER TABLE complaints ADD COLUMN IF NOT EXISTS screenshot_url TEXT NOT NULL DEFAULT '';
 `
 
 	if _, err := db.Exec(schema); err != nil {

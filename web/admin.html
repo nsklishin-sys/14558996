@@ -251,10 +251,26 @@ function renderAudit(entries){var tb=document.getElementById('auditTbody');if(!e
 // COMPLAINTS TAB
 var complaintsFilter={status:''};
 document.querySelectorAll('[data-complaint-status]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-complaint-status]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');complaintsFilter.status=b.dataset.complaintStatus;loadComplaints();});});
-async function loadComplaints(){var tb=document.getElementById('complaintsTbody');tb.innerHTML='<div class="empty">Загрузка…</div>';try{var url='/api/admin/complaints?limit=100';if(complaintsFilter.status)url+='&status='+encodeURIComponent(complaintsFilter.status);var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();renderComplaints(d.complaints||[]);updateComplaintsBadge(d.new_count||0);}catch(e){tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
+
+async function loadComplaints(){
+  var tb=document.getElementById('complaintsTbody');
+  tb.innerHTML='<div class="empty">Загрузка…</div>';
+  try{
+    var url='/api/admin/complaints?limit=100';
+    if(complaintsFilter.status)url+='&status='+encodeURIComponent(complaintsFilter.status);
+    var r=await lastopFetch(url);
+    if(!r.ok)throw 0;
+    var d=await r.json();
+    renderComplaints(d.complaints||[]);
+    updateComplaintsBadge(d.new_count||0);
+  }catch(e){tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}
+}
 function updateComplaintsBadge(n){var b=document.getElementById('complaintsBadge');if(!b)return;if(n>0){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}
-function renderComplaints(items){var tb=document.getElementById('complaintsTbody');if(!items.length){tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}tb.innerHTML=items.map(function(c){return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(c.target_type||'')+'</div><div class="u-pos">ID: '+c.target_id+'</div></div><div class="u-name" style="font-size:12px">'+esc(c.reason||'')+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div><span class="u-badge">'+esc(c.status||'')+'</span></div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');}
-async function openComplaint(id){document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent='Жалоба #'+id;document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';document.getElementById('dpActions').innerHTML='';}
+var COMPLAINT_REASONS={spam:'Спам',abuse:'Оскорбления',illegal:'Запрещ. контент',fraud:'Мошенничество',disinfo:'Дезинформация',copyright:'Авторские права',other:'Другое'};
+var COMPLAINT_TYPES={post:'Пост',comment:'Комментарий',user:'Пользователь',company:'Компания',community:'Сообщество',chat_message:'Сообщение в чате',forum_message:'Сообщение в форуме',event_message:'Сообщение в событии'};
+var COMPLAINT_STATUSES={new:{label:'Новая',cls:'banned'},under_review:{label:'На рассмотрении',cls:'active'},resolved_action:{label:'Решена',cls:'admin'},resolved_reject:{label:'Отклонена',cls:''}};
+function renderComplaints(items){var tb=document.getElementById('complaintsTbody');if(!items.length){tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}tb.innerHTML=items.map(function(c){var st=COMPLAINT_STATUSES[c.status]||{label:c.status,cls:''};var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';var typeName=COMPLAINT_TYPES[c.target_type]||c.target_type;var reasonName=COMPLAINT_REASONS[c.reason]||c.reason;return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(typeName)+'</div><div class="u-pos">ID: '+c.target_id+(c.target_public_id?' · '+esc(c.target_public_id):'')+'</div></div><div class="u-name" style="font-size:12px">'+esc(reasonName)+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');}
+async function openComplaint(id){document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent='Жалоба #'+id;document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';document.getElementById('dpActions').innerHTML='';var r=await lastopFetch('/api/admin/complaints/'+id);if(!r.ok){document.getElementById('dpBody').innerHTML='<div class="empty">Не удалось загрузить</div>';return;}var d=await r.json();document.getElementById('dpBody').innerHTML='<pre style="white-space:pre-wrap">'+esc(JSON.stringify(d,null,2))+'</pre>';}
 lastopFetch('/api/admin/complaints?limit=1').then(function(r){if(!r.ok)return null;return r.json();}).then(function(d){if(d)updateComplaintsBadge(d.new_count||0);}).catch(function(){});
 
 loadOverview();
