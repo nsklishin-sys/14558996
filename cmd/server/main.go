@@ -9996,6 +9996,135 @@ func main() {
 		}
 	})
 
+	// ══════════════════════════════════════════════════════════
+	// Жалобы: публичный endpoint для отправки. Админский — ниже,
+	// в блоке /api/admin/complaints (спринт B-2.3).
+	// ══════════════════════════════════════════════════════════
+	mux.HandleFunc("/api/complaints", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		reporterID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			TargetType string `json:"target_type"`
+			TargetID   int64  `json:"target_id"`
+			Reason     string `json:"reason"`
+			Comment    string `json:"comment"`
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректное тело запроса")
+			return
+		}
+		// Нормализация и валидация.
+		req.TargetType = strings.TrimSpace(strings.ToLower(req.TargetType))
+		req.Reason = strings.TrimSpace(strings.ToLower(req.Reason))
+		req.Comment = strings.TrimSpace(req.Comment)
+		if len(req.Comment) > 1000 {
+			req.Comment = req.Comment[:1000]
+		}
+		validTypes := map[string]bool{
+			"post": true, "comment": true, "user": true, "company": true,
+			"community": true, "chat_message": true, "forum_message": true,
+			"event_message": true,
+		}
+		if !validTypes[req.TargetType] {
+			writeError(w, http.StatusBadRequest, "Неизвестный тип объекта")
+			return
+		}
+		validReasons := map[string]bool{
+			"spam": true, "abuse": true, "illegal": true, "fraud": true,
+			"disinfo": true, "copyright": true, "other": true,
+		}
+		if !validReasons[req.Reason] {
+			writeError(w, http.StatusBadRequest, "Неизвестная причина")
+			return
+		}
+		if req.TargetID <= 0 {
+			writeError(w, http.StatusBadRequest, "Не указан объект жалобы")
+			return
+		}
+		// Защита: нельзя на свой контент / на админов.
+		if req.TargetType == "user" {
+			if req.TargetID == reporterID {
+				writeError(w, http.StatusBadRequest, "Нельзя жаловаться на себя")
+				return
+			}
+			var isAdmin bool
+			_ = db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, req.TargetID).Scan(&isAdmin)
+			if isAdmin {
+				writeError(w, http.StatusForbidden, "Нельзя жаловаться на администратора")
+				return
+			}
+		}
+		// Авторство контента — если объект принадлежит самому reporter'у.
+		if req.TargetType == "post" {
+			var authorID int64
+			_ = db.QueryRow(`SELECT author_id FROM posts WHERE id=$1`, req.TargetID).Scan(&authorID)
+			if authorID == reporterID {
+				writeError(w, http.StatusBadRequest, "Нельзя жаловаться на свой пост")
+				return
+			}
+		}
+		if req.TargetType == "comment" {
+			var authorID int64
+			_ = db.QueryRow(`SELECT author_id FROM post_comments WHERE id=$1`, req.TargetID).Scan(&authorID)
+			if authorID == reporterID {
+				writeError(w, http.StatusBadRequest, "Нельзя жаловаться на свой комментарий")
+				return
+			}
+		}
+		// Rate-limit: не более 20 жалоб в сутки от одного юзера.
+		var todayCount int
+		_ = db.QueryRow(`
+			SELECT COUNT(*) FROM complaints 
+			WHERE reporter_id=$1 AND created_at > NOW() - INTERVAL '24 hours'
+		`, reporterID).Scan(&todayCount)
+		if todayCount >= 20 {
+			writeError(w, http.StatusTooManyRequests, "Превышен лимит жалоб (20 в сутки)")
+			return
+		}
+		// Получим target_public_id для удобства модератора (если есть).
+		var targetPublicID string
+		switch req.TargetType {
+		case "post":
+			_ = db.QueryRow(`SELECT COALESCE(public_id, '') FROM posts WHERE id=$1`, req.TargetID).Scan(&targetPublicID)
+		case "user":
+			_ = db.QueryRow(`SELECT COALESCE(public_id, '') FROM users WHERE id=$1`, req.TargetID).Scan(&targetPublicID)
+		case "company":
+			_ = db.QueryRow(`SELECT COALESCE(public_id, '') FROM companies WHERE id=$1`, req.TargetID).Scan(&targetPublicID)
+		case "community":
+			_ = db.QueryRow(`SELECT COALESCE(public_id, '') FROM communities WHERE id=$1`, req.TargetID).Scan(&targetPublicID)
+		}
+		// Вставка с обработкой дублей (unique index на active complaints).
+		var newID int64
+		err := db.QueryRow(`
+			INSERT INTO complaints 
+				(reporter_id, target_type, target_id, target_public_id, reason, comment)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id
+		`, reporterID, req.TargetType, req.TargetID, targetPublicID, req.Reason, req.Comment).Scan(&newID)
+		if err != nil {
+			if strings.Contains(err.Error(), "complaints_unique_active_idx") {
+				writeError(w, http.StatusConflict, "Вы уже отправили жалобу на этот объект — она в обработке")
+				return
+			}
+			log.Printf("[complaints] insert failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось отправить жалобу")
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"id": newID,
+			"status": "new",
+			"message": "Жалоба принята, рассмотрим в течение 48 часов",
+		})
+	})
+
 	mux.HandleFunc("/api/companies/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/companies/")
 		if path == "" {
@@ -13610,6 +13739,45 @@ CREATE INDEX IF NOT EXISTS personal_calendar_events_user_starts_idx
 CREATE INDEX IF NOT EXISTS personal_calendar_events_range_idx
     ON personal_calendar_events(user_id, starts_at, ends_at)
     WHERE is_deleted = FALSE;
+
+-- ══════════════════════════════════════════════════════════════
+-- Admin Этап B-2: Жалобы пользователей на контент и аккаунты.
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS complaints (
+    id BIGSERIAL PRIMARY KEY,
+    reporter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_type TEXT NOT NULL CHECK (target_type IN (
+        'post','comment','user','company','community',
+        'chat_message','forum_message','event_message'
+    )),
+    target_id BIGINT NOT NULL,
+    target_public_id TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL CHECK (reason IN (
+        'spam','abuse','illegal','fraud','disinfo','copyright','other'
+    )),
+    comment TEXT NOT NULL DEFAULT '' CHECK (length(comment) <= 1000),
+    status TEXT NOT NULL DEFAULT 'new' CHECK (status IN (
+        'new','under_review','resolved_action','resolved_reject'
+    )),
+    resolved_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at TIMESTAMPTZ,
+    resolution_note TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS complaints_status_idx 
+    ON complaints(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS complaints_target_idx 
+    ON complaints(target_type, target_id);
+CREATE INDEX IF NOT EXISTS complaints_reporter_idx 
+    ON complaints(reporter_id, created_at DESC);
+
+-- Один юзер не может дублировать жалобу на тот же объект пока она 
+-- висит в очереди (new/under_review). После resolution может пожаловаться 
+-- снова, если ситуация повторилась.
+CREATE UNIQUE INDEX IF NOT EXISTS complaints_unique_active_idx 
+    ON complaints(reporter_id, target_type, target_id) 
+    WHERE status IN ('new','under_review');
 `
 
 	if _, err := db.Exec(schema); err != nil {
