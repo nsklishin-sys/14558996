@@ -134,16 +134,27 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 }
 .news-hero:hover{box-shadow:var(--shm);transform:translateY(-1px)}
 .nh-cover{
-  height:160px;
+  height:200px;
   background:linear-gradient(135deg,var(--g) 0%,#146A38 60%,#0E5128 100%);
+  background-size:cover;background-position:center;
   position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:16px
 }
-.nh-cover::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
-.nh-cover::after{content:'';position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+/* Декоративные круги — только когда обложки нет (на градиенте). 
+   При фото-обложке они становятся шумом и убираются классом .has-cover. */
+.nh-cover:not(.has-cover)::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.nh-cover:not(.has-cover)::after{content:'';position:absolute;bottom:-60px;left:10%;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+/* При обложке-фото добавляем градиент-затемнение снизу для читаемости бейджа поверх любого изображения. */
+.nh-cover.has-cover::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(0,0,0,0) 50%,rgba(0,0,0,.55) 100%);
+  pointer-events:none
+}
 .nh-badge{
-  display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;
-  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
-  font-size:10px;font-weight:700;color:#fff;position:relative;z-index:1
+  display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.25);
+  font-size:10px;font-weight:700;color:#fff;position:relative;z-index:1;
+  text-shadow:0 1px 2px rgba(0,0,0,.3)
 }
 .nh-body{padding:16px 18px}
 .nh-cat{font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
@@ -1107,18 +1118,24 @@ async function loadHeroNews(){
     const authorMeta = pickPostAuthor(post);
 
     document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + authorMeta.name;
-    const heroImg = document.getElementById('heroImg') || (function(){
-      const img = document.createElement('div');
-      img.id = 'heroImg';
-      img.style.cssText = 'width:100%;height:200px;border-radius:12px 12px 0 0;background-size:cover;background-position:center;margin-bottom:14px';
-      heroCard.insertBefore(img, heroCard.firstChild);
-      return img;
-    })();
-    if (post.cover_url) {
-      heroImg.style.backgroundImage = `url("${post.cover_url}")`;
-      heroImg.style.display = 'block';
-    } else {
-      heroImg.style.display = 'none';
+
+    // Подчищаем устаревший отдельный heroImg div, если он остался от 
+    // прошлой версии разметки.
+    const oldHeroImg = document.getElementById('heroImg');
+    if (oldHeroImg) oldHeroImg.remove();
+
+    // Обложка применяется НЕПОСРЕДСТВЕННО к .nh-cover (заменяет зелёный 
+    // градиент). Класс .has-cover убирает декоративные круги и добавляет 
+    // тёмный градиент-затемнение снизу для читаемости бейджа.
+    const coverEl = heroCard.querySelector('.nh-cover');
+    if (coverEl) {
+      if (post.cover_url) {
+        coverEl.style.backgroundImage = `url("${post.cover_url}")`;
+        coverEl.classList.add('has-cover');
+      } else {
+        coverEl.style.backgroundImage = '';
+        coverEl.classList.remove('has-cover');
+      }
     }
     document.getElementById('heroTitle').textContent = post.title || '(без заголовка)';
     document.getElementById('heroText').textContent = (post.text || post.content || '').slice(0, 240);
