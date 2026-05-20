@@ -1093,6 +1093,11 @@ function openUpdateModal() {
   document.getElementById('updateTitle').value = '';
   document.getElementById('updateContent').value = '';
   document.getElementById('updateCover').value = '';
+  document.getElementById('updateCoverFile').value = '';
+  document.getElementById('updateCoverImg').src = '';
+  document.getElementById('updateCoverPreview').style.display = 'none';
+  document.getElementById('updateCoverPlaceholder').style.display = 'block';
+  document.getElementById('updateCoverProgress').style.display = 'none';
   document.getElementById('updateError').style.display = 'none';
   m.classList.add('open');
   setTimeout(() => document.getElementById('updateTitle').focus(), 50);
@@ -1101,6 +1106,59 @@ function openUpdateModal() {
 function closeUpdateModal() {
   const m = document.getElementById('updateModalBg');
   if (m) m.classList.remove('open');
+}
+
+async function onUpdateCoverChange(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (file.size > 25 * 1024 * 1024) {
+    const err = document.getElementById('updateError');
+    err.textContent = 'Файл больше 25 МБ';
+    err.style.display = 'block';
+    ev.target.value = '';
+    return;
+  }
+  const progress = document.getElementById('updateCoverProgress');
+  const placeholder = document.getElementById('updateCoverPlaceholder');
+  const preview = document.getElementById('updateCoverPreview');
+  placeholder.style.display = 'none';
+  preview.style.display = 'none';
+  progress.style.display = 'block';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await lastopFetch('/api/upload', {method:'POST', body: fd});
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      const err = document.getElementById('updateError');
+      err.textContent = e.error || 'Не удалось загрузить файл';
+      err.style.display = 'block';
+      progress.style.display = 'none';
+      placeholder.style.display = 'block';
+      ev.target.value = '';
+      return;
+    }
+    const d = await r.json();
+    document.getElementById('updateCover').value = d.url || '';
+    document.getElementById('updateCoverImg').src = d.url || '';
+    progress.style.display = 'none';
+    preview.style.display = 'flex';
+  } catch {
+    const err = document.getElementById('updateError');
+    err.textContent = 'Ошибка соединения';
+    err.style.display = 'block';
+    progress.style.display = 'none';
+    placeholder.style.display = 'block';
+    ev.target.value = '';
+  }
+}
+
+function removeUpdateCover() {
+  document.getElementById('updateCover').value = '';
+  document.getElementById('updateCoverFile').value = '';
+  document.getElementById('updateCoverImg').src = '';
+  document.getElementById('updateCoverPreview').style.display = 'none';
+  document.getElementById('updateCoverPlaceholder').style.display = 'block';
 }
 
 async function submitPlatformUpdate() {
@@ -1893,8 +1951,20 @@ document.addEventListener('change', (e) => {
     <input type="text" id="updateTitle" placeholder="Например: Новый раздел «Резюме»" maxlength="200" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:12px">
     <label style="font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block">Текст</label>
     <textarea id="updateContent" rows="6" placeholder="Что нового, что улучшено…" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;resize:vertical;margin-bottom:12px"></textarea>
-    <label style="font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block">Обложка — URL (необязательно)</label>
-    <input type="url" id="updateCover" placeholder="https://…" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:14px">
+    <label style="font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block">Обложка (необязательно)</label>
+    <input type="file" id="updateCoverFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="onUpdateCoverChange(event)">
+    <input type="hidden" id="updateCover" value="">
+    <div id="updateCoverArea" style="border:1.5px dashed var(--bdr);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--gp);transition:border-color .15s;margin-bottom:14px" onclick="document.getElementById('updateCoverFile').click()">
+      <div id="updateCoverPlaceholder" style="font-size:12px;color:var(--gmt)">
+        <div style="font-weight:600;color:var(--t);margin-bottom:2px">Нажмите, чтобы выбрать файл</div>
+        <div>PNG, JPG, WEBP или GIF · до 25 МБ</div>
+      </div>
+      <div id="updateCoverPreview" style="display:none;align-items:center;gap:10px;justify-content:center">
+        <img id="updateCoverImg" src="" alt="" style="max-height:120px;border-radius:8px;object-fit:cover">
+        <button type="button" onclick="event.stopPropagation();removeUpdateCover()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--bdr);background:var(--w);font-family:inherit;font-size:12px;font-weight:600;color:var(--red);cursor:pointer">Удалить</button>
+      </div>
+      <div id="updateCoverProgress" style="display:none;font-size:12px;color:var(--gmt);margin-top:6px">Загрузка…</div>
+    </div>
     <div id="updateError" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button type="button" onclick="closeUpdateModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
