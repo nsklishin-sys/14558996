@@ -10103,14 +10103,25 @@ func main() {
 		case "community":
 			_ = db.QueryRow(`SELECT COALESCE(public_id, '') FROM communities WHERE id=$1`, req.TargetID).Scan(&targetPublicID)
 		}
+		// Валидация скриншота: data: URI или относительный путь на наш S3.
+		// Жёсткий лимит ~5 МБ (base64 ~= 7M символов).
+		screenshot := strings.TrimSpace(req.Screenshot)
+		if len(screenshot) > 7000000 {
+			writeError(w, http.StatusRequestEntityTooLarge, "Скриншот слишком большой (макс. 5 МБ)")
+			return
+		}
+		if screenshot != "" && !strings.HasPrefix(screenshot, "data:image/") && !strings.HasPrefix(screenshot, "https://storage.yandexcloud.net/") {
+			writeError(w, http.StatusBadRequest, "Некорректный формат скриншота")
+			return
+		}
 		// Вставка с обработкой дублей (unique index на active complaints).
 		var newID int64
 		err := db.QueryRow(`
 			INSERT INTO complaints 
-				(reporter_id, target_type, target_id, target_public_id, reason, comment)
-			VALUES ($1, $2, $3, $4, $5, $6)
+				(reporter_id, target_type, target_id, target_public_id, reason, comment, screenshot_url)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id
-		`, reporterID, req.TargetType, req.TargetID, targetPublicID, req.Reason, req.Comment).Scan(&newID)
+		`, reporterID, req.TargetType, req.TargetID, targetPublicID, req.Reason, req.Comment, screenshot).Scan(&newID)
 		if err != nil {
 			if strings.Contains(err.Error(), "complaints_unique_active_idx") {
 				writeError(w, http.StatusConflict, "Вы уже отправили жалобу на этот объект — она в обработке")
