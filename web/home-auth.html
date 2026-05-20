@@ -98,10 +98,27 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 
-.home-banner{background:var(--gl);border:1px solid var(--gb);border-radius:var(--rxl);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:var(--sh)}
+.home-banner{background:var(--gl);border:1px solid var(--gb);border-radius:var(--rxl);padding:14px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;box-shadow:var(--sh)}
+.hb-left{flex-shrink:0;min-width:170px}
 .hb-left h2{font-size:15px;font-weight:800;color:var(--t);margin-bottom:3px}
 .hb-left p{font-size:11px;color:var(--gmt)}
-.hb-stats{display:flex;gap:18px}
+.hb-stats{display:flex;gap:18px;flex-shrink:0;margin-left:auto}
+
+/* Центральная карточка "Что нового" (Phase 5) */
+.hb-update{flex:1;min-width:0;max-width:380px;background:var(--w);border:1px solid var(--gb);border-radius:14px;padding:10px 14px;cursor:pointer;text-decoration:none;color:inherit;display:flex;align-items:center;gap:11px;transition:transform .15s,box-shadow .15s,border-color .15s}
+.hb-update:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(30,138,76,.12);border-color:var(--g)}
+.hb-update-ico{width:34px;height:34px;border-radius:10px;background:var(--g);display:grid;place-items:center;flex-shrink:0}
+.hb-update-ico svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hb-update-body{flex:1;min-width:0}
+.hb-update-tag{font-size:9px;font-weight:800;color:var(--g);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.hb-update-title{font-size:13px;font-weight:700;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-update-date{font-size:10px;color:var(--gmt);margin-top:2px}
+.hb-update-arrow{width:22px;height:22px;border-radius:50%;background:var(--gl);display:grid;place-items:center;flex-shrink:0;transition:background .15s,transform .15s}
+.hb-update:hover .hb-update-arrow{background:var(--g);transform:translateX(2px)}
+.hb-update-arrow svg{width:11px;height:11px;fill:none;stroke:var(--g);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.hb-update:hover .hb-update-arrow svg{stroke:#fff}
+
+@media(max-width:1100px){.hb-update{display:none}}
 .hbs-num{font-size:20px;font-weight:800;color:var(--g);line-height:1}
 .hbs-lbl{font-size:9px;color:var(--gmt);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
 
@@ -654,6 +671,20 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       <h2 id="greetingText">Добрый день!</h2>
       <p id="greetingDate">Загрузка…</p>
     </div>
+    <!-- Phase 5: карточка "Что нового" — последнее обновление платформы -->
+    <a class="hb-update" id="hbUpdate" href="/updates.html" style="display:none">
+      <div class="hb-update-ico">
+        <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      </div>
+      <div class="hb-update-body">
+        <div class="hb-update-tag">Что нового</div>
+        <div class="hb-update-title" id="hbUpdateTitle"></div>
+        <div class="hb-update-date" id="hbUpdateDate"></div>
+      </div>
+      <div class="hb-update-arrow">
+        <svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+      </div>
+    </a>
     <div class="hb-stats">
       <div class="hb-stat"><div class="hbs-num" id="statMembers">—</div><div class="hbs-lbl">Участников</div></div>
       <div class="hb-stat"><div class="hbs-num" id="statNews">—</div><div class="hbs-lbl">Новостей</div></div>
@@ -916,6 +947,7 @@ function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:tr
 /* ── ИНИЦИАЛИЗАЦИЯ ── */
 window.addEventListener('DOMContentLoaded',()=>{
   loadPlatformStats();
+  loadLatestUpdate();
   loadTasks();
   loadChats();
   loadForumThreads();
@@ -1039,6 +1071,32 @@ async function loadPlatformStats(){
       if (el && (el.textContent === '—' || !el.textContent.trim())) el.textContent = '—';
     });
   }
+}
+
+// Phase 5: подгрузить последнее обновление платформы в баннер.
+async function loadLatestUpdate(){
+  try{
+    const r = await lastopFetch('/api/posts/platform-updates/latest');
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.post) return;
+    const card = document.getElementById('hbUpdate');
+    const title = document.getElementById('hbUpdateTitle');
+    const date = document.getElementById('hbUpdateDate');
+    if(!card || !title || !date) return;
+    title.textContent = d.post.title || 'Обновление платформы';
+    const dt = new Date(d.post.created_at);
+    const now = new Date();
+    const diffMin = Math.floor((now - dt) / 60000);
+    let ago;
+    if (diffMin < 60) ago = diffMin + ' мин назад';
+    else if (diffMin < 1440) ago = Math.floor(diffMin/60) + ' ч назад';
+    else if (diffMin < 10080) ago = Math.floor(diffMin/1440) + ' дн назад';
+    else ago = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+    date.textContent = ago;
+    card.href = '/updates.html#' + (d.post.public_id || '');
+    card.style.display = 'flex';
+  }catch(_){/* нет обновлений — баннер остаётся как есть */}
 }
 
 /* ── ЗАДАЧИ ── */
