@@ -10119,8 +10119,8 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"id": newID,
-			"status": "new",
+			"id":      newID,
+			"status":  "new",
 			"message": "Жалоба принята, рассмотрим в течение 48 часов",
 		})
 	})
@@ -10833,6 +10833,322 @@ func main() {
 		default:
 			writeError(w, http.StatusNotFound, "Действие не поддерживается")
 		}
+	}))
+
+	// Жалобы B-2: админский API.
+	mux.HandleFunc("/api/admin/complaints", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		status := strings.TrimSpace(r.URL.Query().Get("status"))
+		limit := parseLimit(r.URL.Query().Get("limit"), 50, 200)
+		var args []any
+		where := "WHERE 1=1"
+		if status != "" {
+			where += " AND c.status = $1"
+			args = append(args, status)
+		}
+		sqlQuery := `
+			SELECT c.id, c.reporter_id, COALESCE(u.full_name, ''), COALESCE(u.email, ''),
+			       c.target_type, c.target_id, c.target_public_id, c.reason, c.comment,
+			       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, '')
+			FROM complaints c
+			LEFT JOIN users u ON u.id = c.reporter_id
+			` + where + `
+			ORDER BY c.created_at DESC LIMIT $` + strconv.Itoa(len(args)+1)
+		args = append(args, limit)
+		rows, err := db.Query(sqlQuery, args...)
+		if err != nil {
+			log.Printf("[admin/complaints] list: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		type item struct {
+			ID             int64      `json:"id"`
+			ReporterID     int64      `json:"reporter_id"`
+			ReporterName   string     `json:"reporter_name"`
+			ReporterEmail  string     `json:"reporter_email"`
+			TargetType     string     `json:"target_type"`
+			TargetID       int64      `json:"target_id"`
+			TargetPublicID string     `json:"target_public_id"`
+			Reason         string     `json:"reason"`
+			Comment        string     `json:"comment"`
+			Status         string     `json:"status"`
+			CreatedAt      time.Time  `json:"created_at"`
+			ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
+			ResolutionNote string     `json:"resolution_note,omitempty"`
+		}
+		out := make([]item, 0)
+		for rows.Next() {
+			var it item
+			var resolvedAt sql.NullTime
+			if err := rows.Scan(&it.ID, &it.ReporterID, &it.ReporterName, &it.ReporterEmail,
+				&it.TargetType, &it.TargetID, &it.TargetPublicID, &it.Reason, &it.Comment,
+				&it.Status, &it.CreatedAt, &resolvedAt, &it.ResolutionNote); err != nil {
+				continue
+			}
+			if resolvedAt.Valid {
+				t := resolvedAt.Time
+				it.ResolvedAt = &t
+			}
+			out = append(out, it)
+		}
+		var newCount int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM complaints WHERE status='new'`).Scan(&newCount)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"complaints": out,
+			"new_count":  newCount,
+		})
+	}))
+
+	mux.HandleFunc("/api/admin/complaints/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/admin/complaints/")
+		idStr := strings.Split(path, "/")[0]
+		complaintID, _ := strconv.ParseInt(idStr, 10, 64)
+		if complaintID <= 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный ID")
+			return
+		}
+		actorID, _ := optionalAuthenticatedUserID(r, sessions)
+
+		if r.Method == http.MethodGet {
+			row := db.QueryRow(`
+				SELECT c.id, c.reporter_id, COALESCE(u.full_name, ''), COALESCE(u.email, ''),
+				       c.target_type, c.target_id, c.target_public_id, c.reason, c.comment,
+				       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, '')
+				FROM complaints c
+				LEFT JOIN users u ON u.id = c.reporter_id
+				WHERE c.id = $1
+			`, complaintID)
+			var it struct {
+				ID             int64
+				ReporterID     int64
+				ReporterName   string
+				ReporterEmail  string
+				TargetType     string
+				TargetID       int64
+				TargetPublicID string
+				Reason         string
+				Comment        string
+				Status         string
+				CreatedAt      time.Time
+				ResolvedAt     sql.NullTime
+				ResolutionNote string
+			}
+			if err := row.Scan(&it.ID, &it.ReporterID, &it.ReporterName, &it.ReporterEmail,
+				&it.TargetType, &it.TargetID, &it.TargetPublicID, &it.Reason, &it.Comment,
+				&it.Status, &it.CreatedAt, &it.ResolvedAt, &it.ResolutionNote); err != nil {
+				writeError(w, http.StatusNotFound, "Жалоба не найдена")
+				return
+			}
+			preview := map[string]any{"available": false}
+			switch it.TargetType {
+			case "post":
+				var title, content, publicID, authorName string
+				var isHidden, isDeleted bool
+				err := db.QueryRow(`
+					SELECT COALESCE(p.title, ''), COALESCE(p.content, ''), COALESCE(p.public_id, ''),
+					       COALESCE(u.full_name, ''),
+					       COALESCE(p.is_hidden_by_admin, FALSE), COALESCE(p.is_deleted, FALSE)
+					FROM posts p LEFT JOIN users u ON u.id = p.author_id
+					WHERE p.id = $1
+				`, it.TargetID).Scan(&title, &content, &publicID, &authorName, &isHidden, &isDeleted)
+				if err == nil {
+					preview = map[string]any{
+						"available":   true,
+						"title":       title,
+						"content":     content,
+						"public_id":   publicID,
+						"author_name": authorName,
+						"is_hidden":   isHidden,
+						"is_deleted":  isDeleted,
+					}
+				}
+			case "comment":
+				var content, authorName string
+				var authorID, postID int64
+				var isHidden, isDeleted bool
+				err := db.QueryRow(`
+					SELECT COALESCE(pc.content, ''), COALESCE(u.full_name, ''),
+					       pc.author_id, pc.post_id,
+					       COALESCE(pc.is_hidden_by_admin, FALSE), COALESCE(pc.is_deleted, FALSE)
+					FROM post_comments pc LEFT JOIN users u ON u.id = pc.author_id
+					WHERE pc.id = $1
+				`, it.TargetID).Scan(&content, &authorName, &authorID, &postID, &isHidden, &isDeleted)
+				if err == nil {
+					var postPublicID string
+					_ = db.QueryRow(`SELECT COALESCE(public_id, '') FROM posts WHERE id=$1`, postID).Scan(&postPublicID)
+					preview = map[string]any{
+						"available":      true,
+						"content":        content,
+						"author_name":    authorName,
+						"post_public_id": postPublicID,
+						"is_hidden":      isHidden,
+						"is_deleted":     isDeleted,
+					}
+				}
+			case "user":
+				var fullName, email string
+				var bannedAt sql.NullTime
+				err := db.QueryRow(`SELECT COALESCE(full_name, ''), COALESCE(email, ''), banned_at FROM users WHERE id=$1`, it.TargetID).Scan(&fullName, &email, &bannedAt)
+				if err == nil {
+					preview = map[string]any{
+						"available": true,
+						"full_name": fullName,
+						"email":     email,
+						"is_banned": bannedAt.Valid,
+					}
+				}
+			case "company":
+				var name, slug string
+				var blockedAt sql.NullTime
+				err := db.QueryRow(`SELECT COALESCE(name, ''), COALESCE(slug, ''), blocked_at FROM companies WHERE id=$1`, it.TargetID).Scan(&name, &slug, &blockedAt)
+				if err == nil {
+					preview = map[string]any{
+						"available":  true,
+						"name":       name,
+						"slug":       slug,
+						"is_blocked": blockedAt.Valid,
+					}
+				}
+			}
+			resp := map[string]any{
+				"id":               it.ID,
+				"reporter_id":      it.ReporterID,
+				"reporter_name":    it.ReporterName,
+				"reporter_email":   it.ReporterEmail,
+				"target_type":      it.TargetType,
+				"target_id":        it.TargetID,
+				"target_public_id": it.TargetPublicID,
+				"reason":           it.Reason,
+				"comment":          it.Comment,
+				"status":           it.Status,
+				"created_at":       it.CreatedAt,
+				"resolution_note":  it.ResolutionNote,
+				"preview":          preview,
+			}
+			if it.ResolvedAt.Valid {
+				resp["resolved_at"] = it.ResolvedAt.Time
+			}
+			writeJSON(w, http.StatusOK, resp)
+			return
+		}
+
+		if r.Method == http.MethodPatch {
+			var req struct {
+				Status string `json:"status"`
+				Action string `json:"action"`
+				Note   string `json:"note"`
+			}
+			dec := json.NewDecoder(r.Body)
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(&req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректное тело")
+				return
+			}
+			req.Status = strings.TrimSpace(strings.ToLower(req.Status))
+			req.Action = strings.TrimSpace(strings.ToLower(req.Action))
+			req.Note = strings.TrimSpace(req.Note)
+			validStatuses := map[string]bool{
+				"new": true, "under_review": true,
+				"resolved_action": true, "resolved_reject": true,
+			}
+			if !validStatuses[req.Status] {
+				writeError(w, http.StatusBadRequest, "Некорректный статус")
+				return
+			}
+			var targetType string
+			var targetID int64
+			if err := db.QueryRow(`SELECT target_type, target_id FROM complaints WHERE id=$1`, complaintID).Scan(&targetType, &targetID); err != nil {
+				writeError(w, http.StatusNotFound, "Жалоба не найдена")
+				return
+			}
+			if req.Action != "" && req.Action != "none" {
+				switch req.Action {
+				case "hide_content":
+					switch targetType {
+					case "post":
+						if _, err := db.Exec(`UPDATE posts SET is_hidden_by_admin=TRUE, hidden_by_admin_at=NOW(), hidden_by_admin_reason=$1 WHERE id=$2`, req.Note, targetID); err != nil {
+							log.Printf("[complaints] hide post: %v", err)
+							writeError(w, http.StatusInternalServerError, "Не удалось скрыть пост")
+							return
+						}
+					case "comment":
+						if _, err := db.Exec(`UPDATE post_comments SET is_hidden_by_admin=TRUE, hidden_by_admin_at=NOW(), hidden_by_admin_reason=$1 WHERE id=$2`, req.Note, targetID); err != nil {
+							log.Printf("[complaints] hide comment: %v", err)
+							writeError(w, http.StatusInternalServerError, "Не удалось скрыть комментарий")
+							return
+						}
+					default:
+						writeError(w, http.StatusBadRequest, "hide_content применимо только к post/comment")
+						return
+					}
+				case "ban_author":
+					var authorID int64
+					switch targetType {
+					case "user":
+						authorID = targetID
+					case "post":
+						_ = db.QueryRow(`SELECT author_id FROM posts WHERE id=$1`, targetID).Scan(&authorID)
+					case "comment":
+						_ = db.QueryRow(`SELECT author_id FROM post_comments WHERE id=$1`, targetID).Scan(&authorID)
+					}
+					if authorID <= 0 {
+						writeError(w, http.StatusBadRequest, "Не удалось определить автора")
+						return
+					}
+					var isAdmin bool
+					_ = db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, authorID).Scan(&isAdmin)
+					if isAdmin {
+						writeError(w, http.StatusForbidden, "Нельзя забанить администратора")
+						return
+					}
+					if _, err := db.Exec(`UPDATE users SET banned_at=NOW(), banned_reason=$1, banned_by=$2 WHERE id=$3`, req.Note, actorID, authorID); err != nil {
+						log.Printf("[complaints] ban author: %v", err)
+						writeError(w, http.StatusInternalServerError, "Не удалось забанить автора")
+						return
+					}
+				case "block_company":
+					if targetType != "company" {
+						writeError(w, http.StatusBadRequest, "block_company применимо только к company")
+						return
+					}
+					if _, err := db.Exec(`UPDATE companies SET blocked_at=NOW(), blocked_reason=$1, blocked_by=$2 WHERE id=$3`, req.Note, actorID, targetID); err != nil {
+						log.Printf("[complaints] block company: %v", err)
+						writeError(w, http.StatusInternalServerError, "Не удалось заблокировать компанию")
+						return
+					}
+				default:
+					writeError(w, http.StatusBadRequest, "Неизвестное действие")
+					return
+				}
+			}
+			if req.Status == "resolved_action" || req.Status == "resolved_reject" {
+				_, err := db.Exec(`
+					UPDATE complaints
+					SET status=$1, resolved_by=$2, resolved_at=NOW(), resolution_note=$3
+					WHERE id=$4
+				`, req.Status, actorID, req.Note, complaintID)
+				if err != nil {
+					log.Printf("[complaints] update resolved: %v", err)
+					writeError(w, http.StatusInternalServerError, "Не удалось обновить жалобу")
+					return
+				}
+			} else {
+				_, err := db.Exec(`UPDATE complaints SET status=$1 WHERE id=$2`, req.Status, complaintID)
+				if err != nil {
+					log.Printf("[complaints] update status: %v", err)
+					writeError(w, http.StatusInternalServerError, "Не удалось обновить статус")
+					return
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	}))
 
 	// POST /api/invites/accept — принять приглашение по коду
