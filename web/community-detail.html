@@ -830,10 +830,21 @@ async function loadComments(publicID){
     if(!comments.length){list.innerHTML='<div class="comments-empty">Комментариев пока нет</div>';return;}
     list.innerHTML=comments.map(c=>{
       let name=c.author_name||'Участник';
-      if(c.sender_company_id && c.sender_company_name) name=c.sender_company_name;
-      else if(c.sender_community_id && c.sender_community_name) name=c.sender_community_name;
+      let avatar='';
+      if(c.sender_company_id && c.sender_company_name){
+        name=c.sender_company_name;
+        avatar=c.sender_company_logo||'';
+      } else if(c.sender_community_id && c.sender_community_name){
+        name=c.sender_community_name;
+        avatar=c.sender_community_avatar||'';
+      } else {
+        avatar=c.author_avatar||'';
+      }
+      const avHtml = avatar
+        ? `<div class="comment-av" style="background:${avc(name)};overflow:hidden"><img src="${esc(avatar)}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
+        : `<div class="comment-av" style="background:${avc(name)}">${ltr(name)}</div>`;
       return `<div class="comment-item">
-        <div class="comment-av" style="background:${avc(name)}">${ltr(name)}</div>
+        ${avHtml}
         <div class="comment-body">
           <div class="comment-head">
             <span class="comment-author">${esc(name)}</span>

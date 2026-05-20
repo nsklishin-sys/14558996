@@ -1221,6 +1221,7 @@ type postComment struct {
 	ID                    int64     `json:"id"`
 	AuthorPublicID        string    `json:"author_public_id"`
 	AuthorName            string    `json:"author_name"`
+	AuthorAvatar          string    `json:"author_avatar,omitempty"`
 	Content               string    `json:"content"`
 	ParentID              *int64    `json:"parent_id,omitempty"`
 	CreatedAt             time.Time `json:"created_at"`
@@ -15218,6 +15219,7 @@ type forumMessage struct {
 	AuthorID              int64      `json:"author_id"`
 	AuthorPublicID        string     `json:"author_public_id"`
 	AuthorName            string     `json:"author_name"`
+	AuthorAvatar          string     `json:"author_avatar,omitempty"`
 	Content               string     `json:"content"`
 	Attachments           []string   `json:"attachments,omitempty"`
 	ParentID              *int64     `json:"parent_id,omitempty"`
@@ -15243,7 +15245,7 @@ func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessag
 	rows, err := db.Query(`
 		SELECT
 			m.id, m.public_id, m.topic_id, m.author_id,
-			COALESCE(au.public_id, ''), COALESCE(au.full_name, au.handle, ''),
+			COALESCE(au.public_id, ''), COALESCE(au.full_name, au.handle, ''), COALESCE(au.avatar_url, ''),
 			m.content, m.attachments, m.parent_id, m.likes_count, m.created_at, m.edited_at,
 			pm.public_id, COALESCE(pu.full_name, pu.handle, ''), COALESCE(SUBSTRING(pm.content, 1, 200), ''),
 			COALESCE(m.sender_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''), COALESCE(co.logo_image, ''),
@@ -15271,7 +15273,7 @@ func listForumMessages(db *sql.DB, topicID int64, viewerID int64) ([]forumMessag
 		var attJSON []byte
 		if err := rows.Scan(
 			&m.ID, &m.PublicID, &m.TopicID, &m.AuthorID,
-			&m.AuthorPublicID, &m.AuthorName,
+			&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar,
 			&m.Content, &attJSON, &m.ParentID, &m.LikesCount, &m.CreatedAt, &m.EditedAt,
 			&parentPublicID, &parentAuthor, &parentSnippet,
 			&m.SenderCompanyID, &m.SenderCompanyName, &m.SenderCompanySlug, &m.SenderCompanyLogo,
@@ -19543,7 +19545,7 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 
 func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, error) {
 	rows, err := db.Query(`
-		SELECT pc.id, u.public_id, u.full_name, pc.content, pc.parent_id, pc.created_at,
+		SELECT pc.id, u.public_id, u.full_name, COALESCE(u.avatar_url, ''), pc.content, pc.parent_id, pc.created_at,
 		       COALESCE(pc.sender_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''), COALESCE(co.logo_image, ''),
 		       COALESCE(pc.sender_community_id, 0), COALESCE(cm.name, ''), COALESCE(cm.avatar_url, '')
 		FROM post_comments pc
@@ -19564,7 +19566,7 @@ func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, er
 	for rows.Next() {
 		var c postComment
 		if err := rows.Scan(
-			&c.ID, &c.AuthorPublicID, &c.AuthorName, &c.Content, &c.ParentID, &c.CreatedAt,
+			&c.ID, &c.AuthorPublicID, &c.AuthorName, &c.AuthorAvatar, &c.Content, &c.ParentID, &c.CreatedAt,
 			&c.SenderCompanyID, &c.SenderCompanyName, &c.SenderCompanySlug, &c.SenderCompanyLogo,
 			&c.SenderCommunityID, &c.SenderCommunityName, &c.SenderCommunityAvatar,
 		); err != nil {
@@ -19621,7 +19623,7 @@ func createComment(db *sql.DB, r *http.Request, postPublicID string, authorID in
 	if _, err := tx.Exec(`UPDATE posts SET comments_count = comments_count + 1, updated_at = NOW() WHERE id = $1`, postID); err != nil {
 		return postComment{}, err
 	}
-	if err := tx.QueryRow(`SELECT public_id, full_name FROM users WHERE id = $1`, authorID).Scan(&created.AuthorPublicID, &created.AuthorName); err != nil {
+	if err := tx.QueryRow(`SELECT public_id, full_name, COALESCE(avatar_url,'') FROM users WHERE id = $1`, authorID).Scan(&created.AuthorPublicID, &created.AuthorName, &created.AuthorAvatar); err != nil {
 		return postComment{}, err
 	}
 	if senderCompanyID > 0 {

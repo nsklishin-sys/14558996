@@ -89,7 +89,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .msg + .msg{border-top:1px solid var(--bdr);border-radius:0}
 .msg.flash{animation:flashHl 1.6s ease}
 @keyframes flashHl{0%,100%{background:transparent}25%{background:var(--gl)}}
-.msg-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800;flex-shrink:0;text-decoration:none;cursor:pointer}
+.msg-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800;flex-shrink:0;text-decoration:none;cursor:pointer;overflow:hidden}
 .msg-body{flex:1;min-width:0}
 .msg-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
 .msg-author{font-size:13px;font-weight:800;color:var(--t);text-decoration:none;cursor:pointer}
@@ -614,16 +614,19 @@ function renderMessage(m){
   let displayName = m.author_name || 'Аноним';
   let displayLink = '/profile_user.html?id=' + esc(m.author_public_id || '');
   let displayAvatarText = initials(m.author_name);
+  let displayAvatar = m.author_avatar || '';
   let displayAvatarColor = stableColor(m.author_name || '?');
   if (m.sender_company_id && m.sender_company_name) {
     displayName = m.sender_company_name;
     displayLink = '/company_view.html?slug=' + esc(m.sender_company_slug || '');
     displayAvatarText = initials(m.sender_company_name);
+    displayAvatar = m.sender_company_logo || '';
     displayAvatarColor = stableColor(m.sender_company_name);
   } else if (m.sender_community_id && m.sender_community_name) {
     displayName = m.sender_community_name;
     displayLink = '/community_view.html?id=' + esc(m.sender_community_id);
     displayAvatarText = initials(m.sender_community_name);
+    displayAvatar = m.sender_community_avatar || '';
     displayAvatarColor = stableColor(m.sender_community_name);
   }
   const color = displayAvatarColor;
@@ -670,7 +673,7 @@ function renderMessage(m){
     : '';
 
   return '<div class="msg" id="msg-' + esc(m.public_id) + '">' +
-    '<a class="msg-av" style="background:' + esc(color) + '" href="' + displayLink + '">' + esc(displayAvatarText) + '</a>' +
+    '<a class="msg-av" style="background:' + esc(color) + ';overflow:hidden" href="' + displayLink + '">' + (displayAvatar ? '<img src="' + esc(displayAvatar) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : esc(displayAvatarText)) + '</a>' +
     '<div class="msg-body">' +
       '<div class="msg-head">' +
         '<a class="msg-author" href="' + displayLink + '">' + esc(displayName) + '</a>' +

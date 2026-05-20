@@ -778,12 +778,21 @@ const DEMO_COMMENTS=[
 let comments=[];
 let commentCount=38;
 
+function commentAvHtml(c, size){
+  // Картинка приоритетнее буквы. Размер передаётся для replies (мельче).
+  const img = c.avatar || '';
+  const sizeStyle = size ? `width:${size}px;height:${size}px;font-size:${size===30?'11':'13'}px;` : '';
+  if (img) {
+    return `<div class="com-av" style="${sizeStyle}background:${c.color}"><img src="${esc(img)}" alt=""></div>`;
+  }
+  return `<div class="com-av" style="${sizeStyle}background:${c.color}">${c.av}</div>`;
+}
 function renderComments(){
   const commentsList=document.getElementById('commentsList');
   if(!commentsList)return;
   commentsList.innerHTML=comments.map((c,i)=>`
     <div class="comment" id="comment-${c.id}" style="animation-delay:${i*.06}s">
-      <div class="com-av" style="background:${c.color}">${c.av}</div>
+      ${commentAvHtml(c)}
       <div class="com-body">
         <div class="com-head">
           <span class="com-name">${esc(c.name)}</span>
@@ -807,7 +816,7 @@ function renderComments(){
         </div>
         ${c.replies&&c.replies.length?`<div class="com-reply">`+c.replies.map(r=>`
           <div class="comment" id="comment-${c.id}-${r.id}">
-            <div class="com-av" style="background:${r.color};width:30px;height:30px;font-size:11px">${r.av}</div>
+            ${commentAvHtml(r, 30)}
             <div class="com-body">
               <div class="com-head">
                 <span class="com-name">${esc(r.name)}</span>
@@ -928,12 +937,17 @@ async function sendComment(){
       dispName = c.sender_community_name;
       dispRole = 'Сообщество';
     }
+    let dispAvatar = '';
+    if (c.sender_company_id && c.sender_company_logo) dispAvatar = c.sender_company_logo;
+    else if (c.sender_community_id && c.sender_community_avatar) dispAvatar = c.sender_community_avatar;
+    else if (c.author_avatar) dispAvatar = c.author_avatar;
     comments.unshift({
       id: c.id,
       public_id: c.author_public_id || '',
       name: dispName,
       role: dispRole,
       av: ltr(dispName),
+      avatar: dispAvatar,
       color: avc(dispName),
       text: c.content || text,
       parent_id: c.parent_id || replyState.replyToId || null,
@@ -1006,12 +1020,19 @@ async function loadPostAndComments(){
           dispName = c.sender_community_name;
           dispRole = 'Сообщество';
         }
+        // Аватарка: приоритет — компания/сообщество > юзер. Если есть 
+        // картинка — используем её, иначе фронт сам нарисует букву.
+        let dispAvatar = '';
+        if (c.sender_company_id && c.sender_company_logo) dispAvatar = c.sender_company_logo;
+        else if (c.sender_community_id && c.sender_community_avatar) dispAvatar = c.sender_community_avatar;
+        else if (c.author_avatar) dispAvatar = c.author_avatar;
         return {
           id: c.id,
           public_id: c.author_public_id || '',
           name: dispName,
           role: dispRole,
           av: ltr(dispName),
+          avatar: dispAvatar,
           color: avc(dispName),
           text: c.content,
           parent_id: c.parent_id || null,
