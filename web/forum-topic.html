@@ -405,6 +405,14 @@ async function loadTopic(){
     const d = await r.json();
     currentTopic = d.topic;
     isAuthorOfTopic = currentUserPublicID && currentTopic.author_public_id === currentUserPublicID;
+    if (currentTopic && currentTopic.id && typeof window.lastopComplainSidebar === 'function') {
+      window.lastopComplainSidebar({
+        targetType: 'forum_message',
+        targetID: () => (currentTopic && currentTopic.id) || 0,
+        label: 'Действия',
+        shouldShow: () => !isAuthorOfTopic,
+      });
+    }
     document.title = currentTopic.title + ' — Форум LASTOP';
     renderTopicHeader();
     renderTopicSidebar();
@@ -1107,6 +1115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   startPolling();
 });
 </script>
+<script src="/assets/complaint-modal.js" defer></script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>

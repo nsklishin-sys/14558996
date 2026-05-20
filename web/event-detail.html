@@ -952,6 +952,14 @@ async function messageOrganizer(){
 async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
 function applyEvent(ev){
   state.currentEvent=ev;
+  if (state.currentEvent && state.currentEvent.id && typeof window.lastopComplainSidebar === 'function') {
+    window.lastopComplainSidebar({
+      targetType: 'event_message',
+      targetID: () => (state.currentEvent && state.currentEvent.id) || 0,
+      label: 'Действия',
+      shouldShow: () => !(state.currentEvent && state.currentEvent.viewer_is_owner),
+    });
+  }
   document.title=ev.title+' · LASTOP';
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
   set('bcCurrent',ev.title);
@@ -1525,5 +1533,6 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 </script>
+<script src="/assets/complaint-modal.js" defer></script>
 </body>
 </html>

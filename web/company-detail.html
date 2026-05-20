@@ -489,6 +489,14 @@ async function renderPubs(wrap){
       lastopFetch(API+'/forum/topics?limit=100', { headers: authH }).then(r=>r.ok?r.json():{topics:[]}).catch(()=>({topics:[]})),
     ]);
     const cid = company.id;
+    if (company && company.id && typeof window.lastopComplainSidebar === 'function') {
+      window.lastopComplainSidebar({
+        targetType: 'company',
+        targetID: () => (company && company.id) || 0,
+        label: 'Действия',
+        shouldShow: () => !(company && company.viewer_is_member),
+      });
+    }
     const items = [
       ...(jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid).map(j => ({ type:'job', kind:'Вакансия', title:j.title, href:'/job-detail.html?id='+encodeURIComponent(j.public_id), at:j.created_at })),
       ...(catR.items || []).filter(c => c.author_company_id === cid).map(c => ({ type:c.type==='product'?'product':'service', kind:c.type==='product'?'Товар':'Услуга', title:c.title, href:(c.type==='product'?'/product-detail.html?id=':'/service-detail.html?id=')+encodeURIComponent(c.public_id), at:c.created_at })),
@@ -640,5 +648,6 @@ function rejectInvite(){
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script src="/assets/complaint-modal.js" defer></script>
 </body>
 </html>

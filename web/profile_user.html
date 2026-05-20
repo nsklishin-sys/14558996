@@ -959,6 +959,20 @@ async function loadViewedUser(){
       return;
     }
     applyViewedUserProfile(enrichViewedUser(d.user,uid));
+    // Виджет жалоб для просмотра чужого профиля
+    try {
+      const u = d && d.user;
+      if (u && u.id && typeof window.lastopComplainSidebar === 'function') {
+        window.__viewedUserID = u.id;
+        window.__viewedUserIsSelf = !!u.is_self;
+        window.lastopComplainSidebar({
+          targetType: 'user',
+          targetID: () => window.__viewedUserID || 0,
+          label: 'Действия',
+          shouldShow: () => !window.__viewedUserIsSelf,
+        });
+      }
+    } catch (e) {}
   }catch(e){
     console.error(e);
     renderUserNotFound();
@@ -1241,5 +1255,6 @@ setTimeout(()=>{ void loadViewedCounts(); }, 400);
 <script src="/site-search.js" defer></script>
 <script src="/assets/copy-helper.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script src="/assets/complaint-modal.js" defer></script>
 </body>
 </html>
