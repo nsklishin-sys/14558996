@@ -518,5 +518,20 @@ function socialLogin(p){showToast('Вход через '+(p==='yandex'?'Янде
 window.addEventListener('DOMContentLoaded',newCaptcha);
 </script>
 <script src="/assets/captcha-loader.js" defer></script>
+<script>
+(function(){
+  var p = new URLSearchParams(location.search);
+  var msg = '';
+  var isBanned = p.get('banned') === '1';
+  if (p.get('expired') === '1') msg = 'Сессия завершена. Войдите снова.';
+  if (isBanned) msg = 'Ваш аккаунт заблокирован. Обратитесь в поддержку.';
+  if (!msg) return;
+  var bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:'+(isBanned?'#E04040':'#1E8A4C')+';color:#fff;padding:10px 16px;text-align:center;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  bar.textContent = msg;
+  document.body.appendChild(bar);
+  setTimeout(function(){ bar.style.transition='opacity .4s'; bar.style.opacity='0'; setTimeout(function(){bar.remove();}, 500); }, 6000);
+})();
+</script>
 </body>
 </html>
