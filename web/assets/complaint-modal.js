@@ -123,8 +123,12 @@
         submitBtn.disabled = true;
         submitBtn.textContent = 'Отправка…';
         try {
+          // Используем lastopFetch — он сам добавляет X-CSRF-Token 
+          // из cookie lastop_csrf. Голый fetch без этого получает 
+          // 403 «Недействительный CSRF-токен».
           const token = localStorage.getItem('token') || '';
-          const r = await fetch('/api/complaints', {
+          const fetchFn = (typeof window.lastopFetch === 'function') ? window.lastopFetch : fetch;
+          const r = await fetchFn('/api/complaints', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify({
