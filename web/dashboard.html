@@ -1102,8 +1102,11 @@ async function loadHeroNews(){
       return;
     }
 
-    document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + (post.author ? ' · ' + post.author : '');
-    // A2.6 — устанавливаем фоновую картинку hero из cover_url если есть
+    // Используем общий хелпер pickPostAuthor — он корректно различает
+    // сообщество / компанию / юзера и подбирает имя+аватарку.
+    const authorMeta = pickPostAuthor(post);
+
+    document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + authorMeta.name;
     const heroImg = document.getElementById('heroImg') || (function(){
       const img = document.createElement('div');
       img.id = 'heroImg';
@@ -1119,11 +1122,23 @@ async function loadHeroNews(){
     }
     document.getElementById('heroTitle').textContent = post.title || '(без заголовка)';
     document.getElementById('heroText').textContent = (post.text || post.content || '').slice(0, 240);
-    document.getElementById('heroName').textContent = post.author || 'Пользователь';
+    document.getElementById('heroName').textContent = authorMeta.name;
+
+    // Аватарка: если есть картинка (логотип компании / аватар юзера) —
+    // показываем её, иначе — букву на цветной плашке.
     const av = document.getElementById('heroAv');
     if (av) {
-      av.textContent = letter(post.author || 'L');
-      av.style.background = avc(post.author || 'L');
+      if (authorMeta.avatar) {
+        av.innerHTML = '';
+        av.style.backgroundImage = 'url("' + authorMeta.avatar + '")';
+        av.style.backgroundSize = 'cover';
+        av.style.backgroundPosition = 'center';
+        av.style.background = (av.style.backgroundColor = '') || av.style.backgroundImage;
+      } else {
+        av.style.backgroundImage = '';
+        av.textContent = letter(authorMeta.name || 'L');
+        av.style.background = authorMeta.bgColor || avc(authorMeta.name || 'L');
+      }
     }
     document.getElementById('heroViews').textContent = num(post.views_count || 0);
     document.getElementById('heroLikes').textContent = num(post.likes_count || 0);
