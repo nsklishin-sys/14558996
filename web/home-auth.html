@@ -98,29 +98,28 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 
-.home-banner{background:var(--gl);border:1px solid var(--gb);border-radius:var(--rxl);padding:14px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;box-shadow:var(--sh)}
+.home-banner{background:var(--gl);border:1px solid var(--gb);border-radius:var(--rxl);padding:14px 20px;display:flex;align-items:center;gap:20px;flex-shrink:0;box-shadow:var(--sh);position:relative;overflow:hidden}
 .hb-left{flex-shrink:0;min-width:170px}
 .hb-left h2{font-size:15px;font-weight:800;color:var(--t);margin-bottom:3px}
 .hb-left p{font-size:11px;color:var(--gmt)}
-.hb-stats{display:flex;gap:18px;flex-shrink:0;margin-left:auto}
 
-/* Центральная карточка "Что нового" (Phase 5) */
-.hb-update{flex:1;min-width:0;max-width:420px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.5);border-radius:16px;padding:12px 14px 12px 12px;cursor:pointer;text-decoration:none;color:inherit;display:flex;align-items:center;gap:12px;transition:transform .18s,box-shadow .18s,background .18s}
-.hb-update:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.10);background:#fff}
-.hb-update-ico{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--g),var(--gm));display:grid;place-items:center;flex-shrink:0;box-shadow:0 2px 8px rgba(30,138,76,.25)}
-.hb-update-ico svg{width:20px;height:20px;fill:#fff;stroke:none}
+/* "Что нового" — встроено в баннер: без фона, без обводки, без max-width.
+   При hover лёгкая подсветка фона, а не "кнопка поверх". */
+.hb-update{flex:1;min-width:0;display:flex;align-items:center;gap:13px;padding:8px 12px 8px 0;margin-right:-8px;border-radius:14px;cursor:pointer;text-decoration:none;color:inherit;background:transparent;border:none;transition:background .18s}
+.hb-update:hover{background:rgba(255,255,255,.55)}
+.hb-update::before{content:'';position:absolute;left:50%;top:14px;bottom:14px;width:1px;background:linear-gradient(to bottom,transparent,var(--gb) 20%,var(--gb) 80%,transparent);opacity:0;transition:opacity .2s}
+.hb-update-ico{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--g),var(--gm));display:grid;place-items:center;flex-shrink:0;box-shadow:0 4px 12px rgba(30,138,76,.22);margin-left:8px}
+.hb-update-ico svg{width:22px;height:22px;fill:#fff;stroke:none}
 .hb-update-body{flex:1;min-width:0}
-.hb-update-tag{font-size:9px;font-weight:800;color:var(--g);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;opacity:.85}
-.hb-update-title{font-size:13px;font-weight:700;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-update-tag{font-size:9px;font-weight:800;color:var(--g);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px;opacity:.9}
+.hb-update-title{font-size:14px;font-weight:700;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hb-update-date{font-size:10px;color:var(--gmt);margin-top:2px}
-.hb-update-arrow{width:24px;height:24px;border-radius:50%;background:var(--gl);display:grid;place-items:center;flex-shrink:0;transition:background .18s,transform .18s}
-.hb-update:hover .hb-update-arrow{background:var(--g);transform:translateX(3px)}
-.hb-update-arrow svg{width:11px;height:11px;fill:none;stroke:var(--g);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .18s}
-.hb-update:hover .hb-update-arrow svg{stroke:#fff}
+.hb-update-arrow{display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex-shrink:0;color:var(--g);transition:transform .18s}
+.hb-update:hover .hb-update-arrow{transform:translateX(4px)}
+.hb-update-arrow svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
-@media(max-width:1100px){.hb-update{display:none}}
-.hbs-num{font-size:20px;font-weight:800;color:var(--g);line-height:1}
-.hbs-lbl{font-size:9px;color:var(--gmt);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+@media(max-width:900px){.hb-update-date{display:none}.hb-update{padding-left:0}}
+@media(max-width:640px){.hb-update{display:none}}
 
 .compose-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:9px 13px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh);flex-shrink:0}
 .cb-av{width:28px;height:28px;border-radius:8px;background:var(--g);display:grid;place-items:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
@@ -671,7 +670,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       <h2 id="greetingText">Добрый день!</h2>
       <p id="greetingDate">Загрузка…</p>
     </div>
-    <!-- Phase 5: карточка "Что нового" — последнее обновление платформы -->
+    <!-- "Что нового" — встроенный в баннер блок, не отдельная карточка. -->
     <a class="hb-update" id="hbUpdate" href="/updates.html" style="display:none">
       <div class="hb-update-ico">
         <svg viewBox="0 0 24 24"><path d="M12 3l1.7 4.5L18 9.2l-4.3 1.7L12 15.4l-1.7-4.5L6 9.2l4.3-1.7L12 3z"/><path d="M19 14l.7 1.9L21.5 16.6l-1.9.7L19 19l-.7-1.7-1.9-.7 1.9-.7L19 14z"/><path d="M5 16l.5 1.5L7 18l-1.5.5L5 20l-.5-1.5L3 18l1.5-.5L5 16z"/></svg>
@@ -685,11 +684,6 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
         <svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
       </div>
     </a>
-    <div class="hb-stats">
-      <div class="hb-stat"><div class="hbs-num" id="statMembers">—</div><div class="hbs-lbl">Участников</div></div>
-      <div class="hb-stat"><div class="hbs-num" id="statNews">—</div><div class="hbs-lbl">Новостей</div></div>
-      <div class="hb-stat"><div class="hbs-num" id="statEvents">—</div><div class="hbs-lbl">Событий</div></div>
-    </div>
   </div>
 
   <!-- Строка публикации -->
@@ -1012,13 +1006,7 @@ async function loadPlatformStats(){
     if (!r.ok) throw 0;
     const d = await r.json();
 
-    // Большие цифры наверху
-    const sm = document.getElementById('statMembers');
-    if (sm) sm.textContent = num(d.members || d.users || 0);
-    const sn = document.getElementById('statNews');
-    if (sn) sn.textContent = num(d.news || d.posts || 0);
-    const se = document.getElementById('statEvents');
-    if (se) se.textContent = num(d.events || 0);
+    // statMembers/statNews/statEvents удалены из баннера
 
     // Правый сайдбар: «Активных сейчас»
     const la = document.getElementById('liveActive');
@@ -1065,11 +1053,7 @@ async function loadPlatformStats(){
   } catch {
     // Если бэк недоступен — оставляем плейсхолдеры в HTML без изменений.
     // Не выставляем хардкод 1247/48/12 — лучше «—» чем фейк.
-    const ids = ['statMembers', 'statNews', 'statEvents'];
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && (el.textContent === '—' || !el.textContent.trim())) el.textContent = '—';
-    });
+    // statMembers/statNews/statEvents удалены из баннера
   }
 }
 
