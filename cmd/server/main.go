@@ -9984,6 +9984,12 @@ func main() {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
+			// Если компания заблокирована администрацией — не показываем
+			// никому кроме админов. Админу карточка доступна через /api/admin/companies/.
+			if item.BlockedAt != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
 			writeJSON(w, http.StatusOK, map[string]any{"item": item})
 			return
 		}
@@ -10446,54 +10452,215 @@ func main() {
 		http.Error(w, "not found", http.StatusNotFound)
 	})
 
-	// Admin: подтверждение компании
-	// PATCH /api/admin/companies/{publicID}/verify
-	// Доступно только если у юзера users.is_admin = TRUE.
+	// Admin Этап B: реестр и действия с компаниями.
+	// GET    /api/admin/companies              — список с фильтрами
+	// GET    /api/admin/companies/{publicID}   — карточка
+	// POST   /api/admin/companies/{publicID}/verify   — подтвердить
+	// POST   /api/admin/companies/{publicID}/reject   — отклонить (с причиной)
+	// POST   /api/admin/companies/{publicID}/block    — заблокировать (с причиной)
+	// POST   /api/admin/companies/{publicID}/unblock  — разблокировать
+	// PATCH  /api/admin/companies/{publicID}/verify   — legacy для обратной совместимости (true/false)
+	mux.HandleFunc("/api/admin/companies", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		status := strings.TrimSpace(r.URL.Query().Get("status")) // all|pending|verified|rejected|blocked|unverified
+		limit := 50
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
+		}
+		offset := 0
+		if v := r.URL.Query().Get("offset"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+				offset = n
+			}
+		}
+		sqlQuery := `SELECT c.id, c.public_id, c.name, COALESCE(c.inn,''), COALESCE(c.logo_image,''),
+		               COALESCE(u.full_name, u.handle, ''), c.owner_user_id,
+		               COALESCE(c.is_verified, false), COALESCE(c.verification_status, 'none'),
+		               c.created_at, c.blocked_at, COALESCE(c.blocked_reason, ''),
+		               (SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id),
+		               (SELECT COUNT(*) FROM posts p WHERE p.author_company_id = c.id AND p.is_deleted = FALSE)
+		        FROM companies c
+		        LEFT JOIN users u ON u.id = c.owner_user_id
+		        WHERE c.deleted_at IS NULL`
+		args := []any{}
+		i := 1
+		if q != "" {
+			sqlQuery += fmt.Sprintf(" AND (LOWER(c.name) LIKE LOWER($%d) OR c.inn LIKE $%d)", i, i)
+			args = append(args, "%"+q+"%")
+			i++
+		}
+		switch status {
+		case "verified":
+			sqlQuery += " AND c.is_verified = TRUE AND c.blocked_at IS NULL"
+		case "rejected":
+			sqlQuery += " AND c.verification_status = 'rejected' AND c.blocked_at IS NULL"
+		case "blocked":
+			sqlQuery += " AND c.blocked_at IS NOT NULL"
+		case "unverified", "pending":
+			sqlQuery += " AND c.is_verified = FALSE AND c.blocked_at IS NULL"
+		}
+		sqlQuery += fmt.Sprintf(" ORDER BY c.created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, limit, offset)
+		rows, err := db.Query(sqlQuery, args...)
+		if err != nil {
+			log.Printf("[admin/companies] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		items := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var pub, name, inn, logo, ownerName, vstatus string
+			var ownerID int64
+			var isVerified bool
+			var createdAt time.Time
+			var blockedAt sql.NullTime
+			var blockedReason string
+			var members, posts int64
+			if err := rows.Scan(&id, &pub, &name, &inn, &logo, &ownerName, &ownerID, &isVerified, &vstatus, &createdAt, &blockedAt, &blockedReason, &members, &posts); err != nil {
+				continue
+			}
+			it := map[string]any{
+				"id":                  id,
+				"public_id":           pub,
+				"name":                name,
+				"inn":                 inn,
+				"logo_image":          logo,
+				"owner_name":          ownerName,
+				"owner_user_id":       ownerID,
+				"is_verified":         isVerified,
+				"verification_status": vstatus,
+				"created_at":          createdAt,
+				"is_blocked":          blockedAt.Valid,
+				"members_count":       members,
+				"posts_count":         posts,
+			}
+			if blockedAt.Valid {
+				it["blocked_at"] = blockedAt.Time
+				it["blocked_reason"] = blockedReason
+			}
+			items = append(items, it)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"companies": items})
+	}))
+
 	mux.HandleFunc("/api/admin/companies/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/api/admin/companies/")
-		parts := strings.Split(path, "/")
-		if len(parts) != 2 || parts[1] != "verify" {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-		if r.Method != http.MethodPatch {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		userID, ok := authenticatedUserID(w, r, sessions)
+		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
 			return
 		}
-		var isAdmin bool
-		if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&isAdmin); err != nil {
-			http.Error(w, "internal", http.StatusInternalServerError)
+		path := strings.TrimPrefix(r.URL.Path, "/api/admin/companies/")
+		parts := strings.Split(path, "/")
+		if len(parts) < 1 || parts[0] == "" {
+			writeError(w, http.StatusNotFound, "Не найдено")
 			return
 		}
-		if !isAdmin {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		var req struct {
-			Verified bool `json:"verified"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "bad json", http.StatusBadRequest)
-			return
-		}
-		companyID, err := getCompanyByPublicID(db, parts[0])
+		publicID := parts[0]
+		companyID, err := getCompanyByPublicID(db, publicID)
 		if err != nil {
-			http.Error(w, "not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "Компания не найдена")
 			return
 		}
-		newStatus := "rejected"
-		if req.Verified {
-			newStatus = "verified"
-		}
-		if _, err := db.Exec(`UPDATE companies SET is_verified=$1, verification_status=$2, updated_at=NOW() WHERE id=$3`, req.Verified, newStatus, companyID); err != nil {
-			http.Error(w, "internal", http.StatusInternalServerError)
+
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			item, err := getCompanyByPublicIDFull(db, publicID, actorID)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Компания не найдена")
+				return
+			}
+			var ownerEmail string
+			var ownerBannedAt sql.NullTime
+			_ = db.QueryRow(`SELECT email, banned_at FROM users WHERE id=$1`, item.OwnerUserID).Scan(&ownerEmail, &ownerBannedAt)
+			var postsCount int64
+			_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE author_company_id=$1 AND is_deleted = FALSE`, companyID).Scan(&postsCount)
+			out := map[string]any{"item": item, "owner_email": ownerEmail, "owner_is_banned": ownerBannedAt.Valid, "posts_count": postsCount}
+			writeJSON(w, http.StatusOK, out)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"verified": req.Verified})
+
+		if len(parts) == 2 && parts[1] == "verify" && r.Method == http.MethodPatch {
+			var req struct {
+				Verified bool `json:"verified"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			newStatus := "rejected"
+			if req.Verified {
+				newStatus = "verified"
+			}
+			if _, err := db.Exec(`UPDATE companies SET is_verified=$1, verification_status=$2, updated_at=NOW() WHERE id=$3`, req.Verified, newStatus, companyID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			action := "company.verify"
+			if !req.Verified {
+				action = "company.reject"
+			}
+			logAdminAction(db, actorID, action, "company", companyID, clientIP(r), map[string]any{"public_id": publicID})
+			writeJSON(w, http.StatusOK, map[string]any{"verified": req.Verified})
+			return
+		}
+
+		if len(parts) != 2 || r.Method != http.MethodPost {
+			writeError(w, http.StatusNotFound, "Действие не поддерживается")
+			return
+		}
+		action := parts[1]
+		switch action {
+		case "verify":
+			if _, err := db.Exec(`UPDATE companies SET is_verified=TRUE, verification_status='verified', updated_at=NOW() WHERE id=$1`, companyID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "company.verify", "company", companyID, clientIP(r), map[string]any{"public_id": publicID})
+			writeJSON(w, http.StatusOK, map[string]any{"verified": true})
+		case "reject":
+			var req struct {
+				Reason string `json:"reason"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			reason := strings.TrimSpace(req.Reason)
+			if _, err := db.Exec(`UPDATE companies SET is_verified=FALSE, verification_status='rejected', verification_notes=$1, updated_at=NOW() WHERE id=$2`, reason, companyID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "company.reject", "company", companyID, clientIP(r), map[string]any{"public_id": publicID, "reason": reason})
+			writeJSON(w, http.StatusOK, map[string]any{"verified": false})
+		case "block":
+			var req struct {
+				Reason string `json:"reason"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			reason := strings.TrimSpace(req.Reason)
+			if reason == "" {
+				writeError(w, http.StatusBadRequest, "Укажите причину блокировки")
+				return
+			}
+			if _, err := db.Exec(`UPDATE companies SET blocked_at=NOW(), blocked_reason=$1, blocked_by=$2, updated_at=NOW() WHERE id=$3`, reason, actorID, companyID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "company.block", "company", companyID, clientIP(r), map[string]any{"public_id": publicID, "reason": reason})
+			writeJSON(w, http.StatusOK, map[string]any{"blocked": true})
+		case "unblock":
+			if _, err := db.Exec(`UPDATE companies SET blocked_at=NULL, blocked_reason=NULL, blocked_by=NULL, updated_at=NOW() WHERE id=$1`, companyID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "company.unblock", "company", companyID, clientIP(r), map[string]any{"public_id": publicID})
+			writeJSON(w, http.StatusOK, map[string]any{"blocked": false})
+		default:
+			writeError(w, http.StatusNotFound, "Действие не поддерживается")
+		}
 	}))
 
 	// POST /api/invites/accept — принять приглашение по коду
@@ -12117,6 +12284,11 @@ CREATE INDEX IF NOT EXISTS companies_owner_idx ON companies(owner_user_id) WHERE
 CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at DESC) WHERE deleted_at IS NULL;
 
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'inn_verified', 'verified', 'rejected'));
+-- Admin Этап B: блокировка компаний администрацией.
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_companies_blocked ON companies(blocked_at) WHERE blocked_at IS NOT NULL;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_verified_at TIMESTAMPTZ;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_data JSONB;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_notes TEXT NOT NULL DEFAULT '';
@@ -26432,38 +26604,41 @@ func userIsCompanyMember(db *sql.DB, userID, companyID int64) (bool, string, err
 
 // companyItem — структура компании для ответа API.
 type companyItem struct {
-	ID                 int64     `json:"id"`
-	PublicID           string    `json:"public_id"`
-	Slug               string    `json:"slug"`
-	OwnerUserID        int64     `json:"owner_user_id"`
-	OwnerName          string    `json:"owner_name,omitempty"`
-	Name               string    `json:"name"`
-	INN                string    `json:"inn,omitempty"`
-	Description        string    `json:"description"`
-	Region             string    `json:"region,omitempty"`
-	City               string    `json:"city,omitempty"`
-	Website            string    `json:"website,omitempty"`
-	Email              string    `json:"email,omitempty"`
-	Phone              string    `json:"phone,omitempty"`
-	LogoImage          string    `json:"logo_image,omitempty"`
-	AccentColor        string    `json:"accent_color"`
-	Category           string    `json:"category,omitempty"`
-	CategoryLabel      string    `json:"category_label,omitempty"`
-	CategoryGroup      string    `json:"category_group,omitempty"`
-	Tags               []string  `json:"tags"`
-	IsVerified         bool      `json:"is_verified"`
-	VerificationStatus string    `json:"verification_status,omitempty"`
-	Status             string    `json:"status"`
-	MembersCount       int       `json:"members_count"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
-	ViewerIsOwner      bool      `json:"viewer_is_owner,omitempty"`
-	ViewerIsMember     bool      `json:"viewer_is_member,omitempty"`
-	ViewerRole         string    `json:"viewer_role,omitempty"`
-	ViewerCanEdit      bool      `json:"viewer_can_edit,omitempty"`
-	ViewerCanManage    bool      `json:"viewer_can_manage,omitempty"`
-	ViewerCanPublish   bool      `json:"viewer_can_publish,omitempty"`
-	ViewerCanChat      bool      `json:"viewer_can_chat,omitempty"`
+	ID                 int64      `json:"id"`
+	PublicID           string     `json:"public_id"`
+	Slug               string     `json:"slug"`
+	OwnerUserID        int64      `json:"owner_user_id"`
+	OwnerName          string     `json:"owner_name,omitempty"`
+	Name               string     `json:"name"`
+	INN                string     `json:"inn,omitempty"`
+	Description        string     `json:"description"`
+	Region             string     `json:"region,omitempty"`
+	City               string     `json:"city,omitempty"`
+	Website            string     `json:"website,omitempty"`
+	Email              string     `json:"email,omitempty"`
+	Phone              string     `json:"phone,omitempty"`
+	LogoImage          string     `json:"logo_image,omitempty"`
+	AccentColor        string     `json:"accent_color"`
+	Category           string     `json:"category,omitempty"`
+	CategoryLabel      string     `json:"category_label,omitempty"`
+	CategoryGroup      string     `json:"category_group,omitempty"`
+	Tags               []string   `json:"tags"`
+	IsVerified         bool       `json:"is_verified"`
+	VerificationStatus string     `json:"verification_status,omitempty"`
+	Status             string     `json:"status"`
+	BlockedAt          *time.Time `json:"blocked_at,omitempty"`
+	BlockedReason      string     `json:"blocked_reason,omitempty"`
+	BlockedBy          int64      `json:"blocked_by,omitempty"`
+	MembersCount       int        `json:"members_count"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	ViewerIsOwner      bool       `json:"viewer_is_owner,omitempty"`
+	ViewerIsMember     bool       `json:"viewer_is_member,omitempty"`
+	ViewerRole         string     `json:"viewer_role,omitempty"`
+	ViewerCanEdit      bool       `json:"viewer_can_edit,omitempty"`
+	ViewerCanManage    bool       `json:"viewer_can_manage,omitempty"`
+	ViewerCanPublish   bool       `json:"viewer_can_publish,omitempty"`
+	ViewerCanChat      bool       `json:"viewer_can_chat,omitempty"`
 }
 
 // listCompaniesFilters — параметры фильтрации.
@@ -26489,6 +26664,7 @@ func listCompanies(db *sql.DB, f listCompaniesFilters) ([]companyItem, error) {
 	var args []interface{}
 	conds = append(conds, "c.deleted_at IS NULL")
 	conds = append(conds, "c.status = 'active'")
+	conds = append(conds, "c.blocked_at IS NULL")
 
 	if f.Category != "" {
 		args = append(args, f.Category)
@@ -26607,10 +26783,12 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		COALESCE(array_to_json(c.tags), '[]'::json),
 		c.is_verified, COALESCE(c.verification_status, 'none'), c.status,
 		(SELECT COUNT(*) FROM company_members cm WHERE cm.company_id = c.id),
-		c.created_at, c.updated_at
+		c.created_at, c.updated_at,
+		c.blocked_at, COALESCE(c.blocked_reason, ''), COALESCE(c.blocked_by, 0)
 		FROM companies c
 		LEFT JOIN users u ON u.id = c.owner_user_id
 		WHERE c.` + byField + ` = $1 AND c.deleted_at IS NULL`
+	var blockedAt sql.NullTime
 	if err := db.QueryRow(q, value).Scan(
 		&c.ID, &c.PublicID, &c.Slug, &c.OwnerUserID, &c.OwnerName,
 		&c.Name, &c.INN, &c.Description, &c.Region, &c.City,
@@ -26618,8 +26796,13 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		&c.AccentColor, &c.Category, &tagsJSON,
 		&c.IsVerified, &c.VerificationStatus, &c.Status, &c.MembersCount,
 		&c.CreatedAt, &c.UpdatedAt,
+		&blockedAt, &c.BlockedReason, &c.BlockedBy,
 	); err != nil {
 		return nil, err
+	}
+	if blockedAt.Valid {
+		t := blockedAt.Time
+		c.BlockedAt = &t
 	}
 	_ = json.Unmarshal(tagsJSON, &c.Tags)
 	if c.Tags == nil {
