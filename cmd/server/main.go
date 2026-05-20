@@ -13778,6 +13778,16 @@ CREATE INDEX IF NOT EXISTS complaints_reporter_idx
 CREATE UNIQUE INDEX IF NOT EXISTS complaints_unique_active_idx 
     ON complaints(reporter_id, target_type, target_id) 
     WHERE status IN ('new','under_review');
+
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden_by_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS hidden_by_admin_at TIMESTAMPTZ;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS hidden_by_admin_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS is_hidden_by_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS hidden_by_admin_at TIMESTAMPTZ;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS hidden_by_admin_reason TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS posts_hidden_by_admin_idx ON posts(is_hidden_by_admin) WHERE is_hidden_by_admin = TRUE;
+CREATE INDEX IF NOT EXISTS post_comments_hidden_by_admin_idx ON post_comments(is_hidden_by_admin) WHERE is_hidden_by_admin = TRUE;
 `
 
 	if _, err := db.Exec(schema); err != nil {
