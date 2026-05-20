@@ -251,9 +251,9 @@
   let _notifLastUnread = 0;
 
   function injectNotifBell() {
-    // Инжектим только если юзер залогинен (есть токен)
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
-    if (!token) return;
+    // Phase 3 cookie-only: признак логина — user в localStorage.
+    const isAuthed = (function(){ try { return !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch { return false; } })();
+    if (!isAuthed) return;
 
     const topbar = document.querySelector('.topbar');
     if (!topbar) return; // нет шапки на странице (например login.html)
@@ -364,8 +364,8 @@
   }
 
   async function refreshUnreadCount() {
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
-    if (!token || !_notifBadgeEl) return;
+    const isAuthed = (function(){ try { return !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch { return false; } })();
+    if (!isAuthed || !_notifBadgeEl) return;
     try {
       const r = await lastopFetch('/api/notifications/unread_count', {
         headers:{}
@@ -386,8 +386,8 @@
   async function loadNotifList() {
     const list = document.getElementById('notifList');
     if (!list) return;
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
-    if (!token) {
+    const isAuthed = (function(){ try { return !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch { return false; } })();
+    if (!isAuthed) {
       list.innerHTML = '<div class="notif-empty">Войдите чтобы видеть уведомления</div>';
       return;
     }
@@ -511,8 +511,8 @@
   }
 
   async function markAllNotifications() {
-    const token = (function(){ try { return localStorage.getItem('token'); } catch { return null; } })();
-    if (!token) return;
+    const isAuthed = (function(){ try { return !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch { return false; } })();
+    if (!isAuthed) return;
     const btn = document.getElementById('notifMarkAll');
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     try {

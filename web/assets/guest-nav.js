@@ -3,10 +3,12 @@
   if(window.__lastopGuestNavInit)return;
   window.__lastopGuestNavInit=true;
 
+  // Phase 3 cookie-only: признак логина — user в localStorage.
+  // Функция оставлена с прежним именем для совместимости.
   function hasToken(){
     try{
-      var t=localStorage.getItem('token');
-      return !!(t&&t.trim());
+      var u=JSON.parse(localStorage.getItem('user')||'{}');
+      return !!(u && (u.id || u.public_id));
     }catch{return false;}
   }
 
