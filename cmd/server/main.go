@@ -110,6 +110,7 @@ type authResponse struct {
 }
 
 type publicUserProfile struct {
+	ID           int64   `json:"id"`
 	PublicID     string  `json:"public_id"`
 	FirstName    string  `json:"first_name,omitempty"`
 	LastName     string  `json:"last_name,omitempty"`
@@ -14371,6 +14372,7 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 		&profile.Location,
 		&profile.City,
 	)
+	profile.ID = ownerID
 	if err != nil {
 		return publicUserProfile{}, err
 	}
