@@ -405,13 +405,20 @@ async function loadTopic(){
     const d = await r.json();
     currentTopic = d.topic;
     isAuthorOfTopic = currentUserPublicID && currentTopic.author_public_id === currentUserPublicID;
-    if (currentTopic && currentTopic.id && typeof window.lastopComplainSidebar === 'function') {
-      window.lastopComplainSidebar({
-        targetType: 'forum_message',
-        targetID: () => (currentTopic && currentTopic.id) || 0,
-        label: 'Действия',
-        shouldShow: () => !isAuthorOfTopic,
-      });
+    if (currentTopic && currentTopic.id) {
+      const initForumWidget = () => {
+        if (typeof window.lastopComplainSidebar === 'function') {
+          window.lastopComplainSidebar({
+            targetType: 'forum_message',
+            targetID: () => (currentTopic && currentTopic.id) || 0,
+            label: 'Действия',
+            shouldShow: () => !isAuthorOfTopic,
+          });
+        } else {
+          setTimeout(initForumWidget, 150);
+        }
+      };
+      initForumWidget();
     }
     document.title = currentTopic.title + ' — Форум LASTOP';
     renderTopicHeader();

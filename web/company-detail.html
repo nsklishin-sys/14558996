@@ -489,13 +489,20 @@ async function renderPubs(wrap){
       lastopFetch(API+'/forum/topics?limit=100', { headers: authH }).then(r=>r.ok?r.json():{topics:[]}).catch(()=>({topics:[]})),
     ]);
     const cid = company.id;
-    if (company && company.id && typeof window.lastopComplainSidebar === 'function') {
-      window.lastopComplainSidebar({
-        targetType: 'company',
-        targetID: () => (company && company.id) || 0,
-        label: 'Действия',
-        shouldShow: () => !(company && company.viewer_is_member),
-      });
+    if (company && company.id) {
+      const initWidget = () => {
+        if (typeof window.lastopComplainSidebar === 'function') {
+          window.lastopComplainSidebar({
+            targetType: 'company',
+            targetID: () => (company && company.id) || 0,
+            label: 'Действия',
+            shouldShow: () => !(company && company.viewer_is_member),
+          });
+        } else {
+          setTimeout(initWidget, 150);
+        }
+      };
+      initWidget();
     }
     const items = [
       ...(jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid).map(j => ({ type:'job', kind:'Вакансия', title:j.title, href:'/job-detail.html?id='+encodeURIComponent(j.public_id), at:j.created_at })),
