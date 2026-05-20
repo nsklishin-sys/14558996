@@ -92,16 +92,16 @@
     }
   }
 
-  // Проверка наличия токена — без него мы на гостевой странице.
-  // Гостям мобильную навигацию не показываем (bottom-nav и sheet-меню
-  // ведут на разделы для авторизованных).
-  var hasToken = false;
+  // Проверка авторизации. Phase 3 cookie-only: единственный признак 
+  // логина — localStorage.user с непустым id (token-cookie httpOnly,
+  // в localStorage его нет).
+  var isAuthed = false;
   try {
-    var raw = localStorage.getItem('token') || '';
-    hasToken = raw.trim().length > 0;
+    var u = JSON.parse(localStorage.getItem('user') || '{}');
+    isAuthed = !!(u && (u.id || u.public_id));
   } catch (_) { /* localStorage недоступен — считаем гостем */ }
 
-  if (!hasToken) {
+  if (!isAuthed) {
     // На /home-guest.html у гостя на мобиле — редирект на /login.html.
     // Гостевая главная сейчас не адаптирована под мобилу, временно
     // показываем сразу login (компактная страница которая работает).
