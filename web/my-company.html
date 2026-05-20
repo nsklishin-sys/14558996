@@ -595,12 +595,13 @@ function render(){
       '<a class="btn btn-primary" href="/company-detail.html?id=' + encodeURIComponent(c.slug) + '"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль компании</a>' +
     '</div>';
 
+  const canManage = isOwner || !!c.viewer_can_manage;
   const tabs = [
     { key: 'about',     label: 'О компании' },
     { key: 'members',   label: 'Сотрудники' },
-    { key: 'invites',   label: 'Приглашения', ownerOnly: true },
+    { key: 'invites',   label: 'Приглашения', requireManage: true },
     { key: 'pubs',      label: 'Публикации' },
-  ].filter(t => !t.ownerOnly || isOwner);
+  ].filter(t => !t.requireManage || canManage);
 
   const tabsHtml =
     '<div class="mc-tabs">' +
@@ -704,7 +705,8 @@ async function renderTab(){
 function renderAbout(wrap){
   const c = currentCompany;
   const isOwner = !!c.viewer_is_owner;
-  const dis = isOwner ? '' : ' disabled';
+  const canEdit = isOwner || !!c.viewer_can_edit;
+  const dis = canEdit ? '' : ' disabled';
   const logoPreview = c.logo_image
     ? '<img src="' + escAttr(c.logo_image) + '" alt="">'
     : esc(initials(c.name));
@@ -712,7 +714,7 @@ function renderAbout(wrap){
 
   wrap.innerHTML =
     '<div class="panel">' +
-      '<div class="panel-title">' + (isOwner ? 'Редактировать данные' : 'Информация (только просмотр)') + '</div>' +
+      '<div class="panel-title">' + (canEdit ? 'Редактировать данные' : 'Информация (только просмотр)') + '</div>' +
 
       // Логотип + цвет акцента
       '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">' +
@@ -720,7 +722,7 @@ function renderAbout(wrap){
           '<div id="aboutLogoPreview" style="width:80px;height:80px;border-radius:var(--rl);background:' + escAttr(logoBg) + ';color:#fff;display:grid;place-items:center;font-size:22px;font-weight:900;border:1px solid var(--bdr);overflow:hidden">' +
             logoPreview +
           '</div>' +
-          (isOwner
+          (canEdit
             ? '<label class="btn btn-ghost" style="cursor:pointer;margin-top:2px"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Загрузить<input type="file" accept="image/*" id="aboutLogoFile" style="display:none" onchange="uploadAboutLogo(event)"></label>' +
               (c.logo_image ? '<button type="button" class="btn btn-ghost" onclick="clearAboutLogo()" style="color:var(--red)">Убрать</button>' : '')
             : '') +
@@ -746,7 +748,7 @@ function renderAbout(wrap){
       '<div class="fld">' +
         '<label class="fld-label">Теги</label>' +
         '<div id="aboutTagsBox" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:#fff;min-height:42px"></div>' +
-        (isOwner
+        (canEdit
           ? '<input class="fld-input" id="aboutTagInput" placeholder="Введите тег и нажмите Enter" style="margin-top:6px" onkeydown="onTagKeydown(event)">'
           : '') +
       '</div>' +

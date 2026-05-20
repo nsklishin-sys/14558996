@@ -1271,6 +1271,7 @@ type statsCache struct {
 
 const sessionCacheTTL = 10 * time.Minute
 const statsCacheTTL = 60 * time.Second
+
 // Phase 4 (19.05) SEC: сессия живёт 14 дней с момента последнего
 // продления. Sliding renewal в sessionStore.getUserID продлевает срок
 // если истекло больше половины окна. Активные юзеры живут пока активны;
@@ -4633,6 +4634,15 @@ func main() {
 				case "company":
 					req.SenderCompanyID = pID
 					req.SenderCommunityID = 0
+					_, isOwner, _, _, _, canChat, err := companyMemberRights(db, pID, userID)
+					if err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка проверки прав")
+						return
+					}
+					if !isOwner && !canChat {
+						writeError(w, http.StatusForbidden, "У вас нет права отвечать от лица компании")
+						return
+					}
 				case "community":
 					req.SenderCommunityID = pID
 					req.SenderCompanyID = 0
@@ -9721,7 +9731,8 @@ func main() {
 			return
 		}
 
-		// PATCH/DELETE /api/companies/{publicID} — только владелец
+		// PATCH /api/companies/{publicID} — владелец ИЛИ сотрудник с can_edit_profile
+		// DELETE /api/companies/{publicID} — только владелец
 		if len(parts) == 1 && (r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -9732,12 +9743,12 @@ func main() {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
-			var ownerID int64
-			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+			_, isOwner, _, canManage, _, _, err := companyMemberRights(db, companyID, userID)
+			if err != nil {
 				http.Error(w, "internal", http.StatusInternalServerError)
 				return
 			}
-			if ownerID != userID {
+			if !isOwner && !canManage {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -9750,7 +9761,6 @@ func main() {
 				writeJSON(w, http.StatusOK, map[string]any{"deleted": true})
 				return
 			}
-
 			// PATCH
 			var req map[string]json.RawMessage
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -9844,7 +9854,7 @@ func main() {
 			return
 		}
 
-		// /api/companies/{publicID}/invites — список или создание (только owner)
+		// /api/companies/{publicID}/invites — владелец ИЛИ сотрудник с can_manage_members
 		if len(parts) == 2 && parts[1] == "invites" {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -9855,12 +9865,12 @@ func main() {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
-			var ownerID int64
-			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+			_, isOwner, _, canManage, _, _, err := companyMemberRights(db, companyID, userID)
+			if err != nil {
 				http.Error(w, "internal", http.StatusInternalServerError)
 				return
 			}
-			if ownerID != userID {
+			if !isOwner && !canManage {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -9946,7 +9956,7 @@ func main() {
 			}
 		}
 
-		// /api/companies/{publicID}/invites/{id} — деактивировать (DELETE, только owner)
+		// /api/companies/{publicID}/invites/{id} — владелец ИЛИ сотрудник с can_manage_members
 		if len(parts) == 3 && parts[1] == "invites" && r.Method == http.MethodDelete {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -9957,12 +9967,16 @@ func main() {
 				http.Error(w, "not found", http.StatusNotFound)
 				return
 			}
-			var ownerID int64
-			if err := db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, companyID).Scan(&ownerID); err != nil {
+			_, isOwner, canEdit, _, _, _, err := companyMemberRights(db, companyID, userID)
+			if err != nil {
 				http.Error(w, "internal", http.StatusInternalServerError)
 				return
 			}
-			if ownerID != userID {
+			if r.Method == http.MethodDelete && !isOwner {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			if r.Method == http.MethodPatch && !isOwner && !canEdit {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -10037,8 +10051,12 @@ func main() {
 			return
 		}
 
-		// PATCH /api/companies/{publicID}/members/{user_id} — изменить должность (owner)
-		// DELETE /api/companies/{publicID}/members/{user_id} — удалить (owner; не себя)
+		// PATCH /api/companies/{publicID}/members/{user_id}
+		//   - владелец: всё
+		//   - can_manage_members: position, is_public; НЕ can_* поля; НЕ свою запись
+		// DELETE /api/companies/{publicID}/members/{user_id}
+		//   - владелец: любого кроме себя
+		//   - can_manage_members: любого кроме владельца и себя
 		if len(parts) == 3 && parts[1] == "members" && (r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
 			actorID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -10054,7 +10072,12 @@ func main() {
 				http.Error(w, "internal", http.StatusInternalServerError)
 				return
 			}
-			if ownerID != actorID {
+			_, isOwner, _, canManage, _, _, err := companyMemberRights(db, companyID, actorID)
+			if err != nil {
+				http.Error(w, "internal", http.StatusInternalServerError)
+				return
+			}
+			if !isOwner && !canManage {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -10067,6 +10090,10 @@ func main() {
 			if r.Method == http.MethodDelete {
 				if targetUserID == ownerID {
 					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нельзя удалить владельца"})
+					return
+				}
+				if !isOwner && targetUserID == actorID {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "нельзя удалить себя — попросите владельца"})
 					return
 				}
 				if _, err := db.Exec(`DELETE FROM company_members WHERE company_id=$1 AND user_id=$2`, companyID, targetUserID); err != nil {
@@ -10099,6 +10126,18 @@ func main() {
 				req.CanPublish == nil && req.CanChat == nil {
 				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "нет полей для обновления"})
 				return
+			}
+			// Не-владелец с can_manage_members не может менять права и не может менять свою запись
+			if !isOwner {
+				if targetUserID == actorID {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "нельзя редактировать свою запись"})
+					return
+				}
+				if req.CanEditProfile != nil || req.CanManageMembers != nil ||
+					req.CanPublish != nil || req.CanChat != nil {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "менять права сотрудников может только владелец"})
+					return
+				}
 			}
 			// Запрещаем менять права owner-у — у него всегда полный набор
 			var targetRole string
@@ -23673,6 +23712,7 @@ func xmlEscape(s string) string {
 //     если кто-то откатит nginx-конфиг — последний элемент это тот, что
 //     добавил наш доверенный прокси, а не клиент).
 //  4. Fallback: RemoteAddr.
+//
 // anonymizeIP — обрезает IP для логирования (152-ФЗ / GDPR минимизация ПДн).
 // IPv4: обнуляем последний октет. 192.168.1.42 → 192.168.1.0
 // IPv6: обнуляем последние 80 бит (оставляем /48). 2a02:6b8:c01:413::1 → 2a02:6b8:c01::
@@ -26126,6 +26166,10 @@ type companyItem struct {
 	ViewerIsOwner      bool      `json:"viewer_is_owner,omitempty"`
 	ViewerIsMember     bool      `json:"viewer_is_member,omitempty"`
 	ViewerRole         string    `json:"viewer_role,omitempty"`
+	ViewerCanEdit      bool      `json:"viewer_can_edit,omitempty"`
+	ViewerCanManage    bool      `json:"viewer_can_manage,omitempty"`
+	ViewerCanPublish   bool      `json:"viewer_can_publish,omitempty"`
+	ViewerCanChat      bool      `json:"viewer_can_chat,omitempty"`
 }
 
 // listCompaniesFilters — параметры фильтрации.
@@ -26290,16 +26334,20 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 	c.CategoryLabel = catalogCategoryLabel(c.Category)
 	c.CategoryGroup = catalogCategoryGroupLabel(c.Category)
 	if viewerID > 0 {
-		if c.OwnerUserID == viewerID {
-			c.ViewerIsOwner = true
+		isM, isOwn, canE, canM, canP, canCh, _ := companyMemberRights(db, c.ID, viewerID)
+		if isM {
 			c.ViewerIsMember = true
-			c.ViewerRole = "owner"
-		} else {
-			isM, role, _ := userIsCompanyMember(db, viewerID, c.ID)
-			if isM {
-				c.ViewerIsMember = true
+			c.ViewerIsOwner = isOwn
+			if isOwn {
+				c.ViewerRole = "owner"
+			} else {
+				_, role, _ := userIsCompanyMember(db, viewerID, c.ID)
 				c.ViewerRole = role
 			}
+			c.ViewerCanEdit = canE
+			c.ViewerCanManage = canM
+			c.ViewerCanPublish = canP
+			c.ViewerCanChat = canCh
 		}
 	}
 	return &c, nil
@@ -26310,6 +26358,31 @@ func derefInt64(v *int64) int64 {
 		return 0
 	}
 	return *v
+}
+
+// companyMemberRights возвращает права viewer'а в компании.
+// Если viewer не член — все права = false. Если owner — все = true.
+// Если обычный сотрудник — возвращает реальные значения can_* полей.
+// Returns: (isMember, isOwner, canEdit, canManage, canPublish, canChat, error)
+func companyMemberRights(db *sql.DB, companyID, userID int64) (bool, bool, bool, bool, bool, bool, error) {
+	if userID == 0 || companyID == 0 {
+		return false, false, false, false, false, false, nil
+	}
+	var role string
+	var ce, cm, cp, cc bool
+	err := db.QueryRow(`SELECT role, can_edit_profile, can_manage_members, can_publish, can_chat
+	                    FROM company_members WHERE company_id=$1 AND user_id=$2`,
+		companyID, userID).Scan(&role, &ce, &cm, &cp, &cc)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, false, false, false, false, false, nil
+	}
+	if err != nil {
+		return false, false, false, false, false, false, err
+	}
+	if role == "owner" {
+		return true, true, true, true, true, true, nil
+	}
+	return true, false, ce, cm, cp, cc, nil
 }
 
 // resolveActiveCompanyID определяет id компании, от лица которой
@@ -26331,21 +26404,15 @@ func resolveActiveCompanyID(db *sql.DB, r *http.Request, userID, requestedID int
 	if cid == 0 {
 		return 0, nil
 	}
-	isM, role, err := userIsCompanyMember(db, userID, cid)
+	isM, isOwner, _, _, canPublish, _, err := companyMemberRights(db, cid, userID)
 	if err != nil {
 		return 0, err
 	}
 	if !isM {
 		return 0, fmt.Errorf("user %d is not a member of company %d", userID, cid)
 	}
-	if role != "owner" {
-		var canPublish bool
-		if err := db.QueryRow(`SELECT can_publish FROM company_members WHERE company_id=$1 AND user_id=$2`, cid, userID).Scan(&canPublish); err != nil {
-			return 0, err
-		}
-		if !canPublish {
-			return 0, fmt.Errorf("user %d cannot publish for company %d", userID, cid)
-		}
+	if !isOwner && !canPublish {
+		return 0, fmt.Errorf("user %d cannot publish for company %d", userID, cid)
 	}
 	return cid, nil
 }
