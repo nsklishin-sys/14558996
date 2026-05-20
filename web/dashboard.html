@@ -210,13 +210,6 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .nc-orig-deleted{font-size:12px;color:var(--gmt);font-style:italic;padding:10px 13px;border:1px dashed var(--bdr);border-radius:10px;background:var(--gp);margin-top:10px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .nc-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
-.nc-kebab{margin-left:6px;background:transparent;border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;color:var(--gmt);font-size:20px;line-height:1;display:grid;place-items:center;transition:background .15s,color .15s}
-.nc-kebab:hover{background:var(--gp);color:var(--g)}
-.post-menu{position:absolute;background:#fff;border:1px solid var(--bdr);border-radius:12px;box-shadow:0 8px 28px rgba(30,138,76,.14);padding:5px;min-width:180px;z-index:90;font-size:13px;font-family:inherit}
-.post-menu-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--t);background:transparent;border:none;width:100%;text-align:left;font-family:inherit;font-size:13px}
-.post-menu-item:hover{background:var(--gp)}
-.post-menu-item.danger{color:var(--red)}
-.post-menu-item.danger:hover{background:#FBEEEE}
 .nc-av{width:38px;height:38px;border-radius:10px;font-size:12px;font-weight:800;color:#fff;display:grid;place-items:center;flex-shrink:0}
 .nc-meta{flex:1;min-width:0}
 .nc-author{font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}
@@ -776,7 +769,6 @@ function renderCard(n,idx){
         ${infoHtml}
       </div>
       <span class="nc-badge ${badgeCls}">${esc(n.cat)}</span>
-      <button type="button" class="nc-kebab" title="Действия" onclick="event.stopPropagation();openPostMenu(${n.id||0},this)" aria-label="Открыть меню действий">⋯</button>
     </div>
     ${isRepost && (n.text === '↪' || !n.text) ? origCardHtml : `<div class="nc-body">
       <div class="nc-img-wrap">${imgHtml}</div>
@@ -932,48 +924,6 @@ function sharePost(postKey, btnEl){
       n.reposts_count = (n.reposts_count || 0) + 1;
     }
   });
-}
-
-function openPostMenu(postID, btn){
-  closePostMenu();
-  if (!postID) {
-    if (typeof showToast === 'function') showToast('Действие пока недоступно');
-    return;
-  }
-  const rect = btn.getBoundingClientRect();
-  const menu = document.createElement('div');
-  menu.className = 'post-menu';
-  menu.id = 'postMenu';
-  menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
-  menu.style.left = (rect.right + window.scrollX - 180) + 'px';
-  menu.innerHTML = `
-    <button type="button" class="post-menu-item danger" onclick="reportPost(${postID})">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-      Пожаловаться
-    </button>
-  `;
-  document.body.appendChild(menu);
-  setTimeout(() => {
-    document.addEventListener('click', closePostMenuOnce, { once: true });
-  }, 50);
-}
-
-function closePostMenu(){
-  const m = document.getElementById('postMenu');
-  if (m) m.remove();
-}
-
-function closePostMenuOnce(){
-  closePostMenu();
-}
-
-async function reportPost(postID){
-  closePostMenu();
-  if (typeof window.lastopComplain !== 'function') {
-    alert('Модалка жалоб не загружена');
-    return;
-  }
-  await window.lastopComplain('post', postID);
 }
 
 

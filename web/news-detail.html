@@ -817,9 +817,6 @@ function renderComments(){
             <svg viewBox="0 0 24 24"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
             Ответить
           </button>
-          <button type="button" class="com-act" onclick="reportComment(${c.id})" title="Пожаловаться" style="margin-left:auto;color:var(--gmt)">
-            <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          </button>
         </div>
         ${c.replies&&c.replies.length?`<div class="com-reply">`+c.replies.map(r=>`
           <div class="comment" id="comment-${c.id}-${r.id}">
@@ -851,14 +848,6 @@ function likeComment(id){
   const c=comments.find(x=>x.id===id);if(!c)return;
   c.liked=!c.liked;c.likes+=c.liked?1:-1;
   renderComments();
-}
-
-async function reportComment(commentID){
-  if (typeof window.lastopComplain !== 'function') {
-    alert('Модалка жалоб не загружена');
-    return;
-  }
-  await window.lastopComplain('comment', commentID);
 }
 
 function likeReply(cid,rid){
