@@ -16,7 +16,11 @@
   'use strict';
 
   var API = '/api';
-  function tk() { return localStorage.getItem('token'); }
+  function tk() {
+    // Phase 3 cookie-only: индикатор логина — user в localStorage.
+    try { return JSON.parse(localStorage.getItem('user') || '{}').id ? 'cookie' : ''; }
+    catch { return ''; }
+  }
 
   function getActiveCompanyID() {
     var v = localStorage.getItem('active_company_id');
