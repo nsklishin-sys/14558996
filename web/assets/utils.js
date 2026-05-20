@@ -131,7 +131,40 @@
         }
       }
     }
-    return fetch(url, opts);
+    return fetch(url, opts).then(function(response){
+      // Глобальный перехват 401: если у юзера отозвана сессия 
+      // (бан, terminate-sessions, истечение, logout с другого 
+      // устройства) — чистим localStorage и редиректим на /login.
+      // Исключения: /, /login.html, /register.html, /reset-password.html — 
+      // чтобы не зациклиться и не сломать auth-страницы.
+      if (response.status === 401) {
+        var p = window.location.pathname;
+        var isPublic = p === '/' || p === '/login.html' || p === '/register.html' || p === '/reset-password.html';
+        if (!isPublic) {
+          try { localStorage.removeItem('user'); } catch(e){}
+          try { localStorage.removeItem('token'); } catch(e){}
+          if (!window.__lastopAuthRedirect) {
+            window.__lastopAuthRedirect = true;
+            window.location.replace('/login.html?expired=1');
+          }
+        }
+      }
+      // Глобальный перехват "Аккаунт заблокирован" — забаненный юзер 
+      // получает 403 с этим текстом, его нужно выкинуть так же.
+      if (response.status === 403) {
+        response.clone().json().then(function(body){
+          if (body && body.error && /заблокирован/i.test(body.error)) {
+            try { localStorage.removeItem('user'); } catch(e){}
+            try { localStorage.removeItem('token'); } catch(e){}
+            if (!window.__lastopAuthRedirect) {
+              window.__lastopAuthRedirect = true;
+              window.location.replace('/login.html?banned=1');
+            }
+          }
+        }).catch(function(){});
+      }
+      return response;
+    });
   }
   global.lastopFetch = lastopFetch;
 
