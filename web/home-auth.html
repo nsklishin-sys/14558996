@@ -105,17 +105,17 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .hb-stats{display:flex;gap:18px;flex-shrink:0;margin-left:auto}
 
 /* Центральная карточка "Что нового" (Phase 5) */
-.hb-update{flex:1;min-width:0;max-width:380px;background:var(--w);border:1px solid var(--gb);border-radius:14px;padding:10px 14px;cursor:pointer;text-decoration:none;color:inherit;display:flex;align-items:center;gap:11px;transition:transform .15s,box-shadow .15s,border-color .15s}
-.hb-update:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(30,138,76,.12);border-color:var(--g)}
-.hb-update-ico{width:34px;height:34px;border-radius:10px;background:var(--g);display:grid;place-items:center;flex-shrink:0}
-.hb-update-ico svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hb-update{flex:1;min-width:0;max-width:420px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.5);border-radius:16px;padding:12px 14px 12px 12px;cursor:pointer;text-decoration:none;color:inherit;display:flex;align-items:center;gap:12px;transition:transform .18s,box-shadow .18s,background .18s}
+.hb-update:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.10);background:#fff}
+.hb-update-ico{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--g),var(--gm));display:grid;place-items:center;flex-shrink:0;box-shadow:0 2px 8px rgba(30,138,76,.25)}
+.hb-update-ico svg{width:20px;height:20px;fill:#fff;stroke:none}
 .hb-update-body{flex:1;min-width:0}
-.hb-update-tag{font-size:9px;font-weight:800;color:var(--g);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.hb-update-tag{font-size:9px;font-weight:800;color:var(--g);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;opacity:.85}
 .hb-update-title{font-size:13px;font-weight:700;color:var(--t);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hb-update-date{font-size:10px;color:var(--gmt);margin-top:2px}
-.hb-update-arrow{width:22px;height:22px;border-radius:50%;background:var(--gl);display:grid;place-items:center;flex-shrink:0;transition:background .15s,transform .15s}
-.hb-update:hover .hb-update-arrow{background:var(--g);transform:translateX(2px)}
-.hb-update-arrow svg{width:11px;height:11px;fill:none;stroke:var(--g);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.hb-update-arrow{width:24px;height:24px;border-radius:50%;background:var(--gl);display:grid;place-items:center;flex-shrink:0;transition:background .18s,transform .18s}
+.hb-update:hover .hb-update-arrow{background:var(--g);transform:translateX(3px)}
+.hb-update-arrow svg{width:11px;height:11px;fill:none;stroke:var(--g);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .18s}
 .hb-update:hover .hb-update-arrow svg{stroke:#fff}
 
 @media(max-width:1100px){.hb-update{display:none}}
@@ -674,7 +674,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     <!-- Phase 5: карточка "Что нового" — последнее обновление платформы -->
     <a class="hb-update" id="hbUpdate" href="/updates.html" style="display:none">
       <div class="hb-update-ico">
-        <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 3l1.7 4.5L18 9.2l-4.3 1.7L12 15.4l-1.7-4.5L6 9.2l4.3-1.7L12 3z"/><path d="M19 14l.7 1.9L21.5 16.6l-1.9.7L19 19l-.7-1.7-1.9-.7 1.9-.7L19 14z"/><path d="M5 16l.5 1.5L7 18l-1.5.5L5 20l-.5-1.5L3 18l1.5-.5L5 16z"/></svg>
       </div>
       <div class="hb-update-body">
         <div class="hb-update-tag">Что нового</div>
