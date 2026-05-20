@@ -591,6 +591,56 @@ func chatEscapeILike(q string) string {
 	return q
 }
 
+// applyPlatformUpdateAuthor — для постов категории platform-update
+// заменяет поля автора в DTO на фирменные LASTOP GROUP. Оригинальный
+// author_id в БД сохраняется (для аудита).
+func applyPlatformUpdateAuthor(category string, author map[string]any) map[string]any {
+	if category != "platform-update" {
+		return author
+	}
+	// Не мутируем оригинал — создаём новый map с подменёнными полями.
+	out := make(map[string]any, len(author)+1)
+	for k, v := range author {
+		out[k] = v
+	}
+	out["id"] = 0
+	out["public_id"] = "lastop-group"
+	out["full_name"] = "LASTOP GROUP"
+	out["first_name"] = "LASTOP"
+	out["last_name"] = "GROUP"
+	out["handle"] = "lastop"
+	out["position"] = "Команда платформы"
+	out["company_name"] = "ООО «Ластоп Групп»"
+	out["avatar_url"] = "/favicon.svg"
+	out["is_official"] = true
+	return out
+}
+
+func applyPlatformUpdateAuthorToPost(item *post) {
+	author := applyPlatformUpdateAuthor(item.Category, map[string]any{
+		"public_id":    item.AuthorPublicID,
+		"full_name":    item.AuthorName,
+		"position":     item.AuthorRole,
+		"avatar_url":   item.AuthorAvatar,
+		"company_name": item.AuthorCompanyName,
+	})
+	if v, ok := author["public_id"].(string); ok {
+		item.AuthorPublicID = v
+	}
+	if v, ok := author["full_name"].(string); ok {
+		item.AuthorName = v
+	}
+	if v, ok := author["position"].(string); ok {
+		item.AuthorRole = v
+	}
+	if v, ok := author["avatar_url"].(string); ok {
+		item.AuthorAvatar = v
+	}
+	if v, ok := author["company_name"].(string); ok {
+		item.AuthorCompanyName = v
+	}
+}
+
 type post struct {
 	ID                int64     `json:"id"`
 	PublicID          string    `json:"public_id"`
@@ -6336,6 +6386,14 @@ func main() {
 				return
 			}
 			req.CompanyID = resolvedCompanyID
+			// Phase 5: категория platform-update — только для админов.
+			if req.Category == "platform-update" {
+				isAdmin, _ := isUserAdmin(db, userID)
+				if !isAdmin {
+					writeError(w, http.StatusForbidden, "Категория 'Обновление платформы' доступна только администраторам")
+					return
+				}
+			}
 			// Если компания не активна — пробуем резолвить сообщество
 			if resolvedCompanyID == 0 {
 				resolvedCommunityID, err := resolveActiveCommunityID(db, r, userID, req.CommunityID)
@@ -6568,6 +6626,7 @@ func main() {
 				handlePostActionError(w, err)
 				return
 			}
+			applyPlatformUpdateAuthorToPost(&item)
 			writeJSON(w, http.StatusOK, map[string]any{"post": item})
 		case http.MethodPatch:
 			userID, hasAuth := authenticatedUserID(w, r, sessions)
@@ -6667,6 +6726,9 @@ func main() {
 		if err != nil {
 			handlePostActionError(w, err)
 			return
+		}
+		for i := range posts {
+			applyPlatformUpdateAuthorToPost(&posts[i])
 		}
 		w.Header().Set("Cache-Control", "private, max-age=30")
 		writeJSON(w, http.StatusOK, map[string]any{"posts": posts, "next_cursor": nextCursor})
@@ -6784,11 +6846,116 @@ func main() {
 		if items == nil {
 			items = []post{}
 		}
+		for i := range items {
+			applyPlatformUpdateAuthorToPost(&items[i])
+		}
 
 		w.Header().Set("Cache-Control", "public, max-age=60")
 		writeJSON(w, http.StatusOK, map[string]any{
 			"posts":  items,
 			"period": period,
+		})
+	})
+
+	// Phase 5 — обновления платформы. Возвращает посты с category='platform-update'.
+	// Доступны всем (это публичная новостная лента от LASTOP GROUP).
+	// Автор подменяется на LASTOP GROUP через applyPlatformUpdateAuthor.
+	mux.HandleFunc("/api/posts/platform-updates", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		limit := 20
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 50 {
+				limit = n
+			}
+		}
+		offset := 0
+		if o := r.URL.Query().Get("offset"); o != "" {
+			if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+				offset = n
+			}
+		}
+		rows, err := db.Query(`
+			SELECT p.public_id, p.title, p.content, p.cover_url, p.tags,
+			       p.likes_count, p.comments_count, p.views_count,
+			       p.created_at, p.updated_at, p.category
+			FROM posts p
+			WHERE p.is_deleted = FALSE
+			  AND p.category = 'platform-update'
+			  AND p.privacy_level = 'public'
+			ORDER BY p.created_at DESC
+			LIMIT $1 OFFSET $2
+		`, limit, offset)
+		if err != nil {
+			log.Printf("platform-updates list: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка загрузки")
+			return
+		}
+		defer rows.Close()
+		out := []map[string]any{}
+		for rows.Next() {
+			var pub, title, content, cat string
+			var cover sql.NullString
+			var tags []string
+			var likes, comments, views int
+			var created, updated time.Time
+			if err := rows.Scan(&pub, &title, &content, &cover, &tags, &likes, &comments, &views, &created, &updated, &cat); err != nil {
+				continue
+			}
+			out = append(out, map[string]any{
+				"public_id":      pub,
+				"title":          title,
+				"content":        content,
+				"cover_url":      cover.String,
+				"tags":           tags,
+				"likes_count":    likes,
+				"comments_count": comments,
+				"views_count":    views,
+				"created_at":     created,
+				"updated_at":     updated,
+				"category":       cat,
+				"author":         applyPlatformUpdateAuthor(cat, map[string]any{}),
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"posts": out})
+	})
+
+	// Последнее обновление платформы — для баннера на главной.
+	mux.HandleFunc("/api/posts/platform-updates/latest", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var pub, title, cat string
+		var created time.Time
+		err := db.QueryRow(`
+			SELECT public_id, title, created_at, category
+			FROM posts
+			WHERE is_deleted = FALSE
+			  AND category = 'platform-update'
+			  AND privacy_level = 'public'
+			ORDER BY created_at DESC
+			LIMIT 1
+		`).Scan(&pub, &title, &created, &cat)
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusOK, map[string]any{"post": nil})
+			return
+		}
+		if err != nil {
+			log.Printf("platform-updates/latest: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"post": map[string]any{
+				"public_id":  pub,
+				"title":      title,
+				"created_at": created,
+				"category":   cat,
+				"author":     applyPlatformUpdateAuthor(cat, map[string]any{}),
+			},
 		})
 	})
 
@@ -13368,6 +13535,14 @@ func requireAdmin(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *
 		return 0, false
 	}
 	return userID, true
+}
+
+func isUserAdmin(db *sql.DB, userID int64) (bool, error) {
+	var isAdmin bool
+	if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id = $1`, userID).Scan(&isAdmin); err != nil {
+		return false, err
+	}
+	return isAdmin, nil
 }
 
 // SEC-COOKIE-AUTH (18.05): двойная-cookie аутентификация с CSRF-защитой.
