@@ -810,6 +810,24 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
             </div>
           </div>
         </div>
+
+        <!-- Phase 5: Обновления платформы -->
+        <div class="panel-section"> 
+          <div class="ps-label" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span>Обновления платформы</span>
+            <a href="/updates.html" style="font-size:12px;font-weight:600;color:var(--g);text-decoration:none">Посмотреть все →</a>
+          </div>
+          <div style="background:var(--gp);border:1px solid var(--bdr);border-radius:12px;padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--t);margin-bottom:2px">Анонсы для всех участников</div>
+                <div style="font-size:11px;color:var(--gmt)">Публикуются от имени LASTOP GROUP и появляются в баннере на главной</div>
+              </div>
+              <button type="button" onclick="openUpdateModal()" style="padding:8px 14px;border-radius:8px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Опубликовать</button>
+            </div>
+            <div id="updatesList" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
       </div>
 
     </div><!-- /settings-panels -->
@@ -948,6 +966,7 @@ function setupAdminPanel() {
   const btn = document.getElementById('adminMenuBtn');
   if (btn) btn.style.display = '';
   loadMaintenanceStatus();
+  loadPlatformUpdates();
 }
 
 async function loadMaintenanceStatus() {
@@ -1008,6 +1027,132 @@ async function saveMaintenance() {
   btn.textContent = 'Сохранить';
 }
 
+
+// Phase 5: список последних обновлений платформы в админ-панели.
+async function loadPlatformUpdates() {
+  const wrap = document.getElementById('updatesList');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="font-size:12px;color:var(--gmt);padding:8px 0">Загрузка…</div>';
+  try {
+    const r = await lastopFetch('/api/posts/platform-updates?limit=5');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const posts = d.posts || [];
+    if (!posts.length) {
+      wrap.innerHTML = '<div style="font-size:12px;color:var(--gmt);padding:8px 0">Пока ничего не опубликовано</div>';
+      return;
+    }
+    wrap.innerHTML = posts.map(p => {
+      const dt = new Date(p.created_at);
+      const dateStr = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'});
+      const titleEsc = String(p.title||'Без заголовка').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const pidEsc = String(p.public_id||'').replace(/[^a-zA-Z0-9_-]/g,'');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--w);border:1px solid var(--bdr);border-radius:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titleEsc}</div>
+          <div style="font-size:11px;color:var(--gmt);margin-top:2px">${dateStr}</div>
+        </div>
+        <button type="button" onclick="deletePlatformUpdate('${pidEsc}', this)" title="Удалить" style="width:30px;height:30px;border-radius:8px;background:transparent;border:1px solid var(--bdr);color:var(--gmt);cursor:pointer;display:grid;place-items:center;flex-shrink:0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+  } catch {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--red);padding:8px 0">Не удалось загрузить</div>';
+  }
+}
+
+async function deletePlatformUpdate(publicID, btn) {
+  if (!publicID) return;
+  const ok = await lastopConfirm({
+    title: 'Удалить обновление?',
+    message: 'Запись будет скрыта со всех страниц платформы.',
+    danger: true,
+    confirmText: 'Удалить'
+  });
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    const r = await lastopFetch('/api/posts/' + encodeURIComponent(publicID), {method:'DELETE'});
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      alert(e.error || 'Не удалось удалить');
+      btn.disabled = false;
+      return;
+    }
+    loadPlatformUpdates();
+  } catch {
+    alert('Ошибка соединения');
+    btn.disabled = false;
+  }
+}
+
+function openUpdateModal() {
+  const m = document.getElementById('updateModalBg');
+  if (!m) return;
+  document.getElementById('updateTitle').value = '';
+  document.getElementById('updateContent').value = '';
+  document.getElementById('updateCover').value = '';
+  document.getElementById('updateError').style.display = 'none';
+  m.classList.add('open');
+  setTimeout(() => document.getElementById('updateTitle').focus(), 50);
+}
+
+function closeUpdateModal() {
+  const m = document.getElementById('updateModalBg');
+  if (m) m.classList.remove('open');
+}
+
+async function submitPlatformUpdate() {
+  const title = document.getElementById('updateTitle').value.trim();
+  const content = document.getElementById('updateContent').value.trim();
+  const cover = document.getElementById('updateCover').value.trim();
+  const err = document.getElementById('updateError');
+  const btn = document.getElementById('updateSubmitBtn');
+  if (!title || title.length < 3) {
+    err.textContent = 'Введите заголовок (минимум 3 символа)';
+    err.style.display = 'block';
+    return;
+  }
+  if (!content || content.length < 10) {
+    err.textContent = 'Введите текст обновления (минимум 10 символов)';
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Публикация…';
+  try {
+    const r = await lastopFetch('/api/posts', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        title,
+        content,
+        type: 'news',
+        category: 'platform-update',
+        cover_url: cover,
+        privacy_level: 'public',
+        tags: []
+      })
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      err.textContent = e.error || 'Не удалось опубликовать';
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Опубликовать';
+      return;
+    }
+    closeUpdateModal();
+    loadPlatformUpdates();
+  } catch {
+    err.textContent = 'Ошибка соединения';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Опубликовать';
+  }
+}
 
 /* ── ПЕРЕКЛЮЧЕНИЕ ПАНЕЛЕЙ ── */
 function initSettingsPanels(){
@@ -1736,6 +1881,24 @@ document.addEventListener('change', (e) => {
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button type="button" onclick="closePwdModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
       <button type="button" id="pwdSubmitBtn" onclick="executePwdChange()" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Сменить</button>
+    </div>
+  </div>
+</div>
+<!-- Phase 5: модалка создания обновления платформы -->
+<div class="modal-bg" id="updateModalBg" onclick="if(event.target===this)closeUpdateModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:var(--z-modal);padding:20px">
+  <div style="background:var(--w);border-radius:18px;padding:22px;width:100%;max-width:520px;box-shadow:0 24px 60px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
+    <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px">Опубликовать обновление платформы</div>
+    <div style="font-size:12px;color:var(--gmt);margin-bottom:14px">Автор будет указан как LASTOP GROUP. Появится в баннере «Что нового» на главной.</div>
+    <label style="font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block">Заголовок</label>
+    <input type="text" id="updateTitle" placeholder="Например: Новый раздел «Резюме»" maxlength="200" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:12px">
+    <label style="font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block">Текст</label>
+    <textarea id="updateContent" rows="6" placeholder="Что нового, что улучшено…" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;resize:vertical;margin-bottom:12px"></textarea>
+    <label style="font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block">Обложка — URL (необязательно)</label>
+    <input type="url" id="updateCover" placeholder="https://…" style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;font-size:13px;outline:none;margin-bottom:14px">
+    <div id="updateError" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" onclick="closeUpdateModal()" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>
+      <button type="button" id="updateSubmitBtn" onclick="submitPlatformUpdate()" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Опубликовать</button>
     </div>
   </div>
 </div>
