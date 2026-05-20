@@ -151,4 +151,78 @@
       });
     });
   };
+
+  /**
+   * Вставляет карточку «Пожаловаться» в правый сайдбар страницы.
+   * Сама находит aside.right и добавляет .card в конец.
+   * Если карточка уже добавлена ранее — не дублирует.
+   *
+   * @param {Object} opts
+   * @param {string} opts.targetType - 'post' | 'comment' | 'user' | 'company' | 'community' | ...
+   * @param {Function|number} opts.targetID - id числовой или функция-геттер, возвращающая id
+   * @param {string} [opts.label] - заголовок блока, по умолчанию 'Действия'
+   * @param {Function} [opts.shouldShow] - функция-проверка показывать ли (например !isOwner)
+   */
+  window.lastopComplainSidebar = function(opts){
+    function tryRender(){
+      if (typeof opts.shouldShow === 'function' && !opts.shouldShow()) return;
+      const sidebar = document.querySelector('aside.right, .right');
+      if (!sidebar) return;
+      if (sidebar.querySelector('[data-complaint-card]')) return; // уже есть
+      const id = typeof opts.targetID === 'function' ? opts.targetID() : opts.targetID;
+      if (!id || Number(id) <= 0) return;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.setAttribute('data-complaint-card', '1');
+      card.innerHTML = `
+        <div class="block-title">${opts.label || 'Действия'}</div>
+        <button type="button" class="complaint-sidebar-btn" style="
+          width:100%;padding:10px 12px;border-radius:10px;
+          background:transparent;border:1.5px solid #DDE8E2;
+          color:#5A8A6A;font-family:inherit;font-size:13px;font-weight:600;
+          cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+          transition:all .15s">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Пожаловаться
+        </button>
+      `;
+      const btn = card.querySelector('button');
+      btn.addEventListener('mouseenter', () => {
+        btn.style.borderColor = '#E04040';
+        btn.style.color = '#E04040';
+        btn.style.background = '#FBEEEE';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.borderColor = '#DDE8E2';
+        btn.style.color = '#5A8A6A';
+        btn.style.background = 'transparent';
+      });
+      btn.addEventListener('click', () => {
+        const currentID = typeof opts.targetID === 'function' ? opts.targetID() : opts.targetID;
+        if (!currentID || Number(currentID) <= 0) return;
+        window.lastopComplain(opts.targetType, Number(currentID));
+      });
+      sidebar.appendChild(card);
+    }
+
+    // Если DOM уже готов — вставляем сразу. Если ID появится позже —
+    // даём странице время и пытаемся повторно (до 5 сек).
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryRender);
+    } else {
+      tryRender();
+    }
+    // Дополнительные попытки на случай если id грузится асинхронно
+    let tries = 0;
+    const interval = setInterval(() => {
+      if (++tries > 25) { clearInterval(interval); return; }
+      const sidebar = document.querySelector('aside.right, .right');
+      if (sidebar && sidebar.querySelector('[data-complaint-card]')) {
+        clearInterval(interval);
+        return;
+      }
+      tryRender();
+    }, 200);
+  };
 })();
