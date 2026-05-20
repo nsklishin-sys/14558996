@@ -42,6 +42,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .up-empty h3{font-size:15px;font-weight:700;color:var(--t);margin-bottom:6px}
 .up-empty p{font-size:13px}
 
+.arch-item{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:var(--rm);cursor:pointer;transition:background .15s;text-decoration:none;color:inherit}
+.arch-item:hover{background:var(--gp)}
+.arch-name{font-size:12px;color:var(--t);font-weight:500;text-transform:capitalize}
+.arch-cnt{font-size:11px;color:var(--gmt);font-weight:600;background:var(--gp);padding:1px 8px;border-radius:99px}
+.arch-item:hover .arch-cnt{background:var(--w)}
+
 .card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
 .block-title{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
 
@@ -50,7 +56,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 </head>
 <body>
 <div class="shell">
-  <a class="logo-cell" href="/" style="grid-area:logo"></a>
+  <a class="logo-cell" href="/" style="grid-area:logo"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
   <header class="topbar"></header>
   <nav class="nav"></nav>
 
@@ -69,6 +75,37 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="card">
       <div class="block-title">О разделе</div>
       <p style="font-size:12px;color:var(--tm);line-height:1.6">Здесь публикуются официальные новости от команды LASTOP GROUP — о новых функциях, изменениях и важных событиях платформы.</p>
+    </div>
+
+    <!-- Архив по месяцам — заполняется в JS -->
+    <div class="card" id="archiveCard" style="display:none">
+      <div class="block-title">Архив</div>
+      <div id="archiveList" style="display:flex;flex-direction:column;gap:1px"></div>
+    </div>
+
+    <div class="card">
+      <div class="block-title">Полезные ссылки</div>
+      <a href="/forum.html" style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600;transition:background .15s" onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Форум
+      </a>
+      <a href="/forum.html?cat=ideas" style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600;transition:background .15s" onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
+        Идеи и предложения
+      </a>
+      <a href="/chat.html" style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600;transition:background .15s" onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        Связаться с поддержкой
+      </a>
+    </div>
+
+    <div class="ad-block" style="background:#F8F5FF;border:1px solid #DDD0F0;border-radius:var(--rxl);padding:14px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:10px;left:10px;background:#EAE0FA;color:#8060C0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px">реклама</div>
+      <div style="margin-top:20px;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:#5040A0">LogisticsPro 2026</div>
+        <div style="font-size:11px;color:#7060B0;margin-top:3px">Выставка · Москва · май</div>
+        <button onclick="location.href='/events.html'" style="display:block;margin:10px auto 0;padding:7px 20px;border-radius:12px;background:#7060B0;color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit">Узнать подробнее</button>
+      </div>
     </div>
   </aside>
 </div>
@@ -120,6 +157,7 @@ async function loadUpdates(){
           <div class="up-content">${esc(p.content)}</div>
         </div>`;
     }).join('');
+    renderArchive(posts);
     if (location.hash) {
       const el = document.getElementById('post-' + location.hash.slice(1));
       if (el) setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}), 100);
@@ -127,6 +165,36 @@ async function loadUpdates(){
   } catch(e) {
     list.innerHTML = '<div class="up-card" style="color:var(--gmt);text-align:center">Не удалось загрузить обновления.</div>';
   }
+}
+
+function renderArchive(posts){
+  const card = document.getElementById('archiveCard');
+  const wrap = document.getElementById('archiveList');
+  if (!card || !wrap || !posts.length) return;
+  const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const groups = {};
+  posts.forEach(p => {
+    const dt = new Date(p.created_at);
+    const key = dt.getFullYear() + '-' + String(dt.getMonth()).padStart(2,'0');
+    if (!groups[key]) groups[key] = {label: MONTHS[dt.getMonth()] + ' ' + dt.getFullYear(), firstId: p.public_id, count: 0};
+    groups[key].count++;
+  });
+  const keys = Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  wrap.innerHTML = keys.map(k => {
+    const g = groups[k];
+    return `<a class="arch-item" href="#${esc(g.firstId)}" onclick="scrollToPost(event,'${esc(g.firstId)}')">
+      <span class="arch-name">${esc(g.label)}</span>
+      <span class="arch-cnt">${g.count}</span>
+    </a>`;
+  }).join('');
+  card.style.display = 'block';
+}
+
+function scrollToPost(ev, pid){
+  ev.preventDefault();
+  const el = document.getElementById('post-' + pid);
+  if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  history.replaceState(null, '', '#' + pid);
 }
 
 document.addEventListener('DOMContentLoaded', loadUpdates);
