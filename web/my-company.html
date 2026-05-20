@@ -114,7 +114,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* MEMBER LIST */
 .member-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp);transition:all .12s}
 .member-row:hover{border-color:var(--gb);background:var(--gl)}
-.member-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;text-decoration:none}
+.member-av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;text-decoration:none;overflow:hidden;position:relative}
+.member-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.mc-side-action{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:10px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600;transition:background .12s,color .12s;margin-bottom:2px}
+.mc-side-action:hover{background:var(--gp);color:var(--g)}
+.mc-side-action:hover svg{stroke:var(--g)}
+.mc-side-action svg{width:16px;height:16px;flex-shrink:0;fill:none;stroke:var(--gmt);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .12s}
 .member-info{flex:1;min-width:0}
 .member-name{font-size:13px;font-weight:800;color:var(--t)}
 .member-name a{color:inherit;text-decoration:none}
@@ -605,15 +610,77 @@ function render(){
   document.getElementById('mainArea').innerHTML = headerHtml + tabsHtml + '<div id="tabContent"></div>';
 
   // sidebar
+  const publicHref = '/company-detail.html?slug=' + encodeURIComponent(c.slug);
   document.getElementById('rightArea').innerHTML =
     '<div class="panel">' +
       '<div class="panel-title">Краткая информация</div>' +
       '<div class="fld"><span class="fld-label">Slug</span><span style="font-family:monospace;font-size:12px;color:var(--g)">/' + esc(c.slug) + '</span></div>' +
       '<div class="fld"><span class="fld-label">Создана</span><span style="font-size:12px;color:var(--t)">' + esc(fmtDateAbs(c.created_at)) + '</span></div>' +
       '<div class="fld"><span class="fld-label">Статус верификации</span>' + (window.lastopCompanyBadge ? lastopCompanyBadge(c, 'full') : '<span style="font-size:12px;color:var(--t)">' + (c.is_verified ? '✓ Верифицирована' : 'Не верифицирована') + '</span>') + '</div>' +
+    '</div>' +
+    '<div class="panel">' +
+      '<div class="panel-title">Действия</div>' +
+      '<a href="' + escAttr(publicHref) + '" target="_blank" rel="noopener" class="mc-side-action">' +
+        '<svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+        '<span>Открыть публичную страницу</span>' +
+      '</a>' +
+      '<a href="/dashboard.html?company=' + encodeURIComponent(c.public_id) + '" class="mc-side-action">' +
+        '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+        '<span>Опубликовать пост</span>' +
+      '</a>' +
+      '<button type="button" onclick="copyPublicLink()" class="mc-side-action" style="background:none;border:none;width:100%;text-align:left;font-family:inherit;cursor:pointer">' +
+        '<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' +
+        '<span>Скопировать ссылку</span>' +
+      '</button>' +
+    '</div>' +
+    '<div class="panel">' +
+      '<div class="panel-title">Статистика</div>' +
+      '<div class="fld"><span class="fld-label">Сотрудников</span><span style="font-size:13px;font-weight:700;color:var(--t)">' + (c.members_count || 1) + '</span></div>' +
+      '<div class="fld" id="mcStatPubs"><span class="fld-label">Публикаций</span><span style="font-size:13px;font-weight:700;color:var(--gmt)">—</span></div>' +
+      '<div class="fld"><span class="fld-label">На платформе</span><span style="font-size:12px;color:var(--t)">' + esc(daysSince(c.created_at)) + '</span></div>' +
     '</div>';
 
+  loadCompanyPubsCount();
   renderTab();
+}
+
+function daysSince(ts){
+  if (!ts) return '—';
+  const d = Math.floor((Date.now() - new Date(ts)) / 86400000);
+  if (d < 1) return 'меньше дня';
+  if (d === 1) return '1 день';
+  if (d < 5) return d + ' дня';
+  if (d < 30) return d + ' дней';
+  if (d < 60) return 'месяц';
+  if (d < 365) return Math.floor(d/30) + ' мес.';
+  const y = Math.floor(d/365);
+  return y + (y === 1 ? ' год' : (y < 5 ? ' года' : ' лет'));
+}
+
+async function loadCompanyPubsCount(){
+  const el = document.getElementById('mcStatPubs');
+  if (!el || !currentCompany) return;
+  try {
+    const r = await lastopFetch(API + '/companies/' + encodeURIComponent(currentCompany.public_id) + '/posts?limit=1', { headers: authHeaders() });
+    if (!r.ok) return;
+    const d = await r.json();
+    const cnt = (d.total != null) ? d.total : (d.posts ? d.posts.length : 0);
+    el.innerHTML = '<span class="fld-label">Публикаций</span><span style="font-size:13px;font-weight:700;color:var(--t)">' + cnt + '</span>';
+  } catch {}
+}
+
+function copyPublicLink(){
+  if (!currentCompany) return;
+  const url = location.origin + '/company-detail.html?slug=' + encodeURIComponent(currentCompany.slug);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => toast('Ссылка скопирована'), () => toast('Не удалось скопировать'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('Ссылка скопирована'); }
+    catch { toast('Не удалось скопировать'); }
+    document.body.removeChild(ta);
+  }
 }
 
 async function setTab(key){
@@ -838,7 +905,7 @@ async function renderMembers(wrap){
     const isOwner = !!currentCompany.viewer_is_owner;
     let inner = members.map(m => {
       const av = m.user_avatar
-        ? '<img src="' + escAttr(m.user_avatar) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'
+        ? '<img src="' + escAttr(m.user_avatar) + '" alt="">'
         : esc(initials(m.user_name));
       const profileHref = m.user_public_id ? '/profile_user.html?id=' + encodeURIComponent(m.user_public_id) : '#';
       return '<div class="member-row">' +
