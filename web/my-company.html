@@ -762,8 +762,11 @@ function renderAbout(wrap){
         '<div class="fld"><label class="fld-label">Email</label><input class="fld-input" id="aboutEmail"' + dis + ' value="' + escAttr(c.email || '') + '"></div>' +
         '<div class="fld"><label class="fld-label">Телефон</label><input class="fld-input" id="aboutPhone"' + dis + ' value="' + escAttr(c.phone || '') + '"></div>' +
       '</div>' +
-      (isOwner
-        ? '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="btn btn-danger" onclick="deleteCompany()"><svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Удалить компанию</button><button type="button" class="btn btn-primary" id="aboutSaveBtn" onclick="saveAbout()">Сохранить</button></div>'
+      (canEdit
+        ? '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">' +
+            (isOwner ? '<button type="button" class="btn btn-danger" onclick="deleteCompany()"><svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Удалить компанию</button>' : '') +
+            '<button type="button" class="btn btn-primary" id="aboutSaveBtn" onclick="saveAbout()">Сохранить</button>' +
+          '</div>'
         : '') +
     '</div>';
 
