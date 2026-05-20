@@ -176,12 +176,13 @@
   }
 
   function populateUserFromCache() {
-    // Гость — не заполняем (guest-nav.js сам подставит «Войти/Регистрация»)
-    let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
-    if (!token) return;
+    // Гость — не заполняем (guest-nav.js сам подставит «Войти/Регистрация»).
+    // Phase 3 cookie-only: единственный признак логина — наличие user
+    // в localStorage. Прежняя проверка localStorage.token больше не
+    // работает (token cookie теперь httpOnly, в localStorage его нет).
     let u = {};
     try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
+    if (!u || !(u.id || u.public_id)) return;
     const name = u.full_name || u.name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || 'Пользователь';
     const role = u.position || u.role || 'Участник LASTOP';
     const ltr = letter(name);
@@ -226,9 +227,9 @@
   }
 
   async function loadDropdownCounters() {
-    let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
-    if (!token) return;
+    let hasUser = false;
+    try { hasUser = !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch {}
+    if (!hasUser) return;
     const headers={};
     try {
       const r = await lastopFetch('/api/friends', { headers });
