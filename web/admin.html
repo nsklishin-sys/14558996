@@ -270,7 +270,92 @@ var COMPLAINT_REASONS={spam:'Спам',abuse:'Оскорбления',illegal:'�
 var COMPLAINT_TYPES={post:'Пост',comment:'Комментарий',user:'Пользователь',company:'Компания',community:'Сообщество',chat_message:'Сообщение в чате',forum_message:'Сообщение в форуме',event_message:'Сообщение в событии'};
 var COMPLAINT_STATUSES={new:{label:'Новая',cls:'banned'},under_review:{label:'На рассмотрении',cls:'active'},resolved_action:{label:'Решена',cls:'admin'},resolved_reject:{label:'Отклонена',cls:''}};
 function renderComplaints(items){var tb=document.getElementById('complaintsTbody');if(!items.length){tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}tb.innerHTML=items.map(function(c){var st=COMPLAINT_STATUSES[c.status]||{label:c.status,cls:''};var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';var typeName=COMPLAINT_TYPES[c.target_type]||c.target_type;var reasonName=COMPLAINT_REASONS[c.reason]||c.reason;return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(typeName)+'</div><div class="u-pos">ID: '+c.target_id+(c.target_public_id?' · '+esc(c.target_public_id):'')+'</div></div><div class="u-name" style="font-size:12px">'+esc(reasonName)+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');}
-async function openComplaint(id){document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent='Жалоба #'+id;document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';document.getElementById('dpActions').innerHTML='';var r=await lastopFetch('/api/admin/complaints/'+id);if(!r.ok){document.getElementById('dpBody').innerHTML='<div class="empty">Не удалось загрузить</div>';return;}var d=await r.json();document.getElementById('dpBody').innerHTML='<pre style="white-space:pre-wrap">'+esc(JSON.stringify(d,null,2))+'</pre>';}
+async function openComplaint(id){
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('panelOverlay').classList.add('show');
+  document.querySelector('.dp-head h3').textContent='Жалоба #'+id;
+  document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';
+  document.getElementById('dpActions').innerHTML='';
+  try{
+    var r=await lastopFetch('/api/admin/complaints/'+id);
+    if(!r.ok)throw 0;
+    var d=await r.json();
+    renderComplaintDetail(d);
+  }catch(e){
+    document.getElementById('dpBody').innerHTML='<div class="empty">Не удалось загрузить</div>';
+  }
+}
+function renderComplaintDetail(d){
+  var st=COMPLAINT_STATUSES[d.status]||{label:d.status,cls:''};
+  var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';
+  var reasonName=COMPLAINT_REASONS[d.reason]||d.reason;
+  var typeName=COMPLAINT_TYPES[d.target_type]||d.target_type;
+  var prv=d.preview||{};
+  var previewHtml='';
+  if(prv.available){
+    if(d.target_type==='post'){
+      previewHtml='<div class="dp-section">Превью поста</div><div style="background:var(--gp);border:1px solid var(--bdr);border-radius:10px;padding:10px;font-size:12px;color:var(--tm);line-height:1.55">'+(prv.title?'<div style="font-weight:700;color:var(--t);margin-bottom:6px">'+esc(prv.title)+'</div>':'')+'<div>'+esc((prv.content||'').slice(0,400))+(prv.content&&prv.content.length>400?'…':'')+'</div>'+(prv.author_name?'<div style="margin-top:6px;color:var(--gmt);font-size:11px">Автор: '+esc(prv.author_name)+'</div>':'')+(prv.is_hidden?'<div style="margin-top:6px;color:var(--red);font-weight:700;font-size:11px">⚠ Уже скрыт</div>':'')+'</div>';
+    }else if(d.target_type==='comment'){
+      previewHtml='<div class="dp-section">Превью комментария</div><div style="background:var(--gp);border:1px solid var(--bdr);border-radius:10px;padding:10px;font-size:12px;color:var(--tm);line-height:1.55"><div>'+esc((prv.content||'').slice(0,500))+'</div>'+(prv.author_name?'<div style="margin-top:6px;color:var(--gmt);font-size:11px">Автор: '+esc(prv.author_name)+'</div>':'')+'</div>';
+    }else if(d.target_type==='user'){
+      previewHtml='<div class="dp-section">Пользователь</div><div class="dp-row"><span class="lbl">Имя</span><span class="val">'+esc(prv.full_name||'—')+'</span></div><div class="dp-row"><span class="lbl">Email</span><span class="val">'+esc(prv.email||'—')+'</span></div>'+(prv.is_banned?'<div class="dp-row"><span class="lbl">Статус</span><span class="val" style="color:var(--red)">Заблокирован</span></div>':'');
+    }else if(d.target_type==='company'){
+      previewHtml='<div class="dp-section">Компания</div><div class="dp-row"><span class="lbl">Название</span><span class="val">'+esc(prv.name||'—')+'</span></div>'+(prv.is_blocked?'<div class="dp-row"><span class="lbl">Статус</span><span class="val" style="color:var(--red)">Заблокирована</span></div>':'');
+    }
+  }
+  var screenshotHtml='';
+  if(d.screenshot_url){
+    screenshotHtml='<div class="dp-section">Скриншот</div><a href="'+esc(d.screenshot_url)+'" target="_blank" style="display:block;border-radius:10px;overflow:hidden;border:1px solid var(--bdr);margin-bottom:8px"><img src="'+esc(d.screenshot_url)+'" alt="Скриншот" style="display:block;width:100%;max-height:300px;object-fit:contain;background:var(--gp)"></a>';
+  }
+  document.getElementById('dpBody').innerHTML=
+    '<div class="dp-section" style="margin-top:0">Жалоба</div>'+
+    '<div class="dp-row"><span class="lbl">Объект</span><span class="val">'+esc(typeName)+' #'+d.target_id+'</span></div>'+
+    '<div class="dp-row"><span class="lbl">Причина</span><span class="val">'+esc(reasonName)+'</span></div>'+
+    '<div class="dp-row"><span class="lbl">Статус</span><span class="val">'+badge+'</span></div>'+
+    '<div class="dp-row"><span class="lbl">Дата</span><span class="val">'+fmtDateTime(d.created_at)+'</span></div>'+
+    (d.comment?'<div class="dp-section">Комментарий</div><div style="background:var(--gp);border:1px solid var(--bdr);border-radius:10px;padding:10px;font-size:12px;color:var(--tm);line-height:1.55">'+esc(d.comment)+'</div>':'')+
+    screenshotHtml+
+    '<div class="dp-section">От кого</div>'+
+    '<div class="dp-row"><span class="lbl">Имя</span><span class="val">'+esc(d.reporter_name||'—')+'</span></div>'+
+    '<div class="dp-row"><span class="lbl">Email</span><span class="val">'+esc(d.reporter_email||'—')+'</span></div>'+
+    previewHtml+
+    (d.resolution_note?'<div class="dp-section">Резолюция</div><div style="background:var(--gp);border:1px solid var(--bdr);border-radius:10px;padding:10px;font-size:12px;color:var(--tm)">'+esc(d.resolution_note)+'</div>':'');
+  var actions=[];
+  var isFinal=(d.status==='resolved_action'||d.status==='resolved_reject');
+  if(!isFinal){
+    if(d.status==='new')actions.push('<button class="dp-btn" onclick="actComplaintReview('+d.id+')">Взять в работу</button>');
+    if(d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintHide('+d.id+')">Скрыть контент</button>');
+    if(d.target_type==='user'||d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintBanAuthor('+d.id+')">Забанить автора</button>');
+    if(d.target_type==='company')actions.push('<button class="dp-btn danger" onclick="actComplaintBlockCompany('+d.id+')">Заблокировать компанию</button>');
+    actions.push('<button class="dp-btn" onclick="actComplaintReject('+d.id+')">Отклонить</button>');
+  }else{
+    actions.push('<div style="font-size:12px;color:var(--gmt);text-align:center;padding:6px">Жалоба закрыта</div>');
+  }
+  document.getElementById('dpActions').innerHTML=actions.join('');
+}
+async function actComplaintReview(id){
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'under_review'})});if(!r.ok){alert('Ошибка');return;}openComplaint(id);loadComplaints();}catch(e){alert('Ошибка соединения');}
+}
+async function actComplaintHide(id){
+  var note=await lastopPrompt({title:'Скрыть контент',message:'Контент скроется от всех кроме автора.',placeholder:'Причина',confirmText:'Скрыть',danger:true});
+  if(note===null)return;
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved_action',action:'hide_content',note:String(note||'').trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadComplaints();loadOverview();}catch(e){alert('Ошибка соединения');}
+}
+async function actComplaintBanAuthor(id){
+  var note=await lastopPrompt({title:'Забанить автора',message:'Автор будет заблокирован.',placeholder:'Причина',confirmText:'Забанить',danger:true});
+  if(note===null||!String(note).trim())return;
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved_action',action:'ban_author',note:String(note).trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadComplaints();loadOverview();}catch(e){alert('Ошибка соединения');}
+}
+async function actComplaintBlockCompany(id){
+  var note=await lastopPrompt({title:'Заблокировать компанию',message:'Компания скроется со всей платформы.',placeholder:'Причина',confirmText:'Заблокировать',danger:true});
+  if(note===null||!String(note).trim())return;
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved_action',action:'block_company',note:String(note).trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadComplaints();loadOverview();}catch(e){alert('Ошибка соединения');}
+}
+async function actComplaintReject(id){
+  var note=await lastopPrompt({title:'Отклонить жалобу',message:'Жалоба будет помечена как необоснованная.',placeholder:'Причина',confirmText:'Отклонить'});
+  if(note===null)return;
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved_reject',action:'none',note:String(note||'').trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadComplaints();loadOverview();}catch(e){alert('Ошибка соединения');}
+}
 lastopFetch('/api/admin/complaints?limit=1').then(function(r){if(!r.ok)return null;return r.json();}).then(function(d){if(d)updateComplaintsBadge(d.new_count||0);}).catch(function(){});
 
 loadOverview();
