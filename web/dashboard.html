@@ -1118,6 +1118,15 @@ async function loadHeroNews(){
     // Используем общий хелпер pickPostAuthor — он корректно различает
     // сообщество / компанию / юзера и подбирает имя+аватарку.
     const authorMeta = pickPostAuthor(post);
+    console.log('[HERO]', {
+      author_company_id: post.author_company_id,
+      author_company_name: post.author_company_name,
+      author_company_logo_len: (post.author_company_logo||'').length,
+      author_avatar_len: (post.author_avatar||'').length,
+      picked_avatar_len: (authorMeta.avatar||'').length,
+      picked_name: authorMeta.name,
+      fromCompany: authorMeta.fromCompany,
+    });
 
     document.getElementById('heroCat').textContent = (post.tags && post.tags.length ? '#' + post.tags[0] : 'Публикация') + ' · ' + authorMeta.name;
 
