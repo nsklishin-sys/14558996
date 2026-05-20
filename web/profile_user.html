@@ -710,7 +710,8 @@ function applyFriendButton(profile){
   if (!btn || !label) return;
 
   // Не показываем анонимам и самому себе
-  if (!localStorage.getItem('token') || _profileFriendStatus === 'self' || profile.is_self) {
+  var __pu_authed = false; try { __pu_authed = !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch (_) {}
+  if (!__pu_authed || _profileFriendStatus === 'self' || profile.is_self) {
     btn.style.display = 'none';
     return;
   }

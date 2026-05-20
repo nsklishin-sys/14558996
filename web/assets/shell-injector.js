@@ -227,7 +227,7 @@
   }
 
   async function loadDropdownCounters() {
-    let hasUser = false;
+    var hasUser = false;
     try { hasUser = !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch {}
     if (!hasUser) return;
     const headers={};
@@ -252,9 +252,9 @@
   }
 
   async function refreshUserFromServer() {
-    let token = '';
-    try { token = localStorage.getItem('token') || ''; } catch {}
-    if (!token) return;
+    var hasUser = false;
+    try { hasUser = !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch {}
+    if (!hasUser) return;
     try {
       const r = await lastopFetch('/api/me', { headers:{} });
       if (!r.ok) return;
