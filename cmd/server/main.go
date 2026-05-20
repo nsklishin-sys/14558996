@@ -19005,6 +19005,7 @@ func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, lim
 		SELECT p.id, p.public_id, p.type, p.title, p.content, COALESCE(p.cover_url, ''),
 		       COALESCE(array_to_json(p.tags), '[]'::json), p.privacy_level, p.likes_count, p.comments_count,
 		       p.views_count, p.saves_count, p.reposts_count, COALESCE(p.reposted_from_id, 0), p.created_at, p.author_id,
+		       COALESCE(p.author_company_id, 0), COALESCE(ac.name, ''), COALESCE(ac.slug, ''), COALESCE(ac.logo_image, ''),
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(NULLIF(u.position, ''), u.company_name, ''), COALESCE(u.avatar_url, ''),
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
@@ -19013,6 +19014,7 @@ func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, lim
 		       COALESCE(p.category, '')
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
+		LEFT JOIN companies ac ON ac.id = p.author_company_id AND ac.deleted_at IS NULL
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
@@ -19020,6 +19022,7 @@ func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, lim
 		  AND p.privacy_level = 'public'
 		  AND p.type = 'news'
 		  AND p.created_at > NOW() - INTERVAL '%s'
+		  AND (p.author_company_id IS NULL OR EXISTS (SELECT 1 FROM companies cc WHERE cc.id = p.author_company_id AND cc.deleted_at IS NULL))
 		ORDER BY (p.likes_count * 3 + p.comments_count * 2 + p.saves_count * 5 + p.views_count * 0.1) DESC,
 		         p.created_at DESC
 		LIMIT $2`, interval)
@@ -19036,6 +19039,7 @@ func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, lim
 		var tagsJSON []byte
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
+			&item.AuthorCompanyID, &item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo,
 			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID,
 			&item.CommunityAvatar, &item.CommunityColor, &item.Category); err != nil {
 			return nil, err
