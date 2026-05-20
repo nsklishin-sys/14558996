@@ -98,6 +98,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .audit-time{font-size:11px;color:var(--gmt);white-space:nowrap}
 .audit-thead{display:grid;grid-template-columns:1.5fr 2fr 1fr 100px;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
 .empty{padding:40px 20px;text-align:center;color:var(--gmt);font-size:13px}
+.tab-badge{display:inline-block;background:var(--red,#E04040);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;margin-left:6px;line-height:1.2;min-width:18px;text-align:center}
 @media(max-width:1200px){.ov-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:1000px){.shell{grid-template-columns:220px 1fr;grid-template-areas:"logo topbar" "nav main"}.right{display:none}.ov-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -119,6 +120,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab active" data-tab="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Обзор</button>
       <button class="admin-tab" data-tab="users"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Пользователи</button>
       <button class="admin-tab" data-tab="companies"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Компании</button>
+      <button class="admin-tab" data-tab="complaints"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Жалобы<span class="tab-badge" id="complaintsBadge" style="display:none"></span></button>
       <button class="admin-tab" data-tab="audit"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Журнал</button>
     </div>
     <div class="ov-body" id="paneOverview">
@@ -163,6 +165,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="users-tbody" id="auditTbody"></div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneComplaints">
+      <div class="users-toolbar">
+        <button class="uf-filter active" data-complaint-status="">Все</button>
+        <button class="uf-filter" data-complaint-status="new">Новые</button>
+        <button class="uf-filter" data-complaint-status="under_review">На рассмотрении</button>
+        <button class="uf-filter" data-complaint-status="resolved_action">Решены</button>
+        <button class="uf-filter" data-complaint-status="resolved_reject">Отклонены</button>
+      </div>
+      <div class="users-table">
+        <div class="users-thead" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px">
+          <div>#</div><div>Объект</div><div>Причина</div><div>От кого</div><div>Статус</div><div></div>
+        </div>
+        <div class="users-tbody" id="complaintsTbody"></div>
+      </div>
+    </div>
   </div>
   <aside class="right">
     <div class="panel">
@@ -198,7 +215,7 @@ function num(n){if(typeof n==='string')return n;return n>=1000?(n/1000).toFixed(
 var currentTab='overview';
 var usersFilter={q:'',status:''};
 document.getElementById('adminTabs').addEventListener('click',function(e){var btn=e.target.closest('.admin-tab');if(!btn)return;switchTab(btn.dataset.tab);});
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();}
 // COMPANIES TAB
 var companiesFilter={q:'',status:''};
 var companiesSearchTimer;
@@ -230,6 +247,16 @@ async function actRevokeAdmin(id){if(!await lastopConfirm({title:'Снять п�
 async function actTerminateSessions(id){if(!await lastopConfirm({title:'Завершить все сессии?',message:'Пользователь будет разлогинен на всех устройствах.',danger:true,confirmText:'Завершить'}))return;try{var r=await lastopFetch('/api/admin/users/'+id+'/terminate-sessions',{method:'POST'});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}var d=await r.json().catch(function(){return{};});alert('Завершено сессий: '+(d.terminated||0));closeDetail();loadUsers();}catch(e){alert('Ошибка соединения');}}
 async function loadAudit(){var tb=document.getElementById('auditTbody');tb.innerHTML='<div class="empty">Загрузка…</div>';try{var r=await lastopFetch('/api/admin/audit-log?limit=100');if(!r.ok)throw 0;var d=await r.json();renderAudit(d.entries||[]);}catch(e){tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
 function renderAudit(entries){var tb=document.getElementById('auditTbody');if(!entries.length){tb.innerHTML='<div class="empty">Записей нет</div>';return;}tb.innerHTML=entries.map(function(e){var meta=e.entity_type?esc(e.entity_type)+(e.entity_id?' #'+e.entity_id:''):'—';var details='';if(e.details){if(e.details.email)details+=' · '+esc(e.details.email);if(e.details.reason)details+=' · '+esc(String(e.details.reason)).slice(0,50);if(e.details.status)details+=' · '+e.details.status;}return '<div class="audit-row"><div><span class="audit-action">'+esc(e.action)+'</span></div><div><div class="audit-admin">'+esc(e.admin_name||'—')+'</div><div class="audit-admin-email">'+esc(e.admin_email||'')+'</div></div><div class="audit-meta">'+meta+details+'</div><div class="audit-time">'+fmtDateTime(e.created_at)+'</div></div>';}).join('');}
+
+// COMPLAINTS TAB
+var complaintsFilter={status:''};
+document.querySelectorAll('[data-complaint-status]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-complaint-status]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');complaintsFilter.status=b.dataset.complaintStatus;loadComplaints();});});
+async function loadComplaints(){var tb=document.getElementById('complaintsTbody');tb.innerHTML='<div class="empty">Загрузка…</div>';try{var url='/api/admin/complaints?limit=100';if(complaintsFilter.status)url+='&status='+encodeURIComponent(complaintsFilter.status);var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();renderComplaints(d.complaints||[]);updateComplaintsBadge(d.new_count||0);}catch(e){tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
+function updateComplaintsBadge(n){var b=document.getElementById('complaintsBadge');if(!b)return;if(n>0){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}
+function renderComplaints(items){var tb=document.getElementById('complaintsTbody');if(!items.length){tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}tb.innerHTML=items.map(function(c){return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(c.target_type||'')+'</div><div class="u-pos">ID: '+c.target_id+'</div></div><div class="u-name" style="font-size:12px">'+esc(c.reason||'')+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div><span class="u-badge">'+esc(c.status||'')+'</span></div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');}
+async function openComplaint(id){document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent='Жалоба #'+id;document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';document.getElementById('dpActions').innerHTML='';}
+lastopFetch('/api/admin/complaints?limit=1').then(function(r){if(!r.ok)return null;return r.json();}).then(function(d){if(d)updateComplaintsBadge(d.new_count||0);}).catch(function(){});
+
 loadOverview();
 </script>
 <script src="/assets/shell-injector.js" defer></script>
