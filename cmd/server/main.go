@@ -5867,7 +5867,8 @@ func main() {
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
 			}
-			_, _ = db.Exec(`DELETE FROM sessions WHERE user_id=$1`, targetID)
+			// Чистим И БД, И in-memory cache — обычный db.Exec кэш не видит.
+			sessions.invalidateUser(targetID)
 			logAdminAction(db, actorID, "user.ban", "user", targetID, clientIP(r), map[string]any{"reason": reason, "email": email})
 			writeJSON(w, http.StatusOK, map[string]any{"banned": true})
 		case "unban":
@@ -5905,11 +5906,11 @@ func main() {
 			if !guard() {
 				return
 			}
-			res, _ := db.Exec(`DELETE FROM sessions WHERE user_id=$1`, targetID)
-			n := int64(0)
-			if res != nil {
-				n, _ = res.RowsAffected()
-			}
+			// Считаем до удаления — для UX-сообщения о количестве.
+			var n int64
+			_ = db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE user_id=$1`, targetID).Scan(&n)
+			// Чистим и БД, и in-memory cache.
+			sessions.invalidateUser(targetID)
 			logAdminAction(db, actorID, "user.terminate_sessions", "user", targetID, clientIP(r), map[string]any{"email": email, "deleted": n})
 			writeJSON(w, http.StatusOK, map[string]any{"terminated": n})
 		default:
@@ -13835,8 +13836,13 @@ func requireAdmin(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *
 		return 0, false
 	}
 	var isAdmin bool
-	if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id = $1`, userID).Scan(&isAdmin); err != nil {
+	var bannedAt sql.NullTime
+	if err := db.QueryRow(`SELECT COALESCE(is_admin, FALSE), banned_at FROM users WHERE id = $1`, userID).Scan(&isAdmin, &bannedAt); err != nil {
 		writeError(w, http.StatusInternalServerError, "Ошибка проверки прав")
+		return 0, false
+	}
+	if bannedAt.Valid {
+		writeError(w, http.StatusForbidden, "Аккаунт заблокирован")
 		return 0, false
 	}
 	if !isAdmin {
