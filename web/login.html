@@ -402,7 +402,11 @@ const API='/api';
 function showBanModal(reason, until){
   var SUPPORT_EMAIL='support@lastop.ru';
   var ov=document.getElementById('banModalOv');
+  // Защита от перетирания: если модалка уже показана с реальными данными,
+  // повторный вызов с пустыми (reason='' и until='') игнорируем.
+  if(ov && ov.getAttribute('data-filled')==='1' && !reason && !until){ return; }
   if(!ov){ov=document.createElement('div');ov.id='banModalOv';document.body.appendChild(ov);}
+  ov.setAttribute('data-filled', (reason||until)?'1':'0');
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,20,.55);backdrop-filter:blur(3px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Manrope,sans-serif';
   var srokRow = until
     ? '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #F0DADA"><span style="color:#9A6060;font-size:13px">Срок блокировки</span><span style="color:#1A2A22;font-weight:700;font-size:13px">до '+until+'</span></div>'
@@ -548,17 +552,10 @@ window.addEventListener('DOMContentLoaded',newCaptcha);
 (function(){
   var p = new URLSearchParams(location.search);
   var msg = '';
-  var isBanned = p.get('banned') === '1';
-  if (isBanned) {
-    var bReason = p.get('reason') ? decodeURIComponent(p.get('reason')) : '';
-    var bUntil = p.get('until') ? decodeURIComponent(p.get('until')) : '';
-    if (typeof showBanModal === 'function') { showBanModal(bReason, bUntil); return; }
-  }
   if (p.get('expired') === '1') msg = 'Сессия завершена. Войдите снова.';
-  if (isBanned) { var bm = p.get('msg'); msg = bm ? decodeURIComponent(bm) : 'Ваш аккаунт заблокирован. Обратитесь в поддержку.'; }
   if (!msg) return;
   var bar = document.createElement('div');
-  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:'+(isBanned?'#E04040':'#1E8A4C')+';color:#fff;padding:10px 16px;text-align:center;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1E8A4C;color:#fff;padding:10px 16px;text-align:center;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.15)';
   bar.textContent = msg;
   document.body.appendChild(bar);
   setTimeout(function(){ bar.style.transition='opacity .4s'; bar.style.opacity='0'; setTimeout(function(){bar.remove();}, 500); }, 6000);
