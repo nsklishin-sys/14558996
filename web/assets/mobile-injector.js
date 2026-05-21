@@ -92,27 +92,25 @@
     }
   }
 
-  // Проверка авторизации. Phase 3 cookie-only: единственный признак 
-  // логина — localStorage.user с непустым id (token-cookie httpOnly,
-  // в localStorage его нет).
-  var isAuthed = false;
-  try {
-    var u = JSON.parse(localStorage.getItem('user') || '{}');
-    isAuthed = !!(u && (u.id || u.public_id));
-  } catch (_) { /* localStorage недоступен — считаем гостем */ }
-
-  if (!isAuthed) {
-    // На /home-guest.html у гостя на мобиле — редирект на /login.html.
-    // Гостевая главная сейчас не адаптирована под мобилу, временно
-    // показываем сразу login (компактная страница которая работает).
-    // /login.html, /register.html и другие auth-страницы оставляем
-    // как есть — на них bottom-nav просто не появится.
-    var path = location.pathname || '';
-    if (path === '/home-guest.html') {
-      location.replace('/login.html');
-      return;
-    }
-    // Прочие гостевые: ничего не инжектируем, выходим тихо.
+  // Авторизация в Phase 3 — cookie-only (httpOnly), и localStorage.user
+  // НЕ является надёжным признаком логина: у залогиненного по cookie
+  // юзера он может быть пуст (другой браузер, очистка кэша, гонка с /api/me),
+  // из-за чего bottom-nav пропадал. Залогиненность гарантирует сервер —
+  // на внутренние страницы гость не попадёт. Поэтому судим по пути:
+  // bottom-nav НЕ показываем только на явно гостевых/auth-страницах.
+  var path = location.pathname || '';
+  var GUEST_PATHS = [
+    '/login.html', '/register.html', '/home-guest.html',
+    '/forgot-password.html', '/reset-password.html', '/verify-email.html'
+  ];
+  if (path === '/home-guest.html') {
+    // Гостевая главная не адаптирована под мобилу — сразу на login.
+    var hasUser = false;
+    try { var uu = JSON.parse(localStorage.getItem('user') || '{}'); hasUser = !!(uu && (uu.id || uu.public_id)); } catch (_) {}
+    if (!hasUser) { location.replace('/login.html'); return; }
+  }
+  if (GUEST_PATHS.indexOf(path) !== -1) {
+    // На auth-страницах bottom-nav не нужен.
     return;
   }
 
