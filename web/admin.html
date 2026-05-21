@@ -128,6 +128,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
+      <div class="panel" id="analyticsPanel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="panel-title" style="margin:0">Аналитика платформы</div>
+          <div style="display:flex;gap:4px">
+            <button class="uf-filter" id="anl7" onclick="setAnlPeriod(7)">7 дней</button>
+            <button class="uf-filter active" id="anl30" onclick="setAnlPeriod(30)">30 дней</button>
+          </div>
+        </div>
+        <div id="analyticsBody"><div class="empty">Загрузка…</div></div>
+      </div>
       <div class="panel">
         <div class="panel-title">Последние действия администраторов</div>
         <div id="overviewRecent" style="display:flex;flex-direction:column;gap:4px"></div>
@@ -240,7 +250,46 @@ function num(n){if(typeof n==='string')return n;return n>=1000?(n/1000).toFixed(
 var currentTab='overview';
 var usersFilter={q:'',status:''};
 document.getElementById('adminTabs').addEventListener('click',function(e){var btn=e.target.closest('.admin-tab');if(!btn)return;switchTab(btn.dataset.tab);});
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
+var anlPeriod=30;
+function setAnlPeriod(d){anlPeriod=d;document.getElementById('anl7').classList.toggle('active',d===7);document.getElementById('anl30').classList.toggle('active',d===30);loadAnalytics();}
+function anlSpark(arr,color){
+  if(!arr||!arr.length)return '';
+  var vals=arr.map(function(p){return p.count||0;});
+  var max=Math.max.apply(null,vals)||1;
+  var w=280,h=44,n=vals.length,step=n>1?w/(n-1):w;
+  var pts=vals.map(function(v,i){return (i*step).toFixed(1)+','+(h-(v/max)*(h-6)-3).toFixed(1);}).join(' ');
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" style="width:100%;height:44px;display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function anlSum(arr){return (arr||[]).reduce(function(s,p){return s+(p.count||0);},0);}
+async function loadAnalytics(){
+  var body=document.getElementById('analyticsBody');
+  body.innerHTML='<div class="empty">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/analytics?days='+anlPeriod);if(!r.ok)throw 0;
+    var d=await r.json();
+    var f=d.funnel||{},m=d.moderation||{};
+    var kpi=function(label,val,sub){return '<div style="background:var(--gp);border:1px solid var(--bdr);border-radius:12px;padding:12px 14px;flex:1;min-width:120px"><div style="font-size:22px;font-weight:800;color:var(--g)">'+val+'</div><div style="font-size:11px;color:var(--gmt);margin-top:2px">'+label+'</div>'+(sub?'<div style="font-size:10px;color:var(--gmt);margin-top:3px">'+sub+'</div>':'')+'</div>';};
+    var graph=function(title,arr,color){return '<div style="background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px 14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--t)">'+title+'</span><span style="font-size:12px;font-weight:800;color:'+color+'">'+anlSum(arr)+'</span></div>'+anlSpark(arr,color)+'</div>';};
+    var topU=(d.top_users||[]).map(function(u){return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0"><div class="u-av" style="width:26px;height:26px;background:'+esc(avc(u.name))+'">'+(u.avatar_url?'<img src="'+esc(u.avatar_url)+'">':esc(letter(u.name)))+'</div><span style="flex:1;font-size:12px;color:var(--t)">'+esc(u.name)+'</span><span style="font-size:12px;font-weight:700;color:var(--g)">'+u.count+'</span></div>';}).join('')||'<div style="font-size:12px;color:var(--gmt)">Нет данных</div>';
+    body.innerHTML=
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+        kpi('Активны сегодня',d.dau||0,'')+kpi('За 7 дней',d.wau||0,'')+kpi('За 30 дней',d.mau||0,'')+
+        kpi('Жалоб ('+anlPeriod+'д)',anlPeriod===7?(m.complaints_7d||0):(m.complaints_30d||0),'')+kpi('Активных санкций',m.sanctions_active||0,'')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:12px">'+
+        graph('Регистрации',d.registrations,'#1E8A4C')+graph('Новые компании',d.companies_new,'#208090')+graph('Публикации',d.posts_new,'#C07030')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div style="background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px 14px"><div style="font-size:12px;font-weight:700;color:var(--t);margin-bottom:8px">Воронка компаний</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--gmt)">Всего</span><span style="font-weight:700">'+(f.total||0)+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--gmt)">Верифицировано</span><span style="font-weight:700;color:var(--g)">'+(f.verified||0)+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--gmt)">Активны (30д)</span><span style="font-weight:700;color:#208090">'+(f.active||0)+'</span></div>'+
+        '</div>'+
+        '<div style="background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px 14px"><div style="font-size:12px;font-weight:700;color:var(--t);margin-bottom:8px">Топ активных пользователей</div>'+topU+'</div>'+
+      '</div>';
+  }catch(e){body.innerHTML='<div class="empty">Не удалось загрузить аналитику</div>';}
+}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadAnalytics();}if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   pane.innerHTML='<div class="empty">Загрузка…</div>';
