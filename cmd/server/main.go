@@ -25608,6 +25608,88 @@ func anonymizeIP(ip string) string {
 	return masked.String()
 }
 
+// geoLookupIP — внешний lookup города/провайдера по IP (ip-api.com).
+// Сменный модуль: позже можно заменить на локальную MaxMind.
+// Возвращает city, provider, country. При ошибке — пустые строки.
+func geoLookupIP(ip string) (string, string, string) {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" || strings.HasPrefix(ip, "192.168.") || strings.HasPrefix(ip, "10.") {
+		return "", "", ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+	url := "http://ip-api.com/json/" + ip + "?fields=status,country,city,isp,org&lang=ru"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", "", ""
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", "", ""
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Status  string `json:"status"`
+		Country string `json:"country"`
+		City    string `json:"city"`
+		ISP     string `json:"isp"`
+		Org     string `json:"org"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&body) != nil || body.Status != "success" {
+		return "", "", ""
+	}
+	provider := body.ISP
+	if provider == "" {
+		provider = body.Org
+	}
+	return body.City, provider, body.Country
+}
+
+// resolveGeo возвращает city/provider для IP, используя кэш ip_geo_cache.
+// Если IP нет в кэше — лукапит синхронно (вызывается уже из горутины).
+func resolveGeo(db *sql.DB, ip string) (string, string) {
+	if ip == "" {
+		return "", ""
+	}
+	var city, provider string
+	err := db.QueryRow(`SELECT city, provider FROM ip_geo_cache WHERE ip=$1`, ip).Scan(&city, &provider)
+	if err == nil {
+		return city, provider
+	}
+	c, p, country := geoLookupIP(ip)
+	_, _ = db.Exec(`INSERT INTO ip_geo_cache (ip, city, provider, country) VALUES ($1,$2,$3,$4) ON CONFLICT (ip) DO UPDATE SET city=EXCLUDED.city, provider=EXCLUDED.provider, country=EXCLUDED.country, looked_up_at=NOW()`, ip, c, p, country)
+	return c, p
+}
+
+// logUserActivity логирует действие пользователя. IP пишется сразу,
+// город/провайдер обогащаются: из кэша синхронно (быстро) либо фоном.
+func logUserActivity(db *sql.DB, userID int64, action, entityType string, entityID int64, ip, userAgent string) {
+	if userID == 0 {
+		return
+	}
+	var city, provider string
+	// Быстрая попытка из кэша (без внешнего запроса).
+	_ = db.QueryRow(`SELECT city, provider FROM ip_geo_cache WHERE ip=$1`, ip).Scan(&city, &provider)
+	res, err := db.Exec(`INSERT INTO user_activity_log (user_id, action, entity_type, entity_id, ip_address, city, provider, user_agent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+		userID, action, entityType, entityID, ip, city, provider, userAgent)
+	// Если гео ещё не известно — фоновый lookup + обновление этой записи.
+	if err == nil && city == "" && ip != "" {
+		var rowID int64
+		if r2, e2 := res.LastInsertId(); e2 == nil {
+			rowID = r2
+		}
+		go func() {
+			c, p := resolveGeo(db, ip)
+			if c != "" || p != "" {
+				if rowID > 0 {
+					_, _ = db.Exec(`UPDATE user_activity_log SET city=$1, provider=$2 WHERE id=$3`, c, p, rowID)
+				} else {
+					_, _ = db.Exec(`UPDATE user_activity_log SET city=$1, provider=$2 WHERE ip_address=$3 AND city='' AND created_at > NOW() - INTERVAL '1 minute'`, c, p, ip)
+				}
+			}
+		}()
+	}
+}
+
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err != nil || host == "" {
