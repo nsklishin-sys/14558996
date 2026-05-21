@@ -5883,7 +5883,24 @@ func main() {
 			_ = db.QueryRow(`SELECT COUNT(*) FROM company_members WHERE user_id=$1`, targetID).Scan(&companies)
 			_ = db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE user_id=$1`, targetID).Scan(&sessionsCount)
 			out := map[string]any{"id": u.ID, "public_id": u.PubID, "full_name": u.Name, "email": u.Email, "avatar_url": u.Avatar, "position": u.Position, "bio": u.Bio, "phone": u.Phone, "city": u.City, "created_at": u.CreatedAt, "is_admin": u.IsAdmin, "email_verified": u.EmailVerified.Valid, "is_banned": u.BannedAt.Valid, "posts_count": posts, "companies_count": companies, "sessions_count": sessionsCount}
+			var mutedUntil sql.NullTime
+			var muteScopesJSON []byte
+			var muteReason string
+			_ = db.QueryRow(`SELECT muted_until, array_to_json(mute_scopes), mute_reason FROM users WHERE id=$1`, targetID).Scan(&mutedUntil, &muteScopesJSON, &muteReason)
+			if mutedUntil.Valid && mutedUntil.Time.After(time.Now()) {
+				out["muted_until"] = mutedUntil.Time
+				var msc []string
+				_ = json.Unmarshal(muteScopesJSON, &msc)
+				out["mute_scopes"] = msc
+				out["mute_reason"] = muteReason
+			}
 			if u.BannedAt.Valid {
+				out["banned_until_set"] = false
+				var bu sql.NullTime
+				_ = db.QueryRow(`SELECT banned_until FROM users WHERE id=$1`, targetID).Scan(&bu)
+				if bu.Valid {
+					out["banned_until"] = bu.Time
+				}
 				out["banned_at"] = u.BannedAt.Time
 				out["banned_reason"] = u.BannedReason
 				if u.BannedBy.Valid {
@@ -5920,6 +5937,52 @@ func main() {
 			sessions.invalidateUser(targetID)
 			logAdminAction(db, actorID, "user.ban", "user", targetID, clientIP(r), map[string]any{"reason": reason, "email": email})
 			writeJSON(w, http.StatusOK, map[string]any{"banned": true})
+		case "sanction":
+			if !guard() {
+				return
+			}
+			var sreq struct {
+				Type     string   `json:"type"`
+				Scopes   []string `json:"scopes"`
+				Reason   string   `json:"reason"`
+				Duration int      `json:"duration_days"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&sreq)
+			if sreq.Type != "warn" && sreq.Type != "mute" && sreq.Type != "ban" {
+				writeError(w, http.StatusBadRequest, "Некорректный тип санкции")
+				return
+			}
+			if strings.TrimSpace(sreq.Reason) == "" {
+				writeError(w, http.StatusBadRequest, "Укажите причину")
+				return
+			}
+			if sreq.Type == "mute" && len(sreq.Scopes) == 0 {
+				sreq.Scopes = muteScopeAll
+			}
+			if err := applySanction(db, targetID, sreq.Type, sreq.Scopes, strings.TrimSpace(sreq.Reason), sreq.Duration, actorID, false); err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось применить санкцию")
+				return
+			}
+			logAdminAction(db, actorID, "user.sanction", "user", targetID, clientIP(r), map[string]any{"type": sreq.Type, "duration": sreq.Duration, "email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		case "lift_sanction":
+			if !guard() {
+				return
+			}
+			var lreq struct {
+				SType string `json:"stype"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&lreq)
+			if lreq.SType != "mute" && lreq.SType != "ban" {
+				writeError(w, http.StatusBadRequest, "Некорректный тип")
+				return
+			}
+			if err := liftSanction(db, targetID, lreq.SType, actorID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось снять")
+				return
+			}
+			logAdminAction(db, actorID, "user.lift_sanction", "user", targetID, clientIP(r), map[string]any{"stype": lreq.SType, "email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 		case "unban":
 			if !guard() {
 				return
