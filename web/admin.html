@@ -283,7 +283,46 @@ function renderHidden(items){var tb=document.getElementById('hiddenTbody');if(!i
 function openHidden(idx){var it=HIDDEN_ITEMS[idx];if(!it)return;document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent=(HIDDEN_TYPES[it.type]||it.type)+' · скрыто';var body='<div class="dp-section">Информация</div>';body+='<div class="dp-row"><span class="lbl">Тип</span><span class="val">'+esc(HIDDEN_TYPES[it.type]||it.type)+'</span></div>';body+='<div class="dp-row"><span class="lbl">Автор</span><span class="val">'+esc(it.author||'—')+'</span></div>';body+='<div class="dp-section">Контент</div><div style="font-size:13px;color:var(--t);white-space:pre-wrap;word-break:break-word;padding:4px 0">'+esc(it.preview||'—')+'</div>';body+='<div class="dp-section">Причина скрытия</div><div style="font-size:13px;color:var(--t);padding:4px 0">'+esc(it.reason||'Не указана')+'</div>';document.getElementById('dpBody').innerHTML=body;document.getElementById('dpActions').innerHTML='<button class="dp-btn primary" onclick="actUnhide(\''+it.type+'\','+it.id+')">Восстановить</button><button class="dp-btn" onclick="actWarn(\''+it.type+'\','+it.id+')">Предупредить автора</button><button class="dp-btn danger" onclick="actDelete(\''+it.type+'\','+it.id+')">Удалить</button>';}
 async function actUnhide(type,id){if(!await lastopConfirm({title:'Восстановить контент?',message:'Контент снова станет видимым всем пользователям.',confirmText:'Восстановить'}))return;try{var r=await lastopFetch('/api/admin/content/'+type+'/'+id+'/unhide',{method:'POST'});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadHidden();}catch(e){alert('Ошибка соединения');}}
 async function actDelete(type,id){if(!await lastopConfirm({title:'Удалить контент?',message:'Контент будет удалён и исчезнет с платформы. Действие записывается в журнал.',confirmText:'Удалить',danger:true}))return;try{var r=await lastopFetch('/api/admin/content/'+type+'/'+id+'/delete',{method:'POST'});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadHidden();}catch(e){alert('Ошибка соединения');}}
-async function actWarn(type,id){var msg=await lastopPrompt({title:'Предупреждение автору',message:'Текст уведомления будет отправлен автору от имени администрации платформы.',placeholder:'Например: ваш пост нарушает правила раздела…',confirmText:'Отправить'});if(msg===null)return;try{var r=await lastopFetch('/api/admin/content/'+type+'/'+id+'/warn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:String(msg||'').trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка',{type:'error'});return;}closeDetail();lastopToast('Предупреждение отправлено автору');}catch(e){lastopToast('Ошибка соединения',{type:'error'});}}
+var WARN_TEMPLATES=[
+  {key:'spam',label:'Спам',text:'Ваша публикация скрыта как рекламная или спам — такой контент запрещён правилами платформы. При повторном нарушении ваш аккаунт будет заблокирован.'},
+  {key:'abuse',label:'Оскорбления',text:'Ваша публикация скрыта за нарушение норм общения (оскорбления, недопустимая лексика). При повторном нарушении ваш аккаунт будет заблокирован.'},
+  {key:'illegal',label:'Запрещ. контент',text:'Ваша публикация скрыта как содержащая запрещённый контент. При повторном нарушении ваш аккаунт будет заблокирован.'},
+  {key:'fraud',label:'Мошенничество',text:'Ваша публикация скрыта по признакам мошенничества или введения пользователей в заблуждение. При повторном нарушении ваш аккаунт будет заблокирован.'},
+  {key:'disinfo',label:'Дезинформация',text:'Ваша публикация скрыта из-за недостоверной информации. При повторном нарушении ваш аккаунт будет заблокирован.'},
+  {key:'copyright',label:'Авторские права',text:'Ваша публикация скрыта из-за нарушения авторских прав. При повторном нарушении ваш аккаунт будет заблокирован.'},
+  {key:'other',label:'Другое',text:'Ваша публикация скрыта за нарушение правил платформы. При повторном нарушении ваш аккаунт будет заблокирован.'}
+];
+function fillWarnTemplate(i){var t=WARN_TEMPLATES[i];if(!t)return;var ta=document.getElementById('warnText');if(ta){ta.value=t.text;ta.focus();}document.querySelectorAll('.warn-tpl').forEach(function(b,idx){b.style.background=idx===i?'var(--gl)':'var(--w)';b.style.borderColor=idx===i?'var(--gb)':'var(--bdr)';b.style.color=idx===i?'var(--g)':'var(--tm)';});}
+function closeWarnModal(){var ov=document.getElementById('warnModalOv');if(ov)ov.style.display='none';}
+async function actWarn(type,id){
+  var ov=document.getElementById('warnModalOv');
+  if(!ov){ov=document.createElement('div');ov.id='warnModalOv';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';ov.addEventListener('click',function(e){if(e.target===ov)closeWarnModal();});document.body.appendChild(ov);}
+  var chips=WARN_TEMPLATES.map(function(t,i){return '<button type="button" class="warn-tpl" onclick="fillWarnTemplate('+i+')" style="padding:6px 12px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);color:var(--tm);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">'+esc(t.label)+'</button>';}).join('');
+  ov.innerHTML='<div style="background:var(--w);border-radius:18px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">'+
+    '<div style="padding:18px 20px;border-bottom:1px solid var(--bdr);font-size:15px;font-weight:800;color:var(--t)">Предупреждение автору</div>'+
+    '<div style="padding:20px">'+
+      '<div style="font-size:12px;color:var(--gmt);margin-bottom:8px">Выберите шаблон или напишите свой текст:</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">'+chips+'</div>'+
+      '<textarea id="warnText" maxlength="1000" placeholder="Текст предупреждения автору…" style="width:100%;min-height:120px;border:1.5px solid var(--bdr);border-radius:12px;padding:12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:vertical;box-sizing:border-box"></textarea>'+
+    '</div>'+
+    '<div style="padding:14px 20px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="closeWarnModal()" style="padding:9px 18px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>'+
+      '<button onclick="submitWarn(\''+type+'\','+id+')" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Отправить</button>'+
+    '</div>'+
+  '</div>';
+  ov.style.display='flex';
+  setTimeout(function(){var ta=document.getElementById('warnText');if(ta)ta.focus();},100);
+}
+async function submitWarn(type,id){
+  var ta=document.getElementById('warnText');
+  var msg=ta?ta.value.trim():'';
+  if(!msg){if(ta)ta.style.borderColor='#C03030';return;}
+  try{
+    var r=await lastopFetch('/api/admin/content/'+type+'/'+id+'/warn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка',{type:'error'});return;}
+    closeWarnModal();closeDetail();lastopToast('Предупреждение отправлено автору');
+  }catch(e){lastopToast('Ошибка соединения',{type:'error'});}
+}
 var COMPLAINT_TYPES={post:'Пост',comment:'Комментарий',user:'Пользователь',company:'Компания',community:'Сообщество',chat_message:'Сообщение в чате',forum_message:'Сообщение в форуме',event_message:'Сообщение в событии'};
 var COMPLAINT_STATUSES={new:{label:'Новая',cls:'banned'},under_review:{label:'На рассмотрении',cls:'active'},resolved_action:{label:'Решена',cls:'admin'},resolved_reject:{label:'Отклонена',cls:''}};
 function renderComplaints(items){var tb=document.getElementById('complaintsTbody');if(!items.length){tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}tb.innerHTML=items.map(function(c){var st=COMPLAINT_STATUSES[c.status]||{label:c.status,cls:''};var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';var typeName=COMPLAINT_TYPES[c.target_type]||c.target_type;var reasonName=COMPLAINT_REASONS[c.reason]||c.reason;var appealBadge=c.is_appeal?'<span class="u-badge" style="background:#FCEDED;color:#C03030;border-color:#F3C0C0;margin-left:6px">Повторная</span>':'';return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(typeName)+appealBadge+'</div><div class="u-pos">ID: '+c.target_id+(c.target_public_id?' · '+esc(c.target_public_id):'')+'</div></div><div class="u-name" style="font-size:12px">'+esc(reasonName)+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');}
