@@ -399,6 +399,30 @@ const API='/api';
   }catch{}
 })();
 
+function showBanModal(reason, until){
+  var SUPPORT_EMAIL='support@lastop.ru';
+  var ov=document.getElementById('banModalOv');
+  if(!ov){ov=document.createElement('div');ov.id='banModalOv';document.body.appendChild(ov);}
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,20,.55);backdrop-filter:blur(3px);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Manrope,sans-serif';
+  var srokRow = until
+    ? '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #F0DADA"><span style="color:#9A6060;font-size:13px">Срок блокировки</span><span style="color:#1A2A22;font-weight:700;font-size:13px">до '+until+'</span></div>'
+    : '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #F0DADA"><span style="color:#9A6060;font-size:13px">Срок блокировки</span><span style="color:#1A2A22;font-weight:700;font-size:13px">бессрочно</span></div>';
+  var reasonRow = reason
+    ? '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #F0DADA"><span style="color:#9A6060;font-size:13px">Причина</span><span style="color:#1A2A22;font-weight:600;font-size:13px;text-align:right;max-width:60%">'+reason.replace(/</g,'&lt;')+'</span></div>'
+    : '';
+  ov.innerHTML='<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden">'+
+    '<div style="background:#E04040;padding:22px 24px;display:flex;align-items:center;gap:12px">'+
+      '<div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg></div>'+
+      '<div><div style="color:#fff;font-size:17px;font-weight:800">Доступ заблокирован</div><div style="color:rgba(255,255,255,.85);font-size:12px;margin-top:2px">Вход в аккаунт невозможен</div></div>'+
+    '</div>'+
+    '<div style="padding:20px 24px">'+
+      reasonRow + srokRow +
+      '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #F0DADA;border-bottom:1px solid #F0DADA"><span style="color:#9A6060;font-size:13px">Поддержка</span><a href="mailto:'+SUPPORT_EMAIL+'" style="color:#1E8A4C;font-weight:700;font-size:13px;text-decoration:none">'+SUPPORT_EMAIL+'</a></div>'+
+      '<p style="color:#5A8A6A;font-size:12px;line-height:1.5;margin:14px 0 0">Если вы считаете блокировку ошибочной, напишите в поддержку с указанием вашего email.</p>'+
+      '<button onclick="document.getElementById(\'banModalOv\').remove()" style="width:100%;margin-top:18px;padding:11px;border:none;border-radius:12px;background:#1E8A4C;color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Понятно</button>'+
+    '</div>'+
+  '</div>';
+}
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
   const ico=type==='success'?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
@@ -484,7 +508,8 @@ async function handleLogin(e){
     const r=await lastopFetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,captcha_token:captchaToken})});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
-      showToast(d.error||'Неверный email или пароль','error');
+      if(d.banned){ showBanModal(d.reason||'', d.until_human||''); }
+      else { showToast(d.error||'Неверный email или пароль','error'); }
       if(window.LASTOP_CAPTCHA&&window.LASTOP_CAPTCHA.reset)window.LASTOP_CAPTCHA.reset();
       btn.disabled=false;btn.innerHTML='Войти <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 18 15 12 9 6"/></svg>';
       return;
