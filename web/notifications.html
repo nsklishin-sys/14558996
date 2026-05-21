@@ -662,9 +662,66 @@ function renderGroups(){
           await lastopFetch(API+'/notifications/'+id+'/read',{method:'POST'});
         }catch{}
       }
+      const nItem=allLoadedItems.find(n=>String(n.id)===String(id));
+      if(nItem&&nItem.type==='moderation_warning'){
+        openWarningModal(nItem);
+        return;
+      }
       if(href&&href!=='#')location.href=href;
     });
   });
+}
+
+// ── Модалка предупреждения модерации ──
+function openWarningModal(n){
+  let ov=document.getElementById('warnModalOv');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='warnModalOv';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:var(--z-modal,9999);display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.addEventListener('click',e=>{if(e.target===ov)closeWarnModal();});
+    document.body.appendChild(ov);
+  }
+  const srcType=n.source_type||'post';
+  const srcId=n.source_id||0;
+  const link=n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id):'';
+  ov.innerHTML='<div style="background:var(--w);border-radius:18px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">'+
+    '<div style="padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px">'+
+      '<div style="width:36px;height:36px;border-radius:10px;background:#FCEDED;display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#C03030;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'+
+      '<div style="font-size:15px;font-weight:800;color:var(--t)">Предупреждение от администрации</div>'+
+    '</div>'+
+    '<div id="warnModalBody" style="padding:20px">'+
+      '<div style="font-size:13px;color:var(--t);line-height:1.6;margin-bottom:16px">'+escHtml(n.preview||'Ваш контент был скрыт за нарушение правил платформы.')+'</div>'+
+      (link?'<a href="'+link+'" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--g);text-decoration:none;margin-bottom:4px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Перейти к публикации</a>':'')+
+    '</div>'+
+    '<div style="padding:14px 20px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="closeWarnModal()" style="padding:9px 18px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Закрыть</button>'+
+      '<button onclick="showAppealForm(\''+srcType+'\','+srcId+')" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Обжаловать</button>'+
+    '</div>'+
+  '</div>';
+  ov.style.display='flex';
+}
+function closeWarnModal(){const ov=document.getElementById('warnModalOv');if(ov)ov.style.display='none';}
+function showAppealForm(type,id){
+  const body=document.getElementById('warnModalBody');
+  if(!body)return;
+  body.innerHTML='<div style="font-size:13px;color:var(--t);line-height:1.5;margin-bottom:12px">Опишите, почему вы не согласны с решением. Жалоба будет передана на повторную модерацию.</div>'+
+    '<textarea id="appealText" maxlength="1000" placeholder="Ваши аргументы…" style="width:100%;min-height:110px;border:1.5px solid var(--bdr);border-radius:12px;padding:12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:vertical;box-sizing:border-box"></textarea>';
+  const foot=body.parentNode.lastElementChild;
+  foot.innerHTML='<button onclick="closeWarnModal()" style="padding:9px 18px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Отмена</button>'+
+    '<button onclick="submitAppeal(\''+type+'\','+id+')" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Отправить обжалование</button>';
+  setTimeout(()=>{const t=document.getElementById('appealText');if(t)t.focus();},100);
+}
+async function submitAppeal(type,id){
+  const t=document.getElementById('appealText');
+  const reason=t?t.value.trim():'';
+  if(!reason){if(t)t.style.borderColor='#C03030';return;}
+  try{
+    const r=await lastopFetch(API+'/moderation/appeal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_type:type,entity_id:id,reason:reason})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));showToast(e.error||'Не удалось отправить обжалование');return;}
+    closeWarnModal();
+    showToast('Обжалование отправлено на повторную модерацию');
+  }catch(e){showToast('Ошибка соединения');}
 }
 
 function updateGroupCounts(){
