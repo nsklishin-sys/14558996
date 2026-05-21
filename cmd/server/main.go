@@ -13485,6 +13485,27 @@ CREATE TABLE IF NOT EXISTS ip_geo_cache (
     looked_up_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+
+CREATE TABLE IF NOT EXISTS admin_notes (
+    id BIGSERIAL PRIMARY KEY,
+    entity_type TEXT NOT NULL,
+    entity_id BIGINT NOT NULL,
+    author_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    text TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS admin_notes_entity_idx ON admin_notes(entity_type, entity_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS admin_tags (
+    id BIGSERIAL PRIMARY KEY,
+    entity_type TEXT NOT NULL,
+    entity_id BIGINT NOT NULL,
+    tag TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(entity_type, entity_id, tag)
+);
+CREATE INDEX IF NOT EXISTS admin_tags_entity_idx ON admin_tags(entity_type, entity_id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
     ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
 
