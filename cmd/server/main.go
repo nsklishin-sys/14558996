@@ -10855,6 +10855,62 @@ func main() {
 	}))
 
 	// Жалобы B-2: админский API.
+	mux.HandleFunc("/api/admin/hidden", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		type hiddenItem struct {
+			Type     string    `json:"type"`
+			ID       int64     `json:"id"`
+			PublicID string    `json:"public_id"`
+			Preview  string    `json:"preview"`
+			Author   string    `json:"author"`
+			Reason   string    `json:"reason"`
+			HiddenAt time.Time `json:"hidden_at"`
+		}
+		out := []hiddenItem{}
+		prows, err := db.Query(`
+			SELECT p.id, p.public_id, COALESCE(NULLIF(p.title, ''), LEFT(p.content, 80)), COALESCE(u.full_name, ''), COALESCE(p.hidden_by_admin_reason, ''), p.hidden_by_admin_at
+			FROM posts p JOIN users u ON u.id = p.author_id
+			WHERE p.is_hidden_by_admin = TRUE AND p.is_deleted = FALSE
+			ORDER BY p.hidden_by_admin_at DESC NULLS LAST LIMIT 200`)
+		if err == nil {
+			for prows.Next() {
+				var it hiddenItem
+				it.Type = "post"
+				var hAt sql.NullTime
+				if err := prows.Scan(&it.ID, &it.PublicID, &it.Preview, &it.Author, &it.Reason, &hAt); err == nil {
+					if hAt.Valid {
+						it.HiddenAt = hAt.Time
+					}
+					out = append(out, it)
+				}
+			}
+			prows.Close()
+		}
+		crows, err := db.Query(`
+			SELECT pc.id, LEFT(pc.content, 80), COALESCE(u.full_name, ''), COALESCE(pc.hidden_by_admin_reason, ''), pc.hidden_by_admin_at
+			FROM post_comments pc JOIN users u ON u.id = pc.author_id
+			WHERE pc.is_hidden_by_admin = TRUE AND pc.is_deleted = FALSE
+			ORDER BY pc.hidden_by_admin_at DESC NULLS LAST LIMIT 200`)
+		if err == nil {
+			for crows.Next() {
+				var it hiddenItem
+				it.Type = "comment"
+				var hAt sql.NullTime
+				if err := crows.Scan(&it.ID, &it.Preview, &it.Author, &it.Reason, &hAt); err == nil {
+					if hAt.Valid {
+						it.HiddenAt = hAt.Time
+					}
+					out = append(out, it)
+				}
+			}
+			crows.Close()
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": out})
+		return
+	}))
 	mux.HandleFunc("/api/admin/complaints", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
