@@ -1846,6 +1846,8 @@ func htmlSafe(s string) string {
 	return r.Replace(s)
 }
 
+var sessions *sessionStore
+
 func newSessionStore(db *sql.DB) *sessionStore {
 	s := &sessionStore{
 		db: db,
@@ -2137,7 +2139,7 @@ func main() {
 	defer errs.Flush(2 * time.Second)
 
 	mux := http.NewServeMux()
-	sessions := newSessionStore(db)
+	sessions = newSessionStore(db)
 	presenceDB = db
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		handleWebSocket(w, r, sessions, db)
@@ -14887,13 +14889,153 @@ func isUserAdmin(db *sql.DB, userID int64) (bool, error) {
 }
 
 // isUserBanned проверяет, заблокирован ли юзер (banned_at IS NOT NULL).
+// ── Система санкций ──
+const (
+	escalateWarnToMute   = 3
+	escalateMuteToBan    = 2
+	escalationWindowDays = 90
+	autoMuteDays         = 7
+	autoBanDays          = 30
+)
+
+var muteScopeAll = []string{"post", "comment", "chat", "forum", "event", "job"}
+
+// isUserBanned: бан с lazy-автоснятием по banned_until.
 func isUserBanned(db *sql.DB, userID int64) (bool, string, error) {
-	var bannedAt sql.NullTime
+	var bannedAt, bannedUntil sql.NullTime
 	var reason sql.NullString
-	if err := db.QueryRow(`SELECT banned_at, banned_reason FROM users WHERE id = $1`, userID).Scan(&bannedAt, &reason); err != nil {
+	if err := db.QueryRow(`SELECT banned_at, banned_until, banned_reason FROM users WHERE id = $1`, userID).Scan(&bannedAt, &bannedUntil, &reason); err != nil {
 		return false, "", err
 	}
-	return bannedAt.Valid, reason.String, nil
+	if !bannedAt.Valid {
+		return false, "", nil
+	}
+	if bannedUntil.Valid && bannedUntil.Time.Before(time.Now()) {
+		_, _ = db.Exec(`UPDATE users SET banned_at=NULL, banned_until=NULL, banned_reason=NULL, banned_by=NULL WHERE id=$1`, userID)
+		_, _ = db.Exec(`UPDATE user_sanctions SET lifted_at=NOW() WHERE user_id=$1 AND type='ban' AND lifted_at IS NULL`, userID)
+		return false, "", nil
+	}
+	return true, reason.String, nil
+}
+
+// isUserMuted: mute с lazy-снятием и проверкой scope.
+func isUserMuted(db *sql.DB, userID int64, scope string) (bool, time.Time, string) {
+	var mutedUntil sql.NullTime
+	var scopesJSON []byte
+	var reason string
+	if err := db.QueryRow(`SELECT muted_until, array_to_json(mute_scopes), mute_reason FROM users WHERE id=$1`, userID).Scan(&mutedUntil, &scopesJSON, &reason); err != nil {
+		return false, time.Time{}, ""
+	}
+	if !mutedUntil.Valid {
+		return false, time.Time{}, ""
+	}
+	if mutedUntil.Time.Before(time.Now()) {
+		_, _ = db.Exec(`UPDATE users SET muted_until=NULL, mute_scopes='{}', mute_reason='' WHERE id=$1`, userID)
+		_, _ = db.Exec(`UPDATE user_sanctions SET lifted_at=NOW() WHERE user_id=$1 AND type='mute' AND lifted_at IS NULL`, userID)
+		return false, time.Time{}, ""
+	}
+	var scopes []string
+	_ = json.Unmarshal(scopesJSON, &scopes)
+	for _, s := range scopes {
+		if s == scope {
+			return true, mutedUntil.Time, reason
+		}
+	}
+	return false, time.Time{}, ""
+}
+
+// sanctionNotify — стилизованное уведомление о санкции (категория «Модерация»).
+func sanctionNotify(db *sql.DB, userID int64, title, body string) {
+	_, _ = db.Exec(`DELETE FROM notifications WHERE recipient_id=$1 AND type='moderation_sanction' AND actor_id IS NULL`, userID)
+	_ = createNotification(db, createNotificationParams{
+		RecipientID: userID,
+		ActorID:     0,
+		Type:        "moderation_sanction",
+		Title:       title,
+		Preview:     body,
+	})
+}
+
+// applySanction накладывает санкцию: история + состояние users + уведомление + разрыв сессий (ban) + автоэскалация.
+func applySanction(db *sql.DB, userID int64, sType string, scopes []string, reason string, durationDays int, createdBy int64, isAuto bool) error {
+	var expires any
+	if sType != "warn" && durationDays > 0 {
+		expires = time.Now().AddDate(0, 0, durationDays)
+	}
+	var createdByArg any
+	if createdBy != 0 {
+		createdByArg = createdBy
+	}
+	if _, err := db.Exec(`
+		INSERT INTO user_sanctions (user_id, type, scopes, reason, duration_days, created_by, is_auto, expires_at)
+		VALUES ($1,$2,$3::text[],$4,$5,$6,$7,$8)`,
+		userID, sType, pgtype.FlatArray[string](scopes), reason, durationDays, createdByArg, isAuto, expires); err != nil {
+		return err
+	}
+	switch sType {
+	case "warn":
+		sanctionNotify(db, userID, "Предупреждение от администрации", reason)
+	case "mute":
+		until := time.Now().AddDate(0, 0, durationDays)
+		if _, err := db.Exec(`UPDATE users SET muted_until=$1, mute_scopes=$2::text[], mute_reason=$3 WHERE id=$4`, until, pgtype.FlatArray[string](scopes), reason, userID); err != nil {
+			return err
+		}
+		sanctionNotify(db, userID, "Ограничение публикации", "Вы временно ограничены в действиях до "+until.Format("02.01.2006")+". Причина: "+reason)
+	case "ban":
+		var until any
+		msg := "Ваш аккаунт заблокирован бессрочно. Причина: " + reason
+		if durationDays > 0 {
+			u := time.Now().AddDate(0, 0, durationDays)
+			until = u
+			msg = "Ваш аккаунт заблокирован до " + u.Format("02.01.2006") + ". Причина: " + reason
+		}
+		if _, err := db.Exec(`UPDATE users SET banned_at=NOW(), banned_until=$1, banned_reason=$2, banned_by=$3 WHERE id=$4`, until, reason, createdByArg, userID); err != nil {
+			return err
+		}
+		sanctionNotify(db, userID, "Аккаунт заблокирован", msg)
+		sessions.invalidateUser(userID)
+	}
+	if !isAuto {
+		checkAutoEscalation(db, userID)
+	}
+	return nil
+}
+
+// checkAutoEscalation: при превышении порогов накладывает следующую ступень.
+func checkAutoEscalation(db *sql.DB, userID int64) {
+	since := time.Now().AddDate(0, 0, -escalationWindowDays)
+	var warnCount, muteCount int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM user_sanctions WHERE user_id=$1 AND type='warn' AND created_at>=$2`, userID, since).Scan(&warnCount)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM user_sanctions WHERE user_id=$1 AND type='mute' AND created_at>=$2`, userID, since).Scan(&muteCount)
+	if banned, _, _ := isUserBanned(db, userID); banned {
+		return
+	}
+	if muteCount >= escalateMuteToBan {
+		_ = applySanction(db, userID, "ban", nil, "Автоматическая блокировка: повторные нарушения", autoBanDays, 0, true)
+		return
+	}
+	if warnCount >= escalateWarnToMute {
+		if muted, _, _ := isUserMuted(db, userID, "post"); !muted {
+			_ = applySanction(db, userID, "mute", muteScopeAll, "Автоматическое ограничение: повторные предупреждения", autoMuteDays, 0, true)
+		}
+	}
+}
+
+// liftSanction досрочно снимает активную санкцию (mute|ban).
+func liftSanction(db *sql.DB, userID int64, sType string, liftedBy int64) error {
+	switch sType {
+	case "mute":
+		if _, err := db.Exec(`UPDATE users SET muted_until=NULL, mute_scopes='{}', mute_reason='' WHERE id=$1`, userID); err != nil {
+			return err
+		}
+	case "ban":
+		if _, err := db.Exec(`UPDATE users SET banned_at=NULL, banned_until=NULL, banned_reason=NULL, banned_by=NULL WHERE id=$1`, userID); err != nil {
+			return err
+		}
+	}
+	_, _ = db.Exec(`UPDATE user_sanctions SET lifted_at=NOW(), lifted_by=$1 WHERE user_id=$2 AND type=$3 AND lifted_at IS NULL`, liftedBy, userID, sType)
+	sanctionNotify(db, userID, "Ограничения сняты", "Администрация досрочно сняла наложенные ограничения.")
+	return nil
 }
 
 // SEC-COOKIE-AUTH (18.05): двойная-cookie аутентификация с CSRF-защитой.
