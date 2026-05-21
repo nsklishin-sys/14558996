@@ -319,9 +319,9 @@ async function submitWarn(type,id){
   if(!msg){if(ta)ta.style.borderColor='#C03030';return;}
   try{
     var r=await lastopFetch('/api/admin/content/'+type+'/'+id+'/warn',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
-    if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка',{type:'error'});return;}
-    closeWarnModal();closeDetail();lastopToast('Предупреждение отправлено автору');
-  }catch(e){lastopToast('Ошибка соединения',{type:'error'});}
+    if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}
+    closeWarnModal();closeDetail();lastopToast('Предупреждение отправлено автору','success');
+  }catch(e){lastopToast('Ошибка соединения','error');}
 }
 var COMPLAINT_TYPES={post:'Пост',comment:'Комментарий',user:'Пользователь',company:'Компания',community:'Сообщество',chat_message:'Сообщение в чате',forum_message:'Сообщение в форуме',event_message:'Сообщение в событии'};
 var COMPLAINT_STATUSES={new:{label:'Новая',cls:'banned'},under_review:{label:'На рассмотрении',cls:'active'},resolved_action:{label:'Решена',cls:'admin'},resolved_reject:{label:'Отклонена',cls:''}};

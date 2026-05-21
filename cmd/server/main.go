@@ -11150,7 +11150,7 @@ func main() {
 				SELECT c.id, c.reporter_id, COALESCE(u.full_name, ''), COALESCE(u.email, ''),
 				       c.target_type, c.target_id, c.target_public_id, c.reason, c.comment,
 				       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, ''),
-				       COALESCE(c.screenshot_url, '')
+				       COALESCE(c.screenshot_url, ''), c.is_appeal
 				FROM complaints c
 				LEFT JOIN users u ON u.id = c.reporter_id
 				WHERE c.id = $1
