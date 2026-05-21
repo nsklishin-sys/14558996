@@ -1805,8 +1805,15 @@ async function submitMessage(){
     hidePreview();
     await loadMessages();
     await loadConversations();
-  } catch {
-    showToast('Не удалось отправить сообщение');
+  } catch (e) {
+    var emsg = '';
+    try {
+      var raw = (e && e.message) ? String(e.message) : '';
+      // api() кладёт в message сырой ответ — пытаемся достать поле error.
+      if (raw && raw.charAt(0) === '{') { var pj = JSON.parse(raw); emsg = pj.error || ''; }
+      else if (raw && raw !== '401' && !/^\d+$/.test(raw)) { emsg = raw; }
+    } catch (_) {}
+    showToast(emsg || 'Не удалось отправить сообщение');
   }
 }
 async function sendMessage(){return submitMessage()}
