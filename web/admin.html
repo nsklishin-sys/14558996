@@ -124,6 +124,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="audit"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Журнал</button>
       <button class="admin-tab" data-tab="hidden"><svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Скрытое</button>
       <button class="admin-tab" data-tab="sanctions"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Санкции</button>
+      <button class="admin-tab" data-tab="dicts"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Справочники</button>
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
@@ -192,6 +193,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="admin-pane" id="paneSanctions" style="display:none;flex-direction:column;gap:12px"></div>
+    <div class="admin-pane" id="paneDicts" style="display:none;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="dictType" onchange="loadDicts()" style="padding:8px;border:1px solid var(--bdr);border-radius:8px;font-size:13px">
+          <option value="forum_category">Категории форума</option>
+          <option value="catalog_group">Группы каталога</option>
+          <option value="catalog_category">Категории каталога</option>
+          <option value="city">Города</option>
+        </select>
+        <button class="dp-btn primary" onclick="dictAdd()">+ Добавить</button>
+      </div>
+      <div id="dictList"></div>
+    </div>
   </div>
   <aside class="right">
     <div class="panel">
@@ -227,7 +240,7 @@ function num(n){if(typeof n==='string')return n;return n>=1000?(n/1000).toFixed(
 var currentTab='overview';
 var usersFilter={q:'',status:''};
 document.getElementById('adminTabs').addEventListener('click',function(e){var btn=e.target.closest('.admin-tab');if(!btn)return;switchTab(btn.dataset.tab);});
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   pane.innerHTML='<div class="empty">Загрузка…</div>';
@@ -247,6 +260,42 @@ async function loadSanctions(){
 }
 async function sanctLift(id,stype){
   try{var r=await lastopFetch('/api/admin/users/'+id+'/lift_sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stype:stype})});if(!r.ok){lastopToast('Ошибка','error');return;}loadSanctions();lastopToast('Снято','success');}catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function loadDicts(){
+  var type=document.getElementById('dictType').value;
+  var list=document.getElementById('dictList');
+  list.innerHTML='<div class="empty">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/dictionaries?type='+encodeURIComponent(type));if(!r.ok)throw 0;
+    var d=await r.json();var items=d.items||[];
+    if(!items.length){list.innerHTML='<div class="empty">Пусто</div>';return;}
+    list.innerHTML=items.map(function(it){
+      var color=it.color?'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+esc(it.color)+';margin-right:6px;vertical-align:middle"></span>':'';
+      var dim=it.is_active?'':'opacity:.45;';
+      var parent=it.parent_key?' <span class="u-pos">'+esc(it.parent_key)+'</span>':'';
+      return '<div class="users-row" style="'+dim+'"><div style="flex:1">'+color+'<span class="u-name">'+esc(it.label)+'</span> <span class="u-pos">'+esc(it.key)+'</span>'+parent+'</div><div><button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDelete('+it.id+')">Удалить</button></div></div>';
+    }).join('');
+  }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить</div>';}
+}
+async function dictAdd(){
+  var type=document.getElementById('dictType').value;
+  var label=await lastopPrompt({title:'Добавить запись',label:'Название',placeholder:'Например: Москва',confirmText:'Добавить'});
+  if(!label||!label.trim())return;
+  var parent='';
+  if(type==='catalog_category'){parent=await lastopPrompt({title:'Группа',label:'Ключ группы (parent_key)',placeholder:'industry',confirmText:'OK'})||'';}
+  var color='';
+  if(type==='forum_category'){color=await lastopPrompt({title:'Цвет',label:'HEX-цвет',placeholder:'#2563EB',confirmText:'OK'})||'';}
+  try{var r=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,label:label.trim(),parent_key:parent.trim(),color:color.trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}loadDicts();lastopToast('Добавлено','success');}catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function dictEdit(id,label,sort,color){
+  var nl=await lastopPrompt({title:'Изменить',label:'Название',value:label,confirmText:'Сохранить'});
+  if(nl===null)return;
+  try{var r=await lastopFetch('/api/admin/dictionaries',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,label:nl.trim(),color:color||'',sort_order:sort||0})});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Сохранено','success');}catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function dictDelete(id){
+  var ok=await lastopConfirm({title:'Удалить запись?',message:'Запись будет скрыта (мягкое удаление). Существующие данные не пострадают.',confirmText:'Удалить',danger:true});
+  if(!ok)return;
+  try{var r=await lastopFetch('/api/admin/dictionaries?id='+id,{method:'DELETE'});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Удалено','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
 // COMPANIES TAB
 var companiesFilter={q:'',status:''};
