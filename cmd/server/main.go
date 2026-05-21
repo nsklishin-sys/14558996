@@ -2710,7 +2710,17 @@ func main() {
 				return
 			}
 			if errors.Is(err, errForbidden) {
-				writeError(w, http.StatusForbidden, "Аккаунт заблокирован")
+				var bReason sql.NullString
+				var bUntil sql.NullTime
+				_ = db.QueryRow(`SELECT banned_reason, banned_until FROM users WHERE lower(email)=lower($1)`, strings.TrimSpace(req.Email)).Scan(&bReason, &bUntil)
+				msg := "Аккаунт заблокирован"
+				if bReason.Valid && bReason.String != "" {
+					msg += ". Причина: " + bReason.String
+				}
+				if bUntil.Valid {
+					msg += " (до " + bUntil.Time.Format("02.01.2006") + ")"
+				}
+				writeError(w, http.StatusForbidden, msg)
 				return
 			}
 			if errors.Is(err, errValidation) {
