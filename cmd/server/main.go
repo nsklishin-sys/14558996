@@ -13059,7 +13059,7 @@ func initDBFromEnv() (*sql.DB, error) {
 		return nil, err
 	}
 
-	if err := ensureSchema(db); err != nil {
+	if err := ensureSchemaAndDicts(db); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
@@ -13093,6 +13093,15 @@ func waitForDB(db *sql.DB, timeout time.Duration) error {
 		case <-ticker.C:
 		}
 	}
+}
+
+func ensureSchemaAndDicts(db *sql.DB) error {
+	if err := ensureSchema(db); err != nil {
+		return err
+	}
+	seedDictionaries(db)
+	reloadDictionaries(db)
+	return nil
 }
 
 func ensureSchema(db *sql.DB) error {
@@ -14072,6 +14081,20 @@ CREATE INDEX IF NOT EXISTS project_stages_project_idx
     ON project_stages (project_id, sort_order, id);
 
 -- Подзадачи этапа (чек-лист)
+CREATE TABLE IF NOT EXISTS dictionaries (
+    id BIGSERIAL PRIMARY KEY,
+    type TEXT NOT NULL,
+    key TEXT NOT NULL,
+    label TEXT NOT NULL,
+    parent_key TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (type, key)
+);
+CREATE INDEX IF NOT EXISTS dictionaries_type_idx ON dictionaries (type, is_active, sort_order);
+
 CREATE TABLE IF NOT EXISTS stage_subtasks (
     id BIGSERIAL PRIMARY KEY,
     stage_id BIGINT NOT NULL REFERENCES project_stages(id) ON DELETE CASCADE,
@@ -26797,6 +26820,14 @@ var catalogCategoriesList = []catalogCategoryGroup{
 
 // validateCatalogCategory проверяет, что переданный ключ существует
 // среди всех подкатегорий каталога.
+// citiesList — справочник городов (наполняется из dictionaries при старте).
+var citiesList []dictCity
+
+type dictCity struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+}
+
 func validateCatalogCategory(s string) bool {
 	for _, g := range catalogCategoriesList {
 		for _, c := range g.Items {
@@ -26832,6 +26863,79 @@ func catalogCategoryGroupLabel(s string) string {
 		}
 	}
 	return ""
+}
+
+// seedDictionaries заполняет таблицу из текущих хардкодных значений (idempotent).
+func seedDictionaries(db *sql.DB) {
+	// forum_category
+	for i, c := range forumCategories {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('forum_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
+	}
+	// catalog_group + catalog_category
+	for gi, g := range catalogCategoriesList {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('catalog_group',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, g.Key, g.Label, gi)
+		for ci, c := range g.Items {
+			_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, sort_order) VALUES ('catalog_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, g.Key, ci)
+		}
+	}
+}
+
+// reloadDictionaries загружает справочники из БД в in-memory кэш.
+// forumCategories, catalogCategoriesList, citiesList наполняются из таблицы.
+func reloadDictionaries(db *sql.DB) {
+	// forum_category
+	if rows, err := db.Query(`SELECT key, label, color FROM dictionaries WHERE type='forum_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var fc []forumCategoryDef
+		for rows.Next() {
+			var k, l, col string
+			if rows.Scan(&k, &l, &col) == nil {
+				fc = append(fc, forumCategoryDef{Key: k, Label: l, Color: col})
+			}
+		}
+		rows.Close()
+		if len(fc) > 0 {
+			forumCategories = fc
+		}
+	}
+	// catalog groups + categories
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='catalog_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var groups []catalogCategoryGroup
+		groupIdx := map[string]int{}
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				groupIdx[k] = len(groups)
+				groups = append(groups, catalogCategoryGroup{Key: k, Label: l})
+			}
+		}
+		rows.Close()
+		if rows2, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='catalog_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows2.Next() {
+				var k, l, pk string
+				if rows2.Scan(&k, &l, &pk) == nil {
+					if idx, ok := groupIdx[pk]; ok {
+						groups[idx].Items = append(groups[idx].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows2.Close()
+		}
+		if len(groups) > 0 {
+			catalogCategoriesList = groups
+		}
+	}
+	// cities
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='city' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var cl []dictCity
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				cl = append(cl, dictCity{Key: k, Label: l})
+			}
+		}
+		rows.Close()
+		citiesList = cl
+	}
 }
 
 // generateCatalogPublicID возвращает новый public_id вида cat_xxxxx
