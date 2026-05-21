@@ -5939,19 +5939,28 @@ func main() {
 			return
 		}
 		rows, err := db.Query(`
-			SELECT action, COALESCE(ip_address,''), COALESCE(city,''), COALESCE(provider,''), COALESCE(user_agent,''), created_at
-			FROM user_activity_log WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30`, uid)
+			SELECT a.action, COALESCE(a.ip_address,''), COALESCE(a.city,''), COALESCE(a.provider,''),
+			       COALESCE(a.user_agent,''), a.created_at, a.entity_type,
+			       COALESCE(
+			           CASE a.entity_type
+			               WHEN 'post' THEN (SELECT public_id FROM posts WHERE id = a.entity_id)
+			               WHEN 'job' THEN (SELECT public_id FROM jobs WHERE id = a.entity_id)
+			               WHEN 'forum_topic' THEN (SELECT public_id FROM forum_topics WHERE id = a.entity_id)
+			               WHEN 'comment' THEN (SELECT p.public_id FROM post_comments c JOIN posts p ON p.id = c.post_id WHERE c.id = a.entity_id)
+			           END, '') AS entity_public_id
+			FROM user_activity_log a WHERE a.user_id=$1 ORDER BY a.created_at DESC LIMIT 30`, uid)
 		items := []map[string]any{}
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
-				var action, ip, city, provider, ua string
+				var action, ip, city, provider, ua, entityType, entityPID string
 				var created time.Time
-				if rows.Scan(&action, &ip, &city, &provider, &ua, &created) == nil {
+				if rows.Scan(&action, &ip, &city, &provider, &ua, &created, &entityType, &entityPID) == nil {
 					items = append(items, map[string]any{
 						"action": action, "ip_address": ip, "city": city,
 						"provider": provider, "user_agent": ua,
 						"created_at": created.Format(time.RFC3339),
+						"entity_type": entityType, "entity_public_id": entityPID,
 					})
 				}
 			}
