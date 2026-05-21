@@ -10855,6 +10855,72 @@ func main() {
 	}))
 
 	// Жалобы B-2: админский API.
+	mux.HandleFunc("/api/moderation/appeal", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, hasAuth := authenticatedUserID(w, r, sessions)
+		if !hasAuth {
+			return
+		}
+		var body struct {
+			EntityType string `json:"entity_type"`
+			EntityID   int64  `json:"entity_id"`
+			Reason     string `json:"reason"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректное тело")
+			return
+		}
+		body.EntityType = strings.TrimSpace(strings.ToLower(body.EntityType))
+		reason := strings.TrimSpace(body.Reason)
+		if body.EntityType != "post" && body.EntityType != "comment" {
+			writeError(w, http.StatusBadRequest, "Некорректный тип")
+			return
+		}
+		if reason == "" {
+			writeError(w, http.StatusBadRequest, "Укажите причину несогласия")
+			return
+		}
+		if len([]rune(reason)) > 1000 {
+			reason = string([]rune(reason)[:1000])
+		}
+		var authorID int64
+		var targetPublicID string
+		if body.EntityType == "post" {
+			_ = db.QueryRow(`SELECT author_id, COALESCE(public_id, '') FROM posts WHERE id=$1`, body.EntityID).Scan(&authorID, &targetPublicID)
+		} else {
+			_ = db.QueryRow(`SELECT author_id FROM post_comments WHERE id=$1`, body.EntityID).Scan(&authorID)
+		}
+		if authorID == 0 || authorID != userID {
+			writeError(w, http.StatusForbidden, "Обжаловать может только автор контента")
+			return
+		}
+		var existing int64
+		_ = db.QueryRow(`SELECT COUNT(*) FROM complaints WHERE reporter_id=$1 AND target_type=$2 AND target_id=$3 AND is_appeal=TRUE AND status IN ('new','under_review')`, userID, body.EntityType, body.EntityID).Scan(&existing)
+		if existing > 0 {
+			writeError(w, http.StatusConflict, "Вы уже обжаловали это решение — апелляция на рассмотрении")
+			return
+		}
+		var newID int64
+		err := db.QueryRow(`
+			INSERT INTO complaints (reporter_id, target_type, target_id, target_public_id, reason, comment, is_appeal)
+			VALUES ($1, $2, $3, $4, 'other', $5, TRUE)
+			RETURNING id
+		`, userID, body.EntityType, body.EntityID, targetPublicID, reason).Scan(&newID)
+		if err != nil {
+			if strings.Contains(err.Error(), "complaints_unique_active_idx") {
+				writeError(w, http.StatusConflict, "Вы уже обжаловали это решение — апелляция на рассмотрении")
+				return
+			}
+			log.Printf("[appeal] insert: %v", err)
+			writeError(w, http.StatusInternalServerError, "Не удалось отправить обжалование")
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"appeal_id": newID})
+		return
+	})
 	mux.HandleFunc("/api/admin/hidden", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -10928,7 +10994,7 @@ func main() {
 		sqlQuery := `
 			SELECT c.id, c.reporter_id, COALESCE(u.full_name, ''), COALESCE(u.email, ''),
 			       c.target_type, c.target_id, c.target_public_id, c.reason, c.comment,
-			       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, '')
+			       c.status, c.created_at, c.resolved_at, COALESCE(c.resolution_note, ''), c.is_appeal
 			FROM complaints c
 			LEFT JOIN users u ON u.id = c.reporter_id
 			` + where + `
@@ -10955,6 +11021,7 @@ func main() {
 			CreatedAt      time.Time  `json:"created_at"`
 			ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
 			ResolutionNote string     `json:"resolution_note,omitempty"`
+			IsAppeal       bool       `json:"is_appeal,omitempty"`
 		}
 		out := make([]item, 0)
 		for rows.Next() {
@@ -10962,7 +11029,7 @@ func main() {
 			var resolvedAt sql.NullTime
 			if err := rows.Scan(&it.ID, &it.ReporterID, &it.ReporterName, &it.ReporterEmail,
 				&it.TargetType, &it.TargetID, &it.TargetPublicID, &it.Reason, &it.Comment,
-				&it.Status, &it.CreatedAt, &resolvedAt, &it.ResolutionNote); err != nil {
+				&it.Status, &it.CreatedAt, &resolvedAt, &it.ResolutionNote, &it.IsAppeal); err != nil {
 				continue
 			}
 			if resolvedAt.Valid {
@@ -11034,7 +11101,7 @@ func main() {
 			if entityType == "post" {
 				_ = db.QueryRow(`SELECT author_id, public_id FROM posts WHERE id=$1`, entityID).Scan(&authorID, &srcPublicID)
 			} else {
-				_ = db.QueryRow(`SELECT author_id FROM post_comments WHERE id=$1`, entityID).Scan(&authorID)
+				_ = db.QueryRow(`SELECT pc.author_id, COALESCE(p.public_id, '') FROM post_comments pc JOIN posts p ON p.id = pc.post_id WHERE pc.id=$1`, entityID).Scan(&authorID, &srcPublicID)
 			}
 			if authorID == 0 {
 				writeError(w, http.StatusNotFound, "Автор не найден")
@@ -11043,7 +11110,7 @@ func main() {
 			_ = createNotification(db, createNotificationParams{
 				RecipientID:    authorID,
 				ActorID:        0,
-				Type:           "system",
+				Type:           "moderation_warning",
 				SourceType:     entityType,
 				SourceID:       entityID,
 				SourcePublicID: srcPublicID,
@@ -14263,6 +14330,8 @@ CREATE INDEX IF NOT EXISTS complaints_reporter_idx
 CREATE UNIQUE INDEX IF NOT EXISTS complaints_unique_active_idx 
     ON complaints(reporter_id, target_type, target_id) 
     WHERE status IN ('new','under_review');
+
+ALTER TABLE complaints ADD COLUMN IF NOT EXISTS is_appeal BOOLEAN NOT NULL DEFAULT FALSE;
 
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden_by_admin BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS hidden_by_admin_at TIMESTAMPTZ;
