@@ -11170,10 +11170,11 @@ func main() {
 				ResolvedAt     sql.NullTime
 				ResolutionNote string
 				ScreenshotURL  string
+				IsAppeal       bool
 			}
 			if err := row.Scan(&it.ID, &it.ReporterID, &it.ReporterName, &it.ReporterEmail,
 				&it.TargetType, &it.TargetID, &it.TargetPublicID, &it.Reason, &it.Comment,
-				&it.Status, &it.CreatedAt, &it.ResolvedAt, &it.ResolutionNote, &it.ScreenshotURL); err != nil {
+				&it.Status, &it.CreatedAt, &it.ResolvedAt, &it.ResolutionNote, &it.ScreenshotURL, &it.IsAppeal); err != nil {
 				writeError(w, http.StatusNotFound, "Жалоба не найдена")
 				return
 			}
@@ -11262,6 +11263,7 @@ func main() {
 				"created_at":       it.CreatedAt,
 				"resolution_note":  it.ResolutionNote,
 				"screenshot_url":   it.ScreenshotURL,
+				"is_appeal":        it.IsAppeal,
 				"preview":          preview,
 			}
 			if it.ResolvedAt.Valid {
