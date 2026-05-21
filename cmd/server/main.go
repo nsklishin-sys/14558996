@@ -26963,6 +26963,11 @@ func seedDictionaries(db *sql.DB) {
 			_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, sort_order) VALUES ('catalog_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, g.Key, ci)
 		}
 	}
+	// city: собираем уникальные города из профилей пользователей.
+	_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label)
+		SELECT 'city', lower(trim(city)), trim(city)
+		FROM (SELECT DISTINCT city FROM users WHERE city IS NOT NULL AND trim(city) <> '') t
+		ON CONFLICT (type, key) DO NOTHING`)
 }
 
 // reloadDictionaries загружает справочники из БД в in-memory кэш.
