@@ -122,6 +122,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="companies"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Компании</button>
       <button class="admin-tab" data-tab="complaints"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Жалобы<span class="tab-badge" id="complaintsBadge" style="display:none"></span></button>
       <button class="admin-tab" data-tab="audit"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Журнал</button>
+      <button class="admin-tab" data-tab="hidden"><svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Скрытое</button>
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
@@ -180,6 +181,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="users-tbody" id="complaintsTbody"></div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneHidden">
+      <div class="users-table">
+        <div class="users-thead" style="grid-template-columns:90px 1.6fr 1fr 1fr 120px">
+          <div>Тип</div><div>Контент</div><div>Автор</div><div>Причина</div><div></div>
+        </div>
+        <div class="users-tbody" id="hiddenTbody"></div>
+      </div>
+    </div>
   </div>
   <aside class="right">
     <div class="panel">
@@ -215,7 +224,7 @@ function num(n){if(typeof n==='string')return n;return n>=1000?(n/1000).toFixed(
 var currentTab='overview';
 var usersFilter={q:'',status:''};
 document.getElementById('adminTabs').addEventListener('click',function(e){var btn=e.target.closest('.admin-tab');if(!btn)return;switchTab(btn.dataset.tab);});
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';if(name==='overview')loadOverview();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
 // COMPANIES TAB
 var companiesFilter={q:'',status:''};
 var companiesSearchTimer;
@@ -267,6 +276,10 @@ async function loadComplaints(){
 }
 function updateComplaintsBadge(n){var b=document.getElementById('complaintsBadge');if(!b)return;if(n>0){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}
 var COMPLAINT_REASONS={spam:'Спам',abuse:'Оскорбления',illegal:'Запрещ. контент',fraud:'Мошенничество',disinfo:'Дезинформация',copyright:'Авторские права',other:'Другое'};
+var HIDDEN_TYPES={post:'Пост',comment:'Комментарий'};
+async function loadHidden(){var tb=document.getElementById('hiddenTbody');tb.innerHTML='<div class="empty">Загрузка…</div>';try{var r=await lastopFetch('/api/admin/hidden');if(!r.ok)throw 0;var d=await r.json();renderHidden(d.items||[]);}catch(e){tb.innerHTML='<div class="empty">Не удалось загрузить</div>';}}
+function renderHidden(items){var tb=document.getElementById('hiddenTbody');if(!items.length){tb.innerHTML='<div class="empty">Скрытого контента нет</div>';return;}tb.innerHTML=items.map(function(it){var tn=HIDDEN_TYPES[it.type]||it.type;return '<div class="users-row" style="grid-template-columns:90px 1.6fr 1fr 1fr 120px"><div><span class="u-badge">'+esc(tn)+'</span></div><div class="u-name" style="font-size:12px">'+esc(it.preview||'—')+'</div><div class="u-pos">'+esc(it.author||'—')+'</div><div class="u-pos">'+esc(it.reason||'—')+'</div><div><button class="u-action" onclick="actUnhide(\''+it.type+'\','+it.id+')">Восстановить</button></div></div>';}).join('');}
+async function actUnhide(type,id){if(!await lastopConfirm({title:'Восстановить контент?',message:'Контент снова станет видимым всем пользователям.',confirmText:'Восстановить'}))return;try{var r=await lastopFetch('/api/admin/content/'+type+'/'+id+'/unhide',{method:'POST'});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}loadHidden();}catch(e){alert('Ошибка соединения');}}
 var COMPLAINT_TYPES={post:'Пост',comment:'Комментарий',user:'Пользователь',company:'Компания',community:'Сообщество',chat_message:'Сообщение в чате',forum_message:'Сообщение в форуме',event_message:'Сообщение в событии'};
 var COMPLAINT_STATUSES={new:{label:'Новая',cls:'banned'},under_review:{label:'На рассмотрении',cls:'active'},resolved_action:{label:'Решена',cls:'admin'},resolved_reject:{label:'Отклонена',cls:''}};
 function renderComplaints(items){var tb=document.getElementById('complaintsTbody');if(!items.length){tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}tb.innerHTML=items.map(function(c){var st=COMPLAINT_STATUSES[c.status]||{label:c.status,cls:''};var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';var typeName=COMPLAINT_TYPES[c.target_type]||c.target_type;var reasonName=COMPLAINT_REASONS[c.reason]||c.reason;return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(typeName)+'</div><div class="u-pos">ID: '+c.target_id+(c.target_public_id?' · '+esc(c.target_public_id):'')+'</div></div><div class="u-name" style="font-size:12px">'+esc(reasonName)+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');}
