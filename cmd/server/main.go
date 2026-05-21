@@ -13417,7 +13417,29 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FAL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_reason TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mute_scopes TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mute_reason TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_users_banned ON users(banned_at) WHERE banned_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_muted ON users(muted_until) WHERE muted_until IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS user_sanctions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN ('warn','mute','ban')),
+    scopes TEXT[] NOT NULL DEFAULT '{}',
+    reason TEXT NOT NULL DEFAULT '',
+    duration_days INT NOT NULL DEFAULT 0,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    is_auto BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    lifted_at TIMESTAMPTZ,
+    lifted_by BIGINT REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS user_sanctions_user_idx ON user_sanctions (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS user_sanctions_active_idx ON user_sanctions (user_id, type) WHERE lifted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS system_settings (
     key TEXT PRIMARY KEY,
