@@ -196,6 +196,10 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 .comments-section{margin-top:4px}
 .comments-title{font-size:13px;font-weight:800;color:var(--t);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .comments-count{font-size:11px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:99px;padding:2px 8px}
+.mod-hidden{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#C03030;background:#FCEDED;border:1px solid #F3C0C0;border-radius:99px;padding:3px 10px;margin-bottom:10px}
+.mod-hidden svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.comment.is-mod-hidden{opacity:.6}
+.comment.is-mod-hidden .mod-hidden{margin-bottom:6px}
 
 .news-text,
 .news-repost-original-text,
@@ -795,7 +799,7 @@ function renderComments(){
   const commentsList=document.getElementById('commentsList');
   if(!commentsList)return;
   commentsList.innerHTML=comments.map((c,i)=>`
-    <div class="comment" id="comment-${c.id}" style="animation-delay:${i*.06}s">
+    <div class="comment${c.hidden?' is-mod-hidden':''}" id="comment-${c.id}" style="animation-delay:${i*.06}s">
       ${commentAvHtml(c)}
       <div class="com-body">
         <div class="com-head">
@@ -803,6 +807,7 @@ function renderComments(){
           ${c.role?`<span class="com-role">${esc(c.role)}</span>`:''}
           <span class="com-time">${window.LastopFormat ? window.LastopFormat.dateTime(c.ts) : ago(c.ts)}</span>
         </div>
+        ${c.hidden?`<div class="mod-hidden"><svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Скрыто администрацией</div>`:''}
         ${c.quoted?`<a class="com-quote" href="#comment-${c.quoted.id}" onclick="document.getElementById('comment-${c.quoted.id}')?.scrollIntoView({behavior:'smooth',block:'center'});return false">
           <div class="com-quote-author">↳ ${esc(c.quoted.name)}</div>
           <div class="com-quote-text">${esc((c.quoted.text||'').slice(0,80))}</div>
@@ -1045,6 +1050,7 @@ async function loadPostAndComments(){
           likes: 0,
           liked: false,
           ts: c.created_at,
+          hidden: c.is_hidden_by_admin || false,
           replies: []
         };
       });
@@ -1207,7 +1213,7 @@ function renderPost(p){
   setHTML('newsDate', `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>${esc(postDate)}`);
   setHTML('newsViews', `<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${Number(p.views_count || 0).toLocaleString('ru-RU')}`);
 
-  setHTML('newsText', fmtMentions(p.text || p.content || ''));
+  setHTML('newsText', (p.is_hidden_by_admin ? `<div class="mod-hidden"><svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Скрыто администрацией</div>` : '') + fmtMentions(p.text || p.content || ''));
 
   const tagsEl = document.getElementById('newsTags');
   const tags = Array.isArray(p.tags) ? p.tags.filter(Boolean) : [];
