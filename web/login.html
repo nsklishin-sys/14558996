@@ -524,7 +524,7 @@ window.addEventListener('DOMContentLoaded',newCaptcha);
   var msg = '';
   var isBanned = p.get('banned') === '1';
   if (p.get('expired') === '1') msg = 'Сессия завершена. Войдите снова.';
-  if (isBanned) msg = 'Ваш аккаунт заблокирован. Обратитесь в поддержку.';
+  if (isBanned) { var bm = p.get('msg'); msg = bm ? decodeURIComponent(bm) : 'Ваш аккаунт заблокирован. Обратитесь в поддержку.'; }
   if (!msg) return;
   var bar = document.createElement('div');
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:'+(isBanned?'#E04040':'#1E8A4C')+';color:#fff;padding:10px 16px;text-align:center;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.15)';
