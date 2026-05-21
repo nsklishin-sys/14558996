@@ -503,18 +503,25 @@ const SOURCE_TYPE_TO_GROUP = (() => {
 
 const API='/api';
 const escHtml = window.lastopEsc;
-function showToast(msg){
+function showToast(msg,kind){
   let toast=document.getElementById('toast');
   if(!toast){
     toast=document.createElement('div');
     toast.id='toast';
-    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:12px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:var(--z-modal);box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transition:all .25s';
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);display:flex;align-items:center;gap:8px;padding:12px 18px;border-radius:14px;font-size:13px;font-weight:600;z-index:var(--z-modal);box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;transition:all .25s;border:1px solid';
     document.body.appendChild(toast);
   }
-  toast.textContent=msg;
+  var palette={
+    error:{bg:'#FCEDED',fg:'#C03030',bd:'#F3C0C0',icon:'<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:#C03030;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'},
+    success:{bg:'var(--gl)',fg:'var(--g)',bd:'var(--gb)',icon:'<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg>'},
+    info:{bg:'var(--w)',fg:'var(--t)',bd:'var(--bdr)',icon:''}
+  };
+  var p=palette[kind]||palette.info;
+  toast.style.background=p.bg;toast.style.color=p.fg;toast.style.borderColor=p.bd;
+  toast.innerHTML=p.icon+'<span>'+String(msg||'')+'</span>';
   toast.style.transform='translateX(-50%) translateY(0)';
   toast.style.opacity='1';
-  setTimeout(()=>{toast.style.transform='translateX(-50%) translateY(100px)';toast.style.opacity='0';},2200);
+  setTimeout(()=>{toast.style.transform='translateX(-50%) translateY(100px)';toast.style.opacity='0';},2600);
 }
 
 let currentFilter='all';
@@ -730,10 +737,10 @@ async function submitAppeal(type,id){
   if(!reason){if(t)t.style.borderColor='#C03030';return;}
   try{
     const r=await lastopFetch(API+'/moderation/appeal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_type:type,entity_id:id,reason:reason})});
-    if(!r.ok){const e=await r.json().catch(()=>({}));showToast(e.error||'Не удалось отправить обжалование');return;}
+    if(!r.ok){const e=await r.json().catch(()=>({}));showToast(e.error||'Не удалось отправить обжалование','error');return;}
     closeWarnModal();
-    showToast('Обжалование отправлено на повторную модерацию');
-  }catch(e){showToast('Ошибка соединения');}
+    showToast('Обжалование отправлено на повторную модерацию','success');
+  }catch(e){showToast('Ошибка соединения','error');}
 }
 
 function updateGroupCounts(){
