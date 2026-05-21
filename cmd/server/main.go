@@ -2704,6 +2704,9 @@ func main() {
 		}
 
 		authUser, err := loginUser(db, req)
+		if err == nil {
+			logUserActivity(db, authUser.ID, "login", "", 0, clientIP(r), r.UserAgent())
+		}
 		if err != nil {
 			if errors.Is(err, errInvalidCredentials) {
 				writeError(w, http.StatusUnauthorized, "Неверный email или пароль")
@@ -25606,6 +25609,19 @@ func anonymizeIP(ip string) string {
 	masked := make(net.IP, 16)
 	copy(masked, v6[:6])
 	return masked.String()
+}
+
+func logUserActivity(db *sql.DB, userID int64, action, objectType string, objectID int64, ip, userAgent string) {
+	if db == nil || userID <= 0 || strings.TrimSpace(action) == "" {
+		return
+	}
+	_, err := db.Exec(`
+		INSERT INTO user_activity_log (user_id, action, object_type, object_id, ip_address, user_agent)
+		VALUES ($1, $2, NULLIF($3,''), NULLIF($4,0), NULLIF($5,''), NULLIF($6,''))
+	`, userID, action, objectType, objectID, strings.TrimSpace(ip), strings.TrimSpace(userAgent))
+	if err != nil {
+		log.Printf("[activity] log failed: %v", err)
+	}
 }
 
 func clientIP(r *http.Request) string {
