@@ -482,6 +482,12 @@ const GROUP_DEFS = [
     icon: '<svg viewBox=\"0 0 24 24\"><path d=\"M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z\"/></svg>'
   },
   {
+    key: 'moderation',
+    title: 'Модерация',
+    sourceTypes: [],
+    icon: '<svg viewBox=\"0 0 24 24\"><path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/></svg>'
+  },
+  {
     key: 'system',
     title: 'Система',
     sourceTypes: ['system'],
@@ -617,7 +623,12 @@ function groupItems(items){
   const buckets={};
   GROUP_DEFS.forEach(g=>{buckets[g.key]=[];});
   items.forEach(n=>{
-    const groupKey=SOURCE_TYPE_TO_GROUP[n.source_type]||'system';
+    let groupKey;
+    if(n.type==='moderation_warning'||n.type==='moderation_appeal_result'){
+      groupKey='moderation';
+    } else {
+      groupKey=SOURCE_TYPE_TO_GROUP[n.source_type]||'system';
+    }
     if(!buckets[groupKey])buckets[groupKey]=[];
     buckets[groupKey].push(n);
   });
@@ -799,6 +810,7 @@ function buildHref(n){
   // Приоритет по типу события (n.type), не по source_type
   if(n.type==='friend_request')return '/friends.html?tab=incoming';
   if(n.type==='friend_accepted')return '/friends.html';
+  if(n.type==='moderation_appeal_result')return n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id):'/dashboard.html';
   switch(n.source_type){
     case 'post':
     case 'comment':
