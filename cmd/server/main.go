@@ -28992,6 +28992,3 @@ func looksLikeEmail(s string) bool {
 	return true
 }
 
-func reloadDictionaries(db *sql.DB) {
-	// TODO: reload dictionary cache when in-memory dictionaries are introduced.
-}
