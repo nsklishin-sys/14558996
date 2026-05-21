@@ -704,18 +704,35 @@ function openWarningModal(n){
   const srcType=n.source_type||'post';
   const srcId=n.source_id||0;
   const link=n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id):'';
+  const isSanction=n.type==='moderation_sanction';
+  // Заголовок/иконка/акцент по типу.
+  const head = isSanction
+    ? {bg:'#FFF6E6', stroke:'#B8860B', title:'Ограничение действий',
+       icon:'<circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/>'}
+    : {bg:'#FCEDED', stroke:'#C03030', title:'Предупреждение от администрации',
+       icon:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'};
+  const defaultText = isSanction
+    ? 'Администрация ограничила ваши действия на платформе.'
+    : 'Ваш контент был скрыт за нарушение правил платформы.';
+  // Для санкции (mute) нет привязанной публикации и обжалования контента — только закрытие.
+  const bodyExtra = (!isSanction && link)
+    ? '<a href="'+link+'" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--g);text-decoration:none;margin-bottom:4px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Перейти к публикации</a>'
+    : '';
+  const footerBtns = isSanction
+    ? '<button onclick="closeWarnModal()" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Понятно</button>'
+    : '<button onclick="closeWarnModal()" style="padding:9px 18px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Закрыть</button>'+
+      '<button onclick="showAppealForm(\''+srcType+'\','+srcId+')" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Обжаловать</button>';
   ov.innerHTML='<div style="background:var(--w);border-radius:18px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">'+
     '<div style="padding:18px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px">'+
-      '<div style="width:36px;height:36px;border-radius:10px;background:#FCEDED;display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#C03030;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'+
-      '<div style="font-size:15px;font-weight:800;color:var(--t)">Предупреждение от администрации</div>'+
+      '<div style="width:36px;height:36px;border-radius:10px;background:'+head.bg+';display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:'+head.stroke+';stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">'+head.icon+'</svg></div>'+
+      '<div style="font-size:15px;font-weight:800;color:var(--t)">'+head.title+'</div>'+
     '</div>'+
     '<div id="warnModalBody" style="padding:20px">'+
-      '<div style="font-size:13px;color:var(--t);line-height:1.6;margin-bottom:16px">'+escHtml(n.preview||'Ваш контент был скрыт за нарушение правил платформы.')+'</div>'+
-      (link?'<a href="'+link+'" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--g);text-decoration:none;margin-bottom:4px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Перейти к публикации</a>':'')+
+      '<div style="font-size:13px;color:var(--t);line-height:1.6;margin-bottom:16px">'+escHtml(n.preview||defaultText)+'</div>'+
+      bodyExtra+
     '</div>'+
     '<div style="padding:14px 20px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end">'+
-      '<button onclick="closeWarnModal()" style="padding:9px 18px;border-radius:10px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer">Закрыть</button>'+
-      '<button onclick="showAppealForm(\''+srcType+'\','+srcId+')" style="padding:9px 18px;border-radius:10px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">Обжаловать</button>'+
+      footerBtns+
     '</div>'+
   '</div>';
   ov.style.display='flex';
