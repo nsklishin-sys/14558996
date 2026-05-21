@@ -5927,6 +5927,37 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"users": users})
 	}))
 
+	mux.HandleFunc("/api/admin/user-activity/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/admin/user-activity/")
+		uid, _ := strconv.ParseInt(idStr, 10, 64)
+		if uid == 0 {
+			writeError(w, http.StatusBadRequest, "некорректный id")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT action, COALESCE(ip_address,''), COALESCE(city,''), COALESCE(provider,''), COALESCE(user_agent,''), created_at
+			FROM user_activity_log WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30`, uid)
+		items := []map[string]any{}
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var action, ip, city, provider, ua string
+				var created time.Time
+				if rows.Scan(&action, &ip, &city, &provider, &ua, &created) == nil {
+					items = append(items, map[string]any{
+						"action": action, "ip_address": ip, "city": city,
+						"provider": provider, "user_agent": ua,
+						"created_at": created.Format(time.RFC3339),
+					})
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}))
+
 	mux.HandleFunc("/api/admin/users/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
