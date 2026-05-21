@@ -2234,6 +2234,7 @@ func main() {
 		}
 
 		sessions.putWithMeta(token, createdUser.ID, r.UserAgent(), clientIP(r))
+		logUserActivity(db, createdUser.ID, "register", "", 0, clientIP(r), r.UserAgent())
 		_, csrfToken, _ := sessions.getUserIDWithCSRF(token)
 		setAuthCookies(w, token, csrfToken, sessionLifetime)
 		go func(userID int64, toEmail, name string, baseURL string) {
