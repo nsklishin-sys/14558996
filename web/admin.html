@@ -203,7 +203,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </select>
         <button class="dp-btn primary" onclick="dictAdd()">+ Добавить</button>
       </div>
-      <div id="dictList"></div>
+      <div id="dictList" style="overflow-y:auto;flex:1;min-height:0"></div>
     </div>
   </div>
   <aside class="right">
@@ -273,7 +273,7 @@ async function loadDicts(){
       var color=it.color?'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+esc(it.color)+';margin-right:6px;vertical-align:middle"></span>':'';
       var dim=it.is_active?'':'opacity:.45;';
       var parent=it.parent_key?' <span class="u-pos">'+esc(it.parent_key)+'</span>':'';
-      return '<div class="users-row" style="'+dim+'"><div style="flex:1">'+color+'<span class="u-name">'+esc(it.label)+'</span> <span class="u-pos">'+esc(it.key)+'</span>'+parent+'</div><div><button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDelete('+it.id+')">Удалить</button></div></div>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bdr);'+dim+'"><div style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;flex-wrap:wrap">'+color+'<span class="u-name" style="white-space:normal;overflow:visible">'+esc(it.label)+'</span> <span class="u-pos">'+esc(it.key)+'</span>'+parent+'</div><div style="flex-shrink:0;display:flex;gap:6px"><button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDelete('+it.id+')">Удалить</button></div></div>';
     }).join('');
   }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
