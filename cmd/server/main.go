@@ -10996,6 +10996,91 @@ func main() {
 		writeJSON(w, http.StatusCreated, map[string]any{"appeal_id": newID})
 		return
 	})
+	mux.HandleFunc("/api/admin/dictionaries", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			dType := r.URL.Query().Get("type")
+			if dType == "" {
+				writeError(w, http.StatusBadRequest, "Укажите type")
+				return
+			}
+			rows, err := db.Query(`SELECT id, key, label, parent_key, color, sort_order, is_active FROM dictionaries WHERE type=$1 ORDER BY sort_order, label`, dType)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			var items []map[string]any
+			for rows.Next() {
+				var id int64
+				var key, label, parent, color string
+				var sort int
+				var active bool
+				if rows.Scan(&id, &key, &label, &parent, &color, &sort, &active) == nil {
+					items = append(items, map[string]any{"id": id, "key": key, "label": label, "parent_key": parent, "color": color, "sort_order": sort, "is_active": active})
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"items": items})
+		case http.MethodPost:
+			var req struct {
+				Type, Key, Label, ParentKey, Color string
+				SortOrder                          int
+			}
+			if json.NewDecoder(r.Body).Decode(&req) != nil || req.Type == "" || strings.TrimSpace(req.Label) == "" {
+				writeError(w, http.StatusBadRequest, "type и label обязательны")
+				return
+			}
+			key := strings.TrimSpace(req.Key)
+			if key == "" {
+				key = req.Type + "_" + strconv.FormatInt(time.Now().UnixNano(), 36)
+			}
+			if _, err := db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, color, sort_order) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (type,key) DO UPDATE SET label=EXCLUDED.label, parent_key=EXCLUDED.parent_key, color=EXCLUDED.color, sort_order=EXCLUDED.sort_order, is_active=TRUE`, req.Type, key, strings.TrimSpace(req.Label), req.ParentKey, req.Color, req.SortOrder); err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось сохранить")
+				return
+			}
+			reloadDictionaries(db)
+			logAdminAction(db, actorID, "dictionary.create", "dictionary", 0, clientIP(r), map[string]any{"type": req.Type, "key": key})
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "key": key})
+		case http.MethodPatch:
+			var req struct {
+				ID                  int64
+				Label, Color string
+				SortOrder           int
+			}
+			if json.NewDecoder(r.Body).Decode(&req) != nil || req.ID == 0 {
+				writeError(w, http.StatusBadRequest, "id обязателен")
+				return
+			}
+			if _, err := db.Exec(`UPDATE dictionaries SET label=$1, color=$2, sort_order=$3 WHERE id=$4`, strings.TrimSpace(req.Label), req.Color, req.SortOrder, req.ID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось обновить")
+				return
+			}
+			reloadDictionaries(db)
+			logAdminAction(db, actorID, "dictionary.update", "dictionary", req.ID, clientIP(r), nil)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		case http.MethodDelete:
+			idStr := r.URL.Query().Get("id")
+			id, _ := strconv.ParseInt(idStr, 10, 64)
+			if id == 0 {
+				writeError(w, http.StatusBadRequest, "id обязателен")
+				return
+			}
+			if _, err := db.Exec(`UPDATE dictionaries SET is_active=FALSE WHERE id=$1`, id); err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось удалить")
+				return
+			}
+			reloadDictionaries(db)
+			logAdminAction(db, actorID, "dictionary.delete", "dictionary", id, clientIP(r), nil)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	}))
+
 	mux.HandleFunc("/api/admin/sanctions", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, db, sessions); !ok {
 			return
@@ -28796,4 +28881,8 @@ func looksLikeEmail(s string) bool {
 		return false
 	}
 	return true
+}
+
+func reloadDictionaries(db *sql.DB) {
+	// TODO: reload dictionary cache when in-memory dictionaries are introduced.
 }
