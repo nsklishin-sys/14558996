@@ -156,7 +156,12 @@
           if (body && body.error && /заблокирован/i.test(body.error)) {
             try { localStorage.removeItem('user'); } catch(e){}
             try { localStorage.removeItem('token'); } catch(e){}
-            if (!window.__lastopAuthRedirect) {
+            // На самой странице логина/регистрации бан показывает модалка
+            // с полными данными (причина+срок) — глобальный редирект тут
+            // только перезагрузил бы страницу и стёр данные модалки.
+            var curPath = (location.pathname || '');
+            var onAuthPage = curPath === '/login.html' || curPath === '/register.html';
+            if (!onAuthPage && !window.__lastopAuthRedirect) {
               window.__lastopAuthRedirect = true;
               window.location.replace('/login.html?banned=1');
             }
