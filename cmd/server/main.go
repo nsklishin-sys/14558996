@@ -1221,6 +1221,8 @@ type registerToEventRequest struct {
 
 type postComment struct {
 	ID                    int64     `json:"id"`
+	AuthorID              int64     `json:"-"`
+	IsHiddenByAdmin       bool      `json:"is_hidden_by_admin,omitempty"`
 	AuthorPublicID        string    `json:"author_public_id"`
 	AuthorName            string    `json:"author_name"`
 	AuthorAvatar          string    `json:"author_avatar,omitempty"`
@@ -6890,7 +6892,8 @@ func main() {
 			switch r.Method {
 			case http.MethodGet:
 				limit := parseLimit(r.URL.Query().Get("limit"), 50, 200)
-				comments, err := listComments(db, postPublicID, limit)
+				viewerID, _ := optionalAuthenticatedUserID(r, sessions)
+				comments, err := listComments(db, postPublicID, limit, viewerID, userIsAdmin(db, viewerID))
 				if err != nil {
 					handlePostActionError(w, err)
 					return
@@ -20085,11 +20088,12 @@ func toggleLike(db *sql.DB, publicID string, userID int64) (bool, int, error) {
 
 // listComments — выбирает комментарии к посту, включая avatar_url автора,
 // логотип компании-отправителя и аватарку сообщества-отправителя.
-func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, error) {
+func listComments(db *sql.DB, postPublicID string, limit int, viewerID int64, viewerIsAdmin bool) ([]postComment, error) {
 	rows, err := db.Query(`
 		SELECT pc.id, u.public_id, u.full_name, COALESCE(u.avatar_url, ''), pc.content, pc.parent_id, pc.created_at,
 		       COALESCE(pc.sender_company_id, 0), COALESCE(co.name, ''), COALESCE(co.slug, ''), COALESCE(co.logo_image, ''),
-		       COALESCE(pc.sender_community_id, 0), COALESCE(cm.name, ''), COALESCE(cm.avatar_url, '')
+		       COALESCE(pc.sender_community_id, 0), COALESCE(cm.name, ''), COALESCE(cm.avatar_url, ''),
+		       pc.author_id, COALESCE(pc.is_hidden_by_admin, FALSE)
 		FROM post_comments pc
 		JOIN posts p ON p.id = pc.post_id
 		JOIN users u ON u.id = pc.author_id
@@ -20111,8 +20115,12 @@ func listComments(db *sql.DB, postPublicID string, limit int) ([]postComment, er
 			&c.ID, &c.AuthorPublicID, &c.AuthorName, &c.AuthorAvatar, &c.Content, &c.ParentID, &c.CreatedAt,
 			&c.SenderCompanyID, &c.SenderCompanyName, &c.SenderCompanySlug, &c.SenderCompanyLogo,
 			&c.SenderCommunityID, &c.SenderCommunityName, &c.SenderCommunityAvatar,
+			&c.AuthorID, &c.IsHiddenByAdmin,
 		); err != nil {
 			return nil, err
+		}
+		if c.IsHiddenByAdmin && !viewerIsAdmin && (viewerID == 0 || viewerID != c.AuthorID) {
+			continue
 		}
 		out = append(out, c)
 	}
