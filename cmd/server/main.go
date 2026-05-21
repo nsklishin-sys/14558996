@@ -677,6 +677,7 @@ type post struct {
 	AuthorCompanyName string    `json:"author_company_name,omitempty"`
 	AuthorCompanySlug string    `json:"author_company_slug,omitempty"`
 	AuthorCompanyLogo string    `json:"author_company_logo,omitempty"`
+	IsHiddenByAdmin   bool      `json:"is_hidden_by_admin,omitempty"`
 }
 
 type notification struct {
@@ -6741,6 +6742,7 @@ func main() {
 			FROM posts p, src
 			WHERE p.id <> src.id
 			  AND p.is_deleted = FALSE
+			  AND p.is_hidden_by_admin = FALSE
 			  AND cardinality(ARRAY(SELECT unnest(p.tags) INTERSECT SELECT unnest(src.tags))) > 0
 			ORDER BY overlap DESC, p.views_count DESC, p.created_at DESC
 			LIMIT 4
@@ -7188,6 +7190,7 @@ func main() {
 			       p.created_at, p.updated_at, p.category
 			FROM posts p
 			WHERE p.is_deleted = FALSE
+			  AND p.is_hidden_by_admin = FALSE
 			  AND p.category = 'platform-update'
 			  AND p.privacy_level = 'public'
 			ORDER BY p.created_at DESC
@@ -17947,7 +17950,7 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN companies ac ON ac.id = p.author_company_id AND ac.deleted_at IS NULL
 		LEFT JOIN communities c ON c.id = p.community_id
-		WHERE p.community_id = $1 AND p.is_deleted = FALSE`
+		WHERE p.community_id = $1 AND p.is_deleted = FALSE AND p.is_hidden_by_admin = FALSE`
 	if beforeID > 0 {
 		query += fmt.Sprintf(" AND p.id < $%d", len(args)+1)
 		args = append(args, beforeID)
@@ -17965,7 +17968,7 @@ func listCommunityPosts(db *sql.DB, communityID, userID int64, hasAuth bool, lim
 		if err := rows.Scan(&item.ID, &item.PublicID, &item.Type, &item.Title, &item.Content, &item.CoverURL, &tagsJSON,
 			&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.CreatedAt, &item.AuthorID,
 			&item.AuthorCompanyID, &item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo,
-			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category); err != nil {
+			&item.AuthorPublicID, &item.AuthorName, &item.AuthorRole, &item.AuthorAvatar, &item.IsLiked, &item.IsSaved, &item.IsReposted, &item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category, &item.IsHiddenByAdmin); err != nil {
 			return nil, nil, err
 		}
 		_ = json.Unmarshal(tagsJSON, &item.Tags)
@@ -18225,7 +18228,7 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		       COALESCE(($2::bigint IS NOT NULL AND EXISTS (
 		           SELECT 1 FROM posts rp WHERE rp.author_id = $2::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE
 		       )), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, ''), COALESCE(p.category, '')
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, ''), COALESCE(p.category, ''), COALESCE(p.is_hidden_by_admin, FALSE)
 		FROM posts p
 		LEFT JOIN companies ac ON ac.id = p.author_company_id AND ac.deleted_at IS NULL
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $2::bigint
@@ -18239,7 +18242,7 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		&item.PrivacyLevel, &item.LikesCount, &item.CommentsCount, &item.ViewsCount, &item.CreatedAt, &item.AuthorID, &item.AuthorCompanyID,
 		&item.AuthorCompanyName, &item.AuthorCompanySlug, &item.AuthorCompanyLogo, &item.IsLiked,
 		&item.SavesCount, &item.RepostsCount, &item.RepostedFromID, &item.IsSaved, &item.IsReposted,
-		&item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category,
+		&item.CommunityName, &item.CommunityID, &item.CommunityAvatar, &item.CommunityColor, &item.Category, &item.IsHiddenByAdmin,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -18250,6 +18253,12 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 	item.CoverURL = coverURL
 	item.Text = item.Content
 	_ = json.Unmarshal(tagsJSON, &item.Tags)
+	if item.IsHiddenByAdmin {
+		isAuthor := hasAuth && authUserID == item.AuthorID
+		if !isAuthor && !userIsAdmin(db, authUserID) {
+			return post{}, errNotFound
+		}
+	}
 	if item.PrivacyLevel == "private" && (!hasAuth || authUserID != item.AuthorID) {
 		return post{}, errNotFound
 	}
@@ -18269,6 +18278,16 @@ func getPostByIDInternal(db *sql.DB, publicID string, authUserID int64, hasAuth,
 		}
 	}
 	return item, nil
+}
+
+// userIsAdmin возвращает true, если юзер с данным id — администратор.
+func userIsAdmin(db *sql.DB, userID int64) bool {
+	if userID == 0 {
+		return false
+	}
+	var ok bool
+	_ = db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&ok)
+	return ok
 }
 
 func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID int64, postType, category string) ([]post, *int64, error) {
@@ -18294,6 +18313,7 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.is_deleted = FALSE AND p.privacy_level = 'public'
+		  AND p.is_hidden_by_admin = FALSE
 		  AND (p.author_company_id IS NULL OR EXISTS (SELECT 1 FROM companies cc WHERE cc.id = p.author_company_id AND cc.deleted_at IS NULL))`
 	if postType != "" {
 		postType = strings.ToLower(strings.TrimSpace(postType))
@@ -19535,6 +19555,7 @@ func listTopPosts(db *sql.DB, authUserID int64, hasAuth bool, period string, lim
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.is_deleted = FALSE
+		  AND p.is_hidden_by_admin = FALSE
 		  AND p.privacy_level = 'public'
 		  AND p.type = 'news'
 		  AND p.created_at > NOW() - INTERVAL '%s'
@@ -19592,13 +19613,14 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 		       COALESCE(pl.user_id IS NOT NULL, FALSE),
 		       COALESCE(ps.user_id IS NOT NULL, FALSE),
 		       COALESCE(($1::bigint IS NOT NULL AND EXISTS (SELECT 1 FROM posts rp WHERE rp.author_id = $1::bigint AND rp.reposted_from_id = p.id AND rp.is_deleted = FALSE)), FALSE),
-		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, '')
+		       COALESCE(c.name, ''), COALESCE(c.id, 0), COALESCE(c.avatar_url, ''), COALESCE(c.color, ''), COALESCE(p.is_hidden_by_admin, FALSE)
 		FROM posts p
 		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $1::bigint
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
-		WHERE p.author_id = $2 AND p.is_deleted = FALSE`
+		WHERE p.author_id = $2 AND p.is_deleted = FALSE
+		  AND (p.is_hidden_by_admin = FALSE OR p.author_id = $1::bigint)`
 	args := []any{currentUser, targetID, limit + 1}
 	if !isOwner {
 		if isFriend {
@@ -20544,6 +20566,7 @@ func searchPostsInto(db *sql.DB, q, sortBy string, limit, offset int, res *searc
 		LEFT JOIN communities cm ON cm.id = p.community_id
 		WHERE COALESCE(p.is_deleted, FALSE) = FALSE
 		  AND p.privacy_level = 'public'
+		  AND p.is_hidden_by_admin = FALSE
 		  AND p.content ILIKE '%' || $1 || '%' ESCAPE '\'
 		ORDER BY `+orderBy+`
 		LIMIT $2 OFFSET $3
