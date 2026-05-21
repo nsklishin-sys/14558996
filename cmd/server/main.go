@@ -11090,9 +11090,9 @@ func main() {
 			return
 		}
 		rows, err := db.Query(`
-			SELECT u.id, u.public_id, u.full_name, u.email, u.avatar_url,
-			       u.banned_at, u.banned_until, u.banned_reason,
-			       u.muted_until, array_to_json(u.mute_scopes), u.mute_reason
+			SELECT u.id, COALESCE(u.public_id,''), COALESCE(u.full_name,''), COALESCE(u.email,''), COALESCE(u.avatar_url,''),
+			       u.banned_at, u.banned_until, COALESCE(u.banned_reason,''),
+			       u.muted_until, array_to_json(u.mute_scopes), COALESCE(u.mute_reason,'')
 			FROM users u
 			WHERE u.banned_at IS NOT NULL OR (u.muted_until IS NOT NULL AND u.muted_until > NOW())
 			ORDER BY GREATEST(COALESCE(u.banned_at, u.muted_until), COALESCE(u.muted_until, u.banned_at)) DESC
