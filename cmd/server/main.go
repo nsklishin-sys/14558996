@@ -10898,9 +10898,9 @@ func main() {
 			return
 		}
 		var existing int64
-		_ = db.QueryRow(`SELECT COUNT(*) FROM complaints WHERE reporter_id=$1 AND target_type=$2 AND target_id=$3 AND is_appeal=TRUE AND status IN ('new','under_review')`, userID, body.EntityType, body.EntityID).Scan(&existing)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM complaints WHERE reporter_id=$1 AND target_type=$2 AND target_id=$3 AND is_appeal=TRUE`, userID, body.EntityType, body.EntityID).Scan(&existing)
 		if existing > 0 {
-			writeError(w, http.StatusConflict, "Вы уже обжаловали это решение — апелляция на рассмотрении")
+			writeError(w, http.StatusConflict, "Вы уже обжаловали это решение")
 			return
 		}
 		var newID int64
@@ -11375,6 +11375,34 @@ func main() {
 					log.Printf("[complaints] update resolved: %v", err)
 					writeError(w, http.StatusInternalServerError, "Не удалось обновить жалобу")
 					return
+				}
+				// Если это была апелляция — уведомить автора о вердикте.
+				var apReporter int64
+				var apTType, apTPublic string
+				var apTID int64
+				var apIsAppeal bool
+				_ = db.QueryRow(`SELECT reporter_id, target_type, target_id, COALESCE(target_public_id,''), is_appeal FROM complaints WHERE id=$1`, complaintID).Scan(&apReporter, &apTType, &apTID, &apTPublic, &apIsAppeal)
+				if apIsAppeal && apReporter != 0 {
+					verdict := "отклонено"
+					body := "Администрация рассмотрела ваше обращение и оставила решение в силе."
+					if req.Status == "resolved_action" {
+						verdict = "удовлетворено"
+						body = "Администрация пересмотрела решение в вашу пользу."
+					}
+					if n := strings.TrimSpace(req.Note); n != "" {
+						body += " Комментарий: " + n
+					}
+					_, _ = db.Exec(`DELETE FROM notifications WHERE recipient_id=$1 AND type='moderation_appeal_result' AND source_type=$2 AND source_id=$3 AND actor_id IS NULL`, apReporter, apTType, apTID)
+					_ = createNotification(db, createNotificationParams{
+						RecipientID:    apReporter,
+						ActorID:        0,
+						Type:           "moderation_appeal_result",
+						SourceType:     apTType,
+						SourceID:       apTID,
+						SourcePublicID: apTPublic,
+						Title:          "Обжалование " + verdict,
+						Preview:        body,
+					})
 				}
 			} else {
 				_, err := db.Exec(`UPDATE complaints SET status=$1 WHERE id=$2`, req.Status, complaintID)
