@@ -413,7 +413,8 @@ function showBanModal(reason, until){
   ov.innerHTML='<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden">'+
     '<div style="background:#E04040;padding:22px 24px;display:flex;align-items:center;gap:12px">'+
       '<div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg></div>'+
-      '<div><div style="color:#fff;font-size:17px;font-weight:800">Доступ заблокирован</div><div style="color:rgba(255,255,255,.85);font-size:12px;margin-top:2px">Вход в аккаунт невозможен</div></div>'+
+      '<div style="flex:1"><div style="color:#fff;font-size:17px;font-weight:800">Доступ заблокирован</div><div style="color:rgba(255,255,255,.85);font-size:12px;margin-top:2px">Вход в аккаунт невозможен</div></div>'+
+      '<button onclick="document.getElementById(\'banModalOv\').remove()" aria-label="Закрыть" style="background:rgba(255,255,255,.2);border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;color:#fff;font-size:18px;line-height:1;flex-shrink:0;display:grid;place-items:center">×</button>'+
     '</div>'+
     '<div style="padding:20px 24px">'+
       reasonRow + srokRow +
@@ -548,6 +549,11 @@ window.addEventListener('DOMContentLoaded',newCaptcha);
   var p = new URLSearchParams(location.search);
   var msg = '';
   var isBanned = p.get('banned') === '1';
+  if (isBanned) {
+    var bReason = p.get('reason') ? decodeURIComponent(p.get('reason')) : '';
+    var bUntil = p.get('until') ? decodeURIComponent(p.get('until')) : '';
+    if (typeof showBanModal === 'function') { showBanModal(bReason, bUntil); return; }
+  }
   if (p.get('expired') === '1') msg = 'Сессия завершена. Войдите снова.';
   if (isBanned) { var bm = p.get('msg'); msg = bm ? decodeURIComponent(bm) : 'Ваш аккаунт заблокирован. Обратитесь в поддержку.'; }
   if (!msg) return;
