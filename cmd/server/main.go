@@ -11107,6 +11107,8 @@ func main() {
 				writeError(w, http.StatusNotFound, "Автор не найден")
 				return
 			}
+			// Снимаем дедуп: повторное предупреждение на тот же контент должно доходить.
+			_, _ = db.Exec(`DELETE FROM notifications WHERE recipient_id=$1 AND type='moderation_warning' AND source_type=$2 AND source_id=$3 AND actor_id IS NULL`, authorID, entityType, entityID)
 			_ = createNotification(db, createNotificationParams{
 				RecipientID:    authorID,
 				ActorID:        0,
