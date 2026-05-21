@@ -6917,6 +6917,7 @@ func main() {
 				handlePostActionError(w, err)
 				return
 			}
+			logUserActivity(db, userID, "post_create", "post", created.ID, clientIP(r), r.UserAgent())
 			writeJSON(w, http.StatusCreated, map[string]any{"post": created})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -7113,6 +7114,9 @@ func main() {
 					return
 				}
 				comment, err := createComment(db, r, postPublicID, userID, req)
+				if err == nil {
+					logUserActivity(db, userID, "comment", "comment", comment.ID, clientIP(r), r.UserAgent())
+				}
 				if err != nil {
 					handlePostActionError(w, err)
 					return
@@ -8167,6 +8171,9 @@ func main() {
 				}
 			}
 			topic, err := createForumTopic(db, actorID, req.CategoryKey, req.Title, req.Content, resolvedCompanyID, resolvedCommunityID)
+			if err == nil {
+				logUserActivity(db, actorID, "forum_topic", "forum_topic", topic.ID, clientIP(r), r.UserAgent())
+			}
 			if err != nil {
 				log.Printf("createForumTopic: %v", err)
 				// Phase 4 (19.05) SEC M-7: бизнес-ошибки валидации содержат
@@ -8694,6 +8701,9 @@ func main() {
 				return
 			}
 			result, err := applyToJob(db, jobID, userID, req.Message)
+			if err == nil {
+				logUserActivity(db, userID, "job_apply", "job", jobID, clientIP(r), r.UserAgent())
+			}
 			if err != nil {
 				if errors.Is(err, errValidation) {
 					writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
