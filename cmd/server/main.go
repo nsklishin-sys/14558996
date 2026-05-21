@@ -5928,6 +5928,115 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"users": users})
 	}))
 
+	mux.HandleFunc("/api/admin/notes", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		adminID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		validType := func(t string) bool { return t == "user" || t == "company" }
+		if r.Method == http.MethodGet {
+			et := r.URL.Query().Get("type")
+			eid, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+			if !validType(et) || eid == 0 {
+				writeError(w, http.StatusBadRequest, "некорректные параметры")
+				return
+			}
+			notes := []map[string]any{}
+			if rows, err := db.Query(`
+				SELECT n.id, n.text, n.created_at, COALESCE(NULLIF(u.full_name,''), u.email, 'Администратор')
+				FROM admin_notes n LEFT JOIN users u ON u.id = n.author_id
+				WHERE n.entity_type=$1 AND n.entity_id=$2 ORDER BY n.created_at DESC`, et, eid); err == nil {
+				for rows.Next() {
+					var id int64
+					var text, author string
+					var created time.Time
+					if rows.Scan(&id, &text, &created, &author) == nil {
+						notes = append(notes, map[string]any{"id": id, "text": text, "author": author, "created_at": created.Format(time.RFC3339)})
+					}
+				}
+				rows.Close()
+			}
+			tags := []string{}
+			if rows, err := db.Query(`SELECT tag FROM admin_tags WHERE entity_type=$1 AND entity_id=$2 ORDER BY created_at`, et, eid); err == nil {
+				for rows.Next() {
+					var t string
+					if rows.Scan(&t) == nil {
+						tags = append(tags, t)
+					}
+				}
+				rows.Close()
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"notes": notes, "tags": tags})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var req struct {
+				Type string `json:"type"`
+				ID   int64  `json:"id"`
+				Text string `json:"text"`
+			}
+			if json.NewDecoder(r.Body).Decode(&req) != nil || !validType(req.Type) || req.ID == 0 || strings.TrimSpace(req.Text) == "" {
+				writeError(w, http.StatusBadRequest, "некорректные данные")
+				return
+			}
+			_, err := db.Exec(`INSERT INTO admin_notes (entity_type, entity_id, author_id, text) VALUES ($1,$2,$3,$4)`, req.Type, req.ID, adminID, strings.TrimSpace(req.Text))
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "не удалось сохранить")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+	}))
+
+	mux.HandleFunc("/api/admin/notes/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		if r.Method != http.MethodDelete {
+			writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+			return
+		}
+		noteID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/admin/notes/"), 10, 64)
+		if noteID == 0 {
+			writeError(w, http.StatusBadRequest, "некорректный id")
+			return
+		}
+		_, _ = db.Exec(`DELETE FROM admin_notes WHERE id=$1`, noteID)
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	}))
+
+	mux.HandleFunc("/api/admin/tags", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		validType := func(t string) bool { return t == "user" || t == "company" }
+		var req struct {
+			Type string `json:"type"`
+			ID   int64  `json:"id"`
+			Tag  string `json:"tag"`
+		}
+		if json.NewDecoder(r.Body).Decode(&req) != nil || !validType(req.Type) || req.ID == 0 || strings.TrimSpace(req.Tag) == "" {
+			writeError(w, http.StatusBadRequest, "некорректные данные")
+			return
+		}
+		tag := strings.TrimSpace(req.Tag)
+		if len([]rune(tag)) > 40 {
+			tag = string([]rune(tag)[:40])
+		}
+		switch r.Method {
+		case http.MethodPost:
+			_, _ = db.Exec(`INSERT INTO admin_tags (entity_type, entity_id, tag) VALUES ($1,$2,$3) ON CONFLICT (entity_type, entity_id, tag) DO NOTHING`, req.Type, req.ID, tag)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		case http.MethodDelete:
+			_, _ = db.Exec(`DELETE FROM admin_tags WHERE entity_type=$1 AND entity_id=$2 AND tag=$3`, req.Type, req.ID, tag)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+		}
+	}))
+
 	mux.HandleFunc("/api/admin/user-activity/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireAdmin(w, r, db, sessions); !ok {
 			return
