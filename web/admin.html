@@ -378,12 +378,18 @@ async function loadUserActivity(uid){
     var r=await lastopFetch('/api/admin/user-activity/'+uid);if(!r.ok)throw 0;
     var d=await r.json();var items=d.items||[];
     if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--gmt)">Нет записей активности</div>';return;}
+    var ENTITY_LINK={post:'/news-detail.html?id=',comment:'/news-detail.html?id=',job:'/job-detail.html?id=',forum_topic:'/forum-topic.html?id='};
     el.innerHTML=items.map(function(a){
       var label=ACTION_LABELS[a.action]||a.action;
       var geo=[a.city,a.provider].filter(Boolean).join(' · ');
       var dt=a.created_at?new Date(a.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+      var base=ENTITY_LINK[a.entity_type];
+      var href=(base&&a.entity_public_id)?(base+encodeURIComponent(a.entity_public_id)+(a.action==='comment'?'#comments':'')):'';
+      var labelHtml=href
+        ? '<a href="'+href+'" target="_blank" style="font-size:12px;font-weight:600;color:var(--g);text-decoration:none">'+esc(label)+' ↗</a>'
+        : '<span style="font-size:12px;font-weight:600;color:var(--t)">'+esc(label)+'</span>';
       return '<div style="padding:7px 0;border-bottom:1px solid var(--bdr)">'+
-        '<div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:12px;font-weight:600;color:var(--t)">'+esc(label)+'</span><span style="font-size:11px;color:var(--gmt)">'+esc(dt)+'</span></div>'+
+        '<div style="display:flex;justify-content:space-between;gap:8px">'+labelHtml+'<span style="font-size:11px;color:var(--gmt)">'+esc(dt)+'</span></div>'+
         '<div style="font-size:11px;color:var(--gmt);margin-top:2px">'+esc(a.ip_address||'—')+(geo?' — '+esc(geo):'')+'</div>'+
       '</div>';
     }).join('');
