@@ -382,14 +382,24 @@ function renderComplaintDetail(d){
   var isFinal=(d.status==='resolved_action'||d.status==='resolved_reject');
   if(!isFinal){
     if(d.status==='new')actions.push('<button class="dp-btn" onclick="actComplaintReview('+d.id+')">Взять в работу</button>');
-    if(d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintHide('+d.id+')">Скрыть контент</button>');
-    if(d.target_type==='user'||d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintBanAuthor('+d.id+')">Забанить автора</button>');
-    if(d.target_type==='company')actions.push('<button class="dp-btn danger" onclick="actComplaintBlockCompany('+d.id+')">Заблокировать компанию</button>');
-    actions.push('<button class="dp-btn" onclick="actComplaintReject('+d.id+')">Отклонить</button>');
+    if(d.is_appeal){
+      actions.push('<button class="dp-btn primary" onclick="actAppeal('+d.id+',true)">Удовлетворить (вернуть контент)</button>');
+      actions.push('<button class="dp-btn danger" onclick="actAppeal('+d.id+',false)">Отклонить апелляцию</button>');
+    } else {
+      if(d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintHide('+d.id+')">Скрыть контент</button>');
+      if(d.target_type==='user'||d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintBanAuthor('+d.id+')">Забанить автора</button>');
+      if(d.target_type==='company')actions.push('<button class="dp-btn danger" onclick="actComplaintBlockCompany('+d.id+')">Заблокировать компанию</button>');
+      actions.push('<button class="dp-btn" onclick="actComplaintReject('+d.id+')">Отклонить</button>');
+    }
   }else{
     actions.push('<div style="font-size:12px;color:var(--gmt);text-align:center;padding:6px">Жалоба закрыта</div>');
   }
   document.getElementById('dpActions').innerHTML=actions.join('');
+}
+async function actAppeal(id,approve){
+  var note=await lastopPrompt({title:approve?'Удовлетворить обжалование':'Отклонить обжалование',message:approve?'Контент будет восстановлен. Автор получит уведомление.':'Решение останется в силе. Автор получит уведомление.',placeholder:'Комментарий автору (необязательно)',confirmText:approve?'Удовлетворить':'Отклонить',danger:!approve});
+  if(note===null)return;
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:approve?'resolved_action':'resolved_reject',action:approve?'appeal_approve':'appeal_reject',note:String(note||'').trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}closeDetail();loadComplaints();loadOverview();lastopToast(approve?'Обжалование удовлетворено':'Обжалование отклонено','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
 async function actComplaintReview(id){
   try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'under_review'})});if(!r.ok){alert('Ошибка');return;}openComplaint(id);loadComplaints();}catch(e){alert('Ошибка соединения');}
