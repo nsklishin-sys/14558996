@@ -11304,6 +11304,54 @@ func main() {
 				writeError(w, http.StatusNotFound, "Жалоба не найдена")
 				return
 			}
+			if req.Action == "appeal_approve" || req.Action == "appeal_reject" {
+				// Резолюция апелляции с явным вердиктом.
+				var apReporter, apTID int64
+				var apTType, apTPublic string
+				var apIsAppeal bool
+				_ = db.QueryRow(`SELECT reporter_id, target_type, target_id, COALESCE(target_public_id,''), is_appeal FROM complaints WHERE id=$1`, complaintID).Scan(&apReporter, &apTType, &apTID, &apTPublic, &apIsAppeal)
+				if !apIsAppeal {
+					writeError(w, http.StatusBadRequest, "Действие применимо только к обжалованию")
+					return
+				}
+				approved := req.Action == "appeal_approve"
+				newStatus := "resolved_reject"
+				if approved {
+					newStatus = "resolved_action"
+					// Удовлетворить апелляцию = вернуть контент.
+					if apTType == "post" {
+						_, _ = db.Exec(`UPDATE posts SET is_hidden_by_admin=FALSE, hidden_by_admin_at=NULL, hidden_by_admin_reason='' WHERE id=$1`, apTID)
+					} else if apTType == "comment" {
+						_, _ = db.Exec(`UPDATE post_comments SET is_hidden_by_admin=FALSE, hidden_by_admin_at=NULL, hidden_by_admin_reason='' WHERE id=$1`, apTID)
+					}
+				}
+				_, _ = db.Exec(`UPDATE complaints SET status=$1, resolved_by=$2, resolved_at=NOW(), resolution_note=$3 WHERE id=$4`, newStatus, actorID, req.Note, complaintID)
+				logAdminAction(db, actorID, "appeal_"+map[bool]string{true: "approve", false: "reject"}[approved], apTType, apTID, clientIP(r), map[string]any{"complaint_id": complaintID})
+				if apReporter != 0 {
+					verdict := "отклонено"
+					body := "Администрация рассмотрела ваше обращение и оставила решение в силе."
+					if approved {
+						verdict = "удовлетворено"
+						body = "Администрация пересмотрела решение в вашу пользу — контент восстановлен."
+					}
+					if n := strings.TrimSpace(req.Note); n != "" {
+						body += " Комментарий: " + n
+					}
+					_, _ = db.Exec(`DELETE FROM notifications WHERE recipient_id=$1 AND type='moderation_appeal_result' AND source_type=$2 AND source_id=$3 AND actor_id IS NULL`, apReporter, apTType, apTID)
+					_ = createNotification(db, createNotificationParams{
+						RecipientID:    apReporter,
+						ActorID:        0,
+						Type:           "moderation_appeal_result",
+						SourceType:     apTType,
+						SourceID:       apTID,
+						SourcePublicID: apTPublic,
+						Title:          "Обжалование " + verdict,
+						Preview:        body,
+					})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true, "approved": approved})
+				return
+			}
 			if req.Action != "" && req.Action != "none" {
 				switch req.Action {
 				case "hide_content":
@@ -11376,34 +11424,7 @@ func main() {
 					writeError(w, http.StatusInternalServerError, "Не удалось обновить жалобу")
 					return
 				}
-				// Если это была апелляция — уведомить автора о вердикте.
-				var apReporter int64
-				var apTType, apTPublic string
-				var apTID int64
-				var apIsAppeal bool
-				_ = db.QueryRow(`SELECT reporter_id, target_type, target_id, COALESCE(target_public_id,''), is_appeal FROM complaints WHERE id=$1`, complaintID).Scan(&apReporter, &apTType, &apTID, &apTPublic, &apIsAppeal)
-				if apIsAppeal && apReporter != 0 {
-					verdict := "отклонено"
-					body := "Администрация рассмотрела ваше обращение и оставила решение в силе."
-					if req.Status == "resolved_action" {
-						verdict = "удовлетворено"
-						body = "Администрация пересмотрела решение в вашу пользу."
-					}
-					if n := strings.TrimSpace(req.Note); n != "" {
-						body += " Комментарий: " + n
-					}
-					_, _ = db.Exec(`DELETE FROM notifications WHERE recipient_id=$1 AND type='moderation_appeal_result' AND source_type=$2 AND source_id=$3 AND actor_id IS NULL`, apReporter, apTType, apTID)
-					_ = createNotification(db, createNotificationParams{
-						RecipientID:    apReporter,
-						ActorID:        0,
-						Type:           "moderation_appeal_result",
-						SourceType:     apTType,
-						SourceID:       apTID,
-						SourcePublicID: apTPublic,
-						Title:          "Обжалование " + verdict,
-						Preview:        body,
-					})
-				}
+				// Вердикт по апелляции теперь шлётся через appeal_approve/appeal_reject (см. выше).
 			} else {
 				_, err := db.Exec(`UPDATE complaints SET status=$1 WHERE id=$2`, req.Status, complaintID)
 				if err != nil {
