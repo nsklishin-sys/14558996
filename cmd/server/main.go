@@ -10866,12 +10866,13 @@ func main() {
 			PublicID string    `json:"public_id"`
 			Preview  string    `json:"preview"`
 			Author   string    `json:"author"`
+			AuthorID int64     `json:"author_id"`
 			Reason   string    `json:"reason"`
 			HiddenAt time.Time `json:"hidden_at"`
 		}
 		out := []hiddenItem{}
 		prows, err := db.Query(`
-			SELECT p.id, p.public_id, COALESCE(NULLIF(p.title, ''), LEFT(p.content, 80)), COALESCE(u.full_name, ''), COALESCE(p.hidden_by_admin_reason, ''), p.hidden_by_admin_at
+			SELECT p.id, p.public_id, COALESCE(NULLIF(p.title, ''), LEFT(p.content, 80)), COALESCE(u.full_name, ''), p.author_id, COALESCE(p.hidden_by_admin_reason, ''), p.hidden_by_admin_at
 			FROM posts p JOIN users u ON u.id = p.author_id
 			WHERE p.is_hidden_by_admin = TRUE AND p.is_deleted = FALSE
 			ORDER BY p.hidden_by_admin_at DESC NULLS LAST LIMIT 200`)
@@ -10880,7 +10881,7 @@ func main() {
 				var it hiddenItem
 				it.Type = "post"
 				var hAt sql.NullTime
-				if err := prows.Scan(&it.ID, &it.PublicID, &it.Preview, &it.Author, &it.Reason, &hAt); err == nil {
+				if err := prows.Scan(&it.ID, &it.PublicID, &it.Preview, &it.Author, &it.AuthorID, &it.Reason, &hAt); err == nil {
 					if hAt.Valid {
 						it.HiddenAt = hAt.Time
 					}
@@ -10890,7 +10891,7 @@ func main() {
 			prows.Close()
 		}
 		crows, err := db.Query(`
-			SELECT pc.id, LEFT(pc.content, 80), COALESCE(u.full_name, ''), COALESCE(pc.hidden_by_admin_reason, ''), pc.hidden_by_admin_at
+			SELECT pc.id, LEFT(pc.content, 80), COALESCE(u.full_name, ''), pc.author_id, COALESCE(pc.hidden_by_admin_reason, ''), pc.hidden_by_admin_at
 			FROM post_comments pc JOIN users u ON u.id = pc.author_id
 			WHERE pc.is_hidden_by_admin = TRUE AND pc.is_deleted = FALSE
 			ORDER BY pc.hidden_by_admin_at DESC NULLS LAST LIMIT 200`)
@@ -10899,7 +10900,7 @@ func main() {
 				var it hiddenItem
 				it.Type = "comment"
 				var hAt sql.NullTime
-				if err := crows.Scan(&it.ID, &it.Preview, &it.Author, &it.Reason, &hAt); err == nil {
+				if err := crows.Scan(&it.ID, &it.Preview, &it.Author, &it.AuthorID, &it.Reason, &hAt); err == nil {
 					if hAt.Valid {
 						it.HiddenAt = hAt.Time
 					}
@@ -10982,14 +10983,19 @@ func main() {
 		// POST /api/admin/content/{type}/{id}/unhide — восстановить скрытый пост/комментарий.
 		path := strings.TrimPrefix(r.URL.Path, "/api/admin/content/")
 		parts := strings.Split(path, "/")
-		if len(parts) != 3 || parts[2] != "unhide" || r.Method != http.MethodPost {
+		if len(parts) != 3 || r.Method != http.MethodPost {
 			writeError(w, http.StatusNotFound, "Не найдено")
 			return
 		}
 		entityType := parts[0]
+		action := parts[2]
 		entityID, _ := strconv.ParseInt(parts[1], 10, 64)
 		if entityID <= 0 || (entityType != "post" && entityType != "comment") {
 			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		if action != "unhide" && action != "delete" && action != "warn" {
+			writeError(w, http.StatusBadRequest, "Неизвестное действие")
 			return
 		}
 		actorID, _ := optionalAuthenticatedUserID(r, sessions)
@@ -10998,6 +11004,55 @@ func main() {
 			table = "posts"
 		} else {
 			table = "post_comments"
+		}
+		if action == "delete" {
+			res, err := db.Exec("UPDATE "+table+" SET is_deleted=TRUE, updated_at=NOW() WHERE id=$1 AND is_deleted=FALSE", entityID)
+			if err != nil {
+				log.Printf("[content] delete %s %d: %v", entityType, entityID, err)
+				writeError(w, http.StatusInternalServerError, "Не удалось удалить контент")
+				return
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				writeError(w, http.StatusNotFound, "Контент не найден")
+				return
+			}
+			logAdminAction(db, actorID, "content_delete", entityType, entityID, clientIP(r), map[string]any{"entity_type": entityType, "entity_id": entityID})
+			writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "type": entityType, "id": entityID})
+			return
+		}
+		if action == "warn" {
+			var body struct {
+				Message string `json:"message"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			msg := strings.TrimSpace(body.Message)
+			if msg == "" {
+				msg = "Ваш контент был скрыт модератором за нарушение правил платформы."
+			}
+			var authorID int64
+			var srcPublicID string
+			if entityType == "post" {
+				_ = db.QueryRow(`SELECT author_id, public_id FROM posts WHERE id=$1`, entityID).Scan(&authorID, &srcPublicID)
+			} else {
+				_ = db.QueryRow(`SELECT author_id FROM post_comments WHERE id=$1`, entityID).Scan(&authorID)
+			}
+			if authorID == 0 {
+				writeError(w, http.StatusNotFound, "Автор не найден")
+				return
+			}
+			_ = createNotification(db, createNotificationParams{
+				RecipientID:    authorID,
+				ActorID:        0,
+				Type:           "system",
+				SourceType:     entityType,
+				SourceID:       entityID,
+				SourcePublicID: srcPublicID,
+				Title:          "Предупреждение от администрации",
+				Preview:        msg,
+			})
+			logAdminAction(db, actorID, "content_warn", entityType, entityID, clientIP(r), map[string]any{"entity_type": entityType, "entity_id": entityID, "message": msg})
+			writeJSON(w, http.StatusOK, map[string]any{"warned": true, "recipient_id": authorID})
+			return
 		}
 		res, err := db.Exec("UPDATE "+table+" SET is_hidden_by_admin=FALSE, hidden_by_admin_at=NULL, hidden_by_admin_reason='' WHERE id=$1 AND is_hidden_by_admin=TRUE", entityID)
 		if err != nil {
