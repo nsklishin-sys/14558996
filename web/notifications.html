@@ -631,7 +631,7 @@ function groupItems(items){
   GROUP_DEFS.forEach(g=>{buckets[g.key]=[];});
   items.forEach(n=>{
     let groupKey;
-    if(n.type==='moderation_warning'||n.type==='moderation_appeal_result'){
+    if(n.type==='moderation_warning'||n.type==='moderation_appeal_result'||n.type==='moderation_sanction'){
       groupKey='moderation';
     } else {
       groupKey=SOURCE_TYPE_TO_GROUP[n.source_type]||'system';
@@ -682,7 +682,7 @@ function renderGroups(){
         }catch{}
       }
       const nItem=allLoadedItems.find(n=>String(n.id)===String(id));
-      if(nItem&&nItem.type==='moderation_warning'){
+      if(nItem&&(nItem.type==='moderation_warning'||nItem.type==='moderation_sanction')){
         openWarningModal(nItem);
         return;
       }
