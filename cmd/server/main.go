@@ -10922,6 +10922,41 @@ func main() {
 		})
 	}))
 
+	mux.HandleFunc("/api/admin/content/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		// POST /api/admin/content/{type}/{id}/unhide — восстановить скрытый пост/комментарий.
+		path := strings.TrimPrefix(r.URL.Path, "/api/admin/content/")
+		parts := strings.Split(path, "/")
+		if len(parts) != 3 || parts[2] != "unhide" || r.Method != http.MethodPost {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		entityType := parts[0]
+		entityID, _ := strconv.ParseInt(parts[1], 10, 64)
+		if entityID <= 0 || (entityType != "post" && entityType != "comment") {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		actorID, _ := optionalAuthenticatedUserID(r, sessions)
+		var table string
+		if entityType == "post" {
+			table = "posts"
+		} else {
+			table = "post_comments"
+		}
+		res, err := db.Exec("UPDATE "+table+" SET is_hidden_by_admin=FALSE, hidden_by_admin_at=NULL, hidden_by_admin_reason='' WHERE id=$1 AND is_hidden_by_admin=TRUE", entityID)
+		if err != nil {
+			log.Printf("[content] unhide %s %d: %v", entityType, entityID, err)
+			writeError(w, http.StatusInternalServerError, "Не удалось восстановить контент")
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			writeError(w, http.StatusNotFound, "Контент не найден или уже видим")
+			return
+		}
+		logAdminAction(db, actorID, "content_unhide", entityType, entityID, clientIP(r), map[string]any{"entity_type": entityType, "entity_id": entityID})
+		writeJSON(w, http.StatusOK, map[string]any{"unhidden": true, "type": entityType, "id": entityID})
+		return
+	}))
 	mux.HandleFunc("/api/admin/complaints/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/admin/complaints/")
 		idStr := strings.Split(path, "/")[0]
@@ -11097,6 +11132,7 @@ func main() {
 							writeError(w, http.StatusInternalServerError, "Не удалось скрыть пост")
 							return
 						}
+						logAdminAction(db, actorID, "content_hide", "post", targetID, clientIP(r), map[string]any{"reason": req.Note, "complaint_id": complaintID})
 					case "comment":
 						if _, err := db.Exec(`UPDATE post_comments SET is_hidden_by_admin=TRUE, hidden_by_admin_at=NOW(), hidden_by_admin_reason=$1 WHERE id=$2`, req.Note, targetID); err != nil {
 							log.Printf("[complaints] hide comment: %v", err)
