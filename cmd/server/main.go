@@ -25672,22 +25672,15 @@ func logUserActivity(db *sql.DB, userID int64, action, entityType string, entity
 	var city, provider string
 	// Быстрая попытка из кэша (без внешнего запроса).
 	_ = db.QueryRow(`SELECT city, provider FROM ip_geo_cache WHERE ip=$1`, ip).Scan(&city, &provider)
-	res, err := db.Exec(`INSERT INTO user_activity_log (user_id, action, entity_type, entity_id, ip_address, city, provider, user_agent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-		userID, action, entityType, entityID, ip, city, provider, userAgent)
-	// Если гео ещё не известно — фоновый lookup + обновление этой записи.
-	if err == nil && city == "" && ip != "" {
-		var rowID int64
-		if r2, e2 := res.LastInsertId(); e2 == nil {
-			rowID = r2
-		}
+	var rowID int64
+	err := db.QueryRow(`INSERT INTO user_activity_log (user_id, action, entity_type, entity_id, ip_address, city, provider, user_agent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+		userID, action, entityType, entityID, ip, city, provider, userAgent).Scan(&rowID)
+	// Если гео ещё не известно — фоновый lookup + обновление именно этой записи.
+	if err == nil && city == "" && ip != "" && rowID > 0 {
 		go func() {
 			c, p := resolveGeo(db, ip)
 			if c != "" || p != "" {
-				if rowID > 0 {
-					_, _ = db.Exec(`UPDATE user_activity_log SET city=$1, provider=$2 WHERE id=$3`, c, p, rowID)
-				} else {
-					_, _ = db.Exec(`UPDATE user_activity_log SET city=$1, provider=$2 WHERE ip_address=$3 AND city='' AND created_at > NOW() - INTERVAL '1 minute'`, c, p, ip)
-				}
+				_, _ = db.Exec(`UPDATE user_activity_log SET city=$1, provider=$2 WHERE id=$3`, c, p, rowID)
 			}
 		}()
 	}
