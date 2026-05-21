@@ -13408,6 +13408,29 @@ CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin ON admin_audit_log(admin_id
 CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created ON admin_audit_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_admin_audit_log_entity ON admin_audit_log(entity_type, entity_id);
 
+CREATE TABLE IF NOT EXISTS user_activity_log (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL DEFAULT '',
+    entity_id BIGINT NOT NULL DEFAULT 0,
+    ip_address TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '',
+    provider TEXT NOT NULL DEFAULT '',
+    user_agent TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS user_activity_user_idx ON user_activity_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS user_activity_created_idx ON user_activity_log(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ip_geo_cache (
+    ip TEXT PRIMARY KEY,
+    city TEXT NOT NULL DEFAULT '',
+    provider TEXT NOT NULL DEFAULT '',
+    country TEXT NOT NULL DEFAULT '',
+    looked_up_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS users_handle_lower_uniq_idx
     ON users (LOWER(handle)) WHERE handle IS NOT NULL AND handle <> '';
 
