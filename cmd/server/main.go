@@ -10996,6 +10996,57 @@ func main() {
 		writeJSON(w, http.StatusCreated, map[string]any{"appeal_id": newID})
 		return
 	})
+	mux.HandleFunc("/api/admin/sanctions", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		rows, err := db.Query(`
+			SELECT u.id, u.public_id, u.full_name, u.email, u.avatar_url,
+			       u.banned_at, u.banned_until, u.banned_reason,
+			       u.muted_until, array_to_json(u.mute_scopes), u.mute_reason
+			FROM users u
+			WHERE u.banned_at IS NOT NULL OR (u.muted_until IS NOT NULL AND u.muted_until > NOW())
+			ORDER BY GREATEST(COALESCE(u.banned_at, u.muted_until), COALESCE(u.muted_until, u.banned_at)) DESC
+			LIMIT 200`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		var items []map[string]any
+		for rows.Next() {
+			var id int64
+			var pub, name, email, avatar, bReason, mReason string
+			var bAt, bUntil, mUntil sql.NullTime
+			var mScopesJSON []byte
+			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &bAt, &bUntil, &bReason, &mUntil, &mScopesJSON, &mReason); err != nil {
+				continue
+			}
+			it := map[string]any{"id": id, "public_id": pub, "full_name": name, "email": email, "avatar_url": avatar}
+			if bAt.Valid {
+				it["banned"] = true
+				it["banned_at"] = bAt.Time
+				it["banned_reason"] = bReason
+				if bUntil.Valid {
+					it["banned_until"] = bUntil.Time
+				}
+			}
+			if mUntil.Valid && mUntil.Time.After(time.Now()) {
+				it["muted_until"] = mUntil.Time
+				it["mute_reason"] = mReason
+				var msc []string
+				_ = json.Unmarshal(mScopesJSON, &msc)
+				it["mute_scopes"] = msc
+			}
+			items = append(items, it)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"sanctions": items})
+	}))
+
 	mux.HandleFunc("/api/admin/hidden", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
