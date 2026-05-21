@@ -2704,6 +2704,9 @@ func main() {
 		}
 
 		authUser, err := loginUser(db, req)
+		if err == nil {
+			logUserActivity(db, authUser.ID, "login", "", 0, clientIP(r), r.UserAgent())
+		}
 		if err != nil {
 			if errors.Is(err, errInvalidCredentials) {
 				writeError(w, http.StatusUnauthorized, "Неверный email или пароль")
