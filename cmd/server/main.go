@@ -15038,6 +15038,19 @@ func liftSanction(db *sql.DB, userID int64, sType string, liftedBy int64) error 
 	return nil
 }
 
+// checkMute возвращает errValidation с понятным текстом, если юзер заглушён для данной области.
+func checkMute(db *sql.DB, userID int64, scope string) error {
+	muted, until, reason := isUserMuted(db, userID, scope)
+	if !muted {
+		return nil
+	}
+	msg := "Вы временно ограничены в этом действии до " + until.Format("02.01.2006")
+	if reason != "" {
+		msg += ". Причина: " + reason
+	}
+	return fmt.Errorf("%w: %s", errValidation, msg)
+}
+
 // SEC-COOKIE-AUTH (18.05): двойная-cookie аутентификация с CSRF-защитой.
 //
 // При login/register сервер ставит:
@@ -15991,6 +16004,9 @@ func getResumeByPublicIDFull(db *sql.DB, publicID string, viewerID int64) (*resu
 
 // applyToJob — отклик на вакансию (создаёт application + direct-чат с автором + уведомление)
 func applyToJob(db *sql.DB, jobID, applicantID int64, message string) (map[string]any, error) {
+	if err := checkMute(db, applicantID, "job"); err != nil {
+		return nil, err
+	}
 	message = strings.TrimSpace(message)
 	if utf8.RuneCountInString(message) < 1 || utf8.RuneCountInString(message) > 2000 {
 		return nil, fmt.Errorf("%w: сообщение 1..2000 символов", errValidation)
@@ -16410,6 +16426,9 @@ func createForumTopic(db *sql.DB, authorID int64, categoryKey, title, content st
 // addForumMessage — добавляет ответ в существующую тему. Возвращает новое сообщение.
 // parentPublicID — пустая строка если без цитирования.
 func addForumMessage(db *sql.DB, topicID, authorID int64, content, parentPublicID string, senderCompanyID, senderCommunityID int64, attachments []string) (forumMessage, error) {
+	if err := checkMute(db, authorID, "forum"); err != nil {
+		return forumMessage{}, err
+	}
 	content = strings.TrimSpace(content)
 	if content == "" || len(content) > 5000 {
 		return forumMessage{}, fmt.Errorf("content length")
@@ -18558,6 +18577,9 @@ func newPublicPostID() (string, error) {
 }
 
 func createPost(db *sql.DB, authorID int64, req createPostRequest) (post, error) {
+	if err := checkMute(db, authorID, "post"); err != nil {
+		return post{}, err
+	}
 	title := strings.TrimSpace(req.Title)
 	if count := utf8.RuneCountInString(title); count < 3 || count > 200 {
 		return post{}, fmt.Errorf("%w: заголовок должен быть от 3 до 200 символов", errValidation)
@@ -20561,6 +20583,9 @@ func listComments(db *sql.DB, postPublicID string, limit int, viewerID int64, vi
 }
 
 func createComment(db *sql.DB, r *http.Request, postPublicID string, authorID int64, req createCommentRequest) (postComment, error) {
+	if err := checkMute(db, authorID, "comment"); err != nil {
+		return postComment{}, err
+	}
 	content := strings.TrimSpace(req.Content)
 	if count := utf8.RuneCountInString(content); count < 1 || count > 5000 {
 		return postComment{}, fmt.Errorf("%w: комментарий должен быть от 1 до 5000 символов", errValidation)
@@ -23103,6 +23128,9 @@ func listEventMessages(db *sql.DB, eventPublicID string, viewerID int64) ([]even
 }
 
 func createEventMessage(db *sql.DB, eventPublicID string, userID int64, content string) (eventMessage, error) {
+	if err := checkMute(db, userID, "event"); err != nil {
+		return eventMessage{}, err
+	}
 	var eventID int64
 	if err := db.QueryRow(`SELECT id FROM events WHERE public_id=$1 AND is_deleted=FALSE`, eventPublicID).Scan(&eventID); err != nil {
 		if err == sql.ErrNoRows {
@@ -24369,6 +24397,9 @@ func isAllowedAttachmentURL(u string) bool {
 }
 
 func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req sendMessageRequest) (chatMessage, error) {
+	if err := checkMute(db, userID, "chat"); err != nil {
+		return chatMessage{}, err
+	}
 	cid, err := ensureParticipant(db, userID, conversationPublicID)
 	if err != nil {
 		return chatMessage{}, err
