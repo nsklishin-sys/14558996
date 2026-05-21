@@ -5721,6 +5721,93 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/admin/analytics", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		days := 30
+		if d := r.URL.Query().Get("days"); d == "7" {
+			days = 7
+		}
+		out := map[string]any{"days": days}
+
+		// Динамика по дням: возвращаем массив {date, count} за N дней.
+		series := func(table, dateCol, extra string) []map[string]any {
+			rows, err := db.Query(`
+				SELECT to_char(d::date, 'YYYY-MM-DD') AS day,
+				       COALESCE(c.cnt, 0) AS cnt
+				FROM generate_series(CURRENT_DATE - ($1::int - 1), CURRENT_DATE, '1 day') d
+				LEFT JOIN (
+					SELECT `+dateCol+`::date AS day, COUNT(*) AS cnt
+					FROM `+table+`
+					WHERE `+dateCol+` >= CURRENT_DATE - ($1::int - 1) `+extra+`
+					GROUP BY 1
+				) c ON c.day = d::date
+				ORDER BY day`, days)
+			if err != nil {
+				return nil
+			}
+			defer rows.Close()
+			var arr []map[string]any
+			for rows.Next() {
+				var day string
+				var cnt int
+				if rows.Scan(&day, &cnt) == nil {
+					arr = append(arr, map[string]any{"date": day, "count": cnt})
+				}
+			}
+			return arr
+		}
+		out["registrations"] = series("users", "created_at", "AND is_deleted = FALSE")
+		out["companies_new"] = series("companies", "created_at", "AND deleted_at IS NULL")
+		out["posts_new"] = series("posts", "created_at", "AND is_deleted = FALSE")
+
+		// Активность (уникальные user_id с сессией за период).
+		var dau, wau, mau int
+		_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_seen_at >= CURRENT_DATE`).Scan(&dau)
+		_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_seen_at >= CURRENT_DATE - 6`).Scan(&wau)
+		_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_seen_at >= CURRENT_DATE - 29`).Scan(&mau)
+		out["dau"] = dau
+		out["wau"] = wau
+		out["mau"] = mau
+
+		// Воронка компаний.
+		var coTotal, coVerified, coActive int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL`).Scan(&coTotal)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL AND is_verified = TRUE`).Scan(&coVerified)
+		_ = db.QueryRow(`SELECT COUNT(DISTINCT c.id) FROM companies c JOIN posts p ON p.author_id IN (SELECT user_id FROM company_members WHERE company_id = c.id) WHERE c.deleted_at IS NULL AND p.created_at >= CURRENT_DATE - 29 AND p.is_deleted = FALSE`).Scan(&coActive)
+		out["funnel"] = map[string]any{"total": coTotal, "verified": coVerified, "active": coActive}
+
+		// Топ-5 активных юзеров (по постам за период).
+		topUsers := []map[string]any{}
+		if rows, err := db.Query(`
+			SELECT u.id, COALESCE(NULLIF(u.full_name,''), u.email), COALESCE(u.avatar_url,''), COUNT(p.id) AS cnt
+			FROM users u JOIN posts p ON p.author_id = u.id AND p.is_deleted = FALSE AND p.created_at >= CURRENT_DATE - ($1::int - 1)
+			WHERE u.is_deleted = FALSE
+			GROUP BY u.id, u.full_name, u.email, u.avatar_url
+			ORDER BY cnt DESC LIMIT 5`, days); err == nil {
+			for rows.Next() {
+				var id int64
+				var name, avatar string
+				var cnt int
+				if rows.Scan(&id, &name, &avatar, &cnt) == nil {
+					topUsers = append(topUsers, map[string]any{"id": id, "name": name, "avatar_url": avatar, "count": cnt})
+				}
+			}
+			rows.Close()
+		}
+		out["top_users"] = topUsers
+
+		// Модерация.
+		var compl7, compl30, sanctActive int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM complaints WHERE created_at >= CURRENT_DATE - 6`).Scan(&compl7)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM complaints WHERE created_at >= CURRENT_DATE - 29`).Scan(&compl30)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM users WHERE banned_at IS NOT NULL OR (muted_until IS NOT NULL AND muted_until > NOW())`).Scan(&sanctActive)
+		out["moderation"] = map[string]any{"complaints_7d": compl7, "complaints_30d": compl30, "sanctions_active": sanctActive}
+
+		writeJSON(w, http.StatusOK, out)
+	}))
+
 	mux.HandleFunc("/api/admin/metrics", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
