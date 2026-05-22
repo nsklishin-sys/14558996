@@ -2344,6 +2344,65 @@ func main() {
 
 	// Maintenance banner — состояние в БД (system_settings).
 	// Управляется через POST /api/admin/maintenance (только админ).
+	mux.HandleFunc("/api/sections/status", func(w http.ResponseWriter, r *http.Request) {
+		off := map[string]bool{}
+		keys := []string{"dashboard", "projects", "events", "exhibitions", "jobs", "catalog", "forum", "companies", "communities", "chat"}
+		for _, k := range keys {
+			var v string
+			_ = db.QueryRow(`SELECT value FROM system_settings WHERE key=$1`, "section_off:"+k).Scan(&v)
+			if v == "1" || v == "true" {
+				off[k] = true
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"off": off})
+	})
+
+	mux.HandleFunc("/api/admin/sections", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		keys := []string{"dashboard", "projects", "events", "exhibitions", "jobs", "catalog", "forum", "companies", "communities", "chat"}
+		valid := map[string]bool{}
+		for _, k := range keys {
+			valid[k] = true
+		}
+		if r.Method == http.MethodGet {
+			off := map[string]bool{}
+			for _, k := range keys {
+				var v string
+				_ = db.QueryRow(`SELECT value FROM system_settings WHERE key=$1`, "section_off:"+k).Scan(&v)
+				off[k] = (v == "1" || v == "true")
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"off": off})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var req struct {
+				Section string `json:"section"`
+				Off     bool   `json:"off"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if !valid[req.Section] {
+				writeError(w, http.StatusBadRequest, "Некорректный раздел")
+				return
+			}
+			val := "0"
+			if req.Off {
+				val = "1"
+			}
+			_, err := db.Exec(`INSERT INTO system_settings (key, value, updated_by, updated_at) VALUES ($1,$2,$3,now()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_by=EXCLUDED.updated_by, updated_at=now()`, "section_off:"+req.Section, val, actorID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "section.toggle", "section", 0, clientIP(r), map[string]any{"section": req.Section, "off": req.Off})
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	}))
+
 	mux.HandleFunc("/api/maintenance/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")

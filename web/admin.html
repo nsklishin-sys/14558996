@@ -144,6 +144,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="audit"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Журнал</button>
       <button class="admin-tab" data-tab="hidden"><svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Скрытое</button>
       <button class="admin-tab" data-tab="ads"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Реклама</button>
+      <button class="admin-tab" data-tab="sections"><svg viewBox="0 0 24 24"><path d="M12 2l9 4.9V17L12 22 3 17V7z"/><path d="M12 22V12M3 7l9 5 9-5"/></svg>Разделы</button>
       <button class="admin-tab" data-tab="sanctions"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Санкции</button>
       <button class="admin-tab" data-tab="dicts"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Справочники</button>
     </div>
@@ -336,6 +337,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           </div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneSections">
+      <div class="users-table" style="flex:1;overflow-y:auto;min-height:0;padding:18px">
+        <div style="font-size:14px;font-weight:800;color:var(--t);margin-bottom:4px">Управление разделами платформы</div>
+        <div style="font-size:12px;color:var(--gmt);margin-bottom:16px">Выключенный раздел недоступен пользователям — вместо него показывается плашка о технических работах. Админы и владельцы продолжают видеть раздел.</div>
+        <div id="sectionsList"></div>
+      </div>
+    </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneSanctions">
       <div class="users-table">
         <div class="sanct-thead"><div></div><div>Пользователь</div><div>Санкция</div><div>Кем / когда</div><div></div></div>
@@ -362,6 +370,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="panel">
       <div class="panel-title">Статус системы</div>
       <div id="sysStatus" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="panel" style="border:1.5px solid var(--gb);background:var(--gl)">
+      <div class="panel-title" style="color:var(--g)">Управление платформой</div>
+      <button class="dp-btn primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px" onclick="switchTab('sections')">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2l9 4.9V17L12 22 3 17V7z"/></svg>
+        Консоль разделов
+      </button>
+      <div style="font-size:11px;color:var(--gmt);margin-top:6px;text-align:center">Аварийное отключение разделов</div>
     </div>
     <div class="panel">
       <div class="panel-title">Быстрые ссылки</div>
@@ -471,7 +487,7 @@ async function loadAnalytics(){
 }
 function refreshModerationBadge(){loadModerationCount();}
 async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -964,6 +980,29 @@ function updateComplaintsBadge(n){var b=document.getElementById('complaintsBadge
 var COMPLAINT_REASONS={spam:'Спам',abuse:'Оскорбления',illegal:'Запрещ. контент',fraud:'Мошенничество',disinfo:'Дезинформация',copyright:'Авторские права',other:'Другое'};
 var HIDDEN_TYPES={post:'Пост',comment:'Комментарий'};
 var HIDDEN_ITEMS=[];
+var SECTIONS=[{k:'dashboard',l:'Новости'},{k:'projects',l:'Проекты'},{k:'events',l:'Мероприятия'},{k:'exhibitions',l:'Выставки'},{k:'jobs',l:'Резюме и вакансии'},{k:'catalog',l:'Товары и услуги'},{k:'forum',l:'Форум'},{k:'companies',l:'Компании'},{k:'communities',l:'Сообщества'},{k:'chat',l:'Чат'}];
+async function loadSections(){
+  var el=document.getElementById('sectionsList');if(!el)return;
+  el.innerHTML='<div class="empty">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/sections');if(!r.ok)throw 0;
+    var d=await r.json();var off=d.off||{};
+    el.innerHTML=SECTIONS.map(function(s){
+      var isOff=!!off[s.k];
+      var dot=isOff?'#E04040':'#22CC66';
+      var statTxt=isOff?'Выключен — техработы':'Работает';
+      var toggle='<label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;cursor:pointer"><input type="checkbox" '+(isOff?'':'checked')+' onchange="toggleSection(\''+s.k+'\',!this.checked)" style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:'+(isOff?'#C0C0C0':'var(--g)')+';border-radius:99px;transition:.2s"></span><span style="position:absolute;top:2px;left:'+(isOff?'2px':'22px')+';width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s"></span></label>';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--bdr);border-radius:12px;margin-bottom:8px;background:var(--w)"><span style="width:10px;height:10px;border-radius:50%;background:'+dot+';flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--t)">'+esc(s.l)+'</div><div style="font-size:12px;color:'+dot+';margin-top:2px">'+statTxt+'</div></div>'+toggle+'</div>';
+    }).join('');
+  }catch(e){el.innerHTML='<div class="empty">Не удалось загрузить</div>';}
+}
+async function toggleSection(key,off){
+  try{
+    var r=await lastopFetch('/api/admin/sections',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({section:key,off:off})});
+    if(!r.ok){lastopToast('Ошибка','error');loadSections();return;}
+    lastopToast(off?'Раздел выключен':'Раздел включён','success');loadSections();
+  }catch(e){lastopToast('Ошибка соединения','error');loadSections();}
+}
 var AD_CACHE=[];
 function openAdModal(){resetAdForm();document.getElementById('adModal').style.display='flex';}
 function closeAdModal(){document.getElementById('adModal').style.display='none';}
