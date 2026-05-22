@@ -133,6 +133,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="admin-tabs" id="adminTabs">
       <button class="admin-tab active" data-tab="overview"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Обзор</button>
+      <button class="admin-tab" data-tab="moderation"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>Модерация<span class="tab-badge" id="moderationBadge" style="display:none"></span></button>
       <button class="admin-tab" data-tab="users"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Пользователи</button>
       <button class="admin-tab" data-tab="companies"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Компании</button>
       <button class="admin-tab" data-tab="communities"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Сообщества</button>
@@ -157,6 +158,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="panel">
         <div class="panel-title">Последние действия администраторов</div>
         <div id="overviewRecent" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+    </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneModeration">
+      <div class="users-table">
+        <div class="users-tbody" id="moderationList"></div>
       </div>
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneUsers">
@@ -415,7 +421,9 @@ async function loadAnalytics(){
       '</div>';
   }catch(e){body.innerHTML='<div class="empty">Не удалось загрузить аналитику</div>';}
 }
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadAnalytics();}if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
+function refreshModerationBadge(){loadModerationCount();}
+async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -596,6 +604,23 @@ function renderRecent(entries){if(!entries.length){document.getElementById('over
 var usersSearchTimer;
 document.getElementById('usersSearch').addEventListener('input',function(e){clearTimeout(usersSearchTimer);usersSearchTimer=setTimeout(function(){usersFilter.q=e.target.value.trim();loadUsers();},300);});
 document.querySelectorAll('.uf-filter').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.uf-filter').forEach(function(x){x.classList.remove('active');});b.classList.add('active');usersFilter.status=b.dataset.status;loadUsers();});});
+async function loadModeration(){
+  var el=document.getElementById('moderationList');if(!el)return;
+  el.innerHTML='<div class="empty">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)throw 0;
+    var d=await r.json();var items=d.items||[];
+    var badge=document.getElementById('moderationBadge');
+    if(badge){if(items.length){badge.textContent=items.length;badge.style.display='inline-block';}else{badge.style.display='none';}}
+    if(!items.length){el.innerHTML='<div class="empty">Очередь пуста — всё обработано 🎉</div>';return;}
+    var KIND={complaint:{l:'Жалоба',c:'#E04040'},company:{l:'Компания',c:'#C07030'},community:{l:'Сообщество',c:'#9060C0'},hidden:{l:'Скрытое',c:'#5A8A6A'}};
+    el.innerHTML=items.map(function(it){
+      var k=KIND[it.kind]||{l:it.kind,c:'var(--gmt)'};
+      var dt=it.created_at?new Date(it.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+      return '<div class="users-row" style="grid-template-columns:90px 1fr 130px 90px" onclick="switchTab(\''+it.link+'\')"><div><span class="u-badge" style="background:'+k.c+'22;color:'+k.c+';border-color:'+k.c+'55">'+k.l+'</span></div><div><div class="u-name">'+esc(it.title)+'</div><div class="u-pos">'+esc(it.subtitle||'')+'</div></div><div class="u-date">'+esc(dt)+'</div><div style="color:var(--g);font-size:12px;font-weight:600">Перейти →</div></div>';
+    }).join('');
+  }catch(e){el.innerHTML='<div class="empty">Не удалось загрузить очередь</div>';}
+}
 function selectedUserIds(){return Array.prototype.slice.call(document.querySelectorAll('.user-cb:checked')).map(function(c){return parseInt(c.value);});}
 function updateBulkBar(){var ids=selectedUserIds();var bar=document.getElementById('usersBulkBar');if(!bar)return;bar.style.display=ids.length?'flex':'none';var c=document.getElementById('usersBulkCount');if(c)c.textContent='Выбрано: ' +ids.length;}
 function toggleSelectAllUsers(cb){document.querySelectorAll('.user-cb').forEach(function(x){x.checked=cb.checked;});updateBulkBar();}
