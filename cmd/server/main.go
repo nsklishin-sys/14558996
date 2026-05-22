@@ -11074,7 +11074,7 @@ func main() {
 			SELECT co.id, COALESCE(co.slug,''), co.name, co.category, COALESCE(co.avatar_url,''),
 			       co.is_verified, co.created_at,
 			       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = co.id)
-			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT 100`, args...)
+			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT $`+strconv.Itoa(len(args)+1)+` OFFSET $`+strconv.Itoa(len(args)+2), append(args, parseLimit(r.URL.Query().Get("limit"), 100, 200), func() int { if v := r.URL.Query().Get("offset"); v != "" { if n, e := strconv.Atoi(v); e == nil && n >= 0 { return n } }; return 0 }())...)
 		items := []map[string]any{}
 		if err == nil {
 			defer rows.Close()
@@ -11833,8 +11833,14 @@ func main() {
 			FROM complaints c
 			LEFT JOIN users u ON u.id = c.reporter_id
 			` + where + `
-			ORDER BY c.created_at DESC LIMIT $` + strconv.Itoa(len(args)+1)
-		args = append(args, limit)
+			ORDER BY c.created_at DESC LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
+		cmplOffset := 0
+		if v := r.URL.Query().Get("offset"); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n >= 0 {
+				cmplOffset = n
+			}
+		}
+		args = append(args, limit, cmplOffset)
 		rows, err := db.Query(sqlQuery, args...)
 		if err != nil {
 			log.Printf("[admin/complaints] list: %v", err)
