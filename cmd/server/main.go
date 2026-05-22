@@ -9,6 +9,7 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11243,6 +11244,78 @@ func main() {
 			return
 		}
 		writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+	}))
+
+	mux.HandleFunc("/api/admin/export", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		typ := strings.TrimSpace(r.URL.Query().Get("type"))
+		var rows *sql.Rows
+		var err error
+		var header []string
+		var fname string
+		switch typ {
+		case "users":
+			fname = "users.csv"
+			header = []string{"ID", "Имя", "Email", "Должность", "Город", "Админ", "Владелец", "Заблокирован", "Регистрация"}
+			rows, err = db.Query(`SELECT id, COALESCE(full_name,''), email, COALESCE(position,''), COALESCE(city,''), COALESCE(is_admin,false), COALESCE(is_owner,false), (banned_at IS NOT NULL), created_at FROM users WHERE is_deleted=FALSE ORDER BY created_at DESC`)
+		case "companies":
+			fname = "companies.csv"
+			header = []string{"ID", "Название", "ИНН", "Владелец", "Верифицирована", "Статус", "Создана"}
+			rows, err = db.Query(`SELECT c.id, c.name, COALESCE(c.inn,''), COALESCE(u.full_name, u.handle, ''), COALESCE(c.is_verified,false), COALESCE(c.verification_status,'none'), c.created_at FROM companies c LEFT JOIN users u ON u.id=c.owner_user_id ORDER BY c.created_at DESC`)
+		case "complaints":
+			fname = "complaints.csv"
+			header = []string{"ID", "От кого", "Тип цели", "Причина", "Статус", "Создана"}
+			rows, err = db.Query(`SELECT c.id, COALESCE(u.full_name,''), c.target_type, COALESCE(c.reason,''), c.status, c.created_at FROM complaints c LEFT JOIN users u ON u.id=c.reporter_id ORDER BY c.created_at DESC`)
+		default:
+			writeError(w, http.StatusBadRequest, "Неизвестный тип экспорта")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка выборки")
+			return
+		}
+		defer rows.Close()
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+fname+"\"")
+		w.Write([]byte{0xEF, 0xBB, 0xBF}) // UTF-8 BOM для Excel
+		cw := csv.NewWriter(w)
+		cw.Write(header)
+		for rows.Next() {
+			cols, _ := rows.Columns()
+			vals := make([]any, len(cols))
+			ptrs := make([]any, len(cols))
+			for i := range vals {
+				ptrs[i] = &vals[i]
+			}
+			if rows.Scan(ptrs...) != nil {
+				continue
+			}
+			rec := make([]string, len(cols))
+			for i, v := range vals {
+				switch x := v.(type) {
+				case nil:
+					rec[i] = ""
+				case bool:
+					if x {
+						rec[i] = "да"
+					} else {
+						rec[i] = "нет"
+					}
+				case time.Time:
+					rec[i] = x.Format("2006-01-02 15:04")
+				case []byte:
+					rec[i] = string(x)
+				default:
+					rec[i] = fmt.Sprintf("%v", x)
+				}
+			}
+			cw.Write(rec)
+		}
+		cw.Flush()
+		logAdminAction(db, actorID, "data.export", "export", 0, clientIP(r), map[string]any{"type": typ})
 	}))
 
 	mux.HandleFunc("/api/admin/companies", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
