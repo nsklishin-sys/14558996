@@ -56,6 +56,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .uf-filter:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
 .uf-filter.active{background:var(--g);color:#fff;border-color:var(--g)}
 .users-table{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);flex:1;display:flex;flex-direction:column;min-height:0}
+.ql-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600;transition:background .15s,color .15s}
+.ql-link:hover{background:var(--gp);color:var(--g)}
 .users-thead{display:grid;grid-template-columns:32px 36px 2fr 1.5fr 1fr 110px 30px;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
 .users-tbody{overflow-y:auto;flex:1;min-height:0}
 .users-tbody::-webkit-scrollbar{width:4px}.users-tbody::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
@@ -321,9 +323,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="panel">
       <div class="panel-title">Быстрые ссылки</div>
-      <a href="/settings.html" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600">Настройки</a>
-      <a href="/updates.html" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600">Обновления платформы</a>
-      <a href="/" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600">Вернуться на главную</a>
+      <a href="/settings.html" class="ql-link">Настройки</a>
+      <a href="/updates.html" class="ql-link">Обновления платформы</a>
+      <a href="/" class="ql-link">Вернуться на главную</a>
     </div>
     <div class="panel">
       <div class="panel-title">Экспорт данных</div>
@@ -661,7 +663,7 @@ async function loadFunnel(){
         var opts=CRM_STAGES.map(function(x){return '<option value="'+x.k+'"'+(x.k===s.k?' selected':'')+'>'+x.l+'</option>';}).join('');
         return '<div style="background:var(--w);border:1px solid var(--bdr);border-radius:10px;padding:8px 10px;margin-bottom:8px;box-shadow:var(--sh)"><div style="font-size:12px;font-weight:700;color:var(--t);cursor:pointer" onclick="openCompany(\''+esc(it.public_id)+'\')">'+esc(it.name)+ov+'</div>'+(it.inn?'<div style="font-size:10px;color:var(--gmt);margin-top:2px">ИНН: '+esc(it.inn)+'</div>':'')+'<select onchange="changeStage(\''+esc(it.public_id)+'\',this.value)" style="margin-top:6px;width:100%;font-size:11px;padding:3px 6px;border:1px solid var(--bdr);border-radius:6px;background:var(--gp);font-family:inherit;cursor:pointer">'+opts+'</select></div>';
       }).join('')||'<div style="font-size:11px;color:var(--gmt);text-align:center;padding:10px 0">Пусто</div>';
-      return '<div style="flex:0 0 220px;display:flex;flex-direction:column;min-height:0"><div style="font-size:12px;font-weight:700;color:'+s.c+';padding:8px 10px;border-bottom:2px solid '+s.c+';margin-bottom:8px;display:flex;justify-content:space-between"><span>'+s.l+'</span><span style="color:var(--gmt)">'+(byStage[s.k]||[]).length+'</span></div><div style="overflow-y:auto;flex:1;min-height:0">'+cards+'</div></div>';
+      return '<div style="flex:0 0 220px;display:flex;flex-direction:column;min-height:0;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:10px;overflow:hidden"><div style="font-size:12px;font-weight:700;color:'+s.c+';padding:0 4px 8px;border-bottom:2px solid '+s.c+';margin-bottom:8px;display:flex;justify-content:space-between"><span>'+s.l+'</span><span style="color:var(--gmt)">'+(byStage[s.k]||[]).length+'</span></div><div style="overflow-y:auto;flex:1;min-height:0">'+cards+'</div></div>';
     }).join('');
   }catch(e){board.innerHTML='<div class="empty">Не удалось загрузить воронку</div>';}
 }
