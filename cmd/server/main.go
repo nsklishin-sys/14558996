@@ -5954,16 +5954,28 @@ func main() {
 				return
 			}
 			notes := []map[string]any{}
+			deletedNotes := []map[string]any{}
 			if rows, err := db.Query(`
-				SELECT n.id, n.text, n.created_at, COALESCE(NULLIF(u.full_name,''), u.email, 'Администратор')
-				FROM admin_notes n LEFT JOIN users u ON u.id = n.author_id
+				SELECT n.id, n.text, n.created_at, COALESCE(NULLIF(u.full_name,''), u.email, 'Администратор'), n.edited_at, n.deleted_at, COALESCE(NULLIF(du.full_name,''), du.email, '')
+				FROM admin_notes n LEFT JOIN users u ON u.id = n.author_id LEFT JOIN users du ON du.id = n.deleted_by
 				WHERE n.entity_type=$1 AND n.entity_id=$2 ORDER BY n.created_at DESC`, et, eid); err == nil {
 				for rows.Next() {
 					var id int64
-					var text, author string
+					var text, author, delBy string
 					var created time.Time
-					if rows.Scan(&id, &text, &created, &author) == nil {
-						notes = append(notes, map[string]any{"id": id, "text": text, "author": author, "created_at": created.Format(time.RFC3339)})
+					var editedAt, deletedAt sql.NullTime
+					if rows.Scan(&id, &text, &created, &author, &editedAt, &deletedAt, &delBy) == nil {
+						rec := map[string]any{"id": id, "text": text, "author": author, "created_at": created.Format(time.RFC3339)}
+						if editedAt.Valid {
+							rec["edited_at"] = editedAt.Time.Format(time.RFC3339)
+						}
+						if deletedAt.Valid {
+							rec["deleted_at"] = deletedAt.Time.Format(time.RFC3339)
+							rec["deleted_by"] = delBy
+							deletedNotes = append(deletedNotes, rec)
+						} else {
+							notes = append(notes, rec)
+						}
 					}
 				}
 				rows.Close()
@@ -5978,7 +5990,7 @@ func main() {
 				}
 				rows.Close()
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"notes": notes, "tags": tags})
+			writeJSON(w, http.StatusOK, map[string]any{"notes": notes, "deleted_notes": deletedNotes, "tags": tags})
 			return
 		}
 		if r.Method == http.MethodPost {
@@ -6003,11 +6015,8 @@ func main() {
 	}))
 
 	mux.HandleFunc("/api/admin/notes/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := requireAdmin(w, r, db, sessions); !ok {
-			return
-		}
-		if r.Method != http.MethodDelete {
-			writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+		adminID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
 			return
 		}
 		noteID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/admin/notes/"), 10, 64)
@@ -6015,7 +6024,29 @@ func main() {
 			writeError(w, http.StatusBadRequest, "некорректный id")
 			return
 		}
-		_, _ = db.Exec(`DELETE FROM admin_notes WHERE id=$1`, noteID)
+		if r.Method == http.MethodPatch {
+			var req struct {
+				Text string `json:"text"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if strings.TrimSpace(req.Text) == "" {
+				writeError(w, http.StatusBadRequest, "пустой текст")
+				return
+			}
+			if _, err := db.Exec(`UPDATE admin_notes SET text=$1, edited_at=NOW() WHERE id=$2 AND deleted_at IS NULL`, strings.TrimSpace(req.Text), noteID); err != nil {
+				writeError(w, http.StatusInternalServerError, "ошибка")
+				return
+			}
+			logAdminAction(db, adminID, "note.edit", "note", noteID, clientIP(r), nil)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		if r.Method != http.MethodDelete {
+			writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+			return
+		}
+		_, _ = db.Exec(`UPDATE admin_notes SET deleted_at=NOW(), deleted_by=$1 WHERE id=$2 AND deleted_at IS NULL`, adminID, noteID)
+		logAdminAction(db, adminID, "note.delete", "note", noteID, clientIP(r), nil)
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	}))
 
@@ -13995,6 +14026,9 @@ CREATE TABLE IF NOT EXISTS admin_notes (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS admin_notes_entity_idx ON admin_notes(entity_type, entity_id, created_at DESC);
+ALTER TABLE admin_notes ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+ALTER TABLE admin_notes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE admin_notes ADD COLUMN IF NOT EXISTS deleted_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS admin_tags (
     id BIGSERIAL PRIMARY KEY,
