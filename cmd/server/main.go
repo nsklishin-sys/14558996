@@ -13572,6 +13572,7 @@ func ensureSchemaAndDicts(db *sql.DB) error {
 	}
 	seedDictionaries(db)
 	reloadDictionaries(db)
+	backfillCommunitySlugs(db)
 	return nil
 }
 
@@ -13825,7 +13826,9 @@ ALTER TABLE communities
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS contact_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+    ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS slug TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS communities_slug_uniq_idx ON communities (slug) WHERE slug IS NOT NULL AND slug <> '';
 
 CREATE INDEX IF NOT EXISTS communities_created_at_idx
 ON communities(created_at DESC);
@@ -28460,6 +28463,52 @@ func getCompanyByPublicID(db *sql.DB, publicID string) (int64, error) {
 }
 
 // getCompanyBySlug — id компании по slug.
+func ensureUniqueCommunitySlug(db *sql.DB, base string) (string, error) {
+	candidate := base
+	for i := 0; i < 50; i++ {
+		var existing int64
+		err := db.QueryRow(`SELECT id FROM communities WHERE slug = $1`, candidate).Scan(&existing)
+		if err == sql.ErrNoRows {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		b := make([]byte, 2)
+		_, _ = rand.Read(b)
+		candidate = base + "-" + hex.EncodeToString(b)
+	}
+	return "", fmt.Errorf("could not generate unique community slug")
+}
+
+// backfillCommunitySlugs проставляет slug сообществам, у которых его нет.
+func backfillCommunitySlugs(db *sql.DB) {
+	rows, err := db.Query(`SELECT id, name FROM communities WHERE (slug IS NULL OR slug = '') AND is_deleted = FALSE`)
+	if err != nil {
+		return
+	}
+	type crow struct {
+		id   int64
+		name string
+	}
+	var list []crow
+	for rows.Next() {
+		var c crow
+		if rows.Scan(&c.id, &c.name) == nil {
+			list = append(list, c)
+		}
+	}
+	rows.Close()
+	for _, c := range list {
+		base := slugifyCompanyName(c.name)
+		slug, err := ensureUniqueCommunitySlug(db, base)
+		if err != nil || slug == "" {
+			continue
+		}
+		_, _ = db.Exec(`UPDATE communities SET slug = $1 WHERE id = $2`, slug, c.id)
+	}
+}
+
 func getCompanyBySlug(db *sql.DB, slug string) (int64, error) {
 	var id int64
 	err := db.QueryRow(
