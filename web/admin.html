@@ -202,9 +202,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <button class="uf-filter" data-cstatus="rejected">Отклонены</button>
         <button class="uf-filter" data-cstatus="blocked">Заблокированы</button>
       </div>
+      <div id="companiesBulkBar" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--gl);border:1px solid var(--gb);border-radius:12px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--g)" id="companiesBulkCount">Выбрано: 0</span>
+        <button class="dp-btn primary" style="padding:6px 14px" onclick="bulkCompanies('verify')">Верифицировать выбранных</button>
+        <button class="dp-btn danger" style="padding:6px 14px" onclick="bulkCompanies('block')">Заблокировать выбранных</button>
+        <button class="dp-btn" style="padding:6px 14px;margin-left:auto" onclick="clearCompanySelection()">Сбросить</button>
+      </div>
       <div class="users-table">
-        <div class="users-thead" style="grid-template-columns:36px 2fr 1fr 1fr 110px 30px">
-          <div></div><div>Компания</div><div>Владелец</div><div>Создана</div><div>Статус</div><div></div>
+        <div class="users-thead" style="grid-template-columns:32px 36px 2fr 1fr 1fr 110px 30px">
+          <div><input type="checkbox" id="companiesSelectAll" onclick="toggleSelectAllCompanies(this)"></div><div></div><div>Компания</div><div>Владелец</div><div>Создана</div><div>Статус</div><div></div>
         </div>
         <div class="users-tbody" id="companiesTbody"></div>
         <div id="companiesMoreWrap"></div>
@@ -481,8 +487,29 @@ var companiesFilter={q:'',status:''};var companiesOffset=0;var companiesPageSize
 var companiesSearchTimer;
 document.getElementById('companiesSearch').addEventListener('input',function(e){clearTimeout(companiesSearchTimer);companiesSearchTimer=setTimeout(function(){companiesFilter.q=e.target.value.trim();loadCompanies();},300);});
 document.querySelectorAll('[data-cstatus]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-cstatus]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');companiesFilter.status=b.dataset.cstatus;loadCompanies();});});
-async function loadCompanies(more){var tb=document.getElementById('companiesTbody');if(!more){companiesOffset=0;tb.innerHTML='<div class="empty">Загрузка…</div>';}try{var url='/api/admin/companies?limit='+companiesPageSize+'&offset='+companiesOffset;if(companiesFilter.q)url+='&q='+encodeURIComponent(companiesFilter.q);if(companiesFilter.status)url+='&status='+encodeURIComponent(companiesFilter.status);var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();var list=d.companies||[];renderCompanies(list,more);companiesOffset+=list.length;renderMoreBtn('companiesMoreWrap',list.length>=companiesPageSize,function(){loadCompanies(true);});}catch(e){if(!more)tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
-function renderCompanies(items,append){var tb=document.getElementById('companiesTbody');if(!items.length){if(!append)tb.innerHTML='<div class="empty">Ничего не найдено</div>';return;}var _html=items.map(function(c){var av=c.logo_image?'<img src="'+esc(c.logo_image)+'" alt="">':esc(letter(c.name));var badge=c.is_blocked?'<span class="u-badge banned">Заблокирована</span>':c.verification_status==='rejected'?'<span class="u-badge banned">Отклонена</span>':c.is_verified?'<span class="u-badge admin" style="background:#E8F5EE;color:var(--g);border-color:var(--gb)">Подтверждена</span>':'<span class="u-badge active">Не проверена</span>';return '<div class="users-row" style="grid-template-columns:36px 2fr 1fr 1fr 110px 30px" onclick="openCompany(\''+esc(c.public_id)+'\')"><div class="u-av" style="background:'+esc(avc(c.name))+';border-radius:8px">'+av+'</div><div><div class="u-name">'+esc(c.name)+'</div>'+(c.inn?'<div class="u-pos">ИНН: '+esc(c.inn)+'</div>':'')+'</div><div class="u-email">'+esc(c.owner_name||'—')+'</div><div class="u-date">'+fmtDate(c.created_at)+'</div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');if(append){tb.insertAdjacentHTML('beforeend',_html);}else{tb.innerHTML=_html;}}
+function selectedCompanyIds(){return Array.prototype.slice.call(document.querySelectorAll('.company-cb:checked')).map(function(c){return c.value;});}
+function updateCompanyBulkBar(){var ids=selectedCompanyIds();var bar=document.getElementById('companiesBulkBar');if(!bar)return;bar.style.display=ids.length?'flex':'none';var c=document.getElementById('companiesBulkCount');if(c)c.textContent='Выбрано: '+ids.length;}
+function toggleSelectAllCompanies(cb){document.querySelectorAll('.company-cb').forEach(function(x){x.checked=cb.checked;});updateCompanyBulkBar();}
+function clearCompanySelection(){document.querySelectorAll('.company-cb').forEach(function(x){x.checked=false;});var sa=document.getElementById('companiesSelectAll');if(sa)sa.checked=false;updateCompanyBulkBar();}
+async function bulkCompanies(action){
+  var ids=selectedCompanyIds();if(!ids.length)return;
+  var reason='';
+  if(action==='block'){
+    reason=await lastopPrompt({title:'Заблокировать выбранных ('+ids.length+')',label:'Причина блокировки',placeholder:'Причина',confirmText:'Заблокировать',danger:true});
+    if(reason===null||!String(reason).trim())return;
+  }else{
+    if(!await lastopConfirm({title:'Верифицировать выбранных?',message:ids.length+' компаний получат статус «Подтверждена».',confirmText:'Верифицировать'}))return;
+  }
+  try{
+    var r=await lastopFetch('/api/admin/companies/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids,action:action,reason:String(reason||'').trim()})});
+    if(!r.ok){lastopToast('Ошибка','error');return;}
+    var d=await r.json();
+    lastopToast('Готово: '+d.done,'success');
+    clearCompanySelection();loadCompanies();
+  }catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function loadCompanies(more){var tb=document.getElementById('companiesTbody');if(!more){companiesOffset=0;tb.innerHTML='<div class="empty">Загрузка…</div>';var sa=document.getElementById('companiesSelectAll');if(sa)sa.checked=false;updateCompanyBulkBar();}try{var url='/api/admin/companies?limit='+companiesPageSize+'&offset='+companiesOffset;if(companiesFilter.q)url+='&q='+encodeURIComponent(companiesFilter.q);if(companiesFilter.status)url+='&status='+encodeURIComponent(companiesFilter.status);var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();var list=d.companies||[];renderCompanies(list,more);companiesOffset+=list.length;renderMoreBtn('companiesMoreWrap',list.length>=companiesPageSize,function(){loadCompanies(true);});}catch(e){if(!more)tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
+function renderCompanies(items,append){var tb=document.getElementById('companiesTbody');if(!items.length){if(!append)tb.innerHTML='<div class="empty">Ничего не найдено</div>';return;}var _html=items.map(function(c){var av=c.logo_image?'<img src="'+esc(c.logo_image)+'" alt="">':esc(letter(c.name));var badge=c.is_blocked?'<span class="u-badge banned">Заблокирована</span>':c.verification_status==='rejected'?'<span class="u-badge banned">Отклонена</span>':c.is_verified?'<span class="u-badge admin" style="background:#E8F5EE;color:var(--g);border-color:var(--gb)">Подтверждена</span>':'<span class="u-badge active">Не проверена</span>';return '<div class="users-row" style="grid-template-columns:32px 36px 2fr 1fr 1fr 110px 30px" onclick="openCompany(\''+esc(c.public_id)+'\')"><div onclick="event.stopPropagation()"><input type="checkbox" class="company-cb" value="'+esc(c.public_id)+'" onchange="updateCompanyBulkBar()"></div><div class="u-av" style="background:'+esc(avc(c.name))+';border-radius:8px">'+av+'</div><div><div class="u-name">'+esc(c.name)+'</div>'+(c.inn?'<div class="u-pos">ИНН: '+esc(c.inn)+'</div>':'')+'</div><div class="u-email">'+esc(c.owner_name||'—')+'</div><div class="u-date">'+fmtDate(c.created_at)+'</div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');if(append){tb.insertAdjacentHTML('beforeend',_html);}else{tb.innerHTML=_html;}}
 async function openCompany(publicID){document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent='Карточка компании';document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';document.getElementById('dpActions').innerHTML='';try{var r=await lastopFetch('/api/admin/companies/'+encodeURIComponent(publicID));if(!r.ok)throw 0;var d=await r.json();renderCompanyDetail(d);}catch(e){document.getElementById('dpBody').innerHTML='<div class="empty">Не удалось загрузить</div>';}}
 function buildMembersSection(members){
   members=members||[];

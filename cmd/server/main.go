@@ -11508,6 +11508,50 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"companies": items})
 	}))
 
+	mux.HandleFunc("/api/admin/companies/bulk", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var req struct {
+			IDs    []string `json:"ids"`
+			Action string   `json:"action"`
+			Reason string   `json:"reason"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if len(req.IDs) == 0 || (req.Action != "verify" && req.Action != "block") {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		done := 0
+		for _, pid := range req.IDs {
+			var cid int64
+			if db.QueryRow(`SELECT id FROM companies WHERE public_id=$1`, pid).Scan(&cid) != nil {
+				continue
+			}
+			if req.Action == "verify" {
+				if _, err := db.Exec(`UPDATE companies SET is_verified=TRUE, verification_status='verified', updated_at=NOW() WHERE id=$1`, cid); err == nil {
+					logAdminAction(db, actorID, "company.verify", "company", cid, clientIP(r), map[string]any{"bulk": true})
+					done++
+				}
+			} else {
+				reason := strings.TrimSpace(req.Reason)
+				if reason == "" {
+					reason = "Массовая блокировка"
+				}
+				if _, err := db.Exec(`UPDATE companies SET blocked_at=NOW(), blocked_reason=$1, blocked_by=$2, updated_at=NOW() WHERE id=$3`, reason, actorID, cid); err == nil {
+					logAdminAction(db, actorID, "company.block", "company", cid, clientIP(r), map[string]any{"bulk": true})
+					done++
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"done": done})
+	}))
+
 	mux.HandleFunc("/api/admin/companies/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
