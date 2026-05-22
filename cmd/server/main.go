@@ -11000,7 +11000,7 @@ func main() {
 		rows, err := db.Query(`
 			SELECT co.id, COALESCE(co.public_id,''), co.name, co.category, COALESCE(co.avatar_url,''),
 			       co.is_verified, co.created_at,
-			       (SELECT COUNT(*) FROM community_members cm WHERE cm.community_id = co.id)
+			       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = co.id)
 			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT 100`, args...)
 		items := []map[string]any{}
 		if err == nil {
