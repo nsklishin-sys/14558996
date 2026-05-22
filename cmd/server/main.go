@@ -6154,8 +6154,10 @@ func main() {
 			_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE author_id=$1 AND is_deleted = FALSE`, targetID).Scan(&posts)
 			_ = db.QueryRow(`SELECT COUNT(*) FROM company_members WHERE user_id=$1`, targetID).Scan(&companies)
 			_ = db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE user_id=$1`, targetID).Scan(&sessionsCount)
-			var detIsOwner bool
-			_ = db.QueryRow(`SELECT COALESCE(is_owner,false) FROM users WHERE id=$1`, targetID).Scan(&detIsOwner)
+			detIsOwner := false
+			if errOwn := db.QueryRow(`SELECT COALESCE(is_owner,FALSE) FROM users WHERE id=$1 AND is_deleted=FALSE`, targetID).Scan(&detIsOwner); errOwn != nil {
+				detIsOwner = false
+			}
 			out := map[string]any{"id": u.ID, "public_id": u.PubID, "full_name": u.Name, "email": u.Email, "avatar_url": u.Avatar, "position": u.Position, "bio": u.Bio, "phone": u.Phone, "city": u.City, "created_at": u.CreatedAt, "is_admin": u.IsAdmin, "is_owner": detIsOwner, "email_verified": u.EmailVerified.Valid, "is_banned": u.BannedAt.Valid, "posts_count": posts, "companies_count": companies, "sessions_count": sessionsCount}
 			var mutedUntil sql.NullTime
 			var muteScopesJSON []byte
