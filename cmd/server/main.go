@@ -11960,7 +11960,7 @@ func main() {
 			rows.Close()
 		}
 		// Неверифицированные сообщества
-		if rows, err := db.Query(`SELECT COALESCE(slug, CAST(id AS TEXT)), name, created_at FROM communities WHERE is_verified=FALSE ORDER BY created_at DESC LIMIT 100`); err == nil {
+		if rows, err := db.Query(`SELECT COALESCE(slug, CAST(id AS TEXT)), name, created_at FROM communities WHERE is_verified=FALSE AND is_deleted=FALSE ORDER BY created_at DESC LIMIT 100`); err == nil {
 			for rows.Next() {
 				var ident, name string
 				var created time.Time
