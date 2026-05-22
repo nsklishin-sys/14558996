@@ -500,15 +500,27 @@ function renderContacts(c){
   const card=document.getElementById('contactsCard');
   const wrap=document.getElementById('contactsList');
   if(!wrap||!card)return;
-  const rows=[];
   const website=(c.website||'').trim();
   const email=(c.email||'').trim();
   const phone=(c.phone||'').trim();
-  if(website && /^https?:\/\//i.test(website) && !/^javascript:/i.test(website))rows.push(`<div class="contact-row"><span class="contact-key">Сайт</span><a class="contact-val" href="${esc(website)}" target="_blank" rel="noopener noreferrer">${esc(website.replace(/^https?:\/\//,''))}</a></div>`);
-  if(email)rows.push(`<div class="contact-row"><span class="contact-key">Email</span><a class="contact-val" href="mailto:${esc(email)}">${esc(email)}</a></div>`);
-  if(phone)rows.push(`<div class="contact-row"><span class="contact-key">Телефон</span><a class="contact-val" href="tel:${esc(phone)}">${esc(phone)}</a></div>`);
+  const icoSite='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+  const icoMail='<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,5 12,13 22,5"/></svg>';
+  const icoPhone='<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+  const rows=[];
+  if(website && !/^javascript:/i.test(website)){
+    const href=/^https?:\/\//i.test(website)?website:('https://'+website);
+    const disp=website.replace(/^https?:\/\//,'');
+    rows.push(`<a class="contact-row" href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><span class="contact-icon">${icoSite}</span><span style="min-width:0;flex:1"><span class="contact-label">Сайт</span><span class="contact-value" style="display:block;overflow-wrap:anywhere">${esc(disp)}</span></span></a>`);
+  }
+  if(email){
+    rows.push(`<a class="contact-row" href="mailto:${esc(email)}" style="text-decoration:none"><span class="contact-icon">${icoMail}</span><span style="min-width:0;flex:1"><span class="contact-label">Email</span><span class="contact-value" style="display:block;overflow-wrap:anywhere">${esc(email)}</span></span></a>`);
+  }
+  if(phone){
+    rows.push(`<a class="contact-row" href="tel:${esc(phone.replace(/[^\d+]/g,''))}" style="text-decoration:none"><span class="contact-icon">${icoPhone}</span><span style="min-width:0;flex:1"><span class="contact-label">Телефон</span><span class="contact-value" style="display:block">${esc(phone)}</span></span></a>`);
+  }
   if(rows.length){
     card.style.display='';
+    wrap.className='contacts-list';
     wrap.innerHTML=rows.join('');
   }else{
     card.style.display='none';
