@@ -940,6 +940,28 @@ let handleCheckTimer=null,handleAvailable=false;
   loadSettings();
 })();
 
+// Мгновенное обновление прав: при возврате на вкладку перезапрашиваем /api/me
+async function refreshAdminState(){
+  if(!tk())return;
+  try{
+    const r=await lastopFetch(API+'/me',{headers:{}});
+    if(!r.ok)return;
+    const{user={}}=await r.json();
+    const wasAdmin=!!(currentUser&&currentUser.is_admin);
+    currentUser=user;
+    localStorage.setItem('user',JSON.stringify(user));
+    if(user.is_admin && !wasAdmin){
+      setupAdminPanel();
+    } else if(!user.is_admin && wasAdmin){
+      const btn=document.getElementById('adminMenuBtn');
+      if(btn)btn.style.display='none';
+    }
+  }catch{}
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible')refreshAdminState();
+});
+
 function populateUI(){
   const name=currentUser.name||currentUser.full_name||'Пользователь';
   const color=avc(name);const ltr=letter(name);
