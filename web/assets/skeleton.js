@@ -73,5 +73,48 @@
     el.innerHTML = cards(n);
   }
 
-  window.lastopSkel = { cards, inject };
+  // Мини-скелетон (полоски) для маленьких блоков/списков
+  function lines(n) {
+    injectCSS();
+    n = Math.max(1, Math.min(n || 3, 8));
+    var html = '<div style="padding:6px 0">';
+    for (var i = 0; i < n; i++) {
+      var w = [70, 90, 55, 80, 65][i % 5];
+      html += '<div class="lt-skel-pulse lt-skel-line" style="height:10px;margin:7px 0;flex:none;width:' + w + '%"></div>';
+    }
+    return html + '</div>';
+  }
+
+  // Авто-зачистка хардкод-«Загрузка» в разметке: заменяем мелькающие
+  // текстовые плейсхолдеры на скелетон. СТРОГИЙ фильтр — не трогаем
+  // индикаторы загрузки файлов и динамические статусы.
+  function autoClean() {
+    injectCSS();
+    var all = document.querySelectorAll('div, span, p');
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      // Только элементы, чей ТЕКСТ — ровно «Загрузка…» (плейсхолдер), без детей-элементов
+      var txt = (el.textContent || '').trim();
+      if (txt !== 'Загрузка…' && txt !== 'Загрузка...' && txt !== 'Загрузка') continue;
+      if (el.children.length > 0) continue; // есть вложенные элементы — не плейсхолдер
+      // Пропускаем индикаторы файлов/оверлеи/динамику
+      var id = (el.id || '').toLowerCase();
+      var cls = (el.className && el.className.toString ? el.className.toString() : '').toLowerCase();
+      if (id.indexOf('upload') !== -1 || cls.indexOf('upload') !== -1) continue;
+      var st = el.getAttribute('style') || '';
+      if (st.indexOf('position:absolute') !== -1 || st.indexOf('position: absolute') !== -1) continue;
+      // Скрытые (display:none) — статус-индикаторы, показываются по событию, не мелькают
+      if (st.indexOf('display:none') !== -1 || st.indexOf('display: none') !== -1) continue;
+      // Заменяем плейсхолдер на скелетон-полоски
+      el.innerHTML = lines(2);
+      el.style.color = '';
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoClean);
+  } else {
+    autoClean();
+  }
+
+  window.lastopSkel = { cards, inject, lines, autoClean };
 })();
