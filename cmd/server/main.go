@@ -11014,13 +11014,16 @@ func main() {
 				var verified bool
 				var created time.Time
 				var members int
-				if rows.Scan(&id, &pid, &name, &category, &avatar, &verified, &created, &members) == nil {
-					items = append(items, map[string]any{
-						"id": id, "public_id": pid, "name": name, "category": category,
-						"avatar_url": avatar, "is_verified": verified,
-						"created_at": created.Format(time.RFC3339), "members_count": members,
-					})
+				scanErr := rows.Scan(&id, &pid, &name, &category, &avatar, &verified, &created, &members)
+				if scanErr != nil {
+					writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_scan_error": scanErr.Error()})
+					return
 				}
+				items = append(items, map[string]any{
+					"id": id, "public_id": pid, "name": name, "category": category,
+					"avatar_url": avatar, "is_verified": verified,
+					"created_at": created.Format(time.RFC3339), "members_count": members,
+				})
 			}
 		}
 		var totalAll, totalNotDeleted int
