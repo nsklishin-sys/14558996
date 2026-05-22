@@ -72,6 +72,7 @@ type user struct {
 	AvatarURL                 string `json:"avatar_url,omitempty"`
 	Handle                    string `json:"handle,omitempty"`
 	IsAdmin                   bool   `json:"is_admin,omitempty"`
+	IsOwner                   bool   `json:"is_owner,omitempty"`
 	AnalyticsVisibleInViewers bool   `json:"analytics_visible_in_viewers"`
 }
 
@@ -14166,6 +14167,7 @@ CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id
 -- Sprint 12: Выставки
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_owner BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Admin panel Этап A: блокировка юзеров
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
@@ -15603,17 +15605,46 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE),
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE), COALESCE(is_owner, FALSE),
 			COALESCE(analytics_visible_in_viewers, TRUE), email_verified_at
 		FROM users
 		WHERE id = $1 AND is_deleted = FALSE
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin, &u.AnalyticsVisibleInViewers, &verifiedAt)
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin, &u.IsOwner, &u.AnalyticsVisibleInViewers, &verifiedAt)
 	if err != nil {
 		return user{}, err
 	}
 	u.EmailVerified = verifiedAt.Valid
 
 	return u, nil
+}
+
+// requireOwner проверяет что у юзера is_owner = true.
+func requireOwner(w http.ResponseWriter, r *http.Request, db *sql.DB, sessions *sessionStore) (int64, bool) {
+	token, _ := tokenFromRequest(r)
+	if token == "" {
+		writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+		return 0, false
+	}
+	userID, ok := sessions.getUserID(token)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Сессия недействительна")
+		return 0, false
+	}
+	var isOwner bool
+	var bannedAt sql.NullTime
+	if err := db.QueryRow(`SELECT COALESCE(is_owner, FALSE), banned_at FROM users WHERE id = $1`, userID).Scan(&isOwner, &bannedAt); err != nil {
+		writeError(w, http.StatusInternalServerError, "Ошибка проверки прав")
+		return 0, false
+	}
+	if bannedAt.Valid {
+		writeError(w, http.StatusForbidden, "Доступ запрещён")
+		return 0, false
+	}
+	if !isOwner {
+		writeError(w, http.StatusForbidden, "Требуются права владельца")
+		return 0, false
+	}
+	return userID, true
 }
 
 // requireAdmin проверяет что у юзера is_admin = true.
