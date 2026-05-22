@@ -369,7 +369,6 @@ async function dictHardDelete(id){
   if(!await lastopConfirm({title:'Удалить навсегда?',message:'Запись будет удалена безвозвратно. Это действие нельзя отменить.',confirmText:'Удалить навсегда',danger:true}))return;
   try{var r=await lastopFetch('/api/admin/dictionaries?id='+id+'&hard=true',{method:'DELETE'});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Удалено','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
-async function dictDelete_unused(id){
 // COMPANIES TAB
 var companiesFilter={q:'',status:''};
 var companiesSearchTimer;
