@@ -208,27 +208,48 @@
 
   function injectAdBlock() {
     const sidebar = document.querySelector('aside.right');
-    if (!sidebar) return; // нет правого сайдбара — нечего инжектить
-    if (sidebar.querySelector('.ad-block')) return; // уже есть, не дублируем
-
-    const ad = document.createElement('div');
-    ad.className = 'ad-block';
-    ad.innerHTML =
-      '<div class="ad-label">реклама</div>' +
-      '<div class="ad-content">' +
-        '<div class="ad-title">LogisticsPro 2026</div>' +
-        '<div class="ad-sub">Выставка · Москва · май</div>' +
-        '<button class="ad-btn" type="button">Узнать подробнее</button>' +
-      '</div>';
-
-    const btn = ad.querySelector('.ad-btn');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        window.location.href = '/events.html';
-      });
+    if (!sidebar) return; // нет правого сайдбара
+    let ad = sidebar.querySelector('.ad-block');
+    if (!ad) {
+      ad = document.createElement('div');
+      ad.className = 'ad-block';
+      sidebar.appendChild(ad);
     }
-
-    sidebar.appendChild(ad);
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    fetch('/api/ads', { credentials: 'include' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        var ads = (d && d.ads) || [];
+        if (!ads.length) { ad.style.display = 'none'; return; }
+        ad.style.display = '';
+        ad.style.transition = 'opacity .25s';
+        var idx = 0;
+        function render(a){
+          var img = a.image_url ? '<img src="'+esc(a.image_url)+'" style="max-width:100%;border-radius:8px;margin-bottom:8px" alt="">' : '';
+          ad.innerHTML =
+            '<div class="ad-label">реклама</div>' +
+            '<div class="ad-content">' + img +
+              '<div class="ad-title">'+esc(a.title)+'</div>' +
+              (a.body ? '<div class="ad-sub">'+esc(a.body)+'</div>' : '') +
+              '<button class="ad-btn" type="button">Узнать подробнее</button>' +
+            '</div>';
+          var btn = ad.querySelector('.ad-btn');
+          if (btn) btn.addEventListener('click', function(){
+            try { fetch('/api/ads/click?id='+a.id, {method:'POST',credentials:'include'}); } catch(e){}
+            if (a.link_url) window.location.href = a.link_url;
+          });
+          try { fetch('/api/ads/view?id='+a.id, {method:'POST',credentials:'include'}); } catch(e){}
+        }
+        render(ads[0]);
+        if (ads.length > 1) {
+          setInterval(function(){
+            idx = (idx + 1) % ads.length;
+            ad.style.opacity = '0';
+            setTimeout(function(){ render(ads[idx]); ad.style.opacity = '1'; }, 250);
+          }, 18000);
+        }
+      })
+      .catch(function(){ ad.style.display = 'none'; });
   }
 
   // Запускаем после загрузки DOM
