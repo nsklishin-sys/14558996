@@ -5941,7 +5941,7 @@ func main() {
 		if !ok {
 			return
 		}
-		validType := func(t string) bool { return t == "user" || t == "company" }
+		validType := func(t string) bool { return t == "user" || t == "company" || t == "community" }
 		if r.Method == http.MethodGet {
 			et := r.URL.Query().Get("type")
 			eid, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
@@ -6019,7 +6019,7 @@ func main() {
 		if _, ok := requireAdmin(w, r, db, sessions); !ok {
 			return
 		}
-		validType := func(t string) bool { return t == "user" || t == "company" }
+		validType := func(t string) bool { return t == "user" || t == "company" || t == "community" }
 		var req struct {
 			Type string `json:"type"`
 			ID   int64  `json:"id"`
