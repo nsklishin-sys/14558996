@@ -497,4 +497,55 @@
     lastopStartHorizWatcher();
   }
 
+  // ── Отключение разделов (техработы) ───────────────────────────
+  function lastopCheckSection() {
+    var SECTIONS = [
+      { k: 'dashboard', l: 'Новости', re: /^\/dashboard|^\/news-detail/ },
+      { k: 'projects', l: 'Проекты', re: /^\/projects|^\/project-detail/ },
+      { k: 'events', l: 'Мероприятия', re: /^\/events|^\/event-detail/ },
+      { k: 'exhibitions', l: 'Выставки', re: /^\/exhibition/ },
+      { k: 'jobs', l: 'Резюме и вакансии', re: /^\/jobs|^\/job-detail|^\/resume-detail/ },
+      { k: 'catalog', l: 'Товары и услуги', re: /^\/catalog|^\/product-detail|^\/service-detail/ },
+      { k: 'forum', l: 'Форум', re: /^\/forum/ },
+      { k: 'companies', l: 'Компании', re: /^\/companies|^\/company-detail|^\/my-company/ },
+      { k: 'communities', l: 'Сообщества', re: /^\/communities|^\/community-detail|^\/my-community/ },
+      { k: 'chat', l: 'Чат', re: /^\/chat/ }
+    ];
+    var path = location.pathname;
+    var cur = null;
+    for (var i = 0; i < SECTIONS.length; i++) {
+      if (SECTIONS[i].re.test(path)) { cur = SECTIONS[i]; break; }
+    }
+    if (!cur) return; // раздел не отключаемый (главная/профиль/настройки и т.д.)
+    // Админы и владельцы проходят
+    var isPriv = false;
+    try {
+      var u = JSON.parse(localStorage.getItem('user') || '{}');
+      isPriv = !!(u.is_admin || u.is_owner);
+    } catch (e) {}
+    if (isPriv) return;
+    fetch('/api/sections/status', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var off = (d && d.off) || {};
+        if (!off[cur.k]) return;
+        var main = document.querySelector('.main') || document.querySelector('main');
+        if (!main) return;
+        main.innerHTML =
+          '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px;min-height:60vh">' +
+            '<div style="font-size:54px;margin-bottom:18px">🛠️</div>' +
+            '<div style="font-size:22px;font-weight:800;color:var(--t,#1A2A22);margin-bottom:10px">Раздел «' + cur.l + '» временно недоступен</div>' +
+            '<div style="font-size:15px;color:var(--gmt,#5A8A6A);max-width:440px;line-height:1.6">Ведём технические работы — скоро всё заработает. Спасибо за терпение!</div>' +
+            '<div style="font-size:13px;color:var(--gmt,#5A8A6A);margin-top:8px;opacity:.7">Приносим извинения за доставленные неудобства.</div>' +
+            '<a href="/" style="margin-top:24px;padding:11px 24px;border-radius:12px;background:var(--g,#1E8A4C);color:#fff;text-decoration:none;font-weight:600;font-size:14px">На главную</a>' +
+          '</div>';
+      })
+      .catch(function () {});
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', lastopCheckSection);
+  } else {
+    lastopCheckSection();
+  }
+
 })();
