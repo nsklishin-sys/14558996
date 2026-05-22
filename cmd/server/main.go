@@ -11539,6 +11539,22 @@ func main() {
 				writeError(w, http.StatusBadRequest, "id обязателен")
 				return
 			}
+			if r.URL.Query().Get("restore") == "true" {
+				if _, err := db.Exec(`UPDATE dictionaries SET is_active=TRUE WHERE id=$1`, id); err != nil {
+					writeError(w, http.StatusInternalServerError, "Не удалось восстановить")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+				return
+			}
+			if r.URL.Query().Get("hard") == "true" {
+				if _, err := db.Exec(`DELETE FROM dictionaries WHERE id=$1`, id); err != nil {
+					writeError(w, http.StatusInternalServerError, "Не удалось удалить")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+				return
+			}
 			if _, err := db.Exec(`UPDATE dictionaries SET is_active=FALSE WHERE id=$1`, id); err != nil {
 				writeError(w, http.StatusInternalServerError, "Не удалось удалить")
 				return
