@@ -6160,7 +6160,21 @@ func main() {
 			if errOwn := db.QueryRow(`SELECT COALESCE(is_owner,FALSE) FROM users WHERE id=$1 AND is_deleted=FALSE`, targetID).Scan(&detIsOwner); errOwn != nil {
 				detIsOwner = false
 			}
-			out := map[string]any{"id": u.ID, "public_id": u.PubID, "full_name": u.Name, "email": u.Email, "avatar_url": u.Avatar, "position": u.Position, "bio": u.Bio, "phone": u.Phone, "city": u.City, "created_at": u.CreatedAt, "is_admin": u.IsAdmin, "is_owner": detIsOwner, "email_verified": u.EmailVerified.Valid, "is_banned": u.BannedAt.Valid, "posts_count": posts, "companies_count": companies, "sessions_count": sessionsCount}
+			complaintsList := []map[string]any{}
+			complaintsCount := 0
+			if crows, cerr := db.Query(`SELECT c.id, COALESCE(c.reason,''), c.status, c.created_at, COALESCE(ru.full_name,'') FROM complaints c LEFT JOIN users ru ON ru.id=c.reporter_id WHERE c.target_type='user' AND c.target_id=$1 ORDER BY c.created_at DESC LIMIT 20`, targetID); cerr == nil {
+				defer crows.Close()
+				for crows.Next() {
+					var cid int64
+					var creason, cstatus, creporter string
+					var ccreated time.Time
+					if crows.Scan(&cid, &creason, &cstatus, &ccreated, &creporter) == nil {
+						complaintsList = append(complaintsList, map[string]any{"id": cid, "reason": creason, "status": cstatus, "created_at": ccreated, "reporter": creporter})
+						complaintsCount++
+					}
+				}
+			}
+			out := map[string]any{"id": u.ID, "public_id": u.PubID, "full_name": u.Name, "email": u.Email, "avatar_url": u.Avatar, "position": u.Position, "bio": u.Bio, "phone": u.Phone, "city": u.City, "created_at": u.CreatedAt, "is_admin": u.IsAdmin, "is_owner": detIsOwner, "email_verified": u.EmailVerified.Valid, "is_banned": u.BannedAt.Valid, "posts_count": posts, "companies_count": companies, "sessions_count": sessionsCount, "complaints_count": complaintsCount, "complaints": complaintsList}
 			var mutedUntil sql.NullTime
 			var muteScopesJSON []byte
 			var muteReason string
