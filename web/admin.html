@@ -952,18 +952,20 @@ function updateComplaintsBadge(n){var b=document.getElementById('complaintsBadge
 var COMPLAINT_REASONS={spam:'Спам',abuse:'Оскорбления',illegal:'Запрещ. контент',fraud:'Мошенничество',disinfo:'Дезинформация',copyright:'Авторские права',other:'Другое'};
 var HIDDEN_TYPES={post:'Пост',comment:'Комментарий'};
 var HIDDEN_ITEMS=[];
+var AD_CACHE=[];
 async function loadAds(){
   var el=document.getElementById('adsList');if(!el)return;
   el.innerHTML='<div class="empty">Загрузка…</div>';
   try{
     var r=await lastopFetch('/api/admin/ads');if(!r.ok)throw 0;
     var d=await r.json();var ads=d.ads||[];
+    AD_CACHE=ads;
     if(!ads.length){el.innerHTML='<div class="empty">Рекламных блоков нет. Создайте первый справа →</div>';return;}
     el.innerHTML=ads.map(function(a){
       var ctr=a.views_count>0?((a.clicks_count/a.views_count*100).toFixed(1)+'%'):'—';
       var stat=a.is_active?'<span class="u-badge active">Активен</span>':'<span class="u-badge banned">Выключен</span>';
       var img=a.image_url?'<img src="'+esc(a.image_url)+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:48px;height:48px;border-radius:8px;background:var(--gp);flex-shrink:0"></div>';
-      return '<div style="display:flex;gap:12px;align-items:center;background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:var(--sh)">'+img+'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--t)">'+esc(a.title)+' '+stat+'</div><div style="font-size:11px;color:var(--gmt);margin-top:2px">'+esc(a.body||'')+'</div><div style="font-size:11px;color:var(--gmt);margin-top:4px">👁 '+num(a.views_count)+' · 🖱 '+num(a.clicks_count)+' · CTR '+ctr+' · вес '+a.weight+'</div></div><div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0"><button class="dp-btn" style="padding:4px 10px;font-size:11px" onclick='editAd('+JSON.stringify(a).replace(/'/g,"&#39;")+')'>Изменить</button><button class="dp-btn danger" style="padding:4px 10px;font-size:11px" onclick="delAd('+a.id+')">Удалить</button></div></div>';
+      return '<div style="display:flex;gap:12px;align-items:center;background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:var(--sh)">'+img+'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--t)">'+esc(a.title)+' '+stat+'</div><div style="font-size:11px;color:var(--gmt);margin-top:2px">'+esc(a.body||'')+'</div><div style="font-size:11px;color:var(--gmt);margin-top:4px">👁 '+num(a.views_count)+' · 🖱 '+num(a.clicks_count)+' · CTR '+ctr+' · вес '+a.weight+'</div></div><div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0"><button class="dp-btn" style="padding:4px 10px;font-size:11px" onclick="editAd('+a.id+')">Изменить</button><button class="dp-btn danger" style="padding:4px 10px;font-size:11px" onclick="delAd('+a.id+')">Удалить</button></div></div>';
     }).join('');
   }catch(e){el.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
@@ -999,7 +1001,9 @@ async function saveAd(){
     lastopToast('Сохранено','success');resetAdForm();loadAds();
   }catch(e){lastopToast('Ошибка соединения','error');}
 }
-function editAd(a){
+function editAd(id){
+  var a=AD_CACHE.filter(function(x){return x.id===id;})[0];
+  if(!a)return;
   document.getElementById('adEditId').value=a.id;
   document.getElementById('adFormTitle').textContent='Редактировать блок';
   document.getElementById('adTitle').value=a.title||'';
