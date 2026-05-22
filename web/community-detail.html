@@ -891,7 +891,7 @@ async function submitComment(publicID,btn){
 }
 
 const esc = window.lastopEsc;
-function queryCommunityID(){const id=new URLSearchParams(location.search).get('id');const n=Number(id);return Number.isFinite(n)&&n>0?n:null}
+function queryCommunityID(){const id=new URLSearchParams(location.search).get('id');if(!id)return null;const n=Number(id);if(Number.isFinite(n)&&n>0)return n;return id;}
 function buildCommunityPersona(c){
   const cat=(c?.category||'Сообщество').trim()||'Сообщество';
   const lc=cat.toLowerCase();

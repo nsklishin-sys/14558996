@@ -658,7 +658,7 @@ function toggleHeroJoin(){
 function joinRec(id){
   joinCommunity(id);
 }
-function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.id)}
+function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.slug||c.id)}
 
 /* ── МОДАЛКА СОЗДАНИЯ ── */
 function openModal(){document.getElementById('modalBg').classList.add('open')}
@@ -852,7 +852,7 @@ async function submitCommunity(){
     joinedSet.add(created.id);
     closeModal();
     toast('Сообщество «'+name+'» создано ✓',true);
-    location.href='/community-detail.html?id='+encodeURIComponent(created.id);
+    location.href='/community-detail.html?id='+encodeURIComponent(created.slug||created.id);
   }catch{
     toast('Не удалось создать сообщество. Проверьте подключение к серверу.');
   }finally{
