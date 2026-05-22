@@ -109,6 +109,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .audit-meta{font-size:11px;color:var(--gmt)}
 .audit-time{font-size:11px;color:var(--gmt);white-space:nowrap}
 .audit-thead{display:grid;grid-template-columns:1.5fr 2fr 1fr 100px;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
+.sanct-thead{display:grid;grid-template-columns:44px 2fr 1.4fr 1.6fr 110px;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0;align-items:center}
+.sanct-row{display:grid;grid-template-columns:44px 2fr 1.4fr 1.6fr 110px;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bdr);align-items:center}
+.sanct-row:hover{background:var(--gp)}
 .empty{padding:40px 20px;text-align:center;color:var(--gmt);font-size:13px}
 .tab-badge{display:inline-block;background:var(--red,#E04040);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;margin-left:6px;line-height:1.2;min-width:18px;text-align:center}
 @media(max-width:1200px){.ov-grid{grid-template-columns:repeat(3,1fr)}}
@@ -251,7 +254,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="users-tbody" id="hiddenTbody"></div>
       </div>
     </div>
-    <div class="admin-pane" id="paneSanctions" style="display:none;flex-direction:column;gap:12px"></div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneSanctions">
+      <div class="users-table">
+        <div class="sanct-thead"><div></div><div>Пользователь</div><div>Санкция</div><div>Кем / когда</div><div></div></div>
+        <div class="users-tbody" id="sanctTbody"></div>
+      </div>
+    </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneDicts">
       <div class="users-toolbar">
         <select id="dictType" data-lt-select onchange="loadDicts()">
@@ -382,20 +390,23 @@ async function loadAnalytics(){
 function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadAnalytics();}if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
-  pane.innerHTML='<div class="empty">Загрузка…</div>';
+  var tb=document.getElementById('sanctTbody');
+  tb.innerHTML='<div class="empty">Загрузка…</div>';
   try{
     var r=await lastopFetch('/api/admin/sanctions');if(!r.ok)throw 0;
     var d=await r.json();var items=d.sanctions||[];
-    if(!items.length){pane.innerHTML='<div class="empty">Активных санкций нет</div>';return;}
-    pane.innerHTML=items.map(function(s){
+    if(!items.length){tb.innerHTML='<div class="empty">Активных санкций нет</div>';return;}
+    tb.innerHTML=items.map(function(s){
       var tag='';
       if(s.banned){tag='<span class="u-badge banned">Бан'+(s.banned_until?' до '+fmtDate(s.banned_until):' бессрочно')+'</span>';}
-      if(s.muted_until){tag+=' <span class="u-badge admin">Mute до '+fmtDate(s.muted_until)+'</span>';}
+      if(s.muted_until){tag+=(tag?' ':'')+'<span class="u-badge admin">Mute до '+fmtDate(s.muted_until)+'</span>';}
       var reason=s.banned?(s.banned_reason||''):(s.mute_reason||'');
+      var byTxt=s.banned&&s.banned_by_name?esc(s.banned_by_name):'—';
+      var whenTxt=s.banned&&s.banned_at?fmtDateTime(s.banned_at):'';
       var lift=s.banned?'<button class="dp-btn" onclick="sanctLift('+s.id+',\'ban\')">Снять бан</button>':'<button class="dp-btn" onclick="sanctLift('+s.id+',\'mute\')">Снять mute</button>';
-      return '<div class="users-row"><div class="u-av" style="background:'+esc(avc(s.full_name))+'">'+(s.avatar_url?'<img src="'+esc(s.avatar_url)+'">':esc(letter(s.full_name)))+'</div><div><div class="u-name">'+esc(s.full_name)+'</div><div class="u-pos">'+esc(reason)+'</div></div><div>'+tag+'</div><div>'+lift+'</div></div>';
+      return '<div class="sanct-row"><div class="u-av" style="background:'+esc(avc(s.full_name))+'">'+(s.avatar_url?'<img src="'+esc(s.avatar_url)+'">':esc(letter(s.full_name)))+'</div><div><div class="u-name">'+esc(s.full_name)+'</div><div class="u-pos">'+esc(reason||'—')+'</div></div><div>'+tag+'</div><div style="font-size:12px;color:var(--tm)">'+byTxt+(whenTxt?'<div style="font-size:11px;color:var(--gmt);margin-top:2px">'+whenTxt+'</div>':'')+'</div><div>'+lift+'</div></div>';
     }).join('');
-  }catch(e){pane.innerHTML='<div class="empty">Не удалось загрузить</div>';}
+  }catch(e){tb.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
 async function sanctLift(id,stype){
   try{var r=await lastopFetch('/api/admin/users/'+id+'/lift_sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stype:stype})});if(!r.ok){lastopToast('Ошибка','error');return;}loadSanctions();lastopToast('Снято','success');}catch(e){lastopToast('Ошибка соединения','error');}

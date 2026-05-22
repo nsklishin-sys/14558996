@@ -11711,8 +11711,10 @@ func main() {
 		rows, err := db.Query(`
 			SELECT u.id, COALESCE(u.public_id,''), COALESCE(u.full_name,''), COALESCE(u.email,''), COALESCE(u.avatar_url,''),
 			       u.banned_at, u.banned_until, COALESCE(u.banned_reason,''),
-			       u.muted_until, array_to_json(u.mute_scopes), COALESCE(u.mute_reason,'')
+			       u.muted_until, array_to_json(u.mute_scopes), COALESCE(u.mute_reason,''),
+			       COALESCE(bb.full_name, '')
 			FROM users u
+			LEFT JOIN users bb ON bb.id = u.banned_by
 			WHERE u.banned_at IS NOT NULL OR (u.muted_until IS NOT NULL AND u.muted_until > NOW())
 			ORDER BY GREATEST(COALESCE(u.banned_at, u.muted_until), COALESCE(u.muted_until, u.banned_at)) DESC
 			LIMIT 200`)
@@ -11724,10 +11726,10 @@ func main() {
 		var items []map[string]any
 		for rows.Next() {
 			var id int64
-			var pub, name, email, avatar, bReason, mReason string
+			var pub, name, email, avatar, bReason, mReason, bByName string
 			var bAt, bUntil, mUntil sql.NullTime
 			var mScopesJSON []byte
-			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &bAt, &bUntil, &bReason, &mUntil, &mScopesJSON, &mReason); err != nil {
+			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &bAt, &bUntil, &bReason, &mUntil, &mScopesJSON, &mReason, &bByName); err != nil {
 				continue
 			}
 			it := map[string]any{"id": id, "public_id": pub, "full_name": name, "email": email, "avatar_url": avatar}
@@ -11735,6 +11737,7 @@ func main() {
 				it["banned"] = true
 				it["banned_at"] = bAt.Time
 				it["banned_reason"] = bReason
+				it["banned_by_name"] = bByName
 				if bUntil.Valid {
 					it["banned_until"] = bUntil.Time
 				}
