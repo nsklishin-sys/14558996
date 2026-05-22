@@ -5889,7 +5889,7 @@ func main() {
 			}
 		}
 		sqlQuery := `SELECT id, public_id, full_name, email, COALESCE(avatar_url,''), COALESCE(position,''),
-		               created_at, COALESCE(is_admin,false),
+		               created_at, COALESCE(is_admin,false), COALESCE(is_owner,false),
 		               banned_at, COALESCE(banned_reason,''),
 		               COALESCE(email_verified_at IS NOT NULL, false) AS email_verified
 		        FROM users WHERE is_deleted = FALSE`
@@ -5921,13 +5921,13 @@ func main() {
 			var id int64
 			var pub, name, email, avatar, position string
 			var createdAt time.Time
-			var isAdmin, emailVerified bool
+			var isAdmin, isOwner, emailVerified bool
 			var bannedAt sql.NullTime
 			var bannedReason string
-			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &position, &createdAt, &isAdmin, &bannedAt, &bannedReason, &emailVerified); err != nil {
+			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &position, &createdAt, &isAdmin, &isOwner, &bannedAt, &bannedReason, &emailVerified); err != nil {
 				continue
 			}
-			u := map[string]any{"id": id, "public_id": pub, "full_name": name, "email": email, "avatar_url": avatar, "position": position, "created_at": createdAt, "is_admin": isAdmin, "email_verified": emailVerified, "is_banned": bannedAt.Valid}
+			u := map[string]any{"id": id, "public_id": pub, "full_name": name, "email": email, "avatar_url": avatar, "position": position, "created_at": createdAt, "is_admin": isAdmin, "is_owner": isOwner, "email_verified": emailVerified, "is_banned": bannedAt.Valid}
 			if bannedAt.Valid {
 				u["banned_at"] = bannedAt.Time
 				u["banned_reason"] = bannedReason
