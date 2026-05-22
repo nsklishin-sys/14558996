@@ -10978,6 +10978,123 @@ func main() {
 	// POST   /api/admin/companies/{publicID}/block    — заблокировать (с причиной)
 	// POST   /api/admin/companies/{publicID}/unblock  — разблокировать
 	// PATCH  /api/admin/companies/{publicID}/verify   — legacy для обратной совместимости (true/false)
+	mux.HandleFunc("/api/admin/communities", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		filter := r.URL.Query().Get("filter")
+		where := "WHERE co.is_deleted = FALSE"
+		args := []any{}
+		if q != "" {
+			args = append(args, "%"+q+"%")
+			where += " AND co.name ILIKE $1"
+		}
+		if filter == "verified" {
+			where += " AND co.is_verified = TRUE"
+		}
+		rows, err := db.Query(`
+			SELECT co.id, COALESCE(co.public_id,''), co.name, co.category, COALESCE(co.avatar_url,''),
+			       co.is_verified, co.created_at,
+			       (SELECT COUNT(*) FROM community_members cm WHERE cm.community_id = co.id)
+			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT 100`, args...)
+		items := []map[string]any{}
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var id int64
+				var pid, name, category, avatar string
+				var verified bool
+				var created time.Time
+				var members int
+				if rows.Scan(&id, &pid, &name, &category, &avatar, &verified, &created, &members) == nil {
+					items = append(items, map[string]any{
+						"id": id, "public_id": pid, "name": name, "category": category,
+						"avatar_url": avatar, "is_verified": verified,
+						"created_at": created.Format(time.RFC3339), "members_count": members,
+					})
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}))
+
+	mux.HandleFunc("/api/admin/communities/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		publicID := strings.TrimPrefix(r.URL.Path, "/api/admin/communities/")
+		if publicID == "" {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		var cid, creatorID int64
+		var name, category, descr, region, website, email, phone, avatar string
+		var verified bool
+		var created time.Time
+		err := db.QueryRow(`
+			SELECT id, name, category, COALESCE(description,''), COALESCE(region,''),
+			       COALESCE(website,''), COALESCE(email,''), COALESCE(phone,''), COALESCE(avatar_url,''),
+			       is_verified, created_at, creator_id
+			FROM communities WHERE public_id=$1 AND is_deleted=FALSE`, publicID).
+			Scan(&cid, &name, &category, &descr, &region, &website, &email, &phone, &avatar, &verified, &created, &creatorID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "Сообщество не найдено")
+			return
+		}
+		if r.Method == http.MethodGet {
+			var members, posts int
+			_ = db.QueryRow(`SELECT COUNT(*) FROM community_members WHERE community_id=$1`, cid).Scan(&members)
+			_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE author_community_id=$1 AND is_deleted=FALSE`, cid).Scan(&posts)
+			var creatorName, creatorEmail string
+			_ = db.QueryRow(`SELECT COALESCE(NULLIF(full_name,''), email), email FROM users WHERE id=$1`, creatorID).Scan(&creatorName, &creatorEmail)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"item": map[string]any{
+					"id": cid, "public_id": publicID, "name": name, "category": category,
+					"description": descr, "region": region, "website": website, "email": email,
+					"phone": phone, "avatar_url": avatar, "is_verified": verified,
+					"created_at": created.Format(time.RFC3339), "members_count": members, "posts_count": posts,
+					"creator_name": creatorName, "creator_email": creatorEmail,
+				},
+			})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var req struct {
+				Verified bool `json:"verified"`
+			}
+			if json.NewDecoder(r.Body).Decode(&req) != nil {
+				writeError(w, http.StatusBadRequest, "некорректные данные")
+				return
+			}
+			if _, err := db.Exec(`UPDATE communities SET is_verified=$1, updated_at=NOW() WHERE id=$2`, req.Verified, cid); err != nil {
+				writeError(w, http.StatusInternalServerError, "не удалось обновить")
+				return
+			}
+			logAdminAction(db, actorID, "community_verify", "community", cid, clientIP(r), map[string]any{"verified": req.Verified, "public_id": publicID})
+			if req.Verified && creatorID != 0 {
+				_ = createNotification(db, createNotificationParams{
+					RecipientID:    creatorID,
+					ActorID:        0,
+					Type:           "community_verified",
+					SourceType:     "community",
+					SourceID:       cid,
+					SourcePublicID: publicID,
+					Title:          "Сообщество верифицировано",
+					Preview:        "Ваше сообщество «" + name + "» получило отметку верификации от администрации платформы.",
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "is_verified": req.Verified})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+	}))
+
 	mux.HandleFunc("/api/admin/companies", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
