@@ -11023,7 +11023,10 @@ func main() {
 				}
 			}
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+		var totalAll, totalNotDeleted int
+		_ = db.QueryRow(`SELECT COUNT(*)::int FROM communities`).Scan(&totalAll)
+		_ = db.QueryRow(`SELECT COUNT(*)::int FROM communities WHERE is_deleted = FALSE`).Scan(&totalNotDeleted)
+		writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_total_all": totalAll, "_diag_not_deleted": totalNotDeleted, "_diag_where": where})
 	}))
 
 	mux.HandleFunc("/api/admin/communities/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
