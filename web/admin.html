@@ -296,30 +296,34 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneAds">
-      <div style="display:flex;gap:10px;flex:1;min-height:0;overflow:hidden">
-        <div style="flex:1;overflow-y:auto;min-height:0" id="adsList"></div>
-        <div style="flex:0 0 320px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px;overflow-y:auto;min-height:0">
-          <div class="panel-title" id="adFormTitle">Новый блок</div>
+      <div style="display:flex;gap:14px;flex:1;min-height:0;overflow:hidden">
+        <div style="flex:1;overflow-y:auto;min-height:0;padding-right:2px" id="adsList"></div>
+        <div style="flex:0 0 440px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:22px;overflow-y:auto;min-height:0">
+          <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px" id="adFormTitle">Новый рекламный блок</div>
+          <div style="font-size:12px;color:var(--gmt);margin-bottom:16px">Заполните поля — справа сразу виден предпросмотр</div>
           <input type="hidden" id="adEditId" value="">
-          <label style="font-size:11px;color:var(--gmt);font-weight:600;display:block;margin:8px 0 3px">Заголовок</label>
-          <input id="adTitle" placeholder="LogisticsPro 2026" style="width:100%;border:1.5px solid var(--bdr);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--gp)">
-          <label style="font-size:11px;color:var(--gmt);font-weight:600;display:block;margin:8px 0 3px">Текст</label>
-          <input id="adBody" placeholder="Выставка · Москва · май" style="width:100%;border:1.5px solid var(--bdr);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--gp)">
-          <label style="font-size:11px;color:var(--gmt);font-weight:600;display:block;margin:8px 0 3px">Ссылка</label>
-          <input id="adLink" placeholder="/events.html" style="width:100%;border:1.5px solid var(--bdr);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--gp)">
-          <label style="font-size:11px;color:var(--gmt);font-weight:600;display:block;margin:8px 0 3px">Картинка</label>
-          <input type="file" id="adImageFile" accept="image/*" onchange="uploadAdImage(this)" style="font-size:12px;width:100%">
-          <div id="adImagePreview" style="margin-top:6px"></div>
-          <input type="hidden" id="adImageUrl" value="">
-          <div style="display:flex;gap:10px;margin-top:10px">
-            <div style="flex:1"><label style="font-size:11px;color:var(--gmt);font-weight:600;display:block;margin-bottom:3px">Вес</label><input id="adWeight" type="number" value="0" style="width:100%;border:1.5px solid var(--bdr);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--gp)"></div>
-            <div style="flex:1"><label style="font-size:11px;color:var(--gmt);font-weight:600;display:block;margin-bottom:3px">Активен</label><select id="adActive" style="width:100%;border:1.5px solid var(--bdr);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--gp)"><option value="1">Да</option><option value="0">Нет</option></select></div>
+          <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Заголовок *</label>
+          <input id="adTitle" placeholder="LogisticsPro 2026" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);margin-bottom:14px">
+          <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Описание</label>
+          <input id="adBody" placeholder="Выставка · Москва · май" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);margin-bottom:14px">
+          <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Ссылка перехода</label>
+          <input id="adLink" placeholder="/events.html или https://…" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);margin-bottom:14px">
+          <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Изображение</label>
+          <div style="border:1.5px dashed var(--bdr);border-radius:10px;padding:14px;text-align:center;background:var(--gp);margin-bottom:6px">
+            <input type="file" id="adImageFile" accept="image/*" onchange="uploadAdImage(this)" style="font-size:13px;width:100%">
+            <div style="font-size:11px;color:var(--gmt);margin-top:6px">PNG, JPG — отобразится в блоке над текстом</div>
           </div>
-          <div class="panel-title" style="margin-top:14px">Превью</div>
-          <div id="adPreview"></div>
-          <div style="display:flex;gap:6px;margin-top:12px">
-            <button class="dp-btn primary" style="flex:1" onclick="saveAd()">Сохранить</button>
-            <button class="dp-btn" onclick="resetAdForm()">Очистить</button>
+          <div id="adImagePreview" style="margin-bottom:14px"></div>
+          <input type="hidden" id="adImageUrl" value="">
+          <div style="display:flex;gap:12px;margin-bottom:18px">
+            <div style="flex:1"><label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin-bottom:5px">Вес (приоритет)</label><input id="adWeight" type="number" value="0" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp)"></div>
+            <div style="flex:1"><label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin-bottom:5px">Показывать</label><select id="adActive" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);cursor:pointer"><option value="1">Да, активен</option><option value="0">Нет, скрыт</option></select></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Предпросмотр</div>
+          <div id="adPreview" style="margin-bottom:18px"><div style="font-size:12px;color:var(--gmt);text-align:center;padding:20px;background:var(--gp);border-radius:12px">Заполните заголовок</div></div>
+          <div style="display:flex;gap:8px">
+            <button class="dp-btn primary" style="flex:1;padding:11px" onclick="saveAd()">Сохранить блок</button>
+            <button class="dp-btn" style="padding:11px 16px" onclick="resetAdForm()">Очистить</button>
           </div>
         </div>
       </div>
