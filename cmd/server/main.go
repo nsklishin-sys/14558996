@@ -11049,8 +11049,8 @@ func main() {
 		}
 		if r.Method == http.MethodGet {
 			var members, posts int
-			_ = db.QueryRow(`SELECT COUNT(*) FROM community_members WHERE community_id=$1`, cid).Scan(&members)
-			_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE author_community_id=$1 AND is_deleted=FALSE`, cid).Scan(&posts)
+			_ = db.QueryRow(`SELECT COUNT(*)::int FROM community_members WHERE community_id=$1`, cid).Scan(&members)
+			_ = db.QueryRow(`SELECT COUNT(*)::int FROM posts WHERE author_community_id=$1 AND is_deleted=FALSE`, cid).Scan(&posts)
 			var creatorName, creatorEmail string
 			_ = db.QueryRow(`SELECT COALESCE(NULLIF(full_name,''), email), email FROM users WHERE id=$1`, creatorID).Scan(&creatorName, &creatorEmail)
 			writeJSON(w, http.StatusOK, map[string]any{
