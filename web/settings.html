@@ -961,6 +961,10 @@ async function refreshAdminState(){
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible')refreshAdminState();
 });
+// Тихий поллинг прав раз в 60с — чтобы новоназначенный админ увидел кнопку без перезагрузки
+setInterval(function(){
+  if(document.visibilityState==='visible')refreshAdminState();
+},60000);
 
 function populateUI(){
   const name=currentUser.name||currentUser.full_name||'Пользователь';
