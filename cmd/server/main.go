@@ -1404,6 +1404,7 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/assets/lt-select.js" defer></script>
 <script src="/assets/confirm-modal.js" defer></script>
 <script src="/assets/calendar-modal.js" defer></script>
+<link rel="stylesheet" href="/assets/skeleton.css">
 <script src="/assets/api-cache.js" defer></script>
 <script src="/assets/skeleton.js" defer></script>
 <script src="/assets/ux-perf.js" defer></script>
