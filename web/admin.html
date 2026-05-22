@@ -300,11 +300,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div style="font-size:13px;color:var(--gmt)">Управление рекламными кампаниями платформы</div>
         <button class="dp-btn primary" style="padding:9px 18px" onclick="openAdModal()">+ Добавить блок</button>
       </div>
-      <div style="flex:1;overflow-y:auto;min-height:0;padding-right:2px" id="adsList"></div>
+      <div class="users-table" style="flex:1;overflow-y:auto;min-height:0;padding:14px">
+        <div id="adsList"></div>
+      </div>
     </div>
 
     <div id="adModal" style="display:none;position:fixed;inset:0;background:rgba(20,30,25,.5);z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAdModal()">
-      <div style="background:var(--w);border-radius:var(--rxl);box-shadow:0 20px 60px rgba(0,0,0,.25);padding:24px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto">
+      <div style="background:var(--w);border-radius:var(--rxl);box-shadow:0 20px 60px rgba(0,0,0,.25);padding:24px;width:480px;max-width:100%;max-height:78vh;overflow-y:auto">
           <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:4px" id="adFormTitle">Новый рекламный блок</div>
           <div style="font-size:12px;color:var(--gmt);margin-bottom:16px">Заполните поля — ниже виден предпросмотр</div>
           <input type="hidden" id="adEditId" value="">
@@ -315,15 +317,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Ссылка перехода</label>
           <input id="adLink" placeholder="/events.html или https://…" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);margin-bottom:14px">
           <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Изображение</label>
-          <div style="border:1.5px dashed var(--bdr);border-radius:10px;padding:14px;text-align:center;background:var(--gp);margin-bottom:6px">
-            <input type="file" id="adImageFile" accept="image/*" onchange="uploadAdImage(this)" style="font-size:13px;width:100%">
-            <div style="font-size:11px;color:var(--gmt);margin-top:6px">PNG, JPG — отобразится в блоке над текстом</div>
-          </div>
+          <label for="adImageFile" style="display:flex;align-items:center;gap:10px;border:1.5px dashed var(--bdr);border-radius:10px;padding:14px;background:var(--gp);margin-bottom:6px;cursor:pointer">
+            <span class="dp-btn" style="padding:8px 14px;flex-shrink:0;pointer-events:none">Выбрать файл</span>
+            <span id="adFileName" style="font-size:12px;color:var(--gmt);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">PNG или JPG — отобразится над текстом</span>
+            <input type="file" id="adImageFile" accept="image/*" onchange="uploadAdImage(this);var n=this.files&&this.files[0]?this.files[0].name:'';if(n)document.getElementById('adFileName').textContent=n;" style="display:none">
+          </label>
           <div id="adImagePreview" style="margin-bottom:14px"></div>
           <input type="hidden" id="adImageUrl" value="">
           <div style="display:flex;gap:12px;margin-bottom:18px">
-            <div style="flex:1"><label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin-bottom:5px">Вес (приоритет)</label><input id="adWeight" type="number" value="0" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp)"></div>
-            <div style="flex:1"><label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin-bottom:5px">Показывать</label><select id="adActive" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);cursor:pointer"><option value="1">Да, активен</option><option value="0">Нет, скрыт</option></select></div>
+            <div style="flex:1"><label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin-bottom:5px">Приоритет</label><input id="adWeight" type="number" value="0" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);-webkit-appearance:none;-moz-appearance:textfield;appearance:none;height:44px;box-sizing:border-box"></div>
+            <div style="flex:1"><label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin-bottom:5px">Показывать</label><select id="adActive" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:0 36px 0 13px;font-size:14px;font-family:inherit;background:var(--gp) url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 fill=%22none%22 stroke=%22%235A8A6A%22 stroke-width=%222%22><path d=%22M2 4l4 4 4-4%22/></svg>') no-repeat right 13px center;cursor:pointer;-webkit-appearance:none;-moz-appearance:none;appearance:none;height:44px;box-sizing:border-box"><option value="1">Да, активен</option><option value="0">Нет, скрыт</option></select></div>
           </div>
           <div style="font-size:12px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Предпросмотр</div>
           <div id="adPreview" style="margin-bottom:18px"><div style="font-size:12px;color:var(--gmt);text-align:center;padding:20px;background:var(--gp);border-radius:12px">Заполните заголовок</div></div>
