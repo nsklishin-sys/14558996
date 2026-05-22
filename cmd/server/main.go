@@ -6311,23 +6311,6 @@ func main() {
 			}
 			logAdminAction(db, actorID, "user.grant_owner", "user", targetID, clientIP(r), map[string]any{"email": email})
 			writeJSON(w, http.StatusOK, map[string]any{"is_owner": true})
-		case "revoke-owner":
-			if !actorIsOwner {
-				writeError(w, http.StatusForbidden, "Снимать владельцев может только владелец")
-				return
-			}
-			var ownerCount int
-			_ = db.QueryRow(`SELECT COUNT(*)::int FROM users WHERE COALESCE(is_owner,false)=TRUE AND is_deleted=FALSE`).Scan(&ownerCount)
-			if ownerCount <= 1 {
-				writeError(w, http.StatusBadRequest, "Нельзя снять последнего владельца платформы")
-				return
-			}
-			if _, err := db.Exec(`UPDATE users SET is_owner=FALSE WHERE id=$1`, targetID); err != nil {
-				writeError(w, http.StatusInternalServerError, "Ошибка")
-				return
-			}
-			logAdminAction(db, actorID, "user.revoke_owner", "user", targetID, clientIP(r), map[string]any{"email": email})
-			writeJSON(w, http.StatusOK, map[string]any{"is_owner": false})
 		case "terminate-sessions":
 			if !guard() {
 				return
