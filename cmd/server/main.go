@@ -5030,6 +5030,13 @@ func main() {
 		parts := strings.Split(tail, "/")
 		communityID, ok := parseCommunityID(parts[0])
 		if !ok {
+			var resolvedID int64
+			if err := db.QueryRow(`SELECT id FROM communities WHERE slug = $1 AND is_deleted = FALSE`, parts[0]).Scan(&resolvedID); err == nil && resolvedID > 0 {
+				communityID = resolvedID
+				ok = true
+			}
+		}
+		if !ok {
 			writeError(w, http.StatusBadRequest, "Некорректный id сообщества")
 			return
 		}
@@ -18156,6 +18163,7 @@ func listCommunities(db *sql.DB, authUserID int64, hasAuth bool, filters communi
 	args := []any{currentUserID}
 	query := `
 		SELECT c.id,
+		       COALESCE(c.slug, '') AS slug,
 		       c.name,
 		       c.category,
 		       c.description,
@@ -18230,6 +18238,7 @@ func listCommunities(db *sql.DB, authUserID int64, hasAuth bool, filters communi
 		var rawTags []byte
 		if scanErr := rows.Scan(
 			&item.ID,
+			&item.Slug,
 			&item.Name,
 			&item.Category,
 			&item.Description,
@@ -18294,7 +18303,8 @@ func getCommunityByID(db *sql.DB, communityID, authUserID int64, hasAuth bool) (
 		       c.created_at,
 		       COALESCE(cu.public_id, ''),
 		       COALESCE(cu.full_name, cu.handle, ''),
-		       COALESCE(cu.avatar_url, '')
+		       COALESCE(cu.avatar_url, ''),
+		       COALESCE(c.slug, '')
 		FROM communities c
 		LEFT JOIN users u ON u.id = c.creator_id
 		LEFT JOIN users cu ON cu.id = c.contact_user_id
@@ -18324,6 +18334,7 @@ func getCommunityByID(db *sql.DB, communityID, authUserID int64, hasAuth bool) (
 		&item.ContactUserPublicID,
 		&item.ContactUserName,
 		&item.ContactUserAvatarURL,
+		&item.Slug,
 	)
 	if err != nil {
 		return community{}, err
