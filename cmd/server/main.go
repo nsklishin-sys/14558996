@@ -6059,6 +6059,10 @@ func main() {
 			           END, '') AS entity_public_id
 			FROM user_activity_log a WHERE a.user_id=$1 ORDER BY a.created_at DESC LIMIT 30`, uid)
 		items := []map[string]any{}
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_query_error": err.Error()})
+			return
+		}
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
@@ -11006,6 +11010,10 @@ func main() {
 			log.Printf("admin/communities query error: %v", err)
 		}
 		items := []map[string]any{}
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_query_error": err.Error()})
+			return
+		}
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
