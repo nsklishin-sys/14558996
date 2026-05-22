@@ -254,6 +254,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <a href="/updates.html" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600">Обновления платформы</a>
       <a href="/" style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;text-decoration:none;color:var(--t);font-size:13px;font-weight:600">Вернуться на главную</a>
     </div>
+    <div class="panel">
+      <div class="panel-title">Экспорт данных</div>
+      <button class="dp-btn" style="width:100%;margin-bottom:6px" onclick="exportData('users')">Пользователи → CSV</button>
+      <button class="dp-btn" style="width:100%;margin-bottom:6px" onclick="exportData('companies')">Компании → CSV</button>
+      <button class="dp-btn" style="width:100%" onclick="exportData('complaints')">Жалобы → CSV</button>
+    </div>
   </aside>
 </div>
 <div class="panel-overlay" id="panelOverlay" onclick="closeDetail()"></div>
@@ -271,6 +277,20 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function letter(s){return((s||'?')[0]||'?').toUpperCase();}
 var C=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11'];
 function avc(s){return C[(s||'').charCodeAt(0)%C.length]||C[0];}
+async function exportData(type){
+  try{
+    var r=await lastopFetch('/api/admin/export?type='+encodeURIComponent(type));
+    if(!r.ok){lastopToast('Ошибка экспорта','error');return;}
+    var blob=await r.blob();
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download=type+'.csv';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    lastopToast('Файл выгружен','success');
+  }catch(e){lastopToast('Ошибка соединения','error');}
+}
 function fmtDate(ts){if(!ts)return'—';var d=new Date(ts);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtDateTime(ts){if(!ts)return'—';var d=new Date(ts);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
 function num(n){if(typeof n==='string')return n;return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n||0);}
