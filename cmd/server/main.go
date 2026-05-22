@@ -11040,6 +11040,42 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_total_all": totalAll, "_diag_not_deleted": totalNotDeleted, "_diag_where": where})
 	}))
 
+	mux.HandleFunc("/api/admin/community-content/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/admin/community-content/")
+		cid, _ := strconv.ParseInt(idStr, 10, 64)
+		if cid == 0 {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		items := []map[string]any{}
+		prows, perr := db.Query(`SELECT public_id, title, created_at FROM posts WHERE author_community_id=$1 AND is_deleted=FALSE ORDER BY created_at DESC LIMIT 50`, cid)
+		if perr == nil {
+			for prows.Next() {
+				var pid, title string
+				var created time.Time
+				if prows.Scan(&pid, &title, &created) == nil {
+					items = append(items, map[string]any{"type": "post", "public_id": pid, "title": title, "created_at": created.Format(time.RFC3339)})
+				}
+			}
+			prows.Close()
+		}
+		frows, ferr := db.Query(`SELECT public_id, title, created_at FROM forum_topics WHERE author_community_id=$1 ORDER BY created_at DESC LIMIT 50`, cid)
+		if ferr == nil {
+			for frows.Next() {
+				var pid, title string
+				var created time.Time
+				if frows.Scan(&pid, &title, &created) == nil {
+					items = append(items, map[string]any{"type": "forum_topic", "public_id": pid, "title": title, "created_at": created.Format(time.RFC3339)})
+				}
+			}
+			frows.Close()
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}))
+
 	mux.HandleFunc("/api/admin/communities/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
