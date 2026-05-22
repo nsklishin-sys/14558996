@@ -5855,6 +5855,10 @@ func main() {
 		out["companies_total"] = n
 		_ = db.QueryRow(`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL AND is_verified = FALSE`).Scan(&n)
 		out["companies_unverified"] = n
+		_ = db.QueryRow(`SELECT COUNT(*)::int FROM communities WHERE is_deleted = FALSE`).Scan(&n)
+		out["communities_total"] = n
+		_ = db.QueryRow(`SELECT COUNT(*)::int FROM communities WHERE is_deleted = FALSE AND is_verified = FALSE`).Scan(&n)
+		out["communities_unverified"] = n
 		_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE is_deleted = FALSE`).Scan(&n)
 		out["posts_total"] = n
 		_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE is_deleted = FALSE AND created_at > NOW() - INTERVAL '1 day'`).Scan(&n)
