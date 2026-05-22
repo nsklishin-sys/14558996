@@ -6107,14 +6107,20 @@ func main() {
 			return
 		}
 		var name, email string
-		var isAdminTarget bool
-		if err := db.QueryRow(`SELECT full_name, email, COALESCE(is_admin,false) FROM users WHERE id=$1 AND is_deleted = FALSE`, targetID).Scan(&name, &email, &isAdminTarget); err != nil {
+		var isAdminTarget, isOwnerTarget bool
+		if err := db.QueryRow(`SELECT full_name, email, COALESCE(is_admin,false), COALESCE(is_owner,false) FROM users WHERE id=$1 AND is_deleted = FALSE`, targetID).Scan(&name, &email, &isAdminTarget, &isOwnerTarget); err != nil {
 			writeError(w, http.StatusNotFound, "Пользователь не найден")
 			return
 		}
+		var actorIsOwner bool
+		_ = db.QueryRow(`SELECT COALESCE(is_owner,false) FROM users WHERE id=$1`, actorID).Scan(&actorIsOwner)
 		guard := func() bool {
-			if isAdminTarget && targetID != actorID {
-				writeError(w, http.StatusForbidden, "Нельзя изменять других администраторов")
+			if isOwnerTarget {
+				writeError(w, http.StatusForbidden, "Владельца платформы нельзя изменять")
+				return false
+			}
+			if isAdminTarget && !actorIsOwner {
+				writeError(w, http.StatusForbidden, "Изменять администраторов может только владелец")
 				return false
 			}
 			if targetID == actorID {
@@ -6259,6 +6265,10 @@ func main() {
 			logAdminAction(db, actorID, "user.unban", "user", targetID, clientIP(r), map[string]any{"email": email})
 			writeJSON(w, http.StatusOK, map[string]any{"banned": false})
 		case "grant-admin":
+			if !actorIsOwner {
+				writeError(w, http.StatusForbidden, "Назначать администраторов может только владелец")
+				return
+			}
 			if !guard() {
 				return
 			}
@@ -6269,6 +6279,14 @@ func main() {
 			logAdminAction(db, actorID, "user.grant_admin", "user", targetID, clientIP(r), map[string]any{"email": email})
 			writeJSON(w, http.StatusOK, map[string]any{"is_admin": true})
 		case "revoke-admin":
+			if !actorIsOwner {
+				writeError(w, http.StatusForbidden, "Снимать администраторов может только владелец")
+				return
+			}
+			if isOwnerTarget {
+				writeError(w, http.StatusForbidden, "Сначала снимите статус владельца")
+				return
+			}
 			if targetID == actorID {
 				writeError(w, http.StatusBadRequest, "Нельзя снять права администратора с себя")
 				return
@@ -6279,6 +6297,34 @@ func main() {
 			}
 			logAdminAction(db, actorID, "user.revoke_admin", "user", targetID, clientIP(r), map[string]any{"email": email})
 			writeJSON(w, http.StatusOK, map[string]any{"is_admin": false})
+		case "grant-owner":
+			if !actorIsOwner {
+				writeError(w, http.StatusForbidden, "Назначать владельцев может только владелец")
+				return
+			}
+			if _, err := db.Exec(`UPDATE users SET is_admin=TRUE, is_owner=TRUE WHERE id=$1`, targetID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "user.grant_owner", "user", targetID, clientIP(r), map[string]any{"email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"is_owner": true})
+		case "revoke-owner":
+			if !actorIsOwner {
+				writeError(w, http.StatusForbidden, "Снимать владельцев может только владелец")
+				return
+			}
+			var ownerCount int
+			_ = db.QueryRow(`SELECT COUNT(*)::int FROM users WHERE COALESCE(is_owner,false)=TRUE AND is_deleted=FALSE`).Scan(&ownerCount)
+			if ownerCount <= 1 {
+				writeError(w, http.StatusBadRequest, "Нельзя снять последнего владельца платформы")
+				return
+			}
+			if _, err := db.Exec(`UPDATE users SET is_owner=FALSE WHERE id=$1`, targetID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "user.revoke_owner", "user", targetID, clientIP(r), map[string]any{"email": email})
+			writeJSON(w, http.StatusOK, map[string]any{"is_owner": false})
 		case "terminate-sessions":
 			if !guard() {
 				return
