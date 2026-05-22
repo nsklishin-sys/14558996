@@ -241,7 +241,7 @@
       }
     } catch {}
     try {
-      const r = await lastopFetch('/api/communities?filter=my', { headers });
+      const r = await lastopFetch('/api/communities?tab=my', { headers });
       if (r.ok) {
         const d = await r.json();
         const n = (d.communities || []).length;
