@@ -11010,33 +11010,25 @@ func main() {
 			where += " AND co.is_verified = TRUE"
 		}
 		rows, err := db.Query(`
-			SELECT co.id, COALESCE(co.public_id,''), co.name, co.category, COALESCE(co.avatar_url,''),
+			SELECT co.id, COALESCE(co.slug,''), co.name, co.category, COALESCE(co.avatar_url,''),
 			       co.is_verified, co.created_at,
 			       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = co.id)
 			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT 100`, args...)
-		if err != nil {
-			log.Printf("admin/communities query error: %v", err)
-		}
 		items := []map[string]any{}
-		if err != nil {
-			writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_query_error": err.Error()})
-			return
-		}
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
 				var id int64
-				var pid, name, category, avatar string
+				var slug, name, category, avatar string
 				var verified bool
 				var created time.Time
 				var members int
-				scanErr := rows.Scan(&id, &pid, &name, &category, &avatar, &verified, &created, &members)
-				if scanErr != nil {
-					writeJSON(w, http.StatusOK, map[string]any{"items": items, "_diag_scan_error": scanErr.Error()})
-					return
+				if rows.Scan(&id, &slug, &name, &category, &avatar, &verified, &created, &members) != nil {
+					continue
 				}
+				_ = slug
 				items = append(items, map[string]any{
-					"id": id, "public_id": pid, "name": name, "category": category,
+					"id": id, "slug": slug, "name": name, "category": category,
 					"avatar_url": avatar, "is_verified": verified,
 					"created_at": created.Format(time.RFC3339), "members_count": members,
 				})
@@ -11059,15 +11051,27 @@ func main() {
 			return
 		}
 		var cid, creatorID int64
-		var name, category, descr, region, website, email, phone, avatar string
+		var name, category, descr, region, website, email, phone, avatar, cslug string
 		var verified bool
 		var created time.Time
-		err := db.QueryRow(`
-			SELECT id, name, category, COALESCE(description,''), COALESCE(region,''),
-			       COALESCE(website,''), COALESCE(email,''), COALESCE(phone,''), COALESCE(avatar_url,''),
-			       is_verified, created_at, creator_id
-			FROM communities WHERE public_id=$1 AND is_deleted=FALSE`, publicID).
-			Scan(&cid, &name, &category, &descr, &region, &website, &email, &phone, &avatar, &verified, &created, &creatorID)
+		idNum, numErr := strconv.ParseInt(publicID, 10, 64)
+		var qErr error
+		if numErr == nil && idNum > 0 {
+			qErr = db.QueryRow(`
+				SELECT id, name, category, COALESCE(description,''), COALESCE(region,''),
+				       COALESCE(website,''), COALESCE(email,''), COALESCE(phone,''), COALESCE(avatar_url,''),
+				       is_verified, created_at, creator_id, COALESCE(slug,'')
+				FROM communities WHERE id=$1 AND is_deleted=FALSE`, idNum).
+				Scan(&cid, &name, &category, &descr, &region, &website, &email, &phone, &avatar, &verified, &created, &creatorID, &cslug)
+		} else {
+			qErr = db.QueryRow(`
+				SELECT id, name, category, COALESCE(description,''), COALESCE(region,''),
+				       COALESCE(website,''), COALESCE(email,''), COALESCE(phone,''), COALESCE(avatar_url,''),
+				       is_verified, created_at, creator_id, COALESCE(slug,'')
+				FROM communities WHERE slug=$1 AND is_deleted=FALSE`, publicID).
+				Scan(&cid, &name, &category, &descr, &region, &website, &email, &phone, &avatar, &verified, &created, &creatorID, &cslug)
+		}
+		err := qErr
 		if err != nil {
 			writeError(w, http.StatusNotFound, "Сообщество не найдено")
 			return
@@ -11080,7 +11084,7 @@ func main() {
 			_ = db.QueryRow(`SELECT COALESCE(NULLIF(full_name,''), email), email FROM users WHERE id=$1`, creatorID).Scan(&creatorName, &creatorEmail)
 			writeJSON(w, http.StatusOK, map[string]any{
 				"item": map[string]any{
-					"id": cid, "public_id": publicID, "name": name, "category": category,
+					"id": cid, "slug": cslug, "name": name, "category": category,
 					"description": descr, "region": region, "website": website, "email": email,
 					"phone": phone, "avatar_url": avatar, "is_verified": verified,
 					"created_at": created.Format(time.RFC3339), "members_count": members, "posts_count": posts,
