@@ -970,13 +970,13 @@ function populateUI(){
   const name=currentUser.name||currentUser.full_name||'Пользователь';
   const color=avc(name);const ltr=letter(name);
   /* Топбар */
-  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{document.getElementById("topbarAv").textContent=ltr;document.getElementById("topbarAv").style.background=color;}
-  document.getElementById('topbarName').textContent=name;
-  document.getElementById('topbarRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("topbarAv",ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{var _tav=document.getElementById("topbarAv");if(_tav){_tav.textContent=ltr;_tav.style.background=color;}}
+  var _tn=document.getElementById('topbarName');if(_tn)_tn.textContent=name;
+  var _tr=document.getElementById('topbarRole');if(_tr)_tr.textContent=currentUser.role||currentUser.position||'Участник LASTOP';
   /* Дропдаун профиля */
-  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{document.getElementById("pddAv").textContent=ltr;document.getElementById("pddAv").style.background=color;}
-  document.getElementById('pddName').textContent=name;
-  document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
+  if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",ltr,color,((typeof u!=="undefined"&&u&&u.avatar_url)||(typeof currentUser!=="undefined"&&currentUser&&currentUser.avatar_url)||(typeof user!=="undefined"&&user&&user.avatar_url)||""));else{var _pav=document.getElementById("pddAv");if(_pav){_pav.textContent=ltr;_pav.style.background=color;}}
+  var _pn=document.getElementById('pddName');if(_pn)_pn.textContent=name;
+  var _pr=document.getElementById('pddRole');if(_pr)_pr.textContent=currentUser.role||currentUser.position||'Участник LASTOP';
   const selfProfileHref=profileHref(currentUser);
   document.querySelectorAll('a[href=\"/profile.html\"]').forEach((a)=>{a.href=selfProfileHref;});
   /* Аватар */
