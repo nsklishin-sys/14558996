@@ -1221,8 +1221,16 @@ function toggleFollow(btn){
 (async()=>{
   // Запускаем оба запроса параллельно, не блокируем рендер ленты ожиданием /me
   const mePromise = tk() ? lastopFetch(API+'/me',{headers:{}}).then(r=>r.ok?r.json():null).catch(()=>null) : Promise.resolve(null);
-  // Скелетоны пока летит запрос — бесшовность вместо пустоты/мелькания
-  try{ if(window.lastopSkel){ var _nf=document.getElementById('newsFeed'); if(_nf&&!_nf.children.length) window.lastopSkel.inject('newsFeed',5); } }catch(e){}
+  // Мгновенно показать ленту из кэша предыдущего захода (бесшовность при навигации)
+  var _shownFromCache=false;
+  try{
+    if(window.lastopCache){
+      var _c=window.lastopCache.get('feed:news:mapped');
+      if(_c&&_c.length){ allNews=_c; _c.forEach(function(n){var k=n.public_id||String(n.id||'');if(n.is_liked)likedSet.add(k);if(n.is_saved)savedSet.add(k);}); applyFilters(); _shownFromCache=true; }
+    }
+  }catch(e){}
+  // Скелетоны только если кэша не было (иначе уже видна лента)
+  try{ if(!_shownFromCache && window.lastopSkel){ var _nf=document.getElementById('newsFeed'); if(_nf&&!_nf.children.length) window.lastopSkel.inject('newsFeed',5); } }catch(e){}
   const feedPromise = lastopFetch(API+'/feed?limit=30&type=news',{headers:{}}).then(r=>r.ok?r.json():null).catch(()=>null);
 
   // Обработка /me — обновляем юзера в топбаре когда придёт (не блокирует ленту)
@@ -1307,6 +1315,8 @@ function toggleFollow(btn){
         if(n.is_liked)likedSet.add(key);
         if(n.is_saved)savedSet.add(key);
       });
+      // Сохраняем готовую ленту в кэш для мгновенного следующего захода
+      try{ if(window.lastopCache) window.lastopCache.set('feed:news:mapped',allNews); }catch(e){}
     }else{
       allNews=[];
     }
