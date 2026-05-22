@@ -6124,6 +6124,60 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	}))
 
+	mux.HandleFunc("/api/admin/users/bulk", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var req struct {
+			IDs    []int64 `json:"ids"`
+			Action string  `json:"action"`
+			Reason string  `json:"reason"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if len(req.IDs) == 0 || (req.Action != "ban" && req.Action != "unban") {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		actorIsOwner := false
+		_ = db.QueryRow(`SELECT COALESCE(is_owner,false) FROM users WHERE id=$1`, actorID).Scan(&actorIsOwner)
+		done := 0
+		skipped := 0
+		for _, tid := range req.IDs {
+			if tid == actorID {
+				skipped++
+				continue
+			}
+			var tIsAdmin, tIsOwner bool
+			_ = db.QueryRow(`SELECT COALESCE(is_admin,false), COALESCE(is_owner,false) FROM users WHERE id=$1 AND is_deleted=FALSE`, tid).Scan(&tIsAdmin, &tIsOwner)
+			if tIsOwner || (tIsAdmin && !actorIsOwner) {
+				skipped++
+				continue
+			}
+			if req.Action == "ban" {
+				reason := strings.TrimSpace(req.Reason)
+				if reason == "" {
+					reason = "Массовая блокировка"
+				}
+				if _, err := db.Exec(`UPDATE users SET banned_at=NOW(), banned_reason=$1, banned_by=$2 WHERE id=$3`, reason, actorID, tid); err == nil {
+					sessions.invalidateUser(tid)
+					logAdminAction(db, actorID, "user.ban", "user", tid, clientIP(r), map[string]any{"reason": reason, "bulk": true})
+					done++
+				}
+			} else {
+				if _, err := db.Exec(`UPDATE users SET banned_at=NULL, banned_reason=NULL, banned_by=NULL WHERE id=$1`, tid); err == nil {
+					logAdminAction(db, actorID, "user.unban", "user", tid, clientIP(r), map[string]any{"bulk": true})
+					done++
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"done": done, "skipped": skipped})
+	}))
+
 	mux.HandleFunc("/api/admin/users/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {

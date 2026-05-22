@@ -56,10 +56,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .uf-filter:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
 .uf-filter.active{background:var(--g);color:#fff;border-color:var(--g)}
 .users-table{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh);flex:1;display:flex;flex-direction:column;min-height:0}
-.users-thead{display:grid;grid-template-columns:36px 2fr 1.5fr 1fr 110px 30px;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
+.users-thead{display:grid;grid-template-columns:32px 36px 2fr 1.5fr 1fr 110px 30px;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
 .users-tbody{overflow-y:auto;flex:1;min-height:0}
 .users-tbody::-webkit-scrollbar{width:4px}.users-tbody::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
-.users-row{display:grid;grid-template-columns:36px 2fr 1.5fr 1fr 110px 30px;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bdr);align-items:center;font-size:13px;cursor:pointer;transition:background .12s}
+.users-row{display:grid;grid-template-columns:32px 36px 2fr 1.5fr 1fr 110px 30px;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bdr);align-items:center;font-size:13px;cursor:pointer;transition:background .12s}
 .users-row:hover{background:var(--gp)}
 .u-av{width:30px;height:30px;border-radius:50%;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;overflow:hidden;position:relative}
 .u-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
@@ -167,8 +167,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <button class="uf-filter" data-status="admin">Админы</button>
         <button class="uf-filter" data-status="banned">Заблокированные</button>
       </div>
+      <div id="usersBulkBar" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--gl);border:1px solid var(--gb);border-radius:12px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--g)" id="usersBulkCount">Выбрано: 0</span>
+        <button class="dp-btn danger" style="padding:6px 14px" onclick="bulkUsers('ban')">Забанить выбранных</button>
+        <button class="dp-btn" style="padding:6px 14px" onclick="bulkUsers('unban')">Разблокировать выбранных</button>
+        <button class="dp-btn" style="padding:6px 14px;margin-left:auto" onclick="clearUserSelection()">Сбросить</button>
+      </div>
       <div class="users-table">
-        <div class="users-thead"><div></div><div>Имя</div><div>Email</div><div>Регистрация</div><div>Статус</div><div></div></div>
+        <div class="users-thead"><div><input type="checkbox" id="usersSelectAll" onclick="toggleSelectAllUsers(this)"></div><div></div><div>Имя</div><div>Email</div><div>Регистрация</div><div>Статус</div><div></div></div>
         <div class="users-tbody" id="usersTbody"></div>
         <div id="usersMoreWrap"></div>
       </div>
@@ -535,9 +541,30 @@ function renderRecent(entries){if(!entries.length){document.getElementById('over
 var usersSearchTimer;
 document.getElementById('usersSearch').addEventListener('input',function(e){clearTimeout(usersSearchTimer);usersSearchTimer=setTimeout(function(){usersFilter.q=e.target.value.trim();loadUsers();},300);});
 document.querySelectorAll('.uf-filter').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.uf-filter').forEach(function(x){x.classList.remove('active');});b.classList.add('active');usersFilter.status=b.dataset.status;loadUsers();});});
-async function loadUsers(more){var tb=document.getElementById('usersTbody');if(!more){usersOffset=0;tb.innerHTML='<div class="empty">Загрузка…</div>';}try{var url='/api/admin/users?limit='+usersPageSize+'&offset='+usersOffset;if(usersFilter.q)url+='&q='+encodeURIComponent(usersFilter.q);if(usersFilter.status)url+='&status='+encodeURIComponent(usersFilter.status);var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();var list=d.users||[];renderUsers(list,more);usersOffset+=list.length;renderMoreBtn('usersMoreWrap',list.length>=usersPageSize,function(){loadUsers(true);});}catch(e){if(!more)tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
+function selectedUserIds(){return Array.prototype.slice.call(document.querySelectorAll('.user-cb:checked')).map(function(c){return parseInt(c.value);});}
+function updateBulkBar(){var ids=selectedUserIds();var bar=document.getElementById('usersBulkBar');if(!bar)return;bar.style.display=ids.length?'flex':'none';var c=document.getElementById('usersBulkCount');if(c)c.textContent='Выбрано: ' +ids.length;}
+function toggleSelectAllUsers(cb){document.querySelectorAll('.user-cb').forEach(function(x){x.checked=cb.checked;});updateBulkBar();}
+function clearUserSelection(){document.querySelectorAll('.user-cb').forEach(function(x){x.checked=false;});var sa=document.getElementById('usersSelectAll');if(sa)sa.checked=false;updateBulkBar();}
+async function bulkUsers(action){
+  var ids=selectedUserIds();if(!ids.length)return;
+  var reason='';
+  if(action==='ban'){
+    reason=await lastopPrompt({title:'Забанить выбранных ('+ids.length+')',label:'Причина блокировки',placeholder:'Причина',confirmText:'Забанить',danger:true});
+    if(reason===null||!String(reason).trim())return;
+  }else{
+    if(!await lastopConfirm({title:'Разблокировать выбранных?',message:ids.length+' польз. получат доступ.',confirmText:'Разблокировать'}))return;
+  }
+  try{
+    var r=await lastopFetch('/api/admin/users/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids,action:action,reason:String(reason||'').trim()})});
+    if(!r.ok){lastopToast('Ошибка','error');return;}
+    var d=await r.json();
+    lastopToast('Готово: ' +d.done+(d.skipped?', пропущено: ' +d.skipped:''),'success');
+    clearUserSelection();loadUsers();
+  }catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function loadUsers(more){var tb=document.getElementById('usersTbody');if(!more){usersOffset=0;tb.innerHTML='<div class="empty">Загрузка…</div>';var sa=document.getElementById('usersSelectAll');if(sa)sa.checked=false;updateBulkBar();}try{var url='/api/admin/users?limit='+usersPageSize+'&offset='+usersOffset;if(usersFilter.q)url+='&q='+encodeURIComponent(usersFilter.q);if(usersFilter.status)url+='&status='+encodeURIComponent(usersFilter.status);var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();var list=d.users||[];renderUsers(list,more);usersOffset+=list.length;renderMoreBtn('usersMoreWrap',list.length>=usersPageSize,function(){loadUsers(true);});}catch(e){if(!more)tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
 function renderMoreBtn(wrapId,show,cb){var w=document.getElementById(wrapId);if(!w)return;if(!show){w.innerHTML='';return;}w.innerHTML='<button class="dp-btn" style="margin:10px auto;display:block">Показать ещё</button>';w.firstChild.onclick=cb;}
-function renderUsers(users,append){var tb=document.getElementById('usersTbody');if(!users.length){if(!append)tb.innerHTML='<div class="empty">Никого не найдено</div>';return;}var _html=users.map(function(u){var av=u.avatar_url?'<img src="'+esc(u.avatar_url)+'" alt="">':esc(letter(u.full_name));var badge=u.is_banned?'<span class="u-badge banned">Заблокирован</span>':u.is_owner?'<span class="u-badge admin" style="background:#1A2A22;color:#fff;border-color:#1A2A22">Владелец</span>':u.is_admin?'<span class="u-badge admin">Админ</span>':'<span class="u-badge active">Активен</span>';return '<div class="users-row" onclick="openUser('+u.id+')"><div class="u-av" style="background:'+esc(avc(u.full_name))+'">'+av+'</div><div><div class="u-name">'+esc(u.full_name)+'</div>'+(u.position?'<div class="u-pos">'+esc(u.position)+'</div>':'')+'</div><div class="u-email">'+esc(u.email)+'</div><div class="u-date">'+fmtDate(u.created_at)+'</div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');if(append){tb.insertAdjacentHTML('beforeend',_html);}else{tb.innerHTML=_html;}}
+function renderUsers(users,append){var tb=document.getElementById('usersTbody');if(!users.length){if(!append)tb.innerHTML='<div class="empty">Никого не найдено</div>';return;}var _html=users.map(function(u){var av=u.avatar_url?'<img src="'+esc(u.avatar_url)+'" alt="">':esc(letter(u.full_name));var badge=u.is_banned?'<span class="u-badge banned">Заблокирован</span>':u.is_owner?'<span class="u-badge admin" style="background:#1A2A22;color:#fff;border-color:#1A2A22">Владелец</span>':u.is_admin?'<span class="u-badge admin">Админ</span>':'<span class="u-badge active">Активен</span>';return '<div class="users-row" onclick="openUser('+u.id+')"><div onclick="event.stopPropagation()"><input type="checkbox" class="user-cb" value="'+u.id+'" onchange="updateBulkBar()"></div><div class="u-av" style="background:'+esc(avc(u.full_name))+'">'+av+'</div><div><div class="u-name">'+esc(u.full_name)+'</div>'+(u.position?'<div class="u-pos">'+esc(u.position)+'</div>':'')+'</div><div class="u-email">'+esc(u.email)+'</div><div class="u-date">'+fmtDate(u.created_at)+'</div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');if(append){tb.insertAdjacentHTML('beforeend',_html);}else{tb.innerHTML=_html;}}
 async function openUser(id){document.getElementById('detailPanel').classList.add('open');document.getElementById('panelOverlay').classList.add('show');document.querySelector('.dp-head h3').textContent='Карточка пользователя';document.getElementById('dpBody').innerHTML='<div class="empty">Загрузка…</div>';document.getElementById('dpActions').innerHTML='';try{var r=await lastopFetch('/api/admin/users/'+id);if(!r.ok)throw 0;var u=await r.json();renderUserDetail(u);}catch(e){document.getElementById('dpBody').innerHTML='<div class="empty">Не удалось загрузить</div>';}}
 function closeDetail(){document.getElementById('detailPanel').classList.remove('open');document.getElementById('panelOverlay').classList.remove('show');}
 var ACTION_LABELS={login:'Вход',register:'Регистрация',post_create:'Публикация',comment:'Комментарий',job_apply:'Отклик на вакансию',forum_topic:'Тема на форуме'};
