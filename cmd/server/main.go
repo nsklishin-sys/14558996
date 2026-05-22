@@ -11258,6 +11258,39 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	}))
 
+	mux.HandleFunc("/api/admin/communities/bulk", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var req struct {
+			IDs    []string `json:"ids"`
+			Action string   `json:"action"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if len(req.IDs) == 0 || (req.Action != "verify" && req.Action != "unverify") {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		verified := req.Action == "verify"
+		done := 0
+		for _, ident := range req.IDs {
+			var cid int64
+			if db.QueryRow(`SELECT id FROM communities WHERE slug=$1 OR public_id=$1 OR CAST(id AS TEXT)=$1`, ident).Scan(&cid) != nil {
+				continue
+			}
+			if _, err := db.Exec(`UPDATE communities SET is_verified=$1, updated_at=NOW() WHERE id=$2`, verified, cid); err == nil {
+				logAdminAction(db, actorID, "community_verify", "community", cid, clientIP(r), map[string]any{"verified": verified, "bulk": true})
+				done++
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"done": done})
+	}))
+
 	mux.HandleFunc("/api/admin/communities/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
