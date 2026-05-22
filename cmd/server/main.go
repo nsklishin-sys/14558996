@@ -11452,7 +11452,19 @@ func main() {
 			_ = db.QueryRow(`SELECT email, banned_at FROM users WHERE id=$1`, item.OwnerUserID).Scan(&ownerEmail, &ownerBannedAt)
 			var postsCount int64
 			_ = db.QueryRow(`SELECT COUNT(*) FROM posts WHERE author_company_id=$1 AND is_deleted = FALSE`, companyID).Scan(&postsCount)
-			out := map[string]any{"item": item, "owner_email": ownerEmail, "owner_is_banned": ownerBannedAt.Valid, "posts_count": postsCount}
+			membersList := []map[string]any{}
+			if mrows, merr := db.Query(`SELECT cm.role, COALESCE(cm.position,''), COALESCE(u.full_name,''), COALESCE(u.email,''), cm.user_id, u.banned_at IS NOT NULL FROM company_members cm JOIN users u ON u.id=cm.user_id WHERE cm.company_id=$1 ORDER BY (cm.role='owner') DESC, cm.joined_at ASC LIMIT 100`, item.ID); merr == nil {
+				defer mrows.Close()
+				for mrows.Next() {
+					var role, pos, fname, mail string
+					var uid int64
+					var mBanned bool
+					if mrows.Scan(&role, &pos, &fname, &mail, &uid, &mBanned) == nil {
+						membersList = append(membersList, map[string]any{"role": role, "position": pos, "full_name": fname, "email": mail, "user_id": uid, "is_banned": mBanned})
+					}
+				}
+			}
+			out := map[string]any{"item": item, "owner_email": ownerEmail, "owner_is_banned": ownerBannedAt.Valid, "posts_count": postsCount, "members": membersList}
 			writeJSON(w, http.StatusOK, out)
 			return
 		}
