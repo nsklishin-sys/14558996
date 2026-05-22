@@ -496,4 +496,52 @@
   } else {
     lastopStartHorizWatcher();
   }
+
+  // ── Динамическая реклама ──────────────────────────────────────
+  function lastopInitAds() {
+    var block = document.querySelector('.ad-block');
+    if (!block) return;
+    fetch('/api/ads', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var ads = (d && d.ads) || [];
+        if (!ads.length) { block.style.display = 'none'; return; }
+        var idx = 0;
+        function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function render(a) {
+          var img = a.image_url ? '<img src="' + esc(a.image_url) + '" style="max-width:100%;border-radius:8px;margin-bottom:8px" alt="">' : '';
+          block.innerHTML =
+            '<div class="ad-label">реклама</div>' +
+            '<div class="ad-content">' + img +
+            '<div class="ad-title">' + esc(a.title) + '</div>' +
+            (a.body ? '<div class="ad-sub">' + esc(a.body) + '</div>' : '') +
+            '<button type="button" class="ad-btn">Узнать подробнее</button>' +
+            '</div>';
+          var btn = block.querySelector('.ad-btn');
+          if (btn) {
+            btn.onclick = function () {
+              try { fetch('/api/ads/click?id=' + a.id, { method: 'POST', credentials: 'include' }); } catch (e) {}
+              if (a.link_url) location.href = a.link_url;
+            };
+          }
+          try { fetch('/api/ads/view?id=' + a.id, { method: 'POST', credentials: 'include' }); } catch (e) {}
+        }
+        block.style.display = '';
+        render(ads[0]);
+        if (ads.length > 1) {
+          setInterval(function () {
+            idx = (idx + 1) % ads.length;
+            block.style.opacity = '0';
+            setTimeout(function () { render(ads[idx]); block.style.opacity = '1'; }, 250);
+          }, 18000);
+          block.style.transition = 'opacity .25s';
+        }
+      })
+      .catch(function () {});
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', lastopInitAds);
+  } else {
+    lastopInitAds();
+  }
 })();
