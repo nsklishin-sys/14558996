@@ -570,24 +570,34 @@ async function loadCrm(type,id){
   var el=document.getElementById('crmBlock');if(!el)return;
   try{
     var r=await lastopFetch('/api/admin/notes?type='+type+'&id='+id);if(!r.ok)throw 0;
-    var d=await r.json();renderCrm(d.tags||[],d.notes||[]);
+    var d=await r.json();renderCrm(d.tags||[],d.notes||[],d.deleted_notes||[]);
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--gmt)">Не удалось загрузить</div>';}
 }
-function renderCrm(tags,notes){
+function renderCrm(tags,notes,deletedNotes){
   var el=document.getElementById('crmBlock');if(!el)return;
+  deletedNotes=deletedNotes||[];
   var tagsHtml=tags.map(function(t){
     return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--gl);border:1px solid var(--gb);color:var(--g);border-radius:99px;padding:3px 8px;font-size:11px;font-weight:600;margin:0 4px 4px 0">'+esc(t)+'<span style="cursor:pointer;font-weight:700;opacity:.6" onclick="delTag(\''+esc(t).replace(/'/g,"\\'")+'\')">×</span></span>';
   }).join('');
   var notesHtml=notes.map(function(n){
     var dt=n.created_at?new Date(n.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-    return '<div style="background:var(--gp);border:1px solid var(--bdr);border-radius:10px;padding:8px 10px;margin-bottom:6px">'+
-      '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px"><span style="font-size:11px;font-weight:700;color:var(--t)">'+esc(n.author)+'</span><span style="font-size:10px;color:var(--gmt)">'+esc(dt)+' <span style="cursor:pointer;color:var(--red);margin-left:4px" onclick="delNote('+n.id+')">удалить</span></span></div>'+
-      '<div style="font-size:12px;color:var(--tm);line-height:1.5;white-space:pre-wrap">'+esc(n.text)+'</div></div>';
+    var editedTxt=n.edited_at?' · изменено '+new Date(n.edited_at).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    return '<div style="background:var(--gp);border:1px solid var(--bdr);border-radius:10px;padding:8px 10px;margin-bottom:6px" id="note-'+n.id+'">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px"><span style="font-size:11px;font-weight:700;color:var(--t)">'+esc(n.author)+'</span><span style="font-size:10px;color:var(--gmt)">'+esc(dt)+esc(editedTxt)+' <span style="cursor:pointer;color:var(--g);margin-left:4px" onclick="editNote('+n.id+',this)">изменить</span><span style="cursor:pointer;color:var(--red);margin-left:4px" onclick="delNote('+n.id+')">удалить</span></span></div>'+
+      '<div class="note-text" style="font-size:12px;color:var(--tm);line-height:1.5;white-space:pre-wrap">'+esc(n.text)+'</div></div>';
   }).join('')||'<div style="font-size:12px;color:var(--gmt);margin-bottom:6px">Заметок пока нет</div>';
+  var delHtml='';
+  if(deletedNotes.length){
+    delHtml='<details style="margin-top:10px"><summary style="font-size:11px;color:var(--gmt);cursor:pointer">Удалённые заметки ('+deletedNotes.length+')</summary><div style="margin-top:6px">'+deletedNotes.map(function(n){
+      var dt=n.created_at?new Date(n.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'short'}):'';
+      var ddt=n.deleted_at?new Date(n.deleted_at).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+      return '<div style="background:var(--bg);border:1px dashed var(--bdr);border-radius:10px;padding:8px 10px;margin-bottom:6px;opacity:.75"><div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px"><span style="font-size:11px;font-weight:700;color:var(--gmt)">'+esc(n.author)+' · '+esc(dt)+'</span><span style="font-size:10px;color:var(--red)">удалил: '+esc(n.deleted_by||'—')+' · '+esc(ddt)+'</span></div><div style="font-size:12px;color:var(--gmt);line-height:1.5;white-space:pre-wrap;text-decoration:line-through">'+esc(n.text)+'</div></div>';
+    }).join('')+'</div></details>';
+  }
   el.innerHTML=
     '<div style="margin-bottom:8px">'+(tagsHtml||'<span style="font-size:11px;color:var(--gmt)">Тегов нет</span>')+'</div>'+
     '<div style="display:flex;gap:6px;margin-bottom:12px"><input id="crmTagInput" placeholder="Новый тег" maxlength="40" style="flex:1;border:1.5px solid var(--bdr);border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit;background:var(--gp)" onkeydown="if(event.key===\'Enter\')addTag()"><button class="dp-btn" style="padding:6px 12px;font-size:12px" onclick="addTag()">+ Тег</button></div>'+
-    notesHtml+
+    notesHtml+delHtml+
     '<div style="display:flex;gap:6px;margin-top:8px"><textarea id="crmNoteInput" placeholder="Добавить заметку…" style="flex:1;border:1.5px solid var(--bdr);border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit;background:var(--gp);resize:vertical;min-height:38px"></textarea><button class="dp-btn primary" style="padding:6px 12px;font-size:12px;align-self:flex-end" onclick="addNote()">Добавить</button></div>';
 }
 async function addTag(){
@@ -605,7 +615,17 @@ async function addNote(){
   loadCrm(CRM_CTX.type,CRM_CTX.id);
 }
 async function delNote(id){
+  if(!await lastopConfirm({title:'Удалить заметку?',message:'Заметка переместится в удалённые.',confirmText:'Удалить'}))return;
   await lastopFetch('/api/admin/notes/'+id,{method:'DELETE'});
+  loadCrm(CRM_CTX.type,CRM_CTX.id);
+}
+async function editNote(id,linkEl){
+  var card=document.getElementById('note-'+id);if(!card)return;
+  var textEl=card.querySelector('.note-text');if(!textEl)return;
+  var cur=textEl.textContent;
+  var nv=await lastopPrompt({title:'Изменить заметку',label:'Текст заметки',value:cur,confirmText:'Сохранить'});
+  if(nv===null||!String(nv).trim()||String(nv).trim()===cur)return;
+  await lastopFetch('/api/admin/notes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:String(nv).trim()})});
   loadCrm(CRM_CTX.type,CRM_CTX.id);
 }
 function buildComplaintsSection(u){
