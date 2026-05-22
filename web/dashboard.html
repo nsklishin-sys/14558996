@@ -1221,6 +1221,8 @@ function toggleFollow(btn){
 (async()=>{
   // Запускаем оба запроса параллельно, не блокируем рендер ленты ожиданием /me
   const mePromise = tk() ? lastopFetch(API+'/me',{headers:{}}).then(r=>r.ok?r.json():null).catch(()=>null) : Promise.resolve(null);
+  // Скелетоны пока летит запрос — бесшовность вместо пустоты/мелькания
+  try{ if(window.lastopSkel){ var _nf=document.getElementById('newsFeed'); if(_nf&&!_nf.children.length) window.lastopSkel.inject('newsFeed',5); } }catch(e){}
   const feedPromise = lastopFetch(API+'/feed?limit=30&type=news',{headers:{}}).then(r=>r.ok?r.json():null).catch(()=>null);
 
   // Обработка /me — обновляем юзера в топбаре когда придёт (не блокирует ленту)
