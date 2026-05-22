@@ -3414,6 +3414,49 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"targets": targets})
 	})
 
+	mux.HandleFunc("/api/ads", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		items := []map[string]any{}
+		if rows, err := db.Query(`SELECT id, title, body, image_url, link_url FROM ad_blocks WHERE is_active=TRUE ORDER BY weight DESC, created_at DESC LIMIT 50`); err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var id int64
+				var title, body, img, link string
+				if rows.Scan(&id, &title, &body, &img, &link) == nil {
+					items = append(items, map[string]any{"id": id, "title": title, "body": body, "image_url": img, "link_url": link})
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ads": items})
+	})
+
+	mux.HandleFunc("/api/ads/view", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "")
+			return
+		}
+		id, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+		if id > 0 {
+			_, _ = db.Exec(`UPDATE ad_blocks SET views_count = views_count + 1 WHERE id=$1`, id)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	mux.HandleFunc("/api/ads/click", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "")
+			return
+		}
+		id, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+		if id > 0 {
+			_, _ = db.Exec(`UPDATE ad_blocks SET clicks_count = clicks_count + 1 WHERE id=$1`, id)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	mux.HandleFunc("/api/stats", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -5831,6 +5874,91 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
+	}))
+
+	mux.HandleFunc("/api/admin/ads", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method == http.MethodGet {
+			items := []map[string]any{}
+			if rows, err := db.Query(`SELECT id, title, body, image_url, link_url, is_active, weight, views_count, clicks_count FROM ad_blocks ORDER BY weight DESC, created_at DESC`); err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var id, views, clicks int64
+					var title, body, img, link string
+					var active bool
+					var weight int
+					if rows.Scan(&id, &title, &body, &img, &link, &active, &weight, &views, &clicks) == nil {
+						items = append(items, map[string]any{"id": id, "title": title, "body": body, "image_url": img, "link_url": link, "is_active": active, "weight": weight, "views_count": views, "clicks_count": clicks})
+					}
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ads": items})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var req struct {
+				Title    string `json:"title"`
+				Body     string `json:"body"`
+				ImageURL string `json:"image_url"`
+				LinkURL  string `json:"link_url"`
+				IsActive bool   `json:"is_active"`
+				Weight   int    `json:"weight"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if strings.TrimSpace(req.Title) == "" {
+				writeError(w, http.StatusBadRequest, "Укажите заголовок")
+				return
+			}
+			var newID int64
+			if err := db.QueryRow(`INSERT INTO ad_blocks (title, body, image_url, link_url, is_active, weight, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, strings.TrimSpace(req.Title), req.Body, req.ImageURL, req.LinkURL, req.IsActive, req.Weight, actorID).Scan(&newID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "ad.create", "ad", newID, clientIP(r), nil)
+			writeJSON(w, http.StatusOK, map[string]any{"id": newID})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	}))
+
+	mux.HandleFunc("/api/admin/ads/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		adID, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/admin/ads/"), 10, 64)
+		if adID == 0 {
+			writeError(w, http.StatusBadRequest, "некорректный id")
+			return
+		}
+		if r.Method == http.MethodPatch {
+			var req struct {
+				Title    string `json:"title"`
+				Body     string `json:"body"`
+				ImageURL string `json:"image_url"`
+				LinkURL  string `json:"link_url"`
+				IsActive bool   `json:"is_active"`
+				Weight   int    `json:"weight"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if _, err := db.Exec(`UPDATE ad_blocks SET title=$1, body=$2, image_url=$3, link_url=$4, is_active=$5, weight=$6, updated_at=NOW() WHERE id=$7`, strings.TrimSpace(req.Title), req.Body, req.ImageURL, req.LinkURL, req.IsActive, req.Weight, adID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			logAdminAction(db, actorID, "ad.update", "ad", adID, clientIP(r), nil)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		if r.Method == http.MethodDelete {
+			_, _ = db.Exec(`DELETE FROM ad_blocks WHERE id=$1`, adID)
+			logAdminAction(db, actorID, "ad.delete", "ad", adID, clientIP(r), nil)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	}))
 
 	mux.HandleFunc("/api/admin/overview", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
@@ -14329,6 +14457,22 @@ CREATE INDEX IF NOT EXISTS idx_companies_blocked ON companies(blocked_at) WHERE 
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_verified_at TIMESTAMPTZ;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_stage TEXT NOT NULL DEFAULT 'new';
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_stage_updated_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS ad_blocks (
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    image_url TEXT NOT NULL DEFAULT '',
+    link_url TEXT NOT NULL DEFAULT '',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    weight INT NOT NULL DEFAULT 0,
+    views_count BIGINT NOT NULL DEFAULT 0,
+    clicks_count BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ad_blocks_active_idx ON ad_blocks(is_active, weight DESC);
 
 CREATE TABLE IF NOT EXISTS crm_reminders (
     id BIGSERIAL PRIMARY KEY,
