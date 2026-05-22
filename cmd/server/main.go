@@ -5862,7 +5862,9 @@ func main() {
 		_ = db.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM sessions WHERE last_used_at > NOW() - INTERVAL '1 day'`).Scan(&n)
 		out["active_24h"] = n
 		var maintActive bool
-		_ = db.QueryRow(`SELECT COALESCE((SELECT (value::jsonb->>'active')::boolean FROM system_settings WHERE key='maintenance'), FALSE)`).Scan(&maintActive)
+		var maintRaw string
+		_ = db.QueryRow(`SELECT value FROM system_settings WHERE key='maintenance_active'`).Scan(&maintRaw)
+		maintActive = maintRaw == "1" || maintRaw == "true"
 		out["maintenance_active"] = maintActive
 		writeJSON(w, http.StatusOK, out)
 	}))
