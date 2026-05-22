@@ -44,6 +44,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .users-toolbar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;box-shadow:var(--sh)}
 .users-toolbar input[type=search]{flex:1;min-width:200px;height:34px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;outline:none}
 .users-toolbar input[type=search]:focus{border-color:var(--gm)}
+.users-toolbar select{height:34px;padding:0 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px;color:var(--t);outline:none;cursor:pointer}
+.users-toolbar select:focus{border-color:var(--gm)}
+.dict-thead{display:grid;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
+.dict-row{display:grid;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bdr);align-items:center;font-size:13px}
 .uf-filter{padding:7px 14px;border-radius:var(--rm);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--tm);font-family:inherit;transition:all .15s}
 .uf-filter:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
 .uf-filter.active{background:var(--g);color:#fff;border-color:var(--g)}
@@ -219,17 +223,20 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div class="admin-pane" id="paneSanctions" style="display:none;flex-direction:column;gap:12px"></div>
-    <div class="admin-pane" id="paneDicts" style="display:none;flex-direction:column;gap:12px">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="dictType" onchange="loadDicts()" style="padding:8px;border:1px solid var(--bdr);border-radius:8px;font-size:13px">
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneDicts">
+      <div class="users-toolbar">
+        <select id="dictType" onchange="loadDicts()">
           <option value="forum_category">Категории форума</option>
           <option value="catalog_group">Группы каталога</option>
           <option value="catalog_category">Категории каталога</option>
           <option value="city">Города</option>
         </select>
-        <button class="dp-btn primary" onclick="dictAdd()">+ Добавить</button>
+        <button class="dp-btn primary" style="margin-left:auto" onclick="dictAdd()">+ Добавить</button>
       </div>
-      <div id="dictList" style="overflow-y:auto;flex:1;min-height:0"></div>
+      <div class="users-table">
+        <div class="dict-thead" id="dictThead"></div>
+        <div class="users-tbody" id="dictList"></div>
+      </div>
     </div>
   </div>
   <aside class="right">
@@ -329,17 +336,27 @@ async function sanctLift(id,stype){
 async function loadDicts(){
   var type=document.getElementById('dictType').value;
   var list=document.getElementById('dictList');
+  var thead=document.getElementById('dictThead');
+  var hasColor=(type==='forum_category');
+  var hasParent=(type==='catalog_group'||type==='catalog_category');
+  var grid=hasParent?'2fr 1.2fr 1.2fr 90px 220px':(hasColor?'2fr 1.2fr 90px 220px':'2fr 1.2fr 90px 220px');
+  if(thead){
+    var cols='<div>Название</div><div>Ключ</div>'+(hasParent?'<div>Родитель</div>':'')+'<div>Статус</div><div></div>';
+    thead.style.gridTemplateColumns=grid;
+    thead.innerHTML=cols;
+  }
   list.innerHTML='<div class="empty">Загрузка…</div>';
   try{
     var r=await lastopFetch('/api/admin/dictionaries?type='+encodeURIComponent(type));if(!r.ok)throw 0;
     var d=await r.json();var items=d.items||[];
     if(!items.length){list.innerHTML='<div class="empty">Пусто</div>';return;}
     list.innerHTML=items.map(function(it){
-      var color=it.color?'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+esc(it.color)+';margin-right:6px;vertical-align:middle"></span>':'';
+      var color=hasColor&&it.color?'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+esc(it.color)+';margin-right:6px;vertical-align:middle"></span>':'';
       var dim=it.is_active?'':'opacity:.45;';
-      var parent=it.parent_key?' <span class="u-pos">'+esc(it.parent_key)+'</span>':'';
+      var statusBadge=it.is_active?'<span class="u-badge active">Активна</span>':'<span class="u-badge banned">Скрыта</span>';
       var btns=it.is_active?('<button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDeactivate('+it.id+')">Деактивировать</button>'):('<button class="dp-btn primary" onclick="dictRestore('+it.id+')">Восстановить</button> <button class="dp-btn danger" onclick="dictHardDelete('+it.id+')">Удалить навсегда</button>');
-      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bdr);'+dim+'"><div style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;flex-wrap:wrap">'+color+'<span class="u-name" style="white-space:normal;overflow:visible">'+esc(it.label)+'</span> <span class="u-pos">'+esc(it.key)+'</span>'+parent+'</div><div style="flex-shrink:0;display:flex;gap:6px">'+btns+'</div></div>';
+      var parentCell=hasParent?'<div class="u-pos">'+esc(it.parent_key||'—')+'</div>':'';
+      return '<div class="dict-row" style="grid-template-columns:'+grid+';'+dim+'"><div class="u-name" style="white-space:normal">'+color+esc(it.label)+'</div><div class="u-pos">'+esc(it.key)+'</div>'+parentCell+'<div>'+statusBadge+'</div><div style="display:flex;gap:6px;justify-content:flex-end">'+btns+'</div></div>';
     }).join('');
   }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
