@@ -523,7 +523,6 @@
       var u = JSON.parse(localStorage.getItem('user') || '{}');
       isPriv = !!(u.is_admin || u.is_owner);
     } catch (e) {}
-    if (isPriv) return;
     fetch('/api/sections/status', { credentials: 'include' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
@@ -531,6 +530,20 @@
         if (!off[cur.k]) return;
         var main = document.querySelector('.main') || document.querySelector('main');
         if (!main) return;
+        // Админы/владельцы: раздел работает, но сверху баннер-напоминание
+        if (isPriv) {
+          if (document.getElementById('lastopSectionWarn')) return;
+          var warn = document.createElement('div');
+          warn.id = 'lastopSectionWarn';
+          warn.style.cssText = 'background:#FFF6E6;border:1.5px solid #F0DCA0;border-radius:12px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-shrink:0';
+          warn.innerHTML =
+            '<span style="font-size:20px;flex-shrink:0">⚠️</span>' +
+            '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:#8A5A00">Раздел «' + cur.l + '» выключен для пользователей</div>' +
+            '<div style="font-size:12px;color:#8A5A00;opacity:.8;margin-top:1px">Вы видите его как администратор. Пользователям показывается плашка о техработах — не забудьте включить раздел обратно.</div></div>' +
+            '<a href="/admin.html" style="flex-shrink:0;padding:7px 14px;border-radius:8px;background:#8A5A00;color:#fff;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap">Консоль разделов</a>';
+          main.insertBefore(warn, main.firstChild);
+          return;
+        }
         main.innerHTML =
           '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px;min-height:60vh">' +
             '<div style="font-size:54px;margin-bottom:18px">🛠️</div>' +
