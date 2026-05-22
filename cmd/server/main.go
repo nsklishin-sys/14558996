@@ -11930,6 +11930,61 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"sanctions": items})
 	}))
 
+	mux.HandleFunc("/api/admin/moderation-queue", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		items := []map[string]any{}
+		// Жалобы (новые + на рассмотрении) + апелляции
+		if rows, err := db.Query(`SELECT c.id, COALESCE(c.reason,''), c.target_type, c.created_at, c.is_appeal FROM complaints c WHERE c.status IN ('new','under_review') ORDER BY c.created_at DESC LIMIT 100`); err == nil {
+			for rows.Next() {
+				var id int64
+				var reason, ttype string
+				var created time.Time
+				var isAppeal bool
+				if rows.Scan(&id, &reason, &ttype, &created, &isAppeal) == nil {
+					items = append(items, map[string]any{"kind": "complaint", "id": id, "title": (map[bool]string{true: "Апелляция", false: "Жалоба"}[isAppeal]) + ": " + reason, "subtitle": "Объект: " + ttype, "created_at": created.Format(time.RFC3339), "link": "complaints"})
+				}
+			}
+			rows.Close()
+		}
+		// Неверифицированные компании
+		if rows, err := db.Query(`SELECT public_id, name, created_at FROM companies WHERE is_verified=FALSE AND blocked_at IS NULL AND deleted_at IS NULL AND verification_status NOT IN ('rejected') ORDER BY created_at DESC LIMIT 100`); err == nil {
+			for rows.Next() {
+				var pid, name string
+				var created time.Time
+				if rows.Scan(&pid, &name, &created) == nil {
+					items = append(items, map[string]any{"kind": "company", "id": pid, "title": "Компания на проверку: " + name, "subtitle": "Ожидает верификации", "created_at": created.Format(time.RFC3339), "link": "companies"})
+				}
+			}
+			rows.Close()
+		}
+		// Неверифицированные сообщества
+		if rows, err := db.Query(`SELECT COALESCE(slug, CAST(id AS TEXT)), name, created_at FROM communities WHERE is_verified=FALSE ORDER BY created_at DESC LIMIT 100`); err == nil {
+			for rows.Next() {
+				var ident, name string
+				var created time.Time
+				if rows.Scan(&ident, &name, &created) == nil {
+					items = append(items, map[string]any{"kind": "community", "id": ident, "title": "Сообщество на проверку: " + name, "subtitle": "Ожидает верификации", "created_at": created.Format(time.RFC3339), "link": "communities"})
+				}
+			}
+			rows.Close()
+		}
+		// Скрытый контент
+		if rows, err := db.Query(`SELECT p.id, COALESCE(NULLIF(p.title,''), LEFT(p.content,60)), p.hidden_by_admin_at FROM posts p WHERE p.hidden_by_admin_at IS NOT NULL AND p.is_deleted=FALSE ORDER BY p.hidden_by_admin_at DESC LIMIT 100`); err == nil {
+			for rows.Next() {
+				var id int64
+				var title string
+				var hidden time.Time
+				if rows.Scan(&id, &title, &hidden) == nil {
+					items = append(items, map[string]any{"kind": "hidden", "id": id, "title": "Скрытый контент: " + title, "subtitle": "На ревью", "created_at": hidden.Format(time.RFC3339), "link": "hidden"})
+				}
+			}
+			rows.Close()
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}))
+
 	mux.HandleFunc("/api/admin/hidden", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
