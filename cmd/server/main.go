@@ -12119,6 +12119,34 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"unhidden": true, "type": entityType, "id": entityID})
 		return
 	}))
+	mux.HandleFunc("/api/admin/complaints/bulk", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var req struct {
+			IDs    []int64 `json:"ids"`
+			Status string  `json:"status"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if len(req.IDs) == 0 || (req.Status != "resolved_action" && req.Status != "resolved_reject") {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		done := 0
+		for _, cid := range req.IDs {
+			if _, err := db.Exec(`UPDATE complaints SET status=$1, resolved_by=$2, resolved_at=NOW() WHERE id=$3`, req.Status, actorID, cid); err == nil {
+				logAdminAction(db, actorID, "complaint.resolve", "complaint", cid, clientIP(r), map[string]any{"status": req.Status, "bulk": true})
+				done++
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"done": done})
+	}))
+
 	mux.HandleFunc("/api/admin/complaints/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/admin/complaints/")
 		idStr := strings.Split(path, "/")[0]

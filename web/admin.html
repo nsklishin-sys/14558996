@@ -253,9 +253,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <button class="uf-filter" data-complaint-status="resolved_action">Решены</button>
         <button class="uf-filter" data-complaint-status="resolved_reject">Отклонены</button>
       </div>
+      <div id="complaintsBulkBar" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--gl);border:1px solid var(--gb);border-radius:12px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--g)" id="complaintsBulkCount">Выбрано: 0</span>
+        <button class="dp-btn primary" style="padding:6px 14px" onclick="bulkComplaints('resolved_action')">Пометить решёнными</button>
+        <button class="dp-btn" style="padding:6px 14px" onclick="bulkComplaints('resolved_reject')">Отклонить выбранные</button>
+        <button class="dp-btn" style="padding:6px 14px;margin-left:auto" onclick="clearComplaintSelection()">Сбросить</button>
+      </div>
       <div class="users-table">
-        <div class="users-thead" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px">
-          <div>#</div><div>Объект</div><div>Причина</div><div>От кого</div><div>Статус</div><div></div>
+        <div class="users-thead" style="grid-template-columns:32px 50px 1.4fr 1fr 1fr 130px 30px">
+          <div><input type="checkbox" id="complaintsSelectAll" onclick="toggleSelectAllComplaints(this)"></div><div>#</div><div>Объект</div><div>Причина</div><div>От кого</div><div>Статус</div><div></div>
         </div>
         <div class="users-tbody" id="complaintsTbody"></div>
         <div id="complaintsMoreWrap"></div>
@@ -762,9 +768,25 @@ function renderAudit(entries){var tb=document.getElementById('auditTbody');if(!e
 var complaintsFilter={status:''};var complaintsOffset=0;var complaintsPageSize=100;
 document.querySelectorAll('[data-complaint-status]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-complaint-status]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');complaintsFilter.status=b.dataset.complaintStatus;loadComplaints();});});
 
+function selectedComplaintIds(){return Array.prototype.slice.call(document.querySelectorAll('.complaint-cb:checked')).map(function(c){return parseInt(c.value);});}
+function updateComplaintBulkBar(){var ids=selectedComplaintIds();var bar=document.getElementById('complaintsBulkBar');if(!bar)return;bar.style.display=ids.length?'flex':'none';var c=document.getElementById('complaintsBulkCount');if(c)c.textContent='Выбрано: '+ids.length;}
+function toggleSelectAllComplaints(cb){document.querySelectorAll('.complaint-cb').forEach(function(x){x.checked=cb.checked;});updateComplaintBulkBar();}
+function clearComplaintSelection(){document.querySelectorAll('.complaint-cb').forEach(function(x){x.checked=false;});var sa=document.getElementById('complaintsSelectAll');if(sa)sa.checked=false;updateComplaintBulkBar();}
+async function bulkComplaints(status){
+  var ids=selectedComplaintIds();if(!ids.length)return;
+  var label=status==='resolved_action'?'пометить решёнными':'отклонить';
+  if(!await lastopConfirm({title:'Массовое действие',message:'Вы хотите '+label+' '+ids.length+' жалоб?',confirmText:'Применить'}))return;
+  try{
+    var r=await lastopFetch('/api/admin/complaints/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids,status:status})});
+    if(!r.ok){lastopToast('Ошибка','error');return;}
+    var d=await r.json();
+    lastopToast('Готово: '+d.done,'success');
+    clearComplaintSelection();loadComplaints();
+  }catch(e){lastopToast('Ошибка соединения','error');}
+}
 async function loadComplaints(more){
   var tb=document.getElementById('complaintsTbody');
-  if(!more){complaintsOffset=0;tb.innerHTML='<div class="empty">Загрузка…</div>';}
+  if(!more){complaintsOffset=0;tb.innerHTML='<div class="empty">Загрузка…</div>';var sa=document.getElementById('complaintsSelectAll');if(sa)sa.checked=false;updateComplaintBulkBar();}
   try{
     var url='/api/admin/complaints?limit='+complaintsPageSize+'&offset='+complaintsOffset;
     if(complaintsFilter.status)url+='&status='+encodeURIComponent(complaintsFilter.status);
@@ -829,7 +851,7 @@ async function submitWarn(type,id){
 }
 var COMPLAINT_TYPES={post:'Пост',comment:'Комментарий',user:'Пользователь',company:'Компания',community:'Сообщество',chat_message:'Сообщение в чате',forum_message:'Сообщение в форуме',event_message:'Сообщение в событии'};
 var COMPLAINT_STATUSES={new:{label:'Новая',cls:'banned'},under_review:{label:'На рассмотрении',cls:'active'},resolved_action:{label:'Решена',cls:'admin'},resolved_reject:{label:'Отклонена',cls:''}};
-function renderComplaints(items,append){var tb=document.getElementById('complaintsTbody');if(!items.length){if(!append)tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}var _html=items.map(function(c){var st=COMPLAINT_STATUSES[c.status]||{label:c.status,cls:''};var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';var typeName=COMPLAINT_TYPES[c.target_type]||c.target_type;var reasonName=COMPLAINT_REASONS[c.reason]||c.reason;var appealBadge=c.is_appeal?'<span class="u-badge" style="background:#FCEDED;color:#C03030;border-color:#F3C0C0;margin-left:6px">Повторная</span>':'';return '<div class="users-row" style="grid-template-columns:50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(typeName)+appealBadge+'</div><div class="u-pos">ID: '+c.target_id+(c.target_public_id?' · '+esc(c.target_public_id):'')+'</div></div><div class="u-name" style="font-size:12px">'+esc(reasonName)+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');if(append){tb.insertAdjacentHTML('beforeend',_html);}else{tb.innerHTML=_html;}}
+function renderComplaints(items,append){var tb=document.getElementById('complaintsTbody');if(!items.length){if(!append)tb.innerHTML='<div class="empty">Жалоб нет</div>';return;}var _html=items.map(function(c){var st=COMPLAINT_STATUSES[c.status]||{label:c.status,cls:''};var badge='<span class="u-badge '+st.cls+'">'+st.label+'</span>';var typeName=COMPLAINT_TYPES[c.target_type]||c.target_type;var reasonName=COMPLAINT_REASONS[c.reason]||c.reason;var appealBadge=c.is_appeal?'<span class="u-badge" style="background:#FCEDED;color:#C03030;border-color:#F3C0C0;margin-left:6px">Повторная</span>':'';return '<div class="users-row" style="grid-template-columns:32px 50px 1.4fr 1fr 1fr 130px 30px" onclick="openComplaint('+c.id+')"><div onclick="event.stopPropagation()"><input type="checkbox" class="complaint-cb" value="'+c.id+'" onchange="updateComplaintBulkBar()"></div><div style="color:var(--gmt);font-weight:600">#'+c.id+'</div><div><div class="u-name">'+esc(typeName)+appealBadge+'</div><div class="u-pos">ID: '+c.target_id+(c.target_public_id?' · '+esc(c.target_public_id):'')+'</div></div><div class="u-name" style="font-size:12px">'+esc(reasonName)+'</div><div><div class="u-name">'+esc(c.reporter_name||'—')+'</div><div class="u-pos">'+esc(c.reporter_email||'')+'</div></div><div>'+badge+'</div><div style="color:var(--gmt);font-size:11px">→</div></div>';}).join('');if(append){tb.insertAdjacentHTML('beforeend',_html);}else{tb.innerHTML=_html;}}
 async function openComplaint(id){
   document.getElementById('detailPanel').classList.add('open');
   document.getElementById('panelOverlay').classList.add('show');
