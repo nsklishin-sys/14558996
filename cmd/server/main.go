@@ -247,6 +247,7 @@ type community struct {
 	MyRole               string    `json:"my_role,omitempty"`
 	Members              int       `json:"members_count"`
 	CreatorID            string    `json:"creator_id,omitempty"`
+	Slug                 string    `json:"slug"`
 	CreatedAt            time.Time `json:"created_at"`
 	ContactUserPublicID  string    `json:"contact_user_public_id,omitempty"`
 	ContactUserName      string    `json:"contact_user_name,omitempty"`
@@ -18395,17 +18396,21 @@ func createCommunity(db *sql.DB, creatorID int64, req createCommunityRequest) (c
 		}
 	}()
 
+	communitySlug, slugErr := ensureUniqueCommunitySlug(db, slugifyCompanyName(name))
+	if slugErr != nil || communitySlug == "" {
+		communitySlug = slugifyCompanyName(name)
+	}
 	var created community
 	var rawTags []byte
 	var pgTags pgtype.FlatArray[string] = tags
 	err = tx.QueryRow(`
-		INSERT INTO communities(name, category, description, region, website, email, phone, avatar_url, color, tags, privacy_level, creator_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::text[], $11, $12)
+		INSERT INTO communities(name, category, description, region, website, email, phone, avatar_url, color, tags, privacy_level, creator_id, slug)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::text[], $11, $12, $13)
 		RETURNING id, name, category, description, region, website, email, phone, avatar_url, cover_url, color,
 			COALESCE(array_to_json(tags), '[]'::json), privacy_level, created_at,
-			(SELECT public_id FROM users WHERE id = creator_id)
-	`, name, category, description, region, website, email, phone, avatarURL, color, pgTags, privacy, creatorID).
-		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &created.Region, &created.Website, &created.Email, &created.Phone, &created.AvatarURL, &created.CoverURL, &created.Color, &rawTags, &created.Privacy, &created.CreatedAt, &created.CreatorID)
+			(SELECT public_id FROM users WHERE id = creator_id), COALESCE(slug, '')
+	`, name, category, description, region, website, email, phone, avatarURL, color, pgTags, privacy, creatorID, communitySlug).
+		Scan(&created.ID, &created.Name, &created.Category, &created.Description, &created.Region, &created.Website, &created.Email, &created.Phone, &created.AvatarURL, &created.CoverURL, &created.Color, &rawTags, &created.Privacy, &created.CreatedAt, &created.CreatorID, &created.Slug)
 	if err != nil {
 		return community{}, err
 	}
