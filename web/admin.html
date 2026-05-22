@@ -296,11 +296,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneAds">
-      <div style="display:flex;gap:14px;flex:1;min-height:0;overflow:hidden">
-        <div style="flex:1;overflow-y:auto;min-height:0;padding-right:2px" id="adsList"></div>
-        <div style="flex:0 0 440px;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:22px;overflow-y:auto;min-height:0">
-          <div style="font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px" id="adFormTitle">Новый рекламный блок</div>
-          <div style="font-size:12px;color:var(--gmt);margin-bottom:16px">Заполните поля — справа сразу виден предпросмотр</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:13px;color:var(--gmt)">Управление рекламными кампаниями платформы</div>
+        <button class="dp-btn primary" style="padding:9px 18px" onclick="openAdModal()">+ Добавить блок</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;min-height:0;padding-right:2px" id="adsList"></div>
+    </div>
+
+    <div id="adModal" style="display:none;position:fixed;inset:0;background:rgba(20,30,25,.5);z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeAdModal()">
+      <div style="background:var(--w);border-radius:var(--rxl);box-shadow:0 20px 60px rgba(0,0,0,.25);padding:24px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto">
+          <div style="font-size:16px;font-weight:800;color:var(--t);margin-bottom:4px" id="adFormTitle">Новый рекламный блок</div>
+          <div style="font-size:12px;color:var(--gmt);margin-bottom:16px">Заполните поля — ниже виден предпросмотр</div>
           <input type="hidden" id="adEditId" value="">
           <label style="font-size:12px;color:var(--tm);font-weight:700;display:block;margin:0 0 5px">Заголовок *</label>
           <input id="adTitle" placeholder="LogisticsPro 2026" style="width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:var(--gp);margin-bottom:14px">
@@ -323,10 +329,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <div id="adPreview" style="margin-bottom:18px"><div style="font-size:12px;color:var(--gmt);text-align:center;padding:20px;background:var(--gp);border-radius:12px">Заполните заголовок</div></div>
           <div style="display:flex;gap:8px">
             <button class="dp-btn primary" style="flex:1;padding:11px" onclick="saveAd()">Сохранить блок</button>
-            <button class="dp-btn" style="padding:11px 16px" onclick="resetAdForm()">Очистить</button>
+            <button class="dp-btn" style="padding:11px 16px" onclick="closeAdModal()">Отмена</button>
           </div>
-        </div>
       </div>
+    </div>
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneSanctions">
       <div class="users-table">
@@ -957,6 +963,16 @@ var COMPLAINT_REASONS={spam:'Спам',abuse:'Оскорбления',illegal:'�
 var HIDDEN_TYPES={post:'Пост',comment:'Комментарий'};
 var HIDDEN_ITEMS=[];
 var AD_CACHE=[];
+function openAdModal(){resetAdForm();document.getElementById('adModal').style.display='flex';}
+function closeAdModal(){document.getElementById('adModal').style.display='none';}
+async function toggleAdActive(id,active){
+  var a=AD_CACHE.filter(function(x){return x.id===id;})[0];if(!a)return;
+  try{
+    var r=await lastopFetch('/api/admin/ads/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:a.title,body:a.body,image_url:a.image_url,link_url:a.link_url,is_active:active,weight:a.weight})});
+    if(!r.ok){lastopToast('Ошибка','error');loadAds();return;}
+    lastopToast(active?'Кампания запущена':'Кампания остановлена','success');loadAds();
+  }catch(e){lastopToast('Ошибка соединения','error');loadAds();}
+}
 async function loadAds(){
   var el=document.getElementById('adsList');if(!el)return;
   el.innerHTML='<div class="empty">Загрузка…</div>';
@@ -967,9 +983,12 @@ async function loadAds(){
     if(!ads.length){el.innerHTML='<div class="empty">Рекламных блоков нет. Создайте первый справа →</div>';return;}
     el.innerHTML=ads.map(function(a){
       var ctr=a.views_count>0?((a.clicks_count/a.views_count*100).toFixed(1)+'%'):'—';
-      var stat=a.is_active?'<span class="u-badge active">Активен</span>':'<span class="u-badge banned">Выключен</span>';
-      var img=a.image_url?'<img src="'+esc(a.image_url)+'" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:48px;height:48px;border-radius:8px;background:var(--gp);flex-shrink:0"></div>';
-      return '<div style="display:flex;gap:12px;align-items:center;background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:var(--sh)">'+img+'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--t)">'+esc(a.title)+' '+stat+'</div><div style="font-size:11px;color:var(--gmt);margin-top:2px">'+esc(a.body||'')+'</div><div style="font-size:11px;color:var(--gmt);margin-top:4px">👁 '+num(a.views_count)+' · 🖱 '+num(a.clicks_count)+' · CTR '+ctr+' · вес '+a.weight+'</div></div><div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0"><button class="dp-btn" style="padding:4px 10px;font-size:11px" onclick="editAd('+a.id+')">Изменить</button><button class="dp-btn danger" style="padding:4px 10px;font-size:11px" onclick="delAd('+a.id+')">Удалить</button></div></div>';
+      var dot=a.is_active?'#22CC66':'#C0C0C0';
+      var statTxt=a.is_active?'Активна':'Выключена';
+      var toggle='<label style="position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;cursor:pointer"><input type="checkbox" '+(a.is_active?'checked':'')+' onchange="toggleAdActive('+a.id+',this.checked)" style="opacity:0;width:0;height:0"><span style="position:absolute;inset:0;background:'+(a.is_active?'var(--g)':'#C0C0C0')+';border-radius:99px;transition:.2s"></span><span style="position:absolute;top:2px;left:'+(a.is_active?'18px':'2px')+';width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s"></span></label>';
+      var img=a.image_url?'<img src="'+esc(a.image_url)+'" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:52px;height:52px;border-radius:8px;background:var(--gp);flex-shrink:0;display:grid;place-items:center;font-size:18px">📢</div>';
+      var linkBtn=a.link_url?'<a href="'+esc(a.link_url)+'" target="_blank" class="dp-btn" style="padding:4px 10px;font-size:11px;text-decoration:none">Подробнее ↗</a>':'';
+      return '<div style="display:flex;gap:12px;align-items:center;background:var(--w);border:1px solid var(--bdr);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--sh)">'+img+'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+esc(a.title)+'</div><div style="font-size:12px;color:var(--gmt);margin-top:2px">'+esc(a.body||'')+'</div><div style="font-size:11px;color:var(--gmt);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap"><span>👁 '+num(a.views_count)+' показов</span><span>🖱 '+num(a.clicks_count)+' кликов</span><span>CTR '+ctr+'</span><span>вес '+a.weight+'</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'+toggle+linkBtn+'<button class="dp-btn" style="padding:4px 10px;font-size:11px" onclick="editAd('+a.id+')">Изменить</button><button class="dp-btn danger" style="padding:4px 10px;font-size:11px" onclick="delAd('+a.id+')">Удалить</button></div></div>';
     }).join('');
   }catch(e){el.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
@@ -1002,12 +1021,13 @@ async function saveAd(){
     var method=id?'PATCH':'POST';
     var r=await lastopFetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){lastopToast('Ошибка','error');return;}
-    lastopToast('Сохранено','success');resetAdForm();loadAds();
+    lastopToast('Сохранено','success');resetAdForm();closeAdModal();loadAds();
   }catch(e){lastopToast('Ошибка соединения','error');}
 }
 function editAd(id){
   var a=AD_CACHE.filter(function(x){return x.id===id;})[0];
   if(!a)return;
+  document.getElementById('adModal').style.display='flex';
   document.getElementById('adEditId').value=a.id;
   document.getElementById('adFormTitle').textContent='Редактировать блок';
   document.getElementById('adTitle').value=a.title||'';
