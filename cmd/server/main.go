@@ -11002,6 +11002,9 @@ func main() {
 			       co.is_verified, co.created_at,
 			       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = co.id)
 			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT 100`, args...)
+		if err != nil {
+			log.Printf("admin/communities query error: %v", err)
+		}
 		items := []map[string]any{}
 		if err == nil {
 			defer rows.Close()
