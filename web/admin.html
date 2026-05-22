@@ -199,6 +199,29 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneAudit">
+      <div class="users-toolbar">
+        <select id="auditAction" data-lt-select onchange="loadAudit()">
+          <option value="">Все действия</option>
+          <option value="user.ban">Бан</option>
+          <option value="user.unban">Разбан</option>
+          <option value="user.sanction">Санкция</option>
+          <option value="user.lift_sanction">Снятие санкции</option>
+          <option value="user.grant_admin">Назначение админа</option>
+          <option value="user.revoke_admin">Снятие админа</option>
+          <option value="user.grant_owner">Назначение владельца</option>
+          <option value="user.terminate_sessions">Сброс сессий</option>
+          <option value="company.verify">Верификация компании</option>
+          <option value="company.block">Блок компании</option>
+          <option value="community_verify">Верификация сообщества</option>
+          <option value="content_hide">Скрытие контента</option>
+          <option value="content_delete">Удаление контента</option>
+          <option value="dictionary.update">Справочник: изменение</option>
+          <option value="data.export">Экспорт данных</option>
+        </select>
+        <input type="date" id="auditFrom" onchange="loadAudit()" style="height:34px;padding:0 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px">
+        <input type="date" id="auditTo" onchange="loadAudit()" style="height:34px;padding:0 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--gp);font-family:inherit;font-size:13px">
+        <button class="dp-btn" onclick="resetAuditFilters()">Сбросить</button>
+      </div>
       <div class="users-table">
         <div class="audit-thead"><div>Действие</div><div>Администратор</div><div>Сущность</div><div>Время</div></div>
         <div class="users-tbody" id="auditTbody"></div>
@@ -598,7 +621,8 @@ async function actRevokeAdmin(id){if(!await lastopConfirm({title:'Снять п�
 async function actGrantOwner(id){if(!await lastopConfirm({title:'Назначить владельцем?',message:'Пользователь получит права владельца: управление администраторами и другими владельцами. Его нельзя будет заблокировать или разжаловать.',danger:true,confirmText:'Назначить владельцем'}))return;try{var r=await lastopFetch('/api/admin/users/'+id+'/grant-owner',{method:'POST'});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadUsers();}catch(e){alert('Ошибка соединения');}}
 
 async function actTerminateSessions(id){if(!await lastopConfirm({title:'Завершить все сессии?',message:'Пользователь будет разлогинен на всех устройствах.',danger:true,confirmText:'Завершить'}))return;try{var r=await lastopFetch('/api/admin/users/'+id+'/terminate-sessions',{method:'POST'});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}var d=await r.json().catch(function(){return{};});alert('Завершено сессий: '+(d.terminated||0));closeDetail();loadUsers();}catch(e){alert('Ошибка соединения');}}
-async function loadAudit(){var tb=document.getElementById('auditTbody');tb.innerHTML='<div class="empty">Загрузка…</div>';try{var r=await lastopFetch('/api/admin/audit-log?limit=100');if(!r.ok)throw 0;var d=await r.json();renderAudit(d.entries||[]);}catch(e){tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
+async function loadAudit(){var tb=document.getElementById('auditTbody');tb.innerHTML='<div class="empty">Загрузка…</div>';var url='/api/admin/audit-log?limit=100';var a=document.getElementById('auditAction');var f=document.getElementById('auditFrom');var t=document.getElementById('auditTo');if(a&&a.value)url+='&action='+encodeURIComponent(a.value);if(f&&f.value)url+='&date_from='+encodeURIComponent(f.value);if(t&&t.value)url+='&date_to='+encodeURIComponent(t.value);try{var r=await lastopFetch(url);if(!r.ok)throw 0;var d=await r.json();renderAudit(d.entries||[]);}catch(e){tb.innerHTML='<div class="empty">Ошибка загрузки</div>';}}
+function resetAuditFilters(){var a=document.getElementById('auditAction');if(a)a.value='';var f=document.getElementById('auditFrom');if(f)f.value='';var t=document.getElementById('auditTo');if(t)t.value='';loadAudit();}
 function renderAudit(entries){var tb=document.getElementById('auditTbody');if(!entries.length){tb.innerHTML='<div class="empty">Записей нет</div>';return;}tb.innerHTML=entries.map(function(e){var meta=e.entity_type?esc(e.entity_type)+(e.entity_id?' #'+e.entity_id:''):'—';var details='';if(e.details){if(e.details.email)details+=' · '+esc(e.details.email);if(e.details.reason)details+=' · '+esc(String(e.details.reason)).slice(0,50);if(e.details.status)details+=' · '+e.details.status;}return '<div class="audit-row"><div><span class="audit-action">'+esc(e.action)+'</span></div><div><div class="audit-admin">'+esc(e.admin_name||'—')+'</div><div class="audit-admin-email">'+esc(e.admin_email||'')+'</div></div><div class="audit-meta">'+meta+details+'</div><div class="audit-time">'+fmtDateTime(e.created_at)+'</div></div>';}).join('');}
 
 // COMPLAINTS TAB

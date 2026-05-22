@@ -6366,6 +6366,16 @@ func main() {
 		`
 		args := []any{}
 		i := 1
+		if v := strings.TrimSpace(r.URL.Query().Get("date_from")); v != "" {
+			i := len(args) + 1
+			query += fmt.Sprintf(" AND al.created_at >= $%d", i)
+			args = append(args, v)
+		}
+		if v := strings.TrimSpace(r.URL.Query().Get("date_to")); v != "" {
+			i := len(args) + 1
+			query += fmt.Sprintf(" AND al.created_at < ($%d::date + 1)", i)
+			args = append(args, v)
+		}
 		if action != "" {
 			query += fmt.Sprintf(" AND al.action = $%d", i)
 			args = append(args, action)
