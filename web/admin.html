@@ -338,7 +338,8 @@ async function loadDicts(){
       var color=it.color?'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:'+esc(it.color)+';margin-right:6px;vertical-align:middle"></span>':'';
       var dim=it.is_active?'':'opacity:.45;';
       var parent=it.parent_key?' <span class="u-pos">'+esc(it.parent_key)+'</span>':'';
-      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bdr);'+dim+'"><div style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;flex-wrap:wrap">'+color+'<span class="u-name" style="white-space:normal;overflow:visible">'+esc(it.label)+'</span> <span class="u-pos">'+esc(it.key)+'</span>'+parent+'</div><div style="flex-shrink:0;display:flex;gap:6px"><button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDelete('+it.id+')">Удалить</button></div></div>';
+      var btns=it.is_active?('<button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDeactivate('+it.id+')">Деактивировать</button>'):('<button class="dp-btn primary" onclick="dictRestore('+it.id+')">Восстановить</button> <button class="dp-btn danger" onclick="dictHardDelete('+it.id+')">Удалить навсегда</button>');
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bdr);'+dim+'"><div style="flex:1;min-width:0;display:flex;align-items:center;gap:4px;flex-wrap:wrap">'+color+'<span class="u-name" style="white-space:normal;overflow:visible">'+esc(it.label)+'</span> <span class="u-pos">'+esc(it.key)+'</span>'+parent+'</div><div style="flex-shrink:0;display:flex;gap:6px">'+btns+'</div></div>';
     }).join('');
   }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
@@ -357,11 +358,18 @@ async function dictEdit(id,label,sort,color){
   if(nl===null)return;
   try{var r=await lastopFetch('/api/admin/dictionaries',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,label:nl.trim(),color:color||'',sort_order:sort||0})});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Сохранено','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
-async function dictDelete(id){
-  var ok=await lastopConfirm({title:'Удалить запись?',message:'Запись будет скрыта (мягкое удаление). Существующие данные не пострадают.',confirmText:'Удалить',danger:true});
-  if(!ok)return;
-  try{var r=await lastopFetch('/api/admin/dictionaries?id='+id,{method:'DELETE'});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Удалено','success');}catch(e){lastopToast('Ошибка соединения','error');}
+async function dictDeactivate(id){
+  if(!await lastopConfirm({title:'Деактивировать запись?',message:'Запись скроется из активного списка, но её можно будет восстановить.',confirmText:'Деактивировать',danger:true}))return;
+  try{var r=await lastopFetch('/api/admin/dictionaries?id='+id,{method:'DELETE'});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Деактивировано','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
+async function dictRestore(id){
+  try{var r=await lastopFetch('/api/admin/dictionaries?id='+id+'&restore=true',{method:'DELETE'});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Восстановлено','success');}catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function dictHardDelete(id){
+  if(!await lastopConfirm({title:'Удалить навсегда?',message:'Запись будет удалена безвозвратно. Это действие нельзя отменить.',confirmText:'Удалить навсегда',danger:true}))return;
+  try{var r=await lastopFetch('/api/admin/dictionaries?id='+id+'&hard=true',{method:'DELETE'});if(!r.ok){lastopToast('Ошибка','error');return;}loadDicts();lastopToast('Удалено','success');}catch(e){lastopToast('Ошибка соединения','error');}
+}
+async function dictDelete_unused(id){
 // COMPANIES TAB
 var companiesFilter={q:'',status:''};
 var companiesSearchTimer;
