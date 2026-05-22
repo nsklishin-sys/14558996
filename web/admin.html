@@ -410,6 +410,7 @@ async function loadSanctions(){
   }catch(e){tb.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
 async function sanctLift(id,stype){
+  if(!await lastopConfirm({title:stype==='ban'?'Снять бан?':'Снять ограничение?',message:'Пользователь снова получит полный доступ.',confirmText:'Снять'}))return;
   try{var r=await lastopFetch('/api/admin/users/'+id+'/lift_sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stype:stype})});if(!r.ok){lastopToast('Ошибка','error');return;}loadSanctions();lastopToast('Снято','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
 async function loadDicts(){
@@ -653,6 +654,7 @@ async function submitSanction(id){
   try{var r=await lastopFetch('/api/admin/users/'+id+'/sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,scopes:scopes,reason:reason,duration_days:dur})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}closeSanctModal();closeDetail();loadUsers();lastopToast('Санкция применена','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
 async function actLiftSanction(id,stype){
+  if(!await lastopConfirm({title:stype==='ban'?'Снять бан?':'Снять ограничение?',message:'Пользователь снова получит полный доступ.',confirmText:'Снять'}))return;
   try{var r=await lastopFetch('/api/admin/users/'+id+'/lift_sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stype:stype})});if(!r.ok){lastopToast('Ошибка','error');return;}closeDetail();loadUsers();lastopToast('Ограничение снято','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
 async function actBan(id){var reason=await lastopPrompt({title:'Блокировка пользователя',label:'Причина блокировки',placeholder:'Укажите причину',confirmText:'Заблокировать',danger:true});if(!reason||!reason.trim())return;try{var r=await lastopFetch('/api/admin/users/'+id+'/ban',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:reason.trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadUsers();}catch(e){alert('Ошибка соединения');}}
