@@ -11585,6 +11585,152 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"done": done})
 	}))
 
+	mux.HandleFunc("/api/admin/crm/funnel", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		items := []map[string]any{}
+		if rows, err := db.Query(`SELECT public_id, name, COALESCE(crm_stage,'new'), COALESCE(inn,''), (SELECT COUNT(*) FROM crm_reminders rr WHERE rr.company_id=c.id AND rr.done_at IS NULL AND rr.due_at <= NOW()) FROM companies c WHERE deleted_at IS NULL AND blocked_at IS NULL ORDER BY crm_stage_updated_at DESC NULLS LAST, created_at DESC LIMIT 500`); err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var pid, name, stage, inn string
+				var overdue int
+				if rows.Scan(&pid, &name, &stage, &inn, &overdue) == nil {
+					items = append(items, map[string]any{"public_id": pid, "name": name, "stage": stage, "inn": inn, "overdue_reminders": overdue})
+				}
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}))
+
+	mux.HandleFunc("/api/admin/crm/stage", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var req struct {
+			PublicID string `json:"public_id"`
+			Stage    string `json:"stage"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		valid := map[string]bool{"new": true, "negotiation": true, "signing": true, "active": true, "key": true, "lost": true, "reactivation": true}
+		if req.PublicID == "" || !valid[req.Stage] {
+			writeError(w, http.StatusBadRequest, "Некорректные параметры")
+			return
+		}
+		var cid int64
+		if db.QueryRow(`SELECT id FROM companies WHERE public_id=$1`, req.PublicID).Scan(&cid) != nil {
+			writeError(w, http.StatusNotFound, "Компания не найдена")
+			return
+		}
+		if _, err := db.Exec(`UPDATE companies SET crm_stage=$1, crm_stage_updated_at=NOW() WHERE id=$2`, req.Stage, cid); err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		logAdminAction(db, actorID, "crm.stage", "company", cid, clientIP(r), map[string]any{"stage": req.Stage})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	}))
+
+	mux.HandleFunc("/api/admin/crm/reminders", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		if r.Method == http.MethodGet {
+			pid := r.URL.Query().Get("public_id")
+			out := []map[string]any{}
+			var q string
+			var arg any
+			if pid != "" {
+				q = `SELECT rm.id, rm.text, rm.due_at, rm.done_at, c.name, c.public_id FROM crm_reminders rm JOIN companies c ON c.id=rm.company_id WHERE c.public_id=$1 ORDER BY rm.due_at ASC`
+				arg = pid
+			} else {
+				q = `SELECT rm.id, rm.text, rm.due_at, rm.done_at, c.name, c.public_id FROM crm_reminders rm JOIN companies c ON c.id=rm.company_id WHERE rm.done_at IS NULL ORDER BY rm.due_at ASC LIMIT 200`
+			}
+			var rows *sql.Rows
+			var err error
+			if arg != nil {
+				rows, err = db.Query(q, arg)
+			} else {
+				rows, err = db.Query(q)
+			}
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var id int64
+					var text, cname, cpid string
+					var due time.Time
+					var done sql.NullTime
+					if rows.Scan(&id, &text, &due, &done, &cname, &cpid) == nil {
+						rec := map[string]any{"id": id, "text": text, "due_at": due.Format(time.RFC3339), "company": cname, "public_id": cpid, "done": done.Valid, "overdue": !done.Valid && due.Before(time.Now())}
+						out = append(out, rec)
+					}
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"reminders": out})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var req struct {
+				PublicID string `json:"public_id"`
+				Text     string `json:"text"`
+				DueAt    string `json:"due_at"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if req.PublicID == "" || strings.TrimSpace(req.Text) == "" || req.DueAt == "" {
+				writeError(w, http.StatusBadRequest, "Заполните все поля")
+				return
+			}
+			due, perr := time.Parse(time.RFC3339, req.DueAt)
+			if perr != nil {
+				if d2, e2 := time.Parse("2006-01-02", req.DueAt); e2 == nil {
+					due = d2
+				} else {
+					writeError(w, http.StatusBadRequest, "Некорректная дата")
+					return
+				}
+			}
+			var cid int64
+			if db.QueryRow(`SELECT id FROM companies WHERE public_id=$1`, req.PublicID).Scan(&cid) != nil {
+				writeError(w, http.StatusNotFound, "Компания не найдена")
+				return
+			}
+			if _, err := db.Exec(`INSERT INTO crm_reminders (company_id, text, due_at, created_by) VALUES ($1,$2,$3,$4)`, cid, strings.TrimSpace(req.Text), due, actorID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	}))
+
+	mux.HandleFunc("/api/admin/crm/reminders/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		rid, _ := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/admin/crm/reminders/"), 10, 64)
+		if rid == 0 {
+			writeError(w, http.StatusBadRequest, "некорректный id")
+			return
+		}
+		if r.Method == http.MethodPost {
+			_, _ = db.Exec(`UPDATE crm_reminders SET done_at=NOW() WHERE id=$1`, rid)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		if r.Method == http.MethodDelete {
+			_, _ = db.Exec(`DELETE FROM crm_reminders WHERE id=$1`, rid)
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+			return
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	}))
+
 	mux.HandleFunc("/api/admin/companies/", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
@@ -11626,7 +11772,9 @@ func main() {
 					}
 				}
 			}
-			out := map[string]any{"item": item, "owner_email": ownerEmail, "owner_is_banned": ownerBannedAt.Valid, "posts_count": postsCount, "members": membersList}
+			var crmStage string
+			_ = db.QueryRow(`SELECT COALESCE(crm_stage,'new') FROM companies WHERE id=$1`, item.ID).Scan(&crmStage)
+			out := map[string]any{"item": item, "owner_email": ownerEmail, "owner_is_banned": ownerBannedAt.Valid, "posts_count": postsCount, "members": membersList, "crm_stage": crmStage}
 			writeJSON(w, http.StatusOK, out)
 			return
 		}
@@ -14175,6 +14323,20 @@ ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_companies_blocked ON companies(blocked_at) WHERE blocked_at IS NOT NULL;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_verified_at TIMESTAMPTZ;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_stage TEXT NOT NULL DEFAULT 'new';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_stage_updated_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS crm_reminders (
+    id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    due_at TIMESTAMPTZ NOT NULL,
+    done_at TIMESTAMPTZ,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS crm_reminders_company_idx ON crm_reminders(company_id, done_at);
+CREATE INDEX IF NOT EXISTS crm_reminders_due_idx ON crm_reminders(due_at) WHERE done_at IS NULL;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS inn_data JSONB;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_notes TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS companies_verification_status_idx ON companies(verification_status) WHERE deleted_at IS NULL;
