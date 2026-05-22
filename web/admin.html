@@ -401,8 +401,9 @@ async function loadSanctions(){
       if(s.banned){tag='<span class="u-badge banned">Бан'+(s.banned_until?' до '+fmtDate(s.banned_until):' бессрочно')+'</span>';}
       if(s.muted_until){tag+=(tag?' ':'')+'<span class="u-badge admin">Mute до '+fmtDate(s.muted_until)+'</span>';}
       var reason=s.banned?(s.banned_reason||''):(s.mute_reason||'');
-      var byTxt=s.banned&&s.banned_by_name?esc(s.banned_by_name):'—';
-      var whenTxt=s.banned&&s.banned_at?fmtDateTime(s.banned_at):'';
+      var byName=s.banned?s.banned_by_name:s.muted_by_name;
+      var byTxt=byName?esc(byName):'—';
+      var whenTxt=s.banned&&s.banned_at?fmtDateTime(s.banned_at):(s.muted_until?'до '+fmtDate(s.muted_until):'');
       var lift=s.banned?'<button class="dp-btn" onclick="sanctLift('+s.id+',\'ban\')">Снять бан</button>':'<button class="dp-btn" onclick="sanctLift('+s.id+',\'mute\')">Снять mute</button>';
       return '<div class="sanct-row"><div class="u-av" style="background:'+esc(avc(s.full_name))+'">'+(s.avatar_url?'<img src="'+esc(s.avatar_url)+'">':esc(letter(s.full_name)))+'</div><div><div class="u-name">'+esc(s.full_name)+'</div><div class="u-pos">'+esc(reason||'—')+'</div></div><div>'+tag+'</div><div style="font-size:12px;color:var(--tm)">'+byTxt+(whenTxt?'<div style="font-size:11px;color:var(--gmt);margin-top:2px">'+whenTxt+'</div>':'')+'</div><div>'+lift+'</div></div>';
     }).join('');

@@ -11712,9 +11712,10 @@ func main() {
 			SELECT u.id, COALESCE(u.public_id,''), COALESCE(u.full_name,''), COALESCE(u.email,''), COALESCE(u.avatar_url,''),
 			       u.banned_at, u.banned_until, COALESCE(u.banned_reason,''),
 			       u.muted_until, array_to_json(u.mute_scopes), COALESCE(u.mute_reason,''),
-			       COALESCE(bb.full_name, '')
+			       COALESCE(bb.full_name, ''), COALESCE(mb.full_name, '')
 			FROM users u
 			LEFT JOIN users bb ON bb.id = u.banned_by
+			LEFT JOIN users mb ON mb.id = u.muted_by
 			WHERE u.banned_at IS NOT NULL OR (u.muted_until IS NOT NULL AND u.muted_until > NOW())
 			ORDER BY GREATEST(COALESCE(u.banned_at, u.muted_until), COALESCE(u.muted_until, u.banned_at)) DESC
 			LIMIT 200`)
@@ -11726,10 +11727,10 @@ func main() {
 		var items []map[string]any
 		for rows.Next() {
 			var id int64
-			var pub, name, email, avatar, bReason, mReason, bByName string
+			var pub, name, email, avatar, bReason, mReason, bByName, mByName string
 			var bAt, bUntil, mUntil sql.NullTime
 			var mScopesJSON []byte
-			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &bAt, &bUntil, &bReason, &mUntil, &mScopesJSON, &mReason, &bByName); err != nil {
+			if err := rows.Scan(&id, &pub, &name, &email, &avatar, &bAt, &bUntil, &bReason, &mUntil, &mScopesJSON, &mReason, &bByName, &mByName); err != nil {
 				continue
 			}
 			it := map[string]any{"id": id, "public_id": pub, "full_name": name, "email": email, "avatar_url": avatar}
@@ -11745,6 +11746,7 @@ func main() {
 			if mUntil.Valid && mUntil.Time.After(time.Now()) {
 				it["muted_until"] = mUntil.Time
 				it["mute_reason"] = mReason
+				it["muted_by_name"] = mByName
 				var msc []string
 				_ = json.Unmarshal(mScopesJSON, &msc)
 				it["mute_scopes"] = msc
@@ -14308,6 +14310,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_owner BOOLEAN NOT NULL DEFAULT FAL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_reason TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS muted_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS mute_scopes TEXT[] NOT NULL DEFAULT '{}';
@@ -15862,7 +15865,7 @@ func isUserMuted(db *sql.DB, userID int64, scope string) (bool, time.Time, strin
 		return false, time.Time{}, ""
 	}
 	if mutedUntil.Time.Before(time.Now()) {
-		_, _ = db.Exec(`UPDATE users SET muted_until=NULL, mute_scopes='{}', mute_reason='' WHERE id=$1`, userID)
+		_, _ = db.Exec(`UPDATE users SET muted_until=NULL, mute_scopes='{}', mute_reason='', muted_by=NULL WHERE id=$1`, userID)
 		_, _ = db.Exec(`UPDATE user_sanctions SET lifted_at=NOW() WHERE user_id=$1 AND type='mute' AND lifted_at IS NULL`, userID)
 		return false, time.Time{}, ""
 	}
@@ -15909,7 +15912,7 @@ func applySanction(db *sql.DB, userID int64, sType string, scopes []string, reas
 		sanctionNotify(db, userID, "Предупреждение от администрации", reason)
 	case "mute":
 		until := time.Now().AddDate(0, 0, durationDays)
-		if _, err := db.Exec(`UPDATE users SET muted_until=$1, mute_scopes=$2::text[], mute_reason=$3 WHERE id=$4`, until, pgtype.FlatArray[string](scopes), reason, userID); err != nil {
+		if _, err := db.Exec(`UPDATE users SET muted_until=$1, mute_scopes=$2::text[], mute_reason=$3, muted_by=NULLIF($4,0) WHERE id=$5`, until, pgtype.FlatArray[string](scopes), reason, createdBy, userID); err != nil {
 			return err
 		}
 		sanctionNotify(db, userID, "Ограничение публикации", "Вы временно ограничены в действиях до "+until.Format("02.01.2006")+". Причина: "+reason)
@@ -15957,7 +15960,7 @@ func checkAutoEscalation(db *sql.DB, userID int64) {
 func liftSanction(db *sql.DB, userID int64, sType string, liftedBy int64) error {
 	switch sType {
 	case "mute":
-		if _, err := db.Exec(`UPDATE users SET muted_until=NULL, mute_scopes='{}', mute_reason='' WHERE id=$1`, userID); err != nil {
+		if _, err := db.Exec(`UPDATE users SET muted_until=NULL, mute_scopes='{}', mute_reason='', muted_by=NULL WHERE id=$1`, userID); err != nil {
 			return err
 		}
 	case "ban":
