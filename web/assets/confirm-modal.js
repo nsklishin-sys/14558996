@@ -66,7 +66,7 @@
     document.head.appendChild(s);
   }
 
-  function buildDialog({title='', message='', danger=false, withInput=false, placeholder=''}){
+  function buildDialog({title='', message='', danger=false, withInput=false, placeholder='', confirmText=''}){
     injectStyle();
     const bg=document.createElement('div');bg.className='lc-bg';
     bg.innerHTML=`<div class="lc-modal" role="dialog">
@@ -75,7 +75,7 @@
       ${withInput?`<input class="lc-input" placeholder="${escapeAttr(placeholder)}">`:''}
       <div class="lc-actions">
         <button class="lc-btn lc-btn-secondary" data-act="cancel">Отмена</button>
-        <button class="lc-btn ${danger?'lc-btn-danger':'lc-btn-primary'}" data-act="ok">${withInput?'Сохранить':(danger?'Удалить':'OK')}</button>
+        <button class="lc-btn ${danger?'lc-btn-danger':'lc-btn-primary'}" data-act="ok">${confirmText||(withInput?'Сохранить':(danger?'Удалить':'OK'))}</button>
       </div></div>`;
     document.body.appendChild(bg);
     requestAnimationFrame(()=>bg.classList.add('open'));
