@@ -28225,8 +28225,9 @@ func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, te
 
 // catalogCategory — одна подкатегория каталога.
 type catalogCategory struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
+	Key   string            `json:"key"`
+	Label string            `json:"label"`
+	Items []catalogCategory `json:"items,omitempty"`
 }
 
 // catalogCategoryGroup — группа категорий верхнего уровня.
@@ -28409,7 +28410,7 @@ func reloadDictionaries(db *sql.DB) {
 			forumCategories = fc
 		}
 	}
-	// catalog groups + categories
+	// catalog groups + categories + subcategories (3 уровня)
 	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='catalog_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
 		var groups []catalogCategoryGroup
 		groupIdx := map[string]int{}
@@ -28421,16 +28422,31 @@ func reloadDictionaries(db *sql.DB) {
 			}
 		}
 		rows.Close()
+		// 2-й уровень: категории (parent_key = group.key). Запоминаем позицию каждой категории.
+		catIdx := map[string][2]int{} // category.key -> [groupIndex, itemIndex]
 		if rows2, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='catalog_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
 			for rows2.Next() {
 				var k, l, pk string
 				if rows2.Scan(&k, &l, &pk) == nil {
 					if idx, ok := groupIdx[pk]; ok {
+						catIdx[k] = [2]int{idx, len(groups[idx].Items)}
 						groups[idx].Items = append(groups[idx].Items, catalogCategory{Key: k, Label: l})
 					}
 				}
 			}
 			rows2.Close()
+		}
+		// 3-й уровень: подкатегории (parent_key = category.key).
+		if rows3, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='catalog_subcategory' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows3.Next() {
+				var k, l, pk string
+				if rows3.Scan(&k, &l, &pk) == nil {
+					if pos, ok := catIdx[pk]; ok {
+						groups[pos[0]].Items[pos[1]].Items = append(groups[pos[0]].Items[pos[1]].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows3.Close()
 		}
 		if len(groups) > 0 {
 			catalogCategoriesList = groups
