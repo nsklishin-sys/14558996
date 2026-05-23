@@ -116,6 +116,23 @@
         padding:24px 14px;text-align:center;
         font-size:12px;color:var(--gmt,#94A3B8)
       }
+      /* footer с кнопкой Применить (только tree-режим) */
+      .cp-footer{
+        flex-shrink:0;border-top:1px solid var(--bdr,#E2E8F0);
+        padding:10px 12px;display:flex;align-items:center;gap:10px
+      }
+      .cp-footer-label{
+        flex:1;min-width:0;font-size:12px;color:var(--gmt,#94A3B8);
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+      }
+      .cp-footer-label b{color:var(--t,#1A2A22);font-weight:700}
+      .cp-apply{
+        flex-shrink:0;padding:8px 18px;border:none;border-radius:10px;
+        background:var(--g,#1E8A4C);color:#fff;font-family:inherit;
+        font-size:13px;font-weight:600;cursor:pointer;transition:opacity .12s
+      }
+      .cp-apply:disabled{background:var(--gb,#A0D9B8);cursor:not-allowed}
+      .cp-node.cp-pending{background:var(--gl,#E8F5EE);color:var(--g,#1E8A4C);font-weight:600}
     `;
     const styleEl = document.createElement('style');
     styleEl.id = 'cp-styles';
@@ -226,6 +243,39 @@
 
     // состояние раскрытия в режиме дерева
     const expanded = {}; // ключ группы/категории -> bool
+    let pending = null;  // {value, text} — помеченный кандидат (Вариант A: выбор через «Применить»)
+
+    // footer с кнопкой «Применить» — создаём только в tree-режиме
+    let footerEl = null, footerLabel = null, applyBtn = null;
+    function ensureFooter() {
+      if (!hasTree || footerEl) return;
+      footerEl = document.createElement('div');
+      footerEl.className = 'cp-footer';
+      footerEl.innerHTML = '<span class="cp-footer-label"></span><button type="button" class="cp-apply">Применить</button>';
+      popup.appendChild(footerEl);
+      footerLabel = footerEl.querySelector('.cp-footer-label');
+      applyBtn = footerEl.querySelector('.cp-apply');
+      applyBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (pending) { selectOption(pending.value); close(); }
+      });
+    }
+    function updateFooter() {
+      if (!footerEl) return;
+      if (pending) {
+        footerLabel.innerHTML = 'Выбрано: <b></b>';
+        footerLabel.querySelector('b').textContent = pending.text;
+        applyBtn.disabled = false;
+      } else {
+        footerLabel.textContent = 'Выберите категорию или подкатегорию';
+        applyBtn.disabled = true;
+      }
+    }
+    function setPending(value, text) {
+      pending = { value: value, text: text };
+      renderTree(searchInput.value);
+      updateFooter();
+    }
 
     // ── РЕНДЕР: плоский режим (как было, для 2-уровневых потребителей) ──
     function renderFlat(query) {
@@ -262,10 +312,11 @@
     }
 
     // ── РЕНДЕР: дерево (3 уровня, с раскрытием) ──
-    function nodeRow(level, label, value, hasChildren, isExpanded, onCaret, onSelect) {
+    function nodeRow(level, label, value, hasChildren, isExpanded, isPending, onCaret, onSelect) {
       const row = document.createElement('div');
       row.className = 'cp-node cp-lvl-' + level;
       if (value !== null && select.value === value) row.classList.add('cp-selected');
+      if (isPending) row.classList.add('cp-pending');
       const caret = hasChildren
         ? `<span class="cp-node-caret${isExpanded ? ' cp-open' : ''}">▶</span>`
         : `<span class="cp-node-caret-empty"></span>`;
@@ -290,10 +341,9 @@
       list.innerHTML = '';
       let total = 0;
       const searching = !!query;
+      const pendingVal = pending ? pending.value : null;
 
       groups.forEach(g => {
-        // фильтрация: показываем категорию/подкатегорию, если совпадает её текст
-        // или текст подкатегории. При поиске авто-раскрываем.
         const matchedItems = g.items.filter(cat => {
           if (!searching) return true;
           if (cat.text.toLowerCase().includes(query)) return true;
@@ -303,7 +353,7 @@
 
         const gKey = 'g:' + g.label;
         const gExpanded = searching ? true : (expanded[gKey] !== false); // группы по умолчанию раскрыты
-        list.appendChild(nodeRow(0, g.label === '__loose__' ? 'Категории' : g.label, null, true, gExpanded,
+        list.appendChild(nodeRow(0, g.label === '__loose__' ? 'Категории' : g.label, null, true, gExpanded, false,
           () => { expanded[gKey] = !gExpanded; renderTree(searchInput.value); }, null));
         total++;
         if (!gExpanded) return;
@@ -311,16 +361,21 @@
         matchedItems.forEach(cat => {
           const hasCh = cat.children && cat.children.length;
           const cKey = 'c:' + cat.value;
-          const cExpanded = searching ? true : !!expanded[cKey]; // категории по умолчанию свёрнуты
-          list.appendChild(nodeRow(1, cat.text, cat.value, hasCh, cExpanded,
+          // категория авто-раскрыта, если: идёт поиск, ИЛИ юзер раскрыл, ИЛИ помечена/её ребёнок помечен
+          const childPending = hasCh && cat.children.some(ch => ch.value === pendingVal);
+          const cExpanded = searching ? true : (!!expanded[cKey] || cat.value === pendingVal || childPending);
+          const isPending = cat.value === pendingVal;
+          // клик по строке категории: помечает её (pending) И раскрывает подкатегории
+          list.appendChild(nodeRow(1, cat.text, cat.value, hasCh, cExpanded, isPending,
             hasCh ? () => { expanded[cKey] = !cExpanded; renderTree(searchInput.value); } : null,
-            () => { selectOption(cat.value); close(); }));
+            () => { if (hasCh) expanded[cKey] = true; setPending(cat.value, cat.text); }));
           total++;
           if (hasCh && cExpanded) {
             const subs = cat.children.filter(ch => !searching || ch.text.toLowerCase().includes(query) || cat.text.toLowerCase().includes(query));
             subs.forEach(sub => {
-              list.appendChild(nodeRow(2, sub.text, sub.value, false, false, null,
-                () => { selectOption(sub.value); close(); }));
+              const subPending = sub.value === pendingVal;
+              list.appendChild(nodeRow(2, sub.text, sub.value, false, false, subPending, null,
+                () => { setPending(sub.value, sub.text); }));
               total++;
             });
           }
@@ -369,6 +424,19 @@
       trigger.classList.add('cp-open');
       popup.classList.add('cp-open');
       searchInput.value = '';
+      if (hasTree) {
+        ensureFooter();
+        // инициализируем pending текущим выбором (если есть)
+        pending = null;
+        const cur = select.value;
+        if (cur) {
+          groups.forEach(g => g.items.forEach(it => {
+            if (it.value === cur) pending = { value: it.value, text: it.text };
+            (it.children || []).forEach(ch => { if (ch.value === cur) pending = { value: ch.value, text: ch.text }; });
+          }));
+        }
+        updateFooter();
+      }
       renderList('');
       setTimeout(() => searchInput.focus(), 50);
     }
