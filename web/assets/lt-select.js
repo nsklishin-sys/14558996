@@ -144,7 +144,7 @@
 
   function scan(root){
     if(!root||!root.querySelectorAll)return;
-    root.querySelectorAll('select[data-lt-select],select[data-category-picker]').forEach(build);
+    root.querySelectorAll('select[data-lt-select]').forEach(build);
   }
 
   function init(){
@@ -154,7 +154,7 @@
         muts.forEach(m=>{
           m.addedNodes.forEach(n=>{
             if(n.nodeType!==1)return;
-            if(n.matches&&n.matches('select[data-lt-select],select[data-category-picker]'))build(n);
+            if(n.matches&&n.matches('select[data-lt-select]'))build(n);
             scan(n);
           });
         });
