@@ -432,6 +432,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API = '/api';
 
 let myCompanies = [];
+let CAT_TREE = []; // дерево категорий каталога (компании используют каталог)
 let currentCompany = null;
 let currentTab = 'about';
 let viewerID = null;
@@ -702,6 +703,22 @@ async function renderTab(){
   if (currentTab === 'pubs') return renderPubs(wrap);
 }
 
+// строит <optgroup>+<option data-parent> из дерева каталога (как catalog.html)
+function buildCatTreeOptions(){
+  const tree = (CAT_TREE && CAT_TREE.length) ? CAT_TREE : null;
+  if (!tree) return '<option value="">— нет категорий —</option>';
+  return '<option value="">— выберите —</option>' + tree.map(g => {
+    const cats = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
+    const opts = cats.map(cc => {
+      let o = '<option value="' + escAttr(cc.key) + '">' + esc(cc.label) + '</option>';
+      if (cc.items && cc.items.length) {
+        o += cc.items.map(s => '<option value="' + escAttr(s.key) + '" data-parent="' + escAttr(cc.key) + '">' + esc(s.label) + '</option>').join('');
+      }
+      return o;
+    }).join('');
+    return '<optgroup label="' + escAttr(g.label) + '">' + opts + '</optgroup>';
+  }).join('');
+}
 function renderAbout(wrap){
   const c = currentCompany;
   const isOwner = !!c.viewer_is_owner;
@@ -740,7 +757,7 @@ function renderAbout(wrap){
 
       '<div class="fld-row">' +
         '<div class="fld"><label class="fld-label">ИНН</label><input class="fld-input" id="aboutINN"' + dis + ' value="' + escAttr(c.inn || '') + '"></div>' +
-        '<div class="fld"><label class="fld-label">Категория</label><input class="fld-input" id="aboutCategory"' + dis + ' value="' + escAttr(c.category || '') + '" placeholder="напр. logistics_freight"></div>' +
+        '<div class="fld"><label class="fld-label">Категория</label><select class="fld-select" id="aboutCategory"' + dis + ' data-category-picker></select></div>' +
       '</div>' +
       '<div class="fld"><label class="fld-label">Описание</label><textarea class="fld-textarea" id="aboutDesc"' + dis + '>' + esc(c.description || '') + '</textarea></div>' +
 
@@ -774,6 +791,17 @@ function renderAbout(wrap){
   window.__aboutTags = (c.tags || []).slice();
   window.__aboutLogo = c.logo_image || '';
   renderAboutTags();
+  // наполнить селект категории деревом каталога + предвыбрать текущую
+  const _catSel = document.getElementById('aboutCategory');
+  if (_catSel) {
+    _catSel.innerHTML = buildCatTreeOptions();
+    _catSel.value = c.category || '';
+    // picker только если есть права на редактирование; иначе оставляем заблокированный select
+    if (canEdit && window.initCategoryPickers) {
+      window.initCategoryPickers();
+      _catSel.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+  }
   // sync color → text
   const colorInput = document.getElementById('aboutAccent');
   if (colorInput) {
@@ -1377,6 +1405,7 @@ async function switchCompany(publicID){
 // INIT
 document.addEventListener('DOMContentLoaded', async () => {
   await loadProfile();
+  try { const r = await lastopFetch(API + '/catalog/categories'); const d = await r.json(); CAT_TREE = d.groups || []; } catch (e) { CAT_TREE = []; }
   await loadCompanies();
   // Если пришли с ?create=1 (например, из /companies.html) — сразу открыть модалку
   if (new URLSearchParams(location.search).get('create') === '1') {
