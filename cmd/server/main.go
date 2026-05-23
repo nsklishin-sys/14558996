@@ -21792,16 +21792,19 @@ func createRepost(db *sql.DB, originalPublicID string, userID int64, opts repost
 
 	var origID int64
 	var origCoverURL string
-	var origTags pgtype.FlatArray[string]
+	var origTagsJSON []byte
 	if err := tx.QueryRow(`
-		SELECT id, COALESCE(cover_url, ''), COALESCE(tags, '{}'::text[])
+		SELECT id, COALESCE(cover_url, ''), COALESCE(array_to_json(tags), '[]'::json)
 		FROM posts WHERE public_id = $1 AND is_deleted = FALSE
-	`, originalPublicID).Scan(&origID, &origCoverURL, &origTags); err != nil {
+	`, originalPublicID).Scan(&origID, &origCoverURL, &origTagsJSON); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return post{}, errNotFound
 		}
 		return post{}, err
 	}
+
+	var origTagsSlice []string
+	_ = json.Unmarshal(origTagsJSON, &origTagsSlice)
 
 	// Проверка прав: target компания/сообщество, юзер должен иметь право публиковать от их лица
 	if opts.TargetCompanyID > 0 {
@@ -21856,7 +21859,7 @@ func createRepost(db *sql.DB, originalPublicID string, userID int64, opts repost
 		INSERT INTO posts (public_id, author_id, author_company_id, community_id, type, title, content, tags, cover_url, privacy_level, reposted_from_id, created_at, updated_at)
 		VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), 'news', $5, $6, $7::text[], NULLIF($8, ''), 'public', $9, NOW(), NOW())
 		RETURNING id
-	`, newPublicID, userID, opts.TargetCompanyID, opts.TargetCommunityID, origTitle, contentToInsert, origTags, origCoverURL, origID).Scan(&insertedID); err != nil {
+	`, newPublicID, userID, opts.TargetCompanyID, opts.TargetCommunityID, origTitle, contentToInsert, pgtype.FlatArray[string](origTagsSlice), origCoverURL, origID).Scan(&insertedID); err != nil {
 		return post{}, err
 	}
 	_ = insertedID
