@@ -120,6 +120,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .proj-card:hover{box-shadow:0 6px 20px rgba(30,138,76,.12);transform:translateY(-2px);border-color:var(--gb)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.lt-appear{animation:fadeUp .22s ease both}
 .pc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .pc-icon{
   width:42px;height:42px;border-radius:11px;display:grid;place-items:center;flex-shrink:0
@@ -654,6 +655,7 @@ async function loadProjects(){
   }
 
   renderCurrentView();
+  if(feedEl){feedEl.classList.remove('lt-appear');void feedEl.offsetWidth;feedEl.classList.add('lt-appear');}
 }
 
 function mapProjectFromAPI(p){
@@ -978,6 +980,7 @@ async function loadMyProj(){
         + '<span class="mpi-status ' + st[0] + '">' + st[1] + '</span>'
         + '</div>';
     }).join('') + '<div style="padding:8px 6px 0;text-align:center"><a href="#" data-action="all-my" style="font-size:11px;font-weight:700;color:var(--g);text-decoration:none">Все мои проекты →</a></div>';
+    list.classList.add('lt-appear');
     list.querySelectorAll('.my-proj-item').forEach(function(item){
       item.addEventListener('click', function(){
         const pid = item.getAttribute('data-pid');
@@ -1016,6 +1019,7 @@ async function loadProjCats(){
         + '<div class="cat-bar"><div class="cat-fill" style="width:' + w + 'px"></div><span class="cat-num">' + c.count + '</span></div>'
         + '</div>';
     }).join('');
+    list.classList.add('lt-appear');
     list.querySelectorAll('.cat-item').forEach(function(item){
       item.addEventListener('click', function(){
         const name = item.getAttribute('data-cat-name') || '';
@@ -1048,6 +1052,7 @@ async function loadProjRec(){
         + '<div class="rp-body"><div class="rp-title">' + _prjEsc(p.title) + '</div><div class="rp-meta">' + meta + '</div></div>'
         + '</div>';
     }).join('');
+    list.classList.add('lt-appear');
     list.querySelectorAll('.rec-proj').forEach(function(item){
       item.addEventListener('click', function(){
         const pid = item.getAttribute('data-pid');
