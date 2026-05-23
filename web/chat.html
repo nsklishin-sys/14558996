@@ -1785,26 +1785,42 @@ async function submitMessage(){
     if (state.editing) {
       await api(`/chat/messages/${state.editing.id}`, {method: 'PATCH', body: {content: txt}});
       state.editing = null;
-    } else {
-      const body = {
-        content: txt,
-        reply_to_id: state.replyTo?.id || null
-      };
-      if (pendingAttachment) {
-        body.attachment_url = pendingAttachment.url;
-        body.attachment_name = pendingAttachment.name;
-        body.attachment_type = pendingAttachment.type;
-        body.attachment_size = pendingAttachment.size;
-      }
-      await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method: 'POST', body});
+      msgInput.value = '';
+      autoGrow(msgInput);
+      closeReply();
+      pendingAttachment = null;
+      hidePreview();
+      await loadMessages();
+      loadConversations();
+      return;
     }
+    const body = {
+      content: txt,
+      reply_to_id: state.replyTo?.id || null
+    };
+    if (pendingAttachment) {
+      body.attachment_url = pendingAttachment.url;
+      body.attachment_name = pendingAttachment.name;
+      body.attachment_type = pendingAttachment.type;
+      body.attachment_size = pendingAttachment.size;
+    }
+    const sent = await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method: 'POST', body});
     msgInput.value = '';
     autoGrow(msgInput);
     closeReply();
     pendingAttachment = null;
     hidePreview();
-    await loadMessages();
-    await loadConversations();
+    // Optimistic-render: дописываем своё сообщение локально (как WS-путь), без полной
+    // перезагрузки — убирает моргание и скачок скролла. WS-эхо не задвоит (дубль-защита по id).
+    const sm = sent && sent.message;
+    if (sm && !(state.messages||[]).some(m => m.id === sm.id)) {
+      state.messages = state.messages || [];
+      state.messages.push(sm);
+      renderMessages();
+      const wrap = document.getElementById('msgsWrap');
+      if (wrap) wrap.scrollTop = wrap.scrollHeight;
+    }
+    loadConversations();
   } catch (e) {
     var emsg = '';
     try {
