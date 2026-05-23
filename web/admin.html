@@ -49,6 +49,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .users-toolbar select:focus{border-color:var(--gm)}
 .dict-thead{display:grid;gap:10px;padding:11px 16px;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bdr);background:var(--gp);flex-shrink:0}
 .dict-row{display:grid;gap:10px;padding:10px 16px;border-bottom:1px solid var(--bdr);align-items:center;font-size:13px}
+.dict-tree-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;border-bottom:1px solid var(--bdr);min-height:42px}
+.dict-tree-row:hover{background:var(--gp)}
+.dict-tree-label{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.dict-tree-key{font-size:10px;color:var(--gmt);background:var(--gp);border:1px solid var(--bdr);border-radius:6px;padding:1px 7px;margin-left:8px;font-family:ui-monospace,monospace;white-space:nowrap}
+.dict-tree-acts{display:flex;gap:6px;flex-shrink:0}
+.dict-caret{width:20px;height:20px;border:none;background:transparent;cursor:pointer;color:var(--gmt);font-size:11px;display:grid;place-items:center;border-radius:5px;flex-shrink:0;transition:background .12s,color .12s}
+.dict-caret:hover{background:var(--gl);color:var(--g)}
+.dict-caret-empty{width:20px;flex-shrink:0;display:inline-block}
+.dict-tree-add{padding:7px 16px;color:var(--g);font-size:12px;font-weight:600;cursor:pointer;border-bottom:1px solid var(--bdr);transition:background .12s;opacity:.75}
+.dict-tree-add:hover{background:var(--gl);opacity:1}
 #paneDicts .users-toolbar{justify-content:flex-start}
 #paneDicts .lt-sel-wrap{width:auto;min-width:240px;max-width:300px}
 #paneDicts #dictType{min-width:240px;max-width:300px}
@@ -360,7 +370,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           <option value="city">Города</option>
         </select>
         <select id="dictParent" data-lt-select style="display:none;min-width:220px"></select>
-        <button class="dp-btn primary" style="margin-left:auto" onclick="dictAdd()">+ Добавить</button>
+        <button class="dp-btn primary" style="margin-left:auto" onclick="dictAdd()" id="dictAddBtn">+ Добавить</button>
       </div>
       <div class="users-table">
         <div class="dict-thead" id="dictThead"></div>
@@ -516,37 +526,52 @@ async function sanctLift(id,stype){
   try{var r=await lastopFetch('/api/admin/users/'+id+'/lift_sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stype:stype})});if(!r.ok){lastopToast('Ошибка','error');return;}loadSanctions();lastopToast('Снято','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
 // родительский тип для данного типа узла (для 3-уровневого дерева каталога)
+// ═══════════════════════════════════════════════════════════════
+// СПРАВОЧНИКИ — древовидный режим для каталога (CAT-TREE, шаг 2.2)
+// Каталог (group→category→subcategory) рисуется деревом с раскрытием
+// и кнопками «+ дочерний». forum_category и city — плоский список.
+// ═══════════════════════════════════════════════════════════════
+
 function dictParentTypeOf(type){
   if(type==='catalog_category')return'catalog_group';
   if(type==='catalog_subcategory')return'catalog_category';
   return'';
 }
-// показать/заполнить селект родителя в зависимости от выбранного типа
+function dictIsCatalog(type){
+  return type==='catalog_group'||type==='catalog_category'||type==='catalog_subcategory';
+}
+
+// состояние раскрытия узлов дерева: { key: true|false }
+var dictTreeExpanded = {};
+
+// показать/заполнить селект родителя (для плоского режима — оставлен для совместимости)
 async function dictSyncParentPicker(){
-  var type=document.getElementById('dictType').value;
   var sel=document.getElementById('dictParent');
   if(!sel)return;
-  var ptype=dictParentTypeOf(type);
-  if(!ptype){sel.style.display='none';sel.innerHTML='';return;}
-  sel.style.display='';
-  sel.innerHTML='<option value="">Загрузка…</option>';
-  try{
-    var r=await lastopFetch('/api/admin/dictionaries?type='+encodeURIComponent(ptype));
-    var d=await r.json();var items=(d.items||[]).filter(function(i){return i.is_active;});
-    sel.innerHTML=items.length?items.map(function(i){return'<option value="'+esc(i.key)+'">'+esc(i.label)+'</option>';}).join(''):'<option value="">— сначала создайте '+(ptype==='catalog_group'?'группу':'категорию')+' —</option>';
-  }catch(e){sel.innerHTML='<option value="">Ошибка загрузки</option>';}
+  // В древовидном режиме селект родителя не нужен — скрываем.
+  sel.style.display='none';
+  sel.innerHTML='';
 }
+
+// Единая точка входа: каталог → дерево, остальное → плоский список
 async function loadDicts(){
+  var type=document.getElementById('dictType').value;
+  if(dictIsCatalog(type)){
+    return loadCatalogTree();
+  }
+  return loadDictsFlat();
+}
+
+// ─── ПЛОСКИЙ список (forum_category, city) ───
+async function loadDictsFlat(){
   var type=document.getElementById('dictType').value;
   var list=document.getElementById('dictList');
   var thead=document.getElementById('dictThead');
   var hasColor=(type==='forum_category');
-  var hasParent=(type==='catalog_group'||type==='catalog_category'||type==='catalog_subcategory');
-  var grid=hasParent?'2fr 1.2fr 1.2fr 90px 220px':(hasColor?'2fr 1.2fr 90px 220px':'2fr 1.2fr 90px 220px');
+  var grid='2fr 1.2fr 90px 220px';
   if(thead){
-    var cols='<div>Название</div><div>Ключ</div>'+(hasParent?'<div>Родитель</div>':'')+'<div>Статус</div><div></div>';
     thead.style.gridTemplateColumns=grid;
-    thead.innerHTML=cols;
+    thead.innerHTML='<div>Название</div><div>Ключ</div><div>Статус</div><div></div>';
   }
   list.innerHTML='<div class="empty">Загрузка…</div>';
   try{
@@ -558,26 +583,125 @@ async function loadDicts(){
       var dim=it.is_active?'':'opacity:.45;';
       var statusBadge=it.is_active?'<span class="u-badge active">Активна</span>':'<span class="u-badge banned">Скрыта</span>';
       var btns=it.is_active?('<button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\''+esc(it.color)+'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDeactivate('+it.id+')">Деактивировать</button>'):('<button class="dp-btn primary" onclick="dictRestore('+it.id+')">Восстановить</button> <button class="dp-btn danger" onclick="dictHardDelete('+it.id+')">Удалить навсегда</button>');
-      var parentCell=hasParent?'<div class="u-pos">'+esc(it.parent_key||'—')+'</div>':'';
-      return '<div class="dict-row" style="grid-template-columns:'+grid+';'+dim+'"><div class="u-name" style="white-space:normal">'+color+esc(it.label)+'</div><div class="u-pos">'+esc(it.key)+'</div>'+parentCell+'<div>'+statusBadge+'</div><div style="display:flex;gap:6px;justify-content:flex-end">'+btns+'</div></div>';
+      return '<div class="dict-row" style="grid-template-columns:'+grid+';'+dim+'"><div class="u-name" style="white-space:normal">'+color+esc(it.label)+'</div><div class="u-pos">'+esc(it.key)+'</div><div>'+statusBadge+'</div><div style="display:flex;gap:6px;justify-content:flex-end">'+btns+'</div></div>';
     }).join('');
   }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
+
+// ─── ДЕРЕВО каталога (3 уровня) ───
+async function loadCatalogTree(){
+  var list=document.getElementById('dictList');
+  var thead=document.getElementById('dictThead');
+  if(thead){thead.style.gridTemplateColumns='1fr';thead.innerHTML='<div>Структура каталога — группы, категории, подкатегории</div>';}
+  list.innerHTML='<div class="empty">Загрузка дерева…</div>';
+  try{
+    var res=await Promise.all([
+      lastopFetch('/api/admin/dictionaries?type=catalog_group'),
+      lastopFetch('/api/admin/dictionaries?type=catalog_category'),
+      lastopFetch('/api/admin/dictionaries?type=catalog_subcategory')
+    ]);
+    var gd=await res[0].json(), cd=await res[1].json(), sd=await res[2].json();
+    var groups=gd.items||[], cats=cd.items||[], subs=sd.items||[];
+    if(!groups.length){
+      list.innerHTML='<div class="empty">Пока нет ни одной группы. Нажмите «+ Группа», чтобы начать.</div>';
+      return;
+    }
+    // индексируем детей по parent_key
+    var catsByGroup={}, subsByCat={};
+    cats.forEach(function(c){(catsByGroup[c.parent_key]=catsByGroup[c.parent_key]||[]).push(c);});
+    subs.forEach(function(s){(subsByCat[s.parent_key]=subsByCat[s.parent_key]||[]).push(s);});
+    var html='';
+    groups.forEach(function(g){
+      html+=dictTreeRow(g,0,'catalog_group',(catsByGroup[g.key]||[]).length>0);
+      if(dictTreeExpanded[g.key]){
+        (catsByGroup[g.key]||[]).forEach(function(c){
+          html+=dictTreeRow(c,1,'catalog_category',(subsByCat[c.key]||[]).length>0);
+          if(dictTreeExpanded[c.key]){
+            (subsByCat[c.key]||[]).forEach(function(s){
+              html+=dictTreeRow(s,2,'catalog_subcategory',false);
+            });
+            // строка-добавление подкатегории внутри категории
+            html+=dictAddChildRow(c.key,'catalog_subcategory',2,'+ подкатегория');
+          }
+        });
+        // строка-добавление категории внутри группы
+        html+=dictAddChildRow(g.key,'catalog_category',1,'+ категория');
+      }
+    });
+    list.innerHTML=html;
+  }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить дерево</div>';}
+}
+
+// одна строка дерева
+function dictTreeRow(it,level,type,hasChildren){
+  var pad=12+level*26;
+  var dim=it.is_active?'':'opacity:.45;';
+  var expanded=!!dictTreeExpanded[it.key];
+  var caret=hasChildren
+    ?'<button class="dict-caret" onclick="dictToggle(\''+esc(it.key).replace(/'/g,"\\'")+'\')">'+(expanded?'▾':'▸')+'</button>'
+    :'<span class="dict-caret-empty"></span>';
+  var labelStyle=level===0?'font-weight:700;font-size:13px;':(level===1?'font-weight:600;font-size:12.5px;':'font-weight:500;font-size:12px;color:var(--tm);');
+  var statusBadge=it.is_active?'':'<span class="u-badge banned" style="margin-left:8px">Скрыта</span>';
+  var addBtn='';
+  if(type==='catalog_group')addBtn='<button class="dp-btn" title="Добавить категорию" onclick="dictAddChild(\''+esc(it.key).replace(/'/g,"\\'")+'\',\'catalog_category\')">+ кат.</button>';
+  else if(type==='catalog_category')addBtn='<button class="dp-btn" title="Добавить подкатегорию" onclick="dictAddChild(\''+esc(it.key).replace(/'/g,"\\'")+'\',\'catalog_subcategory\')">+ подкат.</button>';
+  var actBtns=it.is_active
+    ?(addBtn+' <button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDeactivate('+it.id+')">Скрыть</button>')
+    :('<button class="dp-btn primary" onclick="dictRestore('+it.id+')">Вернуть</button> <button class="dp-btn danger" onclick="dictHardDelete('+it.id+')">Удалить</button>');
+  return '<div class="dict-tree-row" style="'+dim+'">'+
+    '<div class="dict-tree-label" style="padding-left:'+pad+'px">'+caret+'<span style="'+labelStyle+'">'+esc(it.label)+'</span>'+statusBadge+
+    '<span class="dict-tree-key">'+esc(it.key)+'</span></div>'+
+    '<div class="dict-tree-acts">'+actBtns+'</div></div>';
+}
+
+// строка-«призрак» для быстрого добавления дочернего узла
+function dictAddChildRow(parentKey,childType,level,label){
+  var pad=12+level*26;
+  return '<div class="dict-tree-add" style="padding-left:'+pad+'px" onclick="dictAddChild(\''+esc(parentKey).replace(/'/g,"\\'")+'\',\''+childType+'\')">'+esc(label)+'</div>';
+}
+
+// раскрыть/свернуть узел
+function dictToggle(key){
+  dictTreeExpanded[key]=!dictTreeExpanded[key];
+  loadCatalogTree();
+}
+
+// добавить дочерний узел заданному родителю
+async function dictAddChild(parentKey,childType){
+  var what=childType==='catalog_category'?'категории':(childType==='catalog_subcategory'?'подкатегории':'записи');
+  var label=await lastopPrompt({title:'Новая '+(childType==='catalog_category'?'категория':'подкатегория'),label:'Название',placeholder:'Например: Спецтехника',confirmText:'Добавить'});
+  if(!label||!label.trim())return;
+  try{
+    var r=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:childType,label:label.trim(),parent_key:parentKey})});
+    if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}
+    dictTreeExpanded[parentKey]=true; // раскрыть родителя, чтобы увидеть новый узел
+    loadCatalogTree();
+    lastopToast('Добавлено','success');
+  }catch(e){lastopToast('Ошибка соединения','error');}
+}
+
+// кнопка «+ Добавить» в тулбаре: в дереве добавляет группу, в плоском — запись текущего типа
 async function dictAdd(){
   var type=document.getElementById('dictType').value;
+  if(dictIsCatalog(type)){
+    // в древовидном режиме верхняя кнопка всегда добавляет ГРУППУ
+    var glabel=await lastopPrompt({title:'Новая группа каталога',label:'Название',placeholder:'Например: Промышленность',confirmText:'Добавить'});
+    if(!glabel||!glabel.trim())return;
+    try{
+      var rg=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'catalog_group',label:glabel.trim(),parent_key:''})});
+      if(!rg.ok){var eg=await rg.json().catch(function(){return{};});lastopToast(eg.error||'Ошибка','error');return;}
+      loadCatalogTree();lastopToast('Группа добавлена','success');
+    }catch(e){lastopToast('Ошибка соединения','error');}
+    return;
+  }
+  // плоский режим (forum_category, city)
   var label=await lastopPrompt({title:'Добавить запись',label:'Название',placeholder:'Например: Москва',confirmText:'Добавить'});
   if(!label||!label.trim())return;
-  var parent='';
-  var ptype=dictParentTypeOf(type);
-  if(ptype){
-    var psel=document.getElementById('dictParent');
-    parent=(psel&&psel.value)||'';
-    if(!parent){lastopToast(ptype==='catalog_group'?'Сначала выберите группу':'Сначала выберите категорию','error');return;}
-  }
   var color='';
   if(type==='forum_category'){color=await lastopPrompt({title:'Цвет',label:'HEX-цвет',placeholder:'#2563EB',confirmText:'OK'})||'';}
-  try{var r=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,label:label.trim(),parent_key:parent.trim(),color:color.trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}loadDicts();lastopToast('Добавлено','success');}catch(e){lastopToast('Ошибка соединения','error');}
+  try{var r=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,label:label.trim(),parent_key:'',color:color.trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}loadDicts();lastopToast('Добавлено','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
+
 async function dictEdit(id,label,sort,color){
   var nl=await lastopPrompt({title:'Изменить',label:'Название',value:label,confirmText:'Сохранить'});
   if(nl===null)return;
