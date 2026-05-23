@@ -480,11 +480,12 @@ function renderCategorySidebar(){
 function fillCategorySelects(){
   const sel = document.getElementById('ciCategory');
   if (!sel) return;
-  sel.innerHTML = CATEGORY_GROUPS.map(g =>
-    '<optgroup label="' + escAttr(g.label) + '">' +
-    g.items.map(c => '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>').join('') +
-    '</optgroup>'
-  ).join('');
+  sel.innerHTML = CATEGORY_GROUPS.map(g => {
+    const items = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
+    return '<optgroup label="' + escAttr(g.label) + '">' +
+      items.map(c => '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>').join('') +
+      '</optgroup>';
+  }).join('');
 }
 function setCategoryGroup(key){ currentCategoryGroup = key; renderCategorySidebar(); applyFilters(); }
 
