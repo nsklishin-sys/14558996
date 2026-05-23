@@ -364,9 +364,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="users-toolbar">
         <select id="dictType" data-lt-select>
           <option value="forum_category">Категории форума</option>
-          <option value="catalog_group">Группы каталога</option>
-          <option value="catalog_category">Категории каталога</option>
-          <option value="catalog_subcategory">Подкатегории каталога</option>
+          <option value="catalog_group">Категории каталога</option>
+          <option value="job_group">Категории вакансий</option>
           <option value="city">Города</option>
         </select>
         <select id="dictParent" data-lt-select style="display:none;min-width:220px"></select>
@@ -539,12 +538,19 @@ async function sanctLift(id,stype){
   if(dt)dt.addEventListener('change',function(){loadDicts();dictSyncParentPicker();});
 })();
 function dictParentTypeOf(type){
-  if(type==='catalog_category')return'catalog_group';
-  if(type==='catalog_subcategory')return'catalog_category';
+  if(/_subcategory$/.test(type))return type.replace(/_subcategory$/,'_category');
+  if(/_category$/.test(type))return type.replace(/_category$/,'_group');
   return'';
 }
-function dictIsCatalog(type){
-  return type==='catalog_group'||type==='catalog_category'||type==='catalog_subcategory';
+// Древовидные типы: catalog_*, job_* (и будущие). Возвращает префикс или '' если плоский.
+function dictTreePrefix(type){
+  var m=/^(catalog|job|resume|company|exhibition|community|project)_(group|category|subcategory)$/.exec(type);
+  return m?m[1]:'';
+}
+function dictIsCatalog(type){ return dictTreePrefix(type)!==''; }
+// человекочитаемые названия уровней по префиксу
+function dictTreeWord(prefix){
+  return ({catalog:'каталога',job:'вакансий',resume:'резюме',company:'компаний',exhibition:'выставок',community:'сообществ',project:'проектов'})[prefix]||'';
 }
 
 // состояние раскрытия узлов дерева: { key: true|false }
@@ -562,8 +568,9 @@ async function dictSyncParentPicker(){
 // Единая точка входа: каталог → дерево, остальное → плоский список
 async function loadDicts(){
   var type=document.getElementById('dictType').value;
-  if(dictIsCatalog(type)){
-    return loadCatalogTree();
+  var prefix=dictTreePrefix(type);
+  if(prefix){
+    return loadTree(prefix);
   }
   return loadDictsFlat();
 }
@@ -594,17 +601,17 @@ async function loadDictsFlat(){
   }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить</div>';}
 }
 
-// ─── ДЕРЕВО каталога (3 уровня) ───
-async function loadCatalogTree(){
+// ─── ДЕРЕВО (3 уровня) — универсально для любого префикса (catalog, job, …) ───
+async function loadTree(prefix){
   var list=document.getElementById('dictList');
   var thead=document.getElementById('dictThead');
-  if(thead){thead.style.gridTemplateColumns='1fr';thead.innerHTML='<div>Структура каталога — группы, категории, подкатегории</div>';}
+  if(thead){thead.style.gridTemplateColumns='1fr';thead.innerHTML='<div>Структура '+dictTreeWord(prefix)+' — группы, категории, подкатегории</div>';}
   list.innerHTML='<div class="empty">Загрузка дерева…</div>';
   try{
     var res=await Promise.all([
-      lastopFetch('/api/admin/dictionaries?type=catalog_group'),
-      lastopFetch('/api/admin/dictionaries?type=catalog_category'),
-      lastopFetch('/api/admin/dictionaries?type=catalog_subcategory')
+      lastopFetch('/api/admin/dictionaries?type='+prefix+'_group'),
+      lastopFetch('/api/admin/dictionaries?type='+prefix+'_category'),
+      lastopFetch('/api/admin/dictionaries?type='+prefix+'_subcategory')
     ]);
     var gd=await res[0].json(), cd=await res[1].json(), sd=await res[2].json();
     var groups=gd.items||[], cats=cd.items||[], subs=sd.items||[];
@@ -618,25 +625,27 @@ async function loadCatalogTree(){
     subs.forEach(function(s){(subsByCat[s.parent_key]=subsByCat[s.parent_key]||[]).push(s);});
     var html='';
     groups.forEach(function(g){
-      html+=dictTreeRow(g,0,'catalog_group',(catsByGroup[g.key]||[]).length>0);
+      html+=dictTreeRow(g,0,prefix+'_group',(catsByGroup[g.key]||[]).length>0);
       if(dictTreeExpanded[g.key]){
         (catsByGroup[g.key]||[]).forEach(function(c){
-          html+=dictTreeRow(c,1,'catalog_category',(subsByCat[c.key]||[]).length>0);
+          html+=dictTreeRow(c,1,prefix+'_category',(subsByCat[c.key]||[]).length>0);
           if(dictTreeExpanded[c.key]){
             (subsByCat[c.key]||[]).forEach(function(s){
-              html+=dictTreeRow(s,2,'catalog_subcategory',false);
+              html+=dictTreeRow(s,2,prefix+'_subcategory',false);
             });
-            // строка-добавление подкатегории внутри категории
-            html+=dictAddChildRow(c.key,'catalog_subcategory',2,'+ подкатегория');
+            html+=dictAddChildRow(c.key,prefix+'_subcategory',2,'+ подкатегория');
           }
         });
-        // строка-добавление категории внутри группы
-        html+=dictAddChildRow(g.key,'catalog_category',1,'+ категория');
+        html+=dictAddChildRow(g.key,prefix+'_category',1,'+ категория');
       }
     });
     list.innerHTML=html;
   }catch(e){list.innerHTML='<div class="empty">Не удалось загрузить дерево</div>';}
 }
+// текущий префикс дерева (из выбранного типа)
+function dictCurrentPrefix(){ return dictTreePrefix(document.getElementById('dictType').value); }
+// обёртка: перерисовать текущее дерево
+function reloadTree(){ var p=dictCurrentPrefix(); if(p) loadTree(p); }
 
 // одна строка дерева
 function dictTreeRow(it,level,type,hasChildren){
@@ -649,8 +658,8 @@ function dictTreeRow(it,level,type,hasChildren){
   var labelStyle=level===0?'font-weight:700;font-size:13px;':(level===1?'font-weight:600;font-size:12.5px;':'font-weight:500;font-size:12px;color:var(--tm);');
   var statusBadge=it.is_active?'':'<span class="u-badge banned" style="margin-left:8px">Скрыта</span>';
   var addBtn='';
-  if(type==='catalog_group')addBtn='<button class="dp-btn" title="Добавить категорию" onclick="dictAddChild(\''+esc(it.key).replace(/'/g,"\\'")+'\',\'catalog_category\')">+ кат.</button>';
-  else if(type==='catalog_category')addBtn='<button class="dp-btn" title="Добавить подкатегорию" onclick="dictAddChild(\''+esc(it.key).replace(/'/g,"\\'")+'\',\'catalog_subcategory\')">+ подкат.</button>';
+  if(/_group$/.test(type))addBtn='<button class="dp-btn" title="Добавить категорию" onclick="dictAddChild(\''+esc(it.key).replace(/'/g,"\\'")+'\',\''+type.replace(/_group$/,'_category')+'\')">+ кат.</button>';
+  else if(/_category$/.test(type))addBtn='<button class="dp-btn" title="Добавить подкатегорию" onclick="dictAddChild(\''+esc(it.key).replace(/'/g,"\\'")+'\',\''+type.replace(/_category$/,'_subcategory')+'\')">+ подкат.</button>';
   var actBtns=it.is_active
     ?(addBtn+' <button class="dp-btn" onclick="dictEdit('+it.id+',\''+esc(it.label).replace(/'/g,"\\'")+'\','+it.sort_order+',\'\')">Изменить</button> <button class="dp-btn danger" onclick="dictDeactivate('+it.id+')">Скрыть</button>')
     :('<button class="dp-btn primary" onclick="dictRestore('+it.id+')">Вернуть</button> <button class="dp-btn danger" onclick="dictHardDelete('+it.id+')">Удалить</button>');
@@ -669,19 +678,19 @@ function dictAddChildRow(parentKey,childType,level,label){
 // раскрыть/свернуть узел
 function dictToggle(key){
   dictTreeExpanded[key]=!dictTreeExpanded[key];
-  loadCatalogTree();
+  reloadTree();
 }
 
 // добавить дочерний узел заданному родителю
 async function dictAddChild(parentKey,childType){
-  var what=childType==='catalog_category'?'категории':(childType==='catalog_subcategory'?'подкатегории':'записи');
-  var label=await lastopPrompt({title:'Новая '+(childType==='catalog_category'?'категория':'подкатегория'),label:'Название',placeholder:'Например: Спецтехника',confirmText:'Добавить'});
+  var isSub=/_subcategory$/.test(childType);
+  var label=await lastopPrompt({title:'Новая '+(isSub?'подкатегория':'категория'),label:'Название',placeholder:'Например: Спецтехника',confirmText:'Добавить'});
   if(!label||!label.trim())return;
   try{
     var r=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:childType,label:label.trim(),parent_key:parentKey})});
     if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}
     dictTreeExpanded[parentKey]=true; // раскрыть родителя, чтобы увидеть новый узел
-    loadCatalogTree();
+    reloadTree();
     lastopToast('Добавлено','success');
   }catch(e){lastopToast('Ошибка соединения','error');}
 }
@@ -689,14 +698,15 @@ async function dictAddChild(parentKey,childType){
 // кнопка «+ Добавить» в тулбаре: в дереве добавляет группу, в плоском — запись текущего типа
 async function dictAdd(){
   var type=document.getElementById('dictType').value;
-  if(dictIsCatalog(type)){
+  var prefix=dictTreePrefix(type);
+  if(prefix){
     // в древовидном режиме верхняя кнопка всегда добавляет ГРУППУ
-    var glabel=await lastopPrompt({title:'Новая группа каталога',label:'Название',placeholder:'Например: Промышленность',confirmText:'Добавить'});
+    var glabel=await lastopPrompt({title:'Новая группа ('+dictTreeWord(prefix)+')',label:'Название',placeholder:'Например: Промышленность',confirmText:'Добавить'});
     if(!glabel||!glabel.trim())return;
     try{
-      var rg=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'catalog_group',label:glabel.trim(),parent_key:''})});
+      var rg=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:prefix+'_group',label:glabel.trim(),parent_key:''})});
       if(!rg.ok){var eg=await rg.json().catch(function(){return{};});lastopToast(eg.error||'Ошибка','error');return;}
-      loadCatalogTree();lastopToast('Группа добавлена','success');
+      reloadTree();lastopToast('Группа добавлена','success');
     }catch(e){lastopToast('Ошибка соединения','error');}
     return;
   }
