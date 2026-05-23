@@ -15402,7 +15402,7 @@ ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_size BIGINT NOT NU
 -- Новый CHECK: либо есть текст, либо есть attachment.
 ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_or_attachment_check;
 ALTER TABLE chat_messages ADD CONSTRAINT chat_messages_content_or_attachment_check
-    CHECK (char_length(content) BETWEEN 0 AND 8000 AND (char_length(content) > 0 OR char_length(attachment_url) > 0));
+    CHECK (char_length(content) BETWEEN 0 AND 8000 AND (char_length(content) > 0 OR char_length(attachment_url) > 0 OR is_deleted = TRUE));
 
 CREATE TABLE IF NOT EXISTS chat_typing (
     conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
