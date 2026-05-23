@@ -5620,6 +5620,14 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/communities/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"groups": communityCategoriesTree})
+	})
+
 	mux.HandleFunc("/api/exhibitions/categories", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -19431,12 +19439,18 @@ func validateCommunityName(s string) (string, error) {
 
 func validateCommunityCategory(s string) string {
 	s = strings.TrimSpace(s)
+	// проверка по словарю (наполняется в reloadDictionaries)
+	for _, k := range communityCategoryKeys {
+		if k == s {
+			return s
+		}
+	}
+	// fallback на стартовый набор, если словарь ещё не загружен
 	switch s {
 	case "Логистика", "ВЭД", "IT", "Регионы", "Карьера", "Другое":
 		return s
-	default:
-		return "Другое"
 	}
+	return "Другое"
 }
 
 func validateCommunityDescription(s string) (string, error) {
@@ -28253,6 +28267,22 @@ var jobCategoriesTree []catalogCategoryGroup
 // дерево категорий выставок (3 уровня), наполняется из словаря в reloadDictionaries
 var exhibitionCategoriesTree []catalogCategoryGroup
 
+// дерево категорий сообществ (3 уровня), наполняется из словаря в reloadDictionaries
+var communityCategoriesTree []catalogCategoryGroup
+
+// плоский список ключей категорий сообществ (для валидации по словарю)
+var communityCategoryKeys []string
+
+// стартовый набор категорий сообществ. КЛЮЧ = ЛЕЙБЛ (существующие сообщества хранят русский лейбл → валидны без миграции).
+var communitySeedCategories = []jobCategory{
+	{Key: "Логистика", Label: "Логистика", Color: "#1E8A4C"},
+	{Key: "ВЭД", Label: "ВЭД", Color: "#7C3AED"},
+	{Key: "IT", Label: "IT", Color: "#0891B2"},
+	{Key: "Регионы", Label: "Регионы", Color: "#EA580C"},
+	{Key: "Карьера", Label: "Карьера", Color: "#16A34A"},
+	{Key: "Другое", Label: "Другое", Color: "#475569"},
+}
+
 // стартовый набор категорий выставок (латинские ключи). Сидится как exhibition_group.
 var exhibitionSeedCategories = []jobCategory{
 	{Key: "logistics", Label: "Логистика", Color: "#1E8A4C"},
@@ -28426,6 +28456,10 @@ func seedDictionaries(db *sql.DB) {
 	for i, c := range exhibitionSeedCategories {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('exhibition_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
 	}
+	// community_group: стартовые категории сообществ (ключ = лейбл)
+	for i, c := range communitySeedCategories {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('community_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
+	}
 	// city: собираем уникальные города из профилей пользователей.
 	_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label)
 		SELECT 'city', lower(trim(city)), trim(city)
@@ -28569,6 +28603,49 @@ func reloadDictionaries(db *sql.DB) {
 			rows3.Close()
 		}
 		exhibitionCategoriesTree = groups
+	}
+	// community: собираем дерево (3 уровня) + плоский список ключей для валидации.
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='community_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var groups []catalogCategoryGroup
+		var keys []string
+		groupIdx := map[string]int{}
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				groupIdx[k] = len(groups)
+				groups = append(groups, catalogCategoryGroup{Key: k, Label: l})
+				keys = append(keys, k)
+			}
+		}
+		rows.Close()
+		catIdx := map[string][2]int{}
+		if rows2, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='community_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows2.Next() {
+				var k, l, pk string
+				if rows2.Scan(&k, &l, &pk) == nil {
+					keys = append(keys, k)
+					if idx, ok := groupIdx[pk]; ok {
+						catIdx[k] = [2]int{idx, len(groups[idx].Items)}
+						groups[idx].Items = append(groups[idx].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows2.Close()
+		}
+		if rows3, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='community_subcategory' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows3.Next() {
+				var k, l, pk string
+				if rows3.Scan(&k, &l, &pk) == nil {
+					keys = append(keys, k)
+					if pos, ok := catIdx[pk]; ok {
+						groups[pos[0]].Items[pos[1]].Items = append(groups[pos[0]].Items[pos[1]].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows3.Close()
+		}
+		communityCategoriesTree = groups
+		communityCategoryKeys = keys
 	}
 	// jobs: наполняем jobCategoriesList из словаря (все узлы job_group/job_category/job_subcategory).
 	// Плоский список (для валидации и лейблов по key на любом уровне). Если словарь пуст — оставляем хардкод.
