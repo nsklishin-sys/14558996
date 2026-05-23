@@ -352,12 +352,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneDicts">
       <div class="users-toolbar">
-        <select id="dictType" data-lt-select onchange="loadDicts()">
+        <select id="dictType" data-lt-select onchange="loadDicts();dictSyncParentPicker()">
           <option value="forum_category">Категории форума</option>
           <option value="catalog_group">Группы каталога</option>
           <option value="catalog_category">Категории каталога</option>
+          <option value="catalog_subcategory">Подкатегории каталога</option>
           <option value="city">Города</option>
         </select>
+        <select id="dictParent" data-lt-select style="display:none;min-width:220px"></select>
         <button class="dp-btn primary" style="margin-left:auto" onclick="dictAdd()">+ Добавить</button>
       </div>
       <div class="users-table">
@@ -487,7 +489,7 @@ async function loadAnalytics(){
 }
 function refreshModerationBadge(){loadModerationCount();}
 async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts')loadDicts();if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -513,12 +515,33 @@ async function sanctLift(id,stype){
   if(!await lastopConfirm({title:stype==='ban'?'Снять бан?':'Снять ограничение?',message:'Пользователь снова получит полный доступ.',confirmText:'Снять'}))return;
   try{var r=await lastopFetch('/api/admin/users/'+id+'/lift_sanction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stype:stype})});if(!r.ok){lastopToast('Ошибка','error');return;}loadSanctions();lastopToast('Снято','success');}catch(e){lastopToast('Ошибка соединения','error');}
 }
+// родительский тип для данного типа узла (для 3-уровневого дерева каталога)
+function dictParentTypeOf(type){
+  if(type==='catalog_category')return'catalog_group';
+  if(type==='catalog_subcategory')return'catalog_category';
+  return'';
+}
+// показать/заполнить селект родителя в зависимости от выбранного типа
+async function dictSyncParentPicker(){
+  var type=document.getElementById('dictType').value;
+  var sel=document.getElementById('dictParent');
+  if(!sel)return;
+  var ptype=dictParentTypeOf(type);
+  if(!ptype){sel.style.display='none';sel.innerHTML='';return;}
+  sel.style.display='';
+  sel.innerHTML='<option value="">Загрузка…</option>';
+  try{
+    var r=await lastopFetch('/api/admin/dictionaries?type='+encodeURIComponent(ptype));
+    var d=await r.json();var items=(d.items||[]).filter(function(i){return i.is_active;});
+    sel.innerHTML=items.length?items.map(function(i){return'<option value="'+esc(i.key)+'">'+esc(i.label)+'</option>';}).join(''):'<option value="">— сначала создайте '+(ptype==='catalog_group'?'группу':'категорию')+' —</option>';
+  }catch(e){sel.innerHTML='<option value="">Ошибка загрузки</option>';}
+}
 async function loadDicts(){
   var type=document.getElementById('dictType').value;
   var list=document.getElementById('dictList');
   var thead=document.getElementById('dictThead');
   var hasColor=(type==='forum_category');
-  var hasParent=(type==='catalog_group'||type==='catalog_category');
+  var hasParent=(type==='catalog_group'||type==='catalog_category'||type==='catalog_subcategory');
   var grid=hasParent?'2fr 1.2fr 1.2fr 90px 220px':(hasColor?'2fr 1.2fr 90px 220px':'2fr 1.2fr 90px 220px');
   if(thead){
     var cols='<div>Название</div><div>Ключ</div>'+(hasParent?'<div>Родитель</div>':'')+'<div>Статус</div><div></div>';
@@ -545,7 +568,12 @@ async function dictAdd(){
   var label=await lastopPrompt({title:'Добавить запись',label:'Название',placeholder:'Например: Москва',confirmText:'Добавить'});
   if(!label||!label.trim())return;
   var parent='';
-  if(type==='catalog_category'){parent=await lastopPrompt({title:'Группа',label:'Ключ группы (parent_key)',placeholder:'industry',confirmText:'OK'})||'';}
+  var ptype=dictParentTypeOf(type);
+  if(ptype){
+    var psel=document.getElementById('dictParent');
+    parent=(psel&&psel.value)||'';
+    if(!parent){lastopToast(ptype==='catalog_group'?'Сначала выберите группу':'Сначала выберите категорию','error');return;}
+  }
   var color='';
   if(type==='forum_category'){color=await lastopPrompt({title:'Цвет',label:'HEX-цвет',placeholder:'#2563EB',confirmText:'OK'})||'';}
   try{var r=await lastopFetch('/api/admin/dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,label:label.trim(),parent_key:parent.trim(),color:color.trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});lastopToast(e.error||'Ошибка','error');return;}loadDicts();lastopToast('Добавлено','success');}catch(e){lastopToast('Ошибка соединения','error');}
