@@ -707,7 +707,9 @@ function renderCurrentView(){
 }
 
 let _filtersDebounce=null;
+let _projReady=false;
 function applyFilters(){
+  if(!_projReady)return;
   clearTimeout(_filtersDebounce);
   _filtersDebounce=setTimeout(()=>{loadProjects();},300);
 }
@@ -919,6 +921,7 @@ function resetCreateForm(){
 
   fillFilterCategories();
   await loadProjects();
+  _projReady=true;
 })();
 
 // ─── Динамика правого сайдбара (Спринт 12-B-4) ───
