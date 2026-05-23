@@ -362,7 +362,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneDicts">
       <div class="users-toolbar">
-        <select id="dictType" data-lt-select onchange="loadDicts();dictSyncParentPicker()">
+        <select id="dictType" data-lt-select>
           <option value="forum_category">Категории форума</option>
           <option value="catalog_group">Группы каталога</option>
           <option value="catalog_category">Категории каталога</option>
@@ -532,6 +532,12 @@ async function sanctLift(id,stype){
 // и кнопками «+ дочерний». forum_category и city — плоский список.
 // ═══════════════════════════════════════════════════════════════
 
+// надёжный обработчик смены типа справочника (lt-select шлёт программный change,
+// inline onchange его не ловит). #dictType уже в DOM к этому месту (select выше скрипта).
+(function(){
+  var dt=document.getElementById('dictType');
+  if(dt)dt.addEventListener('change',function(){loadDicts();dictSyncParentPicker();});
+})();
 function dictParentTypeOf(type){
   if(type==='catalog_category')return'catalog_group';
   if(type==='catalog_subcategory')return'catalog_category';
