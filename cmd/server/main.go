@@ -12160,8 +12160,12 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"items": items})
 		case http.MethodPost:
 			var req struct {
-				Type, Key, Label, ParentKey, Color string
-				SortOrder                          int
+				Type      string `json:"type"`
+				Key       string `json:"key"`
+				Label     string `json:"label"`
+				ParentKey string `json:"parent_key"`
+				Color     string `json:"color"`
+				SortOrder int    `json:"sort_order"`
 			}
 			if json.NewDecoder(r.Body).Decode(&req) != nil || req.Type == "" || strings.TrimSpace(req.Label) == "" {
 				writeError(w, http.StatusBadRequest, "type и label обязательны")
@@ -12180,9 +12184,10 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "key": key})
 		case http.MethodPatch:
 			var req struct {
-				ID                  int64
-				Label, Color string
-				SortOrder           int
+				ID        int64  `json:"id"`
+				Label     string `json:"label"`
+				Color     string `json:"color"`
+				SortOrder int    `json:"sort_order"`
 			}
 			if json.NewDecoder(r.Body).Decode(&req) != nil || req.ID == 0 {
 				writeError(w, http.StatusBadRequest, "id обязателен")
