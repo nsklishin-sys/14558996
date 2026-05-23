@@ -337,10 +337,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div><label class="mf-label">Описание</label><textarea class="mf-textarea" id="mDesc" style="height:80px" placeholder="Расскажите о чём ваше сообщество и кому оно будет полезно…"></textarea></div>
       <div class="mf-row2">
         <div><label class="mf-label">Категория</label>
-          <select class="mf-select" id="mCat" data-lt-select>
+          <select class="mf-select" id="mCat" data-category-picker>
             <option value="">Выбрать…</option>
-            <option>Логистика</option><option>ВЭД</option><option>IT</option>
-            <option>Регионы</option><option>Карьера</option><option>Другое</option>
           </select>
         </div>
         <div><label class="mf-label">Регион / город</label><input class="mf-input" id="mRegion" placeholder="Москва"></div>
@@ -458,6 +456,23 @@ function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:tr
 const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];
 
 const COMMUNITIES=[];
+let CAT_TREE=[]; // дерево категорий сообществ из словаря
+async function loadCatTree(){
+  try{const r=await lastopFetch(API+'/communities/categories',{headers:{}});const d=await r.json();CAT_TREE=d.groups||[];}catch{CAT_TREE=[];}
+}
+function buildCatOptions(){
+  const tree=(CAT_TREE&&CAT_TREE.length)?CAT_TREE:null;
+  if(!tree)return '<option value="">Выбрать…</option>';
+  return '<option value="">Выбрать…</option>'+tree.map(g=>{
+    const cats=(g.items&&g.items.length)?g.items:[{key:g.key,label:g.label}];
+    const opts=cats.map(c=>{
+      let o='<option value="'+esc(c.key)+'">'+esc(c.label)+'</option>';
+      if(c.items&&c.items.length){o+=c.items.map(s=>'<option value="'+esc(s.key)+'" data-parent="'+esc(c.key)+'">'+esc(s.label)+'</option>').join('');}
+      return o;
+    }).join('');
+    return '<optgroup label="'+esc(g.label)+'">'+opts+'</optgroup>';
+  }).join('');
+}
 const joinedSet=new Set();
 let currentMode = (new URLSearchParams(location.search).get('filter') === 'my') ? 'my' : 'all';
 let currentTab='';
@@ -661,7 +676,11 @@ function joinRec(id){
 function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.slug||c.id)}
 
 /* ── МОДАЛКА СОЗДАНИЯ ── */
-function openModal(){document.getElementById('modalBg').classList.add('open')}
+function openModal(){
+  const mc=document.getElementById('mCat');
+  if(mc){mc.innerHTML=buildCatOptions();if(window.initCategoryPickers)window.initCategoryPickers();}
+  document.getElementById('modalBg').classList.add('open');
+}
 function closeModal(){document.getElementById('modalBg').classList.remove('open');removeCommunityAvatar();}
 function closeJoinRequestModal(){document.getElementById('joinReqBg').classList.remove('open')}
 function selectPriv(type,card){
@@ -901,6 +920,7 @@ async function fetchCommunitiesByRegion(region){
 
 /* ── АВТОРИЗАЦИЯ ── */
 (async()=>{
+  loadCatTree();
   if(tk()){try{
     const r=await lastopFetch(API+'/me',{headers:{}});
     if(isUnauthorizedResponse(r)){forceRelogin('Сессия истекла. Войдите снова');return}
@@ -932,6 +952,7 @@ async function fetchCommunitiesByRegion(region){
 </script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script src="/assets/category-picker.js" defer></script>
 <script>
 if (window.lastopUX) {
   const si = document.getElementById('searchInput');
