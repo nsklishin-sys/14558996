@@ -71,12 +71,21 @@ window.PROJECT_CATEGORIES = [
   }
 ];
 
-// Утилита: рендер <option> и <optgroup> внутрь существующего <select>.
-// firstOption — текст первого "пустого" пункта (например "Все категории" для фильтра, "Выберите категорию" для формы).
-// Если firstOption=null или undefined — пустой пункт не добавляется.
+// Дерево категорий проектов из словаря (наполняется loadProjectCatTree). Fallback — PROJECT_CATEGORIES.
+window.PROJECT_CAT_TREE = [];
+window.loadProjectCatTree = async function() {
+  try {
+    const r = await (window.lastopFetch ? lastopFetch('/api/projects/categories') : fetch('/api/projects/categories'));
+    const d = await r.json();
+    window.PROJECT_CAT_TREE = d.groups || [];
+  } catch (_) { window.PROJECT_CAT_TREE = []; }
+};
+
+// Утилита: рендер <optgroup>/<option> внутрь <select>. Источник — дерево словаря (PROJECT_CAT_TREE),
+// при пустом дереве — fallback на захардкоженный PROJECT_CATEGORIES (key=label).
+// firstOption — текст первого "пустого" пункта. data-parent для подкатегорий (picker строит дерево).
 window.renderProjectCategoriesInto = function(selectEl, firstOption) {
   if (!selectEl) return;
-  // Сохраняем текущее значение чтобы восстановить после перерисовки
   const currentValue = selectEl.value;
   selectEl.innerHTML = '';
 
@@ -87,23 +96,39 @@ window.renderProjectCategoriesInto = function(selectEl, firstOption) {
     selectEl.appendChild(opt);
   }
 
-  window.PROJECT_CATEGORIES.forEach(g => {
-    const og = document.createElement('optgroup');
-    og.label = g.group;
-    g.items.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      og.appendChild(opt);
+  const tree = (window.PROJECT_CAT_TREE && window.PROJECT_CAT_TREE.length) ? window.PROJECT_CAT_TREE : null;
+  if (tree) {
+    tree.forEach(g => {
+      const og = document.createElement('optgroup');
+      og.label = g.label;
+      const cats = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.key; opt.textContent = c.label;
+        og.appendChild(opt);
+        (c.items || []).forEach(s => {
+          const so = document.createElement('option');
+          so.value = s.key; so.textContent = s.label;
+          so.setAttribute('data-parent', c.key);
+          og.appendChild(so);
+        });
+      });
+      selectEl.appendChild(og);
     });
-    selectEl.appendChild(og);
-  });
-
-  // Восстанавливаем значение если оно есть в новом списке
-  if (currentValue) {
-    selectEl.value = currentValue;
+  } else {
+    // fallback: захардкоженное дерево (key=label)
+    window.PROJECT_CATEGORIES.forEach(g => {
+      const og = document.createElement('optgroup');
+      og.label = g.group;
+      g.items.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        og.appendChild(opt);
+      });
+      selectEl.appendChild(og);
+    });
   }
-  // Триггерим change чтобы lt-select.js перерисовал label/popup
-  try { selectEl.dispatchEvent(new Event('change',{bubbles:true})); } catch(_){}
 
+  if (currentValue) selectEl.value = currentValue;
+  try { selectEl.dispatchEvent(new Event('change',{bubbles:true})); } catch(_){}
 };
