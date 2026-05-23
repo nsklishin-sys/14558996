@@ -2,18 +2,21 @@
 // Применяется к любому <select> с атрибутом data-category-picker.
 // Скрывает оригинальный select, рисует поверх UI, синхронизирует change-события.
 //
-// Использование:
-//   <select id="myCat" data-category-picker>
-//     <optgroup label="Группа"><option>Опция 1</option></optgroup>
+// Использование (2 уровня — как было):
+//   <select data-category-picker>
+//     <optgroup label="Группа"><option value="k">Опция</option></optgroup>
 //   </select>
-//   <script src="/assets/category-picker.js"></script>
+//
+// Использование (3 уровня — дерево с раскрытием):
+//   подкатегории передаются как <option> с атрибутом data-parent="ключ_категории".
+//   Компонент сам построит группа → категория → подкатегория с раскрытием.
+//   Если ни у одной опции нет data-parent — работает в обычном плоском режиме (полная совместимость).
 //
 // Если value меняется программно — вызвать select.dispatchEvent(new Event('change')) чтобы UI обновился.
 
 (function() {
   'use strict';
 
-  // CSS инжектируется один раз
   if (!document.getElementById('cp-styles')) {
     const css = `
       .cp-wrap{position:relative;font-family:inherit}
@@ -87,6 +90,28 @@
       .cp-option.cp-selected .cp-option-check{opacity:1}
       .cp-option-check svg{width:14px;height:14px;display:block;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 
+      /* ── режим дерева (3 уровня) ── */
+      .cp-node{
+        display:flex;align-items:center;gap:6px;
+        padding:8px 14px;font-size:13px;color:var(--t,#0F172A);
+        cursor:pointer;transition:background .1s;user-select:none
+      }
+      .cp-node:hover{background:var(--gp,#F8FAFC)}
+      .cp-node.cp-selected{color:var(--g,#1E8A4C);font-weight:600}
+      .cp-node-caret{
+        flex-shrink:0;width:18px;height:18px;display:grid;place-items:center;
+        color:var(--gmt,#94A3B8);font-size:10px;transition:transform .12s
+      }
+      .cp-node-caret.cp-open{transform:rotate(90deg);color:var(--g,#1E8A4C)}
+      .cp-node-caret-empty{flex-shrink:0;width:18px}
+      .cp-node-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .cp-node-check{flex-shrink:0;color:var(--g,#1E8A4C);opacity:0}
+      .cp-node.cp-selected .cp-node-check{opacity:1}
+      .cp-node-check svg{width:14px;height:14px;display:block;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+      .cp-lvl-0{font-weight:700}
+      .cp-lvl-1{padding-left:32px}
+      .cp-lvl-2{padding-left:52px;font-size:12.5px;color:var(--tm,#3A5245)}
+
       .cp-empty-state{
         padding:24px 14px;text-align:center;
         font-size:12px;color:var(--gmt,#94A3B8)
@@ -99,70 +124,76 @@
   }
 
   function buildPicker(select) {
-    // Идемпотентность: если рядом уже есть .cp-wrap (от предыдущего
-    // вызова или из-за гонки DOMContentLoaded между category-picker.js
-    // и страничным скриптом, который дёргает fillFilterCategories) —
-    // удаляем его и строим заново. Это закрывает edge-case с дублем
-    // селекта «Все категории» в /projects.html.
     const existingWrap = select.closest('.cp-wrap');
     if (existingWrap) {
-      // Вынимаем select из обёртки, удаляем обёртку
       existingWrap.parentNode.insertBefore(select, existingWrap);
       existingWrap.remove();
     }
     select.dataset.cpReady = '1';
 
-    // Собираем структуру из optgroup/option
+    // Собираем структуру из optgroup/option.
+    // groups: [{ label, items:[{value,text, children:[{value,text}]}] }]
+    // children заполняются из <option data-parent="ключ_категории">.
     const groups = [];
     let firstEmptyOpt = null;
+    let hasTree = false; // включаем режим дерева только если есть data-parent
+
     Array.from(select.children).forEach(child => {
       if (child.tagName === 'OPTGROUP') {
-        const items = Array.from(child.querySelectorAll('option')).map(o => ({
-          value: o.value,
-          text: o.textContent
-        }));
+        const opts = Array.from(child.querySelectorAll('option'));
+        const items = [];
+        const byKey = {};
+        // сначала родительские категории (без data-parent), затем подкатегории
+        opts.forEach(o => {
+          const parent = o.getAttribute('data-parent');
+          if (!parent) {
+            const node = { value: o.value, text: o.textContent, children: [] };
+            items.push(node);
+            byKey[o.value] = node;
+          }
+        });
+        opts.forEach(o => {
+          const parent = o.getAttribute('data-parent');
+          if (parent) {
+            hasTree = true;
+            const node = { value: o.value, text: o.textContent };
+            if (byKey[parent]) byKey[parent].children.push(node);
+            else items.push({ value: o.value, text: o.textContent, children: [] }); // сирота — как категория
+          }
+        });
         groups.push({ label: child.label, items });
       } else if (child.tagName === 'OPTION') {
         if (child.value === '' && !firstEmptyOpt) {
           firstEmptyOpt = { value: '', text: child.textContent };
         } else {
-          // Опция вне optgroup — кладём в "разное"
           if (!groups.length || groups[groups.length - 1].label !== '__loose__') {
             groups.push({ label: '__loose__', items: [] });
           }
-          groups[groups.length - 1].items.push({ value: child.value, text: child.textContent });
+          groups[groups.length - 1].items.push({ value: child.value, text: child.textContent, children: [] });
         }
       }
     });
 
-    // Fallback: если у select.value стоит категория, которой нет
-    // в собранных группах (старая категория, которую удалили
-    // или переименовали в актуальном списке) — добавляем
-    // «фантомную» опцию с пометкой. Это позволяет сохранить
-    // текущее значение в DOM и показать юзеру понятную метку
-    // вместо пустоты.
+    // Fallback для значения, которого нет в списке (удалённая категория)
     const currentValue = select.value;
     if (currentValue) {
-      let foundInGroups = false;
+      let found = false;
       groups.forEach(g => g.items.forEach(it => {
-        if (it.value === currentValue) foundInGroups = true;
+        if (it.value === currentValue) found = true;
+        (it.children || []).forEach(ch => { if (ch.value === currentValue) found = true; });
       }));
-      if (!foundInGroups) {
+      if (!found) {
         const ghostText = currentValue + ' (удалена из списка)';
-        // 1. Добавляем option в сам <select>, чтобы браузер не
-        //    сбросил value на первое доступное значение
         const ghostOpt = document.createElement('option');
         ghostOpt.value = currentValue;
         ghostOpt.textContent = ghostText;
         select.appendChild(ghostOpt);
         select.value = currentValue;
-        // 2. Добавляем псевдо-группу в picker, чтобы юзер видел
-        //    опцию в UI
-        groups.push({ label: 'Удалённые категории', items: [{ value: currentValue, text: ghostText }] });
+        groups.push({ label: 'Удалённые категории', items: [{ value: currentValue, text: ghostText, children: [] }] });
       }
     }
 
-    // Создаём wrapper и UI
+    // UI
     const wrap = document.createElement('div');
     wrap.className = 'cp-wrap';
     select.parentNode.insertBefore(wrap, select);
@@ -193,39 +224,106 @@
     const searchInput = popup.querySelector('input');
     const list = popup.querySelector('.cp-list');
 
-    // Рендер списка опций (с фильтром)
-    function renderList(query) {
+    // состояние раскрытия в режиме дерева
+    const expanded = {}; // ключ группы/категории -> bool
+
+    // ── РЕНДЕР: плоский режим (как было, для 2-уровневых потребителей) ──
+    function renderFlat(query) {
       query = (query || '').trim().toLowerCase();
       list.innerHTML = '';
       let total = 0;
-
       groups.forEach(g => {
         const filtered = g.items.filter(it => !query || it.text.toLowerCase().includes(query));
         if (!filtered.length) return;
-
         if (g.label && g.label !== '__loose__') {
           const title = document.createElement('div');
           title.className = 'cp-group-title';
           title.textContent = g.label;
           list.appendChild(title);
         }
-
         filtered.forEach(it => {
           const opt = document.createElement('div');
           opt.className = 'cp-option';
           if (select.value === it.value) opt.classList.add('cp-selected');
           opt.dataset.value = it.value;
-          opt.innerHTML = `
-            <span class="cp-option-text"></span>
-            <span class="cp-option-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
-          `;
+          opt.innerHTML = `<span class="cp-option-text"></span><span class="cp-option-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`;
           opt.querySelector('.cp-option-text').textContent = it.text;
-          opt.addEventListener('click', () => {
-            selectOption(it.value);
-            close();
-          });
+          opt.addEventListener('click', () => { selectOption(it.value); close(); });
           list.appendChild(opt);
           total++;
+        });
+      });
+      if (!total) {
+        const empty = document.createElement('div');
+        empty.className = 'cp-empty-state';
+        empty.textContent = 'Ничего не найдено';
+        list.appendChild(empty);
+      }
+    }
+
+    // ── РЕНДЕР: дерево (3 уровня, с раскрытием) ──
+    function nodeRow(level, label, value, hasChildren, isExpanded, onCaret, onSelect) {
+      const row = document.createElement('div');
+      row.className = 'cp-node cp-lvl-' + level;
+      if (value !== null && select.value === value) row.classList.add('cp-selected');
+      const caret = hasChildren
+        ? `<span class="cp-node-caret${isExpanded ? ' cp-open' : ''}">▶</span>`
+        : `<span class="cp-node-caret-empty"></span>`;
+      const check = value !== null
+        ? `<span class="cp-node-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`
+        : '';
+      row.innerHTML = caret + `<span class="cp-node-label"></span>` + check;
+      row.querySelector('.cp-node-label').textContent = label;
+      const caretEl = row.querySelector('.cp-node-caret');
+      if (caretEl && onCaret) {
+        caretEl.addEventListener('click', e => { e.stopPropagation(); onCaret(); });
+      }
+      row.addEventListener('click', () => {
+        if (onSelect) onSelect();
+        else if (onCaret) onCaret(); // у группы нет выбора — клик раскрывает
+      });
+      return row;
+    }
+
+    function renderTree(query) {
+      query = (query || '').trim().toLowerCase();
+      list.innerHTML = '';
+      let total = 0;
+      const searching = !!query;
+
+      groups.forEach(g => {
+        // фильтрация: показываем категорию/подкатегорию, если совпадает её текст
+        // или текст подкатегории. При поиске авто-раскрываем.
+        const matchedItems = g.items.filter(cat => {
+          if (!searching) return true;
+          if (cat.text.toLowerCase().includes(query)) return true;
+          return (cat.children || []).some(ch => ch.text.toLowerCase().includes(query));
+        });
+        if (!matchedItems.length) return;
+
+        const gKey = 'g:' + g.label;
+        const gExpanded = searching ? true : (expanded[gKey] !== false); // группы по умолчанию раскрыты
+        list.appendChild(nodeRow(0, g.label === '__loose__' ? 'Категории' : g.label, null, true, gExpanded,
+          () => { expanded[gKey] = !gExpanded; renderTree(searchInput.value); }, null));
+        total++;
+        if (!gExpanded) return;
+
+        matchedItems.forEach(cat => {
+          const hasCh = cat.children && cat.children.length;
+          const cKey = 'c:' + cat.value;
+          const cExpanded = searching ? true : !!expanded[cKey]; // категории по умолчанию свёрнуты
+          list.appendChild(nodeRow(1, cat.text, cat.value, hasCh, cExpanded,
+            hasCh ? () => { expanded[cKey] = !cExpanded; renderTree(searchInput.value); } : null,
+            () => { selectOption(cat.value); close(); }));
+          total++;
+          if (hasCh && cExpanded) {
+            const subs = cat.children.filter(ch => !searching || ch.text.toLowerCase().includes(query) || cat.text.toLowerCase().includes(query));
+            subs.forEach(sub => {
+              list.appendChild(nodeRow(2, sub.text, sub.value, false, false, null,
+                () => { selectOption(sub.value); close(); }));
+              total++;
+            });
+          }
         });
       });
 
@@ -237,11 +335,17 @@
       }
     }
 
+    function renderList(query) {
+      if (hasTree) renderTree(query);
+      else renderFlat(query);
+    }
+
     function updateTrigger() {
       const v = select.value;
       let label = '';
       groups.forEach(g => g.items.forEach(it => {
         if (it.value === v) label = it.text;
+        (it.children || []).forEach(ch => { if (ch.value === v) label = ch.text; });
       }));
       if (!label && firstEmptyOpt) {
         triggerText.textContent = firstEmptyOpt.text;
@@ -258,7 +362,6 @@
     function selectOption(value) {
       select.value = value;
       updateTrigger();
-      // Триггерим change для другого JS
       select.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
@@ -278,28 +381,25 @@
       else open();
     }
 
-    trigger.addEventListener('click', e => {
-      e.stopPropagation();
-      toggle();
-    });
+    trigger.addEventListener('click', e => { e.stopPropagation(); toggle(); });
     searchInput.addEventListener('input', () => renderList(searchInput.value));
     searchInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const first = list.querySelector('.cp-option');
-        if (first) {
-          selectOption(first.dataset.value);
+        const firstSel = list.querySelector('.cp-option, .cp-node');
+        // в режиме дерева Enter выбирает первую выбираемую (с data-value) — пропускаем группы
+        if (hasTree) {
+          // ничего не делаем по Enter в дереве, чтобы не выбрать группу
+        } else if (firstSel) {
+          selectOption(firstSel.dataset.value);
           close();
         }
       } else if (e.key === 'Escape') {
         close();
       }
     });
-    document.addEventListener('click', e => {
-      if (!wrap.contains(e.target)) close();
-    });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) close(); });
 
-    // Если value <select>а меняется снаружи — слушаем
     select.addEventListener('change', () => updateTrigger());
 
     updateTrigger();
@@ -309,7 +409,6 @@
     document.querySelectorAll('select[data-category-picker]').forEach(buildPicker);
   }
 
-  // Экспортируем для повторной инициализации после динамической вставки
   window.initCategoryPickers = init;
 
   if (document.readyState === 'loading') {
