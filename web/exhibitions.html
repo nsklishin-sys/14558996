@@ -345,8 +345,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <span class="pf-filter-title">Фильтры</span>
     <div class="pf-div"></div>
     <div class="pf-group"><span class="pf-label">Тематика</span>
-      <select class="pf-select" id="filterCat" data-lt-select onchange="applyFilters()">
-        <option value="">Все</option><option>Логистика</option><option>Строительство</option><option>Промышленность</option><option>Технологии</option><option>АПК</option><option>Фармацевтика</option>
+      <select class="pf-select" id="filterCat" onchange="applyFilters()">
+        <option value="">Все</option>
       </select></div>
     <div class="pf-div"></div>
     <div class="pf-group"><span class="pf-label">Город</span>
@@ -521,6 +521,25 @@ const GRADIENTS={
 };
 
 let EXPOS=[];
+let CAT_TREE=[]; // дерево категорий выставок
+async function loadCatFilter(){
+  try{
+    const r=await lastopFetch(API+'/exhibitions/categories');
+    const d=await r.json();
+    CAT_TREE=d.groups||[];
+  }catch{CAT_TREE=[];}
+  const sel=document.getElementById('filterCat');
+  if(!sel||!CAT_TREE.length)return;
+  let html='<option value="">Все</option>';
+  CAT_TREE.forEach(g=>{
+    const cats=(g.items&&g.items.length)?g.items:[{key:g.key,label:g.label}];
+    cats.forEach(c=>{
+      html+='<option value="'+esc(c.key)+'">'+esc(c.label)+'</option>';
+      (c.items||[]).forEach(s=>{ html+='<option value="'+esc(s.key)+'">&nbsp;&nbsp;'+esc(s.label)+'</option>'; });
+    });
+  });
+  sel.innerHTML=html;
+}
 
 const MONTH_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 function formatDateRange(starts, ends){
@@ -810,6 +829,7 @@ function submitStand(){
     document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
   }catch{}
   loadExhibitions();
+  loadCatFilter();
   checkAdminAndShowCreateBtn();
 })();
 
