@@ -98,7 +98,7 @@
   </a>
   <a class="nav-item" href="/jobs.html" data-match="^/jobs|^/job-detail|^/resume-detail">
     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="12" cy="13" r="2"/><path d="M8 19c0-2.2 1.8-4 4-4s4 1.8 4 4"/></svg>
-    <span>Резюме</span>
+    <span>Карьера</span>
   </a>
   <a class="nav-item" href="/catalog.html" data-match="^/catalog|^/product-detail|^/service-detail">
     <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
@@ -504,7 +504,7 @@
       { k: 'projects', l: 'Проекты', re: /^\/projects|^\/project-detail/ },
       { k: 'events', l: 'Мероприятия', re: /^\/events|^\/event-detail/ },
       { k: 'exhibitions', l: 'Выставки', re: /^\/exhibition/ },
-      { k: 'jobs', l: 'Резюме и вакансии', re: /^\/jobs|^\/job-detail|^\/resume-detail/ },
+      { k: 'jobs', l: 'Карьера', re: /^\/jobs|^\/job-detail|^\/resume-detail/ },
       { k: 'catalog', l: 'Товары и услуги', re: /^\/catalog|^\/product-detail|^\/service-detail/ },
       { k: 'forum', l: 'Форум', re: /^\/forum/ },
       { k: 'companies', l: 'Компании', re: /^\/companies|^\/company-detail|^\/my-company/ },
