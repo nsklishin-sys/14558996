@@ -5040,7 +5040,7 @@ func main() {
 			return
 		}
 		if r.Method == http.MethodDelete {
-			_, err := db.Exec(`UPDATE chat_messages SET is_deleted=TRUE,content='' WHERE id=$1 AND author_id=$2`, msgID, userID)
+			_, err := db.Exec(`UPDATE chat_messages SET is_deleted=TRUE,content='',attachment_url='',attachment_name='',attachment_type='',attachment_size=0 WHERE id=$1 AND author_id=$2`, msgID, userID)
 			if err != nil {
 				handleChatError(w, err)
 				return
