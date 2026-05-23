@@ -5620,6 +5620,14 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/exhibitions/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"groups": exhibitionCategoriesTree})
+	})
+
 	mux.HandleFunc("/api/exhibitions/featured", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -28242,6 +28250,23 @@ type catalogCategoryGroup struct {
 // дерево категорий вакансий (3 уровня), наполняется из словаря в reloadDictionaries
 var jobCategoriesTree []catalogCategoryGroup
 
+// дерево категорий выставок (3 уровня), наполняется из словаря в reloadDictionaries
+var exhibitionCategoriesTree []catalogCategoryGroup
+
+// стартовый набор категорий выставок (латинские ключи). Сидится как exhibition_group.
+var exhibitionSeedCategories = []jobCategory{
+	{Key: "logistics", Label: "Логистика", Color: "#1E8A4C"},
+	{Key: "production", Label: "Производство", Color: "#7C3AED"},
+	{Key: "tech", Label: "Технологии", Color: "#0891B2"},
+	{Key: "machinery", Label: "Машиностроение", Color: "#EA580C"},
+	{Key: "construction", Label: "Строительство", Color: "#65A30D"},
+	{Key: "finance", Label: "Финансы", Color: "#CA8A04"},
+	{Key: "agro", Label: "Сельское хозяйство", Color: "#16A34A"},
+	{Key: "energy", Label: "Энергетика", Color: "#DC2626"},
+	{Key: "medicine", Label: "Медицина", Color: "#0EA5E9"},
+	{Key: "other", Label: "Другое", Color: "#475569"},
+}
+
 // catalogCategoriesList — 11 групп × 4-6 подкатегорий = 62 подкатегории.
 // Применяется и к товарам, и к услугам (поле type — отдельно).
 var catalogCategoriesList = []catalogCategoryGroup{
@@ -28397,6 +28422,10 @@ func seedDictionaries(db *sql.DB) {
 	for i, c := range jobCategoriesList {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('job_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
 	}
+	// exhibition_group: стартовые категории выставок
+	for i, c := range exhibitionSeedCategories {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('exhibition_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
+	}
 	// city: собираем уникальные города из профилей пользователей.
 	_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label)
 		SELECT 'city', lower(trim(city)), trim(city)
@@ -28502,6 +28531,44 @@ func reloadDictionaries(db *sql.DB) {
 			rows3.Close()
 		}
 		jobCategoriesTree = groups
+	}
+	// exhibition: собираем дерево (3 уровня) для endpoint — как jobs.
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='exhibition_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var groups []catalogCategoryGroup
+		groupIdx := map[string]int{}
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				groupIdx[k] = len(groups)
+				groups = append(groups, catalogCategoryGroup{Key: k, Label: l})
+			}
+		}
+		rows.Close()
+		catIdx := map[string][2]int{}
+		if rows2, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='exhibition_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows2.Next() {
+				var k, l, pk string
+				if rows2.Scan(&k, &l, &pk) == nil {
+					if idx, ok := groupIdx[pk]; ok {
+						catIdx[k] = [2]int{idx, len(groups[idx].Items)}
+						groups[idx].Items = append(groups[idx].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows2.Close()
+		}
+		if rows3, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='exhibition_subcategory' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows3.Next() {
+				var k, l, pk string
+				if rows3.Scan(&k, &l, &pk) == nil {
+					if pos, ok := catIdx[pk]; ok {
+						groups[pos[0]].Items[pos[1]].Items = append(groups[pos[0]].Items[pos[1]].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows3.Close()
+		}
+		exhibitionCategoriesTree = groups
 	}
 	// jobs: наполняем jobCategoriesList из словаря (все узлы job_group/job_category/job_subcategory).
 	// Плоский список (для валидации и лейблов по key на любом уровне). Если словарь пуст — оставляем хардкод.
