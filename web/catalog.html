@@ -281,7 +281,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </div>
         <div>
           <label class="mf-label">Категория *</label>
-          <select class="mf-select" id="ciCategory"></select>
+          <select class="mf-select" id="ciCategory" data-category-picker></select>
         </div>
       </div>
       <div>
@@ -486,6 +486,7 @@ function fillCategorySelects(){
       items.map(c => '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>').join('') +
       '</optgroup>';
   }).join('');
+  if (window.initCategoryPickers) window.initCategoryPickers();
 }
 function setCategoryGroup(key){ currentCategoryGroup = key; renderCategorySidebar(); applyFilters(); }
 
@@ -774,6 +775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 </script>
+<script src="/assets/category-picker.js" defer></script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
