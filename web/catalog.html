@@ -481,10 +481,19 @@ function fillCategorySelects(){
   const sel = document.getElementById('ciCategory');
   if (!sel) return;
   sel.innerHTML = CATEGORY_GROUPS.map(g => {
-    const items = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
-    return '<optgroup label="' + escAttr(g.label) + '">' +
-      items.map(c => '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>').join('') +
-      '</optgroup>';
+    const cats = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
+    const opts = cats.map(c => {
+      // категория (2-й уровень)
+      let html = '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>';
+      // подкатегории (3-й уровень) — с визуальным отступом
+      if (c.items && c.items.length) {
+        html += c.items.map(s =>
+          '<option value="' + escAttr(s.key) + '"> — ' + esc(s.label) + '</option>'
+        ).join('');
+      }
+      return html;
+    }).join('');
+    return '<optgroup label="' + escAttr(g.label) + '">' + opts + '</optgroup>';
   }).join('');
   if (window.initCategoryPickers) window.initCategoryPickers();
 }
