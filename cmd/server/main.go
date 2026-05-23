@@ -28391,7 +28391,9 @@ func seedDictionaries(db *sql.DB) {
 			_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, sort_order) VALUES ('catalog_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, g.Key, ci)
 		}
 	}
-	// job_group: текущие категории вакансий как группы верхнего уровня (сохраняем ключи → старые записи валидны)
+	// Разовая чистка: удалить дубли job_category (рудимент старого seed, ключи живут в job_group).
+	_, _ = db.Exec(`DELETE FROM dictionaries WHERE type='job_category'`)
+	// job_group: текущие категории вакансий как группы верхнего уровня (ключи сохранены → старые записи валидны)
 	for i, c := range jobCategoriesList {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('job_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
 	}
@@ -28405,6 +28407,8 @@ func seedDictionaries(db *sql.DB) {
 // reloadDictionaries загружает справочники из БД в in-memory кэш.
 // forumCategories, catalogCategoriesList, citiesList наполняются из таблицы.
 func reloadDictionaries(db *sql.DB) {
+	// Разовая чистка: удалить дубли job_category (рудимент старого seed, ключи живут в job_group).
+	_, _ = db.Exec(`DELETE FROM dictionaries WHERE type='job_category'`)
 	// forum_category
 	if rows, err := db.Query(`SELECT key, label, color FROM dictionaries WHERE type='forum_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
 		var fc []forumCategoryDef
