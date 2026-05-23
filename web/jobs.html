@@ -129,6 +129,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cat-row:hover{background:var(--gp)}
 .cat-row.active{background:var(--gl);color:var(--g);font-weight:700}
 .cat-row-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-caret{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--gmt);flex-shrink:0;border-radius:4px;cursor:pointer;transition:background .12s}
+.cat-caret:hover{background:var(--gl);color:var(--g)}
+.cat-caret-empty{width:16px;flex-shrink:0;display:inline-block}
+.cat-lvl1{padding-left:18px;font-size:11.5px}
+.cat-lvl2{padding-left:34px;font-size:11px;color:var(--tm)}
 .tip-card{background:linear-gradient(135deg,var(--gl),var(--gp));border:1px solid var(--gb);border-radius:var(--rxl);padding:14px}
 .tip-title{font-size:12px;font-weight:800;color:var(--g);margin-bottom:6px}
 .tip-text{font-size:11px;color:var(--tm);line-height:1.5}
@@ -272,7 +277,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-row">
         <div>
           <label class="mf-label">Категория *</label>
-          <select class="mf-select" id="jobCategory" data-lt-select></select>
+          <select class="mf-select" id="jobCategory" data-category-picker></select>
         </div>
         <div>
           <label class="mf-label">Опыт (мин. лет)</label>
@@ -358,7 +363,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-row">
         <div>
           <label class="mf-label">Категория *</label>
-          <select class="mf-select" id="cvCategory" data-lt-select></select>
+          <select class="mf-select" id="cvCategory" data-category-picker></select>
         </div>
         <div>
           <label class="mf-label">Опыт (лет)</label>
@@ -435,6 +440,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API = '/api';
 
 let CATEGORIES = [];
+let CAT_TREE = []; // дерево групп для формы и сайдбара
+let catTreeExpanded = {}; // раскрытие узлов сайдбара
 let currentMode = 'jobs';
 let currentTab = 'all';
 let currentCategory = '';
@@ -524,26 +531,81 @@ async function loadCategories(){
     const r = await lastopFetch(API + '/jobs/categories');
     const d = await r.json();
     CATEGORIES = d.categories || [];
+    CAT_TREE = d.groups || [];
     renderCategorySidebar();
     fillCategorySelects();
   } catch (err) { console.error('loadCategories', err); }
 }
 function renderCategorySidebar(){
   const wrap = document.getElementById('catList');
-  wrap.innerHTML =
-    '<a class="cat-row' + (currentCategory === '' ? ' active' : '') + '" onclick="setCategory(\'\')">' +
-      '<span class="cat-row-dot" style="background:#5A8A6A"></span>Все категории</a>' +
-    CATEGORIES.map(c =>
+  // дерево: группы → категории → подкатегории, с раскрытием
+  let html = '<a class="cat-row' + (currentCategory === '' ? ' active' : '') + '" onclick="setCategory(\'\')">' +
+      '<span class="cat-row-dot" style="background:#5A8A6A"></span>Все категории</a>';
+  const tree = (CAT_TREE && CAT_TREE.length) ? CAT_TREE : null;
+  if (tree) {
+    tree.forEach(g => {
+      const hasKids = g.items && g.items.length;
+      const exp = !!catTreeExpanded[g.key];
+      const caret = hasKids
+        ? '<span class="cat-caret" onclick="event.stopPropagation();catTreeToggle(\'' + esc(g.key) + '\')">' + (exp ? '▾' : '▸') + '</span>'
+        : '<span class="cat-caret-empty"></span>';
+      html += '<a class="cat-row cat-lvl0' + (currentCategory === g.key ? ' active' : '') + '" onclick="setCategory(\'' + esc(g.key) + '\')">' +
+        caret + '<span>' + esc(g.label) + '</span></a>';
+      if (exp && hasKids) {
+        g.items.forEach(c => {
+          const hasSub = c.items && c.items.length;
+          const cexp = !!catTreeExpanded[c.key];
+          const ccaret = hasSub
+            ? '<span class="cat-caret" onclick="event.stopPropagation();catTreeToggle(\'' + esc(c.key) + '\')">' + (cexp ? '▾' : '▸') + '</span>'
+            : '<span class="cat-caret-empty"></span>';
+          html += '<a class="cat-row cat-lvl1' + (currentCategory === c.key ? ' active' : '') + '" onclick="setCategory(\'' + esc(c.key) + '\')">' +
+            ccaret + '<span>' + esc(c.label) + '</span></a>';
+          if (cexp && hasSub) {
+            c.items.forEach(s => {
+              html += '<a class="cat-row cat-lvl2' + (currentCategory === s.key ? ' active' : '') + '" onclick="setCategory(\'' + esc(s.key) + '\')">' +
+                '<span class="cat-caret-empty"></span><span>' + esc(s.label) + '</span></a>';
+            });
+          }
+        });
+      }
+    });
+  } else {
+    // fallback: плоский (если дерево пустое)
+    html += CATEGORIES.map(c =>
       '<a class="cat-row' + (currentCategory === c.key ? ' active' : '') + '" onclick="setCategory(\'' + esc(c.key) + '\')">' +
         '<span class="cat-row-dot" style="background:' + esc(c.color) + '"></span>' + esc(c.label) + '</a>'
     ).join('');
+  }
+  wrap.innerHTML = html;
 }
+function catTreeToggle(key){ catTreeExpanded[key] = !catTreeExpanded[key]; renderCategorySidebar(); }
 function fillCategorySelects(){
+  const tree = (CAT_TREE && CAT_TREE.length) ? CAT_TREE : null;
+  const buildOptions = () => {
+    if (!tree) {
+      // fallback: плоский список
+      return CATEGORIES.map(c => '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>').join('');
+    }
+    return tree.map(g => {
+      const cats = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
+      const opts = cats.map(c => {
+        let o = '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>';
+        if (c.items && c.items.length) {
+          o += c.items.map(s =>
+            '<option value="' + esc(s.key) + '" data-parent="' + esc(c.key) + '">' + esc(s.label) + '</option>'
+          ).join('');
+        }
+        return o;
+      }).join('');
+      return '<optgroup label="' + esc(g.label) + '">' + opts + '</optgroup>';
+    }).join('');
+  };
   ['jobCategory','cvCategory'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
-    sel.innerHTML = CATEGORIES.map(c => '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>').join('');
+    sel.innerHTML = buildOptions();
   });
+  if (window.initCategoryPickers) window.initCategoryPickers();
 }
 function setCategory(key){ currentCategory = key; renderCategorySidebar(); loadList(); }
 
@@ -737,7 +799,7 @@ function openCreateModal(){
     document.getElementById('jobFormat').value = 'office';
     document.getElementById('jobEmpl').value = 'full';
     document.getElementById('jobStatus').value = 'active';
-    if (currentCategory) document.getElementById('jobCategory').value = currentCategory;
+    if (currentCategory) { const _s=document.getElementById('jobCategory'); _s.value = currentCategory; _s.dispatchEvent(new Event('change',{bubbles:true})); }
     document.getElementById('modalJob').classList.add('open');
     setTimeout(() => document.getElementById('jobTitle').focus(), 150);
   } else {
@@ -746,7 +808,7 @@ function openCreateModal(){
     document.getElementById('cvFormat').value = 'office';
     document.getElementById('cvEmpl').value = 'full';
     document.getElementById('cvStatus').value = 'open';
-    if (currentCategory) document.getElementById('cvCategory').value = currentCategory;
+    if (currentCategory) { const _s=document.getElementById('cvCategory'); _s.value = currentCategory; _s.dispatchEvent(new Event('change',{bubbles:true})); }
     document.getElementById('modalCv').classList.add('open');
     setTimeout(() => document.getElementById('cvTitle').focus(), 150);
   }
@@ -852,6 +914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script src="/assets/category-picker.js" defer></script>
 <script>
 if (window.lastopUX) {
   const si = document.getElementById('searchInput');
