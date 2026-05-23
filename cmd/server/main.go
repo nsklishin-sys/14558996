@@ -28388,9 +28388,9 @@ func seedDictionaries(db *sql.DB) {
 			_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, sort_order) VALUES ('catalog_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, g.Key, ci)
 		}
 	}
-	// job_category: текущие категории вакансий/резюме (сохраняем ключи → старые записи валидны)
+	// job_group: текущие категории вакансий как группы верхнего уровня (сохраняем ключи → старые записи валидны)
 	for i, c := range jobCategoriesList {
-		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('job_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('job_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
 	}
 	// city: собираем уникальные города из профилей пользователей.
 	_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label)
