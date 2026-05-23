@@ -342,7 +342,7 @@
         }
         // 2) Сообщение со ссылкой на пост
         var link = location.origin + '/news-detail.html?id=' + encodeURIComponent(current.opts.postPublicID);
-        var msg = comment ? (comment + '\\n\\n' + link) : link;
+        var msg = comment ? (comment + '\n\n' + link) : link;
         var mr = await lastopFetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
