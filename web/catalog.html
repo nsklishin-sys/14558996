@@ -485,10 +485,10 @@ function fillCategorySelects(){
     const opts = cats.map(c => {
       // категория (2-й уровень)
       let html = '<option value="' + escAttr(c.key) + '">' + esc(c.label) + '</option>';
-      // подкатегории (3-й уровень) — с визуальным отступом
+      // подкатегории (3-й уровень) — через data-parent, picker построит дерево
       if (c.items && c.items.length) {
         html += c.items.map(s =>
-          '<option value="' + escAttr(s.key) + '"> — ' + esc(s.label) + '</option>'
+          '<option value="' + escAttr(s.key) + '" data-parent="' + escAttr(c.key) + '">' + esc(s.label) + '</option>'
         ).join('');
       }
       return html;
