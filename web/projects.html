@@ -919,6 +919,7 @@ function resetCreateForm(){
     document.getElementById('pddRole').textContent=user.role||user.position||'Участник LASTOP';
   }catch{}
 
+  if (window.loadProjectCatTree) await window.loadProjectCatTree();
   fillFilterCategories();
   await loadProjects();
   _projReady=true;
