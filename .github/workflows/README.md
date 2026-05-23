@@ -1,4 +1,4 @@
-# GitHub Actions — деплой LASTOP
+# GitHub Actions — деплой LASTOP (автодеплой проверен 23.05)
 
 ## Когда срабатывает
 - Любой push в ветку main
