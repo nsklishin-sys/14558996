@@ -15026,11 +15026,13 @@ CREATE TABLE IF NOT EXISTS exhibitions (
     visitors_count INTEGER NOT NULL DEFAULT 0,
     exhibitors_count INTEGER NOT NULL DEFAULT 0,
     saves_count INTEGER NOT NULL DEFAULT 0,
+    is_featured BOOLEAN NOT NULL DEFAULT FALSE,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_by_user_id BIGINT NOT NULL REFERENCES users(id),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE exhibitions ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS exhibitions_status_idx ON exhibitions(status) WHERE is_deleted = FALSE;
 CREATE INDEX IF NOT EXISTS exhibitions_starts_at_idx ON exhibitions(starts_at) WHERE is_deleted = FALSE;
 CREATE INDEX IF NOT EXISTS exhibitions_category_idx ON exhibitions(category) WHERE is_deleted = FALSE;
