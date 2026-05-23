@@ -8029,7 +8029,7 @@ func main() {
 			}
 			out = append(out, c)
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"categories": out})
+		writeJSON(w, http.StatusOK, map[string]any{"categories": out, "groups": projectCategoriesTree})
 	})
 
 	mux.HandleFunc("/api/projects/recommended", func(w http.ResponseWriter, r *http.Request) {
@@ -28270,6 +28270,9 @@ var exhibitionCategoriesTree []catalogCategoryGroup
 // дерево категорий сообществ (3 уровня), наполняется из словаря в reloadDictionaries
 var communityCategoriesTree []catalogCategoryGroup
 
+// дерево категорий проектов (наполняется из словаря в reloadDictionaries)
+var projectCategoriesTree []catalogCategoryGroup
+
 // плоский список ключей категорий сообществ (для валидации по словарю)
 var communityCategoryKeys []string
 
@@ -28281,6 +28284,61 @@ var communitySeedCategories = []jobCategory{
 	{Key: "Регионы", Label: "Регионы", Color: "#EA580C"},
 	{Key: "Карьера", Label: "Карьера", Color: "#16A34A"},
 	{Key: "Другое", Label: "Другое", Color: "#475569"},
+}
+
+// стартовое дерево категорий проектов (латинские ключи): 6 групп × 36 категорий
+var projectSeedGroups = []struct {
+	Key, Label string
+	Items      []jobCategory
+}{
+	{Key: "proj_production", Label: "Производство и промышленность", Items: []jobCategory{
+		{Key: "machinery", Label: "Машиностроение"},
+		{Key: "metallurgy", Label: "Металлургия и металлообработка"},
+		{Key: "electronics", Label: "Электроника и приборостроение"},
+		{Key: "chemical", Label: "Химическая промышленность"},
+		{Key: "food", Label: "Пищевая промышленность"},
+		{Key: "light_industry", Label: "Лёгкая промышленность"},
+		{Key: "woodwork", Label: "Деревообработка и мебель"},
+		{Key: "build_materials", Label: "Строительные материалы"},
+		{Key: "other_production", Label: "Прочее производство"},
+	}},
+	{Key: "proj_logistics", Label: "Логистика и торговля", Items: []jobCategory{
+		{Key: "logistics", Label: "Логистика и перевозки"},
+		{Key: "customs", Label: "ВЭД и таможня"},
+		{Key: "warehouse", Label: "Складская логистика"},
+		{Key: "wholesale", Label: "Оптовая торговля"},
+		{Key: "retail", Label: "Розничная торговля и e-commerce"},
+		{Key: "transport_infra", Label: "Транспортная инфраструктура"},
+	}},
+	{Key: "proj_tech", Label: "Технологии", Items: []jobCategory{
+		{Key: "it", Label: "IT и разработка ПО"},
+		{Key: "automation", Label: "Автоматизация и цифровизация"},
+		{Key: "telecom", Label: "Телекоммуникации"},
+		{Key: "cybersec", Label: "Кибербезопасность"},
+		{Key: "ecommerce", Label: "Электронная коммерция (платформы)"},
+	}},
+	{Key: "proj_services", Label: "Услуги бизнесу", Items: []jobCategory{
+		{Key: "finance", Label: "Финансы и инвестиции"},
+		{Key: "legal", Label: "Юридические услуги"},
+		{Key: "consulting", Label: "Консалтинг и аудит"},
+		{Key: "marketing", Label: "Маркетинг и реклама"},
+		{Key: "hr", Label: "HR и подбор персонала"},
+		{Key: "education", Label: "Образование и обучение"},
+	}},
+	{Key: "proj_infra", Label: "Инфраструктура и ресурсы", Items: []jobCategory{
+		{Key: "construction", Label: "Строительство и недвижимость"},
+		{Key: "energy", Label: "Энергетика и ЖКХ"},
+		{Key: "agro", Label: "Сельское хозяйство и АПК"},
+		{Key: "mining", Label: "Добыча полезных ископаемых"},
+	}},
+	{Key: "proj_social", Label: "Социальная сфера и прочее", Items: []jobCategory{
+		{Key: "medicine", Label: "Медицина и фарма"},
+		{Key: "tourism", Label: "Туризм и гостеприимство"},
+		{Key: "media", Label: "Медиа и развлечения"},
+		{Key: "ecology", Label: "Экология и переработка"},
+		{Key: "nko", Label: "Социальные проекты и НКО"},
+		{Key: "other", Label: "Другое"},
+	}},
 }
 
 // стартовый набор категорий выставок (латинские ключи). Сидится как exhibition_group.
@@ -28459,6 +28517,13 @@ func seedDictionaries(db *sql.DB) {
 	// community_group: стартовые категории сообществ (ключ = лейбл)
 	for i, c := range communitySeedCategories {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('community_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
+	}
+	// project_group + project_category: стартовое дерево проектов (6 групп × категории)
+	for gi, g := range projectSeedGroups {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('project_group',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, g.Key, g.Label, gi)
+		for ci, c := range g.Items {
+			_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, sort_order) VALUES ('project_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, g.Key, ci)
+		}
 	}
 	// city: собираем уникальные города из профилей пользователей.
 	_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label)
@@ -28646,6 +28711,44 @@ func reloadDictionaries(db *sql.DB) {
 		}
 		communityCategoriesTree = groups
 		communityCategoryKeys = keys
+	}
+	// project: собираем дерево (3 уровня) для endpoint.
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='project_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var groups []catalogCategoryGroup
+		groupIdx := map[string]int{}
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				groupIdx[k] = len(groups)
+				groups = append(groups, catalogCategoryGroup{Key: k, Label: l})
+			}
+		}
+		rows.Close()
+		catIdx := map[string][2]int{}
+		if rows2, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='project_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows2.Next() {
+				var k, l, pk string
+				if rows2.Scan(&k, &l, &pk) == nil {
+					if idx, ok := groupIdx[pk]; ok {
+						catIdx[k] = [2]int{idx, len(groups[idx].Items)}
+						groups[idx].Items = append(groups[idx].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows2.Close()
+		}
+		if rows3, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='project_subcategory' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows3.Next() {
+				var k, l, pk string
+				if rows3.Scan(&k, &l, &pk) == nil {
+					if pos, ok := catIdx[pk]; ok {
+						groups[pos[0]].Items[pos[1]].Items = append(groups[pos[0]].Items[pos[1]].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows3.Close()
+		}
+		projectCategoriesTree = groups
 	}
 	// jobs: наполняем jobCategoriesList из словаря (все узлы job_group/job_category/job_subcategory).
 	// Плоский список (для валидации и лейблов по key на любом уровне). Если словарь пуст — оставляем хардкод.
