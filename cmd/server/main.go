@@ -8996,7 +8996,7 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"categories": jobCategoriesList})
+		writeJSON(w, http.StatusOK, map[string]any{"categories": jobCategoriesList, "groups": jobCategoriesTree})
 	})
 
 	mux.HandleFunc("/api/jobs", func(w http.ResponseWriter, r *http.Request) {
@@ -28239,6 +28239,9 @@ type catalogCategoryGroup struct {
 	Items []catalogCategory `json:"items"`
 }
 
+// дерево категорий вакансий (3 уровня), наполняется из словаря в reloadDictionaries
+var jobCategoriesTree []catalogCategoryGroup
+
 // catalogCategoriesList — 11 групп × 4-6 подкатегорий = 62 подкатегории.
 // Применяется и к товарам, и к услугам (поле type — отдельно).
 var catalogCategoriesList = []catalogCategoryGroup{
@@ -28457,6 +28460,44 @@ func reloadDictionaries(db *sql.DB) {
 		if len(groups) > 0 {
 			catalogCategoriesList = groups
 		}
+	}
+	// jobs: собираем дерево (3 уровня) для endpoint — как catalog.
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='job_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var groups []catalogCategoryGroup
+		groupIdx := map[string]int{}
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				groupIdx[k] = len(groups)
+				groups = append(groups, catalogCategoryGroup{Key: k, Label: l})
+			}
+		}
+		rows.Close()
+		catIdx := map[string][2]int{}
+		if rows2, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='job_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows2.Next() {
+				var k, l, pk string
+				if rows2.Scan(&k, &l, &pk) == nil {
+					if idx, ok := groupIdx[pk]; ok {
+						catIdx[k] = [2]int{idx, len(groups[idx].Items)}
+						groups[idx].Items = append(groups[idx].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows2.Close()
+		}
+		if rows3, err := db.Query(`SELECT key, label, parent_key FROM dictionaries WHERE type='job_subcategory' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+			for rows3.Next() {
+				var k, l, pk string
+				if rows3.Scan(&k, &l, &pk) == nil {
+					if pos, ok := catIdx[pk]; ok {
+						groups[pos[0]].Items[pos[1]].Items = append(groups[pos[0]].Items[pos[1]].Items, catalogCategory{Key: k, Label: l})
+					}
+				}
+			}
+			rows3.Close()
+		}
+		jobCategoriesTree = groups
 	}
 	// jobs: наполняем jobCategoriesList из словаря (все узлы job_group/job_category/job_subcategory).
 	// Плоский список (для валидации и лейблов по key на любом уровне). Если словарь пуст — оставляем хардкод.
