@@ -1,0 +1,19 @@
+name: Cancel stuck runs
+on:
+  workflow_dispatch:
+permissions:
+  actions: write
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel all queued runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          runs=$(gh api "repos/${{ github.repository }}/actions/runs?status=queued&per_page=100" --jq '.workflow_runs[].id')
+          for id in $runs; do
+            echo "Cancelling run $id"
+            gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/cancel" || true
+          done
+          echo "Done"
