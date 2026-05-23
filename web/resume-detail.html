@@ -252,7 +252,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-row">
         <div>
           <label class="mf-label">Категория</label>
-          <select class="mf-select" id="edCategory" data-lt-select></select>
+          <select class="mf-select" id="edCategory" data-category-picker></select>
         </div>
         <div>
           <label class="mf-label">Опыт (лет)</label>
@@ -344,6 +344,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API = '/api';
 
 let CATEGORIES = [];
+let CAT_TREE = []; // дерево групп для пикера
 let RES = null;       // текущее резюме
 let ME = null;        // текущий пользователь
 
@@ -446,6 +447,7 @@ async function loadCategories(){
     const r = await lastopFetch(API + '/jobs/categories');
     const d = await r.json();
     CATEGORIES = d.categories || [];
+    CAT_TREE = d.groups || [];
   } catch (err) { console.error('loadCategories', err); }
 }
 function categoryByKey(key){
@@ -736,13 +738,31 @@ async function submitContact(){
 // ─── Edit modal ───
 function fillEditCategorySelect(){
   const sel = document.getElementById('edCategory');
-  sel.innerHTML = CATEGORIES.map(c => '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>').join('');
+  const tree = (CAT_TREE && CAT_TREE.length) ? CAT_TREE : null;
+  if (tree) {
+    sel.innerHTML = tree.map(g => {
+      const cats = (g.items && g.items.length) ? g.items : [{ key: g.key, label: g.label }];
+      const opts = cats.map(c => {
+        let o = '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>';
+        if (c.items && c.items.length) {
+          o += c.items.map(s =>
+            '<option value="' + esc(s.key) + '" data-parent="' + esc(c.key) + '">' + esc(s.label) + '</option>'
+          ).join('');
+        }
+        return o;
+      }).join('');
+      return '<optgroup label="' + esc(g.label) + '">' + opts + '</optgroup>';
+    }).join('');
+  } else {
+    sel.innerHTML = CATEGORIES.map(c => '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>').join('');
+  }
+  if (window.initCategoryPickers) window.initCategoryPickers();
 }
 function openEditModal(){
   if (!RES || !RES.viewer_is_author) return;
   fillEditCategorySelect();
   document.getElementById('edTitle').value = RES.title || '';
-  document.getElementById('edCategory').value = RES.category || '';
+  { const _s=document.getElementById('edCategory'); _s.value = RES.category || ''; _s.dispatchEvent(new Event('change',{bubbles:true})); }
   document.getElementById('edExp').value = RES.experience_years || 0;
   document.getElementById('edCity').value = RES.city || '';
   document.getElementById('edFormat').value = RES.work_format || 'office';
@@ -844,5 +864,6 @@ async function submitDelete(){
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/site-search.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
+<script src="/assets/category-picker.js" defer></script>
 </body>
 </html>
