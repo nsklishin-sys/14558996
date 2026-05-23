@@ -28388,6 +28388,10 @@ func seedDictionaries(db *sql.DB) {
 			_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, parent_key, sort_order) VALUES ('catalog_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, g.Key, ci)
 		}
 	}
+	// job_category: текущие категории вакансий/резюме (сохраняем ключи → старые записи валидны)
+	for i, c := range jobCategoriesList {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('job_category',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
+	}
 	// city: собираем уникальные города из профилей пользователей.
 	_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label)
 		SELECT 'city', lower(trim(city)), trim(city)
@@ -28452,6 +28456,25 @@ func reloadDictionaries(db *sql.DB) {
 		}
 		if len(groups) > 0 {
 			catalogCategoriesList = groups
+		}
+	}
+	// jobs: наполняем jobCategoriesList из словаря (все узлы job_group/job_category/job_subcategory).
+	// Плоский список (для валидации и лейблов по key на любом уровне). Если словарь пуст — оставляем хардкод.
+	{
+		var jl []jobCategory
+		for _, t := range []string{"job_group", "job_category", "job_subcategory"} {
+			if rows, err := db.Query(`SELECT key, label, color FROM dictionaries WHERE type=$1 AND is_active=TRUE ORDER BY sort_order, label`, t); err == nil {
+				for rows.Next() {
+					var k, l, col string
+					if rows.Scan(&k, &l, &col) == nil {
+						jl = append(jl, jobCategory{Key: k, Label: l, Color: col})
+					}
+				}
+				rows.Close()
+			}
+		}
+		if len(jl) > 0 {
+			jobCategoriesList = jl
 		}
 	}
 	// cities
