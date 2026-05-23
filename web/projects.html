@@ -340,7 +340,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <option value="deadline">По дедлайну</option>
       <option value="members">По участникам</option>
     </select>
-    <span class="pf-count" id="resultsCount">48 проектов</span>
+    <span class="pf-count" id="resultsCount"></span>
   </div>
 
   <!-- Лента проектов -->
@@ -707,7 +707,9 @@ function renderCurrentView(){
 }
 
 let _filtersDebounce=null;
+let _projReady=false;
 function applyFilters(){
+  if(!_projReady)return;
   clearTimeout(_filtersDebounce);
   _filtersDebounce=setTimeout(()=>{loadProjects();},300);
 }
@@ -919,6 +921,7 @@ function resetCreateForm(){
 
   fillFilterCategories();
   await loadProjects();
+  _projReady=true;
 })();
 
 // ─── Динамика правого сайдбара (Спринт 12-B-4) ───
