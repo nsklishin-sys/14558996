@@ -470,8 +470,12 @@
     const initial = (n.actor_name || 'С').charAt(0).toUpperCase();
     const isSystem = !n.actor_name || !n.actor_public_id;
     const avClass = isSystem ? 'notif-av notif-av-system' : 'notif-av';
-    const avStyle = isSystem ? '' : 'background:' + escAttr(n.actor_color || '#1E8A4C');
-    const avContent = isSystem ? svgSystemBell() : escHtml(initial);
+    const avStyle = isSystem ? '' : 'background:' + escAttr(n.actor_color || '#1E8A4C') + ';overflow:hidden';
+    const avContent = isSystem
+      ? svgSystemBell()
+      : (n.actor_avatar
+          ? '<img src="' + escAttr(n.actor_avatar) + '" alt="" style="width:100%;height:100%;object-fit:cover">'
+          : escHtml(initial));
     const href = buildNotifHref(n);
     const time = formatNotifTime(n.created_at);
 
