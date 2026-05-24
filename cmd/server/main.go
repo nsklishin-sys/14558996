@@ -27082,8 +27082,25 @@ func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user
 	addStr("phone", req.Phone)
 	addStr("location", req.Location)
 	addStr("city", req.City)
-	addStr("avatar_url", req.AvatarURL)
-	addStr("cover_url", req.CoverURL)
+	addImageURL := func(col string, p *string) error {
+		if p == nil {
+			return nil
+		}
+		v, err := validateAvatarURL(*p)
+		if err != nil {
+			return err
+		}
+		sets = append(sets, fmt.Sprintf("%s = $%d", col, n))
+		args = append(args, v)
+		n++
+		return nil
+	}
+	if err := addImageURL("avatar_url", req.AvatarURL); err != nil {
+		return user{}, err
+	}
+	if err := addImageURL("cover_url", req.CoverURL); err != nil {
+		return user{}, err
+	}
 
 	if len(sets) == 0 {
 		// Нечего обновлять — просто вернуть текущий профиль.
