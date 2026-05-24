@@ -13845,7 +13845,7 @@ func main() {
 		}
 
 		query := `
-			SELECT id, public_id, full_name, position, company_name, COALESCE(handle, '')
+			SELECT id, public_id, full_name, position, company_name, COALESCE(handle, ''), COALESCE(avatar_url, '')
 			FROM users
 			WHERE is_deleted = FALSE AND id != $1`
 		arg := any(q)
@@ -13871,13 +13871,14 @@ func main() {
 			Position    string `json:"position,omitempty"`
 			CompanyName string `json:"company_name,omitempty"`
 			Handle      string `json:"handle,omitempty"`
+			Avatar      string `json:"avatar,omitempty"`
 		}
 
 		users := make([]userResult, 0, 20)
 		for rows.Next() {
 			var u userResult
 			var pos, co sql.NullString
-			if err := rows.Scan(&u.ID, &u.PublicID, &u.FullName, &pos, &co, &u.Handle); err != nil {
+			if err := rows.Scan(&u.ID, &u.PublicID, &u.FullName, &pos, &co, &u.Handle, &u.Avatar); err != nil {
 				handleAccountError(w, err)
 				return
 			}
