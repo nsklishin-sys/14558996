@@ -452,8 +452,8 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
 
   <!-- Hero-карточка с обложкой, аватаром, именем, статистикой -->
   <div class="prof-hero">
-    <div class="prof-cover">
-      <button type="button" class="prof-cover-btn" onclick="showToast('Изменение обложки')">
+    <div class="prof-cover" id="profCover">
+      <button type="button" class="prof-cover-btn" onclick="location.href='/settings.html'">
         <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Обложка
       </button>
@@ -779,6 +779,12 @@ async function applyCurrentUserProfile(){
   if(window.LASTOP_SET_AV)window.LASTOP_SET_AV("pddAv",initials);else{const _e=document.getElementById("pddAv");if(_e)_e.textContent=initials;}
   _setText('topbarName', fullName);
   _setText('pddName', fullName);
+  const profCover=document.getElementById('profCover');
+  if(profCover && mergedUser.cover_url){
+    profCover.style.backgroundImage=`url('${mergedUser.cover_url}')`;
+    profCover.style.backgroundSize='cover';
+    profCover.style.backgroundPosition='center';
+  }
   const profileAvatar=document.querySelector('.prof-av');
   if(mergedUser.avatar_url){
     profileAvatar.innerHTML=`<img src="${mergedUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
