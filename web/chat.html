@@ -1449,7 +1449,7 @@ function applyConversation(c){
   if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   state.activeConversation=c;
 }
-async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();markRead()}
+async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead()}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
@@ -1462,7 +1462,6 @@ function renderMessages(){
   const justSelected=!!window._chatJustSelected;
   const wasAtBottom=justSelected?true:(el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true);
   const prevScroll=el?el.scrollTop:0;
-  if(justSelected)window._chatJustSelected=false;
   el.innerHTML='';let prevDate='';state.messages.forEach(m=>{
     const createdAt = new Date(m.created_at);
     const date = createdAt.toDateString();
@@ -1818,7 +1817,10 @@ async function submitMessage(){
       state.messages.push(sm);
       renderMessages();
       const wrap = document.getElementById('msgsWrap');
-      if (wrap) wrap.scrollTop = wrap.scrollHeight;
+      if (wrap) {
+        const sd=()=>{wrap.scrollTop=wrap.scrollHeight};
+        sd(); requestAnimationFrame(sd); setTimeout(sd,100); setTimeout(sd,300);
+      }
     }
     loadConversations();
   } catch (e) {
@@ -2539,7 +2541,10 @@ function setupChatWS(){
         renderMessages();
         // Прокрутить вниз
         const wrap = document.getElementById('msgsWrap');
-        if(wrap) wrap.scrollTop = wrap.scrollHeight;
+        if(wrap) {
+          const sd=()=>{wrap.scrollTop=wrap.scrollHeight};
+          sd(); requestAnimationFrame(sd); setTimeout(sd,100);
+        }
         // Помечаем прочитанным сразу — диалог открыт
         api(`/chat/conversations/${convPid}/read`,{method:'POST'}).catch(()=>{});
       }
