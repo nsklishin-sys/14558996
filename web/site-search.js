@@ -215,7 +215,7 @@
       const sub=[u.position,u.company_name].filter(Boolean).join(' · ');
       const url='/profile_user.html?id='+encodeURIComponent(u.public_id||u.id||'');
       return {url,html:`<a class="gss-row" href="${url}">
-        <div class="gss-av" style="background:${avc(name)}">${esc(letter(name))}</div>
+        <div class="gss-av" style="background:${avc(name)};overflow:hidden">${u.avatar?`<img src="${esc(u.avatar)}" alt="" style="width:100%;height:100%;object-fit:cover">`:esc(letter(name))}</div>
         <div class="gss-text">
           <div class="gss-title">${highlight(name,q)}${handle?`<span class="gss-handle">${esc(handle)}</span>`:''}</div>
           ${sub?`<div class="gss-sub">${highlight(sub,q)}</div>`:''}
