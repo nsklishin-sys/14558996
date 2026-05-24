@@ -2484,7 +2484,7 @@ function onTyping(){
   },4000);
 }
 msgInput?.addEventListener('input',onTyping)
-async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});}
+async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});if(state.activeConvPublicID){await loadMessages().catch(()=>{});}}
 
 // Real-time через WebSocket
 function setupChatWS(){
