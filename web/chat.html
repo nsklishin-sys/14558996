@@ -837,6 +837,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="ch-status" id="chatStatus"></div>
       </div>
       <div class="ch-actions">
+        <button type="button" class="ch-act" id="chatCloseBtn" onclick="closeActiveChat()" style="display:none" title="Закрыть диалог">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <button type="button" class="chat-friend-btn" id="chatFriendBtn" onclick="chatFriendClick()" style="display:none" title="">
           <svg id="chatFriendIcon" viewBox="0 0 24 24"></svg>
           <span id="chatFriendLabel"></span>
@@ -1449,7 +1452,25 @@ function applyConversation(c){
   if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   state.activeConversation=c;
 }
-async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead()}
+async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();const _cb=document.getElementById('chatCloseBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display=''}
+function closeActiveChat(){
+  state.activeConvPublicID=null;
+  state.messages=[];
+  state.typingUsers=[];
+  state.replyTo=null;
+  state.editing=null;
+  renderCache.messagesSig='';
+  if(window.chatName)chatName.textContent='';
+  if(window.chatStatus)chatStatus.textContent='';
+  if(window.chatAv){chatAv.innerHTML='';chatAv.style.background='transparent';}
+  const dot=document.getElementById('chatOnlineDot');if(dot)dot.style.display='none';
+  ['chatCloseBtn','chatFriendBtn','chatManageBtn'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  const cb=document.getElementById('chatBody');
+  if(cb)cb.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>';
+  const iw=document.querySelector('.chat-input-wrap');if(iw)iw.style.display='none';
+  document.querySelectorAll('.d-item.active').forEach(d=>d.classList.remove('active'));
+  renderConversations();
+}
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
@@ -1775,7 +1796,7 @@ ${origContent}`
     showToast('Переслано ✓');
   }catch{showToast('Не удалось переслать');}
 }
-function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px'}
+function autoGrow(el){if(!el)return;if(!el.value){el.style.height='22px';return;}el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px'}
 function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitMessage()}}
 async function submitMessage(){
   const txt = msgInput.value.trim();
