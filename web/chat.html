@@ -904,7 +904,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
           </button>
         </div>
       </div>
-      <button type="button" class="ci-send" onclick="sendMessage()" title="Отправить">
+      <button type="button" class="ci-send" onmousedown="event.preventDefault()" onclick="sendMessage()" title="Отправить">
         <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
@@ -1780,54 +1780,56 @@ function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();subm
 async function submitMessage(){
   const txt = msgInput.value.trim();
   if ((!txt && !pendingAttachment) || !state.activeConvPublicID) return;
+
+  // СИНХРОННО (в gesture-контексте): захватываем данные, чистим поле, держим фокус.
+  // Любой await ПОСЛЕ этого уже не уронит клавиатуру — поле очищено и сфокусировано заранее.
+  const editing = state.editing;
+  const replyToId = state.replyTo?.id || null;
+  const att = pendingAttachment;
+  const convPid = state.activeConvPublicID;
+
+  msgInput.value = '';
+  autoGrow(msgInput);
+  msgInput.focus();
+  state.editing = null;
+  closeReply();
+  pendingAttachment = null;
+  hidePreview();
+
+  const scrollBottom = () => {
+    const wrap = document.getElementById('msgsWrap');
+    if (wrap) { const sd=()=>{wrap.scrollTop=wrap.scrollHeight}; sd(); requestAnimationFrame(sd); setTimeout(sd,100); }
+  };
+
   try {
-    if (state.editing) {
-      await api(`/chat/messages/${state.editing.id}`, {method: 'PATCH', body: {content: txt}});
-      state.editing = null;
-      msgInput.value = '';
-      autoGrow(msgInput);
-      closeReply();
-      pendingAttachment = null;
-      hidePreview();
+    if (editing) {
+      await api(`/chat/messages/${editing.id}`, {method: 'PATCH', body: {content: txt}});
       await loadMessages();
       loadConversations();
       return;
     }
-    const body = {
-      content: txt,
-      reply_to_id: state.replyTo?.id || null
-    };
-    if (pendingAttachment) {
-      body.attachment_url = pendingAttachment.url;
-      body.attachment_name = pendingAttachment.name;
-      body.attachment_type = pendingAttachment.type;
-      body.attachment_size = pendingAttachment.size;
+    const body = { content: txt, reply_to_id: replyToId };
+    if (att) {
+      body.attachment_url = att.url;
+      body.attachment_name = att.name;
+      body.attachment_type = att.type;
+      body.attachment_size = att.size;
     }
-    const sent = await api(`/chat/conversations/${state.activeConvPublicID}/messages`, {method: 'POST', body});
-    msgInput.value = '';
-    autoGrow(msgInput);
-    closeReply();
-    pendingAttachment = null;
-    hidePreview();
-    // Optimistic-render: дописываем своё сообщение локально (как WS-путь), без полной
-    // перезагрузки — убирает моргание и скачок скролла. WS-эхо не задвоит (дубль-защита по id).
+    const sent = await api(`/chat/conversations/${convPid}/messages`, {method: 'POST', body});
     const sm = sent && sent.message;
     if (sm && !(state.messages||[]).some(m => m.id === sm.id)) {
       state.messages = state.messages || [];
       state.messages.push(sm);
       renderMessages();
-      const wrap = document.getElementById('msgsWrap');
-      if (wrap) {
-        const sd=()=>{wrap.scrollTop=wrap.scrollHeight};
-        sd(); requestAnimationFrame(sd); setTimeout(sd,100); setTimeout(sd,300);
-      }
+      scrollBottom();
     }
     loadConversations();
   } catch (e) {
+    // Откат: вернуть текст в поле, чтобы пользователь не потерял сообщение
+    if (!editing && txt) { msgInput.value = txt; autoGrow(msgInput); }
     var emsg = '';
     try {
       var raw = (e && e.message) ? String(e.message) : '';
-      // api() кладёт в message сырой ответ — пытаемся достать поле error.
       if (raw && raw.charAt(0) === '{') { var pj = JSON.parse(raw); emsg = pj.error || ''; }
       else if (raw && raw !== '401' && !/^\d+$/.test(raw)) { emsg = raw; }
     } catch (_) {}
