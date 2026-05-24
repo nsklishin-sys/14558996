@@ -1037,7 +1037,7 @@ function renderRow(cat,it){
     const sub=[it.region,it.category].filter(Boolean).join(' · ')||(it.members_count?fmtNum(it.members_count)+' '+pluralize(it.members_count,'участник','участника','участников'):'');
     const href=`/community-detail.html?id=${encodeURIComponent(it.public_id||it.id)}`;
     return `<a class="s-row" href="${href}">
-      <div class="s-row-av square" style="background:${it.color||avc(name)}">${esc(letter(name))}</div>
+      <div class="s-row-av square" style="background:${it.color||avc(name)};overflow:hidden">${it.avatar?`<img src="${esc(it.avatar)}" alt="" style="width:100%;height:100%;object-fit:cover">`:esc(letter(name))}</div>
       <div class="s-row-body">
         <div class="s-row-line1">
           <span class="s-row-title">${highlight(name,q)}</span>
@@ -1081,7 +1081,7 @@ function renderRow(cat,it){
     const sub=[it.industry,it.city].filter(Boolean).join(' · ');
     const href=it.public_id?`/company-detail.html?id=${encodeURIComponent(it.public_id)}`:`/companies.html?q=${encodeURIComponent(name)}`;
     return `<a class="s-row" href="${href}">
-      <div class="s-row-av square" style="background:#208090">${esc(letter(name))}</div>
+      <div class="s-row-av square" style="background:#208090;overflow:hidden">${it.logo_image?`<img src="${esc(it.logo_image)}" alt="" style="width:100%;height:100%;object-fit:cover">`:esc(letter(name))}</div>
       <div class="s-row-body">
         <div class="s-row-line1">
           <span class="s-row-title">${highlight(name,q)}</span>
