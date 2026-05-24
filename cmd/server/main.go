@@ -319,6 +319,7 @@ type searchUser struct {
 	CompanyName string  `json:"company_name"`
 	Bio         string  `json:"bio"`
 	City        string  `json:"city"`
+	Avatar      string  `json:"avatar"`
 	Score       float64 `json:"score,omitempty"`
 }
 
@@ -22569,6 +22570,7 @@ func searchUsersInto(db *sql.DB, q, sortBy string, limit, offset int, res *searc
 			COALESCE(company_name,'') AS company_name,
 			COALESCE(bio,'') AS bio,
 			COALESCE(city,'') AS city,
+			COALESCE(avatar_url,'') AS avatar,
 			(
 				CASE WHEN LOWER(full_name) = LOWER($1) THEN 10 ELSE 0 END +
 				CASE WHEN LOWER(full_name) LIKE LOWER($1) || '%' THEN 5 ELSE 0 END +
@@ -22599,7 +22601,7 @@ func searchUsersInto(db *sql.DB, q, sortBy string, limit, offset int, res *searc
 	out := make([]searchUser, 0, limit)
 	for rows.Next() {
 		var item searchUser
-		if err := rows.Scan(&item.PublicID, &item.FullName, &item.Handle, &item.Position, &item.CompanyName, &item.Bio, &item.City, &item.Score); err != nil {
+		if err := rows.Scan(&item.PublicID, &item.FullName, &item.Handle, &item.Position, &item.CompanyName, &item.Bio, &item.City, &item.Avatar, &item.Score); err != nil {
 			return 0, err
 		}
 		out = append(out, item)
