@@ -133,6 +133,23 @@ a,
     display: block;
   }
 
+  /* ── Э: exhibition-detail — кнопка управления (Редактировать выставку) на мобилке ── */
+  html.lt-shell .right:has(#sidebarAdminCard),
+  html.lt-shell-2col .right:has(#sidebarAdminCard) {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  html.lt-shell .right:has(#sidebarAdminCard) > .card,
+  html.lt-shell-2col .right:has(#sidebarAdminCard) > .card {
+    display: none !important;
+  }
+  html.lt-shell .right:has(#sidebarAdminCard) > #sidebarAdminCard,
+  html.lt-shell-2col .right:has(#sidebarAdminCard) > #sidebarAdminCard {
+    display: block;
+  }
+
   /* На мобиле main скроллится сам (на десктопе шеллом).
      Без этого контент уезжает за пределы viewport. */
   html.lt-shell .main,
