@@ -94,16 +94,16 @@ type loginRequest struct {
 }
 
 type profileUpdateRequest struct {
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	FullName    string `json:"full_name"`
-	Position    string `json:"position"`
-	CompanyName string `json:"company_name"`
-	Bio         string `json:"bio"`
-	Phone       string `json:"phone"`
-	Location    string `json:"location"`
-	City        string `json:"city"`
-	AvatarURL   string `json:"avatar_url"`
+	FirstName   *string `json:"first_name"`
+	LastName    *string `json:"last_name"`
+	FullName    *string `json:"full_name"`
+	Position    *string `json:"position"`
+	CompanyName *string `json:"company_name"`
+	Bio         *string `json:"bio"`
+	Phone       *string `json:"phone"`
+	Location    *string `json:"location"`
+	City        *string `json:"city"`
+	AvatarURL   *string `json:"avatar_url"`
 }
 
 type authResponse struct {
@@ -27018,48 +27018,75 @@ func newPublicUserID() (string, error) {
 }
 
 func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user, error) {
-	firstName := strings.TrimSpace(req.FirstName)
-	lastName := strings.TrimSpace(req.LastName)
-	fullName := strings.TrimSpace(req.FullName)
-	if firstName == "" {
-		return user{}, fmt.Errorf("%w: имя обязательно", errValidation)
-	}
-	if lastName == "" {
-		return user{}, fmt.Errorf("%w: фамилия обязательна", errValidation)
-	}
-	if fullName == "" {
-		fullName = strings.TrimSpace(firstName + " " + lastName)
+	// Частичный неразрушающий апдейт: nil-поле НЕ трогаем (сохраняем существующее),
+	// присланное "" — очищаем. Защищает от потери данных, когда фронт шлёт неполный набор
+	// (B-PROFILE-RESET у части устройств) и сохраняет возможность очистки полей.
+	sets := []string{}
+	args := []any{userID}
+	n := 2
+	addStr := func(col string, p *string) {
+		if p == nil {
+			return
+		}
+		sets = append(sets, fmt.Sprintf("%s = NULLIF($%d, '')", col, n))
+		args = append(args, strings.TrimSpace(*p))
+		n++
 	}
 
-	var updated user
-	err := db.QueryRow(`
-		UPDATE users
-		SET first_name = $2,
-		    last_name = $3,
-		    full_name = $4,
-		    position = NULLIF($5, ''),
-		    company_name = NULLIF($6, ''),
-		    bio = NULLIF($7, ''),
-		    phone = NULLIF($8, ''),
-		    location = NULLIF($9, ''),
-		    city = NULLIF($10, ''),
-		    avatar_url = NULLIF($11, '')
-		WHERE id = $1
+	// Обязательные имя/фамилия: затираем только если присланы НЕПУСТЫМИ.
+	// Если присланы пустыми — ошибка (профиль не должен становиться «User»).
+	if req.FirstName != nil {
+		if strings.TrimSpace(*req.FirstName) == "" {
+			return user{}, fmt.Errorf("%w: имя обязательно", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("first_name = $%d", n))
+		args = append(args, strings.TrimSpace(*req.FirstName))
+		n++
+	}
+	if req.LastName != nil {
+		if strings.TrimSpace(*req.LastName) == "" {
+			return user{}, fmt.Errorf("%w: фамилия обязательна", errValidation)
+		}
+		sets = append(sets, fmt.Sprintf("last_name = $%d", n))
+		args = append(args, strings.TrimSpace(*req.LastName))
+		n++
+	}
+	if req.FullName != nil {
+		fn := strings.TrimSpace(*req.FullName)
+		if fn != "" {
+			sets = append(sets, fmt.Sprintf("full_name = $%d", n))
+			args = append(args, fn)
+			n++
+		}
+	}
+
+	// Защита B-LOC-EMAIL: не позволяем записать email в адресные поля.
+	if req.Location != nil && isValidEmail(strings.TrimSpace(*req.Location)) {
+		return user{}, fmt.Errorf("%w: в поле «Местоположение» нельзя указывать email", errValidation)
+	}
+	if req.City != nil && isValidEmail(strings.TrimSpace(*req.City)) {
+		return user{}, fmt.Errorf("%w: в поле «Город» нельзя указывать email", errValidation)
+	}
+
+	addStr("position", req.Position)
+	addStr("company_name", req.CompanyName)
+	addStr("bio", req.Bio)
+	addStr("phone", req.Phone)
+	addStr("location", req.Location)
+	addStr("city", req.City)
+	addStr("avatar_url", req.AvatarURL)
+
+	if len(sets) == 0 {
+		// Нечего обновлять — просто вернуть текущий профиль.
+		return getUserByID(db, userID)
+	}
+
+	query := "UPDATE users SET " + strings.Join(sets, ", ") + fmt.Sprintf(` WHERE id = $1
 		RETURNING id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')
-	`, userID,
-		firstName,
-		lastName,
-		fullName,
-		strings.TrimSpace(req.Position),
-		strings.TrimSpace(req.CompanyName),
-		strings.TrimSpace(req.Bio),
-		strings.TrimSpace(req.Phone),
-		strings.TrimSpace(req.Location),
-		strings.TrimSpace(req.City),
-		strings.TrimSpace(req.AvatarURL),
-	).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL, &updated.Handle)
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')`)
+	var updated user
+	err := db.QueryRow(query, args...).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL, &updated.Handle)
 	if err != nil {
 		return user{}, err
 	}
