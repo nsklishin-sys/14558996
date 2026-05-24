@@ -136,6 +136,11 @@ a,
   /* ── Э: exhibition-detail — кнопка управления (Редактировать выставку) на мобилке ── */
   html.lt-shell .right:has(#sidebarAdminCard),
   html.lt-shell-2col .right:has(#sidebarAdminCard) {
+  /* ── Э: event-detail — карточка организатора + кнопки управления на мобилке ──
+     #organizerActions (Редактировать/Удалить) и «Написать организатору» живут в карточке
+     организатора в скрытом .right. Показываем .right только с этой карточкой. */
+  html.lt-shell .right:has(#organizerActions),
+  html.lt-shell-2col .right:has(#organizerActions) {
     display: flex !important;
     flex-direction: column;
     gap: 10px;
@@ -148,6 +153,13 @@ a,
   html.lt-shell .right:has(#sidebarAdminCard) > #sidebarAdminCard,
   html.lt-shell-2col .right:has(#sidebarAdminCard) > #sidebarAdminCard {
     display: block;
+  html.lt-shell .right:has(#organizerActions) > .card,
+  html.lt-shell-2col .right:has(#organizerActions) > .card {
+    display: none !important;
+  }
+  html.lt-shell .right:has(#organizerActions) > .card:has(#organizerActions),
+  html.lt-shell-2col .right:has(#organizerActions) > .card:has(#organizerActions) {
+    display: block !important;
   }
 
   /* На мобиле main скроллится сам (на десктопе шеллом).
