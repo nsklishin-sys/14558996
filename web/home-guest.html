@@ -303,6 +303,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         }));
       }
     } catch {}
+    // 3. Новости (публичные посты типа news)
+    try {
+      const r = await lastopFetch('/api/feed?limit=8&type=news');
+      if (r.ok) {
+        const d = await r.json();
+        (d.posts || d.items || []).forEach(p => {
+          const title = (p.title || p.content || '').trim();
+          if (title) items.push({
+            title: title.length > 80 ? title.slice(0, 80) + '…' : title,
+            date:  p.created_at,
+            kind:  'news'
+          });
+        });
+      }
+    } catch {}
     const tickerWrap = document.querySelector('.ticker-wrap');
     if (!items.length) {
       // Нечего показать — скрываем весь блок
@@ -314,8 +329,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     const colors = ['#22CC66','#3A90C0','#1E8A4C','#C07030','#9060C0','#185FA5'];
     const _esc = function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
     const _mon = function(d){const M=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];return M[d.getMonth()];};
-    // Дублируем массив для бесшовной прокрутки (CSS animation translateX(-50%))
-    const doubled = items.concat(items);
+    // Бесшовная прокрутка: CSS сдвигает на -50%, значит контент должен повторяться 2 раза.
+    // Если уникальных элементов мало — сначала «набиваем» базовый набор до ≥6, чтобы лента
+    // заполняла ширину и не выглядела обрезанной, затем дублируем ×2 для бесшовности.
+    let base = items.slice();
+    while (base.length > 0 && base.length < 6) {
+      base = base.concat(items);
+    }
+    const doubled = base.concat(base);
     const html = doubled.map(function(it, i){
       const date = new Date(it.date);
       const dateStr = isNaN(date.getTime()) ? '' : ' · ' + date.getDate() + ' ' + _mon(date);
