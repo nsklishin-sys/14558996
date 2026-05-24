@@ -140,7 +140,12 @@
       if (response.status === 401) {
         var p = window.location.pathname;
         var isPublic = p === '/' || p === '/login.html' || p === '/register.html' || p === '/reset-password.html';
-        if (!isPublic) {
+        // Был ли пользователь залогинен. Для ГОСТЯ 401 — норма (авторизованные
+        // эндпоинты недоступны), редиректить не нужно. Редирект только когда сессия
+        // реально слетела у залогиненного.
+        var wasLoggedIn = false;
+        try { wasLoggedIn = !!localStorage.getItem('user'); } catch(e){}
+        if (!isPublic && wasLoggedIn) {
           try { localStorage.removeItem('user'); } catch(e){}
           try { localStorage.removeItem('token'); } catch(e){}
           if (!window.__lastopAuthRedirect) {
