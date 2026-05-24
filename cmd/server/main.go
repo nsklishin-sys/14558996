@@ -122,6 +122,7 @@ type publicUserProfile struct {
 	Email        string  `json:"email,omitempty"`
 	Handle       string  `json:"handle,omitempty"`
 	AvatarURL    string  `json:"avatar_url,omitempty"`
+	CoverURL     string  `json:"cover_url,omitempty"`
 	Position     string  `json:"position,omitempty"`
 	CompanyName  string  `json:"company_name,omitempty"`
 	Bio          string  `json:"bio,omitempty"`
@@ -16240,7 +16241,7 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 	var ownerID int64
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email, COALESCE(handle, ''),
-			COALESCE(avatar_url, ''), COALESCE(position, ''), COALESCE(company_name, ''),
+			COALESCE(avatar_url, ''), COALESCE(cover_url, ''), COALESCE(position, ''), COALESCE(company_name, ''),
 			COALESCE(bio, ''), COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, '')
 		FROM users
 		WHERE public_id = $1 AND is_deleted = FALSE
@@ -16253,6 +16254,7 @@ func getPublicUserProfile(db *sql.DB, publicID string, viewerID int64) (publicUs
 		&profile.Email,
 		&profile.Handle,
 		&profile.AvatarURL,
+		&profile.CoverURL,
 		&profile.Position,
 		&profile.CompanyName,
 		&profile.Bio,

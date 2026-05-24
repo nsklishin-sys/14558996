@@ -441,7 +441,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
   <!-- Hero-карточка с обложкой, аватаром, именем, статистикой -->
   <div class="prof-hero">
-    <div class="prof-cover">
+    <div class="prof-cover" id="profCover">
     </div>
 
     <div class="prof-head">
@@ -805,6 +805,12 @@ function applyViewedUserProfile(u){
   const color=userColor(fullName);
   document.querySelectorAll('.pc-av').forEach((av)=>{av.textContent=initials;av.style.background=color;});
   document.getElementById('profileAvatarText').textContent=initials;
+  const _profCover = document.getElementById('profCover');
+  if (_profCover && u.cover_url) {
+    _profCover.style.backgroundImage = `url('${u.cover_url}')`;
+    _profCover.style.backgroundSize = 'cover';
+    _profCover.style.backgroundPosition = 'center';
+  }
   const _profAv = document.querySelector('.prof-av');
   if (_profAv) {
     // Удаляем старый img (если перерисовываем)
