@@ -71,6 +71,7 @@ type user struct {
 	Location                  string `json:"location,omitempty"`
 	City                      string `json:"city,omitempty"`
 	AvatarURL                 string `json:"avatar_url,omitempty"`
+	CoverURL                  string `json:"cover_url,omitempty"`
 	Handle                    string `json:"handle,omitempty"`
 	IsAdmin                   bool   `json:"is_admin,omitempty"`
 	IsOwner                   bool   `json:"is_owner,omitempty"`
@@ -104,6 +105,7 @@ type profileUpdateRequest struct {
 	Location    *string `json:"location"`
 	City        *string `json:"city"`
 	AvatarURL   *string `json:"avatar_url"`
+	CoverURL    *string `json:"cover_url"`
 }
 
 type authResponse struct {
@@ -14963,6 +14965,7 @@ CREATE INDEX IF NOT EXISTS events_author_company_idx ON events(author_company_id
 
 -- Sprint 12: Выставки
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_owner BOOLEAN NOT NULL DEFAULT FALSE;
 
@@ -16405,11 +16408,11 @@ func getUserByID(db *sql.DB, userID int64) (user, error) {
 	err := db.QueryRow(`
 		SELECT id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE), COALESCE(is_owner, FALSE),
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(cover_url, ''), COALESCE(handle, ''), COALESCE(is_admin, FALSE), COALESCE(is_owner, FALSE),
 			COALESCE(analytics_visible_in_viewers, TRUE), email_verified_at
 		FROM users
 		WHERE id = $1 AND is_deleted = FALSE
-	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.Handle, &u.IsAdmin, &u.IsOwner, &u.AnalyticsVisibleInViewers, &verifiedAt)
+	`, userID).Scan(&u.ID, &u.PublicID, &u.FirstName, &u.LastName, &u.FullName, &u.Email, &u.Position, &u.CompanyName, &u.Bio, &u.Phone, &u.Location, &u.City, &u.AvatarURL, &u.CoverURL, &u.Handle, &u.IsAdmin, &u.IsOwner, &u.AnalyticsVisibleInViewers, &verifiedAt)
 	if err != nil {
 		return user{}, err
 	}
@@ -27080,6 +27083,7 @@ func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user
 	addStr("location", req.Location)
 	addStr("city", req.City)
 	addStr("avatar_url", req.AvatarURL)
+	addStr("cover_url", req.CoverURL)
 
 	if len(sets) == 0 {
 		// Нечего обновлять — просто вернуть текущий профиль.
@@ -27089,9 +27093,9 @@ func updateUserProfile(db *sql.DB, userID int64, req profileUpdateRequest) (user
 	query := "UPDATE users SET " + strings.Join(sets, ", ") + fmt.Sprintf(` WHERE id = $1
 		RETURNING id, public_id, first_name, last_name, full_name, email,
 			COALESCE(position, ''), COALESCE(company_name, ''), COALESCE(bio, ''),
-			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(handle, '')`)
+			COALESCE(phone, ''), COALESCE(location, ''), COALESCE(city, ''), COALESCE(avatar_url, ''), COALESCE(cover_url, ''), COALESCE(handle, '')`)
 	var updated user
-	err := db.QueryRow(query, args...).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL, &updated.Handle)
+	err := db.QueryRow(query, args...).Scan(&updated.ID, &updated.PublicID, &updated.FirstName, &updated.LastName, &updated.FullName, &updated.Email, &updated.Position, &updated.CompanyName, &updated.Bio, &updated.Phone, &updated.Location, &updated.City, &updated.AvatarURL, &updated.CoverURL, &updated.Handle)
 	if err != nil {
 		return user{}, err
 	}
