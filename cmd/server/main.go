@@ -27972,7 +27972,7 @@ func computePlatformStats(db *sql.DB) (map[string]any, error) {
 
 	// 1.5. Companies
 	var companies int64
-	if err := db.QueryRow(`SELECT COUNT(*) FROM companies WHERE is_deleted = FALSE`).Scan(&companies); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL`).Scan(&companies); err != nil {
 		// Если таблица или поле названо иначе — не падаем, оставляем 0.
 		log.Printf("computePlatformStats: companies count failed: %v", err)
 	} else {
