@@ -901,7 +901,7 @@ function renderRow(cat,it){
     const sub=[it.position,it.company_name].filter(Boolean).join(' · ');
     const href=`/profile_user.html?id=${encodeURIComponent(it.public_id||it.id)}`;
     return `<a class="s-row" href="${href}">
-      <div class="s-row-av" style="background:${avc(name)}">${esc(letter(name))}</div>
+      <div class="s-row-av" style="background:${avc(name)};overflow:hidden">${it.avatar?`<img src="${esc(it.avatar)}" alt="" style="width:100%;height:100%;object-fit:cover">`:esc(letter(name))}</div>
       <div class="s-row-body">
         <div class="s-row-line1">
           <span class="s-row-title">${highlight(name,q)}</span>
