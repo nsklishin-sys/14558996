@@ -513,9 +513,7 @@ function render(posts){
     var avHtml = authorAvatar
       ? '<div class="pc-av" style="overflow:hidden"><img src="'+esc(authorAvatar)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
       : '<div class="pc-av" style="background:'+avc(authorName)+'">'+letter(authorName)+'</div>';
-    var cover = p.cover_url
-      ? '<div style="margin:10px 0 0;border-radius:12px;overflow:hidden;height:160px;background:var(--gp)"><img src="'+esc(p.cover_url)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>'
-      : '';
+    // обложка в карточке ленты не показывается (как на авторизованной главной)
     return '<div class="post-card" style="animation-delay:'+(i*.08)+'s;margin-bottom:10px" onclick="location.href=\''+href+id+'\'">'+
       '<div class="pc-head">'+avHtml+
         '<div><div class="pc-name">'+esc(authorName)+'</div><div class="pc-meta">'+esc(authorSub)+(authorSub?' · ':'')+esc(t)+'</div></div>'+
@@ -523,7 +521,6 @@ function render(posts){
       '</div>'+
       (p.title ? '<div style="font-size:15px;font-weight:700;color:var(--t);line-height:1.35;margin:2px 0 6px">'+esc(p.title)+'</div>' : '')+
       '<div class="pc-text" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc((p.content||p.text||'').slice(0,200))+'</div>'+
-      cover+
       '<div class="pc-foot">'+
         '<div class="pc-act"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'+(p.likes_count||0)+'</div>'+
         '<div class="pc-act" style="margin-left:8px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'+(p.comments_count||0)+'</div>'+
