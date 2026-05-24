@@ -268,8 +268,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .msg-status{display:inline-flex;align-items:center;cursor:default;position:relative;font-size:12px;font-weight:700;letter-spacing:-3px;line-height:1;padding-right:3px;font-family:-apple-system,sans-serif}
 .msg-status::before{content:'✓';display:inline-block}
 .msg-status.delivered::after,.msg-status.read::after{content:'✓';display:inline-block}
-.msg-status.sent,.msg-status.delivered{color:var(--gmt)}
-.msg-status.read{color:var(--g)}
+.msg-status.sent,.msg-status.delivered{color:#9DB3A8;opacity:.85}
+.msg-status.read{color:var(--g);opacity:1}
 .msg-status[data-tip]:hover::after{
   content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);right:0;
   background:var(--t);color:#fff;padding:4px 8px;border-radius:6px;
@@ -2467,7 +2467,7 @@ document.addEventListener('durationchange',function(e){
 },true);
 const emojis=['😀','😁','😂','🤣','😊','😍','😘','😎','🤝','👍','👏','🙏','🔥','✅','📦','🚚','📍','📄','💼','📊','📞','💬','🧠','⚙️','🎯','⏰','🌍','🧾','📌','💡','❤️','😅','😢','😡','😴','🤔','🙌','🎉','🚀','👀'];
 function toggleEmojiPicker(){emojiPicker.classList.toggle('open')} ;emojiPicker.innerHTML=emojis.map(e=>`<button type="button" onclick="insertEmoji('${e}')">${e}</button>`).join('');
-function insertEmoji(e){const i=msgInput;const s=i.selectionStart||i.value.length;const v=i.value;i.value=v.slice(0,s)+e+v.slice(s);i.focus();i.selectionStart=i.selectionEnd=s+e.length;autoGrow(i)}
+function insertEmoji(e){const i=msgInput;const s=i.selectionStart||i.value.length;const v=i.value;i.value=v.slice(0,s)+e+v.slice(s);i.focus();i.selectionStart=i.selectionEnd=s+e.length;autoGrow(i);emojiPicker.classList.remove('open')}
 let typeDeb;
 let _lastTypingSent=0;
 function onTyping(){
