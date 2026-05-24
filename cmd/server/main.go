@@ -349,6 +349,7 @@ type searchCommunity struct {
 	Color        string  `json:"color"`
 	MembersCount int     `json:"members_count"`
 	Privacy      string  `json:"privacy"`
+	Avatar       string  `json:"avatar,omitempty"`
 	Score        float64 `json:"score,omitempty"`
 }
 
@@ -22694,6 +22695,7 @@ func searchCommunitiesInto(db *sql.DB, q, sortBy string, limit, offset int, view
 			COALESCE(color,'') AS color,
 			COALESCE((SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = communities.id), 0) AS members_count,
 			COALESCE(privacy_level,'open') AS privacy,
+			COALESCE(avatar_url,'') AS avatar,
 			(
 				CASE WHEN LOWER(name) = LOWER($2) THEN 10 ELSE 0 END +
 				CASE WHEN LOWER(name) LIKE LOWER($2) || '%' THEN 5 ELSE 0 END +
@@ -22724,7 +22726,7 @@ func searchCommunitiesInto(db *sql.DB, q, sortBy string, limit, offset int, view
 	out := make([]searchCommunity, 0, limit)
 	for rows.Next() {
 		var item searchCommunity
-		if err := rows.Scan(&item.PublicID, &item.Name, &item.Description, &item.Region, &item.Category, &item.Color, &item.MembersCount, &item.Privacy, &item.Score); err != nil {
+		if err := rows.Scan(&item.PublicID, &item.Name, &item.Description, &item.Region, &item.Category, &item.Color, &item.MembersCount, &item.Privacy, &item.Avatar, &item.Score); err != nil {
 			return 0, err
 		}
 		if item.Privacy == "open" {
