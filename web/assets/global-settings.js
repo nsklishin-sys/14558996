@@ -453,7 +453,8 @@
           // На фоне отправляем POST
           try {
             await lastopFetch('/api/notifications/' + id + '/read', {
-              method: 'POST'
+              method: 'POST',
+              keepalive: true
             });
           } catch {}
         }
