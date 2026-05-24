@@ -413,6 +413,19 @@ textarea.field-input{resize:none;height:72px;line-height:1.55}
           <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="previewAvatar(this)">
         </div>
 
+        <div class="panel-section">
+          <div class="ps-label">Обложка профиля</div>
+          <div class="avatar-row">
+            <div class="avatar-preview" id="coverPreview" style="width:120px;height:48px;border-radius:10px">—</div>
+            <div class="avatar-actions">
+              <button type="button" class="btn-upload" onclick="document.getElementById('coverInput').click()">Загрузить обложку</button>
+              <button type="button" class="btn-upload" style="background:transparent;color:var(--gmt)" onclick="removeCover()">Убрать</button>
+              <span class="avatar-hint">JPG, PNG до 5 МБ · Рекомендуется 1200×300</span>
+            </div>
+          </div>
+          <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="previewCover(this)">
+        </div>
+
         <!-- Основная информация -->
         <div class="panel-section">
           <div class="ps-label">Основная информация</div>
@@ -998,6 +1011,9 @@ function populateUI(){
   document.getElementById('handleField').value=currentUser.handle||'';
   updateWebsiteField();
   pendingAvatarURL=currentUser.avatar_url||'';
+  pendingCoverURL=currentUser.cover_url||'';
+  const cvPrev=document.getElementById('coverPreview');
+  if(cvPrev){ if(currentUser.cover_url){cvPrev.innerHTML=`<img src="${currentUser.cover_url}" alt="cover" style="width:100%;height:100%;object-fit:cover">`;cvPrev.style.background='transparent';}else{cvPrev.innerHTML='';cvPrev.textContent='—';} }
   /* Настройки внешнего вида */
   const initialTheme=(window.LastopTheme && typeof window.LastopTheme.current==='function')?window.LastopTheme.current():(localStorage.getItem('lastop-theme')||'light');
   markThemeCard(initialTheme);
@@ -1616,6 +1632,7 @@ function selectTheme(card, theme){
 
 /* ── АВАТАР ── */
 let pendingAvatarURL='';
+let pendingCoverURL='';
 
 function updateWebsiteField(){
   const websiteInput=document.getElementById('website');
@@ -1649,6 +1666,37 @@ async function previewAvatar(input){
     pendingAvatarURL=currentUser.avatar_url||'';
     if(pendingAvatarURL){av.innerHTML=`<img src="${pendingAvatarURL}" alt="avatar">`;}else{av.innerHTML='';av.textContent=initials(currentUser.full_name||'?');av.style.background=avc(currentUser.full_name||'?');}
   }
+}
+
+async function previewCover(input){
+  const file=input.files?.[0];if(!file)return;
+  if(file.size>5*1024*1024){showToast('Файл слишком большой (макс 5 МБ)','error');return;}
+  if(!file.type.startsWith('image/')){showToast('Можно загружать только изображения','error');return;}
+  const localPreview=URL.createObjectURL(file);
+  const cv=document.getElementById('coverPreview');
+  cv.innerHTML=`<img src="${localPreview}" alt="cover" style="width:100%;height:100%;object-fit:cover">`;
+  cv.style.background='transparent';
+  try{
+    const fd=new FormData();
+    fd.append('file',file);
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
+    if(!r.ok){throw new Error(await r.text()||'Upload error');}
+    const d=await r.json();
+    pendingCoverURL=d.url||d.file_url||'';
+    if(!pendingCoverURL)throw new Error('Сервер не вернул URL файла');
+    URL.revokeObjectURL(localPreview);
+    cv.innerHTML=`<img src="${pendingCoverURL}" alt="cover" style="width:100%;height:100%;object-fit:cover">`;
+  }catch(e){
+    URL.revokeObjectURL(localPreview);
+    showToast('Не удалось загрузить файл: '+(e.message||e),'error');
+    pendingCoverURL=currentUser.cover_url||'';
+    if(pendingCoverURL){cv.innerHTML=`<img src="${pendingCoverURL}" alt="cover" style="width:100%;height:100%;object-fit:cover">`;}else{cv.innerHTML='';cv.textContent='—';}
+  }
+}
+function removeCover(){
+  pendingCoverURL='';
+  const cv=document.getElementById('coverPreview');
+  cv.innerHTML='';cv.textContent='—';cv.style.background='';
 }
 
 /* ── ДРОПДАУН ПРОФИЛЯ ── */
@@ -1687,6 +1735,7 @@ async function saveProfile(){
     location:document.getElementById('city').value.trim()||null,
     city:document.getElementById('city').value.trim()||null,
     avatar_url:pendingAvatarURL||currentUser.avatar_url||null,
+    cover_url:pendingCoverURL,
   };
 
   currentUser={...currentUser,...payload};
