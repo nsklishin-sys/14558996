@@ -387,7 +387,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <a class="bc-item" href="/">Главная</a>
     <span class="bc-sep">›</span>
     <a class="bc-item" href="/events.html">Мероприятия</a>
-    <span class="bc-sep">›</span>
+    <span class="bc-sep" id="bcCategorySep">›</span>
     <a class="bc-item" id="bcCategory" href="/events.html"></a>
     <span class="bc-sep">›</span>
     <span class="bc-item cur" id="bcCurrent"></span>
@@ -971,6 +971,15 @@ function applyEvent(ev){
   document.title=ev.title+' · LASTOP';
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
   set('bcCurrent',ev.title);
+  (function(){
+    var catEl=document.getElementById('bcCategory');
+    var sepEl=document.getElementById('bcCategorySep');
+    var cat=(ev.category_label||ev.category||'').trim();
+    if(catEl&&sepEl){
+      if(cat){ catEl.textContent=cat; catEl.style.display=''; sepEl.style.display=''; }
+      else{ catEl.style.display='none'; sepEl.style.display='none'; }
+    }
+  })();
   set('evTitle',ev.title);
   const dt=new Date(ev.starts_at);
   set('evDay',String(dt.getDate()));
