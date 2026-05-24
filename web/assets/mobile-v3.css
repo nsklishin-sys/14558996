@@ -132,6 +132,18 @@ a,
   html.lt-shell-2col .right:has(#ownerControlsCard) > #ownerControlsCard {
     display: block;
   }
+  /* ── B-M-NEWS-CRUMB: крошки новости не влезают → горизонтальный скролл ── */
+  html.lt-shell .breadcrumb,
+  html.lt-shell-2col .breadcrumb {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  html.lt-shell .breadcrumb::-webkit-scrollbar,
+  html.lt-shell-2col .breadcrumb::-webkit-scrollbar {
+    display: none;
+  }
 
   /* ── Э: exhibition-detail — кнопка управления (Редактировать выставку) на мобилке ── */
   html.lt-shell .right:has(#sidebarAdminCard),
