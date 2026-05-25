@@ -674,7 +674,10 @@ function openModal(){
   const mCat=document.getElementById('mCat');
   if(mCat&&window.renderProjectCategoriesInto){
     // Источник категорий мероприятий = справочник выставок (единый словарь exhibition_*).
-    loadEventCatTree().then(()=>window.renderProjectCategoriesInto(mCat,'Выберите категорию'));
+    loadEventCatTree().then(()=>{
+      window.renderProjectCategoriesInto(mCat,'Выберите категорию');
+      if(window.initCategoryPickers)window.initCategoryPickers(); // пересобрать picker с актуальными опциями
+    });
     window.renderProjectCategoriesInto(mCat,'Выберите категорию'); // мгновенный рендер из кэша/fallback
   }
   if(window.lastopClearAllErrors)window.lastopClearAllErrors(document.getElementById('modalBg'));
