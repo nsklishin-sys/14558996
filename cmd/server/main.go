@@ -23273,6 +23273,11 @@ func slugifyExhibition(s string) string {
 }
 
 func createExhibition(db *sql.DB, creatorID int64, req createExhibitionRequest) (exhibition, error) {
+	if req.Latitude == 0 && req.Longitude == 0 {
+		if lat, lon, ok := geocodeAddress(strings.TrimSpace(req.City + ", " + req.Address)); ok {
+			req.Latitude, req.Longitude = lat, lon
+		}
+	}
 	if strings.TrimSpace(req.Title) == "" {
 		return exhibition{}, fmt.Errorf("validation: title required")
 	}
@@ -23511,6 +23516,11 @@ func listExhibitions(db *sql.DB, viewerID int64, hasAuth bool, f listExhibitions
 }
 
 func updateExhibition(db *sql.DB, userID int64, isAdmin bool, publicID string, req updateExhibitionRequest) (*exhibition, error) {
+	if req.Latitude == 0 && req.Longitude == 0 {
+		if lat, lon, ok := geocodeAddress(strings.TrimSpace(req.City + ", " + req.Address)); ok {
+			req.Latitude, req.Longitude = lat, lon
+		}
+	}
 	// Проверка прав: автор или admin
 	var ownerID int64
 	if err := db.QueryRow(`SELECT created_by_user_id FROM exhibitions WHERE public_id=$1 AND is_deleted=FALSE`, publicID).Scan(&ownerID); err != nil {
@@ -25078,6 +25088,11 @@ func createEvent(db *sql.DB, organizerID int64, req createEventRequest) (event, 
 	if err != nil {
 		return event{}, err
 	}
+	if req.Latitude == 0 && req.Longitude == 0 {
+		if lat, lon, ok := geocodeAddress(strings.TrimSpace(req.City + ", " + req.Address)); ok {
+			req.Latitude, req.Longitude = lat, lon
+		}
+	}
 	var pgTags pgtype.FlatArray[string] = req.Tags
 	for i := 0; i < 5; i++ {
 		pid, err := newPublicEventID()
@@ -25547,8 +25562,14 @@ func updateEvent(db *sql.DB, userID int64, publicID string, req updateEventReque
 		current.EndsAt, _ = parseEventTime(*req.EndsAt, current.Timezone)
 	}
 	var pgTags pgtype.FlatArray[string] = current.Tags
-	_, err = db.Exec(`UPDATE events SET title=$1, description=$2, type=$3, format=$4, category=$5, city=$6, address=$7, venue=$8, online_url=$9, starts_at=$10, ends_at=$11, timezone=$12, cover_url=$13, banner_color=$14, fee_cents=$15, currency=$16, seats_total=$17, tags=$18, status=$19, updated_at=NOW() WHERE public_id=$20 AND organizer_id=$21`,
-		current.Title, current.Description, current.Type, current.Format, current.Category, current.City, current.Address, current.Venue, current.OnlineURL, current.StartsAt, current.EndsAt, current.Timezone, current.CoverURL, current.BannerColor, current.FeeCents, current.Currency, current.SeatsTotal, pgTags, current.Status, publicID, userID)
+	// Перегеокодим, если координат нет, но адрес есть (адрес мог измениться при апдейте).
+	if current.Latitude == 0 && current.Longitude == 0 {
+		if lat, lon, ok := geocodeAddress(strings.TrimSpace(current.City + ", " + current.Address)); ok {
+			current.Latitude, current.Longitude = lat, lon
+		}
+	}
+	_, err = db.Exec(`UPDATE events SET title=$1, description=$2, type=$3, format=$4, category=$5, city=$6, address=$7, venue=$8, online_url=$9, starts_at=$10, ends_at=$11, timezone=$12, cover_url=$13, banner_color=$14, fee_cents=$15, currency=$16, seats_total=$17, tags=$18, status=$19, latitude=$22, longitude=$23, updated_at=NOW() WHERE public_id=$20 AND organizer_id=$21`,
+		current.Title, current.Description, current.Type, current.Format, current.Category, current.City, current.Address, current.Venue, current.OnlineURL, current.StartsAt, current.EndsAt, current.Timezone, current.CoverURL, current.BannerColor, current.FeeCents, current.Currency, current.SeatsTotal, pgTags, current.Status, publicID, userID, current.Latitude, current.Longitude)
 	if err != nil {
 		return event{}, err
 	}
