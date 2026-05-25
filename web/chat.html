@@ -304,6 +304,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .reaction:hover{border-color:var(--gb);background:var(--gp)}
 .reaction.mine{background:var(--w);border-color:var(--gb);color:var(--g)}
+.reaction-picker{position:absolute;bottom:calc(100% + 4px);left:0;display:flex;gap:2px;padding:5px 7px;background:var(--w);border:1px solid var(--bdr);border-radius:99px;box-shadow:var(--shm,0 6px 24px rgba(30,138,76,.13));z-index:20}
+.msg.me .reaction-picker{left:auto;right:0}
+.reaction-picker button{border:0;background:transparent;cursor:pointer;font-size:18px;padding:2px 4px;border-radius:8px;transition:transform .1s}
+.reaction-picker button:hover{transform:scale(1.25)}
 
 /* Цитата в сообщении */
 .msg-quote{
@@ -1476,7 +1480,7 @@ function closeActiveChat(){
 }
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
 function renderMessages(){
-  const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0]));
+  const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0,(m.reactions||[]).map(r=>r.emoji+r.count+(r.mine?'1':'0')).join(',')]));
   const typingSig=makeSig((state.typingUsers||[]).map(u=>u.public_id||u.user_id||u));
   const fullSig=sig+'|'+typingSig+'|'+(state.activeConvPublicID||'');
   if(fullSig===renderCache.messagesSig)return;
@@ -1526,7 +1530,7 @@ function renderMessages(){
     const showName = !mine && (m.sender_company_id || m.sender_community_id);
     const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` : '';
     el.insertAdjacentHTML('beforeend', `
-      <div class='msg ${mine?'me':'them'}' data-msg-id='${m.id}'>
+      <div class='msg ${mine?'me':'them'}' data-msg-id='${m.id}' ondblclick='event.stopPropagation();openReactionPicker(${m.id},this)'>
         ${avatarHtml}
         <div class='msg-group'>
           ${nameHTML}
@@ -1548,6 +1552,7 @@ function renderMessages(){
             ${m.is_edited ? '<span>(изм.)</span>' : ''}
             ${mine && !m.is_deleted ? renderMsgStatus(m) : ''}
           </div>
+          ${(m.reactions && m.reactions.length) ? `<div class='msg-reactions'>${m.reactions.map(r=>`<span class='reaction${r.mine?' mine':''}' onclick='event.stopPropagation();toggleReaction(${m.id},"${r.emoji}")'>${r.emoji} ${r.count}</span>`).join('')}</div>` : ''}
         </div>
       </div>`);
     if (_urls.length) {
@@ -1567,6 +1572,32 @@ function renderMessages(){
       el.scrollTop=prevScroll;
     }
   }
+}
+const REACTION_EMOJIS=['👍','❤️','😂','🔥','😢','👏'];
+function openReactionPicker(msgId, msgEl){
+  // убрать прежнюю панель
+  document.querySelectorAll('.reaction-picker').forEach(p=>p.remove());
+  const pick=document.createElement('div');
+  pick.className='reaction-picker';
+  pick.innerHTML=REACTION_EMOJIS.map(e=>`<button type="button" onclick="event.stopPropagation();toggleReaction(${msgId},'${e}');document.querySelectorAll('.reaction-picker').forEach(p=>p.remove())">${e}</button>`).join('');
+  const bubble=msgEl.querySelector('.msg-bubble')||msgEl;
+  bubble.style.position='relative';
+  bubble.appendChild(pick);
+  // закрытие по клику вне
+  setTimeout(()=>{
+    const off=(ev)=>{if(!pick.contains(ev.target)){pick.remove();document.removeEventListener('click',off);}};
+    document.addEventListener('click',off);
+  },0);
+}
+async function toggleReaction(msgId, emoji){
+  // оптимистично — обновим локально, ответ сервера перезапишет
+  try{
+    const r=await api(`/chat/messages/${msgId}/react`,{method:'POST',body:{emoji}});
+    if(r&&Array.isArray(r.reactions)){
+      const m=(state.messages||[]).find(x=>x.id===msgId);
+      if(m){m.reactions=r.reactions;renderCache.messagesSig='';renderMessages();}
+    }
+  }catch{}
 }
 function renderMsgStatus(m){
   if (m._sending) return `<span class='msg-status sending' title='Отправляется…'></span>`;
@@ -2592,6 +2623,18 @@ function setupChatWS(){
           chatStatus.className = 'ch-status' + (data.is_online ? ' online' : '');
         }
       }
+    }
+  });
+  window.wsClient.on('chat:reaction', function(data){
+    if(!data || !data.conversation_public_id || !data.message_id) return;
+    if(state.activeConvPublicID !== data.conversation_public_id) return;
+    const m=(state.messages||[]).find(x=>x.id===data.message_id);
+    if(m){
+      // mine пересчитываем локально: серверный агрегат без mine, сохраняем свой флаг по эмодзи
+      const prevMine=(m.reactions||[]).filter(r=>r.mine).map(r=>r.emoji);
+      m.reactions=(data.reactions||[]).map(r=>({...r, mine: prevMine.includes(r.emoji)}));
+      renderCache.messagesSig='';
+      renderMessages();
     }
   });
   window.wsClient.on('chat:message', function(data){
