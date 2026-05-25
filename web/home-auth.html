@@ -794,6 +794,11 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   </div>
 
   <div class="card">
+    <div class="block-title">Обсуждают сейчас</div>
+    <div id="forumHotList"><div style="font-size:11px;color:var(--gmt);padding:6px 0">Загрузка…</div></div>
+  </div>
+
+  <div class="card">
     <div class="block-title">Рекомендации</div>
     <div id="recList"></div>
   </div>
@@ -939,6 +944,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   loadCalendarMonth(CAL_STATE.year,CAL_STATE.month);
   loadFeed();
   loadRec();
+  loadForumHot();
   loadRecentProjects();
   loadAttention();
   loadMyDay();
@@ -1546,6 +1552,28 @@ function calGoToday(){
   loadCalendarMonth(now.getFullYear(), now.getMonth());
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadCalendarMonth(CAL_STATE.year,CAL_STATE.month)});
+async function loadForumHot(){
+  const box=document.getElementById('forumHotList');
+  if(!box)return;
+  try{
+    const r=await lastopFetch(API+'/forum/topics?limit=10',{headers:{}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const top=(d.topics||[])
+      .slice()
+      .sort((a,b)=>new Date(b.last_reply_at||b.created_at)-new Date(a.last_reply_at||a.created_at))
+      .slice(0,4);
+    if(!top.length){box.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:6px 0">Пока нет активных тем</div>';return;}
+    box.innerHTML=top.map(t=>{
+      const pid=t.public_id||t.id||'';
+      const cnt=t.replies_count||0;
+      return '<a href="/forum-topic.html?id='+encodeURIComponent(pid)+'" style="display:block;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none">'+
+        '<div style="font-size:12px;font-weight:600;color:var(--t);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+esc(t.title||"Тема")+'</div>'+
+        '<div style="font-size:10px;color:var(--gmt)">'+cnt+' '+pluralRu(cnt,["ответ","ответа","ответов"])+'</div></a>';
+    }).join('');
+  }catch{box.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:6px 0">Пока нет активных тем</div>';}
+}
+
 /* ── РЕКОМЕНДАЦИИ (правый сайдбар) ── */
 async function loadRec(){
   const recList = document.getElementById('recList');
@@ -1553,30 +1581,15 @@ async function loadRec(){
   recList.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--gmt);text-align:center">Загрузка…</div>';
   const headers = {};
   try {
-    const [coRes, evRes] = await Promise.all([
-      lastopFetch(API + '/companies?limit=2', {headers}).then(r => r.ok ? r.json() : {companies:[]}).catch(() => ({companies:[]})),
-      lastopFetch(API + '/events?limit=1', {headers}).then(r => r.ok ? r.json() : {events:[]}).catch(() => ({events:[]}))
-    ]);
+    const cRes = await lastopFetch(API + '/friends/candidates', {headers}).then(r => r.ok ? r.json() : {users:[]}).catch(() => ({users:[]}));
     const items = [];
-    (coRes.companies || []).slice(0, 2).forEach(c => {
+    (cRes.users || []).slice(0, 3).forEach(u => {
       items.push({
-        name: c.name || 'Компания',
-        sub: (c.industry || c.category || 'Компания') + (c.city ? ' · ' + c.city : ''),
-        c: c.brand_color || '#1A8A6A',
-        href: c.slug ? '/company-detail.html?slug=' + encodeURIComponent(c.slug) : '/companies.html',
-        logo: c.logo_image || ''
-      });
-    });
-    (evRes.events || []).slice(0, 1).forEach(e => {
-      const d = e.starts_at ? new Date(e.starts_at) : null;
-      const fmt = d ? d.toLocaleDateString('ru-RU', {day:'numeric',month:'short'}) : '';
-      const place = e.format === 'online' ? 'онлайн' : (e.city || 'офлайн');
-      items.push({
-        name: e.title || 'Мероприятие',
-        sub: fmt + (place ? ' · ' + place : ''),
-        c: '#9060C0',
-        href: '/event-detail.html?id=' + encodeURIComponent(e.public_id || ''),
-        logo: ''
+        name: u.full_name || 'Участник',
+        sub: [u.position, u.company_name].filter(Boolean).join(' · ') || 'Участник LASTOP',
+        c: '#3A90C0',
+        href: u.id ? '/profile_user.html?id=' + encodeURIComponent(u.id) : '/friends.html',
+        logo: u.avatar_url || ''
       });
     });
     if (!items.length) {
