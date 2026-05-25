@@ -894,6 +894,29 @@ function defaultTasks(){
 }
 function newId(){return 't_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 
+
+function serializeTask(t){
+  return {title:t.title||'',desc:t.desc||'',due:t.due||'',time:t.time||'',pri:t.pri||'lo',tags:[...(t.tags||[])],done:!!t.done,status:t.status||(t.done?'done':'todo'),checklist:(t.checklist||[]).map(c=>({text:c.text||'',done:!!c.done}))};
+}
+function mapServerTask(t){
+  return {id:t.id,title:t.title||'',desc:t.desc||'',due:t.due||'',time:t.time||'',pri:t.pri||'lo',tags:[...(t.tags||[])],done:!!t.done,status:t.status||(t.done?'done':'todo'),checklist:(t.checklist||[]).map(c=>({text:c.text||'',done:!!c.done})),created:t.created?new Date(t.created).getTime():Date.now(),updated:t.updated?new Date(t.updated).getTime():Date.now()};
+}
+async function createTaskServer(obj){
+  try{
+    const r=await lastopFetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serializeTask(obj))});
+    if(r.ok){const d=await r.json();if(d.task)return mapServerTask(d.task);}
+  }catch{}
+  return null;
+}
+function patchTaskServer(t){
+  if(!t||typeof t.id!=='number')return;
+  try{lastopFetch('/api/tasks/'+t.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(serializeTask(t))});}catch{}
+}
+function deleteTaskServer(id){
+  if(typeof id!=='number')return;
+  try{lastopFetch('/api/tasks/'+id,{method:'DELETE',headers:{}});}catch{}
+}
+
 /* Синк к виджету на главной (упрощённый формат) */
 function syncToHomeWidget(){
   const list=tasks.slice(0,8).map(t=>({
@@ -1246,6 +1269,7 @@ function attachKanbanDnD(){
       if(col.dataset.colBody==='done')t.done=true;
       else if(t.done)t.done=false;
       t.updated=Date.now();
+      patchTaskServer(t);
       saveTasks();render();updateStats();
     });
   });
@@ -1265,17 +1289,21 @@ function toggleDone(id,e){
   const t=tasks.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;t.updated=Date.now();
   if(t.done)t.status='done';else if(t.status==='done')t.status='todo';
+  patchTaskServer(t);
   saveTasks();render();updateStats();
 }
 async function removeTask(id){
   if(!await lastopConfirm({title:'Удалить задачу?',danger:true}))return;
+  deleteTaskServer(id);
   tasks=tasks.filter(x=>x.id!==id);
   saveTasks();render();updateStats();showToast('Задача удалена');
 }
-function duplicate(id){
+async function duplicate(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
-  const copy={...t,id:newId(),title:t.title+' (копия)',done:false,created:Date.now(),updated:Date.now(),checklist:(t.checklist||[]).map(c=>({...c}))};
-  tasks.unshift(copy);saveTasks();render();updateStats();showToast('Задача продублирована ✓');
+  const draft={title:t.title+' (копия)',desc:t.desc||'',due:t.due||'',time:t.time||'',pri:t.pri||'lo',tags:[...(t.tags||[])],done:false,checklist:(t.checklist||[]).map(c=>({...c}))};
+  const created=await createTaskServer(draft);
+  tasks.unshift(created||{...draft,id:newId(),created:Date.now(),updated:Date.now()});
+  saveTasks();render();updateStats();showToast('Задача продублирована ✓');
 }
 function toggleSection(key){
   if(state.collapsedSections.has(key))state.collapsedSections.delete(key);
@@ -1368,6 +1396,7 @@ async function saveTask(){
   };
   if(state.editingId){
     const t=tasks.find(x=>x.id===state.editingId);
+    if(t){Object.assign(t,data,{updated:Date.now()});patchTaskServer(t);}
     if(t){Object.assign(t,data,{updated:Date.now()});}
     saveTasks();render();updateStats();closeModal();showToast('Задача сохранена ✓');
   }else{
@@ -1379,18 +1408,21 @@ async function saveTask(){
 async function deleteEditing(){
   if(!state.editingId)return;
   if(!await lastopConfirm({title:'Удалить задачу?',danger:true}))return;
+  deleteTaskServer(state.editingId);
   tasks=tasks.filter(x=>x.id!==state.editingId);
   saveTasks();render();updateStats();closeModal();showToast('Задача удалена');
 }
 
 /* ═══ QUICK ADD ═══ */
 const quickInput=document.getElementById('quickInput');
-quickInput.addEventListener('keydown',e=>{
+quickInput.addEventListener('keydown',async e=>{
   if(e.key==='Enter'){
     e.preventDefault();
     const v=quickInput.value.trim();if(!v)return;
     const parsed=parseQuick(v);
-    tasks.unshift({...parsed,id:newId(),done:false,status:'todo',created:Date.now(),updated:Date.now(),checklist:[],desc:''});
+    const draft={...parsed,done:false,checklist:[],desc:''};
+    const created=await createTaskServer(draft);
+    tasks.unshift(created||{...draft,id:newId(),status:'todo',created:Date.now(),updated:Date.now()});
     saveTasks();render();updateStats();
     quickInput.value='';showToast('Задача добавлена ✓');
   }
