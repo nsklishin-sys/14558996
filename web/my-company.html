@@ -733,6 +733,18 @@ function renderAbout(wrap){
     '<div class="panel">' +
       '<div class="panel-title">' + (canEdit ? 'Редактировать данные' : 'Информация (только просмотр)') + '</div>' +
 
+      // Обложка (баннер публичного профиля)
+      '<div style="margin-bottom:16px">' +
+        '<div class="fld-label" style="margin-bottom:6px">Обложка <span style="font-weight:400;color:var(--gmt)">(баннер публичного профиля)</span></div>' +
+        '<div id="aboutCoverPreview" style="height:120px;border-radius:var(--rl);border:1px solid var(--bdr);overflow:hidden;background:' + ((c.cover_url && (c.cover_url.startsWith('http')||c.cover_url.startsWith('/uploads/'))) ? 'url(\''+escAttr(c.cover_url)+'\') center/cover no-repeat' : 'linear-gradient(135deg,'+escAttr(c.accent_color||'#1E8A4C')+',#22A05A)') + '"></div>' +
+        (canEdit
+          ? '<div style="display:flex;gap:8px;margin-top:8px">' +
+              '<label class="btn btn-ghost" style="cursor:pointer"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Загрузить обложку<input type="file" accept="image/*" id="aboutCoverFile" style="display:none" onchange="uploadAboutCover(event)"></label>' +
+              (c.cover_url ? '<button type="button" class="btn btn-ghost" onclick="clearAboutCover()" style="color:var(--red)">Убрать</button>' : '') +
+            '</div>'
+          : '') +
+      '</div>' +
+
       // Логотип + цвет акцента
       '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">' +
         '<div style="display:flex;flex-direction:column;align-items:center;gap:6px">' +
@@ -790,6 +802,7 @@ function renderAbout(wrap){
   // Инициализируем aboutTags и color picker sync
   window.__aboutTags = (c.tags || []).slice();
   window.__aboutLogo = c.logo_image || '';
+  window.__aboutCover = c.cover_url || '';
   renderAboutTags();
   // наполнить селект категории деревом каталога + предвыбрать текущую
   const _catSel = document.getElementById('aboutCategory');
@@ -873,6 +886,25 @@ function clearAboutLogo(){
   renderTab(); // полный пере-рендер чтобы убрать кнопку «Убрать»
 }
 
+function uploadAboutCover(e){
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Только изображения'); return; }
+  if (file.size > 3 * 1024 * 1024) { toast('Файл больше 3 МБ'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    window.__aboutCover = reader.result;
+    const prev = document.getElementById('aboutCoverPreview');
+    if (prev) prev.style.background = 'url(\'' + escAttr(reader.result) + '\') center/cover no-repeat';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAboutCover(){
+  window.__aboutCover = '';
+  renderTab();
+}
+
 async function saveAbout(){
   const c = currentCompany;
   const btn = document.getElementById('aboutSaveBtn');
@@ -890,6 +922,7 @@ async function saveAbout(){
       email:        document.getElementById('aboutEmail').value.trim(),
       phone:        document.getElementById('aboutPhone').value.trim(),
       logo_image:   window.__aboutLogo || '',
+      cover_url:    window.__aboutCover || '',
       accent_color: /^#[0-9A-Fa-f]{6}$/.test(accent) ? accent : '#1E8A4C',
       tags:         (window.__aboutTags || []).slice(),
     };
