@@ -205,6 +205,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .chat-body::-webkit-scrollbar{width:4px}
 .chat-body::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.chat-newbtn{position:absolute;right:18px;bottom:90px;z-index:30;display:none;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;background:var(--g);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(30,138,76,.3);transition:opacity .15s}
+.chat-newbtn.show{display:inline-flex}
+.chat-newbtn:hover{background:var(--gm)}
+.chat-newbtn svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 
 /* Разделитель даты */
 .date-sep{
@@ -882,6 +886,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="chat-body" id="chatBody">
       <div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>
     </div>
+    <button type="button" class="chat-newbtn" id="chatNewBtn" onclick="scrollChatToBottom(true)"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg><span id="chatNewBtnLabel">Новые</span></button>
 
     <!-- Блок ответа -->
     <div class="reply-bar" id="replyBar">
@@ -1461,7 +1466,7 @@ function applyConversation(c){
 }
 const chatDrafts = {};
 function saveDraft(){ if(state.activeConvPublicID && typeof msgInput!=='undefined' && msgInput){ const v=msgInput.value; if(v && v.trim()) chatDrafts[state.activeConvPublicID]=v; else delete chatDrafts[state.activeConvPublicID]; } }
-async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();saveDraft();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();const _cb=document.getElementById('chatCloseBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display='';if(typeof msgInput!=='undefined'&&msgInput){msgInput.value=chatDrafts[pid]||'';autoGrow(msgInput);}}
+async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();saveDraft();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();_chatNewCount=0;updateNewBtn();bindChatScrollWatcher();const _cb=document.getElementById('chatCloseBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display='';if(typeof msgInput!=='undefined'&&msgInput){msgInput.value=chatDrafts[pid]||'';autoGrow(msgInput);}}
 function closeActiveChat(){
   state.activeConvPublicID=null;
   state.messages=[];
@@ -1481,6 +1486,34 @@ function closeActiveChat(){
   renderConversations();
 }
 async function loadMessages(){const pid=state.activeConvPublicID;if(!pid)return;const d=await api(`/chat/conversations/${pid}/messages?limit=100`);state.messages=d.messages||[];saveCachedMessages(pid);renderMessages()}
+let _chatNewCount = 0;
+function chatAtBottom(){
+  const el = document.getElementById('chatBody');
+  if(!el) return true;
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 60;
+}
+function scrollChatToBottom(reset){
+  const el = document.getElementById('chatBody');
+  if(el){ const sd=()=>{el.scrollTop=el.scrollHeight}; sd(); requestAnimationFrame(sd); setTimeout(sd,80); }
+  if(reset){ _chatNewCount = 0; updateNewBtn(); }
+}
+function updateNewBtn(){
+  const btn = document.getElementById('chatNewBtn');
+  if(!btn) return;
+  if(_chatNewCount > 0){
+    const lbl = document.getElementById('chatNewBtnLabel');
+    if(lbl) lbl.textContent = _chatNewCount + ' ' + (_chatNewCount===1?'новое':(_chatNewCount<5?'новых':'новых'));
+    btn.classList.add('show');
+  } else {
+    btn.classList.remove('show');
+  }
+}
+function bindChatScrollWatcher(){
+  const el = document.getElementById('chatBody');
+  if(!el || el._newWatcher) return;
+  el._newWatcher = true;
+  el.addEventListener('scroll', ()=>{ if(chatAtBottom()){ _chatNewCount = 0; updateNewBtn(); } });
+}
 function renderMessages(){
   const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0,(m.reactions||[]).map(r=>r.emoji+r.count+(r.mine?'1':'0')).join(',')]));
   const typingSig=makeSig((state.typingUsers||[]).map(u=>u.public_id||u.user_id||u));
@@ -2668,16 +2701,18 @@ function setupChatWS(){
       const exists = (state.messages||[]).some(m => m.id === msg.id);
       if(!exists){
         state.messages = state.messages || [];
+        const wasBottom = chatAtBottom();
         state.messages.push(msg);
         renderMessages();
-        // Прокрутить вниз
-        const wrap = document.getElementById('msgsWrap');
-        if(wrap) {
-          const sd=()=>{wrap.scrollTop=wrap.scrollHeight};
-          sd(); requestAnimationFrame(sd); setTimeout(sd,100);
+        if(wasBottom){
+          // пользователь у дна — доскроллить и пометить прочитанным
+          scrollChatToBottom(true);
+          api(`/chat/conversations/${convPid}/read`,{method:'POST'}).catch(()=>{});
+        } else {
+          // пользователь читает историю выше — не дёргаем, показываем «↓ N новых»
+          _chatNewCount++;
+          updateNewBtn();
         }
-        // Помечаем прочитанным сразу — диалог открыт
-        api(`/chat/conversations/${convPid}/read`,{method:'POST'}).catch(()=>{});
       }
     }
     // В любом случае — обновляем список диалогов (last_message, unread_count)
