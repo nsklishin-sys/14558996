@@ -8757,6 +8757,14 @@ func main() {
 	})
 
 	// ─── ФОРУМ (Спринт 7.1A) ───
+	mux.HandleFunc("/api/news/categories", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"categories": newsCategories})
+	})
+
 	mux.HandleFunc("/api/forum/categories", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -28911,6 +28919,19 @@ var projectCategoriesTree []catalogCategoryGroup
 // плоский список ключей категорий сообществ (для валидации по словарю)
 var communityCategoryKeys []string
 
+// newsCategories — категории новостей (плоский список). Наполняется из словаря
+// (type='news_category') в reloadDictionaries, fallback — newsSeedCategories.
+var newsCategories = []jobCategory{}
+
+// newsSeedCategories — стартовый набор категорий новостей. Ключ = лейбл.
+var newsSeedCategories = []jobCategory{
+	{Key: "Логистика", Label: "Логистика"},
+	{Key: "ВЭД", Label: "ВЭД"},
+	{Key: "Регуляторика", Label: "Регуляторика"},
+	{Key: "Технологии", Label: "Технологии"},
+	{Key: "Компании", Label: "Компании"},
+}
+
 // стартовый набор категорий сообществ. КЛЮЧ = ЛЕЙБЛ (существующие сообщества хранят русский лейбл → валидны без миграции).
 var communitySeedCategories = []jobCategory{
 	{Key: "Логистика", Label: "Логистика", Color: "#1E8A4C"},
@@ -29153,6 +29174,10 @@ func seedDictionaries(db *sql.DB) {
 	for i, c := range communitySeedCategories {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, color, sort_order) VALUES ('community_group',$1,$2,$3,$4) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, c.Color, i)
 	}
+	// news_category: стартовые категории новостей (плоский, ключ = лейбл)
+	for i, c := range newsSeedCategories {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('news_category',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, i)
+	}
 	// project_group + project_category: стартовое дерево проектов (6 групп × категории)
 	for gi, g := range projectSeedGroups {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('project_group',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, g.Key, g.Label, gi)
@@ -29185,6 +29210,18 @@ func reloadDictionaries(db *sql.DB) {
 		if len(fc) > 0 {
 			forumCategories = fc
 		}
+	}
+	// news_category (плоский)
+	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='news_category' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
+		var nc []jobCategory
+		for rows.Next() {
+			var k, l string
+			if rows.Scan(&k, &l) == nil {
+				nc = append(nc, jobCategory{Key: k, Label: l})
+			}
+		}
+		rows.Close()
+		newsCategories = nc
 	}
 	// catalog groups + categories + subcategories (3 уровня)
 	if rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='catalog_group' AND is_active=TRUE ORDER BY sort_order, label`); err == nil {
