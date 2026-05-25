@@ -966,11 +966,12 @@ async function loadAttention(){
     const r=await lastopFetch(API+'/tasks',{headers:{}});
     if(r.ok){
       const d=await r.json();
-      const today=new Date();today.setHours(0,0,0,0);
+      const now=new Date();
+      const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
       urgentTasks=(d.tasks||[]).filter(t=>{
         if(t.done)return false;
         if(!t.due||!/^\d{4}-\d{2}-\d{2}$/.test(t.due))return false;
-        return new Date(t.due)<=today;
+        return t.due<=todayStr;
       }).length;
     }
   }catch{}
