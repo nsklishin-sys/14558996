@@ -1589,13 +1589,32 @@ function openReactionPicker(msgId, msgEl){
     document.addEventListener('click',off);
   },0);
 }
+function reactionsHTML(msgId, reactions){
+  if(!reactions||!reactions.length) return '';
+  return reactions.map(r=>`<span class='reaction${r.mine?' mine':''}' onclick='event.stopPropagation();toggleReaction(${msgId},"${r.emoji}")'>${r.emoji} ${r.count}</span>`).join('');
+}
+function updateMessageReactions(msgId, reactions){
+  // обновляем модель (чтобы будущий полный ререндер был консистентен), но НЕ перерисовываем весь чат
+  const m=(state.messages||[]).find(x=>x.id===msgId);
+  if(m){ m.reactions=reactions; }
+  const msgEl=document.querySelector(`.msg[data-msg-id='${msgId}']`);
+  if(!msgEl) return;
+  const group=msgEl.querySelector('.msg-group')||msgEl;
+  let box=group.querySelector('.msg-reactions');
+  const html=reactionsHTML(msgId, reactions);
+  if(!html){ if(box) box.remove(); return; }
+  if(!box){
+    box=document.createElement('div');
+    box.className='msg-reactions';
+    group.appendChild(box);
+  }
+  box.innerHTML=html;
+}
 async function toggleReaction(msgId, emoji){
-  // оптимистично — обновим локально, ответ сервера перезапишет
   try{
     const r=await api(`/chat/messages/${msgId}/react`,{method:'POST',body:{emoji}});
     if(r&&Array.isArray(r.reactions)){
-      const m=(state.messages||[]).find(x=>x.id===msgId);
-      if(m){m.reactions=r.reactions;renderCache.messagesSig='';renderMessages();}
+      updateMessageReactions(msgId, r.reactions);
     }
   }catch{}
 }
@@ -2632,9 +2651,8 @@ function setupChatWS(){
     if(m){
       // mine пересчитываем локально: серверный агрегат без mine, сохраняем свой флаг по эмодзи
       const prevMine=(m.reactions||[]).filter(r=>r.mine).map(r=>r.emoji);
-      m.reactions=(data.reactions||[]).map(r=>({...r, mine: prevMine.includes(r.emoji)}));
-      renderCache.messagesSig='';
-      renderMessages();
+      const merged=(data.reactions||[]).map(r=>({...r, mine: prevMine.includes(r.emoji)}));
+      updateMessageReactions(data.message_id, merged);
     }
   });
   window.wsClient.on('chat:message', function(data){
