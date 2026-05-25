@@ -439,7 +439,15 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 
 <!-- RIGHT -->
 <aside class="right">
-  <!-- Реклама инжектится через global-settings.js -->
+  <div class="card" id="sbSummaryCard" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px">
+    <div style="font-size:13px;font-weight:800;color:var(--t);margin-bottom:12px">Непрочитанные</div>
+    <div id="sbSummary" style="display:flex;flex-direction:column;gap:2px"></div>
+  </div>
+  <div class="card" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px">
+    <div style="font-size:13px;font-weight:800;color:var(--t);margin-bottom:12px">Быстрые действия</div>
+    <button type="button" onclick="pageMarkAll()" style="width:100%;padding:10px;border-radius:12px;background:var(--gp);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;transition:all .15s" onmouseover="this.style.background='var(--gl)'" onmouseout="this.style.background='var(--gp)'">Прочитать всё</button>
+    <a href="/settings.html" style="display:block;width:100%;padding:10px;border-radius:12px;background:transparent;border:1.5px solid var(--bdr);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box;transition:all .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.color='var(--g)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--tm)'">Настройки уведомлений</a>
+  </div>
 </aside>
 </div><!-- /shell -->
 <div class="toast" id="toast"></div>
@@ -629,6 +637,32 @@ async function fetchNotifications(){
   }catch{return [];}
 }
 
+const SB_CATS=[
+  {key:'mentions',label:'Упоминания'},
+  {key:'reactions',label:'Реакции'},
+  {key:'chat',label:'Чат'},
+  {key:'system',label:'Система'}
+];
+function renderSidebar(){
+  const box=document.getElementById('sbSummary');
+  if(!box)return;
+  const unreadItems=allLoadedItems.filter(n=>!n.is_read);
+  const rows=SB_CATS.map(c=>{
+    const g=TYPE_FILTER_GROUPS[c.key]||[];
+    const cnt=unreadItems.filter(n=>g.includes(n.type)).length;
+    const active=currentFilter===c.key;
+    return '<div onclick="sbFilter(\''+c.key+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .12s;background:'+(active?'var(--gl)':'transparent')+'" onmouseover="if(!this.dataset.active)this.style.background=\'var(--gp)\'" onmouseout="if(!this.dataset.active)this.style.background=\'transparent\'"'+(active?' data-active="1"':'')+'>'+
+      '<span style="font-size:13px;font-weight:600;color:'+(active?'var(--g)':'var(--t)')+'">'+escHtml(c.label)+'</span>'+
+      (cnt>0?'<span style="font-size:11px;font-weight:800;color:#fff;background:var(--g);padding:2px 9px;border-radius:99px;min-width:22px;text-align:center">'+cnt+'</span>':'<span style="font-size:12px;color:var(--gmt)">0</span>')+
+    '</div>';
+  }).join('');
+  const totalUnread=unreadItems.length;
+  box.innerHTML='<div onclick="sbFilter(\'all\')" style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:10px;cursor:pointer;border-bottom:1px solid var(--bdr);margin-bottom:4px"><span style="font-size:13px;font-weight:700;color:var(--t)">Всего</span><span style="font-size:11px;font-weight:800;color:'+(totalUnread?'#fff':'var(--gmt)')+';background:'+(totalUnread?'var(--g)':'transparent')+';padding:2px 9px;border-radius:99px;min-width:22px;text-align:center">'+totalUnread+'</span></div>'+rows;
+}
+function sbFilter(key){
+  const tab=document.querySelector('.ntab[data-filter="'+key+'"]');
+  setFilter(key,tab);
+}
 function updateHeadSub(){
   const sub=document.getElementById('nHeadSub');
   if(!sub)return;
@@ -673,6 +707,7 @@ function renderGroups(){
       ? '<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:60px 24px;text-align:center"><div style="font-size:48px;margin-bottom:12px;opacity:.5">✓</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Все прочитано</div><div style="font-size:12px;color:var(--gmt);max-width:340px;margin:0 auto">Нет непрочитанных уведомлений.</div></div>'
       : '<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:60px 24px;text-align:center"><div style="font-size:48px;margin-bottom:12px;opacity:.5">📭</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Уведомлений пока нет</div><div style="font-size:12px;color:var(--gmt);max-width:340px;margin:0 auto">Здесь будут появляться отклики, лайки, комментарии и приглашения в проекты.</div></div>';
     moreWrap.style.display='none';
+    renderSidebar();
     return;
   }
 
@@ -680,6 +715,7 @@ function renderGroups(){
   if(!visibleItems.length){
     wrap.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:60px 24px;text-align:center"><div style="font-size:48px;margin-bottom:12px;opacity:.5">🔍</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Ничего не найдено</div><div style="font-size:12px;color:var(--gmt);max-width:340px;margin:0 auto">В этой категории пока нет уведомлений.</div></div>';
     moreWrap.style.display='none';
+    renderSidebar();
     return;
   }
   const buckets=groupItems(visibleItems);
@@ -690,6 +726,7 @@ function renderGroups(){
 
   wrap.innerHTML=html;
   moreWrap.style.display=allLoadedItems.length>=50?'':'none';
+  renderSidebar();
 
   wrap.querySelectorAll('.n-item').forEach(el=>{
     el.addEventListener('click',async()=>{
@@ -957,6 +994,7 @@ async function pageMarkAll(){
     });
     allLoadedItems.forEach(n=>{n.is_read=true;});
     updateHeadSub();
+    renderSidebar();
     if(currentFilter==='unread')resetAndLoad();
     else updateGroupCounts();
   }catch{
