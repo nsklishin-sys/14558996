@@ -411,6 +411,14 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
             style="padding:8px 16px;border-radius:99px;background:var(--g);color:#fff;border:1.5px solid var(--g);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Все</button>
     <button type="button" class="ntab" data-filter="unread" onclick="setFilter('unread', this)"
             style="padding:8px 16px;border-radius:99px;background:transparent;color:var(--tm);border:1.5px solid var(--bdr);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Непрочитанные</button>
+    <button type="button" class="ntab" data-filter="mentions" onclick="setFilter('mentions', this)"
+            style="padding:8px 16px;border-radius:99px;background:transparent;color:var(--tm);border:1.5px solid var(--bdr);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Упоминания</button>
+    <button type="button" class="ntab" data-filter="reactions" onclick="setFilter('reactions', this)"
+            style="padding:8px 16px;border-radius:99px;background:transparent;color:var(--tm);border:1.5px solid var(--bdr);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Реакции</button>
+    <button type="button" class="ntab" data-filter="chat" onclick="setFilter('chat', this)"
+            style="padding:8px 16px;border-radius:99px;background:transparent;color:var(--tm);border:1.5px solid var(--bdr);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Чат</button>
+    <button type="button" class="ntab" data-filter="system" onclick="setFilter('system', this)"
+            style="padding:8px 16px;border-radius:99px;background:transparent;color:var(--tm);border:1.5px solid var(--bdr);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s">Система</button>
   </div>
 
   <!-- Группы уведомлений -->
@@ -525,6 +533,17 @@ function showToast(msg,kind){
 }
 
 let currentFilter='all';
+const TYPE_FILTER_GROUPS={
+  mentions:['mention','comment_reply','forum_quote','forum_reply','comment','post_comment'],
+  reactions:['post_like','forum_like','reaction'],
+  chat:['chat','chat_message','forum_message'],
+  system:['moderation_warning','moderation_sanction','moderation_appeal_result','community','community_verified','job','job_application','project','project_member_added','catalog_item','catalog_order','networking','user','webinar','workshop','friend_request','friend_accepted','post','forum_topic','forum_like','forum_message']
+};
+function matchesTypeFilter(n){
+  if(currentFilter==='all'||currentFilter==='unread')return true;
+  const g=TYPE_FILTER_GROUPS[currentFilter];
+  return g?g.includes(n.type):true;
+}
 let lastLoadedID=0;
 let allLoadedItems=[];
 let isLoading=false;
@@ -657,7 +676,13 @@ function renderGroups(){
     return;
   }
 
-  const buckets=groupItems(allLoadedItems);
+  const visibleItems=allLoadedItems.filter(matchesTypeFilter);
+  if(!visibleItems.length){
+    wrap.innerHTML='<div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:60px 24px;text-align:center"><div style="font-size:48px;margin-bottom:12px;opacity:.5">🔍</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:6px">Ничего не найдено</div><div style="font-size:12px;color:var(--gmt);max-width:340px;margin:0 auto">В этой категории пока нет уведомлений.</div></div>';
+    moreWrap.style.display='none';
+    return;
+  }
+  const buckets=groupItems(visibleItems);
   const html=GROUP_DEFS
     .filter(g=>buckets[g.key]&&buckets[g.key].length>0)
     .map(g=>groupHTML(g,buckets[g.key]))
