@@ -961,7 +961,19 @@ window.addEventListener('DOMContentLoaded',()=>{
 async function loadAttention(){
   const box=document.getElementById('attnList');
   if(!box)return;
-  let unreadMsgs=0, friendReqs=0;
+  let unreadMsgs=0, friendReqs=0, urgentTasks=0;
+  try{
+    const r=await lastopFetch(API+'/tasks',{headers:{}});
+    if(r.ok){
+      const d=await r.json();
+      const today=new Date();today.setHours(0,0,0,0);
+      urgentTasks=(d.tasks||[]).filter(t=>{
+        if(t.done)return false;
+        if(!t.due||!/^\d{4}-\d{2}-\d{2}$/.test(t.due))return false;
+        return new Date(t.due)<=today;
+      }).length;
+    }
+  }catch{}
   try{
     const r=await lastopFetch(API+'/chat/conversations?filter=unread&limit=50',{headers:{}});
     if(r.ok){const d=await r.json();(d.conversations||[]).forEach(c=>{unreadMsgs+=(c.unread_count||0);});}
@@ -971,6 +983,7 @@ async function loadAttention(){
     if(r.ok){const d=await r.json();friendReqs=(d.requests||[]).length;}
   }catch{}
   const rows=[];
+  if(urgentTasks>0)rows.push('<a href="/tasks.html" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;text-decoration:none;background:var(--w);border:1px solid var(--bdr);margin-bottom:6px;transition:border-color .12s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'"><span style="font-size:16px">📋</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+urgentTasks+' '+pluralRu(urgentTasks,["задача на сегодня","задачи на сегодня","задач на сегодня"])+"</span><span style="font-size:14px;color:var(--g)">→</span></a>');
   if(unreadMsgs>0)rows.push('<a href="/chat.html" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;text-decoration:none;background:var(--w);border:1px solid var(--bdr);margin-bottom:6px;transition:border-color .12s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'"><span style="font-size:16px">💬</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+unreadMsgs+' '+pluralRu(unreadMsgs,["новое сообщение","новых сообщения","новых сообщений"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
   if(friendReqs>0)rows.push('<a href="/friends.html?tab=incoming" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;text-decoration:none;background:var(--w);border:1px solid var(--bdr);transition:border-color .12s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'"><span style="font-size:16px">👤</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+friendReqs+' '+pluralRu(friendReqs,["заявка в друзья","заявки в друзья","заявок в друзья"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
   if(!rows.length){
@@ -1244,8 +1257,18 @@ function writeTasksLocal(){
   try { window.dispatchEvent(new CustomEvent('lastop:tasks-updated')); } catch {}
 }
 async function loadTasks(){
-  // Бэкенда для задач пока нет — читаем только из localStorage
-  // (источник истины: tasksFull:v1: который пишет /tasks.html)
+  const list = document.getElementById('tasksList');
+  if (list) list.innerHTML = '<div style="padding:10px;text-align:center;font-size:11px;color:var(--gmt)">Загрузка…</div>';
+  try{
+    const r = await lastopFetch('/api/tasks', {headers:{}});
+    if(r.ok){
+      const d = await r.json();
+      TASKS = (d.tasks||[]).map((t,i)=>normalizeTask(t,i));
+      renderTasks();
+      return;
+    }
+  }catch{}
+  // Фолбэк: localStorage (офлайн / сбой API)
   TASKS = readTasksLocal();
   if (!TASKS.length) TASKS = DEFAULT_TASKS.map((t,i)=>normalizeTask(t,i));
   renderTasks();
@@ -1345,6 +1368,9 @@ window.addEventListener('pageshow', () => {
 function toggleTask(id){
   const t=TASKS.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;if(t.done){t.due='Выполнено';t.overdue=false;}
+  if(typeof t.id==='number'){
+    try{lastopFetch('/api/tasks/'+t.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({done:t.done})});}catch{}
+  }
   writeTasksLocal();
   renderTasks();
 }
@@ -1365,6 +1391,10 @@ async function openAddTask(){
     created: Date.now(),
     updated: Date.now()
   });
+  try{
+    const r=await lastopFetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:task.title||'',desc:'',due:'',time:'',pri:task.pri||'lo',tags:[],done:false,checklist:[]})});
+    if(r.ok){const d=await r.json();if(d.task){task.id=d.task.id;}}
+  }catch{}
   TASKS.unshift(task);
   writeTasksLocal();
   renderTasks();
