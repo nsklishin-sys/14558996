@@ -220,6 +220,27 @@ a,
     align-self: flex-start;
     width: 42px !important;
   }
+  /* Контент секции «Управление платформой» не должен вылезать за край */
+  html.lt-shell #panel-admin,
+  html.lt-shell #panel-admin *,
+  html.lt-shell-2col #panel-admin,
+  html.lt-shell-2col #panel-admin * {
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  html.lt-shell #panel-admin,
+  html.lt-shell-2col #panel-admin {
+    overflow-x: hidden;
+  }
+  /* длинные слова/текст в описаниях и textarea — переносить */
+  html.lt-shell #panel-admin div,
+  html.lt-shell #panel-admin textarea,
+  html.lt-shell-2col #panel-admin div,
+  html.lt-shell-2col #panel-admin textarea {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────
