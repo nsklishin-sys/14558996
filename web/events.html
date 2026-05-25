@@ -695,7 +695,6 @@ async function loadEventCatTree(){
     __eventCatLoaded=true;
   }catch(_){}
 }
-const YANDEX_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
 // ═══ ДИНАМИЧЕСКИЕ СПИСКИ В МОДАЛКЕ ═══
 
@@ -837,25 +836,6 @@ function resetEventModal(){
 }
 
 
-async function geocodeAddress(addr){
-  if(!addr || !addr.trim()) return null;
-  try{
-    const url='https://geocode-maps.yandex.ru/v1/?apikey='+YANDEX_KEY+'&geocode='+encodeURIComponent(addr)+'&format=json&results=1';
-    const r=await lastopFetch(url);
-    if(!r.ok) return null;
-    const d=await r.json();
-    const member=d?.response?.GeoObjectCollection?.featureMember?.[0];
-    if(!member) return null;
-    const pos=member.GeoObject?.Point?.pos;
-    if(!pos) return null;
-    const parts=pos.split(' ');
-    return { latitude: parseFloat(parts[1]), longitude: parseFloat(parts[0]) };
-  }catch(err){
-    console.error('geocode',err);
-    return null;
-  }
-}
-
 let evCoverUrl = '';
 
 async function onEvCoverSelected(e){
@@ -948,16 +928,6 @@ async function submitEvent(){
     program: program,
     tickets: tickets
   };
-
-  // Геокодирование адреса для офлайн/гибрид
-  if(format!=='online' && address){
-    toast('Определяем координаты…');
-    const geo=await geocodeAddress(address+(city?', '+city:''));
-    if(geo){
-      body.latitude=geo.latitude;
-      body.longitude=geo.longitude;
-    }
-  }
 
   // Заголовки с активным контекстом (компания/сообщество)
   const baseH={'Content-Type':'application/json'};
