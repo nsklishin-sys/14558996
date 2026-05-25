@@ -175,6 +175,31 @@ a,
   html.lt-shell-2col .topbar {
     grid-template-columns: 1fr auto;
   }
+
+  /* ── B-ADMIN-MOBILE (5): bulk-бары + тулбар фильтров ── */
+  /* bulk-бары массовых действий — перенос кнопок, не выходят за край */
+  html.lt-shell #usersBulkBar,
+  html.lt-shell #companiesBulkBar,
+  html.lt-shell #communitiesBulkBar,
+  html.lt-shell #complaintsBulkBar,
+  html.lt-shell-2col #usersBulkBar,
+  html.lt-shell-2col #companiesBulkBar,
+  html.lt-shell-2col #communitiesBulkBar,
+  html.lt-shell-2col #complaintsBulkBar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* поиск в тулбаре — не распирать (min-width:200px → авто) */
+  html.lt-shell .users-toolbar input[type=search],
+  html.lt-shell-2col .users-toolbar input[type=search] {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  /* селекты фильтров — на всю ширину для удобного тапа */
+  html.lt-shell .users-toolbar select,
+  html.lt-shell-2col .users-toolbar select {
+    flex: 1 1 auto;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────
