@@ -1691,6 +1691,45 @@ a,
     right: -100vw;
   }
 
+  /* ── B-ADMIN-MOBILE (3): audit + sanctions → карточки ── */
+  html.lt-shell .audit-thead,
+  html.lt-shell .sanct-thead,
+  html.lt-shell-2col .audit-thead,
+  html.lt-shell-2col .sanct-thead {
+    display: none !important;
+  }
+  html.lt-shell .audit-row,
+  html.lt-shell .sanct-row,
+  html.lt-shell-2col .audit-row,
+  html.lt-shell-2col .sanct-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    grid-template-columns: none !important;
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+  /* sanct: аватар не сжимается */
+  html.lt-shell .sanct-row .u-av,
+  html.lt-shell-2col .sanct-row .u-av {
+    flex-shrink: 0;
+  }
+  /* блоки внутри строк переносятся, текст не обрезается жёстко */
+  html.lt-shell .audit-row > div,
+  html.lt-shell .sanct-row > div,
+  html.lt-shell-2col .audit-row > div,
+  html.lt-shell-2col .sanct-row > div {
+    white-space: normal;
+    word-break: break-word;
+    min-width: 0;
+  }
+  /* во вторых колонках (основной контент) — растягиваем на ширину */
+  html.lt-shell .audit-row > div:nth-child(2),
+  html.lt-shell .sanct-row > div:nth-child(2),
+  html.lt-shell-2col .audit-row > div:nth-child(2),
+  html.lt-shell-2col .sanct-row > div:nth-child(2) {
+    flex: 1 1 100%;
   /* ── B-ADMIN-MOBILE (2): таблицы → карточки ── */
   /* шапка таблицы не нужна на мобилке */
   html.lt-shell .users-thead,
