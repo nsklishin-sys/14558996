@@ -283,7 +283,7 @@ function render(){
     ? '<div class="co-logo"><img src="'+escAttr(c.logo_image)+'" alt=""></div>'
     : '<div class="co-logo" style="background:'+escAttr(accent)+';color:#fff">'+esc(initials(c.name))+'</div>';
 
-  const coverOk = c.cover_url && (c.cover_url.startsWith('http://')||c.cover_url.startsWith('https://')||c.cover_url.startsWith('/uploads/'));
+  const coverOk = c.cover_url && (c.cover_url.startsWith('http://')||c.cover_url.startsWith('https://')||c.cover_url.startsWith('/uploads/')||c.cover_url.startsWith('data:image/'));
   const bandStyle = coverOk ? ' style="background:url(\''+escAttr(c.cover_url)+'\') center/cover no-repeat"' : '';
   const heroHtml =
     '<div class="co-hero" style="--accent:'+escAttr(accent)+';--accent2:'+escAttr(accent)+'">'+

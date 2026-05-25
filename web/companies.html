@@ -336,8 +336,10 @@ function renderCard(c){
   const meta=[];
   if(c.category_label)meta.push(esc(c.category_label));
   if(c.city)meta.push(esc(c.city));
+  const coverOk=c.cover_url&&(c.cover_url.startsWith('http://')||c.cover_url.startsWith('https://')||c.cover_url.startsWith('/uploads/')||c.cover_url.startsWith('data:image/'));
+  const bannerBg=coverOk?'url(\''+escAttr(c.cover_url)+'\') center/cover no-repeat':'linear-gradient(135deg,'+esc(accent)+','+esc(accent)+')';
   return '<a class="co-card" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
-    '<div class="co-banner" style="background:linear-gradient(135deg,'+esc(accent)+','+esc(accent)+')">'+
+    '<div class="co-banner" style="background:'+bannerBg+'">'+
       '<div class="co-logo" style="background:'+esc(accent)+';color:#fff">'+logoHtml+'</div>'+
     '</div>'+
     '<div class="co-body">'+
