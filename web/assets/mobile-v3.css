@@ -1741,4 +1741,40 @@ a,
   html.lt-shell-2col .users-row > div:last-child {
     display: none;
   }
+
+  /* ── B-ADMIN-MOBILE (4): воронка + словари ── */
+  /* колонки воронки уже flex:0 0 220px + скролл — сужаем для мобилки */
+  html.lt-shell #funnelBoard > div,
+  html.lt-shell-2col #funnelBoard > div {
+    flex: 0 0 78vw !important;
+    max-width: 300px;
+  }
+  /* словари: грид-строку → карточка с переносом */
+  html.lt-shell .dict-row,
+  html.lt-shell-2col .dict-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    grid-template-columns: none !important;
+    padding: 12px 14px;
+  }
+  html.lt-shell .dict-row > div:first-child,
+  html.lt-shell-2col .dict-row > div:first-child {
+    flex: 1 1 60%;
+    min-width: 0;
+  }
+  html.lt-shell .dict-row .u-name,
+  html.lt-shell .dict-row .u-pos,
+  html.lt-shell-2col .dict-row .u-name,
+  html.lt-shell-2col .dict-row .u-pos {
+    white-space: normal;
+    word-break: break-word;
+  }
+  /* блок кнопок действий — на всю ширину под контентом */
+  html.lt-shell .dict-row > div:last-child,
+  html.lt-shell-2col .dict-row > div:last-child {
+    flex-basis: 100%;
+    justify-content: flex-start !important;
+  }
 }
