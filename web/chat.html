@@ -270,6 +270,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .msg-status.delivered::after,.msg-status.read::after{content:'✓';display:inline-block}
 .msg-status.sent,.msg-status.delivered{color:#9DB3A8;opacity:.85}
 .msg-status.read{color:var(--g);opacity:1}
+.msg-status.sending{color:#9DB3A8;opacity:.7;letter-spacing:0}
+.msg-status.sending::before{content:'🕓'}
+.msg-status.sending::after{content:''}
 .msg-status[data-tip]:hover::after{
   content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);right:0;
   background:var(--t);color:#fff;padding:4px 8px;border-radius:6px;
@@ -1566,6 +1569,7 @@ function renderMessages(){
   }
 }
 function renderMsgStatus(m){
+  if (m._sending) return `<span class='msg-status sending' title='Отправляется…'></span>`;
   const conv = state.conversations.find(c => c.public_id === state.activeConvPublicID) || {};
   const otherReadID = conv.other_last_read_message_id || 0;
   const otherReadAt = conv.other_last_read_at || null;
@@ -1836,14 +1840,39 @@ async function submitMessage(){
       body.attachment_type = att.type;
       body.attachment_size = att.size;
     }
+    // Оптимистичный показ: сообщение сразу с часиками (sending)
+    const tempId = 'tmp_' + Date.now();
+    const optimistic = {
+      id: tempId, _sending: true, content: txt,
+      author_public_id: (state.currentUser && state.currentUser.public_id) || '',
+      reply_to_id: replyToId, created_at: new Date().toISOString()
+    };
+    if (att) {
+      optimistic.attachment_url = att.url; optimistic.attachment_name = att.name;
+      optimistic.attachment_type = att.type; optimistic.attachment_size = att.size;
+    }
+    state.messages = state.messages || [];
+    state.messages.push(optimistic);
+    renderMessages();
+    scrollBottom();
+
     const sent = await api(`/chat/conversations/${convPid}/messages`, {method: 'POST', body});
     const sm = sent && sent.message;
-    if (sm && !(state.messages||[]).some(m => m.id === sm.id)) {
-      state.messages = state.messages || [];
-      state.messages.push(sm);
-      renderMessages();
-      scrollBottom();
+    const idx = state.messages.findIndex(m => m.id === tempId);
+    if (sm) {
+      if (state.messages.some(m => m.id === sm.id)) {
+        // WS-эхо уже добавило реальное — убираем оптимистичное
+        if (idx !== -1) state.messages.splice(idx, 1);
+      } else if (idx !== -1) {
+        state.messages[idx] = sm;
+      } else {
+        state.messages.push(sm);
+      }
+    } else if (idx !== -1) {
+      state.messages.splice(idx, 1);
     }
+    renderMessages();
+    scrollBottom();
     loadConversations();
   } catch (e) {
     // Откат: вернуть текст в поле, чтобы пользователь не потерял сообщение
