@@ -672,11 +672,26 @@ function openModal(){
   const submitBtn=document.getElementById('submitEventBtn');if(submitBtn)submitBtn.textContent='Создать мероприятие';
   const modalTitle=document.getElementById('eventModalTitle');if(modalTitle)modalTitle.textContent='Создать мероприятие';
   const mCat=document.getElementById('mCat');
-  if(mCat&&window.renderProjectCategoriesInto)window.renderProjectCategoriesInto(mCat,'Выберите категорию');
+  if(mCat&&window.renderProjectCategoriesInto){
+    // Источник категорий мероприятий = справочник выставок (единый словарь exhibition_*).
+    loadEventCatTree().then(()=>window.renderProjectCategoriesInto(mCat,'Выберите категорию'));
+    window.renderProjectCategoriesInto(mCat,'Выберите категорию'); // мгновенный рендер из кэша/fallback
+  }
   if(window.lastopClearAllErrors)window.lastopClearAllErrors(document.getElementById('modalBg'));
   document.getElementById('modalBg').classList.add('open');
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+// Грузит дерево категорий выставок в PROJECT_CAT_TREE (его читает renderProjectCategoriesInto).
+let __eventCatLoaded=false;
+async function loadEventCatTree(){
+  if(__eventCatLoaded)return;
+  try{
+    const r=await lastopFetch('/api/exhibitions/categories');
+    const d=await r.json();
+    window.PROJECT_CAT_TREE=d.groups||[];
+    __eventCatLoaded=true;
+  }catch(_){}
+}
 const YANDEX_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
 // ═══ ДИНАМИЧЕСКИЕ СПИСКИ В МОДАЛКЕ ═══
