@@ -713,6 +713,20 @@ type notification struct {
 	ActorAvatar   string `json:"actor_avatar,omitempty"`
 }
 
+type taskDTO struct {
+	ID        int64           `json:"id"`
+	Title     string          `json:"title"`
+	Desc      string          `json:"desc"`
+	Due       string          `json:"due"`
+	Time      string          `json:"time"`
+	Priority  string          `json:"pri"`
+	Tags      json.RawMessage `json:"tags"`
+	Done      bool            `json:"done"`
+	Checklist json.RawMessage `json:"checklist"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
 type createNotificationParams struct {
 	RecipientID    int64
 	ActorID        int64
@@ -13341,6 +13355,126 @@ func main() {
 	// GET /api/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD&types=personal,event,exhibition,project
 	// Возвращает агрегированный список всех событий пользователя в окне.
 	// ═══════════════════════════════════════════════════════════════
+	mux.HandleFunc("/api/tasks", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`SELECT id, title, descr, due_date, due_time, priority, tags, done, checklist, created_at, updated_at FROM tasks WHERE user_id=$1 ORDER BY done ASC, created_at DESC`, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка сервера")
+				return
+			}
+			defer rows.Close()
+			items := []taskDTO{}
+			for rows.Next() {
+				var t taskDTO
+				var tags, checklist []byte
+				if err := rows.Scan(&t.ID, &t.Title, &t.Desc, &t.Due, &t.Time, &t.Priority, &tags, &t.Done, &checklist, &t.CreatedAt, &t.UpdatedAt); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка чтения")
+					return
+				}
+				if len(tags) == 0 {
+					tags = []byte("[]")
+				}
+				if len(checklist) == 0 {
+					checklist = []byte("[]")
+				}
+				t.Tags = json.RawMessage(tags)
+				t.Checklist = json.RawMessage(checklist)
+				items = append(items, t)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"tasks": items})
+		case http.MethodPost:
+			var in taskDTO
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректные данные")
+				return
+			}
+			in.Title = strings.TrimSpace(in.Title)
+			if in.Title == "" {
+				writeError(w, http.StatusBadRequest, "Название обязательно")
+				return
+			}
+			if in.Priority != "hi" && in.Priority != "md" && in.Priority != "lo" {
+				in.Priority = "lo"
+			}
+			tags := normalizeJSONArray(in.Tags)
+			checklist := normalizeJSONArray(in.Checklist)
+			var t taskDTO
+			var outTags, outChk []byte
+			err := db.QueryRow(`INSERT INTO tasks (user_id, title, descr, due_date, due_time, priority, tags, done, checklist)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+				RETURNING id, title, descr, due_date, due_time, priority, tags, done, checklist, created_at, updated_at`,
+				userID, in.Title, in.Desc, in.Due, in.Time, in.Priority, tags, in.Done, checklist).
+				Scan(&t.ID, &t.Title, &t.Desc, &t.Due, &t.Time, &t.Priority, &outTags, &t.Done, &outChk, &t.CreatedAt, &t.UpdatedAt)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось создать задачу")
+				return
+			}
+			t.Tags = json.RawMessage(outTags)
+			t.Checklist = json.RawMessage(outChk)
+			writeJSON(w, http.StatusOK, map[string]any{"task": t})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
+		taskID, _ := strconv.ParseInt(idStr, 10, 64)
+		if taskID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		switch r.Method {
+		case http.MethodPatch, http.MethodPut:
+			var in taskDTO
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректные данные")
+				return
+			}
+			if in.Priority != "hi" && in.Priority != "md" && in.Priority != "lo" {
+				in.Priority = "lo"
+			}
+			tags := normalizeJSONArray(in.Tags)
+			checklist := normalizeJSONArray(in.Checklist)
+			var t taskDTO
+			var outTags, outChk []byte
+			err := db.QueryRow(`UPDATE tasks SET title=$1, descr=$2, due_date=$3, due_time=$4, priority=$5, tags=$6, done=$7, checklist=$8, updated_at=NOW()
+				WHERE id=$9 AND user_id=$10
+				RETURNING id, title, descr, due_date, due_time, priority, tags, done, checklist, created_at, updated_at`,
+				strings.TrimSpace(in.Title), in.Desc, in.Due, in.Time, in.Priority, tags, in.Done, checklist, taskID, userID).
+				Scan(&t.ID, &t.Title, &t.Desc, &t.Due, &t.Time, &t.Priority, &outTags, &t.Done, &outChk, &t.CreatedAt, &t.UpdatedAt)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Задача не найдена")
+				return
+			}
+			t.Tags = json.RawMessage(outTags)
+			t.Checklist = json.RawMessage(outChk)
+			writeJSON(w, http.StatusOK, map[string]any{"task": t})
+		case http.MethodDelete:
+			res, err := db.Exec(`DELETE FROM tasks WHERE id=$1 AND user_id=$2`, taskID, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Не удалось удалить")
+				return
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				writeError(w, http.StatusNotFound, "Задача не найдена")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.HandleFunc("/api/calendar", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -15607,6 +15741,24 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx
     ON push_subscriptions (user_id);
 
+CREATE TABLE IF NOT EXISTS tasks (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 500),
+    descr TEXT NOT NULL DEFAULT '' CHECK (char_length(descr) <= 5000),
+    due_date TEXT NOT NULL DEFAULT '',
+    due_time TEXT NOT NULL DEFAULT '',
+    priority TEXT NOT NULL DEFAULT 'lo' CHECK (priority IN ('hi','md','lo')),
+    tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+    done BOOLEAN NOT NULL DEFAULT FALSE,
+    checklist JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS tasks_user_idx
+    ON tasks (user_id, done, due_date);
+
 -- Cleanup-индекс: подписки которые давно не отвечают
 CREATE INDEX IF NOT EXISTS push_subscriptions_last_seen_idx
     ON push_subscriptions (last_seen_at);
@@ -16897,6 +17049,19 @@ func optionalAuthenticatedUserID(r *http.Request, sessions *sessionStore) (int64
 //   - у recipient'а соответствующий notif-тогл выключен (для известных типов).
 //
 // Не возвращает ошибку если уведомление "не нужно создавать" — это нормальный путь.
+// normalizeJSONArray гарантирует валидный JSON-массив для JSONB-полей.
+// Пустой/невалидный вход → "[]".
+func normalizeJSONArray(raw json.RawMessage) []byte {
+	if len(raw) == 0 {
+		return []byte("[]")
+	}
+	var probe []any
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		return []byte("[]")
+	}
+	return []byte(raw)
+}
+
 func createNotification(db *sql.DB, p createNotificationParams) error {
 	if p.RecipientID == 0 || strings.TrimSpace(p.Type) == "" || strings.TrimSpace(p.Title) == "" {
 		return fmt.Errorf("createNotification: invalid params")
