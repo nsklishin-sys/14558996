@@ -1730,5 +1730,54 @@ a,
   html.lt-shell-2col .audit-row > div:nth-child(2),
   html.lt-shell-2col .sanct-row > div:nth-child(2) {
     flex: 1 1 100%;
+  /* ── B-ADMIN-MOBILE (2): таблицы → карточки ── */
+  /* шапка таблицы не нужна на мобилке */
+  html.lt-shell .users-thead,
+  html.lt-shell-2col .users-thead {
+    display: none !important;
+  }
+  /* строку-грид → гибкая карточка с переносом */
+  html.lt-shell .users-row,
+  html.lt-shell-2col .users-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    grid-template-columns: none !important;
+    padding: 12px 14px;
+  }
+  /* аватар не сжимается */
+  html.lt-shell .users-row .u-av,
+  html.lt-shell-2col .users-row .u-av {
+    flex-shrink: 0;
+  }
+  /* блок имя+подзаголовок занимает основную ширину */
+  html.lt-shell .users-row > div:nth-child(3),
+  html.lt-shell-2col .users-row > div:nth-child(3) {
+    flex: 1;
+    min-width: 0;
+  }
+  /* имя/email/дата — переносятся, не обрезаются жёстко в одну строку */
+  html.lt-shell .users-row .u-name,
+  html.lt-shell .users-row .u-pos,
+  html.lt-shell .users-row .u-email,
+  html.lt-shell-2col .users-row .u-name,
+  html.lt-shell-2col .users-row .u-pos,
+  html.lt-shell-2col .users-row .u-email {
+    white-space: normal;
+    word-break: break-word;
+  }
+  /* email и дата — на всю ширину под именем (перенос) */
+  html.lt-shell .users-row .u-email,
+  html.lt-shell .users-row .u-date,
+  html.lt-shell-2col .users-row .u-email,
+  html.lt-shell-2col .users-row .u-date {
+    flex-basis: 100%;
+    font-size: 12px;
+  }
+  /* скрыть колонку-стрелку "→" (последний div) — на мобилке тап по всей карточке */
+  html.lt-shell .users-row > div:last-child,
+  html.lt-shell-2col .users-row > div:last-child {
+    display: none;
   }
 }
