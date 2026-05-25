@@ -169,6 +169,7 @@
   // lastopValidate([{el, required, message}, ...]) — массовая проверка, фокус и скролл на первое невалидное; возвращает true/false
   window.lastopMarkError = function(el, message){
     if(!el) return;
+    injectStyle();
     el.classList.add('lt-invalid');
     // Удалить предыдущий .lt-field-error если есть
     const next = el.nextElementSibling;
@@ -204,6 +205,7 @@
   // checks: [{ id?:string, el?:HTMLElement, required?:boolean, validate?:function(value)=>string|null, message?:string }]
   // Возвращает true если всё валидно, иначе false (и подсвечивает поля).
   window.lastopValidate = function(checks){
+    injectStyle();
     let firstBad = null;
     checks.forEach(c=>{
       const el = c.el || (c.id ? document.getElementById(c.id) : null);
