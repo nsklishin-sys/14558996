@@ -5698,6 +5698,26 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/geocode", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+			return
+		}
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		if q == "" {
+			writeJSON(w, http.StatusOK, map[string]any{"results": []geocodeResult{}})
+			return
+		}
+		results := geocodeAddressMulti(q, 5)
+		if results == nil {
+			results = []geocodeResult{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"results": results})
+	})
+
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -25020,6 +25040,86 @@ func scanEventRow(row scanner) (event, error) {
 }
 
 type scanner interface{ Scan(dest ...any) error }
+
+// geocodeResult — один вариант геокодинга для выдачи на фронт.
+type geocodeResult struct {
+	Text string  `json:"text"`
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+}
+
+// geocodeAddressMulti возвращает до limit вариантов по адресу (для ручного выбора
+// точки на фронте). Ключ из env YANDEX_GEOCODER_KEY. Пустой ключ/адрес → пустой срез.
+func geocodeAddressMulti(address string, limit int) []geocodeResult {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil
+	}
+	if limit <= 0 || limit > 10 {
+		limit = 5
+	}
+	key := strings.TrimSpace(os.Getenv("YANDEX_GEOCODER_KEY"))
+	if key == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+	url := "https://geocode-maps.yandex.ru/v1/?apikey=" + key +
+		"&geocode=" + neturl.QueryEscape(address) +
+		"&format=json&lang=ru_RU&results=" + strconv.Itoa(limit)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	var body struct {
+		Response struct {
+			GeoObjectCollection struct {
+				FeatureMember []struct {
+					GeoObject struct {
+						Name  string `json:"name"`
+						Point struct {
+							Pos string `json:"pos"`
+						} `json:"Point"`
+						MetaDataProperty struct {
+							GeocoderMetaData struct {
+								Text string `json:"text"`
+							} `json:"GeocoderMetaData"`
+						} `json:"metaDataProperty"`
+					} `json:"GeoObject"`
+				} `json:"featureMember"`
+			} `json:"GeoObjectCollection"`
+		} `json:"response"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil
+	}
+	out := make([]geocodeResult, 0, limit)
+	for _, m := range body.Response.GeoObjectCollection.FeatureMember {
+		parts := strings.Fields(m.GeoObject.Point.Pos)
+		if len(parts) != 2 {
+			continue
+		}
+		lon, err1 := strconv.ParseFloat(parts[0], 64)
+		lat, err2 := strconv.ParseFloat(parts[1], 64)
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		text := m.GeoObject.MetaDataProperty.GeocoderMetaData.Text
+		if text == "" {
+			text = m.GeoObject.Name
+		}
+		out = append(out, geocodeResult{Text: text, Lat: lat, Lon: lon})
+	}
+	return out
+}
 
 // geocodeAddress превращает текстовый адрес в координаты через Yandex Geocoder API.
 // Ключ берётся из env YANDEX_GEOCODER_KEY. Если ключ не задан или адрес пуст —
