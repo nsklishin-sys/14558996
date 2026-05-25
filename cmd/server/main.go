@@ -11070,7 +11070,7 @@ func main() {
 					addSet("name", s)
 				}
 			}
-			for _, fld := range []string{"description", "region", "city", "website", "email", "phone", "logo_image", "accent_color", "category"} {
+			for _, fld := range []string{"description", "region", "city", "website", "email", "phone", "logo_image", "cover_url", "accent_color", "category"} {
 				if raw, ok := req[fld]; ok {
 					var s string
 					if err := json.Unmarshal(raw, &s); err == nil {
@@ -14820,6 +14820,7 @@ CREATE INDEX IF NOT EXISTS companies_owner_idx ON companies(owner_user_id) WHERE
 CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at DESC) WHERE deleted_at IS NULL;
 
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'inn_verified', 'verified', 'rejected'));
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
 -- Admin Этап B: блокировка компаний администрацией.
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
@@ -30247,6 +30248,7 @@ type companyItem struct {
 	Email              string     `json:"email,omitempty"`
 	Phone              string     `json:"phone,omitempty"`
 	LogoImage          string     `json:"logo_image,omitempty"`
+	CoverURL           string     `json:"cover_url,omitempty"`
 	AccentColor        string     `json:"accent_color"`
 	Category           string     `json:"category,omitempty"`
 	CategoryLabel      string     `json:"category_label,omitempty"`
@@ -30408,6 +30410,7 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		COALESCE(u.full_name, u.handle, ''),
 		c.name, c.inn, c.description, c.region, c.city,
 		c.website, c.email, c.phone, c.logo_image,
+		COALESCE(c.cover_url, ''),
 		c.accent_color, c.category,
 		COALESCE(array_to_json(c.tags), '[]'::json),
 		c.is_verified, COALESCE(c.verification_status, 'none'), c.status,
@@ -30422,6 +30425,7 @@ func getCompanyFull(db *sql.DB, byField, value string, viewerID int64) (*company
 		&c.ID, &c.PublicID, &c.Slug, &c.OwnerUserID, &c.OwnerName,
 		&c.Name, &c.INN, &c.Description, &c.Region, &c.City,
 		&c.Website, &c.Email, &c.Phone, &c.LogoImage,
+		&c.CoverURL,
 		&c.AccentColor, &c.Category, &tagsJSON,
 		&c.IsVerified, &c.VerificationStatus, &c.Status, &c.MembersCount,
 		&c.CreatedAt, &c.UpdatedAt,
