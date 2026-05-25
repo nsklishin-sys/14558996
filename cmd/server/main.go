@@ -5074,6 +5074,102 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 			return
 		}
+		// POST /api/chat/messages/{id}/react — поставить/снять/сменить реакцию
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/react") {
+			realID := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/chat/messages/"), "/")
+			realID = strings.TrimSuffix(realID, "/react")
+			msgID, _ = strconv.ParseInt(strings.Trim(realID, "/"), 10, 64)
+			if msgID == 0 {
+				writeError(w, http.StatusBadRequest, "Некорректный id")
+				return
+			}
+			var req struct {
+				Emoji string `json:"emoji"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			emoji := strings.TrimSpace(req.Emoji)
+			if emoji == "" || utf8.RuneCountInString(emoji) > 8 {
+				writeError(w, http.StatusBadRequest, "Некорректный emoji")
+				return
+			}
+			// Проверяем, что сообщение существует и юзер — участник диалога; берём conv и автора
+			var convID, authorID int64
+			err := db.QueryRow(`
+				SELECT m.conversation_id, m.author_id
+				FROM chat_messages m
+				JOIN chat_participants p ON p.conversation_id = m.conversation_id AND p.user_id = $2
+				WHERE m.id = $1 AND m.is_deleted = FALSE`, msgID, userID).Scan(&convID, &authorID)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Сообщение не найдено")
+				return
+			}
+			// Текущая реакция юзера на это сообщение
+			var existing string
+			_ = db.QueryRow(`SELECT emoji FROM message_reactions WHERE message_id=$1 AND user_id=$2`, msgID, userID).Scan(&existing)
+			added := false
+			if existing == emoji {
+				// тот же — снять
+				_, _ = db.Exec(`DELETE FROM message_reactions WHERE message_id=$1 AND user_id=$2`, msgID, userID)
+			} else {
+				// поставить/сменить (UNIQUE message_id+user_id → ON CONFLICT обновляем emoji)
+				_, _ = db.Exec(`
+					INSERT INTO message_reactions (message_id, user_id, emoji)
+					VALUES ($1, $2, $3)
+					ON CONFLICT (message_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji, created_at = NOW()`,
+					msgID, userID, emoji)
+				added = true
+			}
+			// Свежий агрегат для рассылки
+			aggMap := loadReactionsFor(db, userID, []int64{msgID})
+			reactions := aggMap[msgID]
+			if reactions == nil {
+				reactions = []reactionAgg{}
+			}
+			// Узнаём public_id диалога для фронта
+			var convPublicID string
+			_ = db.QueryRow(`SELECT public_id FROM chat_conversations WHERE id=$1`, convID).Scan(&convPublicID)
+			// WS-рассылка всем участникам
+			go func() {
+				rows, err := db.Query(`SELECT user_id FROM chat_participants WHERE conversation_id=$1`, convID)
+				if err != nil {
+					return
+				}
+				defer rows.Close()
+				for rows.Next() {
+					var uid int64
+					if err := rows.Scan(&uid); err != nil {
+						continue
+					}
+					// reactions персональны (флаг mine) — но для простоты шлём агрегат без mine;
+					// клиент пересчитает mine по своему действию. Отправляем счётчики.
+					wsHub.Send(uid, "chat:reaction", map[string]any{
+						"conversation_public_id": convPublicID,
+						"message_id":             msgID,
+						"reactions":              reactions,
+					})
+				}
+			}()
+			// Уведомление автору (если реакция добавлена, не своё сообщение)
+			if added && authorID != 0 && authorID != userID {
+				var actorName string
+				_ = db.QueryRow(`SELECT COALESCE(full_name, handle, '') FROM users WHERE id=$1`, userID).Scan(&actorName)
+				_ = createNotification(db, createNotificationParams{
+					RecipientID:    authorID,
+					ActorID:        userID,
+					Type:           "reaction",
+					SourceType:     "chat_message",
+					SourceID:       msgID,
+					SourcePublicID: convPublicID,
+					Title:          actorName + " отреагировал(а) " + emoji,
+					Preview:        "",
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"reactions": reactions})
+			return
+		}
 		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	})
 
