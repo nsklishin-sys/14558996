@@ -5047,7 +5047,10 @@ func main() {
 		chatPresence.touch(userID)
 		idStr := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/chat/messages/"), "/")
 		msgID, _ := strconv.ParseInt(idStr, 10, 64)
-		if msgID == 0 {
+		// Для под-путей вида {id}/react msgID парсится внутри соответствующей ветки —
+		// здесь не отсекаем (иначе react/прочие суффиксы получат «Некорректный id»).
+		isSuffixRoute := strings.Contains(idStr, "/")
+		if msgID == 0 && !isSuffixRoute {
 			writeError(w, http.StatusBadRequest, "Некорректный id")
 			return
 		}
