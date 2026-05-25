@@ -12994,8 +12994,22 @@ func main() {
 							writeError(w, http.StatusInternalServerError, "Не удалось скрыть комментарий")
 							return
 						}
+					case "forum_message":
+						if _, err := db.Exec(`UPDATE forum_messages SET deleted_at=NOW() WHERE id=$1`, targetID); err != nil {
+							log.Printf("[complaints] hide forum_message: %v", err)
+							writeError(w, http.StatusInternalServerError, "Не удалось скрыть сообщение форума")
+							return
+						}
+						logAdminAction(db, actorID, "content_hide", "forum_message", targetID, clientIP(r), map[string]any{"reason": req.Note, "complaint_id": complaintID})
+					case "event_message":
+						if _, err := db.Exec(`UPDATE event_messages SET is_deleted=TRUE WHERE id=$1`, targetID); err != nil {
+							log.Printf("[complaints] hide event_message: %v", err)
+							writeError(w, http.StatusInternalServerError, "Не удалось скрыть сообщение обсуждения")
+							return
+						}
+						logAdminAction(db, actorID, "content_hide", "event_message", targetID, clientIP(r), map[string]any{"reason": req.Note, "complaint_id": complaintID})
 					default:
-						writeError(w, http.StatusBadRequest, "hide_content применимо только к post/comment")
+						writeError(w, http.StatusBadRequest, "hide_content применимо к post/comment/forum_message/event_message")
 						return
 					}
 				case "ban_author":
@@ -13007,6 +13021,10 @@ func main() {
 						_ = db.QueryRow(`SELECT author_id FROM posts WHERE id=$1`, targetID).Scan(&authorID)
 					case "comment":
 						_ = db.QueryRow(`SELECT author_id FROM post_comments WHERE id=$1`, targetID).Scan(&authorID)
+					case "forum_message":
+						_ = db.QueryRow(`SELECT author_id FROM forum_messages WHERE id=$1`, targetID).Scan(&authorID)
+					case "event_message":
+						_ = db.QueryRow(`SELECT author_id FROM event_messages WHERE id=$1`, targetID).Scan(&authorID)
 					}
 					if authorID <= 0 {
 						writeError(w, http.StatusBadRequest, "Не удалось определить автора")
@@ -13031,6 +13049,16 @@ func main() {
 					if _, err := db.Exec(`UPDATE companies SET blocked_at=NOW(), blocked_reason=$1, blocked_by=$2 WHERE id=$3`, req.Note, actorID, targetID); err != nil {
 						log.Printf("[complaints] block company: %v", err)
 						writeError(w, http.StatusInternalServerError, "Не удалось заблокировать компанию")
+						return
+					}
+				case "block_community":
+					if targetType != "community" {
+						writeError(w, http.StatusBadRequest, "block_community применимо только к community")
+						return
+					}
+					if _, err := db.Exec(`UPDATE communities SET blocked_at=NOW(), blocked_reason=$1, blocked_by=$2 WHERE id=$3`, req.Note, actorID, targetID); err != nil {
+						log.Printf("[complaints] block community: %v", err)
+						writeError(w, http.StatusInternalServerError, "Не удалось заблокировать сообщество")
 						return
 					}
 				default:
@@ -14849,6 +14877,9 @@ CREATE INDEX IF NOT EXISTS companies_status_idx ON companies(status, created_at 
 
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'inn_verified', 'verified', 'rejected'));
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE communities ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ;
+ALTER TABLE communities ADD COLUMN IF NOT EXISTS blocked_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE communities ADD COLUMN IF NOT EXISTS blocked_by BIGINT;
 -- Admin Этап B: блокировка компаний администрацией.
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
