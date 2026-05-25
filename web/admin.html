@@ -1372,9 +1372,10 @@ function renderComplaintDetail(d){
       actions.push('<button class="dp-btn primary" onclick="actAppeal('+d.id+',true)">Удовлетворить (вернуть контент)</button>');
       actions.push('<button class="dp-btn danger" onclick="actAppeal('+d.id+',false)">Отклонить апелляцию</button>');
     } else {
-      if(d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintHide('+d.id+')">Скрыть контент</button>');
-      if(d.target_type==='user'||d.target_type==='post'||d.target_type==='comment')actions.push('<button class="dp-btn danger" onclick="actComplaintBanAuthor('+d.id+')">Забанить автора</button>');
+      if(d.target_type==='post'||d.target_type==='comment'||d.target_type==='forum_message'||d.target_type==='event_message')actions.push('<button class="dp-btn danger" onclick="actComplaintHide('+d.id+')">Скрыть контент</button>');
+      if(d.target_type==='user'||d.target_type==='post'||d.target_type==='comment'||d.target_type==='forum_message'||d.target_type==='event_message')actions.push('<button class="dp-btn danger" onclick="actComplaintBanAuthor('+d.id+')">Забанить автора</button>');
       if(d.target_type==='company')actions.push('<button class="dp-btn danger" onclick="actComplaintBlockCompany('+d.id+')">Заблокировать компанию</button>');
+      if(d.target_type==='community')actions.push('<button class="dp-btn danger" onclick="actComplaintBlockCommunity('+d.id+')">Заблокировать сообщество</button>');
       actions.push('<button class="dp-btn" onclick="actComplaintReject('+d.id+')">Отклонить</button>');
     }
   }else{
@@ -1404,6 +1405,11 @@ async function actComplaintBlockCompany(id){
   var note=await lastopPrompt({title:'Заблокировать компанию',message:'Компания скроется со всей платформы.',placeholder:'Причина',confirmText:'Заблокировать',danger:true});
   if(note===null||!String(note).trim())return;
   try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved_action',action:'block_company',note:String(note).trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadComplaints();loadOverview();}catch(e){alert('Ошибка соединения');}
+}
+async function actComplaintBlockCommunity(id){
+  var note=await lastopPrompt({title:'Заблокировать сообщество',message:'Сообщество скроется со всей платформы.',placeholder:'Причина',confirmText:'Заблокировать',danger:true});
+  if(note===null||!String(note).trim())return;
+  try{var r=await lastopFetch('/api/admin/complaints/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'resolved_action',action:'block_community',note:String(note).trim()})});if(!r.ok){var e=await r.json().catch(function(){return{};});alert(e.error||'Ошибка');return;}closeDetail();loadComplaints();loadOverview();}catch(e){alert('Ошибка соединения');}
 }
 async function actComplaintReject(id){
   var note=await lastopPrompt({title:'Отклонить жалобу',message:'Жалоба будет помечена как необоснованная.',placeholder:'Причина',confirmText:'Отклонить'});
