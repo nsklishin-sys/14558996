@@ -701,6 +701,7 @@ type notification struct {
 	SourceType     string    `json:"source_type,omitempty"`
 	SourceID       int64     `json:"source_id,omitempty"`
 	SourcePublicID string    `json:"source_public_id,omitempty"`
+	Anchor         string    `json:"anchor,omitempty"`
 	Title          string    `json:"title"`
 	Preview        string    `json:"preview,omitempty"`
 	IsRead         bool      `json:"is_read"`
@@ -719,6 +720,7 @@ type createNotificationParams struct {
 	SourceType     string
 	SourceID       int64
 	SourcePublicID string
+	Anchor         string
 	Title          string
 	Preview        string
 }
@@ -15570,6 +15572,8 @@ CREATE INDEX IF NOT EXISTS notifications_recipient_created_idx
 CREATE UNIQUE INDEX IF NOT EXISTS notifications_dedup_idx
     ON notifications (recipient_id, type, source_type, source_id, COALESCE(actor_id, 0));
 
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS anchor TEXT NOT NULL DEFAULT '';
+
 -- ── Push-подписки (Web Push API) ──
 -- Хранит подписки браузеров на push-уведомления. Один пользователь = N подписок
 -- (по числу устройств: iPhone Safari + MacBook Chrome + Android Chrome).
@@ -16922,10 +16926,10 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 	}
 
 	_, err := db.Exec(`
-		INSERT INTO notifications (recipient_id, actor_id, type, source_type, source_id, source_public_id, title, preview)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO notifications (recipient_id, actor_id, type, source_type, source_id, source_public_id, anchor, title, preview)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT DO NOTHING`,
-		p.RecipientID, actorIDArg, p.Type, p.SourceType, p.SourceID, p.SourcePublicID, title, preview)
+		p.RecipientID, actorIDArg, p.Type, p.SourceType, p.SourceID, p.SourcePublicID, p.Anchor, title, preview)
 	if err == nil {
 		// Real-time push: уведомляем подключённого клиента, чтобы бейдж обновился без polling.
 		wsHub.Send(p.RecipientID, "notif:new", map[string]any{
@@ -20570,7 +20574,7 @@ func listNotifications(db *sql.DB, userID int64, limit int, beforeID int64, only
 	}
 
 	query := fmt.Sprintf(`
-		SELECT n.id, n.type, n.source_type, n.source_id, n.source_public_id,
+		SELECT n.id, n.type, n.source_type, n.source_id, n.source_public_id, n.anchor,
 		       n.title, n.preview, n.is_read, n.created_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, '')
 		FROM notifications n
@@ -20588,7 +20592,7 @@ func listNotifications(db *sql.DB, userID int64, limit int, beforeID int64, only
 	var items []notification
 	for rows.Next() {
 		var n notification
-		if err := rows.Scan(&n.ID, &n.Type, &n.SourceType, &n.SourceID, &n.SourcePublicID,
+		if err := rows.Scan(&n.ID, &n.Type, &n.SourceType, &n.SourceID, &n.SourcePublicID, &n.Anchor,
 			&n.Title, &n.Preview, &n.IsRead, &n.CreatedAt,
 			&n.ActorPublicID, &n.ActorName, &n.ActorAvatar); err != nil {
 			return nil, err
@@ -22409,6 +22413,7 @@ func notifyOnComment(db *sql.DB, postID int64, postPublicID string, commentID in
 				SourceType:     "comment",
 				SourceID:       commentID,
 				SourcePublicID: postPublicID,
+				Anchor:         fmt.Sprintf("#comment-%d", commentID),
 				Title:          title,
 				Preview:        preview,
 			}); err != nil {
@@ -28444,6 +28449,10 @@ func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, te
 		} else if sourceType == "comment" {
 			_ = db.QueryRow(`SELECT p.public_id FROM posts p JOIN post_comments pc ON pc.post_id = p.id WHERE pc.id = $1`, sourceID).Scan(&sourcePublicID)
 		}
+		mentionAnchor := ""
+		if sourceType == "comment" {
+			mentionAnchor = fmt.Sprintf("#comment-%d", sourceID)
+		}
 		title := actorName + " упомянул вас"
 		if err := createNotification(db, createNotificationParams{
 			RecipientID:    uid,
@@ -28452,6 +28461,7 @@ func saveMentions(db *sql.DB, sourceType string, sourceID, actorUserID int64, te
 			SourceType:     sourceType,
 			SourceID:       sourceID,
 			SourcePublicID: sourcePublicID,
+			Anchor:         mentionAnchor,
 			Title:          title,
 			Preview:        preview,
 		}); err != nil {
