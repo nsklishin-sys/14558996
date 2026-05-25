@@ -783,23 +783,14 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     </div>
   </div>
 
+  <div class="card" id="attnCard" style="background:linear-gradient(135deg,var(--gp) 0%,var(--gl) 100%);border-color:var(--gb)">
+    <div class="block-title">Требует внимания</div>
+    <div id="attnList"><div style="font-size:11px;color:var(--gmt);padding:6px 0">Загрузка…</div></div>
+  </div>
+
   <div class="card">
-    <div class="block-title">Сейчас на главной</div>
-    <div class="live-row">
-      <span class="live-emoji">⭐</span>
-      <span class="live-label">Топ новость недели</span>
-      <a class="live-val" href="/dashboard.html" id="liveTopNews">Экспорт стройматериалов ↗</a>
-    </div>
-    <div class="live-row">
-      <span class="live-emoji">📈</span>
-      <span class="live-label">Тренд дня</span>
-      <a class="live-val" href="/dashboard.html" id="liveTrend">Логистика фармпродукции</a>
-    </div>
-    <div class="live-row">
-      <span class="live-dot"></span>
-      <span class="live-label">Активных сейчас</span>
-      <span class="live-n" id="liveActive">124</span>
-    </div>
+    <div class="block-title">Мой день</div>
+    <div id="myDayList"><div style="font-size:11px;color:var(--gmt);padding:6px 0">Загрузка…</div></div>
   </div>
 
   <div class="card">
@@ -949,6 +940,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   loadFeed();
   loadRec();
   loadRecentProjects();
+  loadAttention();
+  loadMyDay();
   document.querySelector('.feed-toolbar').addEventListener('click',e=>{
     const btn=e.target.closest('.ftab');if(!btn)return;
     document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
@@ -958,6 +951,53 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 
+
+async function loadAttention(){
+  const box=document.getElementById('attnList');
+  if(!box)return;
+  let unreadMsgs=0, friendReqs=0;
+  try{
+    const r=await lastopFetch(API+'/chat/conversations?filter=unread&limit=50',{headers:{}});
+    if(r.ok){const d=await r.json();(d.conversations||[]).forEach(c=>{unreadMsgs+=(c.unread_count||0);});}
+  }catch{}
+  try{
+    const r=await lastopFetch(API+'/friends/requests/incoming',{headers:{}});
+    if(r.ok){const d=await r.json();friendReqs=(d.requests||[]).length;}
+  }catch{}
+  const rows=[];
+  if(unreadMsgs>0)rows.push('<a href="/chat.html" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;text-decoration:none;background:var(--w);border:1px solid var(--bdr);margin-bottom:6px;transition:border-color .12s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'"><span style="font-size:16px">💬</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+unreadMsgs+' '+pluralRu(unreadMsgs,["новое сообщение","новых сообщения","новых сообщений"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
+  if(friendReqs>0)rows.push('<a href="/friends.html?tab=incoming" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;text-decoration:none;background:var(--w);border:1px solid var(--bdr);transition:border-color .12s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'"><span style="font-size:16px">👤</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+friendReqs+' '+pluralRu(friendReqs,["заявка в друзья","заявки в друзья","заявок в друзья"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
+  if(!rows.length){
+    box.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--gmt)"><span style="font-size:15px">✓</span>Всё разобрано</div>';
+  } else {
+    box.innerHTML=rows.join('');
+  }
+}
+
+async function loadMyDay(){
+  const box=document.getElementById('myDayList');
+  if(!box)return;
+  try{
+    const r=await lastopFetch(API+'/events?limit=20',{headers:{}});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const now=new Date();
+    const up=(d.events||[])
+      .filter(e=>{const dt=new Date(e.starts_at||e.date||e.start_date);return !isNaN(dt)&&dt>=new Date(now.getFullYear(),now.getMonth(),now.getDate());})
+      .sort((a,b)=>new Date(a.starts_at||a.date||a.start_date)-new Date(b.starts_at||b.date||b.start_date))
+      .slice(0,3);
+    if(!up.length){box.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:6px 0">Нет ближайших событий</div>';return;}
+    box.innerHTML=up.map(e=>{
+      const dt=new Date(e.starts_at||e.date||e.start_date);
+      const day=dt.getDate();
+      const mon=dt.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');
+      const pid=e.public_id||e.id||'';
+      return '<a href="/event-detail.html?id='+encodeURIComponent(pid)+'" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none">'+
+        '<div style="display:flex;flex-direction:column;align-items:center;width:30px;flex-shrink:0"><span style="font-size:15px;font-weight:800;color:var(--g);line-height:1">'+day+'</span><span style="font-size:9px;font-weight:700;color:var(--gmt);text-transform:uppercase">'+mon+'</span></div>'+
+        '<span style="flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.title||'Событие')+'</span></a>';
+    }).join('');
+  }catch{box.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:6px 0">Нет ближайших событий</div>';}
+}
 
 async function loadRecentProjects(){
   const widget = document.getElementById('recentProjectsWidget');
