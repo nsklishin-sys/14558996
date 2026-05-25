@@ -200,6 +200,26 @@ a,
   html.lt-shell-2col .users-toolbar select {
     flex: 1 1 auto;
   }
+
+  /* ── Settings «Управление платформой» (#panel-admin) под мобилку ── */
+  /* ряды «текст + контрол» (тумблер/кнопка) — в столбик, контрол под текстом */
+  html.lt-shell #panel-admin .panel-section > div[style*="space-between"],
+  html.lt-shell-2col #panel-admin .panel-section > div[style*="space-between"] {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  /* кнопки в секции — на всю ширину для удобного тапа */
+  html.lt-shell #panel-admin button,
+  html.lt-shell-2col #panel-admin button {
+    width: 100%;
+  }
+  /* тумблеры остаются как есть (не растягивать) — выравниваем влево */
+  html.lt-shell #panel-admin label[style*="width:42px"],
+  html.lt-shell-2col #panel-admin label[style*="width:42px"] {
+    align-self: flex-start;
+    width: 42px !important;
+  }
 }
 
 /* ───────────────────────────────────────────────────────────────
