@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LASTOP GROUP — О платформе</title>
-<meta name="description" content="LASTOP GROUP — деловая платформа для логистики и ВЭД. Информация о компании, документы, форма обратной связи.">
+<meta name="description" content="LASTOP GROUP — деловая платформа для логистики и ВЭД. О платформе, разделы и возможности, документы, контакты.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/shell-layout.css">
@@ -28,60 +28,54 @@ html,body{height:100%;min-height:100%;overflow:hidden;font-family:'Manrope',sans
 .logo-cell:hover{box-shadow:var(--shm)}
 .logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
 .main{grid-area:main;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:14px;min-height:0}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
 
-/* HEADER SECTION (вместо зелёного hero) */
-.about-header{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px 22px;box-shadow:var(--sh);flex-shrink:0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.about-header-icon{width:46px;height:46px;border-radius:var(--rm);background:var(--gl);display:grid;place-items:center;flex-shrink:0}
-.about-header-icon svg{width:22px;height:22px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.about-header-text h1{font-size:20px;font-weight:800;color:var(--t);margin-bottom:3px;letter-spacing:-.005em}
-.about-header-text p{font-size:13px;color:var(--gmt);line-height:1.5}
+.about-header{background:linear-gradient(135deg,#1E8A4C 0%,#176E3C 100%);border-radius:var(--rxl);padding:22px 24px;box-shadow:var(--shm);flex-shrink:0;color:#fff;position:relative;overflow:hidden}
+.about-header::before{content:'';position:absolute;top:-60px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.about-header::after{content:'';position:absolute;bottom:-70px;right:90px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05)}
+.ah-inner{position:relative;z-index:1}
+.ah-badge{display:inline-block;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.16);font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+.about-header h1{font-size:24px;font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
+.about-header p{font-size:14px;color:rgba(255,255,255,.85);line-height:1.6;max-width:680px}
 
-/* GRID 2-col */
-.about-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;flex-shrink:0}
-@media(max-width:1100px){.about-grid{grid-template-columns:1fr}}
+.section-title{font-size:17px;font-weight:800;color:var(--t);margin:6px 0 2px;letter-spacing:-.005em;display:flex;align-items:center;gap:9px}
+.section-title svg{width:19px;height:19px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.section-sub{font-size:12.5px;color:var(--gmt);margin-bottom:6px;line-height:1.55}
 
-.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:22px}
-.card-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
-.card-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
-.card-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.card-title{font-size:15px;font-weight:800;color:var(--t)}
-.card-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+.sec-list{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.sec-item{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--sh);overflow:hidden;transition:box-shadow .18s,border-color .18s}
+.sec-item.open{box-shadow:var(--shm);border-color:var(--gb)}
+.sec-head{display:flex;align-items:center;gap:13px;padding:14px 16px;cursor:pointer;user-select:none;transition:background .15s}
+.sec-head:hover{background:var(--gp)}
+.sec-ico{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.sec-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sec-hd{flex:1;min-width:0}
+.sec-name{font-size:14.5px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sec-tagline{font-size:12px;color:var(--gmt);margin-top:2px;line-height:1.4}
+.sec-status{font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
+.sec-status.dev{background:#FFF6E6;color:#8A5A00;border:1px solid #F0DCA0}
+.sec-chevron{width:18px;height:18px;flex-shrink:0;color:var(--gmt);transition:transform .25s}
+.sec-chevron svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sec-item.open .sec-chevron{transform:rotate(180deg)}
+.sec-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.sec-item.open .sec-body{max-height:600px}
+.sec-body-inner{padding:0 16px 16px 69px;font-size:13px;color:var(--tm);line-height:1.65}
+@media(max-width:560px){.sec-body-inner{padding:0 16px 16px 16px}}
 
-.info-row{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--bdr);align-items:start}
-.info-row:last-child{border-bottom:none}
-.info-label{font-size:10.5px;font-weight:700;color:var(--gmt);letter-spacing:.04em;text-transform:uppercase;padding-top:2px}
-.info-value{font-size:13px;color:var(--t);font-weight:500;line-height:1.55}
-.info-value.copy{cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:color .15s}
-.info-value.copy:hover{color:var(--g)}
-@media(max-width:560px){.info-row{grid-template-columns:1fr;gap:4px}.info-label{padding-top:0}}
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex-shrink:0}
+@media(max-width:900px){.cap-grid{grid-template-columns:1fr}}
+.cap-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:20px}
+.cap-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
+.cap-ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex-shrink:0;color:#fff}
+.cap-ico svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cap-ico.users{background:linear-gradient(135deg,#1E8A4C,#22A05A)}
+.cap-ico.biz{background:linear-gradient(135deg,#185FA5,#3A90C0)}
+.cap-title{font-size:15px;font-weight:800;color:var(--t)}
+.cap-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+.cap-list{list-style:none;display:flex;flex-direction:column;gap:9px}
+.cap-list li{display:flex;gap:10px;font-size:13px;color:var(--tm);line-height:1.5}
+.cap-list li svg{width:16px;height:16px;flex-shrink:0;margin-top:1px;fill:none;stroke:var(--g);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
-.form-row{margin-bottom:11px}
-.form-label{font-size:10.5px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:5px}
-.form-input{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
-.form-input:focus{border-color:var(--gm);background:var(--w)}
-.form-input::placeholder{color:var(--gmt)}
-textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
-.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:520px){.form-grid2{grid-template-columns:1fr}}
-.btn-pri{padding:10px 22px;border-radius:99px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
-.btn-pri:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
-.btn-pri:disabled{background:var(--gb);cursor:not-allowed;transform:none;box-shadow:none}
-.btn-pri svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.form-hint{font-size:11px;color:var(--gmt);margin-top:8px;line-height:1.5}
-.form-hint a{color:var(--g);text-decoration:none}
-.form-hint a:hover{text-decoration:underline}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:var(--z-dropdown);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.25)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.success{background:var(--g)}
-.toast.error{background:var(--red)}
-
-.quick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.qa{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;background:var(--gl);border:1.5px solid var(--gb);color:var(--g);font-size:12px;font-weight:700;text-decoration:none;transition:all .15s}
-.qa:hover{background:var(--g);color:#fff;border-color:var(--g);transform:translateY(-1px)}
-.qa svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
-
-.section-title{font-size:16px;font-weight:800;color:var(--t);margin:8px 0 4px;letter-spacing:-.005em}
-.section-sub{font-size:12.5px;color:var(--gmt);margin-bottom:10px}
 .docs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding-bottom:14px}
 .doc-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:16px;text-decoration:none;color:inherit;transition:all .18s;display:flex;flex-direction:column;gap:9px;position:relative;overflow:hidden}
 .doc-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(180deg,var(--g),var(--gm));opacity:0;transition:opacity .18s}
@@ -95,6 +89,61 @@ textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
 .doc-desc{font-size:11.5px;color:var(--gmt);line-height:1.5;flex:1}
 .doc-meta{font-size:10.5px;color:var(--gmt);padding-top:6px;border-top:1px dashed var(--bdr);display:flex;align-items:center;gap:5px}
 .doc-meta svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;opacity:.7}
+
+.rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px}
+.rs-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
+.rs-ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.rs-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rs-title{font-size:14px;font-weight:800;color:var(--t)}
+.rs-sub{font-size:11px;color:var(--gmt);margin-top:1px}
+.rs-info{display:flex;flex-direction:column;gap:0}
+.rs-row{padding:8px 0;border-bottom:1px solid var(--bdr)}
+.rs-row:last-child{border-bottom:none}
+.rs-label{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px}
+.rs-value{font-size:12.5px;color:var(--t);font-weight:500;line-height:1.5}
+.rs-value.copy{cursor:pointer;transition:color .15s}
+.rs-value.copy:hover{color:var(--g)}
+.rs-value a{color:var(--g);text-decoration:none;font-weight:700}
+.rs-contact-btn{width:100%;padding:12px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.rs-contact-btn:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
+.rs-contact-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rs-mail{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:10px;font-size:12px;font-weight:700;color:var(--g);text-decoration:none}
+.rs-mail svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+
+.form-row{margin-bottom:11px}
+.form-label{font-size:10.5px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:5px}
+.form-input{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
+.form-input:focus{border-color:var(--gm);background:var(--w)}
+.form-input::placeholder{color:var(--gmt)}
+textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.form-grid2{grid-template-columns:1fr}}
+.btn-pri{padding:11px 22px;border-radius:99px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.btn-pri:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
+.btn-pri:disabled{background:var(--gb);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-pri svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.form-hint{font-size:11px;color:var(--gmt);margin-top:8px;line-height:1.5}
+.form-hint a{color:var(--g);text-decoration:none}
+.form-hint a:hover{text-decoration:underline}
+
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-modal,300);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.18);padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .22s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.modal-head .mh-ico{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.modal-head .mh-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.modal-head .mh-txt{flex:1}
+.modal-head h3{font-size:16px;font-weight:800;color:var(--t)}
+.modal-head .mh-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+.modal-x{width:30px;height:30px;border-radius:var(--r);background:var(--gp);border:none;cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:background .15s;flex-shrink:0}
+.modal-x:hover{background:var(--gl);color:var(--g)}
+.modal-x svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:var(--z-dropdown,400);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+.toast.error{background:var(--red)}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -106,46 +155,60 @@ textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
 <main class="main">
 
   <section class="about-header">
-    <div class="about-header-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
-    <div class="about-header-text">
-      <h1>О платформе LASTOP GROUP</h1>
-      <p>Деловая платформа для специалистов и компаний в логистике, ВЭД и смежных отраслях. Объединяем участников рынка, помогаем находить партнёров, проекты и кадры.</p>
+    <div class="ah-inner">
+      <span class="ah-badge">О платформе</span>
+      <h1>LASTOP GROUP</h1>
+      <p>Деловая экосистема для логистики, ВЭД и смежных отраслей. Мы объединяем специалистов, компании и сообщества в одном пространстве: здесь находят партнёров и клиентов, ведут проекты, обмениваются опытом, нанимают сотрудников и развивают бизнес. Всё ключевое для b2b-взаимодействия — в одной платформе.</p>
     </div>
   </section>
 
-  <div class="about-grid">
-    <div class="card">
-      <div class="card-head">
-        <div class="card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
-        <div><div class="card-title">Реквизиты</div><div class="card-sub">Юридическая информация о владельце платформы</div></div>
+  <h2 class="section-title">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+    Разделы платформы
+  </h2>
+  <p class="section-sub">Нажмите на раздел, чтобы узнать подробнее о его возможностях.</p>
+
+  <div class="sec-list" id="secList"></div>
+
+  <h2 class="section-title">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    Возможности
+  </h2>
+  <p class="section-sub">Что даёт платформа разным участникам рынка.</p>
+
+  <div class="cap-grid">
+    <div class="cap-card">
+      <div class="cap-head">
+        <div class="cap-ico users"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div><div class="cap-title">Для специалистов</div><div class="cap-sub">Профессионалы отрасли</div></div>
       </div>
-      <div class="info-row"><div class="info-label">Название</div><div class="info-value">Общество с ограниченной ответственностью «Ластоп Групп»</div></div>
-      <div class="info-row"><div class="info-label">ОГРН</div><div class="info-value copy" data-copy="1245000049568" title="Скопировать">1245000049568</div></div>
-      <div class="info-row"><div class="info-label">ИНН</div><div class="info-value copy" data-copy="5024242752" title="Скопировать">5024242752</div></div>
-      <div class="info-row"><div class="info-label">КПП</div><div class="info-value copy" data-copy="502401001" title="Скопировать">502401001</div></div>
-      <div class="info-row"><div class="info-label">Юридический адрес</div><div class="info-value">143405, Московская область, г.о. Красногорск, д. Гольево, ул. Центральная, д. 7, стр. 2, этаж 5, ком. 24, 25, 26, 27</div></div>
-      <div class="info-row"><div class="info-label">Сайт</div><div class="info-value"><a href="https://lastop.ru" style="color:var(--g);text-decoration:none;font-weight:700">lastop.ru</a></div></div>
-      <div class="quick-actions">
-        <a href="mailto:partner@lastop.ru" class="qa"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>partner@lastop.ru</a>
-      </div>
+      <ul class="cap-list">
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Личный профиль с опытом, навыками и портфолио проектов</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Поиск работы и откликов в разделе «Карьера»</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Деловые контакты, личные сообщения и групповые чаты</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Участие в сообществах, форуме и отраслевых мероприятиях</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Доступ к новостям и проектам участников рынка</li>
+      </ul>
     </div>
-    <div class="card">
-      <div class="card-head">
-        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-        <div><div class="card-title">Связаться с нами</div><div class="card-sub">Напишите — ответим в течение рабочего дня</div></div>
+    <div class="cap-card">
+      <div class="cap-head">
+        <div class="cap-ico biz"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <div><div class="cap-title">Для компаний</div><div class="cap-sub">Бизнес и организации</div></div>
       </div>
-      <div class="form-row"><label class="form-label">Ваше имя</label><input class="form-input" id="cfName" placeholder="Иван Иванов" maxlength="200"></div>
-      <div class="form-grid2">
-        <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="cfEmail" type="email" placeholder="ivan@example.com" maxlength="320"></div>
-        <div class="form-row"><label class="form-label">Тема</label><input class="form-input" id="cfSubject" placeholder="Сотрудничество, вопрос..." maxlength="200"></div>
-      </div>
-      <div class="form-row"><label class="form-label">Сообщение</label><textarea class="form-input" id="cfMessage" placeholder="Расскажите о вашем вопросе или предложении..." maxlength="5000"></textarea></div>
-      <button class="btn-pri" id="cfSubmit" type="button" onclick="submitContact()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button>
-      <div class="form-hint">Отправляя форму, вы соглашаетесь с <a href="/privacy.html" target="_blank">политикой обработки персональных данных</a>.</div>
+      <ul class="cap-list">
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Корпоративный профиль с витриной услуг и команды</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Публикация вакансий и подбор специалистов</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Размещение проектов, новостей и мероприятий компании</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Поиск партнёров, поставщиков и клиентов на рынке</li>
+        <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Аналитика активности и продвижение профиля</li>
+      </ul>
     </div>
   </div>
 
-  <h2 class="section-title">Правовая документация</h2>
+  <h2 class="section-title">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    Правовая документация
+  </h2>
   <p class="section-sub">Полный комплект документов, регулирующих работу платформы. Действующие редакции от 12 мая 2026 года.</p>
 
   <div class="docs-grid">
@@ -194,29 +257,142 @@ textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
   </div>
 
 </main>
-<aside class="right"></aside>
+
+<aside class="right">
+  <div class="rs-card">
+    <div class="rs-head">
+      <div class="rs-ico"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+      <div><div class="rs-title">Реквизиты</div><div class="rs-sub">Владелец платформы</div></div>
+    </div>
+    <div class="rs-info">
+      <div class="rs-row"><div class="rs-label">Название</div><div class="rs-value">ООО «Ластоп Групп»</div></div>
+      <div class="rs-row"><div class="rs-label">ОГРН</div><div class="rs-value copy" data-copy="1245000049568" title="Скопировать">1245000049568</div></div>
+      <div class="rs-row"><div class="rs-label">ИНН</div><div class="rs-value copy" data-copy="5024242752" title="Скопировать">5024242752</div></div>
+      <div class="rs-row"><div class="rs-label">КПП</div><div class="rs-value copy" data-copy="502401001" title="Скопировать">502401001</div></div>
+      <div class="rs-row"><div class="rs-label">Юридический адрес</div><div class="rs-value">143405, Московская область, г.о. Красногорск, д. Гольево, ул. Центральная, д. 7, стр. 2, этаж 5, ком. 24–27</div></div>
+      <div class="rs-row"><div class="rs-label">Сайт</div><div class="rs-value"><a href="https://lastop.ru">lastop.ru</a></div></div>
+    </div>
+  </div>
+
+  <div class="rs-card">
+    <div class="rs-head">
+      <div class="rs-ico"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <div><div class="rs-title">Связаться с нами</div><div class="rs-sub">Ответим в течение дня</div></div>
+    </div>
+    <button class="rs-contact-btn" type="button" onclick="openContact()">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Написать нам
+    </button>
+    <a href="mailto:partner@lastop.ru" class="rs-mail"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>partner@lastop.ru</a>
+  </div>
+</aside>
+
 </div>
+
+<div class="modal-bg" id="contactModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="mh-ico"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <div class="mh-txt"><h3>Связаться с нами</h3><div class="mh-sub">Напишите — ответим в течение рабочего дня</div></div>
+      <button class="modal-x" type="button" onclick="closeContact()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="form-row"><label class="form-label">Ваше имя</label><input class="form-input" id="cfName" placeholder="Иван Иванов" maxlength="200"></div>
+    <div class="form-grid2">
+      <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="cfEmail" type="email" placeholder="ivan@example.com" maxlength="320"></div>
+      <div class="form-row"><label class="form-label">Тема</label><input class="form-input" id="cfSubject" placeholder="Сотрудничество, вопрос..." maxlength="200"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Сообщение</label><textarea class="form-input" id="cfMessage" placeholder="Расскажите о вашем вопросе или предложении..." maxlength="5000"></textarea></div>
+    <button class="btn-pri" id="cfSubmit" type="button" onclick="submitContact()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button>
+    <div class="form-hint">Отправляя форму, вы соглашаетесь с <a href="/privacy.html" target="_blank">политикой обработки персональных данных</a>.</div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const API='/api';
+
+const SECTIONS=[
+  {name:'Главная',status:'',ico:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/>',
+   tagline:'Персональная сводка и лента активности',
+   body:'Стартовый экран платформы. Здесь собрана ваша лента: свежие новости и проекты участников, ближайшие мероприятия, активные чаты и задачи. Быстрый доступ ко всему важному в одном месте.'},
+  {name:'Новости',status:'',ico:'<path d="M4 6h16M4 12h16M4 18h10"/>',
+   tagline:'Отраслевые публикации и обновления',
+   body:'Новостная лента платформы и её участников. Компании и специалисты публикуют отраслевые материалы, анонсы и обновления. Возможность реагировать, комментировать и делиться.'},
+  {name:'Проекты',status:'',ico:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+   tagline:'Витрина проектов и кейсов',
+   body:'Раздел для размещения и поиска проектов. Компании показывают реализованные кейсы и текущие инициативы, находят исполнителей и партнёров. Удобно для демонстрации экспертизы.'},
+  {name:'Мероприятия',status:'',ico:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+   tagline:'Календарь событий отрасли',
+   body:'Афиша деловых мероприятий: конференции, вебинары, networking-встречи. Организаторы создают события со спикерами, программой и билетами, участники регистрируются и обсуждают.'},
+  {name:'Выставки',status:'',ico:'<path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/><path d="M9 21V13h6v8"/>',
+   tagline:'Отраслевые выставки и экспоненты',
+   body:'Раздел отраслевых выставок: профили экспонентов, стенды, программа. Компании заявляют участие, посетители планируют визит и знакомятся с участниками заранее.'},
+  {name:'Карьера',status:'',ico:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="12" cy="13" r="2"/><path d="M8 19c0-2.2 1.8-4 4-4s4 1.8 4 4"/>',
+   tagline:'Вакансии, резюме и отклики',
+   body:'B2B-найм в отрасли. Компании публикуют вакансии, специалисты — резюме и портфолио. Прямые отклики, поиск по навыкам и опыту, связь с кандидатами через чат.'},
+  {name:'Товары и услуги',status:'',ico:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+   tagline:'Каталог предложений участников',
+   body:'Бесплатный каталог товаров и услуг участников платформы. Размещение предложений с описанием и фото, заявки и прямая связь с продавцом. Базовый раздел торговой площадки.'},
+  {name:'E-market',status:'dev',ico:'<path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/>',
+   tagline:'Полноценные магазины-витрины (в разработке)',
+   body:'Расширенная торговая площадка: пользователи, компании и сообщества открывают собственные магазины с товарами и услугами. Лента товаров и лента магазинов, поиск, рейтинги и отзывы, оплата через сервисы продавцов. Раздел в активной разработке — скоро станет доступен.'},
+  {name:'Форум',status:'',ico:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+   tagline:'Профессиональное обсуждение',
+   body:'Площадка для отраслевых дискуссий: вопросы и ответы, обмен опытом, обсуждение практики логистики и ВЭД. Темы, ответы, реакции — живое профессиональное сообщество.'},
+  {name:'Компании',status:'',ico:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>',
+   tagline:'Каталог компаний рынка',
+   body:'Реестр компаний платформы с корпоративными профилями: услуги, команда, проекты, контакты. Поиск партнёров и поставщиков, переход к сотрудничеству напрямую.'},
+  {name:'Сообщества',status:'',ico:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+   tagline:'Тематические объединения',
+   body:'Сообщества по интересам и направлениям: общение, совместные обсуждения, обмен материалами. Пользовательские сообщества открыты сейчас; корпоративные — в разработке.'},
+  {name:'Чат',status:'',ico:'<rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/>',
+   tagline:'Личные и групповые сообщения',
+   body:'Встроенный мессенджер платформы: личная переписка, групповые чаты, обмен файлами и реакции. Прямая связь с участниками, кандидатами и партнёрами без внешних сервисов.'}
+];
+
+function renderSections(){
+  const el=document.getElementById('secList');
+  el.innerHTML=SECTIONS.map(function(s,i){
+    var status=s.status==='dev'?'<span class="sec-status dev">В разработке</span>':'';
+    return '<div class="sec-item" data-idx="'+i+'">'+
+      '<div class="sec-head" onclick="toggleSection('+i+')">'+
+        '<div class="sec-ico"><svg viewBox="0 0 24 24">'+s.ico+'</svg></div>'+
+        '<div class="sec-hd"><div class="sec-name">'+s.name+status+'</div><div class="sec-tagline">'+s.tagline+'</div></div>'+
+        '<div class="sec-chevron"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>'+
+      '</div>'+
+      '<div class="sec-body"><div class="sec-body-inner">'+s.body+'</div></div>'+
+    '</div>';
+  }).join('');
+}
+function toggleSection(i){
+  var item=document.querySelector('.sec-item[data-idx="'+i+'"]');
+  if(!item)return;
+  item.classList.toggle('open');
+}
+
+function openContact(){document.getElementById('contactModal').classList.add('open');}
+function closeContact(){document.getElementById('contactModal').classList.remove('open');}
+document.getElementById('contactModal').addEventListener('click',function(e){if(e.target===this)closeContact();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeContact();});
+
 function showToast(msg, type){
   const t=document.getElementById('toast');
   t.textContent=msg;
   t.className='toast ' + (type||'') + ' show';
   setTimeout(()=>t.classList.remove('show'), 3500);
 }
-document.querySelectorAll('.info-value.copy').forEach(el=>{
-  el.addEventListener('click', async()=>{
-    const text=el.dataset.copy||el.textContent.trim();
-    try{
-      await navigator.clipboard.writeText(text);
-      showToast('Скопировано: '+text, 'success');
-    }catch{
-      showToast('Не удалось скопировать', 'error');
-    }
+
+function bindCopy(){
+  document.querySelectorAll('.rs-value.copy').forEach(function(el){
+    el.addEventListener('click', async function(){
+      const text=el.dataset.copy||el.textContent.trim();
+      try{ await navigator.clipboard.writeText(text); showToast('Скопировано: '+text, 'success'); }
+      catch{ showToast('Не удалось скопировать', 'error'); }
+    });
   });
-});
+}
+
 async function submitContact(){
   const name=document.getElementById('cfName').value.trim();
   const email=document.getElementById('cfEmail').value.trim();
@@ -242,6 +418,7 @@ async function submitContact(){
       document.getElementById('cfEmail').value='';
       document.getElementById('cfSubject').value='';
       document.getElementById('cfMessage').value='';
+      closeContact();
     }else{
       showToast(d.error||'Не удалось отправить, попробуйте позже','error');
     }
@@ -251,46 +428,9 @@ async function submitContact(){
   btn.disabled=false;
   btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить';
 }
+
+renderSections();
+bindCopy();
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </body>
 </html>
