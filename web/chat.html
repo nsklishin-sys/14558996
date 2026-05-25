@@ -1459,7 +1459,9 @@ function applyConversation(c){
   if(manageBtn) manageBtn.style.display=(c.type==='group')?'':'none';
   state.activeConversation=c;
 }
-async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();const _cb=document.getElementById('chatCloseBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display=''}
+const chatDrafts = {};
+function saveDraft(){ if(state.activeConvPublicID && typeof msgInput!=='undefined' && msgInput){ const v=msgInput.value; if(v && v.trim()) chatDrafts[state.activeConvPublicID]=v; else delete chatDrafts[state.activeConvPublicID]; } }
+async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();saveDraft();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();const _cb=document.getElementById('chatCloseBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display='';if(typeof msgInput!=='undefined'&&msgInput){msgInput.value=chatDrafts[pid]||'';autoGrow(msgInput);}}
 function closeActiveChat(){
   state.activeConvPublicID=null;
   state.messages=[];
@@ -1923,6 +1925,7 @@ async function submitMessage(){
     }
     renderMessages();
     scrollBottom();
+    delete chatDrafts[convPid];
     loadConversations();
   } catch (e) {
     // Откат: вернуть текст в поле, чтобы пользователь не потерял сообщение
