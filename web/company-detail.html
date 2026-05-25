@@ -51,7 +51,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* HERO */
 .co-hero{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:var(--sh);overflow:hidden;animation:fadeUp .25s ease both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.co-hero-band{height:80px;background:linear-gradient(135deg,var(--accent,#1E8A4C),var(--accent2,#22A05A))}
+.co-hero-band{height:140px;background:linear-gradient(135deg,var(--accent,#1E8A4C),var(--accent2,#22A05A));background-size:cover;background-position:center;background-repeat:no-repeat}
 .co-hero-body{padding:0 22px 18px;display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
 .co-logo{width:96px;height:96px;border-radius:var(--rl);background:#fff;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.1);margin-top:-48px;overflow:hidden;display:grid;place-items:center;font-size:28px;font-weight:900;color:var(--g);flex-shrink:0}
 .co-logo img{width:100%;height:100%;object-fit:cover;display:block}
@@ -283,9 +283,11 @@ function render(){
     ? '<div class="co-logo"><img src="'+escAttr(c.logo_image)+'" alt=""></div>'
     : '<div class="co-logo" style="background:'+escAttr(accent)+';color:#fff">'+esc(initials(c.name))+'</div>';
 
+  const coverOk = c.cover_url && (c.cover_url.startsWith('http://')||c.cover_url.startsWith('https://')||c.cover_url.startsWith('/uploads/'));
+  const bandStyle = coverOk ? ' style="background:url(\''+escAttr(c.cover_url)+'\') center/cover no-repeat"' : '';
   const heroHtml =
     '<div class="co-hero" style="--accent:'+escAttr(accent)+';--accent2:'+escAttr(accent)+'">'+
-      '<div class="co-hero-band"></div>'+
+      '<div class="co-hero-band"'+bandStyle+'></div>'+
       '<div class="co-hero-body">'+
         logoHtml+
         '<div class="co-info">'+
