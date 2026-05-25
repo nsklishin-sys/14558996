@@ -21,7 +21,7 @@
   --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
 }
 html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
-.main{overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-bottom:16px}
+.main{grid-area:main;overflow-y:auto;overflow-x:hidden;min-width:0;display:flex;flex-direction:column;gap:14px;padding-bottom:16px}
 .main::-webkit-scrollbar{width:4px}
 .main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 
@@ -58,6 +58,30 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .adm-stub{margin-top:12px;padding:10px;border-radius:var(--rm);border:1.5px dashed var(--gb);background:var(--gp);color:var(--gmt);font-size:11px;font-weight:700;text-align:center}
 .adm-note{background:#FFF6E6;border:1px solid #F0DCA0;border-radius:var(--rxl);padding:14px 18px;color:#8A5A00;font-size:12px;line-height:1.6;flex-shrink:0}
 .adm-note b{font-weight:800}
+
+/* ── Правый сайдбар (заглушка под будущий состав) ── */
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.right::-webkit-scrollbar{width:4px}
+.right::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+.rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px}
+.rs-title{font-size:11px;font-weight:800;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.rs-shop{text-align:center}
+.rs-shop-ico{width:52px;height:52px;border-radius:15px;margin:0 auto 10px;display:grid;place-items:center;background:var(--gp);border:1px solid var(--bdr)}
+.rs-shop-ico svg{width:26px;height:26px;stroke:var(--g);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rs-shop-t{font-size:13px;font-weight:800;color:var(--t);margin-bottom:4px}
+.rs-shop-d{font-size:11px;color:var(--gmt);line-height:1.5;margin-bottom:12px}
+.rs-shop-btn{width:100%;padding:9px;border-radius:var(--rm);background:var(--gp);border:1.5px dashed var(--gb);color:var(--gmt);font-size:12px;font-weight:700;font-family:inherit;cursor:default}
+.rs-stub{display:flex;flex-direction:column;gap:8px}
+.rs-stub-row{display:flex;align-items:center;gap:10px;padding:7px 0}
+.rs-stub-av{width:32px;height:32px;border-radius:9px;background:var(--gp);border:1px solid var(--bdr);flex-shrink:0}
+.rs-stub-lines{flex:1;display:flex;flex-direction:column;gap:5px}
+.rs-stub-l{height:9px;border-radius:5px;background:var(--gp)}
+.rs-empty{font-size:11px;color:var(--gmt);text-align:center;padding:8px 4px;line-height:1.5}
+.rs-ad{background:#F8F5FF;border:1px solid #DDD0F0;border-radius:var(--rxl);padding:14px;position:relative;overflow:hidden}
+.rs-ad-label{position:absolute;top:10px;left:10px;background:#EAE0FA;color:#8060C0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px}
+.rs-ad-c{margin-top:20px;text-align:center}
+.rs-ad-t{font-size:13px;font-weight:700;color:#5040A0}
+.rs-ad-s{font-size:11px;color:#7060B0;margin-top:3px}
 </style>
 </head>
 <body>
@@ -66,6 +90,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <header class="topbar"></header>
 <nav class="nav"></nav>
 <div class="main" id="emarketMain"></div>
+<aside class="right" id="emarketRight"></aside>
 </div>
 
 <script>
@@ -102,6 +127,34 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         '<div class="dev-sub">Раздел станет доступен в одном из ближайших обновлений. Следите за новостями платформы.</div>' +
         '<a class="dev-back" href="/"><svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Вернуться на главную</a>' +
       '</div></div></div>';
+  }
+
+  // Правый сайдбар — заглушка под будущий состав (Мой магазин / Топ-магазины / Сохранённое / Реклама).
+  var right = document.getElementById('emarketRight');
+  if (right) {
+    right.innerHTML =
+      '<div class="rs-card rs-shop">' +
+        '<div class="rs-shop-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg></div>' +
+        '<div class="rs-shop-t">Мой магазин</div>' +
+        '<div class="rs-shop-d">Откройте витрину от своего имени, компании или сообщества.</div>' +
+        '<button class="rs-shop-btn" type="button" disabled>Скоро · в разработке</button>' +
+      '</div>' +
+      '<div class="rs-card">' +
+        '<div class="rs-title">Топ-магазины</div>' +
+        '<div class="rs-stub">' +
+          '<div class="rs-stub-row"><div class="rs-stub-av"></div><div class="rs-stub-lines"><div class="rs-stub-l" style="width:70%"></div><div class="rs-stub-l" style="width:45%"></div></div></div>' +
+          '<div class="rs-stub-row"><div class="rs-stub-av"></div><div class="rs-stub-lines"><div class="rs-stub-l" style="width:60%"></div><div class="rs-stub-l" style="width:50%"></div></div></div>' +
+          '<div class="rs-stub-row"><div class="rs-stub-av"></div><div class="rs-stub-lines"><div class="rs-stub-l" style="width:65%"></div><div class="rs-stub-l" style="width:40%"></div></div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="rs-card">' +
+        '<div class="rs-title">Сохранённое</div>' +
+        '<div class="rs-empty">Здесь появятся товары,<br>которые вы добавите в закладки.</div>' +
+      '</div>' +
+      '<div class="rs-ad">' +
+        '<div class="rs-ad-label">реклама</div>' +
+        '<div class="rs-ad-c"><div class="rs-ad-t">Рекламное место</div><div class="rs-ad-s">Блок в разработке</div></div>' +
+      '</div>';
   }
 })();
 </script>
