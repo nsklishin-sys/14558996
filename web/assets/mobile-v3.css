@@ -233,6 +233,20 @@ a,
   html.lt-shell-2col #panel-admin {
     overflow-x: hidden;
   }
+  /* грид-обёртки настроек: разорвать цепочку переполнения (min-width:auto → 0) */
+  html.lt-shell .settings-body,
+  html.lt-shell .settings-panels,
+  html.lt-shell-2col .settings-body,
+  html.lt-shell-2col .settings-panels {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  html.lt-shell .settings-panels > .s-panel,
+  html.lt-shell-2col .settings-panels > .s-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
   /* длинные слова/текст в описаниях и textarea — переносить */
   html.lt-shell #panel-admin div,
   html.lt-shell #panel-admin textarea,
