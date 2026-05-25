@@ -941,6 +941,8 @@ function itemHTML(n){
 
 function buildHref(n){
   // Приоритет по типу события (n.type), не по source_type
+  if(n.type==='comment_reply'&&n.source_public_id&&n.source_id)
+    return '/news-detail.html?id='+encodeURIComponent(n.source_public_id)+'#comment-'+n.source_id;
   if(n.type==='friend_request')return '/friends.html?tab=incoming';
   if(n.type==='friend_accepted')return '/friends.html';
   if(n.type==='moderation_appeal_result')return n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id):'/dashboard.html';
