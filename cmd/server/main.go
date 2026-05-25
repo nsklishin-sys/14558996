@@ -25011,6 +25011,68 @@ func scanEventRow(row scanner) (event, error) {
 
 type scanner interface{ Scan(dest ...any) error }
 
+// geocodeAddress превращает текстовый адрес в координаты через Yandex Geocoder API.
+// Ключ берётся из env YANDEX_GEOCODER_KEY. Если ключ не задан или адрес пуст —
+// возвращает ok=false (карта просто не покажется, без ошибок). Не блокирует
+// сохранение сущности: вызывающий код при ok=false оставляет координаты как есть.
+func geocodeAddress(address string) (lat float64, lon float64, ok bool) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return 0, 0, false
+	}
+	key := strings.TrimSpace(os.Getenv("YANDEX_GEOCODER_KEY"))
+	if key == "" {
+		return 0, 0, false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+	url := "https://geocode-maps.yandex.ru/v1/?apikey=" + key +
+		"&geocode=" + neturl.QueryEscape(address) + "&format=json&results=1"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, 0, false
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, 0, false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, 0, false
+	}
+	var body struct {
+		Response struct {
+			GeoObjectCollection struct {
+				FeatureMember []struct {
+					GeoObject struct {
+						Point struct {
+							Pos string `json:"pos"`
+						} `json:"Point"`
+					} `json:"GeoObject"`
+				} `json:"featureMember"`
+			} `json:"GeoObjectCollection"`
+		} `json:"response"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, 0, false
+	}
+	fm := body.Response.GeoObjectCollection.FeatureMember
+	if len(fm) == 0 {
+		return 0, 0, false
+	}
+	// pos формата "37.6 55.7" (долгота широта)
+	parts := strings.Fields(fm[0].GeoObject.Point.Pos)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	lon, err1 := strconv.ParseFloat(parts[0], 64)
+	lat, err2 := strconv.ParseFloat(parts[1], 64)
+	if err1 != nil || err2 != nil {
+		return 0, 0, false
+	}
+	return lat, lon, true
+}
+
 func createEvent(db *sql.DB, organizerID int64, req createEventRequest) (event, error) {
 	startsAt, endsAt, err := validateEvent(&req, organizerID, db)
 	if err != nil {
