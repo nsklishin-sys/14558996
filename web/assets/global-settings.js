@@ -355,6 +355,7 @@
     if (window.wsClient) {
       window.wsClient.on('notif:new', function() {
         refreshUnreadCount();
+        pulseNotifBadge();
         // Если выпадашка уведомлений открыта — обновим список тоже
         if (_notifIsOpen) loadNotifList();
       });
@@ -384,6 +385,13 @@
     _notifBellEl.classList.remove('open');
   }
 
+  function pulseNotifBadge() {
+    if (!_notifBadgeEl) return;
+    _notifBadgeEl.classList.remove('pulse');
+    void _notifBadgeEl.offsetWidth;
+    _notifBadgeEl.classList.add('pulse');
+    setTimeout(function(){ if(_notifBadgeEl) _notifBadgeEl.classList.remove('pulse'); }, 650);
+  }
   async function refreshUnreadCount() {
     const isAuthed = (function(){ try { return !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch { return false; } })();
     if (!isAuthed || !_notifBadgeEl) return;
