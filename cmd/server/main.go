@@ -727,6 +727,17 @@ type taskDTO struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
+type taskPatch struct {
+	Title     *string         `json:"title"`
+	Desc      *string         `json:"desc"`
+	Due       *string         `json:"due"`
+	Time      *string         `json:"time"`
+	Priority  *string         `json:"pri"`
+	Tags      json.RawMessage `json:"tags"`
+	Done      *bool           `json:"done"`
+	Checklist json.RawMessage `json:"checklist"`
+}
+
 type createNotificationParams struct {
 	RecipientID    int64
 	ActorID        int64
@@ -13435,22 +13446,53 @@ func main() {
 		}
 		switch r.Method {
 		case http.MethodPatch, http.MethodPut:
-			var in taskDTO
+			var in taskPatch
 			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректные данные")
 				return
 			}
-			if in.Priority != "hi" && in.Priority != "md" && in.Priority != "lo" {
-				in.Priority = "lo"
+			// Подготовка аргументов: nil → COALESCE оставит старое значение.
+			var titleArg, descArg, dueArg, timeArg, priArg any
+			if in.Title != nil {
+				titleArg = strings.TrimSpace(*in.Title)
 			}
-			tags := normalizeJSONArray(in.Tags)
-			checklist := normalizeJSONArray(in.Checklist)
+			if in.Desc != nil {
+				descArg = *in.Desc
+			}
+			if in.Due != nil {
+				dueArg = *in.Due
+			}
+			if in.Time != nil {
+				timeArg = *in.Time
+			}
+			if in.Priority != nil {
+				p := *in.Priority
+				if p != "hi" && p != "md" && p != "lo" {
+					p = "lo"
+				}
+				priArg = p
+			}
+			var doneArg any
+			if in.Done != nil {
+				doneArg = *in.Done
+			}
+			var tagsArg, chkArg any
+			if len(in.Tags) > 0 {
+				tagsArg = normalizeJSONArray(in.Tags)
+			}
+			if len(in.Checklist) > 0 {
+				chkArg = normalizeJSONArray(in.Checklist)
+			}
 			var t taskDTO
 			var outTags, outChk []byte
-			err := db.QueryRow(`UPDATE tasks SET title=$1, descr=$2, due_date=$3, due_time=$4, priority=$5, tags=$6, done=$7, checklist=$8, updated_at=NOW()
+			err := db.QueryRow(`UPDATE tasks SET
+				title=COALESCE($1,title), descr=COALESCE($2,descr), due_date=COALESCE($3,due_date),
+				due_time=COALESCE($4,due_time), priority=COALESCE($5,priority),
+				tags=COALESCE($6,tags), done=COALESCE($7,done), checklist=COALESCE($8,checklist),
+				updated_at=NOW()
 				WHERE id=$9 AND user_id=$10
 				RETURNING id, title, descr, due_date, due_time, priority, tags, done, checklist, created_at, updated_at`,
-				strings.TrimSpace(in.Title), in.Desc, in.Due, in.Time, in.Priority, tags, in.Done, checklist, taskID, userID).
+				titleArg, descArg, dueArg, timeArg, priArg, tagsArg, doneArg, chkArg, taskID, userID).
 				Scan(&t.ID, &t.Title, &t.Desc, &t.Due, &t.Time, &t.Priority, &outTags, &t.Done, &outChk, &t.CreatedAt, &t.UpdatedAt)
 			if err != nil {
 				writeError(w, http.StatusNotFound, "Задача не найдена")
