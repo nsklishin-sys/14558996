@@ -340,14 +340,27 @@
           if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
           return;
         }
-        // 2) Сообщение со ссылкой на пост
+        // 2) Сообщения: сначала комментарий пользователя (если есть) — отдельно, затем ссылка — отдельно
         var link = location.origin + '/news-detail.html?id=' + encodeURIComponent(current.opts.postPublicID);
-        var msg = comment ? (comment + '\n\n' + link) : link;
-        var mr = await lastopFetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
-          method: 'POST',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ content: msg })
-        });
+        var sendMsg = function (content) {
+          return lastopFetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ content: content })
+          });
+        };
+        // комментарий (если ввёл) — первым отдельным сообщением
+        if (comment) {
+          var cr = await sendMsg(comment);
+          if (!cr.ok) {
+            var cd = await cr.json().catch(function () { return {}; });
+            toast(cd.error || 'Не удалось отправить');
+            if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+            return;
+          }
+        }
+        // ссылка — отдельным сообщением
+        var mr = await sendMsg(link);
         if (!mr.ok) {
           var md = await mr.json().catch(function () { return {}; });
           toast(md.error || 'Не удалось отправить');
