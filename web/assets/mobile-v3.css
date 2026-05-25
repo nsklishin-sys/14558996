@@ -1664,3 +1664,30 @@ a,
     font-size: 10px;
   }
 }
+
+/* ═══ B-ADMIN-MOBILE (1): каркас + overview + detail-panel ═══ */
+@media (max-width: 640px) {
+  /* overview-сетка карточек: 4 кол → 2 */
+  html.lt-shell .ov-grid,
+  html.lt-shell-2col .ov-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  /* вкладки админки — компактнее, горизонтальный скролл уже есть */
+  html.lt-shell .admin-tabs,
+  html.lt-shell-2col .admin-tabs {
+    padding: 4px;
+    border-radius: 14px;
+  }
+  html.lt-shell .admin-tab,
+  html.lt-shell-2col .admin-tab {
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+  /* выезжающая detail-панель — на весь экран */
+  html.lt-shell .detail-panel,
+  html.lt-shell-2col .detail-panel {
+    width: 100vw;
+    right: -100vw;
+  }
+}
