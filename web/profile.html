@@ -92,7 +92,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   box-shadow:0 4px 14px rgba(30,138,76,.2);position:relative;
   margin-top:-42px
 }
-.prof-av img{width:100%;height:100%;object-fit:cover}
+.prof-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .prof-av-badge{
   position:absolute;bottom:6px;right:6px;
   width:18px;height:18px;border-radius:50%;background:#22CC66;
@@ -788,7 +788,7 @@ async function applyCurrentUserProfile(){
   const profileAvatar=document.querySelector('.prof-av');
   if(mergedUser.avatar_url){
     profileAvatar.innerHTML=`<img src="${mergedUser.avatar_url}" alt="${fullName}"><div class="prof-av-badge"></div>`;
-    profileAvatar.style.background='';
+    profileAvatar.style.background='transparent';
   }else{
     document.getElementById('profileAvatarText').textContent=initials;
     profileAvatar.style.background = (typeof colorFor === 'function' ? colorFor(fullName) : (typeof userColor === 'function' ? userColor(fullName) : 'var(--g)'));
