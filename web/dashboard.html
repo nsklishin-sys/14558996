@@ -441,8 +441,8 @@ a.nc-author{text-decoration:none}
       <div class="c-av" id="composeAv">НК</div>
       <input class="c-input" id="composeTitleInput" placeholder="Заголовок публикации…" maxlength="200">
     </div>
-    <select id="composeCategoryInput" class="form-input" style="margin-bottom:10px;height:38px;border:1.5px solid var(--bdr);border-radius:8px;padding:0 12px;font-family:inherit;font-size:13px;color:var(--t);background:var(--w);width:100%">
-  <option value="">Категория…</option><option value="Логистика">Логистика</option><option value="ВЭД">ВЭД</option><option value="Регуляторика">Регуляторика</option><option value="Технологии">Технологии</option><option value="Компании">Компании</option><option value="Форум">Форум</option>
+    <select id="composeCategoryInput" data-category-picker class="form-input" style="margin-bottom:10px;height:38px;border:1.5px solid var(--bdr);border-radius:8px;padding:0 12px;font-family:inherit;font-size:13px;color:var(--t);background:var(--w);width:100%">
+  <option value="">Категория…</option>
 </select>
     <textarea id="composeTextInput"
       style="width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:10px 14px;font-family:inherit;font-size:13px;color:var(--t);outline:none;resize:vertical;min-height:140px;max-height:480px;line-height:1.55;background:var(--gp);transition:border-color .2s;margin-bottom:6px"
@@ -1420,11 +1420,37 @@ async function loadTopSources(){
   }
 }
 
+// Категории новостей из словаря (управляются в админке).
+async function loadNewsCategories(){
+  let cats=[];
+  try{
+    const r=await lastopFetch('/api/news/categories');
+    const d=await r.json();
+    cats=(d.categories||[]).map(c=>c.label||c.key).filter(Boolean);
+  }catch(_){}
+  if(!cats.length)cats=['Логистика','ВЭД','Регуляторика','Технологии','Компании'];
+  // Фильтр-табы
+  const tabs=document.getElementById('newsTabs');
+  if(tabs){
+    tabs.innerHTML='<button type="button" class="ntab active" onclick="setTab(\'all\',this)">Все</button>'+
+      cats.map(c=>`<button type="button" class="ntab" onclick="setTab('${c.replace(/'/g,"\\'")}',this)">${c.replace(/[<>]/g,'')}</button>`).join('');
+  }
+  // Селект категории в форме создания
+  const sel=document.getElementById('composeCategoryInput');
+  if(sel){
+    sel.innerHTML='<option value="">Категория…</option>'+
+      cats.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">${c.replace(/[<>]/g,'')}</option>`).join('');
+    if(window.initCategoryPickers)window.initCategoryPickers();
+  }
+}
+
 // Запускаем сразу, не ждём DOMContentLoaded — функции сами проверяют существование DOM-элементов
+loadNewsCategories();
 loadTrends();
 loadTopSources();
 
 </script>
+<script src="/assets/category-picker.js" defer></script>
 <script src="/assets/copy-helper.js" defer></script>
 <script src="/assets/guest-nav.js" defer></script>
 <script src="/assets/profile-context.js" defer></script>
