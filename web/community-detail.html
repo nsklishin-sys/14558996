@@ -1037,7 +1037,7 @@ async function loadCommunityProfile(){
 async function loadCommunityProjects(){
   const wrap=document.getElementById('communityProjects');if(!wrap)return;
   try{
-    const r=await lastopFetch(`/api/communities/${state.community.id}/projects?limit=30`,{headers:{}});
+    const r=await lastopFetch(`/api/communities/${currentCommunity.id}/projects?limit=30`,{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.projects||[];
@@ -1055,7 +1055,7 @@ async function loadCommunityProjects(){
 async function loadCommunityEvents(){
   const wrap=document.getElementById('communityEvents');if(!wrap)return;
   try{
-    const r=await lastopFetch(`/api/communities/${state.community.id}/events?limit=30`,{headers:{}});
+    const r=await lastopFetch(`/api/communities/${currentCommunity.id}/events?limit=30`,{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.events||[];
@@ -1076,7 +1076,7 @@ async function loadCommunityEvents(){
 async function loadCommunityResumes(){
   const wrap=document.getElementById('communityResumes');if(!wrap)return;
   try{
-    const r=await lastopFetch(`/api/communities/${state.community.id}/resumes?limit=30`,{headers:{}});
+    const r=await lastopFetch(`/api/communities/${currentCommunity.id}/resumes?limit=30`,{headers:{}});
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=d.resumes||[];
