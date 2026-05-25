@@ -516,6 +516,13 @@ type chatMessage struct {
 	CreatedAt             time.Time         `json:"created_at"`
 	EditedAt              *time.Time        `json:"edited_at,omitempty"`
 	IsMine                bool              `json:"is_mine"`
+	Reactions             []reactionAgg     `json:"reactions,omitempty"`
+}
+
+type reactionAgg struct {
+	Emoji string `json:"emoji"`
+	Count int    `json:"count"`
+	Mine  bool   `json:"mine"`
 }
 
 type createDirectConversationRequest struct {
@@ -15182,6 +15189,16 @@ CREATE TABLE IF NOT EXISTS exhibition_saves (
     PRIMARY KEY (user_id, exhibition_id)
 );
 
+CREATE TABLE IF NOT EXISTS message_reactions (
+    id BIGSERIAL PRIMARY KEY,
+    message_id BIGINT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (message_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS message_reactions_msg_idx ON message_reactions (message_id);
+
 CREATE TABLE IF NOT EXISTS event_registrations (
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -25884,6 +25901,33 @@ func ensureParticipant(db *sql.DB, userID int64, conversationPublicID string) (i
 	return cid, nil
 }
 
+func loadReactionsFor(db *sql.DB, userID int64, msgIDs []int64) map[int64][]reactionAgg {
+	out := map[int64][]reactionAgg{}
+	if len(msgIDs) == 0 {
+		return out
+	}
+	rows, err := db.Query(`
+		SELECT message_id, emoji, COUNT(*),
+		       BOOL_OR(user_id = $1) AS mine
+		FROM message_reactions
+		WHERE message_id = ANY($2)
+		GROUP BY message_id, emoji
+		ORDER BY MIN(created_at)`, userID, pgtype.FlatArray[int64](msgIDs))
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mid int64
+		var r reactionAgg
+		if err := rows.Scan(&mid, &r.Emoji, &r.Count, &r.Mine); err != nil {
+			continue
+		}
+		out[mid] = append(out[mid], r)
+	}
+	return out
+}
+
 func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit int, beforeID int64) ([]chatMessage, error) {
 	cid, err := ensureParticipant(db, userID, conversationPublicID)
 	if err != nil {
@@ -25991,6 +26035,16 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 			rp.ContentPreview = preview
 		}
 		out[i].ReplyTo = &rp
+	}
+	ids := make([]int64, 0, len(out))
+	for i := range out {
+		ids = append(ids, out[i].ID)
+	}
+	reMap := loadReactionsFor(db, userID, ids)
+	for i := range out {
+		if rs, ok := reMap[out[i].ID]; ok {
+			out[i].Reactions = rs
+		}
 	}
 	return out, nil
 }
