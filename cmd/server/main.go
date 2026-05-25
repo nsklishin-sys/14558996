@@ -15554,6 +15554,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     source_type TEXT NOT NULL DEFAULT '',
     source_id BIGINT NOT NULL DEFAULT 0,
     source_public_id TEXT NOT NULL DEFAULT '',
+    anchor TEXT NOT NULL DEFAULT '' CHECK (char_length(anchor) <= 200),
     title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 500),
     preview TEXT NOT NULL DEFAULT '' CHECK (char_length(preview) <= 1000),
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
@@ -15565,6 +15566,10 @@ CREATE INDEX IF NOT EXISTS notifications_recipient_unread_idx
 
 CREATE INDEX IF NOT EXISTS notifications_recipient_created_idx
     ON notifications (recipient_id, created_at DESC);
+
+ALTER TABLE notifications
+    ADD COLUMN IF NOT EXISTS anchor TEXT NOT NULL DEFAULT ''
+    CHECK (char_length(anchor) <= 200);
 
 -- Идемпотентность: одно событие одного типа от одного актора по одному источнику = одна запись.
 -- При попытке вставить дубль — ON CONFLICT DO NOTHING.
@@ -16937,6 +16942,7 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 			"source_type":      p.SourceType,
 			"source_id":        p.SourceID,
 			"source_public_id": p.SourcePublicID,
+			"anchor":           p.Anchor,
 			"title":            title,
 			"preview":          preview,
 		})
@@ -18435,6 +18441,13 @@ func topicPublicIDByID(db *sql.DB, topicID int64) string {
 	return pid
 }
 
+// messagePublicIDByID — public_id сообщения форума по его id (для якоря #msg- в уведомлениях).
+func messagePublicIDByID(db *sql.DB, messageID int64) string {
+	var pid string
+	_ = db.QueryRow(`SELECT public_id FROM forum_messages WHERE id = $1`, messageID).Scan(&pid)
+	return pid
+}
+
 // notifyForumReply — отправить уведомления подписчикам и автору цитируемого.
 // authorID — кто ответил. parentAuthorID — кто автор цитируемого (0 если без цитаты).
 func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle, contentSnippet string, parentAuthorID int64) {
@@ -18451,6 +18464,7 @@ func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle
 			SourceType:     "forum_message",
 			SourceID:       messageID,
 			SourcePublicID: topicPublicIDByID(db, topicID),
+			Anchor:         "#msg-" + messagePublicIDByID(db, messageID),
 			Title:          title,
 			Preview:        contentSnippet,
 		}); err != nil {
@@ -18478,6 +18492,7 @@ func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle
 			SourceType:     "forum_topic",
 			SourceID:       topicID,
 			SourcePublicID: topicPID,
+			Anchor:         "#msg-" + messagePublicIDByID(db, messageID),
 			Title:          titleReply,
 			Preview:        contentSnippet,
 		}); err != nil {
@@ -18507,6 +18522,7 @@ func notifyForumLike(db *sql.DB, messageID, likerID int64) {
 		SourceType:     "forum_message",
 		SourceID:       messageID,
 		SourcePublicID: topicPublicIDByID(db, topicID),
+		Anchor:         "#msg-" + messagePublicIDByID(db, messageID),
 		Title:          title,
 		Preview:        contentSnippet,
 	}); err != nil {

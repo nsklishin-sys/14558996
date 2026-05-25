@@ -952,10 +952,10 @@ function buildHref(n){
     case 'need':
       return n.source_public_id?'/project-detail.html?id='+encodeURIComponent(n.source_public_id):'/projects.html';
     case 'forum_topic':
-      return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id):'/forum.html';
+      return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/forum.html';
     case 'forum_message':
     case 'forum_post':
-      return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id):'/forum.html';
+      return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/forum.html';
     case 'user':
       return n.actor_public_id?'/profile_user.html?id='+encodeURIComponent(n.actor_public_id):'/friends.html';
     case 'chat':
