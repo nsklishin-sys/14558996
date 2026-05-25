@@ -678,7 +678,7 @@ function renderGroups(){
         const item=allLoadedItems.find(n=>String(n.id)===String(id));
         if(item){item.is_read=true;updateHeadSub();updateGroupCounts();}
         try{
-          await lastopFetch(API+'/notifications/'+id+'/read',{method:'POST'});
+          await lastopFetch(API+'/notifications/'+id+'/read',{method:'POST',keepalive:true});
         }catch{}
       }
       const nItem=allLoadedItems.find(n=>String(n.id)===String(id));
@@ -877,7 +877,7 @@ async function pageMarkAll(){
   btn.disabled=true;
   btn.textContent='...';
   try{
-    await lastopFetch(API+'/notifications/read_all',{method:'POST'});
+    await lastopFetch(API+'/notifications/read_all',{method:'POST',keepalive:true});
     showToast('Все уведомления прочитаны');
     document.querySelectorAll('.n-item[data-unread="1"]').forEach(el=>{
       el.setAttribute('data-unread','0');
