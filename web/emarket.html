@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/utils.js"></script>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — E-market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.main{overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-bottom:16px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ── Плашка «в разработке» (обычные пользователи) ── */
+.dev-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;min-height:60vh}
+.dev-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--shm);max-width:520px;width:100%;padding:40px 32px;text-align:center;position:relative;overflow:hidden}
+.dev-card::before{content:'';position:absolute;top:-80px;right:-80px;width:240px;height:240px;border-radius:50%;background:var(--gp)}
+.dev-card::after{content:'';position:absolute;bottom:-100px;left:-60px;width:220px;height:220px;border-radius:50%;background:var(--gl)}
+.dev-inner{position:relative;z-index:1}
+.dev-ico{width:84px;height:84px;border-radius:24px;margin:0 auto 20px;display:grid;place-items:center;background:linear-gradient(135deg,#1E8A4C 0%,#146A38 60%,#0D4A28 100%);box-shadow:0 8px 24px rgba(30,138,76,.28)}
+.dev-ico svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dev-badge{display:inline-block;padding:5px 14px;border-radius:99px;background:var(--gl);border:1px solid var(--gb);color:var(--g);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
+.dev-title{font-size:24px;font-weight:900;color:var(--t);margin-bottom:10px;letter-spacing:-.01em}
+.dev-text{font-size:14px;color:var(--tm);line-height:1.65;margin-bottom:8px}
+.dev-sub{font-size:13px;color:var(--gmt);line-height:1.6}
+.dev-back{display:inline-flex;align-items:center;gap:7px;margin-top:24px;padding:11px 24px;border-radius:var(--rm);background:var(--g);color:#fff;font-size:13px;font-weight:700;text-decoration:none;border:none;cursor:pointer;font-family:inherit;transition:background .15s;box-shadow:0 2px 10px rgba(30,138,76,.25)}
+.dev-back:hover{background:var(--gm)}
+.dev-back svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Каркас для админа (тестовый режим) ── */
+.adm-banner{background:linear-gradient(135deg,#1E8A4C 0%,#146A38 100%);border-radius:var(--rxl);padding:18px 22px;color:#fff;box-shadow:var(--shm);display:flex;align-items:center;gap:16px;flex-shrink:0}
+.adm-banner-ico{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.16);display:grid;place-items:center;flex-shrink:0}
+.adm-banner-ico svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.adm-banner h1{font-size:18px;font-weight:900;margin-bottom:3px}
+.adm-banner p{font-size:12px;color:rgba(255,255,255,.78);line-height:1.5}
+.adm-banner .adm-tag{margin-left:auto;flex-shrink:0;padding:5px 13px;border-radius:99px;background:rgba(255,255,255,.18);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;flex-shrink:0}
+.adm-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:20px;min-height:140px;display:flex;flex-direction:column}
+.adm-card-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.adm-card-ico{width:38px;height:38px;border-radius:11px;background:var(--gp);display:grid;place-items:center;flex-shrink:0}
+.adm-card-ico svg{width:20px;height:20px;stroke:var(--g);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.adm-card-t{font-size:14px;font-weight:800;color:var(--t)}
+.adm-card-d{font-size:12px;color:var(--gmt);line-height:1.6;flex:1}
+.adm-stub{margin-top:12px;padding:10px;border-radius:var(--rm);border:1.5px dashed var(--gb);background:var(--gp);color:var(--gmt);font-size:11px;font-weight:700;text-align:center}
+.adm-note{background:#FFF6E6;border:1px solid #F0DCA0;border-radius:var(--rxl);padding:14px 18px;color:#8A5A00;font-size:12px;line-height:1.6;flex-shrink:0}
+.adm-note b{font-weight:800}
+</style>
+</head>
+<body>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+<div class="main" id="emarketMain"></div>
+</div>
+
+<script>
+(function(){
+  // Каркас-заглушка E-market.
+  // Админы видят тестовый режим раздела; обычные пользователи — плашку «в разработке».
+  var user = {};
+  try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch(e) {}
+  var isAdmin = !!(user && user.is_admin);
+  var main = document.getElementById('emarketMain');
+  if (!main) return;
+
+  if (isAdmin) {
+    main.innerHTML =
+      '<div class="adm-banner">' +
+        '<div class="adm-banner-ico"><svg viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg></div>' +
+        '<div><h1>E-market</h1><p>Раздел в разработке. Вы видите его как администратор — для тестирования. Обычным пользователям показывается плашка «скоро».</p></div>' +
+        '<span class="adm-tag">Режим разработки</span>' +
+      '</div>' +
+      '<div class="adm-note">⚙️ <b>Что здесь будет:</b> магазины (привязка к пользователю / компании / сообществу), товары и услуги внутри магазинов, лента товаров и лента магазинов, поиск, платный доступ и оплата через платёжные сервисы продавцов. Функционал добавляется поэтапно.</div>' +
+      '<div class="adm-grid">' +
+        '<div class="adm-card"><div class="adm-card-h"><div class="adm-card-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg></div><div class="adm-card-t">Магазины</div></div><div class="adm-card-d">Витрины, привязанные к пользователю, компании или сообществу. Один магазин на сущность.</div><div class="adm-stub">Скоро · в разработке</div></div>' +
+        '<div class="adm-card"><div class="adm-card-h"><div class="adm-card-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div><div class="adm-card-t">Товары и услуги</div></div><div class="adm-card-d">Карточки внутри магазина: название, описание, характеристики, фото, способ оплаты.</div><div class="adm-stub">Скоро · в разработке</div></div>' +
+        '<div class="adm-card"><div class="adm-card-h"><div class="adm-card-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="adm-card-t">Ленты и поиск</div></div><div class="adm-card-d">Отдельная лента товаров и лента магазинов, поиск по магазину.</div><div class="adm-stub">Скоро · в разработке</div></div>' +
+        '<div class="adm-card"><div class="adm-card-h"><div class="adm-card-ico"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="adm-card-t">Доступ и оплата</div></div><div class="adm-card-d">Платный доступ к разделу через эквайринг платформы. Оплата товаров — через платёжные сервисы продавцов.</div><div class="adm-stub">Скоро · в разработке</div></div>' +
+      '</div>';
+  } else {
+    main.innerHTML =
+      '<div class="dev-wrap"><div class="dev-card"><div class="dev-inner">' +
+        '<div class="dev-ico"><svg viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg></div>' +
+        '<span class="dev-badge">Скоро</span>' +
+        '<div class="dev-title">E-market в разработке</div>' +
+        '<div class="dev-text">Мы готовим новый раздел — площадку, где компании, сообщества и пользователи смогут открывать свои магазины и размещать товары и услуги.</div>' +
+        '<div class="dev-sub">Раздел станет доступен в одном из ближайших обновлений. Следите за новостями платформы.</div>' +
+        '<a class="dev-back" href="/"><svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Вернуться на главную</a>' +
+      '</div></div></div>';
+  }
+})();
+</script>
+</body>
+</html>
