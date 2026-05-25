@@ -5333,7 +5333,7 @@ func main() {
 				SELECT e.public_id, e.title, COALESCE(e.description, ''),
 				       e.format, e.starts_at, e.ends_at,
 				       COALESCE(e.city, ''), COALESCE(e.cover_url, ''),
-				       e.views_count, e.attendees_count
+				       e.views_count, e.registered_count
 				FROM events e
 				WHERE e.community_id = $1 AND e.is_deleted = FALSE
 				ORDER BY e.starts_at DESC
