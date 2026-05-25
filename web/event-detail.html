@@ -1248,7 +1248,6 @@ function openOrganizerProfile(){
   else if(ev.author_company_slug)location.href=`/company-detail.html?slug=${ev.author_company_slug}`;
   else if(ev.organizer_public_id)location.href=`/profile_user.html?id=${ev.organizer_public_id}`;
 }
-const YANDEX_KEY_EVT='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 let speakerCounter=0,programCounter=0,ticketCounter=0;
 const escAttr = window.lastopEsc;
 function buildRemoveBtn(fn,id){return '<button type="button" class="mf-list-remove" onclick="'+fn+'(\''+id+'\')" title="Удалить"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'}
@@ -1292,16 +1291,6 @@ function collectListData(listId){
   }).filter(o=>(o.title||o.name||o.time));
 }
 function resetEventModal(){['speakersList','programList','ticketsList'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=''});speakerCounter=0;programCounter=0;ticketCounter=0}
-async function geocodeAddressEvt(addr){
-  if(!addr||!addr.trim())return null;
-  try{
-    const r=await lastopFetch('https://geocode-maps.yandex.ru/v1/?apikey='+YANDEX_KEY_EVT+'&geocode='+encodeURIComponent(addr)+'&format=json&results=1');
-    if(!r.ok)return null;
-    const d=await r.json();const member=d?.response?.GeoObjectCollection?.featureMember?.[0];if(!member)return null;
-    const pos=member.GeoObject?.Point?.pos;if(!pos)return null;
-    const parts=pos.split(' ');return{latitude:parseFloat(parts[1]),longitude:parseFloat(parts[0])};
-  }catch{return null}
-}
 let evCoverUrl = '';
 
 async function onEvCoverSelected(e){
