@@ -352,7 +352,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 const API='/api';
 const ADMIN_OK={ok:false};
 const state={mode:'create',publicID:'',exhibition:null,pendingLat:0,pendingLng:0,applications:[]};
-const YANDEX_API_KEY='a2865c8c-71c7-4e1a-ad00-7d2d140e0357';
 
 const escHtml = window.lastopEsc;
 const avc = window.lastopAvc;
@@ -760,19 +759,15 @@ async function geocodeAddress(){
   const btn=document.getElementById('btnGeocode');
   const oldText=btn.textContent;btn.disabled=true;btn.textContent='Ищем…';
   const resBox=document.getElementById('locResults');
-  try{
-    const url=`https://geocode-maps.yandex.ru/v1/?apikey=${YANDEX_API_KEY}&geocode=${encodeURIComponent(addr)}&format=json&lang=ru_RU&results=5`;
-    const r=await lastopFetch(url);
+  try{    const r=await lastopFetch('/api/geocode?q='+encodeURIComponent(addr));
     if(!r.ok)throw new Error('HTTP '+r.status);
     const data=await r.json();
-    const members=data?.response?.GeoObjectCollection?.featureMember||[];
+    const members=data?.results||[];
     if(!members.length){eeToast('Адрес не найден','err');resBox.innerHTML='';resBox.classList.remove('active');return;}
-    resBox.innerHTML=members.map((m,i)=>{
-      const obj=m.GeoObject;
-      const text=obj.metaDataProperty?.GeocoderMetaData?.text||obj.name||'';
-      const pos=(obj.Point?.pos||'').split(' ');
-      const lng=parseFloat(pos[0])||0,lat=parseFloat(pos[1])||0;
-      return `<div class="ee-loc-result" onclick="selectGeocodeResult(${lat},${lng},'${escHtml(text).replace(/'/g,"\\'")}')">${escHtml(text)}<div class="lr-coords">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div>`;
+    resBox.innerHTML=members.map((m)=>{
+      const text=m.text||'';
+      const lat=parseFloat(m.lat)||0,lng=parseFloat(m.lon)||0;
+      return `<div class="ee-loc-result" onclick="selectGeocodeResult(${lat},${lng},'${escHtml(text).replace(/'/g,"\'")}')">${escHtml(text)}<div class="lr-coords">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div>`;
     }).join('');
     resBox.classList.add('active');
   }catch(e){
