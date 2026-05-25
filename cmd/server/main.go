@@ -22431,6 +22431,7 @@ func notifyOnComment(db *sql.DB, postID int64, postPublicID string, commentID in
 				SourceType:     "post",
 				SourceID:       postID,
 				SourcePublicID: postPublicID,
+				Anchor:         fmt.Sprintf("#comment-%d", commentID),
 				Title:          title,
 				Preview:        preview,
 			}); err != nil {
@@ -22450,6 +22451,7 @@ func notifyOnComment(db *sql.DB, postID int64, postPublicID string, commentID in
 			SourceType:     "post",
 			SourceID:       postID,
 			SourcePublicID: postPublicID,
+			Anchor:         fmt.Sprintf("#comment-%d", commentID),
 			Title:          title,
 			Preview:        preview,
 		}); err != nil {
