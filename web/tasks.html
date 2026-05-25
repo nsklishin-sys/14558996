@@ -843,40 +843,6 @@ async function loadTasks(){
   // Фолбэк: localStorage (офлайн / сбой API)
   try{const raw=localStorage.getItem(storageKey());if(raw){tasks=JSON.parse(raw)||[];}}catch{tasks=[];}
 }
-function mapServerTask(t){
-  return {
-    id:t.id,
-    title:t.title||'',
-    desc:t.desc||'',
-    due:t.due||'',
-    time:t.time||'',
-    pri:t.pri||'lo',
-    tags:Array.isArray(t.tags)?t.tags:[],
-    done:!!t.done,
-    checklist:Array.isArray(t.checklist)?t.checklist:[],
-    created:t.created_at?new Date(t.created_at).getTime():Date.now(),
-    updated:t.updated_at?new Date(t.updated_at).getTime():Date.now()
-  };
-}
-function serializeTask(t){
-  return {
-    title:t.title||'',
-    desc:t.desc||'',
-    due:t.due||'',
-    time:t.time||'',
-    pri:t.pri||'lo',
-    tags:Array.isArray(t.tags)?t.tags:[],
-    done:!!t.done,
-    checklist:Array.isArray(t.checklist)?t.checklist:[]
-  };
-}
-async function createTaskServer(obj){
-  try{
-    const r=await lastopFetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serializeTask(obj))});
-    if(r.ok){const d=await r.json();if(d.task)return mapServerTask(d.task);}
-  }catch{}
-  return null;
-}
 function saveTasks(){
   localStorage.setItem(storageKey(),JSON.stringify(tasks));
   syncToHomeWidget();
