@@ -701,6 +701,7 @@ type notification struct {
 	SourceType     string    `json:"source_type,omitempty"`
 	SourceID       int64     `json:"source_id,omitempty"`
 	SourcePublicID string    `json:"source_public_id,omitempty"`
+	Anchor         string    `json:"anchor,omitempty"`
 	Title          string    `json:"title"`
 	Preview        string    `json:"preview,omitempty"`
 	IsRead         bool      `json:"is_read"`
@@ -719,6 +720,7 @@ type createNotificationParams struct {
 	SourceType     string
 	SourceID       int64
 	SourcePublicID string
+	Anchor         string
 	Title          string
 	Preview        string
 }
@@ -15552,6 +15554,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     source_type TEXT NOT NULL DEFAULT '',
     source_id BIGINT NOT NULL DEFAULT 0,
     source_public_id TEXT NOT NULL DEFAULT '',
+    anchor TEXT NOT NULL DEFAULT '' CHECK (char_length(anchor) <= 200),
     title TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 500),
     preview TEXT NOT NULL DEFAULT '' CHECK (char_length(preview) <= 1000),
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
@@ -15563,6 +15566,10 @@ CREATE INDEX IF NOT EXISTS notifications_recipient_unread_idx
 
 CREATE INDEX IF NOT EXISTS notifications_recipient_created_idx
     ON notifications (recipient_id, created_at DESC);
+
+ALTER TABLE notifications
+    ADD COLUMN IF NOT EXISTS anchor TEXT NOT NULL DEFAULT ''
+    CHECK (char_length(anchor) <= 200);
 
 -- Идемпотентность: одно событие одного типа от одного актора по одному источнику = одна запись.
 -- При попытке вставить дубль — ON CONFLICT DO NOTHING.
@@ -16922,10 +16929,10 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 	}
 
 	_, err := db.Exec(`
-		INSERT INTO notifications (recipient_id, actor_id, type, source_type, source_id, source_public_id, title, preview)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO notifications (recipient_id, actor_id, type, source_type, source_id, source_public_id, anchor, title, preview)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT DO NOTHING`,
-		p.RecipientID, actorIDArg, p.Type, p.SourceType, p.SourceID, p.SourcePublicID, title, preview)
+		p.RecipientID, actorIDArg, p.Type, p.SourceType, p.SourceID, p.SourcePublicID, p.Anchor, title, preview)
 	if err == nil {
 		// Real-time push: уведомляем подключённого клиента, чтобы бейдж обновился без polling.
 		wsHub.Send(p.RecipientID, "notif:new", map[string]any{
@@ -16933,6 +16940,7 @@ func createNotification(db *sql.DB, p createNotificationParams) error {
 			"source_type":      p.SourceType,
 			"source_id":        p.SourceID,
 			"source_public_id": p.SourcePublicID,
+			"anchor":           p.Anchor,
 			"title":            title,
 			"preview":          preview,
 		})
@@ -18431,6 +18439,13 @@ func topicPublicIDByID(db *sql.DB, topicID int64) string {
 	return pid
 }
 
+// messagePublicIDByID — public_id сообщения форума по его id (для якоря #msg- в уведомлениях).
+func messagePublicIDByID(db *sql.DB, messageID int64) string {
+	var pid string
+	_ = db.QueryRow(`SELECT public_id FROM forum_messages WHERE id = $1`, messageID).Scan(&pid)
+	return pid
+}
+
 // notifyForumReply — отправить уведомления подписчикам и автору цитируемого.
 // authorID — кто ответил. parentAuthorID — кто автор цитируемого (0 если без цитаты).
 func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle, contentSnippet string, parentAuthorID int64) {
@@ -18447,6 +18462,7 @@ func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle
 			SourceType:     "forum_message",
 			SourceID:       messageID,
 			SourcePublicID: topicPublicIDByID(db, topicID),
+			Anchor:         "#msg-" + messagePublicIDByID(db, messageID),
 			Title:          title,
 			Preview:        contentSnippet,
 		}); err != nil {
@@ -18474,6 +18490,7 @@ func notifyForumReply(db *sql.DB, topicID, messageID, authorID int64, topicTitle
 			SourceType:     "forum_topic",
 			SourceID:       topicID,
 			SourcePublicID: topicPID,
+			Anchor:         "#msg-" + messagePublicIDByID(db, messageID),
 			Title:          titleReply,
 			Preview:        contentSnippet,
 		}); err != nil {
@@ -18503,6 +18520,7 @@ func notifyForumLike(db *sql.DB, messageID, likerID int64) {
 		SourceType:     "forum_message",
 		SourceID:       messageID,
 		SourcePublicID: topicPublicIDByID(db, topicID),
+		Anchor:         "#msg-" + messagePublicIDByID(db, messageID),
 		Title:          title,
 		Preview:        contentSnippet,
 	}); err != nil {
@@ -20570,7 +20588,7 @@ func listNotifications(db *sql.DB, userID int64, limit int, beforeID int64, only
 	}
 
 	query := fmt.Sprintf(`
-		SELECT n.id, n.type, n.source_type, n.source_id, n.source_public_id,
+		SELECT n.id, n.type, n.source_type, n.source_id, n.source_public_id, n.anchor,
 		       n.title, n.preview, n.is_read, n.created_at,
 		       COALESCE(u.public_id, ''), COALESCE(u.full_name, ''), COALESCE(u.avatar_url, '')
 		FROM notifications n
@@ -20588,7 +20606,7 @@ func listNotifications(db *sql.DB, userID int64, limit int, beforeID int64, only
 	var items []notification
 	for rows.Next() {
 		var n notification
-		if err := rows.Scan(&n.ID, &n.Type, &n.SourceType, &n.SourceID, &n.SourcePublicID,
+		if err := rows.Scan(&n.ID, &n.Type, &n.SourceType, &n.SourceID, &n.SourcePublicID, &n.Anchor,
 			&n.Title, &n.Preview, &n.IsRead, &n.CreatedAt,
 			&n.ActorPublicID, &n.ActorName, &n.ActorAvatar); err != nil {
 			return nil, err
