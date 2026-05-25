@@ -271,7 +271,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="mode-switch">
       <button type="button" class="mode-btn active" id="modeUser" onclick="setType('user',this)">Пользовательские</button>
-      <button type="button" class="mode-btn" id="modeCorp" onclick="setType('corp',this)">Корпоративные</button>
+      <button type="button" class="mode-btn" id="modeCorp" onclick="corpLocked()" style="opacity:.6">Корпоративные 🔒</button>
     </div>
     <div class="comm-tabs" id="commTabs">
       <button type="button" class="ctab active" onclick="setTab('',this)">Все</button>
@@ -591,6 +591,9 @@ function setMode(mode,btn){
   applyFilters();
 }
 
+function corpLocked(){
+  toast('Корпоративные сообщества — в разработке, скоро будут доступны');
+}
 function setType(type,btn){
   currentType=type;
   document.querySelectorAll('#modeUser,#modeCorp').forEach(b=>b.classList.remove('active'));
