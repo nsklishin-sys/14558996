@@ -816,8 +816,66 @@ let state={
   modalPri:'md'
 };
 
-function loadTasks(){
+async function loadTasks(){
+  try{
+    const r=await lastopFetch('/api/tasks',{headers:{}});
+    if(r.ok){
+      const d=await r.json();
+      const server=(d.tasks||[]).map(mapServerTask);
+      // Разовая миграция: бэк пуст, но в localStorage есть старые задачи → заливаем.
+      if(!server.length){
+        let local=[];
+        try{const raw=localStorage.getItem(storageKey());if(raw)local=JSON.parse(raw)||[];}catch{}
+        const real=local.filter(t=>t&&t.title);
+        if(real.length){
+          for(const t of real){
+            try{
+              const cr=await lastopFetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serializeTask(t))});
+              if(cr.ok){const cd=await cr.json();if(cd.task)server.push(mapServerTask(cd.task));}
+            }catch{}
+          }
+        }
+      }
+      tasks=server;
+      return;
+    }
+  }catch{}
+  // Фолбэк: localStorage (офлайн / сбой API)
   try{const raw=localStorage.getItem(storageKey());if(raw){tasks=JSON.parse(raw)||[];}}catch{tasks=[];}
+}
+function mapServerTask(t){
+  return {
+    id:t.id,
+    title:t.title||'',
+    desc:t.desc||'',
+    due:t.due||'',
+    time:t.time||'',
+    pri:t.pri||'lo',
+    tags:Array.isArray(t.tags)?t.tags:[],
+    done:!!t.done,
+    checklist:Array.isArray(t.checklist)?t.checklist:[],
+    created:t.created_at?new Date(t.created_at).getTime():Date.now(),
+    updated:t.updated_at?new Date(t.updated_at).getTime():Date.now()
+  };
+}
+function serializeTask(t){
+  return {
+    title:t.title||'',
+    desc:t.desc||'',
+    due:t.due||'',
+    time:t.time||'',
+    pri:t.pri||'lo',
+    tags:Array.isArray(t.tags)?t.tags:[],
+    done:!!t.done,
+    checklist:Array.isArray(t.checklist)?t.checklist:[]
+  };
+}
+async function createTaskServer(obj){
+  try{
+    const r=await lastopFetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serializeTask(obj))});
+    if(r.ok){const d=await r.json();if(d.task)return mapServerTask(d.task);}
+  }catch{}
+  return null;
 }
 function saveTasks(){
   localStorage.setItem(storageKey(),JSON.stringify(tasks));
@@ -1219,7 +1277,9 @@ function attachKanbanDnD(){
 async function quickAddInCol(col){
   const title=await lastopPrompt({title:'Новая задача',placeholder:'Название задачи'});
   if(!title||!title.trim())return;
-  tasks.unshift({id:newId(),title:title.trim(),desc:'',due:'',time:'',pri:'md',tags:[],done:col==='done',checklist:[],status:col,created:Date.now(),updated:Date.now()});
+  const draft={title:title.trim(),desc:'',due:'',time:'',pri:'md',tags:[],done:col==='done',checklist:[]};
+  const created=await createTaskServer(draft);
+  tasks.unshift(created||{...draft,id:newId(),status:col,created:Date.now(),updated:Date.now()});
   saveTasks();render();updateStats();showToast('Задача добавлена ✓');
 }
 
@@ -1322,7 +1382,7 @@ function addChecklistItem(){
   setTimeout(()=>{const inputs=document.querySelectorAll('.t-checklist-text');if(inputs.length)inputs[inputs.length-1].focus();},50);
 }
 
-function saveTask(){
+async function saveTask(){
   const title=document.getElementById('mTitle').value.trim();
   if(!title){showToast('Введите название');return;}
   const data={
@@ -1337,10 +1397,13 @@ function saveTask(){
   if(state.editingId){
     const t=tasks.find(x=>x.id===state.editingId);
     if(t){Object.assign(t,data,{updated:Date.now()});patchTaskServer(t);}
+    if(t){Object.assign(t,data,{updated:Date.now()});}
+    saveTasks();render();updateStats();closeModal();showToast('Задача сохранена ✓');
   }else{
-    tasks.unshift({...data,id:newId(),done:false,status:'todo',created:Date.now(),updated:Date.now()});
+    const created=await createTaskServer({...data,done:false});
+    tasks.unshift(created||{...data,id:newId(),done:false,status:'todo',created:Date.now(),updated:Date.now()});
+    saveTasks();render();updateStats();closeModal();showToast('Задача создана ✓');
   }
-  saveTasks();render();updateStats();closeModal();showToast(state.editingId?'Задача сохранена ✓':'Задача создана ✓');
 }
 async function deleteEditing(){
   if(!state.editingId)return;
@@ -1443,7 +1506,7 @@ function updateAux(){updateStats();renderTagsCloud();renderCalMini();}
 /* ═══ INIT ═══ */
 (async()=>{
   await loadMe();
-  loadTasks();
+  await loadTasks();
   render();
   updateStats();
   renderTagsCloud();
