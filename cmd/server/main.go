@@ -12943,11 +12943,22 @@ func main() {
 				newStatus := "resolved_reject"
 				if approved {
 					newStatus = "resolved_action"
-					// Удовлетворить апелляцию = вернуть контент.
-					if apTType == "post" {
+					// Удовлетворить апелляцию = вернуть контент / снять наказание.
+					switch apTType {
+					case "post":
 						_, _ = db.Exec(`UPDATE posts SET is_hidden_by_admin=FALSE, hidden_by_admin_at=NULL, hidden_by_admin_reason='' WHERE id=$1`, apTID)
-					} else if apTType == "comment" {
+					case "comment":
 						_, _ = db.Exec(`UPDATE post_comments SET is_hidden_by_admin=FALSE, hidden_by_admin_at=NULL, hidden_by_admin_reason='' WHERE id=$1`, apTID)
+					case "forum_message":
+						_, _ = db.Exec(`UPDATE forum_messages SET deleted_at=NULL WHERE id=$1`, apTID)
+					case "event_message":
+						_, _ = db.Exec(`UPDATE event_messages SET is_deleted=FALSE WHERE id=$1`, apTID)
+					case "community":
+						_, _ = db.Exec(`UPDATE communities SET blocked_at=NULL, blocked_reason='', blocked_by=NULL WHERE id=$1`, apTID)
+					case "company":
+						_, _ = db.Exec(`UPDATE companies SET blocked_at=NULL, blocked_reason='', blocked_by=NULL WHERE id=$1`, apTID)
+					case "user":
+						_, _ = db.Exec(`UPDATE users SET banned_at=NULL, banned_reason='', banned_by=NULL WHERE id=$1`, apTID)
 					}
 				}
 				_, _ = db.Exec(`UPDATE complaints SET status=$1, resolved_by=$2, resolved_at=NOW(), resolution_note=$3 WHERE id=$4`, newStatus, actorID, req.Note, complaintID)
