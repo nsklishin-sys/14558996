@@ -1858,7 +1858,15 @@ async function submitMessage(){
   }
 }
 async function sendMessage(){return submitMessage()}
-async function markRead(){if(!state.messages.length)return;await api(`/chat/conversations/${state.activeConvPublicID}/read`,{method:'POST',body:{message_id:state.messages[state.messages.length-1].id}}).catch(()=>{})}
+let _markReadTimer=null;
+function markRead(){
+  if(!state.messages.length)return;
+  clearTimeout(_markReadTimer);
+  _markReadTimer=setTimeout(()=>{
+    if(!state.messages.length||!state.activeConvPublicID)return;
+    api(`/chat/conversations/${state.activeConvPublicID}/read`,{method:'POST',body:{message_id:state.messages[state.messages.length-1].id}}).catch(()=>{});
+  },800);
+}
 async function changeFilter(tab,btn){state.activeFilter=tab;renderCache.conversationsSig='';document.querySelectorAll('.d-tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');await loadConversations()}
 function filterTab(tab,btn){changeFilter(tab,btn)}
 let sd; function filterDialogs(q){clearTimeout(sd);sd=setTimeout(async()=>{state.searchQuery=q||'';renderCache.conversationsSig='';await loadConversations()},300)}
@@ -2505,7 +2513,14 @@ function onTyping(){
   },4000);
 }
 msgInput?.addEventListener('input',onTyping)
-async function pollTick(){if(document.visibilityState!=='visible')return;await loadConversations().catch(()=>{});if(state.activeConvPublicID){await loadMessages().catch(()=>{});}}
+async function pollTick(){
+  if(document.visibilityState!=='visible')return;
+  await loadConversations().catch(()=>{});
+  // Сообщения открытого диалога догружаем по polling ТОЛЬКО если WS мёртв —
+  // при живом WS они приходят push-событием chat:message, лишний запрос не нужен.
+  const wsAlive=window.wsClient&&typeof window.wsClient.isConnected==='function'&&window.wsClient.isConnected();
+  if(state.activeConvPublicID&&!wsAlive){await loadMessages().catch(()=>{});}
+}
 
 // Real-time через WebSocket
 function setupChatWS(){
