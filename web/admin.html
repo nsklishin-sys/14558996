@@ -157,6 +157,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="sections"><svg viewBox="0 0 24 24"><path d="M12 2l9 4.9V17L12 22 3 17V7z"/><path d="M12 22V12M3 7l9 5 9-5"/></svg>Разделы</button>
       <button class="admin-tab" data-tab="sanctions"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Санкции</button>
       <button class="admin-tab" data-tab="dicts"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Категории</button>
+      <button class="admin-tab" data-tab="emads"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Реклама E-market</button>
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
@@ -382,6 +383,59 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="users-tbody" id="dictList"></div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmAds">
+      <div class="users-toolbar">
+        <select id="emAdPlacement" data-lt-select onchange="loadEmAds()">
+          <option value="banner">Баннер (верх страницы)</option>
+          <option value="sidebar">Сайдбар (правая колонка)</option>
+        </select>
+        <button class="dp-btn primary" style="margin-left:auto" onclick="openEmAdModal()">+ Добавить</button>
+      </div>
+      <div class="users-table">
+        <div class="users-tbody" id="emAdList"></div>
+      </div>
+    </div>
+    <div id="emAdModal" style="display:none;position:fixed;inset:0;background:rgba(20,30,25,.5);z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeEmAdModal()">
+      <div style="background:var(--w);border-radius:16px;padding:22px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+        <div style="font-size:16px;font-weight:800;margin-bottom:16px" id="emAdModalTitle">Новый рекламный слайд</div>
+        <input type="hidden" id="emAdId" value="">
+        <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Место</label>
+        <select id="emAdFormPlacement" data-lt-select style="width:100%;margin:5px 0 12px">
+          <option value="banner">Баннер</option>
+          <option value="sidebar">Сайдбар</option>
+        </select>
+        <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Режим</label>
+        <select id="emAdMode" data-lt-select style="width:100%;margin:5px 0 12px" onchange="emAdModeToggle()">
+          <option value="composed">Собранный (текст + фон/иконка)</option>
+          <option value="image">Цельный баннер (картинка)</option>
+        </select>
+        <div id="emAdComposedFields">
+          <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Заголовок</label>
+          <input id="emAdTitle" class="lt-input" style="width:100%;margin:5px 0 12px" placeholder="Заголовок слайда">
+          <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Подзаголовок</label>
+          <input id="emAdSubtitle" class="lt-input" style="width:100%;margin:5px 0 12px" placeholder="Описание">
+          <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Цвет фона (CSS)</label>
+          <input id="emAdBg" class="lt-input" style="width:100%;margin:5px 0 12px" placeholder="linear-gradient(120deg,#185FA5,#2479C8)">
+        </div>
+        <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em" id="emAdImgLabel">Картинка</label>
+        <label for="emAdImageFile" style="display:flex;align-items:center;gap:10px;border:1.5px dashed var(--bdr);border-radius:10px;padding:14px;background:var(--gp);margin:5px 0 6px;cursor:pointer">
+          <span style="font-size:12px;color:var(--gmt)" id="emAdFileName">Загрузить изображение</span>
+          <input type="file" id="emAdImageFile" accept="image/*" onchange="uploadEmAdImage(this)" style="display:none">
+        </label>
+        <div id="emAdImagePreview" style="margin-bottom:12px"></div>
+        <input type="hidden" id="emAdImageUrl" value="">
+        <label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Ссылка (куда ведёт клик)</label>
+        <input id="emAdLink" class="lt-input" style="width:100%;margin:5px 0 12px" placeholder="https://… или /emarket-shop.html?id=5">
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="flex:1"><label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Порядок</label><input id="emAdSort" type="number" class="lt-input" style="width:100%;margin-top:5px" value="0"></div>
+          <div style="flex:1"><label style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em">Активен</label><select id="emAdActive" data-lt-select style="width:100%;margin-top:5px"><option value="1">Да</option><option value="0">Нет</option></select></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <button class="dp-btn" style="flex:1;padding:11px" onclick="closeEmAdModal()">Отмена</button>
+          <button class="dp-btn primary" style="flex:1;padding:11px" onclick="saveEmAd()">Сохранить</button>
+        </div>
+      </div>
+    </div>
   </div>
   <aside class="right">
     <div class="panel">
@@ -504,7 +558,7 @@ async function loadAnalytics(){
 }
 function refreshModerationBadge(){loadModerationCount();}
 async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -1212,6 +1266,106 @@ function renderAdPreview(){
   var b=document.getElementById('adBody').value||'';
   var img=document.getElementById('adImageUrl').value;
   document.getElementById('adPreview').innerHTML='<div style="background:#F8F5FF;border:1px solid #DDD0F0;border-radius:18px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;top:10px;left:10px;background:#EAE0FA;color:#8060C0;font-size:9px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px">реклама</div><div style="margin-top:20px;text-align:center">'+(img?'<img src="'+esc(img)+'" style="max-width:100%;border-radius:8px;margin-bottom:8px">':'')+'<div style="font-size:13px;font-weight:700;color:#5040A0">'+esc(t)+'</div><div style="font-size:11px;color:#7060B0;margin-top:3px">'+esc(b)+'</div><button class="dp-btn" style="background:#7060B0;color:#fff;margin-top:10px;padding:7px 20px">Узнать подробнее</button></div></div>';
+}
+async function loadEmAds(){
+  var placement=document.getElementById('emAdPlacement').value;
+  var box=document.getElementById('emAdList');
+  box.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/emarket/ads');
+    var d=await r.json();
+    var ads=((d&&d.ads)||[]).filter(function(a){return a.placement===placement;});
+    if(!ads.length){box.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Слайдов нет. Нажмите «+ Добавить».</div>';return;}
+    box.innerHTML=ads.map(function(a){
+      var prev=a.mode==='image'&&a.image_url?'<img src="'+esc(a.image_url)+'" style="width:60px;height:36px;object-fit:cover;border-radius:6px">':'<div style="width:60px;height:36px;border-radius:6px;background:'+esc(a.bg_color||'#eee')+'"></div>';
+      return '<div class="users-row" style="display:flex;align-items:center;gap:12px;padding:10px 12px">'+prev+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(a.title||(a.mode==='image'?'Баннер-картинка':'Без названия'))+'</div><div style="font-size:11px;color:var(--gmt)">'+esc(a.subtitle||'')+(a.is_active?'':' · скрыт')+'</div></div>'+
+        '<button class="dp-btn" style="padding:6px 12px" onclick=\'editEmAd('+JSON.stringify(a).replace(/'/g,"&#39;")+')\'>Изменить</button>'+
+        '<button class="dp-btn" style="padding:6px 12px;color:var(--red)" onclick="deleteEmAd('+a.id+')">Удалить</button>'+
+      '</div>';
+    }).join('');
+  }catch(e){box.innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">Ошибка загрузки</div>';}
+}
+function emAdModeToggle(){
+  var mode=document.getElementById('emAdMode').value;
+  document.getElementById('emAdComposedFields').style.display=mode==='composed'?'block':'none';
+  document.getElementById('emAdImgLabel').textContent=mode==='image'?'Баннер целиком (картинка)':'Картинка/иконка (опц.)';
+}
+function openEmAdModal(){
+  document.getElementById('emAdId').value='';
+  document.getElementById('emAdModalTitle').textContent='Новый рекламный слайд';
+  document.getElementById('emAdFormPlacement').value=document.getElementById('emAdPlacement').value;
+  document.getElementById('emAdMode').value='composed';
+  document.getElementById('emAdTitle').value='';
+  document.getElementById('emAdSubtitle').value='';
+  document.getElementById('emAdBg').value='';
+  document.getElementById('emAdLink').value='';
+  document.getElementById('emAdSort').value='0';
+  document.getElementById('emAdActive').value='1';
+  document.getElementById('emAdImageUrl').value='';
+  document.getElementById('emAdImagePreview').innerHTML='';
+  document.getElementById('emAdFileName').textContent='Загрузить изображение';
+  emAdModeToggle();
+  document.getElementById('emAdModal').style.display='flex';
+}
+function closeEmAdModal(){document.getElementById('emAdModal').style.display='none';}
+function editEmAd(a){
+  openEmAdModal();
+  document.getElementById('emAdId').value=a.id;
+  document.getElementById('emAdModalTitle').textContent='Редактировать слайд';
+  document.getElementById('emAdFormPlacement').value=a.placement;
+  document.getElementById('emAdMode').value=a.mode||'composed';
+  document.getElementById('emAdTitle').value=a.title||'';
+  document.getElementById('emAdSubtitle').value=a.subtitle||'';
+  document.getElementById('emAdBg').value=a.bg_color||'';
+  document.getElementById('emAdLink').value=a.link_url||'';
+  document.getElementById('emAdSort').value=a.sort_order||0;
+  document.getElementById('emAdActive').value=a.is_active?'1':'0';
+  document.getElementById('emAdImageUrl').value=a.image_url||'';
+  if(a.image_url)document.getElementById('emAdImagePreview').innerHTML='<img src="'+esc(a.image_url)+'" style="max-width:100%;border-radius:8px">';
+  emAdModeToggle();
+}
+async function uploadEmAdImage(input){
+  if(!input.files||!input.files[0])return;
+  document.getElementById('emAdFileName').textContent=input.files[0].name;
+  var fd=new FormData();fd.append('file',input.files[0]);
+  document.getElementById('emAdImagePreview').innerHTML='<span style="font-size:11px;color:var(--gmt)">Загрузка…</span>';
+  try{
+    var r=await lastopFetch('/api/upload',{method:'POST',body:fd});
+    if(!r.ok)throw 0;
+    var d=await r.json();
+    var url=d.url||d.public_url||d.publicURL||'';
+    document.getElementById('emAdImageUrl').value=url;
+    document.getElementById('emAdImagePreview').innerHTML='<img src="'+esc(url)+'" style="max-width:100%;border-radius:8px">';
+  }catch(e){document.getElementById('emAdImagePreview').innerHTML='<span style="font-size:11px;color:var(--red)">Ошибка загрузки</span>';}
+}
+async function saveEmAd(){
+  var body={
+    placement:document.getElementById('emAdFormPlacement').value,
+    mode:document.getElementById('emAdMode').value,
+    title:document.getElementById('emAdTitle').value.trim(),
+    subtitle:document.getElementById('emAdSubtitle').value.trim(),
+    image_url:document.getElementById('emAdImageUrl').value,
+    bg_color:document.getElementById('emAdBg').value.trim(),
+    link_url:document.getElementById('emAdLink').value.trim(),
+    sort_order:parseInt(document.getElementById('emAdSort').value)||0,
+    is_active:document.getElementById('emAdActive').value==='1'
+  };
+  var id=document.getElementById('emAdId').value;
+  if(id)body.id=parseInt(id);
+  try{
+    var r=await lastopFetch('/api/admin/emarket/ads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw 0;
+    lastopToast('Сохранено','success');closeEmAdModal();loadEmAds();
+  }catch(e){lastopToast('Ошибка сохранения','error');}
+}
+async function deleteEmAd(id){
+  if(!await lastopConfirm({title:'Удалить слайд?',text:'Действие необратимо.',confirmText:'Удалить'}))return;
+  try{
+    var r=await lastopFetch('/api/admin/emarket/ads?id='+id,{method:'DELETE'});
+    if(!r.ok)throw 0;
+    lastopToast('Удалено','success');loadEmAds();
+  }catch(e){lastopToast('Ошибка','error');}
 }
 async function uploadAdImage(input){
   if(!input.files||!input.files[0])return;
