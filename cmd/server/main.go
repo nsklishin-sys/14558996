@@ -10519,6 +10519,177 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
 	})
 
+	// Лента товаров: ?category=&kind=&price_from=&price_to=&q=&sort=&limit=&offset=
+	mux.HandleFunc("/api/emarket/feed-listings", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		conds := []string{"l.deleted_at IS NULL", "l.status='active'", "s.status='active'"}
+		args := []any{}
+		if v := strings.TrimSpace(q.Get("category")); v != "" {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("l.category_key=$%d", len(args)))
+		}
+		if v := q.Get("kind"); v == "product" || v == "service" {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("l.kind=$%d", len(args)))
+		}
+		if v, err := strconv.ParseFloat(q.Get("price_from"), 64); err == nil {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("l.price>=$%d", len(args)))
+		}
+		if v, err := strconv.ParseFloat(q.Get("price_to"), 64); err == nil {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("l.price<=$%d", len(args)))
+		}
+		if v := strings.TrimSpace(q.Get("q")); v != "" {
+			args = append(args, "%"+v+"%")
+			conds = append(conds, fmt.Sprintf("(l.title ILIKE $%d OR l.description ILIKE $%d)", len(args), len(args)))
+		}
+		order := "l.created_at DESC"
+		switch q.Get("sort") {
+		case "price_asc":
+			order = "l.price ASC NULLS LAST"
+		case "price_desc":
+			order = "l.price DESC NULLS LAST"
+		case "rating":
+			order = "l.rating DESC, l.created_at DESC"
+		case "popular":
+			order = "l.views_count DESC, l.created_at DESC"
+		}
+		limit, _ := strconv.Atoi(q.Get("limit"))
+		if limit <= 0 || limit > 50 {
+			limit = 30
+		}
+		offset, _ := strconv.Atoi(q.Get("offset"))
+		if offset < 0 {
+			offset = 0
+		}
+		sqlStr := `SELECT l.id, l.shop_id, s.name, l.kind, l.title, l.description, l.category_key, l.price, l.currency, l.photos::text, l.rating, l.reviews_count, l.views_count, l.created_at
+			FROM emarket_listings l JOIN emarket_shops s ON s.id=l.shop_id
+			WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
+		rows, err := db.Query(sqlStr, args...)
+		if err != nil {
+			log.Printf("[emarket/feed-listings] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		items := []map[string]any{}
+		for rows.Next() {
+			var id, shopID int64
+			var shopName, kind, title, desc, catKey, currency, photosJSON string
+			var price sql.NullFloat64
+			var rating float64
+			var reviews, views int
+			var created time.Time
+			if err := rows.Scan(&id, &shopID, &shopName, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &created); err != nil {
+				continue
+			}
+			var photos any
+			_ = json.Unmarshal([]byte(photosJSON), &photos)
+			var priceVal any
+			if price.Valid {
+				priceVal = price.Float64
+			}
+			items = append(items, map[string]any{
+				"id": id, "shop_id": shopID, "shop_name": shopName, "kind": kind, "title": title,
+				"description": desc, "category_key": catKey, "price": priceVal, "currency": currency,
+				"photos": photos, "rating": rating, "reviews_count": reviews, "views_count": views, "created_at": created,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
+	})
+
+	// Лента магазинов: ?q=&sort=&limit=&offset=
+	mux.HandleFunc("/api/emarket/feed-shops", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		conds := []string{"status='active'"}
+		args := []any{}
+		if v := strings.TrimSpace(q.Get("q")); v != "" {
+			args = append(args, "%"+v+"%")
+			conds = append(conds, fmt.Sprintf("(name ILIKE $%d OR description ILIKE $%d)", len(args), len(args)))
+		}
+		order := "created_at DESC"
+		if q.Get("sort") == "rating" {
+			order = "rating DESC, reviews_count DESC, created_at DESC"
+		}
+		limit, _ := strconv.Atoi(q.Get("limit"))
+		if limit <= 0 || limit > 50 {
+			limit = 30
+		}
+		offset, _ := strconv.Atoi(q.Get("offset"))
+		if offset < 0 {
+			offset = 0
+		}
+		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url, rating, reviews_count, created_at
+			FROM emarket_shops WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
+		rows, err := db.Query(sqlStr, args...)
+		if err != nil {
+			log.Printf("[emarket/feed-shops] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		shops := []map[string]any{}
+		for rows.Next() {
+			var id, ownerID int64
+			var ownerType, name, slug, desc, logo, cover string
+			var rating float64
+			var reviews int
+			var created time.Time
+			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &rating, &reviews, &created); err != nil {
+				continue
+			}
+			shops = append(shops, map[string]any{
+				"id": id, "owner_type": ownerType, "owner_id": ownerID, "name": name, "slug": slug,
+				"description": desc, "logo_url": logo, "cover_url": cover, "rating": rating,
+				"reviews_count": reviews, "created_at": created,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+	})
+
+	// Топ-магазины по рейтингу
+	mux.HandleFunc("/api/emarket/top-shops", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.Query(`SELECT id, name, slug, logo_url, rating, reviews_count
+			FROM emarket_shops WHERE status='active' ORDER BY rating DESC, reviews_count DESC, created_at DESC LIMIT 5`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		shops := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var name, slug, logo string
+			var rating float64
+			var reviews int
+			if err := rows.Scan(&id, &name, &slug, &logo, &rating, &reviews); err != nil {
+				continue
+			}
+			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "rating": rating, "reviews_count": reviews})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+	})
+
+	// Категории e-market (dictionaries type='emarket_category')
+	mux.HandleFunc("/api/emarket/categories", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='emarket_category' AND is_active=TRUE ORDER BY sort_order, label`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		cats := []map[string]any{}
+		for rows.Next() {
+			var key, label string
+			if err := rows.Scan(&key, &label); err != nil {
+				continue
+			}
+			cats = append(cats, map[string]any{"key": key, "label": label})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"categories": cats})
+	})
+
 	mux.HandleFunc("/api/catalog/categories", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
