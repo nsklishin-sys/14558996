@@ -428,9 +428,9 @@ async function submitLead(e){
   const message=(form.querySelector('[name=message]')||{}).value||'';
   if(btn){btn.disabled=true;btn.textContent='Отправка…';}
   try{
-    const r=await fetch(API+'/emarket/site/'+encodeURIComponent(getSlug())+'/lead',{
+    const r=await lastopFetch(API+'/emarket/site/'+encodeURIComponent(getSlug())+'/lead',{
       method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({name:name.trim(),contact:contact.trim(),message:message.trim()})
     });
     if(!r.ok)throw 0;
