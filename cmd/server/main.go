@@ -6110,6 +6110,54 @@ func main() {
 		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
 	}))
 
+	// Управление «LASTOP рекомендует»: список + toggle is_featured
+	mux.HandleFunc("/api/admin/emarket/featured", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`SELECT id, name, slug, logo_url, rating, reviews_count, region, is_featured, status
+				FROM emarket_shops WHERE status<>'blocked' ORDER BY is_featured DESC, rating DESC, name LIMIT 200`)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			shops := []map[string]any{}
+			for rows.Next() {
+				var id int64
+				var name, slug, logo, region, status string
+				var rating float64
+				var reviews int
+				var featured bool
+				if err := rows.Scan(&id, &name, &slug, &logo, &rating, &reviews, &region, &featured, &status); err != nil {
+					continue
+				}
+				shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "rating": rating, "reviews_count": reviews, "region": region, "is_featured": featured, "status": status})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+		case http.MethodPost:
+			var req struct {
+				ShopID     int64 `json:"shop_id"`
+				IsFeatured bool  `json:"is_featured"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.ShopID == 0 {
+				writeError(w, http.StatusBadRequest, "shop_id обязателен")
+				return
+			}
+			_, err := db.Exec(`UPDATE emarket_shops SET is_featured=$1, updated_at=now() WHERE id=$2`, req.IsFeatured, req.ShopID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "is_featured": req.IsFeatured})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	}))
+
 	mux.HandleFunc("/api/admin/ads", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
@@ -10169,6 +10217,7 @@ func main() {
 				ContactPhone string `json:"contact_phone"`
 				ContactEmail string `json:"contact_email"`
 				ContactSite  string `json:"contact_site"`
+				Region       string `json:"region"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -10199,10 +10248,10 @@ func main() {
 				return
 			}
 			var newID int64
-			err = db.QueryRow(`INSERT INTO emarket_shops (owner_type, owner_id, name, slug, description, logo_url, cover_url, contact_phone, contact_email, contact_site)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+			err = db.QueryRow(`INSERT INTO emarket_shops (owner_type, owner_id, name, slug, description, logo_url, cover_url, contact_phone, contact_email, contact_site, region)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
 				req.OwnerType, req.OwnerID, req.Name, slug, strings.TrimSpace(req.Description),
-				req.LogoURL, req.CoverURL, strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite)).Scan(&newID)
+				req.LogoURL, req.CoverURL, strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite), strings.TrimSpace(req.Region)).Scan(&newID)
 			if err != nil {
 				if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
 					writeJSON(w, http.StatusConflict, map[string]any{"error": "магазин для этого владельца уже существует"})
@@ -10277,6 +10326,7 @@ func main() {
 				ContactPhone string `json:"contact_phone"`
 				ContactEmail string `json:"contact_email"`
 				ContactSite  string `json:"contact_site"`
+				Region       string `json:"region"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -10288,9 +10338,9 @@ func main() {
 				return
 			}
 			_, err := db.Exec(`UPDATE emarket_shops SET name=$1, description=$2, logo_url=$3, cover_url=$4,
-				contact_phone=$5, contact_email=$6, contact_site=$7, updated_at=now() WHERE id=$8`,
+				contact_phone=$5, contact_email=$6, contact_site=$7, region=$8, updated_at=now() WHERE id=$9`,
 				req.Name, strings.TrimSpace(req.Description), req.LogoURL, req.CoverURL,
-				strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite), shopID)
+				strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite), strings.TrimSpace(req.Region), shopID)
 			if err != nil {
 				log.Printf("[emarket/shops PUT] %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -10608,6 +10658,10 @@ func main() {
 			args = append(args, "%"+v+"%")
 			conds = append(conds, fmt.Sprintf("(name ILIKE $%d OR description ILIKE $%d)", len(args), len(args)))
 		}
+		if v := strings.TrimSpace(q.Get("region")); v != "" {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("region=$%d", len(args)))
+		}
 		order := "created_at DESC"
 		if q.Get("sort") == "rating" {
 			order = "rating DESC, reviews_count DESC, created_at DESC"
@@ -10620,7 +10674,7 @@ func main() {
 		if offset < 0 {
 			offset = 0
 		}
-		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url, rating, reviews_count, created_at
+		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url, rating, reviews_count, region, is_featured, created_at
 			FROM emarket_shops WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
 		rows, err := db.Query(sqlStr, args...)
 		if err != nil {
@@ -10632,20 +10686,63 @@ func main() {
 		shops := []map[string]any{}
 		for rows.Next() {
 			var id, ownerID int64
-			var ownerType, name, slug, desc, logo, cover string
+			var ownerType, name, slug, desc, logo, cover, region string
 			var rating float64
 			var reviews int
+			var featured bool
 			var created time.Time
-			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &rating, &reviews, &created); err != nil {
+			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &rating, &reviews, &region, &featured, &created); err != nil {
 				continue
 			}
 			shops = append(shops, map[string]any{
 				"id": id, "owner_type": ownerType, "owner_id": ownerID, "name": name, "slug": slug,
 				"description": desc, "logo_url": logo, "cover_url": cover, "rating": rating,
-				"reviews_count": reviews, "created_at": created,
+				"reviews_count": reviews, "region": region, "is_featured": featured, "created_at": created,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+	})
+
+	// LASTOP рекомендует — избранные магазины
+	mux.HandleFunc("/api/emarket/featured-shops", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.Query(`SELECT id, name, slug, logo_url, cover_url, description, rating, reviews_count, region
+			FROM emarket_shops WHERE status='active' AND is_featured=TRUE ORDER BY rating DESC, created_at DESC LIMIT 12`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		shops := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var name, slug, logo, cover, desc, region string
+			var rating float64
+			var reviews int
+			if err := rows.Scan(&id, &name, &slug, &logo, &cover, &desc, &rating, &reviews, &region); err != nil {
+				continue
+			}
+			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "cover_url": cover, "description": desc, "rating": rating, "reviews_count": reviews, "region": region})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+	})
+
+	// Список регионов (dictionaries type='emarket_region')
+	mux.HandleFunc("/api/emarket/regions", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.Query(`SELECT key, label FROM dictionaries WHERE type='emarket_region' AND is_active=TRUE ORDER BY sort_order, label`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		regions := []map[string]any{}
+		for rows.Next() {
+			var key, label string
+			if err := rows.Scan(&key, &label); err != nil {
+				continue
+			}
+			regions = append(regions, map[string]any{"key": key, "label": label})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"regions": regions})
 	})
 
 	// Топ-магазины по рейтингу
@@ -17047,6 +17144,10 @@ CREATE TABLE IF NOT EXISTS emarket_shops (
     UNIQUE (owner_type, owner_id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS emarket_shops_slug_idx ON emarket_shops(slug) WHERE slug <> '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS emarket_shops_region_idx ON emarket_shops(region) WHERE region <> '';
+CREATE INDEX IF NOT EXISTS emarket_shops_featured_idx ON emarket_shops(is_featured) WHERE is_featured = TRUE;
 
 CREATE TABLE IF NOT EXISTS emarket_listings (
     id BIGSERIAL PRIMARY KEY,
