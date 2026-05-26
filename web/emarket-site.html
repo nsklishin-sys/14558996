@@ -419,10 +419,27 @@ async function loadProducts(shopId,blockIdx,limit){
   }
 }
 
-function submitLead(e){
+async function submitLead(e){
   e.preventDefault();
-  e.target.style.display='none';
-  document.getElementById('leadOk').style.display='block';
+  const form=e.target;
+  const btn=form.querySelector('.ms-lead-btn');
+  const name=(form.querySelector('[name=name]')||{}).value||'';
+  const contact=(form.querySelector('[name=contact]')||{}).value||'';
+  const message=(form.querySelector('[name=message]')||{}).value||'';
+  if(btn){btn.disabled=true;btn.textContent='Отправка…';}
+  try{
+    const r=await fetch(API+'/emarket/site/'+encodeURIComponent(getSlug())+'/lead',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+(localStorage.getItem('token')||'')},
+      body:JSON.stringify({name:name.trim(),contact:contact.trim(),message:message.trim()})
+    });
+    if(!r.ok)throw 0;
+    form.style.display='none';
+    document.getElementById('leadOk').style.display='block';
+  }catch(err){
+    if(btn){btn.disabled=false;btn.textContent='Отправить';}
+    showToast('Не удалось отправить заявку, попробуйте позже');
+  }
   return false;
 }
 </script>
