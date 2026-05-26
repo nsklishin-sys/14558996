@@ -10302,6 +10302,223 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/emarket/listings", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			ShopID          int64    `json:"shop_id"`
+			Kind            string   `json:"kind"`
+			Title           string   `json:"title"`
+			Description     string   `json:"description"`
+			Characteristics []any    `json:"characteristics"`
+			CategoryKey     string   `json:"category_key"`
+			Price           *float64 `json:"price"`
+			Currency        string   `json:"currency"`
+			PaymentMethod   string   `json:"payment_method"`
+			Photos          []string `json:"photos"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := emarketCheckShopRights(db, r, userID, req.ShopID); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
+			return
+		}
+		req.Title = strings.TrimSpace(req.Title)
+		if utf8.RuneCountInString(req.Title) < 2 || utf8.RuneCountInString(req.Title) > 200 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 2..200 символов"})
+			return
+		}
+		if req.Kind != "product" && req.Kind != "service" {
+			req.Kind = "product"
+		}
+		if req.Currency == "" {
+			req.Currency = "RUB"
+		}
+		if req.Characteristics == nil {
+			req.Characteristics = []any{}
+		}
+		if req.Photos == nil {
+			req.Photos = []string{}
+		}
+		charsJSON, _ := json.Marshal(req.Characteristics)
+		photosJSON, _ := json.Marshal(req.Photos)
+		var newID int64
+		err := db.QueryRow(`INSERT INTO emarket_listings (shop_id, kind, title, description, characteristics, category_key, price, currency, payment_method, photos)
+			VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10::jsonb) RETURNING id`,
+			req.ShopID, req.Kind, req.Title, strings.TrimSpace(req.Description), string(charsJSON),
+			strings.TrimSpace(req.CategoryKey), req.Price, req.Currency, strings.TrimSpace(req.PaymentMethod), string(photosJSON)).Scan(&newID)
+		if err != nil {
+			log.Printf("[emarket/listings POST] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"id": newID})
+	})
+
+	mux.HandleFunc("/api/emarket/listings/", func(w http.ResponseWriter, r *http.Request) {
+		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/listings/"), "/")
+		listingID, _ := strconv.ParseInt(rest, 10, 64)
+		if listingID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			var id, shopID int64
+			var kind, title, desc, charsJSON, catKey, currency, payment, photosJSON, status string
+			var price sql.NullFloat64
+			var rating float64
+			var reviews, views int
+			var created time.Time
+			err := db.QueryRow(`SELECT id, shop_id, kind, title, description, characteristics::text, category_key, price, currency, payment_method, photos::text, rating, reviews_count, views_count, status, created_at
+				FROM emarket_listings WHERE id=$1 AND deleted_at IS NULL`, listingID).Scan(&id, &shopID, &kind, &title, &desc, &charsJSON, &catKey, &price, &currency, &payment, &photosJSON, &rating, &reviews, &views, &status, &created)
+			if err == sql.ErrNoRows || status == "blocked" {
+				writeError(w, http.StatusNotFound, "Листинг не найден")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			_, _ = db.Exec(`UPDATE emarket_listings SET views_count=views_count+1 WHERE id=$1`, listingID)
+			var chars, photos any
+			_ = json.Unmarshal([]byte(charsJSON), &chars)
+			_ = json.Unmarshal([]byte(photosJSON), &photos)
+			var priceVal any
+			if price.Valid {
+				priceVal = price.Float64
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"listing": map[string]any{
+				"id": id, "shop_id": shopID, "kind": kind, "title": title, "description": desc,
+				"characteristics": chars, "category_key": catKey, "price": priceVal, "currency": currency,
+				"payment_method": payment, "photos": photos, "rating": rating, "reviews_count": reviews,
+				"views_count": views + 1, "status": status, "created_at": created,
+			}})
+		case http.MethodPut:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var shopID int64
+			if err := db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1 AND deleted_at IS NULL`, listingID).Scan(&shopID); err != nil {
+				writeError(w, http.StatusNotFound, "Листинг не найден")
+				return
+			}
+			if err := emarketCheckShopRights(db, r, userID, shopID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа"})
+				return
+			}
+			var req struct {
+				Kind            string   `json:"kind"`
+				Title           string   `json:"title"`
+				Description     string   `json:"description"`
+				Characteristics []any    `json:"characteristics"`
+				CategoryKey     string   `json:"category_key"`
+				Price           *float64 `json:"price"`
+				Currency        string   `json:"currency"`
+				PaymentMethod   string   `json:"payment_method"`
+				Photos          []string `json:"photos"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			req.Title = strings.TrimSpace(req.Title)
+			if utf8.RuneCountInString(req.Title) < 2 || utf8.RuneCountInString(req.Title) > 200 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 2..200 символов"})
+				return
+			}
+			if req.Kind != "product" && req.Kind != "service" {
+				req.Kind = "product"
+			}
+			if req.Currency == "" {
+				req.Currency = "RUB"
+			}
+			if req.Characteristics == nil {
+				req.Characteristics = []any{}
+			}
+			if req.Photos == nil {
+				req.Photos = []string{}
+			}
+			charsJSON, _ := json.Marshal(req.Characteristics)
+			photosJSON, _ := json.Marshal(req.Photos)
+			_, err := db.Exec(`UPDATE emarket_listings SET kind=$1, title=$2, description=$3, characteristics=$4::jsonb, category_key=$5, price=$6, currency=$7, payment_method=$8, photos=$9::jsonb, updated_at=now() WHERE id=$10`,
+				req.Kind, req.Title, strings.TrimSpace(req.Description), string(charsJSON), strings.TrimSpace(req.CategoryKey),
+				req.Price, req.Currency, strings.TrimSpace(req.PaymentMethod), string(photosJSON), listingID)
+			if err != nil {
+				log.Printf("[emarket/listings PUT] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+		case http.MethodDelete:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var shopID int64
+			if err := db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1 AND deleted_at IS NULL`, listingID).Scan(&shopID); err != nil {
+				writeError(w, http.StatusNotFound, "Листинг не найден")
+				return
+			}
+			if err := emarketCheckShopRights(db, r, userID, shopID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа"})
+				return
+			}
+			_, _ = db.Exec(`UPDATE emarket_listings SET deleted_at=now() WHERE id=$1`, listingID)
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/emarket/shop-listings", func(w http.ResponseWriter, r *http.Request) {
+		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
+		if shopID == 0 {
+			writeError(w, http.StatusBadRequest, "shop_id обязателен")
+			return
+		}
+		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, created_at
+			FROM emarket_listings WHERE shop_id=$1 AND deleted_at IS NULL AND status='active' ORDER BY created_at DESC`, shopID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		items := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var kind, title, desc, catKey, currency, photosJSON string
+			var price sql.NullFloat64
+			var rating float64
+			var reviews, views int
+			var created time.Time
+			if err := rows.Scan(&id, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &created); err != nil {
+				continue
+			}
+			var photos any
+			_ = json.Unmarshal([]byte(photosJSON), &photos)
+			var priceVal any
+			if price.Valid {
+				priceVal = price.Float64
+			}
+			items = append(items, map[string]any{
+				"id": id, "kind": kind, "title": title, "description": desc, "category_key": catKey,
+				"price": priceVal, "currency": currency, "photos": photos, "rating": rating,
+				"reviews_count": reviews, "views_count": views, "created_at": created,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
+	})
+
 	mux.HandleFunc("/api/catalog/categories", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -30788,6 +31005,23 @@ func ensureUniqueShopSlug(db *sql.DB, base string) (string, error) {
 		candidate = base + "-" + hex.EncodeToString(b)
 	}
 	return "", fmt.Errorf("no unique shop slug for %q", base)
+}
+
+// emarketCheckShopRights — проверяет, что userID вправе вести коммерцию в магазине shopID:
+// владелец магазина (resolveOwner) И активный платный доступ. Возвращает shopID-owner или ошибку.
+func emarketCheckShopRights(db *sql.DB, r *http.Request, userID, shopID int64) error {
+	var ownerType string
+	var ownerID int64
+	if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1 AND status<>'blocked'`, shopID).Scan(&ownerType, &ownerID); err != nil {
+		return fmt.Errorf("%w: магазин не найден", errValidation)
+	}
+	if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+		return err
+	}
+	if !emarketHasAccess(db, ownerType, ownerID) {
+		return fmt.Errorf("%w: нет доступа к E-market", errValidation)
+	}
+	return nil
 }
 
 // getCompanyByPublicID — id компании по public_id.
