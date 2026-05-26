@@ -10785,6 +10785,137 @@ func main() {
 		})
 	})
 
+	mux.HandleFunc("/api/emarket/reviews", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			// Публичный список отзывов магазина: ?shop_id=
+			shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
+			if shopID == 0 {
+				writeError(w, http.StatusBadRequest, "shop_id обязателен")
+				return
+			}
+			rows, err := db.Query(`SELECT rv.id, rv.author_id, rv.rating, rv.text, rv.created_at,
+				COALESCE(NULLIF(u.full_name,''), u.handle, ''), COALESCE(u.public_id,''), COALESCE(u.avatar_url,'')
+				FROM emarket_reviews rv JOIN users u ON u.id=rv.author_id
+				WHERE rv.target_type='shop' AND rv.target_id=$1
+				ORDER BY rv.created_at DESC LIMIT 100`, shopID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			reviews := []map[string]any{}
+			for rows.Next() {
+				var id, authorID int64
+				var rating int
+				var text, authorName, authorPID, authorAvatar string
+				var createdAt time.Time
+				if err := rows.Scan(&id, &authorID, &rating, &text, &createdAt, &authorName, &authorPID, &authorAvatar); err != nil {
+					continue
+				}
+				reviews = append(reviews, map[string]any{
+					"id": id, "author_id": authorID, "rating": rating, "text": text, "created_at": createdAt,
+					"author_name": authorName, "author_public_id": authorPID, "author_avatar": authorAvatar,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"reviews": reviews})
+			return
+
+		case http.MethodPost:
+			// Оставить/обновить отзыв (залогиненный, не владелец магазина)
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				ShopID int64  `json:"shop_id"`
+				Rating int    `json:"rating"`
+				Text   string `json:"text"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.ShopID == 0 || req.Rating < 1 || req.Rating > 5 {
+				writeError(w, http.StatusBadRequest, "Нужны shop_id и оценка 1-5")
+				return
+			}
+			req.Text = strings.TrimSpace(req.Text)
+			if len(req.Text) > 2000 {
+				req.Text = req.Text[:2000]
+			}
+			var ownerType string
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, req.ShopID).Scan(&ownerType, &ownerID); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			// Запрет отзыва на свой магазин
+			if emarketResolveOwner(db, r, userID, ownerType, ownerID) == nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "Нельзя оставить отзыв на свой магазин"})
+				return
+			}
+			if _, err := db.Exec(`INSERT INTO emarket_reviews (target_type, target_id, author_id, rating, text)
+				VALUES ('shop', $1, $2, $3, $4)
+				ON CONFLICT (target_type, target_id, author_id)
+				DO UPDATE SET rating=EXCLUDED.rating, text=EXCLUDED.text, created_at=now()`,
+				req.ShopID, userID, req.Rating, req.Text); err != nil {
+				log.Printf("[emarket/reviews POST] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			recalcShopRating(db, req.ShopID)
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+			return
+
+		case http.MethodDelete:
+			// Удалить отзыв (автор, владелец магазина или админ)
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			reviewID, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+			if reviewID == 0 {
+				writeError(w, http.StatusBadRequest, "id обязателен")
+				return
+			}
+			var authorID, targetID int64
+			var targetType string
+			if err := db.QueryRow(`SELECT author_id, target_type, target_id FROM emarket_reviews WHERE id=$1`, reviewID).Scan(&authorID, &targetType, &targetID); err != nil {
+				writeError(w, http.StatusNotFound, "Отзыв не найден")
+				return
+			}
+			allowed := authorID == userID
+			if !allowed {
+				var isAdmin bool
+				_ = db.QueryRow(`SELECT COALESCE(is_admin, FALSE) FROM users WHERE id=$1`, userID).Scan(&isAdmin)
+				allowed = isAdmin
+			}
+			if !allowed && targetType == "shop" {
+				var ownerType string
+				var ownerID int64
+				if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, targetID).Scan(&ownerType, &ownerID); err == nil {
+					if emarketResolveOwner(db, r, userID, ownerType, ownerID) == nil {
+						allowed = true
+					}
+				}
+			}
+			if !allowed {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			_, _ = db.Exec(`DELETE FROM emarket_reviews WHERE id=$1`, reviewID)
+			if targetType == "shop" {
+				recalcShopRating(db, targetID)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+			return
+
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.HandleFunc("/api/emarket/listings", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -31801,6 +31932,13 @@ func emarketHasAccess(db *sql.DB, ownerType string, ownerID int64) bool {
 		return false
 	}
 	return true
+}
+
+func recalcShopRating(db *sql.DB, shopID int64) {
+	_, _ = db.Exec(`UPDATE emarket_shops SET
+		rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM emarket_reviews WHERE target_type='shop' AND target_id=$1), 0),
+		reviews_count = (SELECT COUNT(*) FROM emarket_reviews WHERE target_type='shop' AND target_id=$1)
+		WHERE id=$1`, shopID)
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
