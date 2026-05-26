@@ -53,3 +53,4 @@ go run ./cmd/server
 - `migrate-to-s3/` — миграция файлов из `/uploads` в S3
 
 См. `BACKUP.md` для подробностей настройки.
+<!-- codex-test: связь работает -->
