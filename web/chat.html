@@ -1525,13 +1525,13 @@ function renderMessages(){
   const justSelected=!!window._chatJustSelected;
   const wasAtBottom=justSelected?true:(el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true);
   const prevScroll=el?el.scrollTop:0;
-  el.innerHTML='';let prevDate='';state.messages.forEach(m=>{
+  let html='';let prevDate='';const _allUrls=[];state.messages.forEach(m=>{
     const createdAt = new Date(m.created_at);
     const date = createdAt.toDateString();
     if(date!==prevDate){
       prevDate=date;
       const divider = window.LastopFormat ? window.LastopFormat.date(m.created_at) : createdAt.toLocaleDateString('ru-RU');
-      el.insertAdjacentHTML('beforeend',`<div class='date-sep'>${divider}</div>`);
+      html+=`<div class='date-sep'>${divider}</div>`;
     }
     const mine=m.author_public_id===state.currentUser.public_id;
     const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
@@ -1564,7 +1564,8 @@ function renderMessages(){
     }
     const showName = !mine && (m.sender_company_id || m.sender_community_id);
     const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` : '';
-    el.insertAdjacentHTML('beforeend', `
+    if(_urls.length)_allUrls.push({id:m.id,urls:_urls});
+    html += `
       <div class='msg ${mine?'me':'them'}' data-msg-id='${m.id}' ondblclick='event.stopPropagation();openReactionPicker(${m.id},this)'>
         ${avatarHtml}
         <div class='msg-group'>
@@ -1589,11 +1590,13 @@ function renderMessages(){
           </div>
           ${(m.reactions && m.reactions.length) ? `<div class='msg-reactions'>${m.reactions.map(r=>`<span class='reaction${r.mine?' mine':''}' onclick='event.stopPropagation();toggleReaction(${m.id},"${r.emoji}")'>${r.emoji} ${r.count}</span>`).join('')}</div>` : ''}
         </div>
-      </div>`);
-    if (_urls.length) {
-      const justAdded = el.lastElementChild;
-      if (justAdded) hydrateLinkPreviews(justAdded, _urls);
-    }
+      </div>`;
+  });
+  el.innerHTML=html;
+  // гидратация превью ссылок после атомарного присваивания
+  _allUrls.forEach(({id,urls})=>{
+    const node=el.querySelector(`[data-msg-id="${id}"]`);
+    if(node)hydrateLinkPreviews(node,urls);
   });
   // typing теперь отображается в шапке (#chatStatus), здесь не дублируем
   if(el){
