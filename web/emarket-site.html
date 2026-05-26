@@ -96,6 +96,18 @@ img{max-width:100%}
 .ms-rev-stars{color:#E8A52A;margin-bottom:9px;font-size:14px;letter-spacing:2px}
 .ms-rev-text{font-size:14px;color:var(--t);line-height:1.65;margin-bottom:12px}
 .ms-rev-author{font-size:13px;font-weight:700;color:var(--tm)}
+.ms-rev-form{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:18px;margin-bottom:16px}
+.ms-rev-form-t{font-size:15px;font-weight:700;margin-bottom:10px}
+.rev-stars-input{display:flex;gap:4px;margin-bottom:11px}
+.rev-star{font-size:26px;color:var(--bdr);cursor:pointer;transition:color .12s,transform .1s;line-height:1}
+.rev-star:hover{transform:scale(1.15)}
+.rev-star.on{color:#E8A52A}
+.ms-rev-ta{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:11px 13px;font-family:inherit;font-size:14px;background:var(--gp);color:var(--t);outline:none;resize:vertical;min-height:70px;transition:border-color .15s;margin-bottom:11px}
+.ms-rev-ta:focus{border-color:var(--acc)}
+.ms-rev-send{background:var(--acc);color:#fff;border:none;padding:11px 22px;border-radius:var(--rm);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
+.ms-rev-send:hover{background:var(--acc-d)}
+.ms-rev-del{float:right;background:none;border:none;color:var(--gmt);cursor:pointer;font-size:13px;padding:0 4px;transition:color .12s}
+.ms-rev-del:hover{color:var(--red)}
 
 .ms-cont{display:grid;grid-template-columns:1fr 1.2fr;gap:28px;align-items:start}
 @media(max-width:760px){.ms-cont{grid-template-columns:1fr}}
@@ -143,6 +155,12 @@ img{max-width:100%}
 .ms-header.dark .ms-header-name{color:#fff}
 .ms-header-tag{font-size:13px;color:var(--gmt);margin-top:2px}
 .ms-header.dark .ms-header-tag{color:rgba(255,255,255,.85)}
+.ms-header-rating{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:14px;font-weight:800;color:var(--t);cursor:pointer;transition:opacity .15s}
+.ms-header-rating:hover{opacity:.7}
+.ms-header.dark .ms-header-rating{color:#fff}
+.ms-hr-star{color:#E8A52A;font-size:15px}
+.ms-hr-cnt{font-weight:600;font-size:12px;color:var(--gmt)}
+.ms-header.dark .ms-hr-cnt{color:rgba(255,255,255,.8)}
 .ms-navbar{display:flex;gap:4px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-top:none;padding:8px}
 .ms-headwrap .ms-navbar{border-radius:0;border-top:1px solid var(--bdr)}
 .ms-navtab{padding:9px 18px;border-radius:var(--rm);font-size:14px;font-weight:700;color:var(--tm);background:transparent;border:none;font-family:inherit;cursor:pointer;transition:all .15s}
@@ -258,7 +276,20 @@ let PAGES=[], CUR_SHOP=null;
 function shopHeader(shop){
   const logo=shop.site_logo_url?'<img src="'+esc(shop.site_logo_url)+'" alt="">':(shop.logo_url?'<img src="'+esc(shop.logo_url)+'" alt="">':'<span>'+esc(letter(shop.name))+'</span>');
   const dark=shop.header_theme==='dark';
-  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+'</div></div>';
+  let rating='';
+  if(shop.rating>0){
+    const rc=shop.reviews_count||0;
+    rating='<div class="ms-header-rating" onclick="goToReviews()" title="К отзывам"><span class="ms-hr-star">★</span> '+Number(shop.rating).toFixed(1)+(rc?' <span class="ms-hr-cnt">· '+rc+' '+plural(rc,'отзыв','отзыва','отзывов')+'</span>':'')+'</div>';
+  }
+  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+rating+'</div></div>';
+}
+function plural(n,one,few,many){const v=n%10,h=n%100;if(h>=11&&h<=19)return many;if(v===1)return one;if(v>=2&&v<=4)return few;return many;}
+function goToReviews(){
+  const el=document.querySelector('[data-reviews-block]');
+  if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  // если отзывы на вкладке — переключить на неё
+  const idx=PAGES.findIndex(p=>p.blocks.some(b=>b.type==='reviews'));
+  if(idx>=0)switchTab(idx);
 }
 
 function blockHasContent(b){
@@ -268,7 +299,7 @@ function blockHasContent(b){
     case 'about':return !!(c.text||c.image||(c.stats&&c.stats.length));
     case 'services':return !!(c.items&&c.items.some(x=>x&&(x.title||x.text)));
     case 'portfolio':return !!(c.items&&c.items.some(x=>x&&(x.title||x.text||x.image)));
-    case 'reviews':return !!(c.items&&c.items.some(x=>x&&(x.author||x.text)));
+    case 'reviews':return true; // реальные отзывы из API + форма — всегда
     case 'news':return !!(c.items&&c.items.some(x=>x&&(x.title||x.text||x.image)));
     case 'contacts':return !!(c.address||c.phone||c.email||c.hours||(c.map_lat&&c.map_lng));
     case 'products':return true; // подтягивает товары живьём
@@ -303,7 +334,7 @@ function render(d){
     blocks.forEach((b,i)=>{html+=renderBlock(b,shop,i);});
     document.getElementById('msMain').innerHTML=html;
     renderRight(shop);
-    blocks.forEach((b,i)=>{if(b.type==='products')loadProducts(shop.id,i,(b.content&&b.content.limit)||8);});
+    blocks.forEach((b,i)=>{if(b.type==='products')loadProducts(shop.id,i,(b.content&&b.content.limit)||8);if(b.type==='reviews')loadReviews(shop.id,i);});
     return;
   }
 
@@ -328,7 +359,7 @@ function switchTab(pi){
   page.blocks.forEach((b,j)=>{html+=renderBlock(b,CUR_SHOP,pi*100+j);});
   if(!html)html='<div class="state" style="min-height:30vh"><p>Раздел пуст</p></div>';
   document.getElementById('msPage').innerHTML=html;
-  page.blocks.forEach((b,j)=>{if(b.type==='products')loadProducts(CUR_SHOP.id,pi*100+j,(b.content&&b.content.limit)||8);});
+  page.blocks.forEach((b,j)=>{if(b.type==='products')loadProducts(CUR_SHOP.id,pi*100+j,(b.content&&b.content.limit)||8);if(b.type==='reviews')loadReviews(CUR_SHOP.id,pi*100+j);});
   document.getElementById('msMain').scrollTop=0;
 }
 
@@ -361,8 +392,7 @@ function renderBlock(b,shop,i){
     case 'products':
       return sec(id,c.title||'Товары и услуги','<div class="ms-prods" id="msprods-'+i+'"><div class="sk" style="height:200px"></div><div class="sk" style="height:200px"></div><div class="sk" style="height:200px"></div><div class="sk" style="height:200px"></div></div>',true);
     case 'reviews':{
-      const items=(c.items||[]).slice(0,20).map(s=>{const st='★'.repeat(Math.max(0,Math.min(5,s.rating||5)));return '<div class="ms-rev"><div class="ms-rev-stars">'+st+'</div><div class="ms-rev-text">'+esc(s.text)+'</div><div class="ms-rev-author">'+esc(s.author)+'</div></div>';}).join('');
-      return sec(id,c.title||'Отзывы','<div class="ms-revs">'+items+'</div>');
+      return sec(id,c.title||'Отзывы','<div data-reviews-block id="msrev-'+i+'"><div class="sk" style="height:80px"></div></div>',false);
     }
     case 'contacts':{
       const items=[
@@ -417,6 +447,67 @@ async function loadProducts(shopId,blockIdx,limit){
     const box=document.getElementById('msprods-'+blockIdx);
     if(box)box.innerHTML='<div style="color:var(--tm);font-size:14px">Не удалось загрузить товары</div>';
   }
+}
+
+let REV_BLOCK_IDX=null;
+async function loadReviews(shopId,blockIdx){
+  REV_BLOCK_IDX=blockIdx;
+  const box=document.getElementById('msrev-'+blockIdx);
+  if(!box)return;
+  let reviews=[];
+  try{
+    const r=await fetch(API+'/emarket/reviews?shop_id='+shopId);
+    if(r.ok){const d=await r.json();reviews=d.reviews||[];}
+  }catch(e){}
+  const isOwner=CUR_SHOP&&MY_PID&&CUR_SHOP.owner_public_id&&MY_PID===CUR_SHOP.owner_public_id;
+  const myReview=reviews.find(rv=>rv.author_public_id&&rv.author_public_id===MY_PID);
+  let html='';
+  // Форма (если залогинен, не владелец)
+  if(!isOwner){
+    const stars=[1,2,3,4,5].map(n=>'<span class="rev-star" data-n="'+n+'" onclick="setRevStars('+n+')">★</span>').join('');
+    html+='<div class="ms-rev-form"><div class="ms-rev-form-t">'+(myReview?'Ваш отзыв':'Оставить отзыв')+'</div>'
+      +'<div class="rev-stars-input" id="revStars">'+stars+'</div>'
+      +'<textarea class="ms-rev-ta" id="revText" placeholder="Поделитесь впечатлением о магазине…">'+(myReview?esc(myReview.text):'')+'</textarea>'
+      +'<button class="ms-rev-send" onclick="submitReview('+shopId+')">'+(myReview?'Обновить отзыв':'Отправить отзыв')+'</button></div>';
+  }
+  // Список
+  if(reviews.length){
+    html+='<div class="ms-revs">'+reviews.map(rv=>{
+      const st='★'.repeat(Math.max(0,Math.min(5,rv.rating||5)))+'☆'.repeat(5-Math.max(0,Math.min(5,rv.rating||5)));
+      const canDel=isOwner||(rv.author_public_id&&rv.author_public_id===MY_PID);
+      const del=canDel?'<button class="ms-rev-del" onclick="deleteReview('+rv.id+','+shopId+')" title="Удалить">✕</button>':'';
+      return '<div class="ms-rev"><div class="ms-rev-stars">'+st+del+'</div><div class="ms-rev-text">'+esc(rv.text)+'</div><div class="ms-rev-author">'+esc(rv.author_name||'Пользователь')+'</div></div>';
+    }).join('')+'</div>';
+  }else if(isOwner){
+    html+='<div style="color:var(--tm);font-size:14px">Пока нет отзывов. Они появятся, когда покупатели их оставят.</div>';
+  }
+  box.innerHTML=html;
+  if(myReview)setRevStars(myReview.rating);
+}
+let REV_RATING=0;
+function setRevStars(n){
+  REV_RATING=n;
+  document.querySelectorAll('#revStars .rev-star').forEach(s=>{s.classList.toggle('on',parseInt(s.dataset.n)<=n);});
+}
+async function submitReview(shopId){
+  if(!REV_RATING){showToast('Поставьте оценку');return;}
+  const text=(document.getElementById('revText')||{}).value||'';
+  try{
+    const r=await lastopFetch(API+'/emarket/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({shop_id:shopId,rating:REV_RATING,text:text.trim()})});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Ошибка');}
+    showToast('Спасибо за отзыв!');
+    loadReviews(shopId,REV_BLOCK_IDX);
+  }catch(e){showToast(e.message||'Не удалось отправить отзыв');}
+}
+async function deleteReview(reviewId,shopId){
+  const ok=await lastopConfirm('Удалить этот отзыв?');
+  if(!ok)return;
+  try{
+    const r=await lastopFetch(API+'/emarket/reviews?id='+reviewId,{method:'DELETE'});
+    if(!r.ok)throw 0;
+    showToast('Отзыв удалён');
+    loadReviews(shopId,REV_BLOCK_IDX);
+  }catch(e){showToast('Не удалось удалить');}
 }
 
 async function submitLead(e){
