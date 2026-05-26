@@ -10443,8 +10443,11 @@ func main() {
 			}
 			var ownerType string
 			var ownerID int64
-			var siteConfig string
-			if err := db.QueryRow(`SELECT owner_type, owner_id, site_config::text FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID, &siteConfig); err != nil {
+			var siteConfig, accent, headerTheme, siteLogo, tagline, leadEmail, leadPhone, direction, slug string
+			var published bool
+			var siteViews int64
+			var leadsCount int
+			if err := db.QueryRow(`SELECT owner_type, owner_id, site_config::text, accent_color, header_theme, site_logo_url, tagline, lead_email, lead_phone, direction, slug, site_published, site_views, leads_count FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID, &siteConfig, &accent, &headerTheme, &siteLogo, &tagline, &leadEmail, &leadPhone, &direction, &slug, &published, &siteViews, &leadsCount); err != nil {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
@@ -10456,10 +10459,17 @@ func main() {
 			case http.MethodGet:
 				var config any = []any{}
 				_ = json.Unmarshal([]byte(siteConfig), &config)
-				writeJSON(w, http.StatusOK, map[string]any{"config": config})
+				writeJSON(w, http.StatusOK, map[string]any{"config": config, "slug": slug, "accent_color": accent, "header_theme": headerTheme, "site_logo_url": siteLogo, "tagline": tagline, "lead_email": leadEmail, "lead_phone": leadPhone, "direction": direction, "site_published": published, "site_views": siteViews, "leads_count": leadsCount})
 			case http.MethodPut:
 				var req struct {
-					Config any `json:"config"`
+					Config      []any  `json:"config"`
+					AccentColor string `json:"accent_color"`
+					HeaderTheme string `json:"header_theme"`
+					SiteLogoURL string `json:"site_logo_url"`
+					Tagline     string `json:"tagline"`
+					LeadEmail   string `json:"lead_email"`
+					LeadPhone   string `json:"lead_phone"`
+					Direction   string `json:"direction"`
 				}
 				if err := decodeJSON(w, r, &req); err != nil {
 					writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -10468,12 +10478,24 @@ func main() {
 				if req.Config == nil {
 					req.Config = []any{}
 				}
+				if len(req.Config) > 20 {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "не более 20 блоков"})
+					return
+				}
+				allowedAccent := map[string]bool{"green": true, "blue": true, "navy": true, "teal": true, "purple": true, "orange": true, "red": true, "graphite": true}
+				if !allowedAccent[req.AccentColor] {
+					req.AccentColor = "green"
+				}
+				if req.HeaderTheme != "dark" {
+					req.HeaderTheme = "light"
+				}
 				b, err := json.Marshal(req.Config)
 				if err != nil {
 					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "config должен быть валидным JSON"})
 					return
 				}
-				if _, err := db.Exec(`UPDATE emarket_shops SET site_config=$1::jsonb, updated_at=now() WHERE id=$2`, string(b), shopID); err != nil {
+				if _, err := db.Exec(`UPDATE emarket_shops SET site_config=$1::jsonb, accent_color=$2, header_theme=$3, site_logo_url=$4, tagline=$5, lead_email=$6, lead_phone=$7, direction=$8, updated_at=now() WHERE id=$9`,
+					string(b), req.AccentColor, req.HeaderTheme, strings.TrimSpace(req.SiteLogoURL), strings.TrimSpace(req.Tagline), strings.TrimSpace(req.LeadEmail), strings.TrimSpace(req.LeadPhone), strings.TrimSpace(req.Direction), shopID); err != nil {
 					log.Printf("[emarket/site-config PUT] %v", err)
 					writeError(w, http.StatusInternalServerError, "Ошибка")
 					return
@@ -10598,11 +10620,16 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный slug")
 			return
 		}
-		var shopID int64
-		var name, desc, logo, cover, region, configText string
-		err := db.QueryRow(`SELECT id, name, description, site_logo_url, site_cover_url, region, site_published_config::text
+		var shopID, ownerID int64
+		var ownerType, name, desc, logo, cover, region, configText string
+		var accent, headerTheme, siteLogo, tagline, leadEmail, leadPhone, direction, phone, email, site string
+		var rating float64
+		var reviews int
+		err := db.QueryRow(`SELECT id, owner_type, owner_id, name, description, logo_url, cover_url, region, site_published_config::text,
+			accent_color, header_theme, site_logo_url, tagline, lead_email, lead_phone, direction, contact_phone, contact_email, contact_site, rating, reviews_count
 			FROM emarket_shops
-			WHERE slug=$1 AND status<>'blocked' AND site_published=TRUE`, slug).Scan(&shopID, &name, &desc, &logo, &cover, &region, &configText)
+			WHERE slug=$1 AND status<>'blocked' AND site_published=TRUE`, slug).Scan(&shopID, &ownerType, &ownerID, &name, &desc, &logo, &cover, &region, &configText,
+			&accent, &headerTheme, &siteLogo, &tagline, &leadEmail, &leadPhone, &direction, &phone, &email, &site, &rating, &reviews)
 		if err == sql.ErrNoRows {
 			writeError(w, http.StatusNotFound, "Сайт магазина не опубликован")
 			return
@@ -10611,18 +10638,34 @@ func main() {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
 			return
 		}
+		if !emarketSiteIsLive(db, ownerType, ownerID) {
+			writeError(w, http.StatusNotFound, "Сайт недоступен")
+			return
+		}
 		_, _ = db.Exec(`UPDATE emarket_shops SET site_views=site_views+1 WHERE id=$1`, shopID)
 		var config any = []any{}
 		_ = json.Unmarshal([]byte(configText), &config)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"shop": map[string]any{
-				"id":          shopID,
-				"slug":        slug,
-				"name":        name,
-				"description": desc,
-				"logo_url":    logo,
-				"cover_url":   cover,
-				"region":      region,
+				"id":            shopID,
+				"slug":          slug,
+				"name":          name,
+				"description":   desc,
+				"logo_url":      logo,
+				"cover_url":     cover,
+				"region":        region,
+				"accent_color":  accent,
+				"header_theme":  headerTheme,
+				"site_logo_url": siteLogo,
+				"tagline":       tagline,
+				"lead_email":    leadEmail,
+				"lead_phone":    leadPhone,
+				"direction":     direction,
+				"contact_phone": phone,
+				"contact_email": email,
+				"contact_site":  site,
+				"rating":        rating,
+				"reviews_count": reviews,
 			},
 			"config": config,
 		})
@@ -17478,6 +17521,7 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS lead_phone TEXT NOT NULL DEFA
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_views BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS leads_count INT NOT NULL DEFAULT 0;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS emarket_shops_published_idx ON emarket_shops(site_published) WHERE site_published = TRUE;
 
 CREATE TABLE IF NOT EXISTS emarket_listings (
@@ -31589,6 +31633,23 @@ func ensureUniqueCompanySlug(db *sql.DB, base string) (string, error) {
 }
 
 // ══════════ E-MARKET helpers ══════════
+
+// emarketSiteIsLive — публичный сайт жив, если доступ active И не вышел grace (expires_at + 30 дней).
+func emarketSiteIsLive(db *sql.DB, ownerType string, ownerID int64) bool {
+	var active bool
+	var expires sql.NullTime
+	err := db.QueryRow(`SELECT active, expires_at FROM emarket_access WHERE owner_type=$1 AND owner_id=$2`, ownerType, ownerID).Scan(&active, &expires)
+	if err != nil {
+		return false
+	}
+	if !active {
+		return false
+	}
+	if expires.Valid && expires.Time.AddDate(0, 0, 30).Before(time.Now()) {
+		return false
+	}
+	return true
+}
 
 // emarketHasAccess — есть ли активный доступ у сущности-владельца.
 func emarketHasAccess(db *sql.DB, ownerType string, ownerID int64) bool {
