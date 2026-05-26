@@ -30029,6 +30029,25 @@ func seedDictionaries(db *sql.DB) {
 	for i, c := range newsSeedCategories {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('news_category',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, i)
 	}
+	// emarket_region: стартовые регионы для фильтра магазинов
+	emarketRegions := []struct{ Key, Label string }{
+		{"msk", "Москва"}, {"spb", "Санкт-Петербург"}, {"ekb", "Екатеринбург"},
+		{"nsk", "Новосибирск"}, {"kzn", "Казань"}, {"nnov", "Нижний Новгород"},
+		{"krd", "Краснодар"}, {"vvo", "Владивосток"}, {"other", "Другой регион"},
+	}
+	for i, c := range emarketRegions {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('emarket_region',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, i)
+	}
+	// emarket_category: стартовые категории товаров/услуг
+	emarketCategories := []struct{ Key, Label string }{
+		{"logistics", "Логистика и склад"}, {"transport", "Транспорт и спецтехника"},
+		{"equipment", "Оборудование"}, {"materials", "Материалы и сырьё"},
+		{"it", "IT и сервисы"}, {"consulting", "Консалтинг и услуги"},
+		{"office", "Офис и хозтовары"}, {"other", "Прочее"},
+	}
+	for i, c := range emarketCategories {
+		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('emarket_category',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, c.Key, c.Label, i)
+	}
 	// project_group + project_category: стартовое дерево проектов (6 групп × категории)
 	for gi, g := range projectSeedGroups {
 		_, _ = db.Exec(`INSERT INTO dictionaries (type, key, label, sort_order) VALUES ('project_group',$1,$2,$3) ON CONFLICT (type, key) DO NOTHING`, g.Key, g.Label, gi)
