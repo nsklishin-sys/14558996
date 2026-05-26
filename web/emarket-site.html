@@ -128,11 +128,26 @@ img{max-width:100%}
 .ms-nitem h3{font-size:15px;font-weight:700;margin-bottom:6px;line-height:1.35}
 .ms-nitem p{font-size:13px;color:var(--tm);line-height:1.55}
 
-.ms-navbar{display:flex;gap:4px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:8px;box-shadow:var(--sh);position:sticky;top:0;z-index:10}
+.ms-headwrap{display:flex;flex-direction:column;position:sticky;top:0;z-index:10;border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh)}
+.ms-header{display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--w);border:1px solid var(--bdr);border-bottom:3px solid var(--acc)}
+.ms-headwrap .ms-header{border-radius:0;border-bottom:none}
+.ms-header.dark{background:var(--acc);border-color:var(--acc)}
+.ms-header-logo{width:48px;height:48px;border-radius:var(--rm);background:var(--gp);display:grid;place-items:center;overflow:hidden;flex-shrink:0;border:1px solid var(--bdr)}
+.ms-header.dark .ms-header-logo{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)}
+.ms-header-logo img{width:100%;height:100%;object-fit:cover}
+.ms-header-logo span{font-size:20px;font-weight:800;color:var(--acc)}
+.ms-header.dark .ms-header-logo span{color:#fff}
+.ms-header-name{font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--t)}
+.ms-header.dark .ms-header-name{color:#fff}
+.ms-header-tag{font-size:13px;color:var(--gmt);margin-top:2px}
+.ms-header.dark .ms-header-tag{color:rgba(255,255,255,.85)}
+.ms-navbar{display:flex;gap:4px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-top:none;padding:8px}
+.ms-headwrap .ms-navbar{border-radius:0;border-top:1px solid var(--bdr)}
 .ms-navtab{padding:9px 18px;border-radius:var(--rm);font-size:14px;font-weight:700;color:var(--tm);background:transparent;border:none;font-family:inherit;cursor:pointer;transition:all .15s}
 .ms-navtab:hover{background:var(--acc-l);color:var(--acc)}
 .ms-navtab.active{background:var(--acc);color:#fff}
-#msPage{display:flex;flex-direction:column;gap:14px}
+#msPage{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+@media(max-width:600px){.ms-header{padding:13px 15px}.ms-header-name{font-size:16px}.ms-header-logo{width:40px;height:40px}}
 
 .rcard{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
 .rcard-h{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:11px}
@@ -238,6 +253,12 @@ function blockTitle(b){
 
 let PAGES=[], CUR_SHOP=null;
 
+function shopHeader(shop){
+  const logo=shop.site_logo_url?'<img src="'+esc(shop.site_logo_url)+'" alt="">':(shop.logo_url?'<img src="'+esc(shop.logo_url)+'" alt="">':'<span>'+esc(letter(shop.name))+'</span>');
+  const dark=shop.header_theme==='dark';
+  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+'</div></div>';
+}
+
 function render(d){
   const shop=d.shop||{};
   CUR_SHOP=shop;
@@ -248,17 +269,19 @@ function render(d){
   document.documentElement.style.setProperty('--acc-l',hexA(ACC,.12));
   document.title=shop.name+' — LASTOP GROUP';
 
+  const header=shopHeader(shop);
+
   if(!blocks.length){
-    document.getElementById('msMain').innerHTML='<div class="state"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><h2>'+esc(shop.name)+'</h2><p>Магазин ещё наполняется</p></div>';
+    document.getElementById('msMain').innerHTML=header+'<div class="state"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><h2>'+esc(shop.name)+'</h2><p>Магазин ещё наполняется</p></div>';
     renderRight(shop);
     return;
   }
 
   const navBlocks=blocks.filter(b=>b.in_nav);
 
-  // Нет вынесенных блоков → одностраничный скролл (как раньше)
+  // Нет вынесенных блоков → шапка + одностраничный скролл
   if(!navBlocks.length){
-    let html='';
+    let html=header;
     blocks.forEach((b,i)=>{html+=renderBlock(b,shop,i);});
     document.getElementById('msMain').innerHTML=html;
     renderRight(shop);
@@ -266,7 +289,7 @@ function render(d){
     return;
   }
 
-  // Есть вынесенные блоки → многостраничный режим с баром навигации.
+  // Есть вынесенные блоки → шапка + бар навигации под ней + страницы.
   // «Главная» = hero + все невынесенные блоки. Каждый вынесенный = отдельная страница.
   const homeBlocks=blocks.filter(b=>!b.in_nav);
   PAGES=[];
@@ -274,7 +297,7 @@ function render(d){
   navBlocks.forEach(b=>PAGES.push({label:blockTitle(b),blocks:[b]}));
 
   const bar='<div class="ms-navbar">'+PAGES.map((p,pi)=>'<button class="ms-navtab'+(pi===0?' active':'')+'" onclick="switchTab('+pi+')">'+esc(p.label)+'</button>').join('')+'</div>';
-  document.getElementById('msMain').innerHTML=bar+'<div id="msPage"></div>';
+  document.getElementById('msMain').innerHTML='<div class="ms-headwrap">'+header+bar+'</div><div id="msPage"></div>';
   switchTab(0);
   renderRight(shop);
 }
