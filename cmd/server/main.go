@@ -6110,7 +6110,58 @@ func main() {
 		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
 	}))
 
-	// Управление «LASTOP рекомендует»: список + toggle is_featured
+	// Управление рекомендуемыми товарами/услугами: список + toggle is_featured
+	mux.HandleFunc("/api/admin/emarket/featured-listings", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`SELECT l.id, l.title, l.kind, l.price, l.currency, s.name, l.is_featured, l.status
+				FROM emarket_listings l JOIN emarket_shops s ON s.id=l.shop_id
+				WHERE l.deleted_at IS NULL AND l.status<>'blocked' ORDER BY l.is_featured DESC, l.created_at DESC LIMIT 200`)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var id int64
+				var title, kind, currency, shopName, status string
+				var price sql.NullFloat64
+				var featured bool
+				if err := rows.Scan(&id, &title, &kind, &price, &currency, &shopName, &featured, &status); err != nil {
+					continue
+				}
+				var priceVal any
+				if price.Valid {
+					priceVal = price.Float64
+				}
+				items = append(items, map[string]any{"id": id, "title": title, "kind": kind, "price": priceVal, "currency": currency, "shop_name": shopName, "is_featured": featured, "status": status})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"listings": items})
+		case http.MethodPost:
+			var req struct {
+				ListingID  int64 `json:"listing_id"`
+				IsFeatured bool  `json:"is_featured"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.ListingID == 0 {
+				writeError(w, http.StatusBadRequest, "listing_id обязателен")
+				return
+			}
+			_, err := db.Exec(`UPDATE emarket_listings SET is_featured=$1, updated_at=now() WHERE id=$2`, req.IsFeatured, req.ListingID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "is_featured": req.IsFeatured})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	}))
+
 	mux.HandleFunc("/api/admin/emarket/featured", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -10644,6 +10695,48 @@ func main() {
 				"id": id, "shop_id": shopID, "shop_name": shopName, "kind": kind, "title": title,
 				"description": desc, "category_key": catKey, "price": priceVal, "currency": currency,
 				"photos": photos, "rating": rating, "reviews_count": reviews, "views_count": views, "created_at": created,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
+	})
+
+	// LASTOP рекомендует — избранные товары/услуги: ?kind=product|service
+	mux.HandleFunc("/api/emarket/featured-listings", func(w http.ResponseWriter, r *http.Request) {
+		conds := []string{"l.deleted_at IS NULL", "l.status='active'", "s.status='active'", "l.is_featured=TRUE"}
+		args := []any{}
+		if v := r.URL.Query().Get("kind"); v == "product" || v == "service" {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("l.kind=$%d", len(args)))
+		}
+		sqlStr := `SELECT l.id, l.shop_id, s.name, l.kind, l.title, l.price, l.currency, l.photos::text, l.rating, l.reviews_count
+			FROM emarket_listings l JOIN emarket_shops s ON s.id=l.shop_id
+			WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY l.rating DESC, l.created_at DESC LIMIT 12`
+		rows, err := db.Query(sqlStr, args...)
+		if err != nil {
+			log.Printf("[emarket/featured-listings] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		items := []map[string]any{}
+		for rows.Next() {
+			var id, shopID int64
+			var shopName, kind, title, currency, photosJSON string
+			var price sql.NullFloat64
+			var rating float64
+			var reviews int
+			if err := rows.Scan(&id, &shopID, &shopName, &kind, &title, &price, &currency, &photosJSON, &rating, &reviews); err != nil {
+				continue
+			}
+			var photos any
+			_ = json.Unmarshal([]byte(photosJSON), &photos)
+			var priceVal any
+			if price.Valid {
+				priceVal = price.Float64
+			}
+			items = append(items, map[string]any{
+				"id": id, "shop_id": shopID, "shop_name": shopName, "kind": kind, "title": title,
+				"price": priceVal, "currency": currency, "photos": photos, "rating": rating, "reviews_count": reviews,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
@@ -17172,6 +17265,8 @@ CREATE TABLE IF NOT EXISTS emarket_listings (
 CREATE INDEX IF NOT EXISTS emarket_listings_shop_idx ON emarket_listings(shop_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS emarket_listings_feed_idx ON emarket_listings(status, created_at DESC) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS emarket_listings_category_idx ON emarket_listings(category_key) WHERE deleted_at IS NULL;
+ALTER TABLE emarket_listings ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS emarket_listings_featured_idx ON emarket_listings(is_featured) WHERE is_featured = TRUE AND deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS emarket_reviews (
     id BIGSERIAL PRIMARY KEY,
