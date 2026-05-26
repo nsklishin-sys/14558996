@@ -72,6 +72,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ld-btn.saved{background:var(--gl);color:var(--g);border-color:var(--gb)}
 .ld-soon{position:relative}
 .ld-soon::after{content:'скоро';position:absolute;top:-7px;right:-6px;background:var(--gmt);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:99px;text-transform:uppercase}
+.ld-info-desc{margin-top:4px;padding-top:16px;border-top:1px solid var(--bdr)}
+.ld-info-desc-h{font-size:13px;font-weight:800;margin-bottom:8px}
 
 /* section blocks */
 .ld-sec{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;box-shadow:var(--sh)}
@@ -105,6 +107,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .rstat:last-child{border-bottom:none}
 .rstat .l{color:var(--gmt)}
 .rstat .v{font-weight:700}
+.ld-other{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);cursor:pointer;align-items:center}
+.ld-other:last-child{border-bottom:none}
+.ld-other:hover .ld-other-title{color:var(--g)}
+.ld-other-img{width:46px;height:46px;border-radius:var(--rm);overflow:hidden;background:var(--gp);flex-shrink:0;display:grid;place-items:center}
+.ld-other-img img{width:100%;height:100%;object-fit:cover}
+.ld-other-ph{color:var(--gb)}
+.ld-other-ph svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.4}
+.ld-other-info{flex:1;min-width:0}
+.ld-other-title{font-size:12.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;transition:color .15s}
+.ld-other-price{font-size:12px;font-weight:700;color:var(--g);margin-top:3px}
 
 .ld-skel{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px}
 .sk{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
@@ -212,8 +224,6 @@ function render(){
   }
   charsHTML+='</div>';
 
-  var descHTML='<div class="ld-sec"><div class="ld-sec-h">Описание</div><div class="ld-desc">'+(l.description?esc(l.description):'<span style="color:var(--gmt)">Описание не указано</span>')+'</div></div>';
-
   document.getElementById('ldMain').innerHTML=
     '<div class="crumb"><a href="/emarket.html">E-market</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><a href="/emarket.html?tab='+(isService?'services':'products')+'">'+(isService?'Услуги':'Товары')+'</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span>'+esc(l.title)+'</span></div>'
     +'<div class="ld-wrap">'
@@ -232,9 +242,9 @@ function render(){
           +'<button class="ld-btn ghost" onclick="contactSeller()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Связаться</button>'
           +'<button class="ld-btn ghost ld-soon" id="ldSaveBtn" onclick="toggleSave()"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
         +'</div>'
+        +'<div class="ld-info-desc"><div class="ld-info-desc-h">Описание</div><div class="ld-desc">'+(l.description?esc(l.description):'<span style="color:var(--gmt)">Описание не указано</span>')+'</div></div>'
       +'</div>'
     +'</div>'
-    +descHTML
     +charsHTML
     +'<div class="ld-sec"><div class="ld-sec-h">Отзывы</div><div class="ld-empty"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Отзывы появятся здесь. Раздел в разработке.</p></div></div>';
 }
@@ -257,7 +267,29 @@ function renderRight(){
       +(l.category_key?'<div class="rstat"><span class="l">Категория</span><span class="v">'+esc(l.category_key)+'</span></div>':'')
       +'<div class="rstat"><span class="l">Просмотров</span><span class="v">'+(l.views_count||0)+'</span></div>'
       +'<div class="rstat"><span class="l">Рейтинг</span><span class="v">'+(l.rating>0?Number(l.rating).toFixed(1):'—')+'</span></div>'
-    +'</div>';
+    +'</div>'
+    +'<div class="rcard" id="ldOtherCard" style="display:none"><div class="rcard-h" style="display:flex;justify-content:space-between;align-items:center">Другие товары продавца<a href="#" id="ldAllLink" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a></div><div id="ldOther"></div></div>';
+  if(s)loadOther(s.id);
+}
+
+async function loadOther(shopId){
+  try{
+    var r=await lastopFetch(API+'/emarket/shop-listings?shop_id='+shopId);
+    if(!r.ok)return;
+    var d=await r.json();
+    var items=(d.listings||[]).filter(function(x){return x.id!==LD.id;}).slice(0,4);
+    if(!items.length)return;
+    var card=document.getElementById('ldOtherCard');
+    var box=document.getElementById('ldOther');
+    var allLink=document.getElementById('ldAllLink');
+    if(allLink)allLink.onclick=function(e){e.preventDefault();openShop(shopId);};
+    box.innerHTML=items.map(function(x){
+      var img=(Array.isArray(x.photos)&&x.photos.length)?'<img src="'+esc(x.photos[0])+'" alt="">':'<div class="ld-other-ph"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>';
+      var price=(x.price==null||x.price===0)?'Договорная':(Number(x.price).toLocaleString('ru-RU')+' '+(x.currency==='USD'?'$':x.currency==='EUR'?'€':'₽'));
+      return '<div class="ld-other" onclick="location.href=\'/emarket-listing.html?id='+x.id+'\'"><div class="ld-other-img">'+img+'</div><div class="ld-other-info"><div class="ld-other-title">'+esc(x.title)+'</div><div class="ld-other-price">'+price+'</div></div></div>';
+    }).join('');
+    card.style.display='';
+  }catch(e){}
 }
 
 function addToCart(){showToast('Корзина появится в ближайшем обновлении');}
