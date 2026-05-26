@@ -10642,6 +10642,10 @@ func main() {
 			writeError(w, http.StatusNotFound, "Сайт недоступен")
 			return
 		}
+		var ownerPublicID string
+		if ownerType == "user" {
+			_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, ownerID).Scan(&ownerPublicID)
+		}
 		_, _ = db.Exec(`UPDATE emarket_shops SET site_views=site_views+1 WHERE id=$1`, shopID)
 		var config any = []any{}
 		_ = json.Unmarshal([]byte(configText), &config)
@@ -10663,9 +10667,10 @@ func main() {
 				"direction":     direction,
 				"contact_phone": phone,
 				"contact_email": email,
-				"contact_site":  site,
-				"rating":        rating,
-				"reviews_count": reviews,
+				"contact_site":    site,
+				"rating":          rating,
+				"reviews_count":   reviews,
+				"owner_public_id": ownerPublicID,
 			},
 			"config": config,
 		})
@@ -15776,6 +15781,15 @@ func main() {
 		_, _ = w.Write([]byte(sb.String()))
 	})
 
+	// /shop/{slug} — страница магазина-сайта (красивый URL внутри платформы).
+	// Внутренне отдаём emarket-site.html через общую цепочку (injectHTML наполнит шелл),
+	// JS прочитает slug из location.pathname.
+	shopPageHandler := staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web")))))
+	mux.HandleFunc("/shop/", func(w http.ResponseWriter, r *http.Request) {
+		r2 := r.Clone(r.Context())
+		r2.URL.Path = "/emarket-site.html"
+		shopPageHandler.ServeHTTP(w, r2)
+	})
 	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
 
 	addr := ":8080"
