@@ -122,6 +122,9 @@ select.inp{cursor:pointer}
 .r-btn-ghost{background:transparent;color:var(--gmt);border:1.5px solid var(--bdr)}.r-btn-ghost:hover{background:var(--gp)}
 .r-btn:disabled{opacity:.5;cursor:not-allowed}
 .status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700}
+.warn-box{display:flex;gap:9px;align-items:flex-start;background:#FFF6E5;border:1px solid #F5D78A;border-radius:var(--rm);padding:11px 13px;margin-bottom:12px;font-size:12px;line-height:1.5;color:#7A5A12}
+.warn-box svg{width:17px;height:17px;fill:none;stroke:#C99416;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-top:1px}
+.warn-box b{font-weight:800}
 .status-pub{background:var(--gl);color:var(--g)}
 .status-draft{background:#F1EFE8;color:#5F5E5A}
 .status-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
@@ -196,7 +199,7 @@ const BLOCK_TYPES={
 const LIMITS={blocks:20,services:12,portfolio:30,reviews:20,news:20,stats:4};
 
 let SHOP_ID=0, STATE={config:[],accent_color:'green',header_theme:'light',site_logo_url:'',tagline:'',lead_email:'',lead_phone:'',direction:'',slug:'',site_published:false,site_views:0,leads_count:0};
-let dirty=false;
+let dirty=false, unpublishedChanges=false;
 
 function getId(){return parseInt(new URLSearchParams(location.search).get('id'))||0;}
 
@@ -540,6 +543,7 @@ function renderRight(){
   box.innerHTML=
     '<div class="card"><div class="card-h">Публикация</div>'
       +'<div style="margin-bottom:12px"><span class="status-pill '+(pub?'status-pub':'status-draft')+'"><span class="status-dot"></span>'+(pub?'Опубликован':'Черновик')+'</span></div>'
+      +((pub&&unpublishedChanges)?'<div class="warn-box"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Изменения сохранены, но <b>не опубликованы</b>. Нажмите «Переопубликовать», чтобы посетители увидели их.</span></div>':'')
       +'<button class="r-btn r-btn-pri" id="btnSave" onclick="saveDraft()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Сохранить черновик</button>'
       +'<button class="r-btn r-btn-pri" id="btnPub" onclick="publish()" style="background:var(--gm)"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>'+(pub?'Переопубликовать':'Опубликовать')+'</button>'
       +(STATE.slug?'<a class="r-btn r-btn-sec" href="/shop/'+esc(STATE.slug)+'" target="_blank"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Предпросмотр</a>':'')
@@ -549,10 +553,16 @@ function renderRight(){
       +'<div class="rstat" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12px"><span class="muted">Просмотры сайта</span><span style="font-weight:700">'+STATE.site_views+'</span></div>'
       +'<div class="rstat" style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px"><span class="muted">Заявки</span><span style="font-weight:700">'+STATE.leads_count+'</span></div>'
     +'</div>'
-    +'<div class="card"><div class="muted" id="dirtyNote">'+(dirty?'Есть несохранённые изменения':'Всё сохранено')+'</div></div>';
+    +'<div class="card"><div class="muted" id="dirtyNote">'+(dirty?'Есть несохранённые изменения':(unpublishedChanges?'Сохранено, но не опубликовано':'Всё сохранено и опубликовано'))+'</div></div>';
 }
 
-function markDirty(){if(!dirty){dirty=true;const n=document.getElementById('dirtyNote');if(n)n.textContent='Есть несохранённые изменения';}}
+function markDirty(){
+  const wasUnpub=unpublishedChanges;
+  if(!dirty)dirty=true;
+  if(STATE.site_published)unpublishedChanges=true;
+  const n=document.getElementById('dirtyNote');if(n)n.textContent='Есть несохранённые изменения';
+  if(STATE.site_published&&!wasUnpub)renderRight();
+}
 
 async function saveDraft(silent){
   const btn=document.getElementById('btnSave');
@@ -562,7 +572,8 @@ async function saveDraft(silent){
     const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Ошибка');}
     dirty=false;
-    const n=document.getElementById('dirtyNote');if(n)n.textContent='Всё сохранено';
+    if(STATE.site_published)unpublishedChanges=true;
+    renderRight();
     if(!silent)showToast('Черновик сохранён');
     return true;
   }catch(e){showToast(e.message||'Ошибка сохранения',true);return false;}
@@ -577,6 +588,7 @@ async function publish(){
     const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
     if(!r.ok)throw 0;
     STATE.site_published=true;
+    dirty=false;unpublishedChanges=false;
     showToast('Магазин опубликован 🎉');
     renderRight();
   }catch(e){showToast('Ошибка публикации',true);}
@@ -590,6 +602,7 @@ async function unpublish(){
     const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unpublish'})});
     if(!r.ok)throw 0;
     STATE.site_published=false;
+    unpublishedChanges=false;
     showToast('Снято с публикации');
     renderRight();
   }catch(e){showToast('Ошибка',true);}
