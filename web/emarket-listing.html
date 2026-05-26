@@ -176,7 +176,6 @@ async function loadShop(shopId){
     if(!r.ok)return;
     var d=await r.json();
     LD.shop=d.shop;
-    renderSeller();
     renderRight();
   }catch(e){}
 }
@@ -200,17 +199,20 @@ function render(){
     ? '<div class="ld-thumbs">'+LD.gallery.map(function(p,i){return '<div class="ld-thumb'+(i===0?' active':'')+'" onclick="setMainImg('+i+',this)"><img src="'+esc(p)+'" alt=""></div>';}).join('')+'</div>'
     : '';
 
-  var charsHTML='';
+  var charsHTML='<div class="ld-sec"><div class="ld-sec-h">Характеристики</div>';
   if(chars.length){
-    charsHTML='<div class="ld-sec"><div class="ld-sec-h">Характеристики</div><div class="ld-chars">'+chars.map(function(c){
+    charsHTML+='<div class="ld-chars">'+chars.map(function(c){
       var k=c.name||c.key||c.k||'';
       var v=c.value||c.val||c.v||'';
       if(!k&&!v)return '';
       return '<div class="ld-char"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>';
-    }).join('')+'</div></div>';
+    }).join('')+'</div>';
+  }else{
+    charsHTML+='<div style="font-size:13px;color:var(--gmt)">Характеристики не указаны</div>';
   }
+  charsHTML+='</div>';
 
-  var descHTML=l.description?'<div class="ld-sec"><div class="ld-sec-h">Описание</div><div class="ld-desc">'+esc(l.description)+'</div></div>':'';
+  var descHTML='<div class="ld-sec"><div class="ld-sec-h">Описание</div><div class="ld-desc">'+(l.description?esc(l.description):'<span style="color:var(--gmt)">Описание не указано</span>')+'</div></div>';
 
   document.getElementById('ldMain').innerHTML=
     '<div class="crumb"><a href="/emarket.html">E-market</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><a href="/emarket.html?tab='+(isService?'services':'products')+'">'+(isService?'Услуги':'Товары')+'</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span>'+esc(l.title)+'</span></div>'
@@ -230,7 +232,6 @@ function render(){
           +'<button class="ld-btn ghost" onclick="contactSeller()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Связаться</button>'
           +'<button class="ld-btn ghost ld-soon" id="ldSaveBtn" onclick="toggleSave()"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
         +'</div>'
-        +'<div class="ld-sec" style="padding:14px"><div class="ld-seller" id="ldSeller"><div class="ld-seller-logo">…</div><div class="ld-seller-info"><div class="ld-seller-name">Загрузка…</div></div></div></div>'
       +'</div>'
     +'</div>'
     +descHTML
@@ -243,17 +244,6 @@ function setMainImg(i,el){
   if(img)img.src=LD.gallery[i];
   document.querySelectorAll('.ld-thumb').forEach(function(t){t.classList.remove('active');});
   if(el)el.classList.add('active');
-}
-
-function renderSeller(){
-  if(!LD.shop)return;
-  var s=LD.shop;
-  var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
-  var sub=s.rating>0?('★ '+Number(s.rating).toFixed(1)+' · '+(s.reviews_count||0)+' отзывов'):'Магазин на LASTOP';
-  var el=document.getElementById('ldSeller');
-  if(!el)return;
-  el.onclick=function(){openShop(s.id);};
-  el.innerHTML='<div class="ld-seller-logo">'+logo+'</div><div class="ld-seller-info"><div class="ld-seller-name">'+esc(s.name)+'</div><div class="ld-seller-sub">'+sub+'</div></div><div class="ld-seller-arrow"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>';
 }
 
 function renderRight(){
