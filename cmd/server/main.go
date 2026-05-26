@@ -10506,6 +10506,52 @@ func main() {
 			}
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "leads" {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var ownerType string
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			rows, err := db.Query(`SELECT l.id, l.name, l.contact, l.message, l.is_read, l.created_at,
+				COALESCE(u.public_id,''), COALESCE(u.name,'')
+				FROM emarket_leads l LEFT JOIN users u ON u.id=l.sender_id
+				WHERE l.shop_id=$1 ORDER BY l.created_at DESC LIMIT 200`, shopID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			leads := []map[string]any{}
+			for rows.Next() {
+				var id int64
+				var name, contact, message, senderPID, senderName string
+				var isRead bool
+				var createdAt time.Time
+				if err := rows.Scan(&id, &name, &contact, &message, &isRead, &createdAt, &senderPID, &senderName); err != nil {
+					continue
+				}
+				leads = append(leads, map[string]any{
+					"id": id, "name": name, "contact": contact, "message": message,
+					"is_read": isRead, "created_at": createdAt,
+					"sender_public_id": senderPID, "sender_name": senderName,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"leads": leads})
+			return
+		}
 		if len(parts) >= 2 && parts[1] == "site-publish" {
 			if r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -10611,6 +10657,69 @@ func main() {
 	})
 
 	mux.HandleFunc("/api/emarket/site/", func(w http.ResponseWriter, r *http.Request) {
+		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/site/"), "/")
+		// POST /api/emarket/site/{slug}/lead — приём заявки
+		if r.Method == http.MethodPost && strings.HasSuffix(rest, "/lead") {
+			leadSlug := strings.TrimSuffix(rest, "/lead")
+			leadSlug = strings.Trim(leadSlug, "/")
+			if leadSlug == "" {
+				writeError(w, http.StatusBadRequest, "Некорректный slug")
+				return
+			}
+			senderID, _ := authenticatedUserID(w, r, sessions)
+			var req struct {
+				Name    string `json:"name"`
+				Contact string `json:"contact"`
+				Message string `json:"message"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			req.Name = strings.TrimSpace(req.Name)
+			req.Contact = strings.TrimSpace(req.Contact)
+			req.Message = strings.TrimSpace(req.Message)
+			if req.Name == "" || req.Contact == "" {
+				writeError(w, http.StatusBadRequest, "Имя и контакт обязательны")
+				return
+			}
+			if len(req.Name) > 200 || len(req.Contact) > 200 || len(req.Message) > 2000 {
+				writeError(w, http.StatusBadRequest, "Слишком длинное значение")
+				return
+			}
+			var leadShopID, leadOwnerID int64
+			var leadOwnerType, leadShopName string
+			if err := db.QueryRow(`SELECT id, owner_type, owner_id, name FROM emarket_shops WHERE slug=$1 AND status<>'blocked' AND site_published=TRUE`, leadSlug).Scan(&leadShopID, &leadOwnerType, &leadOwnerID, &leadShopName); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			var senderArg any
+			if senderID > 0 {
+				senderArg = senderID
+			}
+			if _, err := db.Exec(`INSERT INTO emarket_leads (shop_id, sender_id, name, contact, message) VALUES ($1,$2,$3,$4,$5)`,
+				leadShopID, senderArg, req.Name, req.Contact, req.Message); err != nil {
+				log.Printf("[emarket/lead INSERT] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			_, _ = db.Exec(`UPDATE emarket_shops SET leads_count=leads_count+1 WHERE id=$1`, leadShopID)
+			// Уведомление владельцу (только если владелец — пользователь)
+			if leadOwnerType == "user" && leadOwnerID > 0 {
+				_ = createNotification(db, createNotificationParams{
+					RecipientID: leadOwnerID,
+					ActorID:     senderID,
+					Type:        "shop_lead",
+					SourceType:  "emarket_shop",
+					SourceID:    leadShopID,
+					Anchor:      "/shop/" + leadSlug,
+					Title:       "Новая заявка в магазине «" + leadShopName + "»",
+					Preview:     req.Name + ": " + req.Message,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+			return
+		}
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 			return
@@ -17537,6 +17646,18 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS leads_count INT NOT NULL DEFA
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAULT '';
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS emarket_shops_published_idx ON emarket_shops(site_published) WHERE site_published = TRUE;
+
+CREATE TABLE IF NOT EXISTS emarket_leads (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    sender_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    name TEXT NOT NULL DEFAULT '',
+    contact TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL DEFAULT '',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_leads_shop_idx ON emarket_leads(shop_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS emarket_listings (
     id BIGSERIAL PRIMARY KEY,
