@@ -16384,6 +16384,87 @@ CREATE INDEX IF NOT EXISTS post_comments_hidden_by_admin_idx ON post_comments(is
 
 -- B-2.6: скриншот к жалобе (URL загруженного файла или base64 data-URI)
 ALTER TABLE complaints ADD COLUMN IF NOT EXISTS screenshot_url TEXT NOT NULL DEFAULT '';
+
+-- ══════════ E-MARKET ══════════
+CREATE TABLE IF NOT EXISTS emarket_access (
+    id BIGSERIAL PRIMARY KEY,
+    owner_type TEXT NOT NULL CHECK (owner_type IN ('user','company','community')),
+    owner_id BIGINT NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT FALSE,
+    paid_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (owner_type, owner_id)
+);
+
+CREATE TABLE IF NOT EXISTS emarket_shops (
+    id BIGSERIAL PRIMARY KEY,
+    owner_type TEXT NOT NULL CHECK (owner_type IN ('user','company','community')),
+    owner_id BIGINT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    slug TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    logo_url TEXT NOT NULL DEFAULT '',
+    cover_url TEXT NOT NULL DEFAULT '',
+    contact_phone TEXT NOT NULL DEFAULT '',
+    contact_email TEXT NOT NULL DEFAULT '',
+    contact_site TEXT NOT NULL DEFAULT '',
+    rating NUMERIC(3,2) NOT NULL DEFAULT 0,
+    reviews_count INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','hidden','blocked')),
+    blocked_at TIMESTAMPTZ,
+    blocked_reason TEXT NOT NULL DEFAULT '',
+    blocked_by BIGINT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (owner_type, owner_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_shops_slug_idx ON emarket_shops(slug) WHERE slug <> '';
+
+CREATE TABLE IF NOT EXISTS emarket_listings (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'product' CHECK (kind IN ('product','service')),
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    characteristics JSONB NOT NULL DEFAULT '[]'::jsonb,
+    category_key TEXT NOT NULL DEFAULT '',
+    price NUMERIC(14,2),
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    payment_method TEXT NOT NULL DEFAULT '',
+    photos JSONB NOT NULL DEFAULT '[]'::jsonb,
+    rating NUMERIC(3,2) NOT NULL DEFAULT 0,
+    reviews_count INTEGER NOT NULL DEFAULT 0,
+    views_count INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','hidden','blocked')),
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_listings_shop_idx ON emarket_listings(shop_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS emarket_listings_feed_idx ON emarket_listings(status, created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS emarket_listings_category_idx ON emarket_listings(category_key) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS emarket_reviews (
+    id BIGSERIAL PRIMARY KEY,
+    target_type TEXT NOT NULL CHECK (target_type IN ('shop','listing')),
+    target_id BIGINT NOT NULL,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    text TEXT NOT NULL DEFAULT '' CHECK (length(text) <= 2000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (target_type, target_id, author_id)
+);
+CREATE INDEX IF NOT EXISTS emarket_reviews_target_idx ON emarket_reviews(target_type, target_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS emarket_saved (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    listing_id BIGINT NOT NULL REFERENCES emarket_listings(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, listing_id)
+);
+CREATE INDEX IF NOT EXISTS emarket_saved_user_idx ON emarket_saved(user_id, created_at DESC);
 `
 
 	if _, err := db.Exec(schema); err != nil {
