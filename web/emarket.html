@@ -71,6 +71,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* ── Тулбар: вкладки + поиск ── */
 .em-tabs{display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.em-sortrow{display:flex;justify-content:flex-end;flex-shrink:0}
 .em-switch{display:inline-flex;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rm);padding:3px;box-shadow:var(--sh)}
 .em-switch button{border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--gmt);padding:8px 16px;border-radius:9px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px}
 .em-switch button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -265,7 +266,6 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
   main.innerHTML=
     '<div class="dev-strip"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1L12 16.6 5.7 21l2.3-7.1-6-4.5h7.6z"/></svg>Режим разработки — раздел виден только администраторам<span class="ds-tag">E-market</span></div>'+
     '<div class="em-carousel" id="emCarousel"></div>'+
-    '<div class="em-featured" id="emFeatured" style="display:none"></div>'+
     '<div class="em-tabs">'+
       '<div class="em-switch">'+
         '<button id="swShops" class="active" onclick="setMode(\'shops\')"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Магазины</button>'+
@@ -274,9 +274,10 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
       '</div>'+
       '<div class="em-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="emSearch" type="search" placeholder="Поиск по E-market…" autocomplete="off"></div>'+
       '<button class="em-filterbtn" id="emFilterBtn" style="display:none" onclick="toggleFilters()"><svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Фильтры<span class="cnt" id="emFilterCnt" style="display:none">0</span></button>'+
-      '<div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div>'+
     '</div>'+
     '<div class="em-filters" id="emFilters"></div>'+
+    '<div class="em-featured" id="emFeatured" style="display:none"></div>'+
+    '<div class="em-sortrow"><div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div></div>'+
     '<div class="em-feedwrap"><div class="em-grid" id="emGrid"></div></div>';
 
   document.addEventListener('click',function(e){
