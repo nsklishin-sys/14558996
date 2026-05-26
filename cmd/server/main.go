@@ -6110,6 +6110,112 @@ func main() {
 		writeJSON(w, http.StatusOK, metricsReg.Snapshot())
 	}))
 
+	// Публичная выдача рекламы E-market: ?placement=banner|sidebar
+	mux.HandleFunc("/api/emarket/ads", func(w http.ResponseWriter, r *http.Request) {
+		placement := r.URL.Query().Get("placement")
+		if placement != "banner" && placement != "sidebar" {
+			placement = "banner"
+		}
+		rows, err := db.Query(`SELECT id, placement, mode, title, subtitle, image_url, bg_color, link_url
+			FROM emarket_ads WHERE is_active=TRUE AND placement=$1 ORDER BY sort_order, created_at DESC LIMIT 20`, placement)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		ads := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var pl, mode, title, subtitle, img, bg, link string
+			if err := rows.Scan(&id, &pl, &mode, &title, &subtitle, &img, &bg, &link); err != nil {
+				continue
+			}
+			ads = append(ads, map[string]any{"id": id, "placement": pl, "mode": mode, "title": title, "subtitle": subtitle, "image_url": img, "bg_color": bg, "link_url": link})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ads": ads})
+	})
+
+	// Admin CRUD рекламы E-market
+	mux.HandleFunc("/api/admin/emarket/ads", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`SELECT id, placement, mode, title, subtitle, image_url, bg_color, link_url, is_active, sort_order
+				FROM emarket_ads ORDER BY placement, sort_order, created_at DESC LIMIT 200`)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			ads := []map[string]any{}
+			for rows.Next() {
+				var id int64
+				var pl, mode, title, subtitle, img, bg, link string
+				var active bool
+				var sortOrder int
+				if err := rows.Scan(&id, &pl, &mode, &title, &subtitle, &img, &bg, &link, &active, &sortOrder); err != nil {
+					continue
+				}
+				ads = append(ads, map[string]any{"id": id, "placement": pl, "mode": mode, "title": title, "subtitle": subtitle, "image_url": img, "bg_color": bg, "link_url": link, "is_active": active, "sort_order": sortOrder})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ads": ads})
+		case http.MethodPost:
+			var req struct {
+				ID        int64  `json:"id"`
+				Placement string `json:"placement"`
+				Mode      string `json:"mode"`
+				Title     string `json:"title"`
+				Subtitle  string `json:"subtitle"`
+				ImageURL  string `json:"image_url"`
+				BgColor   string `json:"bg_color"`
+				LinkURL   string `json:"link_url"`
+				IsActive  bool   `json:"is_active"`
+				SortOrder int    `json:"sort_order"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.Placement != "banner" && req.Placement != "sidebar" {
+				req.Placement = "banner"
+			}
+			if req.Mode != "composed" && req.Mode != "image" {
+				req.Mode = "composed"
+			}
+			if req.ID > 0 {
+				_, err := db.Exec(`UPDATE emarket_ads SET placement=$1, mode=$2, title=$3, subtitle=$4, image_url=$5, bg_color=$6, link_url=$7, is_active=$8, sort_order=$9, updated_at=now() WHERE id=$10`,
+					req.Placement, req.Mode, req.Title, req.Subtitle, req.ImageURL, req.BgColor, req.LinkURL, req.IsActive, req.SortOrder, req.ID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "id": req.ID})
+				return
+			}
+			var newID int64
+			err := db.QueryRow(`INSERT INTO emarket_ads (placement, mode, title, subtitle, image_url, bg_color, link_url, is_active, sort_order)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+				req.Placement, req.Mode, req.Title, req.Subtitle, req.ImageURL, req.BgColor, req.LinkURL, req.IsActive, req.SortOrder).Scan(&newID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "id": newID})
+		case http.MethodDelete:
+			id, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+			if id == 0 {
+				writeError(w, http.StatusBadRequest, "id обязателен")
+				return
+			}
+			if _, err := db.Exec(`DELETE FROM emarket_ads WHERE id=$1`, id); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	}))
+
 	// Управление рекомендуемыми товарами/услугами: список + toggle is_featured
 	mux.HandleFunc("/api/admin/emarket/featured-listings", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -17288,6 +17394,21 @@ CREATE TABLE IF NOT EXISTS emarket_saved (
     UNIQUE (user_id, listing_id)
 );
 CREATE INDEX IF NOT EXISTS emarket_saved_user_idx ON emarket_saved(user_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS emarket_ads (
+  id BIGSERIAL PRIMARY KEY,
+  placement TEXT NOT NULL DEFAULT 'banner',
+  mode TEXT NOT NULL DEFAULT 'composed',
+  title TEXT NOT NULL DEFAULT '',
+  subtitle TEXT NOT NULL DEFAULT '',
+  image_url TEXT NOT NULL DEFAULT '',
+  bg_color TEXT NOT NULL DEFAULT '',
+  link_url TEXT NOT NULL DEFAULT '',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_ads_placement_idx ON emarket_ads(placement, is_active, sort_order);
 `
 
 	if _, err := db.Exec(schema); err != nil {
