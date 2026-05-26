@@ -386,7 +386,7 @@ async function loadFeaturedShops(box){
       var cover=s.cover_url?'<img src="'+esc(s.cover_url)+'" alt="" onerror="this.style.display=\'none\'">':'';
       var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
       var rating=s.rating>0?'<svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1):'нет оценок';
-      return '<div class="em-feat-card" onclick="openShop('+s.id+')">'+
+      return '<div class="em-feat-card" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')">'+
         '<span class="em-feat-badge"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>Рекомендуем</span>'+
         '<div class="em-feat-cover">'+cover+'</div>'+
         '<div class="em-feat-body"><div class="em-feat-logo">'+logo+'</div>'+
@@ -585,13 +585,13 @@ async function loadShops(grid){
       var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
       var region=s.region&&regMap[s.region]?'<div class="em-shop-region"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(regMap[s.region])+'</div>':'';
       var rating=s.rating>0?'<span class="star"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1)+' ('+(s.reviews_count||0)+')</span>':'<span>Нет отзывов</span>';
-      return '<div class="em-shop-card" onclick="openShop('+s.id+')"><div class="em-shop-cover">'+cover+'</div><div class="em-shop-body"><div class="em-shop-logo">'+logo+'</div><div class="em-shop-name">'+esc(s.name)+'</div>'+region+'<div class="em-shop-desc">'+esc(s.description||'Описание не указано')+'</div><div class="em-shop-meta">'+rating+'</div></div></div>';
+      return '<div class="em-shop-card" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')"><div class="em-shop-cover">'+cover+'</div><div class="em-shop-body"><div class="em-shop-logo">'+logo+'</div><div class="em-shop-name">'+esc(s.name)+'</div>'+region+'<div class="em-shop-desc">'+esc(s.description||'Описание не указано')+'</div><div class="em-shop-meta">'+rating+'</div></div></div>';
     }).join('');
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 
 function openListing(id){location.href='/emarket-listing.html?id='+id;}
-function openShop(id){showToast('Страница магазина — в разработке');}
+function openShop(slug){if(!slug){showToast('Магазин недоступен');return;}location.href='/emarket-site.html?slug='+slug;}
 
 /* ── Правый сайдбар ── */
 async function renderRight(){
@@ -679,7 +679,7 @@ async function loadTopShops(){
     box.innerHTML=shops.map(function(s,i){
       var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
       var rating=s.rating>0?'<svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1):'нет оценок';
-      return '<div class="rs-top-item" onclick="openShop('+s.id+')"><div class="rs-top-rank">'+(i+1)+'</div><div class="rs-top-logo">'+logo+'</div><div class="rs-top-info"><div class="rs-top-name">'+esc(s.name)+'</div><div class="rs-top-rating">'+rating+'</div></div></div>';
+      return '<div class="rs-top-item" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')"><div class="rs-top-rank">'+(i+1)+'</div><div class="rs-top-logo">'+logo+'</div><div class="rs-top-info"><div class="rs-top-name">'+esc(s.name)+'</div><div class="rs-top-rating">'+rating+'</div></div></div>';
     }).join('');
   }catch(e){box.innerHTML='<div class="rs-empty">Не удалось загрузить.</div>';}
 }
