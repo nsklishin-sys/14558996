@@ -128,9 +128,11 @@ img{max-width:100%}
 .ms-nitem h3{font-size:15px;font-weight:700;margin-bottom:6px;line-height:1.35}
 .ms-nitem p{font-size:13px;color:var(--tm);line-height:1.55}
 
-.ms-anchors{display:flex;gap:6px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 14px;box-shadow:var(--sh);position:sticky;top:0;z-index:10}
-.ms-anchors a{padding:7px 14px;border-radius:var(--rm);font-size:13px;font-weight:600;color:var(--tm);transition:all .15s;text-decoration:none}
-.ms-anchors a:hover{background:var(--acc-l);color:var(--acc)}
+.ms-navbar{display:flex;gap:4px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:8px;box-shadow:var(--sh);position:sticky;top:0;z-index:10}
+.ms-navtab{padding:9px 18px;border-radius:var(--rm);font-size:14px;font-weight:700;color:var(--tm);background:transparent;border:none;font-family:inherit;cursor:pointer;transition:all .15s}
+.ms-navtab:hover{background:var(--acc-l);color:var(--acc)}
+.ms-navtab.active{background:var(--acc);color:#fff}
+#msPage{display:flex;flex-direction:column;gap:14px}
 
 .rcard{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
 .rcard-h{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:11px}
@@ -228,8 +230,17 @@ function renderState(title,text){
   document.getElementById('msRight').innerHTML='';
 }
 
+function blockTitle(b){
+  const c=b.content||{};
+  const NAMES={hero:'Главная',about:'О компании',services:'Услуги',portfolio:'Портфолио',products:'Товары',reviews:'Отзывы',contacts:'Контакты',lead_form:'Заявка',news:'Новости'};
+  return c.title||NAMES[b.type]||'Раздел';
+}
+
+let PAGES=[], CUR_SHOP=null;
+
 function render(d){
   const shop=d.shop||{};
+  CUR_SHOP=shop;
   const blocks=(d.config||[]).filter(b=>b&&b.enabled!==false);
   ACC=ACCENTS[shop.accent_color]||ACCENTS.green;
   document.documentElement.style.setProperty('--acc',ACC);
@@ -237,19 +248,47 @@ function render(d){
   document.documentElement.style.setProperty('--acc-l',hexA(ACC,.12));
   document.title=shop.name+' — LASTOP GROUP';
 
-  const navItems=blocks.filter(b=>b.anchor&&b.section_title).map(b=>({a:b.anchor,t:b.section_title}));
-  let html='';
-  if(navItems.length){
-    html+='<div class="ms-anchors">'+navItems.map(n=>'<a href="#'+esc(n.a)+'">'+esc(n.t)+'</a>').join('')+'</div>';
-  }
-  blocks.forEach((b,i)=>{html+=renderBlock(b,shop,i);});
   if(!blocks.length){
-    html='<div class="state"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><h2>'+esc(shop.name)+'</h2><p>Магазин ещё наполняется</p></div>';
+    document.getElementById('msMain').innerHTML='<div class="state"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><h2>'+esc(shop.name)+'</h2><p>Магазин ещё наполняется</p></div>';
+    renderRight(shop);
+    return;
   }
-  document.getElementById('msMain').innerHTML=html;
-  renderRight(shop);
 
-  blocks.forEach((b,i)=>{if(b.type==='products'){loadProducts(shop.id,i,(b.content&&b.content.limit)||8);}});
+  const navBlocks=blocks.filter(b=>b.in_nav);
+
+  // Нет вынесенных блоков → одностраничный скролл (как раньше)
+  if(!navBlocks.length){
+    let html='';
+    blocks.forEach((b,i)=>{html+=renderBlock(b,shop,i);});
+    document.getElementById('msMain').innerHTML=html;
+    renderRight(shop);
+    blocks.forEach((b,i)=>{if(b.type==='products')loadProducts(shop.id,i,(b.content&&b.content.limit)||8);});
+    return;
+  }
+
+  // Есть вынесенные блоки → многостраничный режим с баром навигации.
+  // «Главная» = hero + все невынесенные блоки. Каждый вынесенный = отдельная страница.
+  const homeBlocks=blocks.filter(b=>!b.in_nav);
+  PAGES=[];
+  PAGES.push({label:'Главная',blocks:homeBlocks});
+  navBlocks.forEach(b=>PAGES.push({label:blockTitle(b),blocks:[b]}));
+
+  const bar='<div class="ms-navbar">'+PAGES.map((p,pi)=>'<button class="ms-navtab'+(pi===0?' active':'')+'" onclick="switchTab('+pi+')">'+esc(p.label)+'</button>').join('')+'</div>';
+  document.getElementById('msMain').innerHTML=bar+'<div id="msPage"></div>';
+  switchTab(0);
+  renderRight(shop);
+}
+
+function switchTab(pi){
+  document.querySelectorAll('.ms-navtab').forEach((t,i)=>t.classList.toggle('active',i===pi));
+  const page=PAGES[pi];if(!page)return;
+  let html='';
+  // индекс блока нужен уникальный для products-контейнеров — используем pi*100+j
+  page.blocks.forEach((b,j)=>{html+=renderBlock(b,CUR_SHOP,pi*100+j);});
+  if(!html)html='<div class="state" style="min-height:30vh"><p>Раздел пуст</p></div>';
+  document.getElementById('msPage').innerHTML=html;
+  page.blocks.forEach((b,j)=>{if(b.type==='products')loadProducts(CUR_SHOP.id,pi*100+j,(b.content&&b.content.limit)||8);});
+  document.getElementById('msMain').scrollTop=0;
 }
 
 function sec(id,title,inner,soft){
