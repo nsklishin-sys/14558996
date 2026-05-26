@@ -10063,6 +10063,245 @@ func main() {
 
 	// ═════ КАТАЛОГ — Эндпоинты (Спринт 9) ═════
 
+	// ══════════ E-MARKET endpoints ══════════
+	mux.HandleFunc("/api/emarket/access", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			ownerType := r.URL.Query().Get("owner_type")
+			if ownerType == "" {
+				ownerType = "user"
+			}
+			ownerID, _ := strconv.ParseInt(r.URL.Query().Get("owner_id"), 10, 64)
+			if ownerType == "user" {
+				ownerID = userID
+			}
+			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав на этого владельца"})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"has_access": emarketHasAccess(db, ownerType, ownerID)})
+		case http.MethodPost:
+			var req struct {
+				OwnerType string `json:"owner_type"`
+				OwnerID   int64  `json:"owner_id"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.OwnerType == "" {
+				req.OwnerType = "user"
+			}
+			if req.OwnerType == "user" {
+				req.OwnerID = userID
+			}
+			if err := emarketResolveOwner(db, r, userID, req.OwnerType, req.OwnerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав на этого владельца"})
+				return
+			}
+			// TODO: СЛОЙ 6 — заменить на платёжный колбэк (сейчас заглушка: включаем сразу).
+			_, err := db.Exec(`INSERT INTO emarket_access (owner_type, owner_id, active, paid_at)
+				VALUES ($1,$2,TRUE,now())
+				ON CONFLICT (owner_type, owner_id) DO UPDATE SET active=TRUE, paid_at=now()`, req.OwnerType, req.OwnerID)
+			if err != nil {
+				log.Printf("[emarket/access] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"has_access": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/emarket/shops/my", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		rows, err := db.Query(`SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url,
+			contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at
+			FROM emarket_shops WHERE owner_type='user' AND owner_id=$1 AND status<>'blocked' ORDER BY created_at DESC`, userID)
+		if err != nil {
+			log.Printf("[emarket/shops/my] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		shops := []map[string]any{}
+		for rows.Next() {
+			var id, ownerID int64
+			var ownerType, name, slug, desc, logo, cover, phone, email, site, status string
+			var rating float64
+			var reviews int
+			var created time.Time
+			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &phone, &email, &site, &rating, &reviews, &status, &created); err != nil {
+				continue
+			}
+			shops = append(shops, map[string]any{
+				"id": id, "owner_type": ownerType, "owner_id": ownerID, "name": name, "slug": slug,
+				"description": desc, "logo_url": logo, "cover_url": cover,
+				"contact_phone": phone, "contact_email": email, "contact_site": site,
+				"rating": rating, "reviews_count": reviews, "status": status, "created_at": created,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+	})
+
+	mux.HandleFunc("/api/emarket/shops", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var req struct {
+				OwnerType    string `json:"owner_type"`
+				OwnerID      int64  `json:"owner_id"`
+				Name         string `json:"name"`
+				Description  string `json:"description"`
+				LogoURL      string `json:"logo_url"`
+				CoverURL     string `json:"cover_url"`
+				ContactPhone string `json:"contact_phone"`
+				ContactEmail string `json:"contact_email"`
+				ContactSite  string `json:"contact_site"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.OwnerType == "" {
+				req.OwnerType = "user"
+			}
+			if req.OwnerType == "user" {
+				req.OwnerID = userID
+			}
+			if err := emarketResolveOwner(db, r, userID, req.OwnerType, req.OwnerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав на этого владельца"})
+				return
+			}
+			if !emarketHasAccess(db, req.OwnerType, req.OwnerID) {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет доступа к E-market"})
+				return
+			}
+			req.Name = strings.TrimSpace(req.Name)
+			if utf8.RuneCountInString(req.Name) < 2 || utf8.RuneCountInString(req.Name) > 120 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 2..120 символов"})
+				return
+			}
+			slug, err := ensureUniqueShopSlug(db, slugifyCompanyName(req.Name))
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка slug")
+				return
+			}
+			var newID int64
+			err = db.QueryRow(`INSERT INTO emarket_shops (owner_type, owner_id, name, slug, description, logo_url, cover_url, contact_phone, contact_email, contact_site)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+				req.OwnerType, req.OwnerID, req.Name, slug, strings.TrimSpace(req.Description),
+				req.LogoURL, req.CoverURL, strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite)).Scan(&newID)
+			if err != nil {
+				if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+					writeJSON(w, http.StatusConflict, map[string]any{"error": "магазин для этого владельца уже существует"})
+					return
+				}
+				log.Printf("[emarket/shops POST] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"id": newID, "slug": slug})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/emarket/shops/", func(w http.ResponseWriter, r *http.Request) {
+		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/shops/"), "/")
+		parts := strings.Split(rest, "/")
+		if rest == "" {
+			writeError(w, http.StatusNotFound, "Не найдено")
+			return
+		}
+		shopID, _ := strconv.ParseInt(parts[0], 10, 64)
+		if shopID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			var id, ownerID int64
+			var ownerType, name, slug, desc, logo, cover, phone, email, site, status string
+			var rating float64
+			var reviews int
+			var created time.Time
+			err := db.QueryRow(`SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url,
+				contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at
+				FROM emarket_shops WHERE id=$1`, shopID).Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &phone, &email, &site, &rating, &reviews, &status, &created)
+			if err == sql.ErrNoRows || status == "blocked" {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"shop": map[string]any{
+				"id": id, "owner_type": ownerType, "owner_id": ownerID, "name": name, "slug": slug,
+				"description": desc, "logo_url": logo, "cover_url": cover,
+				"contact_phone": phone, "contact_email": email, "contact_site": site,
+				"rating": rating, "reviews_count": reviews, "status": status, "created_at": created,
+			}})
+		case http.MethodPut:
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var ownerType string
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			var req struct {
+				Name         string `json:"name"`
+				Description  string `json:"description"`
+				LogoURL      string `json:"logo_url"`
+				CoverURL     string `json:"cover_url"`
+				ContactPhone string `json:"contact_phone"`
+				ContactEmail string `json:"contact_email"`
+				ContactSite  string `json:"contact_site"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			req.Name = strings.TrimSpace(req.Name)
+			if utf8.RuneCountInString(req.Name) < 2 || utf8.RuneCountInString(req.Name) > 120 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 2..120 символов"})
+				return
+			}
+			_, err := db.Exec(`UPDATE emarket_shops SET name=$1, description=$2, logo_url=$3, cover_url=$4,
+				contact_phone=$5, contact_email=$6, contact_site=$7, updated_at=now() WHERE id=$8`,
+				req.Name, strings.TrimSpace(req.Description), req.LogoURL, req.CoverURL,
+				strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite), shopID)
+			if err != nil {
+				log.Printf("[emarket/shops PUT] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.HandleFunc("/api/catalog/categories", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -30493,7 +30732,66 @@ func ensureUniqueCompanySlug(db *sql.DB, base string) (string, error) {
 	return "", fmt.Errorf("could not find unique slug for %q after 50 attempts", base)
 }
 
+// ══════════ E-MARKET helpers ══════════
+
+// emarketHasAccess — есть ли активный доступ у сущности-владельца.
+func emarketHasAccess(db *sql.DB, ownerType string, ownerID int64) bool {
+	var active bool
+	var expires sql.NullTime
+	err := db.QueryRow(`SELECT active, expires_at FROM emarket_access WHERE owner_type=$1 AND owner_id=$2`, ownerType, ownerID).Scan(&active, &expires)
+	if err != nil {
+		return false
+	}
+	if !active {
+		return false
+	}
+	if expires.Valid && expires.Time.Before(time.Now()) {
+		return false
+	}
+	return true
+}
+
+// emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
+// user — только сам за себя; company/community — через resolveActive*.
+func emarketResolveOwner(db *sql.DB, r *http.Request, userID int64, ownerType string, ownerID int64) error {
+	switch ownerType {
+	case "user":
+		if ownerID != userID {
+			return fmt.Errorf("%w: чужой профиль", errValidation)
+		}
+		return nil
+	case "company":
+		_, err := resolveActiveCompanyID(db, r, userID, ownerID)
+		return err
+	case "community":
+		_, err := resolveActiveCommunityID(db, r, userID, ownerID)
+		return err
+	default:
+		return fmt.Errorf("%w: неизвестный owner_type", errValidation)
+	}
+}
+
+// ensureUniqueShopSlug — свободный slug для магазина.
+func ensureUniqueShopSlug(db *sql.DB, base string) (string, error) {
+	candidate := base
+	for i := 0; i < 50; i++ {
+		var existing int64
+		err := db.QueryRow(`SELECT id FROM emarket_shops WHERE slug=$1`, candidate).Scan(&existing)
+		if err == sql.ErrNoRows {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		b := make([]byte, 2)
+		_, _ = rand.Read(b)
+		candidate = base + "-" + hex.EncodeToString(b)
+	}
+	return "", fmt.Errorf("no unique shop slug for %q", base)
+}
+
 // getCompanyByPublicID — id компании по public_id.
+
 func getCompanyByPublicID(db *sql.DB, publicID string) (int64, error) {
 	var id int64
 	err := db.QueryRow(
