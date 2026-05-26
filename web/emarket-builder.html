@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/utils.js"></script>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Конструктор магазина</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0;padding-bottom:16px;scrollbar-width:none;-ms-overflow-style:none}
+.main::-webkit-scrollbar{display:none}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+@media(min-width:1921px) and (min-height:1081px){html.lt-shell .topbar{grid-template-columns:1fr 340px}}
+.right::-webkit-scrollbar{width:4px}.right::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+.card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;box-shadow:var(--sh)}
+.card-h{font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.muted{font-size:12px;color:var(--gmt)}
+.bld-title{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.bld-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+/* form */
+.fld{margin-bottom:13px}
+.fld:last-child{margin-bottom:0}
+.lbl{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:5px}
+.inp{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:10px 13px;font-family:inherit;font-size:14px;background:var(--gp);color:var(--t);outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--gm)}
+textarea.inp{resize:vertical;min-height:70px;line-height:1.5}
+select.inp{cursor:pointer}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:600px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* accent palette */
+.pal{display:flex;gap:9px;flex-wrap:wrap}
+.pal-dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .12s;position:relative}
+.pal-dot:hover{transform:scale(1.1)}
+.pal-dot.active{border-color:var(--t)}
+.pal-dot.active::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800}
+
+/* theme toggle */
+.seg{display:inline-flex;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:3px;gap:2px}
+.seg button{padding:7px 16px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--gmt);cursor:pointer;border-radius:var(--r);transition:all .12s}
+.seg button.active{background:var(--w);color:var(--g);box-shadow:0 1px 5px rgba(30,138,76,.1)}
+
+/* logo upload */
+.logo-up{display:flex;align-items:center;gap:12px}
+.logo-prev{width:56px;height:56px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);display:grid;place-items:center;overflow:hidden;flex-shrink:0}
+.logo-prev img{width:100%;height:100%;object-fit:cover}
+.logo-prev .ph{color:var(--gb)}.logo-prev .ph svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.4}
+
+/* blocks list */
+.blk{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);margin-bottom:10px;box-shadow:var(--sh);overflow:hidden;transition:box-shadow .15s}
+.blk.dragging{opacity:.5}
+.blk.drag-over{border-color:var(--gm);box-shadow:0 0 0 2px var(--gl)}
+.blk-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:default}
+.blk-grip{cursor:grab;color:var(--gb);flex-shrink:0;display:flex;touch-action:none}
+.blk-grip:active{cursor:grabbing}
+.blk-grip svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.blk-ico{width:34px;height:34px;border-radius:9px;background:var(--gl);color:var(--g);display:grid;place-items:center;flex-shrink:0}
+.blk-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.blk-info{flex:1;min-width:0}
+.blk-type{font-size:14px;font-weight:700}
+.blk-sub{font-size:11px;color:var(--gmt);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blk-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.blk-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--bdr);background:var(--gp);cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:all .12s}
+.blk-btn:hover{background:var(--gl);color:var(--g);border-color:var(--gb)}
+.blk-btn.danger:hover{background:#FCEBEB;color:var(--red);border-color:#F0C0C0}
+.blk-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sw{width:38px;height:22px;border-radius:99px;background:var(--bdr);position:relative;cursor:pointer;transition:background .15s;flex-shrink:0}
+.sw.on{background:var(--g)}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw.on::after{transform:translateX(16px)}
+.blk-body{padding:0 14px 14px 14px;border-top:1px solid var(--bdr);display:none}
+.blk.expanded .blk-body{display:block;padding-top:14px}
+.blk-body.empty-note{font-size:12px;color:var(--gmt)}
+
+/* items (repeaters) */
+.item-row{background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:12px;margin-bottom:9px;position:relative}
+.item-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:6px;border:none;background:#fff;color:var(--gmt);cursor:pointer;display:grid;place-items:center;border:1px solid var(--bdr)}
+.item-del:hover{color:var(--red);border-color:#F0C0C0}
+.item-del svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.add-item{width:100%;padding:9px;border-radius:var(--rm);border:1.5px dashed var(--gb);background:transparent;color:var(--gmt);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
+.add-item:hover{background:var(--gp);color:var(--g);border-color:var(--g)}
+
+/* icon picker */
+.icon-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:4px}
+@media(max-width:600px){.icon-grid{grid-template-columns:repeat(6,1fr)}}
+.icon-opt{aspect-ratio:1;border-radius:9px;border:1.5px solid var(--bdr);background:var(--w);cursor:pointer;display:grid;place-items:center;color:var(--tm);transition:all .12s}
+.icon-opt:hover{border-color:var(--gb);background:var(--gp)}
+.icon-opt.active{border-color:var(--g);background:var(--gl);color:var(--g)}
+.icon-opt svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* add-block menu */
+.addblk{width:100%;padding:13px;border-radius:var(--rl);border:1.5px dashed var(--gb);background:var(--w);color:var(--g);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.addblk:hover{background:var(--gl);border-color:var(--g)}
+.addblk svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+
+/* right buttons */
+.r-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;text-align:center;padding:11px;border-radius:var(--rm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;margin-bottom:9px;transition:all .15s;text-decoration:none}
+.r-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.r-btn-pri{background:var(--g);color:#fff}.r-btn-pri:hover{background:var(--gm)}
+.r-btn-sec{background:var(--gp);color:var(--tm);border:1.5px solid var(--bdr)}.r-btn-sec:hover{background:var(--gl);color:var(--g)}
+.r-btn-ghost{background:transparent;color:var(--gmt);border:1.5px solid var(--bdr)}.r-btn-ghost:hover{background:var(--gp)}
+.r-btn:disabled{opacity:.5;cursor:not-allowed}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700}
+.status-pub{background:var(--gl);color:var(--g)}
+.status-draft{background:#F1EFE8;color:#5F5E5A}
+.status-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+/* modal (add block) */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.15);padding:22px;width:100%;max-width:540px;max-height:86vh;overflow-y:auto;transform:translateY(14px);transition:transform .22s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-h{font-size:16px;font-weight:800;margin-bottom:16px}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.type-grid{grid-template-columns:1fr}}
+.type-opt{display:flex;align-items:center;gap:11px;padding:13px;border-radius:var(--rl);border:1.5px solid var(--bdr);background:var(--gp);cursor:pointer;transition:all .15s;text-align:left}
+.type-opt:hover{border-color:var(--gm);background:var(--gl)}
+.type-opt-ico{width:38px;height:38px;border-radius:10px;background:var(--w);color:var(--g);display:grid;place-items:center;flex-shrink:0;border:1px solid var(--bdr)}
+.type-opt-ico svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.type-opt-t{font-size:14px;font-weight:700}
+.type-opt-d{font-size:11px;color:var(--gmt);margin-top:1px}
+
+.state{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:var(--gmt)}
+.state svg{width:46px;height:46px;fill:none;stroke:var(--gb);stroke-width:1.3;margin-bottom:16px}
+.state h2{font-size:19px;font-weight:800;color:var(--t);margin-bottom:8px}
+.sk{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--t);color:#fff;padding:11px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--red)}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+<main class="main" id="bMain"></main>
+<aside class="right" id="bRight"></aside>
+</div>
+
+<!-- ADD BLOCK MODAL -->
+<div class="modal-bg" id="addBlkModal">
+  <div class="modal">
+    <div class="modal-h">Добавить блок</div>
+    <div class="type-grid" id="typeGrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+const ACCENTS={green:'#1E8A4C',blue:'#2479C8',navy:'#1E3A5F',teal:'#0E8A8A',purple:'#7C5CC4',orange:'#D8741E',red:'#C8392E',graphite:'#3A4654'};
+const ACCENT_NAMES={green:'Зелёный',blue:'Синий',navy:'Тёмно-синий',teal:'Бирюзовый',purple:'Фиолетовый',orange:'Оранжевый',red:'Красный',graphite:'Графит'};
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showToast(m,err){const t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',2600);}
+
+const ICONS={truck:'<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',warehouse:'<path d="M3 21V8l9-5 9 5v13"/><path d="M3 21h18M7 21v-7h10v7"/>',shield:'<path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/>',globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20a15 15 0 0 1 0-20"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',team:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',star:'<path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>',phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',ship:'<path d="M2 20a6 6 0 0 0 10 0 6 6 0 0 0 10 0M4 18l-2-7h20l-2 7M12 11V4M8 7h8"/>',plane:'<path d="M17.8 19.2L16 11l3.5-3.5a2.12 2.12 0 0 0-3-3L13 8 4.8 6.2a1 1 0 0 0-.9 1.7L9 11l-2 3H4l-1 2 4 1 1 4 2-1v-3l3-2 3.1 5.1a1 1 0 0 0 1.7-.9z"/>',box:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/>',handshake:'<path d="M11 17l2 2a1 1 0 0 0 3-3M2 9l4-4 6 6M7 11l4 4M16 12l3-3 3 3-6 6-2-2"/>',bolt:'<path d="M13 2L3 14h9l-1 8 10-12h-9z"/>',pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'};
+const ICON_KEYS=Object.keys(ICONS);
+function icon(k){return ICONS[k]||ICONS.check;}
+
+const BLOCK_TYPES={
+  hero:{name:'Hero — первый экран',desc:'Заголовок, подзаголовок, фон, кнопка',ico:'star'},
+  about:{name:'О компании',desc:'Текст, изображение, цифры',ico:'doc'},
+  services:{name:'Услуги / Преимущества',desc:'Сетка карточек с иконками',ico:'check'},
+  portfolio:{name:'Портфолио / Кейсы',desc:'Галерея работ с фото',ico:'box'},
+  products:{name:'Товары из магазина',desc:'Подтягивает товары автоматически',ico:'truck'},
+  reviews:{name:'Отзывы',desc:'Отзывы клиентов',ico:'team'},
+  contacts:{name:'Контакты + карта',desc:'Адрес, телефон, Яндекс-карта',ico:'pin'},
+  lead_form:{name:'Форма обратной связи',desc:'Заявки на ваши контакты',ico:'phone'},
+  news:{name:'Новости',desc:'Новости компании',ico:'globe'}
+};
+const LIMITS={blocks:20,services:12,portfolio:30,reviews:20,news:20,stats:4};
+
+let SHOP_ID=0, STATE={config:[],accent_color:'green',header_theme:'light',site_logo_url:'',tagline:'',lead_email:'',lead_phone:'',direction:'',slug:'',site_published:false,site_views:0,leads_count:0};
+let dirty=false;
+
+function getId(){return parseInt(new URLSearchParams(location.search).get('id'))||0;}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  SHOP_ID=getId();
+  if(!SHOP_ID){renderState('Магазин не указан');return;}
+  load();
+});
+
+async function load(){
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-config');
+    if(r.status===403){renderState('Нет доступа','Вы не владелец этого магазина');return;}
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    STATE.config=Array.isArray(d.config)?d.config:[];
+    ['accent_color','header_theme','site_logo_url','tagline','lead_email','lead_phone','direction','slug'].forEach(k=>{if(d[k]!=null)STATE[k]=d[k];});
+    STATE.site_published=!!d.site_published;
+    STATE.site_views=d.site_views||0;
+    STATE.leads_count=d.leads_count||0;
+    render();
+  }catch(e){renderState('Ошибка загрузки','Не удалось получить данные магазина');}
+}
+
+function renderState(title,text){
+  document.getElementById('bMain').innerHTML='<div class="state"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><h2>'+esc(title)+'</h2>'+(text?'<p class="muted">'+esc(text)+'</p>':'')+'<a class="r-btn r-btn-sec" href="/emarket.html" style="max-width:240px;margin-top:18px">← В E-market</a></div>';
+  document.getElementById('bRight').innerHTML='';
+}
+
+function render(){
+  renderMain();
+  renderRight();
+}
+
+/* ── MAIN ── */
+function renderMain(){
+  const m=document.getElementById('bMain');
+  m.innerHTML=
+    '<div class="card"><div class="bld-head"><div class="bld-title">Конструктор магазина</div><div class="muted">Соберите страницу из блоков, настройте бренд и опубликуйте</div></div></div>'
+    +renderBrandCard()
+    +'<div class="card"><div class="card-h"><span>Блоки страницы</span><span class="muted" id="blkCount"></span></div><div id="blkList"></div><button class="addblk" onclick="openAddBlock()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить блок</button></div>';
+  renderBlocks();
+}
+
+function renderBrandCard(){
+  const pal=Object.keys(ACCENTS).map(k=>'<div class="pal-dot'+(STATE.accent_color===k?' active':'')+'" style="background:'+ACCENTS[k]+'" title="'+ACCENT_NAMES[k]+'" onclick="setAccent(\''+k+'\')"></div>').join('');
+  const logoPrev=STATE.site_logo_url?'<img src="'+esc(STATE.site_logo_url)+'" alt="">':'<div class="ph"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>';
+  return '<div class="card"><div class="card-h">Бренд и оформление</div>'
+    +'<div class="fld"><label class="lbl">Акцентный цвет</label><div class="pal">'+pal+'</div></div>'
+    +'<div class="fld"><label class="lbl">Тема шапки магазина</label><div class="seg"><button class="'+(STATE.header_theme!=='dark'?'active':'')+'" onclick="setTheme(\'light\')">Светлая</button><button class="'+(STATE.header_theme==='dark'?'active':'')+'" onclick="setTheme(\'dark\')">Тёмная</button></div></div>'
+    +'<div class="fld"><label class="lbl">Логотип магазина</label><div class="logo-up"><div class="logo-prev" id="logoPrev">'+logoPrev+'</div><div><button class="r-btn r-btn-sec" style="width:auto;margin:0;padding:8px 16px" onclick="document.getElementById(\'logoFile\').click()">Загрузить</button><input type="file" id="logoFile" accept="image/*" style="display:none" onchange="uploadLogo(this)"></div></div></div>'
+    +'<div class="fld"><label class="lbl">Слоган</label><input class="inp" id="f_tagline" value="'+esc(STATE.tagline)+'" placeholder="Короткое описание компании" oninput="STATE.tagline=this.value;markDirty()"></div>'
+    +'<div class="fld"><label class="lbl">Направление деятельности</label><input class="inp" id="f_direction" value="'+esc(STATE.direction)+'" placeholder="Логистика, ВЭД, склад…" oninput="STATE.direction=this.value;markDirty()"></div>'
+    +'<div class="grid2"><div class="fld"><label class="lbl">Email для заявок</label><input class="inp" id="f_lead_email" value="'+esc(STATE.lead_email)+'" placeholder="lead@company.ru" oninput="STATE.lead_email=this.value;markDirty()"></div>'
+    +'<div class="fld"><label class="lbl">Телефон для заявок</label><input class="inp" id="f_lead_phone" value="'+esc(STATE.lead_phone)+'" placeholder="+7…" oninput="STATE.lead_phone=this.value;markDirty()"></div></div>'
+    +'</div>';
+}
+
+function setAccent(k){STATE.accent_color=k;markDirty();document.querySelectorAll('.pal-dot').forEach(d=>d.classList.remove('active'));event.target.classList.add('active');}
+function setTheme(t){STATE.header_theme=t;markDirty();document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');}
+
+async function uploadLogo(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const prev=document.getElementById('logoPrev');
+  prev.innerHTML='<span class="muted" style="font-size:10px">…</span>';
+  const fd=new FormData();fd.append('file',f);
+  try{
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const url=d.url||d.public_url||d.publicURL||'';
+    STATE.site_logo_url=url;markDirty();
+    prev.innerHTML='<img src="'+esc(url)+'" alt="">';
+  }catch(e){prev.innerHTML='<span class="muted" style="font-size:10px;color:var(--red)">Ошибка</span>';}
+}
+
+/* ── BLOCKS LIST ── */
+function renderBlocks(){
+  const box=document.getElementById('blkList');
+  document.getElementById('blkCount').textContent=STATE.config.length+' / '+LIMITS.blocks;
+  if(!STATE.config.length){box.innerHTML='<div class="muted" style="padding:14px 0">Пока нет блоков. Добавьте первый — например, Hero.</div>';return;}
+  box.innerHTML=STATE.config.map((b,i)=>{
+    const meta=BLOCK_TYPES[b.type]||{name:b.type,ico:'check'};
+    const sub=blockSubtitle(b);
+    return '<div class="blk" data-idx="'+i+'" draggable="false">'
+      +'<div class="blk-bar">'
+        +'<span class="blk-grip" draggable="true" ondragstart="onDragStart(event,'+i+')" ondragend="onDragEnd(event)"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>'
+        +'<span class="blk-ico"><svg viewBox="0 0 24 24">'+icon(meta.ico)+'</svg></span>'
+        +'<div class="blk-info"><div class="blk-type">'+esc(meta.name)+'</div><div class="blk-sub">'+esc(sub)+'</div></div>'
+        +'<div class="blk-actions">'
+          +'<div class="sw'+(b.enabled!==false?' on':'')+'" title="Показывать блок" onclick="toggleBlock('+i+')"></div>'
+          +'<button class="blk-btn" title="Настроить" onclick="toggleExpand('+i+')"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>'
+          +'<button class="blk-btn danger" title="Удалить" onclick="deleteBlock('+i+')"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+        +'</div>'
+      +'</div>'
+      +'<div class="blk-body" id="blkBody-'+i+'"></div>'
+    +'</div>';
+  }).join('');
+  // drop targets
+  box.querySelectorAll('.blk').forEach(el=>{
+    el.addEventListener('dragover',onDragOver);
+    el.addEventListener('drop',onDrop);
+    el.addEventListener('dragleave',e=>el.classList.remove('drag-over'));
+  });
+}
+
+function blockSubtitle(b){
+  const c=b.content||{};
+  switch(b.type){
+    case 'hero':return c.title||'Без заголовка';
+    case 'about':return c.title||'О компании';
+    case 'services':return (c.items||[]).length+' карточек';
+    case 'portfolio':return (c.items||[]).length+' работ';
+    case 'products':return 'Все товары магазина';
+    case 'reviews':return (c.items||[]).length+' отзывов';
+    case 'contacts':return c.address||'Контакты';
+    case 'lead_form':return c.title||'Форма заявки';
+    case 'news':return (c.items||[]).length+' новостей';
+    default:return '';
+  }
+}
+
+function toggleExpand(i){
+  const blk=document.querySelectorAll('.blk')[i];
+  if(blk.classList.contains('expanded')){blk.classList.remove('expanded');return;}
+  document.querySelectorAll('.blk').forEach(b=>b.classList.remove('expanded'));
+  blk.classList.add('expanded');
+  document.getElementById('blkBody-'+i).innerHTML=renderBlockForm(i);
+}
+
+function toggleBlock(i){STATE.config[i].enabled=STATE.config[i].enabled===false;markDirty();renderBlocks();}
+function deleteBlock(i){
+  lastopConfirm('Удалить этот блок?').then(ok=>{if(!ok)return;STATE.config.splice(i,1);markDirty();renderBlocks();});
+}
+
+/* ── DRAG & DROP ── */
+let dragIdx=null;
+function onDragStart(e,i){dragIdx=i;e.dataTransfer.effectAllowed='move';const blk=document.querySelectorAll('.blk')[i];blk.classList.add('dragging');}
+function onDragEnd(e){document.querySelectorAll('.blk').forEach(b=>b.classList.remove('dragging','drag-over'));}
+function onDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';this.classList.add('drag-over');}
+function onDrop(e){
+  e.preventDefault();
+  const toIdx=parseInt(this.dataset.idx);
+  if(dragIdx===null||dragIdx===toIdx)return;
+  const moved=STATE.config.splice(dragIdx,1)[0];
+  STATE.config.splice(toIdx,0,moved);
+  dragIdx=null;markDirty();renderBlocks();
+}
+
+/* ── BLOCK FORMS ── */
+function renderBlockForm(i){
+  const b=STATE.config[i];const c=b.content||(b.content={});
+  const common='<div class="fld"><label class="lbl">Якорь в меню (необязательно)</label><div class="grid2"><input class="inp" placeholder="Идентификатор (about)" value="'+esc(b.anchor||'')+'" oninput="setBlk('+i+',\'anchor\',this.value)"><input class="inp" placeholder="Пункт меню (О нас)" value="'+esc(b.section_title||'')+'" oninput="setBlk('+i+',\'section_title\',this.value)"></div></div>';
+  let f='';
+  switch(b.type){
+    case 'hero':
+      f='<div class="fld"><label class="lbl">Заголовок</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<div class="fld"><label class="lbl">Подзаголовок</label><textarea class="inp" oninput="setC('+i+',\'subtitle\',this.value)">'+esc(c.subtitle)+'</textarea></div>'
+       +imgField(i,'bg_image','Фоновое изображение',c.bg_image)
+       +'<div class="grid2"><div class="fld"><label class="lbl">Текст кнопки</label><input class="inp" value="'+esc(c.cta_text)+'" oninput="setC('+i+',\'cta_text\',this.value)"></div><div class="fld"><label class="lbl">Ссылка кнопки</label><input class="inp" value="'+esc(c.cta_link)+'" placeholder="#contacts" oninput="setC('+i+',\'cta_link\',this.value)"></div></div>';
+      break;
+    case 'about':
+      f='<div class="fld"><label class="lbl">Заголовок</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<div class="fld"><label class="lbl">Текст</label><textarea class="inp" style="min-height:110px" oninput="setC('+i+',\'text\',this.value)">'+esc(c.text)+'</textarea></div>'
+       +imgField(i,'image','Изображение',c.image)
+       +'<label class="lbl">Цифры (до 4)</label>'+repeater(i,'stats',c.stats,LIMITS.stats,['value:Значение (10)','label:Подпись (лет на рынке)']);
+      break;
+    case 'services':
+      f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<label class="lbl">Карточки (до 12)</label>'+servicesRepeater(i,c.items);
+      break;
+    case 'portfolio':
+      f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<label class="lbl">Работы (до 30)</label>'+portfolioRepeater(i,c.items);
+      break;
+    case 'products':
+      f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<div class="fld"><label class="lbl">Сколько товаров показать</label><input class="inp" type="number" min="1" max="50" value="'+(c.limit||8)+'" oninput="setC('+i+',\'limit\',parseInt(this.value)||8)"></div>'
+       +'<div class="muted">Товары подтянутся автоматически из вашего магазина.</div>';
+      break;
+    case 'reviews':
+      f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<label class="lbl">Отзывы (до 20)</label>'+reviewsRepeater(i,c.items);
+      break;
+    case 'contacts':
+      f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<div class="fld"><label class="lbl">Адрес</label><input class="inp" value="'+esc(c.address)+'" oninput="setC('+i+',\'address\',this.value)"></div>'
+       +'<div class="grid2"><div class="fld"><label class="lbl">Телефон</label><input class="inp" value="'+esc(c.phone)+'" oninput="setC('+i+',\'phone\',this.value)"></div><div class="fld"><label class="lbl">Email</label><input class="inp" value="'+esc(c.email)+'" oninput="setC('+i+',\'email\',this.value)"></div></div>'
+       +'<div class="fld"><label class="lbl">Часы работы</label><input class="inp" value="'+esc(c.hours)+'" placeholder="Пн–Пт 9:00–18:00" oninput="setC('+i+',\'hours\',this.value)"></div>'
+       +'<div class="grid2"><div class="fld"><label class="lbl">Широта (карта)</label><input class="inp" value="'+esc(c.map_lat)+'" placeholder="55.751244" oninput="setC('+i+',\'map_lat\',this.value)"></div><div class="fld"><label class="lbl">Долгота (карта)</label><input class="inp" value="'+esc(c.map_lng)+'" placeholder="37.618423" oninput="setC('+i+',\'map_lng\',this.value)"></div></div>'
+       +'<div class="muted">Координаты можно скопировать из Яндекс.Карт (правый клик → «Что здесь?»).</div>';
+      break;
+    case 'lead_form':
+      f='<div class="fld"><label class="lbl">Заголовок</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<div class="fld"><label class="lbl">Подзаголовок</label><input class="inp" value="'+esc(c.subtitle)+'" oninput="setC('+i+',\'subtitle\',this.value)"></div>'
+       +'<div class="fld"><label class="lbl">Текст кнопки</label><input class="inp" value="'+esc(c.button_text)+'" placeholder="Отправить" oninput="setC('+i+',\'button_text\',this.value)"></div>'
+       +'<div class="muted">Заявки придут на email/телефон из настроек бренда выше.</div>';
+      break;
+    case 'news':
+      f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
+       +'<label class="lbl">Новости (до 20)</label>'+newsRepeater(i,c.items);
+      break;
+  }
+  return f+common;
+}
+
+function imgField(i,key,label,val){
+  const prev=val?'<img src="'+esc(val)+'" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:1px solid var(--bdr)">':'';
+  return '<div class="fld"><label class="lbl">'+esc(label)+'</label><div style="display:flex;gap:10px;align-items:center"><div id="imgprev-'+i+'-'+key+'">'+prev+'</div><button class="r-btn r-btn-sec" style="width:auto;margin:0;padding:8px 16px" onclick="document.getElementById(\'imgf-'+i+'-'+key+'\').click()">Загрузить</button><input type="file" id="imgf-'+i+'-'+key+'" accept="image/*" style="display:none" onchange="uploadImg(this,'+i+',\''+key+'\')"></div></div>';
+}
+async function uploadImg(input,i,key){
+  const f=input.files&&input.files[0];if(!f)return;
+  const fd=new FormData();fd.append('file',f);
+  try{
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
+    if(!r.ok)throw 0;
+    const d=await r.json();const url=d.url||d.public_url||d.publicURL||'';
+    setC(i,key,url);
+    const p=document.getElementById('imgprev-'+i+'-'+key);
+    if(p)p.innerHTML='<img src="'+esc(url)+'" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:1px solid var(--bdr)">';
+    showToast('Изображение загружено');
+  }catch(e){showToast('Ошибка загрузки',true);}
+}
+
+/* repeaters */
+function repeater(i,key,items,limit,fields){
+  items=items||[];
+  let h='<div id="rep-'+i+'-'+key+'">';
+  h+=items.map((it,j)=>'<div class="item-row"><button class="item-del" onclick="delItem('+i+',\''+key+'\','+j+')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    +fields.map(fd=>{const[fk,ph]=fd.split(':');return '<input class="inp" style="margin-bottom:7px" placeholder="'+esc(ph)+'" value="'+esc(it[fk])+'" oninput="setItem('+i+',\''+key+'\','+j+',\''+fk+'\',this.value)">';}).join('')
+    +'</div>').join('');
+  h+='</div>';
+  if(items.length<limit)h+='<button class="add-item" onclick="addItem('+i+',\''+key+'\',['+fields.map(f=>'\''+f.split(':')[0]+'\'').join(',')+'])">+ Добавить</button>';
+  return h;
+}
+function servicesRepeater(i,items){
+  items=items||[];
+  let h='<div id="rep-'+i+'-items">';
+  h+=items.map((it,j)=>'<div class="item-row"><button class="item-del" onclick="delItem('+i+',\'items\','+j+')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    +'<input class="inp" style="margin-bottom:7px" placeholder="Заголовок" value="'+esc(it.title)+'" oninput="setItem('+i+',\'items\','+j+',\'title\',this.value)">'
+    +'<textarea class="inp" style="margin-bottom:7px;min-height:50px" placeholder="Описание" oninput="setItem('+i+',\'items\','+j+',\'text\',this.value)">'+esc(it.text)+'</textarea>'
+    +'<label class="lbl">Иконка</label><div class="icon-grid">'+ICON_KEYS.map(k=>'<div class="icon-opt'+(it.icon===k?' active':'')+'" onclick="setItem('+i+',\'items\','+j+',\'icon\',\''+k+'\');renderIconSel(this)"><svg viewBox="0 0 24 24">'+icon(k)+'</svg></div>').join('')+'</div>'
+    +'</div>').join('');
+  h+='</div>';
+  if(items.length<LIMITS.services)h+='<button class="add-item" onclick="addItem('+i+',\'items\',[\'title\',\'text\',\'icon\'])">+ Добавить карточку</button>';
+  return h;
+}
+function portfolioRepeater(i,items){
+  items=items||[];
+  let h='<div id="rep-'+i+'-items">';
+  h+=items.map((it,j)=>'<div class="item-row"><button class="item-del" onclick="delItem('+i+',\'items\','+j+')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    +'<input class="inp" style="margin-bottom:7px" placeholder="Название" value="'+esc(it.title)+'" oninput="setItem('+i+',\'items\','+j+',\'title\',this.value)">'
+    +'<textarea class="inp" style="margin-bottom:7px;min-height:50px" placeholder="Описание" oninput="setItem('+i+',\'items\','+j+',\'text\',this.value)">'+esc(it.text)+'</textarea>'
+    +itemImg(i,j,it.image)
+    +'</div>').join('');
+  h+='</div>';
+  if(items.length<LIMITS.portfolio)h+='<button class="add-item" onclick="addItem('+i+',\'items\',[\'title\',\'text\',\'image\'])">+ Добавить работу</button>';
+  return h;
+}
+function reviewsRepeater(i,items){
+  items=items||[];
+  let h='<div id="rep-'+i+'-items">';
+  h+=items.map((it,j)=>'<div class="item-row"><button class="item-del" onclick="delItem('+i+',\'items\','+j+')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    +'<input class="inp" style="margin-bottom:7px" placeholder="Автор" value="'+esc(it.author)+'" oninput="setItem('+i+',\'items\','+j+',\'author\',this.value)">'
+    +'<textarea class="inp" style="margin-bottom:7px;min-height:50px" placeholder="Текст отзыва" oninput="setItem('+i+',\'items\','+j+',\'text\',this.value)">'+esc(it.text)+'</textarea>'
+    +'<label class="lbl">Оценка</label><select class="inp" onchange="setItem('+i+',\'items\','+j+',\'rating\',parseInt(this.value))">'+[5,4,3,2,1].map(n=>'<option value="'+n+'"'+((it.rating||5)===n?' selected':'')+'>'+('★'.repeat(n))+'</option>').join('')+'</select>'
+    +'</div>').join('');
+  h+='</div>';
+  if(items.length<LIMITS.reviews)h+='<button class="add-item" onclick="addItem('+i+',\'items\',[\'author\',\'text\',\'rating\'])">+ Добавить отзыв</button>';
+  return h;
+}
+function newsRepeater(i,items){
+  items=items||[];
+  let h='<div id="rep-'+i+'-items">';
+  h+=items.map((it,j)=>'<div class="item-row"><button class="item-del" onclick="delItem('+i+',\'items\','+j+')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    +'<div class="grid2"><input class="inp" style="margin-bottom:7px" placeholder="Дата (12 мая)" value="'+esc(it.date)+'" oninput="setItem('+i+',\'items\','+j+',\'date\',this.value)"><input class="inp" style="margin-bottom:7px" placeholder="Заголовок" value="'+esc(it.title)+'" oninput="setItem('+i+',\'items\','+j+',\'title\',this.value)"></div>'
+    +'<textarea class="inp" style="margin-bottom:7px;min-height:50px" placeholder="Текст" oninput="setItem('+i+',\'items\','+j+',\'text\',this.value)">'+esc(it.text)+'</textarea>'
+    +itemImg(i,j,it.image)
+    +'</div>').join('');
+  h+='</div>';
+  if(items.length<LIMITS.news)h+='<button class="add-item" onclick="addItem('+i+',\'items\',[\'date\',\'title\',\'text\',\'image\'])">+ Добавить новость</button>';
+  return h;
+}
+function itemImg(i,j,val){
+  const prev=val?'<img src="'+esc(val)+'" style="width:42px;height:42px;border-radius:7px;object-fit:cover;border:1px solid var(--bdr)">':'';
+  return '<div style="display:flex;gap:9px;align-items:center"><div id="iimgprev-'+i+'-'+j+'">'+prev+'</div><button class="add-item" style="width:auto;margin:0;padding:7px 14px" onclick="document.getElementById(\'iimgf-'+i+'-'+j+'\').click()">Фото</button><input type="file" id="iimgf-'+i+'-'+j+'" accept="image/*" style="display:none" onchange="uploadItemImg(this,'+i+','+j+')"></div>';
+}
+async function uploadItemImg(input,i,j){
+  const f=input.files&&input.files[0];if(!f)return;
+  const fd=new FormData();fd.append('file',f);
+  try{
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
+    if(!r.ok)throw 0;
+    const d=await r.json();const url=d.url||d.public_url||d.publicURL||'';
+    setItem(i,'items',j,'image',url);
+    const p=document.getElementById('iimgprev-'+i+'-'+j);
+    if(p)p.innerHTML='<img src="'+esc(url)+'" style="width:42px;height:42px;border-radius:7px;object-fit:cover;border:1px solid var(--bdr)">';
+  }catch(e){showToast('Ошибка загрузки',true);}
+}
+function renderIconSel(el){el.parentNode.querySelectorAll('.icon-opt').forEach(o=>o.classList.remove('active'));el.classList.add('active');}
+
+/* state setters */
+function setBlk(i,key,val){STATE.config[i][key]=val;markDirty();}
+function setC(i,key,val){if(!STATE.config[i].content)STATE.config[i].content={};STATE.config[i].content[key]=val;markDirty();updateSub(i);}
+function updateSub(i){const sub=document.querySelectorAll('.blk-sub')[i];if(sub)sub.textContent=blockSubtitle(STATE.config[i]);}
+function setItem(i,key,j,fk,val){const arr=STATE.config[i].content[key]=STATE.config[i].content[key]||[];if(!arr[j])arr[j]={};arr[j][fk]=val;markDirty();updateSub(i);}
+function addItem(i,key,fields){const arr=STATE.config[i].content[key]=STATE.config[i].content[key]||[];const o={};fields.forEach(f=>o[f]=f==='rating'?5:'');arr.push(o);markDirty();document.getElementById('blkBody-'+i).innerHTML=renderBlockForm(i);updateSub(i);}
+function delItem(i,key,j){STATE.config[i].content[key].splice(j,1);markDirty();document.getElementById('blkBody-'+i).innerHTML=renderBlockForm(i);updateSub(i);}
+
+/* ── ADD BLOCK ── */
+function openAddBlock(){
+  if(STATE.config.length>=LIMITS.blocks){showToast('Достигнут лимит блoков (20)',true);return;}
+  document.getElementById('typeGrid').innerHTML=Object.keys(BLOCK_TYPES).map(t=>{const m=BLOCK_TYPES[t];return '<button class="type-opt" onclick="addBlock(\''+t+'\')"><span class="type-opt-ico"><svg viewBox="0 0 24 24">'+icon(m.ico)+'</svg></span><span><div class="type-opt-t">'+esc(m.name)+'</div><div class="type-opt-d">'+esc(m.desc)+'</div></span></button>';}).join('');
+  document.getElementById('addBlkModal').classList.add('open');
+}
+function closeAddBlock(){document.getElementById('addBlkModal').classList.remove('open');}
+function addBlock(type){
+  const defaults={
+    hero:{title:'',subtitle:'',bg_image:'',cta_text:'',cta_link:''},
+    about:{title:'О компании',text:'',image:'',stats:[]},
+    services:{title:'Услуги',items:[]},
+    portfolio:{title:'Портфолио',items:[]},
+    products:{title:'Наши товары',mode:'all',limit:8},
+    reviews:{title:'Отзывы',source:'manual',items:[]},
+    contacts:{title:'Контакты',address:'',phone:'',email:'',hours:'',map_lat:'',map_lng:''},
+    lead_form:{title:'Свяжитесь с нами',subtitle:'',button_text:'Отправить'},
+    news:{title:'Новости',items:[]}
+  };
+  STATE.config.push({type,enabled:true,anchor:'',section_title:'',content:defaults[type]||{}});
+  markDirty();closeAddBlock();renderBlocks();
+  // раскрыть новый блок
+  setTimeout(()=>toggleExpand(STATE.config.length-1),50);
+}
+
+/* ── RIGHT (save/publish) ── */
+function renderRight(){
+  const box=document.getElementById('bRight');
+  const pub=STATE.site_published;
+  box.innerHTML=
+    '<div class="card"><div class="card-h">Публикация</div>'
+      +'<div style="margin-bottom:12px"><span class="status-pill '+(pub?'status-pub':'status-draft')+'"><span class="status-dot"></span>'+(pub?'Опубликован':'Черновик')+'</span></div>'
+      +'<button class="r-btn r-btn-pri" id="btnSave" onclick="saveDraft()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Сохранить черновик</button>'
+      +'<button class="r-btn r-btn-pri" id="btnPub" onclick="publish()" style="background:var(--gm)"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>'+(pub?'Переопубликовать':'Опубликовать')+'</button>'
+      +(STATE.slug?'<a class="r-btn r-btn-sec" href="/shop/'+esc(STATE.slug)+'" target="_blank"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Предпросмотр</a>':'')
+      +(pub?'<button class="r-btn r-btn-ghost" onclick="unpublish()">Снять с публикации</button>':'')
+    +'</div>'
+    +'<div class="card"><div class="card-h">Аналитика</div>'
+      +'<div class="rstat" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12px"><span class="muted">Просмотры сайта</span><span style="font-weight:700">'+STATE.site_views+'</span></div>'
+      +'<div class="rstat" style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px"><span class="muted">Заявки</span><span style="font-weight:700">'+STATE.leads_count+'</span></div>'
+    +'</div>'
+    +'<div class="card"><div class="muted" id="dirtyNote">'+(dirty?'Есть несохранённые изменения':'Всё сохранено')+'</div></div>';
+}
+
+function markDirty(){if(!dirty){dirty=true;const n=document.getElementById('dirtyNote');if(n)n.textContent='Есть несохранённые изменения';}}
+
+async function saveDraft(silent){
+  const btn=document.getElementById('btnSave');
+  if(btn){btn.disabled=true;}
+  const body={config:STATE.config,accent_color:STATE.accent_color,header_theme:STATE.header_theme,site_logo_url:STATE.site_logo_url,tagline:STATE.tagline,lead_email:STATE.lead_email,lead_phone:STATE.lead_phone,direction:STATE.direction};
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Ошибка');}
+    dirty=false;
+    const n=document.getElementById('dirtyNote');if(n)n.textContent='Всё сохранено';
+    if(!silent)showToast('Черновик сохранён');
+    return true;
+  }catch(e){showToast(e.message||'Ошибка сохранения',true);return false;}
+  finally{if(btn)btn.disabled=false;}
+}
+
+async function publish(){
+  const ok=await saveDraft(true);
+  if(!ok)return;
+  const btn=document.getElementById('btnPub');if(btn)btn.disabled=true;
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    if(!r.ok)throw 0;
+    STATE.site_published=true;
+    showToast('Магазин опубликован 🎉');
+    renderRight();
+  }catch(e){showToast('Ошибка публикации',true);}
+  finally{if(btn)btn.disabled=false;}
+}
+
+async function unpublish(){
+  const ok=await lastopConfirm('Снять магазин с публикации? Он станет недоступен по ссылке.');
+  if(!ok)return;
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unpublish'})});
+    if(!r.ok)throw 0;
+    STATE.site_published=false;
+    showToast('Снято с публикации');
+    renderRight();
+  }catch(e){showToast('Ошибка',true);}
+}
+
+document.getElementById('addBlkModal').addEventListener('click',e=>{if(e.target.id==='addBlkModal')closeAddBlock();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAddBlock();});
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+</script>
+</body>
+</html>
