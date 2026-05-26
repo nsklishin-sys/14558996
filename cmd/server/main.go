@@ -17347,6 +17347,19 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS emarket_shops_region_idx ON emarket_shops(region) WHERE region <> '';
 CREATE INDEX IF NOT EXISTS emarket_shops_featured_idx ON emarket_shops(is_featured) WHERE is_featured = TRUE;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_config JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_config JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS accent_color TEXT NOT NULL DEFAULT 'green';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS header_theme TEXT NOT NULL DEFAULT 'light';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_logo_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS tagline TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS lead_email TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS lead_phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_views BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS leads_count INT NOT NULL DEFAULT 0;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS emarket_shops_published_idx ON emarket_shops(site_published) WHERE site_published = TRUE;
 
 CREATE TABLE IF NOT EXISTS emarket_listings (
     id BIGSERIAL PRIMARY KEY,
