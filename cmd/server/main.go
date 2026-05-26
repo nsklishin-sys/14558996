@@ -10526,7 +10526,7 @@ func main() {
 				return
 			}
 			rows, err := db.Query(`SELECT l.id, l.name, l.contact, l.message, l.is_read, l.created_at,
-				COALESCE(u.public_id,''), COALESCE(u.name,'')
+				COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, '')
 				FROM emarket_leads l LEFT JOIN users u ON u.id=l.sender_id
 				WHERE l.shop_id=$1 ORDER BY l.created_at DESC LIMIT 200`, shopID)
 			if err != nil {
