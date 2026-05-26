@@ -128,9 +128,11 @@ img{max-width:100%}
 .ms-nitem h3{font-size:15px;font-weight:700;margin-bottom:6px;line-height:1.35}
 .ms-nitem p{font-size:13px;color:var(--tm);line-height:1.55}
 
-.ms-headwrap{display:flex;flex-direction:column;position:sticky;top:0;z-index:10;border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh)}
+.ms-headwrap{display:flex;flex-direction:column;z-index:10;border-radius:var(--rxl);overflow:hidden;box-shadow:var(--sh)}
+.ms-headwrap.sticky{position:sticky;top:0}
 .ms-header{display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--w);border:1px solid var(--bdr);border-bottom:3px solid var(--acc)}
-.ms-headwrap .ms-header{border-radius:0;border-bottom:none}
+.ms-headwrap .ms-header{border-radius:0;border:none;border-bottom:3px solid var(--acc)}
+.ms-headwrap.sticky .ms-header{border-bottom:none}
 .ms-header.dark{background:var(--acc);border-color:var(--acc)}
 .ms-header-logo{width:48px;height:48px;border-radius:var(--rm);background:var(--gp);display:grid;place-items:center;overflow:hidden;flex-shrink:0;border:1px solid var(--bdr)}
 .ms-header.dark .ms-header-logo{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)}
@@ -295,9 +297,9 @@ function render(d){
 
   const navBlocks=blocks.filter(b=>b.in_nav);
 
-  // Нет вынесенных блоков → шапка + одностраничный скролл
+  // Нет вынесенных блоков → шапка + одностраничный скролл (шапка НЕ липкая)
   if(!navBlocks.length){
-    let html=header;
+    let html='<div class="ms-headwrap">'+header+'</div>';
     blocks.forEach((b,i)=>{html+=renderBlock(b,shop,i);});
     document.getElementById('msMain').innerHTML=html;
     renderRight(shop);
@@ -313,7 +315,7 @@ function render(d){
   navBlocks.forEach(b=>PAGES.push({label:blockTitle(b),blocks:[b]}));
 
   const bar='<div class="ms-navbar">'+PAGES.map((p,pi)=>'<button class="ms-navtab'+(pi===0?' active':'')+'" onclick="switchTab('+pi+')">'+esc(p.label)+'</button>').join('')+'</div>';
-  document.getElementById('msMain').innerHTML='<div class="ms-headwrap">'+header+bar+'</div><div id="msPage"></div>';
+  document.getElementById('msMain').innerHTML='<div class="ms-headwrap sticky">'+header+bar+'</div><div id="msPage"></div>';
   switchTab(0);
   renderRight(shop);
 }
