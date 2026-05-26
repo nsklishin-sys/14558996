@@ -315,7 +315,7 @@ function blockSubtitle(b){
     case 'services':return (c.items||[]).length+' карточек';
     case 'portfolio':return (c.items||[]).length+' работ';
     case 'products':return 'Все товары магазина';
-    case 'reviews':return (c.items||[]).length+' отзывов';
+    case 'reviews':return 'Реальные отзывы покупателей';
     case 'contacts':return c.address||'Контакты';
     case 'lead_form':return c.title||'Форма заявки';
     case 'news':return (c.items||[]).length+' новостей';
@@ -384,7 +384,7 @@ function renderBlockForm(i){
       break;
     case 'reviews':
       f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
-       +'<label class="lbl">Отзывы (до 20)</label>'+reviewsRepeater(i,c.items);
+       +'<div class="muted">Отзывы оставляют покупатели на странице магазина — они подтянутся сюда автоматически. Вы можете удалять неуместные отзывы прямо на странице магазина.</div>';
       break;
     case 'contacts':
       f='<div class="fld"><label class="lbl">Заголовок секции</label><input class="inp" value="'+esc(c.title)+'" oninput="setC('+i+',\'title\',this.value)"></div>'
