@@ -1,179 +1,181 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script src="/assets/utils.js"></script>
+<script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Загрузка…</title>
+<title>LASTOP GROUP — Магазин</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --acc:#1E8A4C;--acc-d:#176c3b;--acc-l:#E8F5EE;
-  --t:#1A2230;--tm:#5A6675;--bg:#fff;--soft:#F5F7FA;--bdr:#E4E9EF;
-  --r:10px;--rm:14px;--rl:20px;--rxl:28px;
-  --max:1140px
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13);
+  --acc:#1E8A4C;--acc-d:#176c3b;--acc-l:rgba(30,138,76,.12)
 }
-html{scroll-behavior:smooth}
-body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:16px;line-height:1.6}
-img{max-width:100%;display:block}
-a{color:inherit;text-decoration:none}
-.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
-.sec{padding:64px 0}
-.sec-soft{background:var(--soft)}
-.sec-title{font-size:30px;font-weight:800;margin-bottom:32px;letter-spacing:-.02em}
-@media(max-width:600px){.sec{padding:44px 0}.sec-title{font-size:24px;margin-bottom:22px}.wrap{padding:0 16px}}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;padding-bottom:16px;scrollbar-width:none;-ms-overflow-style:none}
+.main::-webkit-scrollbar{display:none}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+@media(min-width:1921px) and (min-height:1081px){html.lt-shell .topbar{grid-template-columns:1fr 340px}}
+.right::-webkit-scrollbar{width:4px}.right::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+img{max-width:100%}
 
-/* HEADER */
-.site-head{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr)}
-.site-head.theme-dark{background:rgba(20,28,40,.92);border-bottom-color:rgba(255,255,255,.1)}
-.site-head.theme-dark .sh-name{color:#fff}
-.site-head.theme-dark .sh-nav a{color:rgba(255,255,255,.8)}
-.site-head.theme-dark .sh-nav a:hover{color:#fff}
-.sh-inner{max-width:var(--max);margin:0 auto;padding:0 24px;height:66px;display:flex;align-items:center;gap:20px}
-.sh-brand{display:flex;align-items:center;gap:11px;flex-shrink:0}
-.sh-logo{height:40px;width:auto;object-fit:contain}
-.sh-logo-fallback{width:40px;height:40px;border-radius:11px;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:18px;font-weight:800;flex-shrink:0}
-.sh-name{font-size:18px;font-weight:800;letter-spacing:-.01em}
-.sh-nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-.sh-nav a{padding:8px 14px;border-radius:var(--r);font-size:14px;font-weight:600;color:var(--tm);transition:all .15s}
-.sh-nav a:hover{background:var(--acc-l);color:var(--acc)}
-.sh-burger{display:none;margin-left:auto;width:42px;height:42px;border-radius:var(--r);border:1px solid var(--bdr);background:none;cursor:pointer;align-items:center;justify-content:center}
-.sh-burger svg{width:22px;height:22px;stroke:var(--t);fill:none;stroke-width:2;stroke-linecap:round}
-@media(max-width:820px){.sh-nav{display:none;position:absolute;top:66px;left:0;right:0;background:var(--bg);flex-direction:column;padding:8px;border-bottom:1px solid var(--bdr);gap:2px}.sh-nav.open{display:flex}.sh-burger{display:flex}.sh-nav a{padding:12px 14px}}
+.ms-sec{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:24px;box-shadow:var(--sh)}
+.ms-sec-soft{background:var(--gp)}
+.ms-title{font-size:21px;font-weight:800;margin-bottom:18px;letter-spacing:-.01em}
+@media(max-width:600px){.ms-sec{padding:16px}.ms-title{font-size:18px;margin-bottom:14px}}
 
-/* HERO */
-.hero{position:relative;padding:96px 0;text-align:center;color:#fff;overflow:hidden;background:var(--acc)}
-.hero.has-bg{background-size:cover;background-position:center}
-.hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,18,30,.35),rgba(10,18,30,.55));z-index:0}
-.hero.no-overlay::before{display:none}
-.hero-inner{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 24px}
-.hero h1{font-size:46px;font-weight:900;line-height:1.1;letter-spacing:-.03em;margin-bottom:18px}
-.hero p{font-size:19px;opacity:.94;margin-bottom:30px;font-weight:500}
-.hero-cta{display:inline-block;background:#fff;color:var(--acc);padding:15px 36px;border-radius:var(--rm);font-weight:800;font-size:16px;transition:transform .15s,box-shadow .15s;box-shadow:0 8px 24px rgba(0,0,0,.18)}
-.hero-cta:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.24)}
-@media(max-width:600px){.hero{padding:64px 0}.hero h1{font-size:32px}.hero p{font-size:16px}}
+.ms-hero{position:relative;border-radius:var(--rxl);overflow:hidden;padding:56px 32px;text-align:center;color:#fff;background:var(--acc);box-shadow:var(--sh)}
+.ms-hero.has-bg{background-size:cover;background-position:center}
+.ms-hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,18,30,.3),rgba(10,18,30,.55));z-index:0}
+.ms-hero.no-bg::before{display:none}
+.ms-hero-in{position:relative;z-index:1;max-width:640px;margin:0 auto}
+.ms-hero h1{font-size:34px;font-weight:900;line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
+.ms-hero p{font-size:17px;opacity:.95;margin-bottom:22px;font-weight:500}
+.ms-hero-cta{display:inline-block;background:#fff;color:var(--acc);padding:13px 30px;border-radius:var(--rm);font-weight:800;font-size:15px;transition:transform .15s;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.ms-hero-cta:hover{transform:translateY(-2px)}
+@media(max-width:600px){.ms-hero{padding:40px 20px}.ms-hero h1{font-size:26px}.ms-hero p{font-size:15px}}
 
-/* ABOUT */
-.about-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:44px;align-items:center}
-.about-grid.no-img{grid-template-columns:1fr}
-.about-text{font-size:17px;color:var(--tm);line-height:1.8;white-space:pre-wrap}
-.about-img img{border-radius:var(--rl);width:100%;object-fit:cover}
-.stats{display:flex;gap:36px;margin-top:30px;flex-wrap:wrap}
-.stat .sn{font-size:38px;font-weight:900;color:var(--acc);line-height:1}
-.stat .sl{font-size:14px;color:var(--tm);margin-top:4px}
-@media(max-width:800px){.about-grid{grid-template-columns:1fr;gap:24px}}
+.ms-about{display:grid;grid-template-columns:1.4fr 1fr;gap:32px;align-items:center}
+.ms-about.no-img{grid-template-columns:1fr}
+.ms-about-text{font-size:15px;color:var(--tm);line-height:1.75;white-space:pre-wrap}
+.ms-about-img img{border-radius:var(--rl);width:100%;object-fit:cover}
+.ms-stats{display:flex;gap:28px;margin-top:22px;flex-wrap:wrap}
+.ms-stat .sn{font-size:30px;font-weight:900;color:var(--acc);line-height:1}
+.ms-stat .sl{font-size:13px;color:var(--tm);margin-top:3px}
+@media(max-width:760px){.ms-about{grid-template-columns:1fr;gap:18px}}
 
-/* SERVICES */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.cards{grid-template-columns:1fr}}
-.card{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rl);padding:28px;transition:transform .18s,box-shadow .18s}
-.card:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(20,30,50,.09)}
-.card-ico{width:52px;height:52px;border-radius:14px;background:var(--acc-l);color:var(--acc);display:grid;place-items:center;margin-bottom:16px}
-.card-ico svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.card h3{font-size:18px;font-weight:700;margin-bottom:8px}
-.card p{font-size:15px;color:var(--tm)}
+.ms-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.ms-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.ms-cards{grid-template-columns:1fr}}
+.ms-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:22px;transition:transform .18s,box-shadow .18s}
+.ms-card:hover{transform:translateY(-3px);box-shadow:var(--shm)}
+.ms-card-ico{width:46px;height:46px;border-radius:12px;background:var(--acc-l);color:var(--acc);display:grid;place-items:center;margin-bottom:13px}
+.ms-card-ico svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ms-card h3{font-size:16px;font-weight:700;margin-bottom:6px}
+.ms-card p{font-size:14px;color:var(--tm)}
 
-/* PORTFOLIO */
-.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-@media(max-width:900px){.gallery{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.gallery{grid-template-columns:1fr}}
-.gitem{border-radius:var(--rl);overflow:hidden;border:1px solid var(--bdr);background:var(--bg)}
-.gitem-img{aspect-ratio:4/3;background:var(--soft);overflow:hidden}
-.gitem-img img{width:100%;height:100%;object-fit:cover}
-.gitem-body{padding:18px}
-.gitem h3{font-size:17px;font-weight:700;margin-bottom:6px}
-.gitem p{font-size:14px;color:var(--tm)}
+.ms-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.ms-gallery{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.ms-gallery{grid-template-columns:1fr}}
+.ms-gitem{border-radius:var(--rl);overflow:hidden;border:1px solid var(--bdr);background:var(--w)}
+.ms-gitem-img{aspect-ratio:4/3;background:var(--gp);overflow:hidden}
+.ms-gitem-img img{width:100%;height:100%;object-fit:cover}
+.ms-gitem-body{padding:15px}
+.ms-gitem h3{font-size:15px;font-weight:700;margin-bottom:5px}
+.ms-gitem p{font-size:13px;color:var(--tm)}
 
-/* PRODUCTS */
-.prods{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-@media(max-width:1000px){.prods{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:760px){.prods{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:460px){.prods{grid-template-columns:1fr}}
-.prod{border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;background:var(--bg);cursor:pointer;transition:transform .15s,box-shadow .15s}
-.prod:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(20,30,50,.1)}
-.prod-img{aspect-ratio:1;background:var(--soft);overflow:hidden;display:grid;place-items:center}
-.prod-img img{width:100%;height:100%;object-fit:cover}
-.prod-img .ph{color:var(--bdr)}.prod-img .ph svg{width:38px;height:38px;fill:none;stroke:currentColor;stroke-width:1.3}
-.prod-body{padding:14px}
-.prod-title{font-size:14px;font-weight:600;line-height:1.35;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.prod-price{font-size:16px;font-weight:800;color:var(--acc)}
+.ms-prods{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1000px){.ms-prods{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){.ms-prods{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.ms-prods{grid-template-columns:1fr}}
+.ms-prod{border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;background:var(--w);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.ms-prod:hover{transform:translateY(-3px);box-shadow:var(--shm)}
+.ms-prod-img{aspect-ratio:1;background:var(--gp);overflow:hidden;display:grid;place-items:center}
+.ms-prod-img img{width:100%;height:100%;object-fit:cover}
+.ms-prod-img .ph{color:var(--gb)}.ms-prod-img .ph svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.3}
+.ms-prod-body{padding:12px}
+.ms-prod-title{font-size:13px;font-weight:600;line-height:1.35;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ms-prod-price{font-size:15px;font-weight:800;color:var(--acc)}
 
-/* REVIEWS */
-.revs{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-@media(max-width:700px){.revs{grid-template-columns:1fr}}
-.rev{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rl);padding:24px}
-.rev-stars{color:#E8A52A;margin-bottom:10px;font-size:15px;letter-spacing:2px}
-.rev-text{font-size:15px;color:var(--t);line-height:1.7;margin-bottom:14px}
-.rev-author{font-size:14px;font-weight:700;color:var(--tm)}
+.ms-revs{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:680px){.ms-revs{grid-template-columns:1fr}}
+.ms-rev{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);padding:20px}
+.ms-rev-stars{color:#E8A52A;margin-bottom:9px;font-size:14px;letter-spacing:2px}
+.ms-rev-text{font-size:14px;color:var(--t);line-height:1.65;margin-bottom:12px}
+.ms-rev-author{font-size:13px;font-weight:700;color:var(--tm)}
 
-/* CONTACTS */
-.cont-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:36px;align-items:start}
-@media(max-width:800px){.cont-grid{grid-template-columns:1fr}}
-.cont-item{display:flex;gap:13px;margin-bottom:20px;align-items:flex-start}
-.cont-item svg{width:21px;height:21px;fill:none;stroke:var(--acc);stroke-width:1.8;stroke-linecap:round;flex-shrink:0;margin-top:2px}
-.cont-item .cl{font-size:13px;color:var(--tm);margin-bottom:2px}
-.cont-item .cv{font-size:16px;font-weight:600}
-.cont-map{border-radius:var(--rl);overflow:hidden;border:1px solid var(--bdr);min-height:300px;background:var(--soft)}
-.cont-map iframe{width:100%;height:100%;min-height:300px;border:0;display:block}
+.ms-cont{display:grid;grid-template-columns:1fr 1.2fr;gap:28px;align-items:start}
+@media(max-width:760px){.ms-cont{grid-template-columns:1fr}}
+.ms-cont-item{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start}
+.ms-cont-item svg{width:19px;height:19px;fill:none;stroke:var(--acc);stroke-width:1.8;stroke-linecap:round;flex-shrink:0;margin-top:2px}
+.ms-cont-item .cl{font-size:12px;color:var(--tm);margin-bottom:2px}
+.ms-cont-item .cv{font-size:15px;font-weight:600}
+.ms-map{border-radius:var(--rl);overflow:hidden;border:1px solid var(--bdr);min-height:260px;background:var(--gp)}
+.ms-map iframe{width:100%;height:100%;min-height:260px;border:0;display:block}
 
-/* LEAD FORM */
-.lead{max-width:560px;margin:0 auto;text-align:center}
-.lead p.sub{font-size:16px;color:var(--tm);margin-bottom:26px;margin-top:-18px}
-.lead-form{display:flex;flex-direction:column;gap:13px;text-align:left}
-.lead-form input,.lead-form textarea{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:14px 16px;font-family:inherit;font-size:15px;background:var(--bg);color:var(--t);outline:none;transition:border-color .15s}
-.lead-form input:focus,.lead-form textarea:focus{border-color:var(--acc)}
-.lead-form textarea{resize:vertical;min-height:110px}
-.lead-btn{background:var(--acc);color:#fff;border:none;padding:15px;border-radius:var(--rm);font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;transition:background .15s}
-.lead-btn:hover{background:var(--acc-d)}
-.lead-ok{display:none;background:var(--acc-l);color:var(--acc-d);padding:16px;border-radius:var(--rm);font-weight:700;text-align:center}
-.lead-consent{font-size:12px;color:var(--tm);margin-top:4px;display:flex;gap:8px;align-items:flex-start}
-.lead-consent input{width:auto;margin-top:3px}
+.ms-lead{max-width:520px;margin:0 auto}
+.ms-lead .sub{font-size:14px;color:var(--tm);margin-bottom:18px;text-align:center}
+.ms-lead-form{display:flex;flex-direction:column;gap:11px}
+.ms-lead-form input,.ms-lead-form textarea{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:12px 14px;font-family:inherit;font-size:14px;background:var(--w);color:var(--t);outline:none;transition:border-color .15s}
+.ms-lead-form input:focus,.ms-lead-form textarea:focus{border-color:var(--acc)}
+.ms-lead-form textarea{resize:vertical;min-height:90px}
+.ms-lead-btn{background:var(--acc);color:#fff;border:none;padding:13px;border-radius:var(--rm);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:background .15s}
+.ms-lead-btn:hover{background:var(--acc-d)}
+.ms-lead-consent{font-size:11px;color:var(--tm);display:flex;gap:7px;align-items:flex-start}
+.ms-lead-consent input{width:auto;margin-top:2px}
+.ms-lead-ok{display:none;background:var(--acc-l);color:var(--acc-d);padding:14px;border-radius:var(--rm);font-weight:700;text-align:center}
 
-/* NEWS */
-.news{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
-@media(max-width:900px){.news{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.news{grid-template-columns:1fr}}
-.nitem{border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;background:var(--bg)}
-.nitem-img{aspect-ratio:16/9;background:var(--soft);overflow:hidden}
-.nitem-img img{width:100%;height:100%;object-fit:cover}
-.nitem-body{padding:20px}
-.nitem-date{font-size:12px;color:var(--acc);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
-.nitem h3{font-size:17px;font-weight:700;margin-bottom:8px;line-height:1.35}
-.nitem p{font-size:14px;color:var(--tm);line-height:1.6}
+.ms-news{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.ms-news{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.ms-news{grid-template-columns:1fr}}
+.ms-nitem{border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;background:var(--w)}
+.ms-nitem-img{aspect-ratio:16/9;background:var(--gp);overflow:hidden}
+.ms-nitem-img img{width:100%;height:100%;object-fit:cover}
+.ms-nitem-body{padding:16px}
+.ms-nitem-date{font-size:11px;color:var(--acc);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.ms-nitem h3{font-size:15px;font-weight:700;margin-bottom:6px;line-height:1.35}
+.ms-nitem p{font-size:13px;color:var(--tm);line-height:1.55}
 
-/* FOOTER (white-label, без LASTOP) */
-.site-foot{background:#0F1722;color:rgba(255,255,255,.6);padding:40px 0;text-align:center}
-.site-foot .fname{font-size:18px;font-weight:800;color:#fff;margin-bottom:8px}
-.site-foot .fcontacts{font-size:14px;margin-bottom:14px}
-.site-foot .fcontacts a{color:rgba(255,255,255,.8)}
-.site-foot .fcopy{font-size:12px;opacity:.6}
+.ms-anchors{display:flex;gap:6px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:10px 14px;box-shadow:var(--sh);position:sticky;top:0;z-index:10}
+.ms-anchors a{padding:7px 14px;border-radius:var(--rm);font-size:13px;font-weight:600;color:var(--tm);transition:all .15s;text-decoration:none}
+.ms-anchors a:hover{background:var(--acc-l);color:var(--acc)}
 
-/* STATES */
-.state{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:var(--tm)}
-.state svg{width:54px;height:54px;fill:none;stroke:var(--bdr);stroke-width:1.3;margin-bottom:18px}
-.state h2{font-size:22px;font-weight:800;color:var(--t);margin-bottom:8px}
-.state p{font-size:15px}
-.sk{background:var(--soft);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
+.rcard{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
+.rcard-h{font-size:11px;font-weight:700;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:11px}
+.r-shop-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.r-shop-logo{width:48px;height:48px;border-radius:var(--rm);background:var(--acc);color:#fff;display:grid;place-items:center;font-size:18px;font-weight:800;flex-shrink:0;overflow:hidden}
+.r-shop-logo img{width:100%;height:100%;object-fit:cover}
+.r-shop-name{font-size:15px;font-weight:800}
+.r-shop-tag{font-size:12px;color:var(--gmt);margin-top:2px}
+.rstat{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12px}
+.rstat:last-child{border-bottom:none}
+.rstat .l{color:var(--gmt)}.rstat .v{font-weight:700}
+.r-btn{display:block;width:100%;text-align:center;padding:10px;border-radius:var(--rm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;margin-top:10px;transition:all .15s;text-decoration:none}
+.r-btn-pri{background:var(--acc);color:#fff}.r-btn-pri:hover{background:var(--acc-d)}
+.r-btn-sec{background:var(--gp);color:var(--tm);border:1.5px solid var(--bdr)}.r-btn-sec:hover{background:var(--gl);color:var(--g)}
+
+.state{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:var(--gmt)}
+.state svg{width:46px;height:46px;fill:none;stroke:var(--gb);stroke-width:1.3;margin-bottom:16px}
+.state h2{font-size:19px;font-weight:800;color:var(--t);margin-bottom:8px}
+.state p{font-size:14px}
+.sk{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--t);color:#fff;padding:13px 24px;border-radius:var(--rm);font-size:14px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--t);color:#fff;padding:11px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
 <body>
-<div id="app"><div class="state"><div class="sk" style="width:200px;height:24px;margin-bottom:14px"></div><div class="sk" style="width:300px;height:16px"></div></div></div>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+<main class="main" id="msMain"></main>
+<aside class="right" id="msRight"></aside>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
 const API='/api';
 const ACCENTS={green:'#1E8A4C',blue:'#2479C8',navy:'#1E3A5F',teal:'#0E8A8A',purple:'#7C5CC4',orange:'#D8741E',red:'#C8392E',graphite:'#3A4654'};
 function darken(hex,f){f=f||.78;const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function hexA(hex,a){const n=parseInt(hex.slice(1),16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function letter(s){return((s||'?').trim()[0]||'?').toUpperCase();}
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 
-/* набор иконок для services (key → svg path) */
 const ICONS={
   truck:'<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   warehouse:'<path d="M3 21V8l9-5 9 5v13"/><path d="M3 21h18M7 21v-7h10v7"/>',
@@ -194,33 +196,36 @@ const ICONS={
 };
 function icon(key){return ICONS[key]||ICONS.check;}
 
-let SITE=null,ACC='#1E8A4C';
+let SITE=null,ACC='#1E8A4C',MY_PID=null;
 
 function getSlug(){
-  // путь /c/{slug}  ИЛИ  ?slug=
-  const m=location.pathname.match(/\/c\/([^\/]+)/);
+  const m=location.pathname.match(/\/shop\/([^\/]+)/);
   if(m)return decodeURIComponent(m[1]);
   return new URLSearchParams(location.search).get('slug')||'';
 }
 
-window.addEventListener('DOMContentLoaded',load);
+window.addEventListener('DOMContentLoaded',()=>{
+  try{const me=JSON.parse(localStorage.getItem('user')||'{}');MY_PID=me.public_id||null;}catch(e){}
+  load();
+});
 
 async function load(){
   const slug=getSlug();
-  if(!slug){renderState('Сайт не найден','Не указан адрес магазина');return;}
+  if(!slug){renderState('Магазин не найден','Не указан адрес магазина');return;}
   try{
-    const r=await fetch(API+'/emarket/site/'+encodeURIComponent(slug));
+    const r=await fetch(API+'/emarket/site/'+encodeURIComponent(slug),{headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
     if(!r.ok)throw new Error('not found');
     const d=await r.json();
     SITE=d;
     render(d);
   }catch(e){
-    renderState('Сайт недоступен','Возможно, он ещё не опубликован или был снят с публикации');
+    renderState('Магазин недоступен','Возможно, он ещё не опубликован или был снят с публикации');
   }
 }
 
 function renderState(title,text){
-  document.getElementById('app').innerHTML='<div class="state"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><h2>'+esc(title)+'</h2><p>'+esc(text)+'</p></div>';
+  document.getElementById('msMain').innerHTML='<div class="state"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><h2>'+esc(title)+'</h2><p>'+esc(text)+'</p><a class="r-btn r-btn-sec" href="/emarket.html" style="max-width:240px;margin-top:18px">← Вернуться в E-market</a></div>';
+  document.getElementById('msRight').innerHTML='';
 }
 
 function render(d){
@@ -229,36 +234,26 @@ function render(d){
   ACC=ACCENTS[shop.accent_color]||ACCENTS.green;
   document.documentElement.style.setProperty('--acc',ACC);
   document.documentElement.style.setProperty('--acc-d',darken(ACC,.78));
-  document.documentElement.style.setProperty('--acc-l',darken(ACC,1)+'18');
-  // acc-l как полупрозрачный акцент
   document.documentElement.style.setProperty('--acc-l',hexA(ACC,.12));
-  document.title=shop.name+(shop.tagline?' — '+shop.tagline:'');
+  document.title=shop.name+' — LASTOP GROUP';
 
-  // anchors для навигации
   const navItems=blocks.filter(b=>b.anchor&&b.section_title).map(b=>({a:b.anchor,t:b.section_title}));
-  const navHTML=navItems.length?'<nav class="sh-nav" id="shNav">'+navItems.map(n=>'<a href="#'+esc(n.a)+'" onclick="closeNav()">'+esc(n.t)+'</a>').join('')+'</nav><button class="sh-burger" onclick="toggleNav()"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>':'';
-
-  const logoHTML=shop.site_logo_url?'<img class="sh-logo" src="'+esc(shop.site_logo_url)+'" alt="'+esc(shop.name)+'">':(shop.logo_url?'<img class="sh-logo" src="'+esc(shop.logo_url)+'" alt="'+esc(shop.name)+'">':'<div class="sh-logo-fallback">'+esc(letter(shop.name))+'</div>');
-
-  let html='<header class="site-head'+(shop.header_theme==='dark'?' theme-dark':'')+'"><div class="sh-inner"><a class="sh-brand" href="#top"><span class="sh-logo-box">'+logoHTML+'</span><span class="sh-name">'+esc(shop.name)+'</span></a>'+navHTML+'</div></header><div id="top"></div>';
-
+  let html='';
+  if(navItems.length){
+    html+='<div class="ms-anchors">'+navItems.map(n=>'<a href="#'+esc(n.a)+'">'+esc(n.t)+'</a>').join('')+'</div>';
+  }
   blocks.forEach((b,i)=>{html+=renderBlock(b,shop,i);});
+  if(!blocks.length){
+    html='<div class="state"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><h2>'+esc(shop.name)+'</h2><p>Магазин ещё наполняется</p></div>';
+  }
+  document.getElementById('msMain').innerHTML=html;
+  renderRight(shop);
 
-  // футер white-label
-  html+='<footer class="site-foot"><div class="wrap"><div class="fname">'+esc(shop.name)+'</div>'+
-    ((shop.contact_phone||shop.contact_email)?'<div class="fcontacts">'+[shop.contact_phone?'<a href="tel:'+esc(shop.contact_phone)+'">'+esc(shop.contact_phone)+'</a>':'',shop.contact_email?'<a href="mailto:'+esc(shop.contact_email)+'">'+esc(shop.contact_email)+'</a>':''].filter(Boolean).join(' · ')+'</div>':'')+
-    '<div class="fcopy">© '+new Date().getFullYear()+' '+esc(shop.name)+'</div></div></footer>';
-
-  document.getElementById('app').innerHTML=html;
-
-  // дозагрузка товаров для products-блоков
   blocks.forEach((b,i)=>{if(b.type==='products'){loadProducts(shop.id,i,(b.content&&b.content.limit)||8);}});
 }
 
-function hexA(hex,a){const n=parseInt(hex.slice(1),16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
-
 function sec(id,title,inner,soft){
-  return '<section class="sec'+(soft?' sec-soft':'')+'"'+(id?' id="'+esc(id)+'"':'')+'><div class="wrap">'+(title?'<h2 class="sec-title">'+esc(title)+'</h2>':'')+inner+'</div></section>';
+  return '<section class="ms-sec'+(soft?' ms-sec-soft':'')+'"'+(id?' id="'+esc(id)+'"':'')+'>'+(title?'<h2 class="ms-title">'+esc(title)+'</h2>':'')+inner+'</section>';
 }
 
 function renderBlock(b,shop,i){
@@ -267,46 +262,61 @@ function renderBlock(b,shop,i){
   switch(b.type){
     case 'hero':{
       const style=c.bg_image?' style="background-image:url('+encodeURI(c.bg_image)+')"':'';
-      const cta=c.cta_text?'<a class="hero-cta" href="'+esc(c.cta_link||'#')+'">'+esc(c.cta_text)+'</a>':'';
-      return '<section class="hero'+(c.bg_image?' has-bg':'')+'"'+style+' id="'+esc(id)+'"><div class="hero-inner"><h1>'+esc(c.title||shop.name)+'</h1>'+(c.subtitle?'<p>'+esc(c.subtitle)+'</p>':'')+cta+'</div></section>';
+      const cta=c.cta_text?'<a class="ms-hero-cta" href="'+esc(c.cta_link||'#')+'">'+esc(c.cta_text)+'</a>':'';
+      return '<section class="ms-hero'+(c.bg_image?' has-bg':' no-bg')+'"'+style+' id="'+esc(id)+'"><div class="ms-hero-in"><h1>'+esc(c.title||shop.name)+'</h1>'+(c.subtitle?'<p>'+esc(c.subtitle)+'</p>':'')+cta+'</div></section>';
     }
     case 'about':{
-      const stats=(c.stats||[]).slice(0,4).map(s=>'<div class="stat"><div class="sn">'+esc(s.value)+'</div><div class="sl">'+esc(s.label)+'</div></div>').join('');
-      const inner='<div class="about-grid'+(c.image?'':' no-img')+'"><div><div class="about-text">'+esc(c.text)+'</div>'+(stats?'<div class="stats">'+stats+'</div>':'')+'</div>'+(c.image?'<div class="about-img"><img src="'+esc(c.image)+'" alt=""></div>':'')+'</div>';
+      const stats=(c.stats||[]).slice(0,4).map(s=>'<div class="ms-stat"><div class="sn">'+esc(s.value)+'</div><div class="sl">'+esc(s.label)+'</div></div>').join('');
+      const inner='<div class="ms-about'+(c.image?'':' no-img')+'"><div><div class="ms-about-text">'+esc(c.text)+'</div>'+(stats?'<div class="ms-stats">'+stats+'</div>':'')+'</div>'+(c.image?'<div class="ms-about-img"><img src="'+esc(c.image)+'" alt=""></div>':'')+'</div>';
       return sec(id,c.title||'О компании',inner);
     }
     case 'services':{
-      const items=(c.items||[]).slice(0,12).map(s=>'<div class="card"><div class="card-ico"><svg viewBox="0 0 24 24">'+icon(s.icon)+'</svg></div><h3>'+esc(s.title)+'</h3><p>'+esc(s.text)+'</p></div>').join('');
-      return sec(id,c.title||'Услуги','<div class="cards">'+items+'</div>',true);
+      const items=(c.items||[]).slice(0,12).map(s=>'<div class="ms-card"><div class="ms-card-ico"><svg viewBox="0 0 24 24">'+icon(s.icon)+'</svg></div><h3>'+esc(s.title)+'</h3><p>'+esc(s.text)+'</p></div>').join('');
+      return sec(id,c.title||'Услуги','<div class="ms-cards">'+items+'</div>',true);
     }
     case 'portfolio':{
-      const items=(c.items||[]).slice(0,30).map(s=>'<div class="gitem">'+(s.image?'<div class="gitem-img"><img src="'+esc(s.image)+'" alt=""></div>':'')+'<div class="gitem-body"><h3>'+esc(s.title)+'</h3>'+(s.text?'<p>'+esc(s.text)+'</p>':'')+'</div></div>').join('');
-      return sec(id,c.title||'Портфолио','<div class="gallery">'+items+'</div>');
+      const items=(c.items||[]).slice(0,30).map(s=>'<div class="ms-gitem">'+(s.image?'<div class="ms-gitem-img"><img src="'+esc(s.image)+'" alt=""></div>':'')+'<div class="ms-gitem-body"><h3>'+esc(s.title)+'</h3>'+(s.text?'<p>'+esc(s.text)+'</p>':'')+'</div></div>').join('');
+      return sec(id,c.title||'Портфолио','<div class="ms-gallery">'+items+'</div>');
     }
     case 'products':
-      return sec(id,c.title||'Товары и услуги','<div class="prods" id="prods-'+i+'"><div class="sk" style="height:240px"></div><div class="sk" style="height:240px"></div><div class="sk" style="height:240px"></div><div class="sk" style="height:240px"></div></div>',true);
+      return sec(id,c.title||'Товары и услуги','<div class="ms-prods" id="msprods-'+i+'"><div class="sk" style="height:200px"></div><div class="sk" style="height:200px"></div><div class="sk" style="height:200px"></div><div class="sk" style="height:200px"></div></div>',true);
     case 'reviews':{
-      const items=(c.items||[]).slice(0,20).map(s=>{const st='★'.repeat(Math.max(0,Math.min(5,s.rating||5)));return '<div class="rev"><div class="rev-stars">'+st+'</div><div class="rev-text">'+esc(s.text)+'</div><div class="rev-author">'+esc(s.author)+'</div></div>';}).join('');
-      return sec(id,c.title||'Отзывы','<div class="revs">'+items+'</div>');
+      const items=(c.items||[]).slice(0,20).map(s=>{const st='★'.repeat(Math.max(0,Math.min(5,s.rating||5)));return '<div class="ms-rev"><div class="ms-rev-stars">'+st+'</div><div class="ms-rev-text">'+esc(s.text)+'</div><div class="ms-rev-author">'+esc(s.author)+'</div></div>';}).join('');
+      return sec(id,c.title||'Отзывы','<div class="ms-revs">'+items+'</div>');
     }
     case 'contacts':{
       const items=[
-        c.address?'<div class="cont-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><div><div class="cl">Адрес</div><div class="cv">'+esc(c.address)+'</div></div></div>':'',
-        c.phone?'<div class="cont-item"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg><div><div class="cl">Телефон</div><div class="cv"><a href="tel:'+esc(c.phone)+'">'+esc(c.phone)+'</a></div></div></div>':'',
-        c.email?'<div class="cont-item"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><div><div class="cl">Email</div><div class="cv"><a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a></div></div></div>':'',
-        c.hours?'<div class="cont-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><div><div class="cl">Часы работы</div><div class="cv">'+esc(c.hours)+'</div></div></div>':''
+        c.address?'<div class="ms-cont-item"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><div><div class="cl">Адрес</div><div class="cv">'+esc(c.address)+'</div></div></div>':'',
+        c.phone?'<div class="ms-cont-item"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg><div><div class="cl">Телефон</div><div class="cv"><a href="tel:'+esc(c.phone)+'" style="color:inherit;text-decoration:none">'+esc(c.phone)+'</a></div></div></div>':'',
+        c.email?'<div class="ms-cont-item"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg><div><div class="cl">Email</div><div class="cv"><a href="mailto:'+esc(c.email)+'" style="color:inherit;text-decoration:none">'+esc(c.email)+'</a></div></div></div>':'',
+        c.hours?'<div class="ms-cont-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><div><div class="cl">Часы работы</div><div class="cv">'+esc(c.hours)+'</div></div></div>':''
       ].filter(Boolean).join('');
-      const map=(c.map_lat&&c.map_lng)?'<div class="cont-map"><iframe loading="lazy" src="https://yandex.ru/map-widget/v1/?ll='+encodeURIComponent(c.map_lng+','+c.map_lat)+'&z=16&pt='+encodeURIComponent(c.map_lng+','+c.map_lat)+'"></iframe></div>':'';
-      return sec(id,c.title||'Контакты','<div class="cont-grid"><div>'+items+'</div>'+map+'</div>');
+      const map=(c.map_lat&&c.map_lng)?'<div class="ms-map"><iframe loading="lazy" src="https://yandex.ru/map-widget/v1/?ll='+encodeURIComponent(c.map_lng+','+c.map_lat)+'&z=16&pt='+encodeURIComponent(c.map_lng+','+c.map_lat)+'"></iframe></div>':'';
+      return sec(id,c.title||'Контакты','<div class="ms-cont"><div>'+items+'</div>'+map+'</div>');
     }
     case 'lead_form':
-      return sec(id,c.title||'Свяжитесь с нами','<div class="lead">'+(c.subtitle?'<p class="sub">'+esc(c.subtitle)+'</p>':'')+'<form class="lead-form" onsubmit="return submitLead(event)"><input required name="name" placeholder="Ваше имя"><input required name="contact" placeholder="Телефон или email"><textarea name="message" placeholder="Сообщение"></textarea><label class="lead-consent"><input type="checkbox" required>Согласен на обработку персональных данных</label><button class="lead-btn" type="submit">'+esc(c.button_text||'Отправить')+'</button></form><div class="lead-ok" id="leadOk">Спасибо! Ваше сообщение отправлено.</div></div>',true);
+      return sec(id,c.title||'Свяжитесь с нами','<div class="ms-lead">'+(c.subtitle?'<p class="sub">'+esc(c.subtitle)+'</p>':'')+'<form class="ms-lead-form" onsubmit="return submitLead(event)"><input required name="name" placeholder="Ваше имя"><input required name="contact" placeholder="Телефон или email"><textarea name="message" placeholder="Сообщение"></textarea><label class="ms-lead-consent"><input type="checkbox" required>Согласен на обработку персональных данных</label><button class="ms-lead-btn" type="submit">'+esc(c.button_text||'Отправить')+'</button></form><div class="ms-lead-ok" id="leadOk">Спасибо! Ваше сообщение отправлено.</div></div>',true);
     case 'news':{
-      const items=(c.items||[]).slice(0,20).map(s=>'<div class="nitem">'+(s.image?'<div class="nitem-img"><img src="'+esc(s.image)+'" alt=""></div>':'')+'<div class="nitem-body">'+(s.date?'<div class="nitem-date">'+esc(s.date)+'</div>':'')+'<h3>'+esc(s.title)+'</h3>'+(s.text?'<p>'+esc(s.text)+'</p>':'')+'</div></div>').join('');
-      return sec(id,c.title||'Новости','<div class="news">'+items+'</div>');
+      const items=(c.items||[]).slice(0,20).map(s=>'<div class="ms-nitem">'+(s.image?'<div class="ms-nitem-img"><img src="'+esc(s.image)+'" alt=""></div>':'')+'<div class="ms-nitem-body">'+(s.date?'<div class="ms-nitem-date">'+esc(s.date)+'</div>':'')+'<h3>'+esc(s.title)+'</h3>'+(s.text?'<p>'+esc(s.text)+'</p>':'')+'</div></div>').join('');
+      return sec(id,c.title||'Новости','<div class="ms-news">'+items+'</div>');
     }
     default:return '';
   }
+}
+
+function renderRight(shop){
+  const box=document.getElementById('msRight');
+  const logo=shop.site_logo_url?'<img src="'+esc(shop.site_logo_url)+'" alt="">':(shop.logo_url?'<img src="'+esc(shop.logo_url)+'" alt="">':esc(letter(shop.name)));
+  const isOwner=MY_PID&&shop.owner_public_id&&MY_PID===shop.owner_public_id;
+  box.innerHTML=
+    '<div class="rcard"><div class="r-shop-head"><div class="r-shop-logo">'+logo+'</div><div><div class="r-shop-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="r-shop-tag">'+esc(shop.tagline)+'</div>':'')+'</div></div>'
+      +(shop.rating>0?'<div class="rstat"><span class="l">Рейтинг</span><span class="v">★ '+Number(shop.rating).toFixed(1)+'</span></div>':'')
+      +(shop.region?'<div class="rstat"><span class="l">Регион</span><span class="v">'+esc(shop.region)+'</span></div>':'')
+      +(shop.direction?'<div class="rstat"><span class="l">Направление</span><span class="v">'+esc(shop.direction)+'</span></div>':'')
+      +(shop.contact_phone?'<a class="r-btn r-btn-pri" href="tel:'+esc(shop.contact_phone)+'">Позвонить</a>':'')
+      +'<a class="r-btn r-btn-sec" href="/emarket.html">← В E-market</a>'
+    +'</div>'
+    +(isOwner?'<div class="rcard"><div class="rcard-h">Управление</div><a class="r-btn r-btn-pri" href="/emarket-builder.html?id='+shop.id+'">Редактировать магазин</a></div>':'');
 }
 
 async function loadProducts(shopId,blockIdx,limit){
@@ -315,30 +325,26 @@ async function loadProducts(shopId,blockIdx,limit){
     if(!r.ok)throw 0;
     const d=await r.json();
     const items=(d.listings||[]).slice(0,limit||8);
-    const box=document.getElementById('prods-'+blockIdx);
+    const box=document.getElementById('msprods-'+blockIdx);
     if(!box)return;
-    if(!items.length){box.innerHTML='<div style="color:var(--tm);font-size:15px">Пока нет товаров</div>';return;}
+    if(!items.length){box.innerHTML='<div style="color:var(--tm);font-size:14px">Пока нет товаров</div>';return;}
     box.innerHTML=items.map(x=>{
       const img=(Array.isArray(x.photos)&&x.photos.length)?'<img src="'+esc(x.photos[0])+'" alt="">':'<div class="ph"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>';
       const price=(x.price==null||x.price===0)?'Договорная':(Number(x.price).toLocaleString('ru-RU')+' '+(x.currency==='USD'?'$':x.currency==='EUR'?'€':'₽'));
-      return '<div class="prod" onclick="location.href=\'/emarket-listing.html?id='+x.id+'\'"><div class="prod-img">'+img+'</div><div class="prod-body"><div class="prod-title">'+esc(x.title)+'</div><div class="prod-price">'+price+'</div></div></div>';
+      return '<div class="ms-prod" onclick="location.href=\'/emarket-listing.html?id='+x.id+'\'"><div class="ms-prod-img">'+img+'</div><div class="ms-prod-body"><div class="ms-prod-title">'+esc(x.title)+'</div><div class="ms-prod-price">'+price+'</div></div></div>';
     }).join('');
   }catch(e){
-    const box=document.getElementById('prods-'+blockIdx);
-    if(box)box.innerHTML='<div style="color:var(--tm);font-size:15px">Не удалось загрузить товары</div>';
+    const box=document.getElementById('msprods-'+blockIdx);
+    if(box)box.innerHTML='<div style="color:var(--tm);font-size:14px">Не удалось загрузить товары</div>';
   }
 }
 
 function submitLead(e){
   e.preventDefault();
-  // лид-эндпоинт появится в 5.5; пока показываем подтверждение
   e.target.style.display='none';
   document.getElementById('leadOk').style.display='block';
   return false;
 }
-
-function toggleNav(){document.getElementById('shNav').classList.toggle('open');}
-function closeNav(){const n=document.getElementById('shNav');if(n)n.classList.remove('open');}
 </script>
 </body>
 </html>
