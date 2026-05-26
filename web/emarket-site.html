@@ -259,10 +259,26 @@ function shopHeader(shop){
   return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+'</div></div>';
 }
 
+function blockHasContent(b){
+  const c=b.content||{};
+  switch(b.type){
+    case 'hero':return !!(c.title||c.subtitle||c.bg_image||c.cta_text);
+    case 'about':return !!(c.text||c.image||(c.stats&&c.stats.length));
+    case 'services':return !!(c.items&&c.items.some(x=>x&&(x.title||x.text)));
+    case 'portfolio':return !!(c.items&&c.items.some(x=>x&&(x.title||x.text||x.image)));
+    case 'reviews':return !!(c.items&&c.items.some(x=>x&&(x.author||x.text)));
+    case 'news':return !!(c.items&&c.items.some(x=>x&&(x.title||x.text||x.image)));
+    case 'contacts':return !!(c.address||c.phone||c.email||c.hours||(c.map_lat&&c.map_lng));
+    case 'products':return true; // подтягивает товары живьём
+    case 'lead_form':return true; // форма всегда осмысленна
+    default:return true;
+  }
+}
+
 function render(d){
   const shop=d.shop||{};
   CUR_SHOP=shop;
-  const blocks=(d.config||[]).filter(b=>b&&b.enabled!==false);
+  const blocks=(d.config||[]).filter(b=>b&&b.enabled!==false&&blockHasContent(b));
   ACC=ACCENTS[shop.accent_color]||ACCENTS.green;
   document.documentElement.style.setProperty('--acc',ACC);
   document.documentElement.style.setProperty('--acc-d',darken(ACC,.78));
