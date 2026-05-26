@@ -10436,6 +10436,85 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный id")
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "site-config" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var ownerType string
+			var ownerID int64
+			var siteConfig string
+			if err := db.QueryRow(`SELECT owner_type, owner_id, site_config::text FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID, &siteConfig); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			switch r.Method {
+			case http.MethodGet:
+				var config any = []any{}
+				_ = json.Unmarshal([]byte(siteConfig), &config)
+				writeJSON(w, http.StatusOK, map[string]any{"config": config})
+			case http.MethodPut:
+				var req struct {
+					Config any `json:"config"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if req.Config == nil {
+					req.Config = []any{}
+				}
+				b, err := json.Marshal(req.Config)
+				if err != nil {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "config должен быть валидным JSON"})
+					return
+				}
+				if _, err := db.Exec(`UPDATE emarket_shops SET site_config=$1::jsonb, updated_at=now() WHERE id=$2`, string(b), shopID); err != nil {
+					log.Printf("[emarket/site-config PUT] %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+		if len(parts) >= 2 && parts[1] == "site-publish" {
+			if r.Method != http.MethodPost {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var ownerType string
+			var ownerID int64
+			var siteConfig string
+			if err := db.QueryRow(`SELECT owner_type, owner_id, site_config::text FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID, &siteConfig); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if _, err := db.Exec(`UPDATE emarket_shops
+				SET site_published=TRUE, site_published_at=now(), site_published_config=site_config, updated_at=now()
+				WHERE id=$1`, shopID); err != nil {
+				log.Printf("[emarket/site-publish POST] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			_ = siteConfig // read above to ensure row exists and for forward-compat checks
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "published": true})
+			return
+		}
 		switch r.Method {
 		case http.MethodGet:
 			var id, ownerID int64
@@ -10507,6 +10586,46 @@ func main() {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
+	})
+
+	mux.HandleFunc("/api/emarket/site/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		slug := strings.TrimSpace(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/site/"), "/"))
+		if slug == "" {
+			writeError(w, http.StatusBadRequest, "Некорректный slug")
+			return
+		}
+		var shopID int64
+		var name, desc, logo, cover, region, configText string
+		err := db.QueryRow(`SELECT id, name, description, site_logo_url, site_cover_url, region, site_published_config::text
+			FROM emarket_shops
+			WHERE slug=$1 AND status<>'blocked' AND site_published=TRUE`, slug).Scan(&shopID, &name, &desc, &logo, &cover, &region, &configText)
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "Сайт магазина не опубликован")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		_, _ = db.Exec(`UPDATE emarket_shops SET site_views=site_views+1 WHERE id=$1`, shopID)
+		var config any = []any{}
+		_ = json.Unmarshal([]byte(configText), &config)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"shop": map[string]any{
+				"id":          shopID,
+				"slug":        slug,
+				"name":        name,
+				"description": desc,
+				"logo_url":    logo,
+				"cover_url":   cover,
+				"region":      region,
+			},
+			"config": config,
+		})
 	})
 
 	mux.HandleFunc("/api/emarket/listings", func(w http.ResponseWriter, r *http.Request) {
