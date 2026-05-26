@@ -783,10 +783,10 @@ function applyMe(u){
   const ltr=letter(nm);
   const role=u.position||'Участник LASTOP';
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  set('topbarAv',ltr);set('topbarName',nm);set('topbarRole',role);
-  set('pddAv',ltr);set('pddName',nm);set('pddRole',role);
-  const av=document.getElementById('topbarAv');if(av)av.style.background=avc(nm);
-  const av2=document.getElementById('pddAv');if(av2)av2.style.background=avc(nm);
+  set('topbarName',nm);set('topbarRole',role);
+  set('pddName',nm);set('pddRole',role);
+  if(window.LASTOP_SET_AV){window.LASTOP_SET_AV('topbarAv',ltr,avc(nm));window.LASTOP_SET_AV('pddAv',ltr,avc(nm));}
+  else{const av=document.getElementById('topbarAv');if(av){av.textContent=ltr;av.style.background=avc(nm);}const av2=document.getElementById('pddAv');if(av2){av2.textContent=ltr;av2.style.background=avc(nm);}}
 }
 
 /* ═══ STORAGE ═══ */
@@ -1295,6 +1295,7 @@ function setView(v,btn){
 
 /* ═══ MODAL ═══ */
 function openModal(id){
+  if(id!=null&&id!=='')id=Number(id);
   state.editingId=id||null;
   document.getElementById('modalTitle').textContent=id?'Редактировать задачу':'Новая задача';
   document.getElementById('btnDelete').style.display=id?'inline-flex':'none';
