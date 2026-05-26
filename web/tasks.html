@@ -1229,7 +1229,8 @@ function attachKanbanDnD(){
     col.addEventListener('dragleave',()=>col.classList.remove('drag-over'));
     col.addEventListener('drop',e=>{
       e.preventDefault();col.classList.remove('drag-over');
-      const id=e.dataTransfer.getData('text/plain');
+      let id=e.dataTransfer.getData('text/plain');
+      if(id!=null&&id!=='')id=Number(id);
       const t=tasks.find(x=>x.id===id);if(!t)return;
       t.status=col.dataset.colBody;
       if(col.dataset.colBody==='done')t.done=true;
@@ -1252,6 +1253,7 @@ async function quickAddInCol(col){
 /* ═══ ACTIONS ═══ */
 function toggleDone(id,e){
   if(e)e.stopPropagation();
+  if(id!=null&&id!=='')id=Number(id);
   const t=tasks.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;t.updated=Date.now();
   if(t.done)t.status='done';else if(t.status==='done')t.status='todo';
@@ -1259,12 +1261,14 @@ function toggleDone(id,e){
   saveTasks();render();updateStats();
 }
 async function removeTask(id){
+  if(id!=null&&id!=='')id=Number(id);
   if(!await lastopConfirm({title:'Удалить задачу?',danger:true}))return;
   deleteTaskServer(id);
   tasks=tasks.filter(x=>x.id!==id);
   saveTasks();render();updateStats();showToast('Задача удалена');
 }
 async function duplicate(id){
+  if(id!=null&&id!=='')id=Number(id);
   const t=tasks.find(x=>x.id===id);if(!t)return;
   const draft={title:t.title+' (копия)',desc:t.desc||'',due:t.due||'',time:t.time||'',pri:t.pri||'lo',tags:[...(t.tags||[])],done:false,checklist:(t.checklist||[]).map(c=>({...c}))};
   const created=await createTaskServer(draft);
