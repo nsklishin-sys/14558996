@@ -661,7 +661,7 @@ async function loadMyShop(){
     var rs=await lastopFetch(API+'/emarket/shops/my');var ds=await rs.json();
     var shops=(ds&&ds.shops)||[];
     if(shops.length){
-      box.innerHTML=ico+'<div class="rs-shop-t">'+esc(shops[0].name)+'</div><div class="rs-shop-d">Ваш магазин активен.</div><button class="rs-shop-btn" onclick="showToast(\'Кабинет продавца — в СЛОЕ 5\')">Управление магазином</button>';
+      box.innerHTML=ico+'<div class="rs-shop-t">'+esc(shops[0].name)+'</div><div class="rs-shop-d">Ваш магазин активен.</div><a class="rs-shop-btn" href="/emarket-cabinet.html?id='+shops[0].id+'">Управление магазином</a>';
     }else if(da&&da.has_access){
       box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Доступ открыт. Создайте витрину.</div><button class="rs-shop-btn" onclick="showToast(\'Создание магазина — в СЛОЕ 5\')">Открыть магазин</button>';
     }else{
