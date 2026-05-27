@@ -10507,6 +10507,130 @@ func main() {
 			}
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "staff" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			// управлять командой может только владелец магазина
+			full, ownerType, ownerID, err := emarketShopOwnerFull(db, userID, shopID)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if !full {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "только владелец управляет командой"})
+				return
+			}
+			// кандидаты — только для магазина компании
+			if len(parts) >= 3 && parts[2] == "candidates" {
+				if ownerType != "company" {
+					writeJSON(w, http.StatusOK, map[string]any{"candidates": []any{}})
+					return
+				}
+				rows, err := db.Query(`SELECT u.id, COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, u.email), COALESCE(u.avatar_url,''), cm.role, COALESCE(cm.position,''),
+					EXISTS(SELECT 1 FROM emarket_shop_staff s WHERE s.shop_id=$1 AND s.user_id=u.id)
+					FROM company_members cm JOIN users u ON u.id=cm.user_id
+					WHERE cm.company_id=$2 ORDER BY (cm.role='owner') DESC, u.full_name`, shopID, ownerID)
+				if err != nil {
+					log.Printf("[emarket/staff candidates] %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				defer rows.Close()
+				cand := []map[string]any{}
+				for rows.Next() {
+					var uid int64
+					var pid, name, avatar, role, position string
+					var inStaff bool
+					if rows.Scan(&uid, &pid, &name, &avatar, &role, &position, &inStaff) != nil {
+						continue
+					}
+					cand = append(cand, map[string]any{"user_id": uid, "public_id": pid, "name": name, "avatar_url": avatar, "role": role, "position": position, "in_staff": inStaff})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"candidates": cand})
+				return
+			}
+			switch r.Method {
+			case http.MethodGet:
+				// список команды магазина
+				rows, err := db.Query(`SELECT s.user_id, COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, u.email), COALESCE(u.avatar_url,''), s.can_leads, s.can_listings, s.can_settings
+					FROM emarket_shop_staff s JOIN users u ON u.id=s.user_id
+					WHERE s.shop_id=$1 ORDER BY u.full_name`, shopID)
+				if err != nil {
+					log.Printf("[emarket/staff list] %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				defer rows.Close()
+				staff := []map[string]any{}
+				for rows.Next() {
+					var uid int64
+					var pid, name, avatar string
+					var cl, cli, cs bool
+					if rows.Scan(&uid, &pid, &name, &avatar, &cl, &cli, &cs) != nil {
+						continue
+					}
+					staff = append(staff, map[string]any{"user_id": uid, "public_id": pid, "name": name, "avatar_url": avatar, "can_leads": cl, "can_listings": cli, "can_settings": cs})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"staff": staff})
+				return
+			case http.MethodPost, http.MethodPut:
+				// добавить/обновить права сотрудника
+				var req struct {
+					UserID      int64 `json:"user_id"`
+					CanLeads    bool  `json:"can_leads"`
+					CanListings bool  `json:"can_listings"`
+					CanSettings bool  `json:"can_settings"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if req.UserID == 0 {
+					writeError(w, http.StatusBadRequest, "user_id обязателен")
+					return
+				}
+				// добавлять можно только члена компании-владельца
+				if ownerType == "company" {
+					var isMember bool
+					_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM company_members WHERE company_id=$1 AND user_id=$2)`, ownerID, req.UserID).Scan(&isMember)
+					if !isMember {
+						writeJSON(w, http.StatusBadRequest, map[string]any{"error": "пользователь не состоит в компании"})
+						return
+					}
+				} else {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": "команда доступна только магазину компании"})
+					return
+				}
+				if _, err := db.Exec(`INSERT INTO emarket_shop_staff (shop_id, user_id, can_leads, can_listings, can_settings)
+					VALUES ($1,$2,$3,$4,$5)
+					ON CONFLICT (shop_id, user_id) DO UPDATE SET can_leads=$3, can_listings=$4, can_settings=$5`,
+					shopID, req.UserID, req.CanLeads, req.CanListings, req.CanSettings); err != nil {
+					log.Printf("[emarket/staff upsert] %v", err)
+					writeError(w, http.StatusInternalServerError, "Не удалось сохранить")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+				return
+			case http.MethodDelete:
+				delUserID, _ := strconv.ParseInt(r.URL.Query().Get("user_id"), 10, 64)
+				if delUserID == 0 {
+					writeError(w, http.StatusBadRequest, "user_id обязателен")
+					return
+				}
+				if _, err := db.Exec(`DELETE FROM emarket_shop_staff WHERE shop_id=$1 AND user_id=$2`, shopID, delUserID); err != nil {
+					log.Printf("[emarket/staff delete] %v", err)
+					writeError(w, http.StatusInternalServerError, "Не удалось удалить")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+				return
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+		}
 		if len(parts) >= 2 && parts[1] == "analytics" {
 			if r.Method != http.MethodGet {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -18198,6 +18322,19 @@ CREATE TABLE IF NOT EXISTS emarket_stat_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS emarket_stat_events_idx ON emarket_stat_events(shop_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS emarket_shop_staff (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    can_leads BOOLEAN NOT NULL DEFAULT TRUE,
+    can_listings BOOLEAN NOT NULL DEFAULT FALSE,
+    can_settings BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (shop_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS emarket_shop_staff_shop_idx ON emarket_shop_staff(shop_id);
+CREATE INDEX IF NOT EXISTS emarket_shop_staff_user_idx ON emarket_shop_staff(user_id);
 CREATE INDEX IF NOT EXISTS emarket_shops_published_idx ON emarket_shops(site_published) WHERE site_published = TRUE;
 
 CREATE TABLE IF NOT EXISTS emarket_leads (
@@ -32449,6 +32586,58 @@ func ensureUniqueShopSlug(db *sql.DB, base string) (string, error) {
 		candidate = base + "-" + hex.EncodeToString(b)
 	}
 	return "", fmt.Errorf("no unique shop slug for %q", base)
+}
+
+// emarketShopOwnerFull — true, если userID имеет ПОЛНЫЙ владельческий доступ к магазину
+// (user-владелец, либо owner компании-владельца). Публикаторы компании без роли owner
+// полным доступом НЕ обладают — им нужна запись в emarket_shop_staff.
+func emarketShopOwnerFull(db *sql.DB, userID, shopID int64) (bool, string, int64, error) {
+	var ownerType string
+	var ownerID int64
+	if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1 AND status<>'blocked'`, shopID).Scan(&ownerType, &ownerID); err != nil {
+		return false, "", 0, fmt.Errorf("%w: магазин не найден", errValidation)
+	}
+	switch ownerType {
+	case "user":
+		return ownerID == userID, ownerType, ownerID, nil
+	case "company":
+		_, isOwner, _, _, _, _, err := companyMemberRights(db, ownerID, userID)
+		if err != nil {
+			return false, ownerType, ownerID, err
+		}
+		return isOwner, ownerType, ownerID, nil
+	}
+	return false, ownerType, ownerID, nil
+}
+
+// emarketCheckPermission — проверяет, что userID вправе выполнять действие perm
+// ("leads"|"listings"|"settings") в магазине shopID. Модель: owner (user/компании) —
+// все права; остальные — по записи в emarket_shop_staff. Также требует активного
+// доступа к E-market у владельца магазина.
+func emarketCheckPermission(db *sql.DB, userID, shopID int64, perm string) error {
+	full, ownerType, ownerID, err := emarketShopOwnerFull(db, userID, shopID)
+	if err != nil {
+		return err
+	}
+	if !emarketHasAccess(db, ownerType, ownerID) {
+		return fmt.Errorf("%w: нет доступа к E-market", errValidation)
+	}
+	if full {
+		return nil
+	}
+	var canLeads, canListings, canSettings bool
+	e := db.QueryRow(`SELECT can_leads, can_listings, can_settings FROM emarket_shop_staff WHERE shop_id=$1 AND user_id=$2`, shopID, userID).Scan(&canLeads, &canListings, &canSettings)
+	if errors.Is(e, sql.ErrNoRows) {
+		return fmt.Errorf("%w: нет доступа к магазину", errValidation)
+	}
+	if e != nil {
+		return e
+	}
+	ok := (perm == "leads" && canLeads) || (perm == "listings" && canListings) || (perm == "settings" && canSettings)
+	if !ok {
+		return fmt.Errorf("%w: недостаточно прав", errValidation)
+	}
+	return nil
 }
 
 // emarketCheckShopRights — проверяет, что userID вправе вести коммерцию в магазине shopID:
