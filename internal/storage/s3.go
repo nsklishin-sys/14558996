@@ -159,25 +159,43 @@ func (s *S3Storage) Serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	// Если есть ?download=имя — добавим response-content-disposition в S3 URL.
-	// Yandex Object Storage и AWS S3 поддерживают этот параметр для override
-	// заголовков ответа объекта.
+	// Если есть ?download=имя — проксируем объект через себя с принудительным
+	// Content-Disposition. Публичный редирект на S3 здесь не годится: Yandex Object
+	// Storage игнорирует response-content-disposition для публичных (неподписанных)
+	// объектов, из-за чего на мобилке файл качается с битым именем (хэш ключа).
 	if dl := r.URL.Query().Get("download"); dl != "" {
 		safe := strings.ReplaceAll(dl, "\"", "")
 		safe = strings.ReplaceAll(safe, "\n", "")
 		safe = strings.ReplaceAll(safe, "\r", "")
-		// Формируем Content-Disposition с filename*=UTF-8'' и добавляем как query.
-		// ВНИМАНИЕ: для S3-объектов с публичным доступом без подписи параметр
-		// response-content-disposition НЕ работает — нужен presigned URL.
-		// Это TODO: после переезда на S3 заменить на presigned URL с этим параметром.
-		// Пока что просто добавляем как fallback — для приватных бакетов с
-		// presigned ссылками будет работать.
-		sep := "?"
-		if strings.Contains(target, "?") {
-			sep = "&"
+		out, err := s.client.GetObject(r.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(s.bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			http.NotFound(w, r)
+			return
 		}
-		cd := "attachment; filename*=UTF-8''" + urlPkgS3PathEscape(safe)
-		target = target + sep + "response-content-disposition=" + urlPkgS3PathEscape(cd)
+		defer out.Body.Close()
+		if out.ContentType != nil && *out.ContentType != "" {
+			w.Header().Set("Content-Type", *out.ContentType)
+		} else {
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+		if out.ContentLength != nil {
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", *out.ContentLength))
+		}
+		// filename="..." (ASCII-фолбэк) + filename*=UTF-8'' (кириллица/юникод) — работает везде.
+		asciiName := strings.Map(func(rn rune) rune {
+			if rn < 32 || rn > 126 || rn == '"' || rn == '\\' {
+				return '_'
+			}
+			return rn
+		}, safe)
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+asciiName+"\"; filename*=UTF-8''"+urlPkgS3PathEscape(safe))
+		w.Header().Set("Cache-Control", "private, max-age=0")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, out.Body)
+		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	http.Redirect(w, r, target, http.StatusFound)
