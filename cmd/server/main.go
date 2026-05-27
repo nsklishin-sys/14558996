@@ -10329,7 +10329,7 @@ func main() {
 			return
 		}
 		rows, err := db.Query(`SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url,
-			contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at
+			contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at, region
 			FROM emarket_shops WHERE owner_type='user' AND owner_id=$1 AND status<>'blocked' ORDER BY created_at DESC`, userID)
 		if err != nil {
 			log.Printf("[emarket/shops/my] %v", err)
@@ -10340,11 +10340,11 @@ func main() {
 		shops := []map[string]any{}
 		for rows.Next() {
 			var id, ownerID int64
-			var ownerType, name, slug, desc, logo, cover, phone, email, site, status string
+			var ownerType, name, slug, desc, logo, cover, phone, email, site, status, region string
 			var rating float64
 			var reviews int
 			var created time.Time
-			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &phone, &email, &site, &rating, &reviews, &status, &created); err != nil {
+			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &phone, &email, &site, &rating, &reviews, &status, &created, &region); err != nil {
 				continue
 			}
 			shops = append(shops, map[string]any{
@@ -10352,6 +10352,7 @@ func main() {
 				"description": desc, "logo_url": logo, "cover_url": cover,
 				"contact_phone": phone, "contact_email": email, "contact_site": site,
 				"rating": rating, "reviews_count": reviews, "status": status, "created_at": created,
+				"region": region,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
