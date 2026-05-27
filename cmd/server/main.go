@@ -10618,16 +10618,75 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "published": true})
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "payment" {
+			if r.Method != http.MethodGet && r.Method != http.MethodPut {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var ownerType string
+			var ownerID int64
+			if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if r.Method == http.MethodGet {
+				var pType, pURL string
+				if err := db.QueryRow(`SELECT payment_type, payment_url FROM emarket_shops WHERE id=$1`, shopID).Scan(&pType, &pURL); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"payment_type": pType, "payment_url": pURL})
+				return
+			}
+			var pReq struct {
+				PaymentType string `json:"payment_type"`
+				PaymentURL  string `json:"payment_url"`
+			}
+			if err := decodeJSON(w, r, &pReq); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if pReq.PaymentType != "link" {
+				pReq.PaymentType = "none"
+			}
+			pReq.PaymentURL = strings.TrimSpace(pReq.PaymentURL)
+			if len(pReq.PaymentURL) > 500 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "ссылка слишком длинная"})
+				return
+			}
+			if pReq.PaymentType == "link" && pReq.PaymentURL != "" && !strings.HasPrefix(pReq.PaymentURL, "http://") && !strings.HasPrefix(pReq.PaymentURL, "https://") {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "ссылка должна начинаться с http:// или https://"})
+				return
+			}
+			if pReq.PaymentType == "none" {
+				pReq.PaymentURL = ""
+			}
+			if _, err := db.Exec(`UPDATE emarket_shops SET payment_type=$1, payment_url=$2, updated_at=now() WHERE id=$3`, pReq.PaymentType, pReq.PaymentURL, shopID); err != nil {
+				log.Printf("[emarket/payment PUT] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "payment_type": pReq.PaymentType, "payment_url": pReq.PaymentURL})
+			return
+		}
 		switch r.Method {
 		case http.MethodGet:
 			var id, ownerID int64
-			var ownerType, name, slug, desc, logo, cover, phone, email, site, status string
+			var ownerType, name, slug, desc, logo, cover, phone, email, site, status, paymentType, paymentURL string
 			var rating float64
 			var reviews int
 			var created time.Time
 			err := db.QueryRow(`SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url,
-				contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at
-				FROM emarket_shops WHERE id=$1`, shopID).Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &phone, &email, &site, &rating, &reviews, &status, &created)
+				contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at, payment_type, payment_url
+				FROM emarket_shops WHERE id=$1`, shopID).Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &phone, &email, &site, &rating, &reviews, &status, &created, &paymentType, &paymentURL)
 			if err == sql.ErrNoRows || status == "blocked" {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
@@ -10641,6 +10700,7 @@ func main() {
 				"description": desc, "logo_url": logo, "cover_url": cover,
 				"contact_phone": phone, "contact_email": email, "contact_site": site,
 				"rating": rating, "reviews_count": reviews, "status": status, "created_at": created,
+				"payment_type": paymentType, "payment_url": paymentURL,
 			}})
 		case http.MethodPut:
 			userID, ok := authenticatedUserID(w, r, sessions)
@@ -17869,6 +17929,8 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_views BIGINT NOT NULL DE
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS leads_count INT NOT NULL DEFAULT 0;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAULT '';
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_at TIMESTAMPTZ;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_url TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS emarket_shops_published_idx ON emarket_shops(site_published) WHERE site_published = TRUE;
 
 CREATE TABLE IF NOT EXISTS emarket_leads (
