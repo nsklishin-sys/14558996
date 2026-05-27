@@ -6,11 +6,11 @@
   const STYLE = `
 .lt-sel-wrap{position:relative;width:100%}
 .lt-sel-native{position:absolute !important;width:1px !important;height:1px !important;padding:0 !important;border:0 !important;clip:rect(0 0 0 0) !important;overflow:hidden !important;opacity:0 !important;pointer-events:none !important}
-.lt-sel-btn{width:100%;height:38px;padding:0 36px 0 12px;border:1.5px solid #DDE8E2;border-radius:12px;background:#F0FAF4;font-family:'Manrope',sans-serif;font-size:13px;color:#1A2A22;cursor:pointer;text-align:left;display:flex;align-items:center;position:relative;transition:border-color .15s}
+.lt-sel-btn{width:100%;height:34px;padding:0 28px 0 11px;border:1.5px solid #DDE8E2;border-radius:10px;background:#fff;font-family:'Manrope',sans-serif;font-size:12px;color:#1A2A22;cursor:pointer;text-align:left;display:flex;align-items:center;position:relative;transition:border-color .15s}
 .lt-sel-btn:hover{border-color:#C0DECA}
 .lt-sel-btn.open,.lt-sel-btn:focus{border-color:#22A05A;background:#fff;outline:none}
 .lt-sel-btn.empty{color:#5A8A6A}
-.lt-sel-btn::after{content:'';position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:1.8px solid #5A8A6A;border-bottom:1.8px solid #5A8A6A;transform:translateY(-65%) rotate(45deg);transition:transform .15s}
+.lt-sel-btn::after{content:'';position:absolute;right:11px;top:50%;width:6px;height:6px;border-right:1.6px solid #5A8A6A;border-bottom:1.6px solid #5A8A6A;transform:translateY(-65%) rotate(45deg);transition:transform .15s}
 .lt-sel-btn.open::after{transform:translateY(-30%) rotate(-135deg)}
 .lt-sel-pop{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #DDE8E2;border-radius:12px;box-shadow:0 12px 32px rgba(30,138,76,.15);z-index:1000;max-height:320px;overflow:hidden;display:none;flex-direction:column;font-family:'Manrope',sans-serif}
 .lt-sel-pop.open{display:flex}
@@ -21,7 +21,7 @@
 .lt-sel-list::-webkit-scrollbar{width:6px}
 .lt-sel-list::-webkit-scrollbar-thumb{background:#C0DECA;border-radius:99px}
 .lt-sel-group{font-size:10px;font-weight:800;color:#5A8A6A;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px 4px}
-.lt-sel-item{padding:8px 10px;font-size:13px;color:#1A2A22;cursor:pointer;border-radius:6px;transition:background .1s,color .1s}
+.lt-sel-item{padding:7px 10px;font-size:12px;color:#1A2A22;cursor:pointer;border-radius:6px;transition:background .1s,color .1s}
 .lt-sel-item:hover{background:#F0FAF4;color:#1E8A4C}
 .lt-sel-item.active{background:#E8F5EE;color:#1E8A4C;font-weight:700}
 .lt-sel-item.placeholder{color:#5A8A6A}
@@ -39,6 +39,14 @@
     inject();
     const wrap=document.createElement('div');
     wrap.className='lt-sel-wrap';
+    // Прокинуть классы нативного <select> на wrapper, чтобы локальные стили страниц
+    // (.pf-select, .mf-select и т.п.) могли таргетить обёртку при необходимости,
+    // например: .pf-select.lt-sel-wrap .lt-sel-btn { height: 30px; border-radius: 99px; }
+    if(nativeSel.className){
+      nativeSel.className.split(/\s+/).filter(Boolean).forEach(c=>{
+        if(c!=='lt-sel-native')wrap.classList.add(c);
+      });
+    }
     nativeSel.parentNode.insertBefore(wrap,nativeSel);
     wrap.appendChild(nativeSel);
     nativeSel.classList.add('lt-sel-native');
