@@ -1363,8 +1363,10 @@ window.addEventListener('lastop:tasks-updated', () => {
 });
 
 // 3. Страховка: при показе страницы (включая back/forward через bfcache).
-window.addEventListener('pageshow', () => {
-  refreshTasksFromStorage();
+window.addEventListener('pageshow', (e) => {
+  // при возврате с /tasks.html (в т.ч. из bfcache) перечитываем задачи с сервера,
+  // иначе виджет показывает устаревший localStorage-снимок
+  try { loadTasks(); } catch { refreshTasksFromStorage(); }
 });
 function toggleTask(id){
   const t=TASKS.find(x=>x.id===id);if(!t)return;
