@@ -11413,9 +11413,59 @@ func main() {
 			}
 			statusCond = "AND status<>'blocked'"
 		}
+		lq := r.URL.Query()
+		conds := []string{"shop_id=$1", "deleted_at IS NULL"}
+		args := []any{shopID}
+		if statusCond == "AND status='active'" {
+			conds = append(conds, "status='active'")
+		} else {
+			conds = append(conds, "status<>'blocked'")
+		}
+		if s := strings.TrimSpace(lq.Get("q")); s != "" {
+			args = append(args, "%"+s+"%")
+			p := strconv.Itoa(len(args))
+			conds = append(conds, "(title ILIKE $"+p+" OR description ILIKE $"+p+")")
+		}
+		if k := lq.Get("kind"); k == "product" || k == "service" {
+			args = append(args, k)
+			conds = append(conds, "kind=$"+strconv.Itoa(len(args)))
+		}
+		if mine {
+			if st := lq.Get("status"); st == "active" || st == "hidden" {
+				args = append(args, st)
+				conds = append(conds, "status=$"+strconv.Itoa(len(args)))
+			}
+		}
+		whereSQL := strings.Join(conds, " AND ")
+		orderSQL := "created_at DESC"
+		switch lq.Get("sort") {
+		case "price_asc":
+			orderSQL = "price ASC NULLS LAST"
+		case "price_desc":
+			orderSQL = "price DESC NULLS LAST"
+		case "popular":
+			orderSQL = "views_count DESC"
+		case "rating":
+			orderSQL = "rating DESC"
+		case "date_asc":
+			orderSQL = "created_at ASC"
+		}
+		var total int
+		_ = db.QueryRow(`SELECT count(*) FROM emarket_listings WHERE `+whereSQL, args...).Scan(&total)
+		limit, _ := strconv.Atoi(lq.Get("limit"))
+		if limit <= 0 || limit > 100 {
+			limit = 30
+		}
+		offset, _ := strconv.Atoi(lq.Get("offset"))
+		if offset < 0 {
+			offset = 0
+		}
+		args = append(args, limit, offset)
+		limOff := "LIMIT $" + strconv.Itoa(len(args)-1) + " OFFSET $" + strconv.Itoa(len(args))
 		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, status, created_at
-			FROM emarket_listings WHERE shop_id=$1 AND deleted_at IS NULL `+statusCond+` ORDER BY created_at DESC`, shopID)
+			FROM emarket_listings WHERE `+whereSQL+` ORDER BY `+orderSQL+` `+limOff, args...)
 		if err != nil {
+			log.Printf("[emarket/shop-listings] %v", err)
 			writeError(w, http.StatusInternalServerError, "Ошибка")
 			return
 		}
@@ -11443,7 +11493,7 @@ func main() {
 				"reviews_count": reviews, "views_count": views, "status": status, "created_at": created,
 			})
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
+		writeJSON(w, http.StatusOK, map[string]any{"listings": items, "total": total})
 	})
 
 	// Лента товаров: ?category=&kind=&price_from=&price_to=&q=&sort=&limit=&offset=
