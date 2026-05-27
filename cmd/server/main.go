@@ -6285,7 +6285,7 @@ func main() {
 				HasAccess bool   `json:"has_access"`
 			}
 			owners := []ownerRow{}
-			crows, err := db.Query(`SELECT c.id, c.name, c.slug, COALESCE(c.logo_url,''),
+			crows, err := db.Query(`SELECT c.id, c.name, c.slug, COALESCE(c.logo_image,''),
 				COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
 				FROM companies c
 				LEFT JOIN emarket_access a ON a.owner_type='company' AND a.owner_id=c.id
