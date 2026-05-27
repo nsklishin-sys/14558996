@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/utils.js"></script>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Корзина</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;padding-bottom:16px;scrollbar-width:none;-ms-overflow-style:none}
+.main::-webkit-scrollbar{display:none}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+.right>*{flex-shrink:0}
+.right::-webkit-scrollbar{width:4px}.right::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ─── Сайдбарные карточки (как на emarket.html) ─── */
+.rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px}
+.rs-shopping{padding:0;overflow:hidden}
+.rs-shopping-head{width:100%;padding:14px 16px;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:11px;font-family:inherit;text-align:left;transition:background .15s}
+.rs-shopping-head:hover{background:var(--gp)}
+.rs-shopping-ico{width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rs-shopping-headtext{flex:1;min-width:0}
+.rs-shopping-title{font-size:13px;font-weight:800;color:var(--t)}
+.rs-shopping-sub{font-size:11px;color:var(--gmt);margin-top:2px}
+.rs-shopping-chev{width:16px;height:16px;flex-shrink:0;fill:none;stroke:var(--gmt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.rs-shopping.open .rs-shopping-chev{transform:rotate(180deg)}
+.rs-shopping.open .rs-shopping-head{background:var(--gp);border-bottom:1px solid var(--bdr)}
+.rs-shopping-body{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1)}
+.rs-shopping.open .rs-shopping-body{max-height:1200px}
+.rs-shopping-sec{padding:11px 16px;border-bottom:1px solid var(--bdr)}
+.rs-shopping-sec:last-child{border-bottom:none}
+.rs-shopping-sec.active{background:var(--gp)}
+.rs-shopping-sec.active>.rs-shopping-sec-h>span:first-child{color:var(--g)}
+.rs-shopping-sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.rs-shopping-sec-h>span{font-size:10px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em}
+.rs-shopping-all{font-size:11px;color:var(--g);font-weight:700;text-decoration:none;transition:color .15s}
+.rs-shopping-all:hover{color:var(--gm)}
+.rs-shopping-empty{font-size:12px;color:var(--gmt)}
+.rs-title{font-size:11px;font-weight:800;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.rs-top-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none;transition:opacity .15s}
+.rs-top-item:last-child{border-bottom:none}
+.rs-top-item:hover{opacity:.7}
+.rs-top-rank{width:20px;font-size:13px;font-weight:900;color:var(--gb);flex-shrink:0;text-align:center}
+.rs-top-logo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.rs-top-logo img{width:100%;height:100%;object-fit:cover}
+.rs-top-info{flex:1;min-width:0}
+.rs-top-name{font-size:12.5px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-top-rating{font-size:10.5px;color:var(--gmt);margin-top:1px}
+.rs-empty{font-size:11px;color:var(--gmt);text-align:center;padding:10px 4px;line-height:1.5}
+
+/* ─── Хедер страницы корзины ─── */
+.cart-page{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start}
+@media(max-width:1100px){.cart-page{grid-template-columns:1fr}}
+.cart-head{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px 20px;display:flex;align-items:center;gap:14px;grid-column:1/-1}
+.cart-head-ico{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--g),var(--gm));display:grid;place-items:center;flex-shrink:0;color:#fff}
+.cart-head-ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cart-head-text{flex:1;min-width:0}
+.cart-head-t{font-size:18px;font-weight:900;color:var(--t);line-height:1.2}
+.cart-head-d{font-size:12px;color:var(--gmt);margin-top:3px}
+.cart-head-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.cart-head-btn{padding:9px 14px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--w);color:var(--tm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:all .15s;text-decoration:none}
+.cart-head-btn:hover{background:var(--gp);border-color:var(--gb);color:var(--g)}
+.cart-head-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cart-head-btn.danger{color:var(--red)}
+.cart-head-btn.danger:hover{background:#fdecec;border-color:#f4c4c4;color:var(--red)}
+
+/* ─── Список магазинов ─── */
+.cart-shops{display:flex;flex-direction:column;gap:12px;min-width:0}
+.cart-shop{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);overflow:hidden;animation:slideIn .25s ease-out}
+@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.cart-shop-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--bdr);background:var(--gp)}
+.cart-shop-logo{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;color:#fff;font-size:15px;font-weight:900;overflow:hidden}
+.cart-shop-logo img{width:100%;height:100%;object-fit:cover}
+.cart-shop-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cart-shop-name{font-size:14px;font-weight:800;color:var(--t);text-decoration:none;display:inline-flex;align-items:center;gap:5px;width:fit-content}
+.cart-shop-name:hover{color:var(--g)}
+.cart-shop-name svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;opacity:.6}
+.cart-shop-region{font-size:11px;color:var(--gmt)}
+
+.cart-items{display:flex;flex-direction:column}
+.cart-item{display:grid;grid-template-columns:80px 1fr auto;gap:14px;padding:14px 18px;border-bottom:1px solid var(--bdr);align-items:center;transition:opacity .25s,transform .25s,max-height .25s,padding .25s;max-height:200px}
+.cart-item:last-child{border-bottom:none}
+.cart-item.removing{opacity:0;transform:translateX(20px);max-height:0;padding-top:0;padding-bottom:0;overflow:hidden;border-bottom-width:0}
+.cart-item.unavailable .ci-title{color:var(--gmt);text-decoration:line-through}
+.cart-item.unavailable .ci-img{opacity:.5}
+
+.ci-img{width:80px;height:80px;border-radius:12px;background:var(--gp);border:1px solid var(--bdr);overflow:hidden;display:grid;place-items:center;color:#fff;font-size:24px;font-weight:900;flex-shrink:0;text-decoration:none}
+.ci-img img{width:100%;height:100%;object-fit:cover}
+
+.ci-body{min-width:0;display:flex;flex-direction:column;gap:6px}
+.ci-kind{font-size:10px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em}
+.ci-title{font-size:14px;font-weight:700;color:var(--t);text-decoration:none;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ci-title:hover{color:var(--g)}
+.ci-price-unit{font-size:12px;color:var(--gmt)}
+.ci-unavailable{font-size:11px;font-weight:700;color:var(--red);background:#fdecec;border:1px solid #f4c4c4;padding:3px 8px;border-radius:99px;display:inline-block;width:fit-content;margin-top:2px}
+
+.ci-controls{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;min-width:120px}
+.ci-qty{display:flex;align-items:center;gap:0;border:1.5px solid var(--bdr);border-radius:var(--rm);overflow:hidden;background:var(--w)}
+.ci-qty button{width:32px;height:32px;border:none;background:transparent;cursor:pointer;color:var(--tm);font-size:16px;font-weight:700;font-family:inherit;transition:background .12s;display:grid;place-items:center}
+.ci-qty button:hover:not(:disabled){background:var(--gp);color:var(--g)}
+.ci-qty button:disabled{color:var(--bdr);cursor:not-allowed}
+.ci-qty input{width:42px;height:32px;border:none;border-left:1.5px solid var(--bdr);border-right:1.5px solid var(--bdr);text-align:center;font-family:inherit;font-size:13px;font-weight:700;color:var(--t);outline:none;background:transparent;-moz-appearance:textfield}
+.ci-qty input::-webkit-outer-spin-button,.ci-qty input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ci-total{font-size:15px;font-weight:800;color:var(--t);white-space:nowrap}
+.ci-total.unavail{color:var(--gmt);text-decoration:line-through}
+.ci-actions{display:flex;gap:4px}
+.ci-act{width:28px;height:28px;border-radius:8px;border:1px solid var(--bdr);background:var(--w);color:var(--gmt);cursor:pointer;display:grid;place-items:center;transition:all .15s}
+.ci-act:hover{border-color:var(--gb);background:var(--gp);color:var(--g)}
+.ci-act.danger:hover{border-color:#f4c4c4;background:#fdecec;color:var(--red)}
+.ci-act svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+.cart-shop-foot{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--w);flex-wrap:wrap}
+.cart-shop-totals{flex:1;min-width:160px;display:flex;flex-direction:column;gap:2px}
+.cart-shop-totals-lbl{font-size:11px;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.cart-shop-totals-val{font-size:18px;font-weight:900;color:var(--t)}
+.cart-shop-totals-sub{font-size:11px;color:var(--gmt)}
+.cart-shop-checkout{padding:11px 22px;border-radius:var(--rm);background:var(--g);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:background .15s}
+.cart-shop-checkout:hover{background:var(--gm)}
+.cart-shop-checkout:disabled{background:var(--gb);cursor:not-allowed}
+.cart-shop-checkout svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ─── Sticky итого ─── */
+.cart-summary{position:sticky;top:0;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px;display:flex;flex-direction:column;gap:14px}
+.cs-t{font-size:14px;font-weight:900;color:var(--t);text-transform:uppercase;letter-spacing:.04em}
+.cs-row{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--tm)}
+.cs-row .cs-lbl{color:var(--gmt)}
+.cs-row .cs-val{font-weight:700;color:var(--t)}
+.cs-divider{height:1px;background:var(--bdr)}
+.cs-totals-list{display:flex;flex-direction:column;gap:6px}
+.cs-total-row{display:flex;align-items:center;justify-content:space-between;font-size:15px}
+.cs-total-row .cs-tot-lbl{color:var(--gmt);font-weight:600}
+.cs-total-row .cs-tot-val{font-weight:900;color:var(--t);font-size:17px}
+.cs-checkout{padding:13px;border-radius:var(--rm);background:var(--g);color:#fff;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:inherit;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.cs-checkout:hover:not(:disabled){background:var(--gm)}
+.cs-checkout:disabled{background:var(--gb);cursor:not-allowed}
+.cs-checkout svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cs-note{font-size:11px;color:var(--gmt);text-align:center;line-height:1.5;display:flex;align-items:center;justify-content:center;gap:6px}
+.cs-note svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.8;flex-shrink:0}
+.cs-tip{background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:10px 12px;font-size:11px;color:var(--tm);line-height:1.5;display:flex;align-items:flex-start;gap:8px}
+.cs-tip svg{width:14px;height:14px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;flex-shrink:0;margin-top:1px}
+
+/* ─── Пустая корзина ─── */
+.cart-empty{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:40px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;grid-column:1/-1}
+.cart-empty-ico{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,var(--gl),var(--gp));border:1px solid var(--bdr);display:grid;place-items:center;color:var(--g)}
+.cart-empty-ico svg{width:42px;height:42px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.cart-empty-t{font-size:18px;font-weight:900;color:var(--t)}
+.cart-empty-d{font-size:13px;color:var(--gmt);max-width:380px;line-height:1.6}
+.cart-empty-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.cart-empty-btn{padding:11px 22px;border-radius:var(--rm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;transition:all .15s}
+.cart-empty-btn.primary{background:var(--g);color:#fff;border:1px solid var(--g)}
+.cart-empty-btn.primary:hover{background:var(--gm)}
+.cart-empty-btn.secondary{background:var(--w);color:var(--tm);border:1.5px solid var(--bdr)}
+.cart-empty-btn.secondary:hover{background:var(--gp);border-color:var(--gb);color:var(--g)}
+.cart-empty-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+
+/* ─── Скелетоны ─── */
+.skel{background:linear-gradient(90deg,var(--bg) 0%,var(--gp) 50%,var(--bg) 100%);background-size:200% 100%;animation:skel 1.4s ease-in-out infinite;border-radius:8px}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-shop{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+.skel-row{display:flex;align-items:center;gap:14px}
+
+/* ─── Undo Toast ─── */
+.undo-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--t);color:#fff;padding:12px 18px;border-radius:var(--rm);box-shadow:0 10px 30px rgba(0,0,0,.18);display:flex;align-items:center;gap:14px;font-size:13px;font-weight:600;z-index:1000;opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .25s;max-width:90vw;overflow:hidden}
+.undo-toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+.undo-toast-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.undo-btn{padding:6px 14px;border-radius:var(--r);background:transparent;border:1.5px solid rgba(255,255,255,.3);color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.04em;transition:all .15s;flex-shrink:0}
+.undo-btn:hover{background:rgba(255,255,255,.12);border-color:#fff}
+.undo-progress{position:absolute;bottom:0;left:0;height:2px;background:var(--gm);width:100%;transform-origin:left center}
+.undo-toast.show .undo-progress{animation:undoProgress 5s linear forwards}
+@keyframes undoProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* ─── Модалка «Сохранить как заявку» ─── */
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,30,.5);z-index:1100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;padding:20px}
+.modal-bg.show{opacity:1;pointer-events:auto}
+.modal-card{background:var(--w);border-radius:var(--rxl);box-shadow:0 24px 60px rgba(0,0,0,.25);width:100%;max-width:440px;padding:24px;transform:scale(.95);transition:transform .2s}
+.modal-bg.show .modal-card{transform:scale(1)}
+.modal-t{font-size:18px;font-weight:900;color:var(--t);margin-bottom:6px}
+.modal-d{font-size:12px;color:var(--gmt);margin-bottom:16px;line-height:1.5}
+.modal-input{width:100%;padding:11px 14px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:14px;color:var(--t);background:var(--gp);outline:none;transition:border-color .15s}
+.modal-input:focus{border-color:var(--g);background:var(--w)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.modal-btn{padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s}
+.modal-btn.primary{background:var(--g);color:#fff}
+.modal-btn.primary:hover:not(:disabled){background:var(--gm)}
+.modal-btn.primary:disabled{background:var(--gb);cursor:not-allowed}
+.modal-btn.secondary{background:transparent;color:var(--tm);border:1.5px solid var(--bdr)}
+.modal-btn.secondary:hover{background:var(--gp)}
+
+/* ─── Адаптив ─── */
+@media(max-width:600px){
+  .cart-item{grid-template-columns:64px 1fr;grid-template-areas:"img body" "controls controls";gap:10px}
+  .ci-img{grid-area:img;width:64px;height:64px}
+  .ci-body{grid-area:body}
+  .ci-controls{grid-area:controls;flex-direction:row;align-items:center;justify-content:space-between;width:100%;min-width:0}
+  .cart-shop-foot{flex-direction:column;align-items:stretch}
+  .cart-shop-checkout{justify-content:center}
+  .cart-head{flex-wrap:wrap}
+  .cart-head-actions{width:100%;justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+<main class="main" id="cartMain">
+  <div class="cart-page" id="cartPage">
+    <div class="cart-head">
+      <div class="cart-head-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+      <div class="cart-head-text">
+        <div class="cart-head-t">Корзина</div>
+        <div class="cart-head-d">Загрузка…</div>
+      </div>
+    </div>
+    <div class="cart-shops">
+      <div class="skel-shop">
+        <div class="skel-row"><div class="skel" style="width:40px;height:40px;border-radius:10px"></div><div class="skel" style="height:14px;width:160px"></div></div>
+        <div class="skel-row"><div class="skel" style="width:80px;height:80px;border-radius:12px"></div><div style="flex:1;display:flex;flex-direction:column;gap:6px"><div class="skel" style="height:12px;width:70%"></div><div class="skel" style="height:12px;width:40%"></div></div></div>
+      </div>
+    </div>
+    <div></div>
+  </div>
+</main>
+<aside class="right" id="cartRight"></aside>
+</div>
+
+<!-- Undo Toast -->
+<div class="undo-toast" id="undoToast">
+  <span class="undo-toast-text" id="undoToastText">Позиция удалена</span>
+  <button type="button" class="undo-btn" id="undoBtn">Вернуть</button>
+  <div class="undo-progress"></div>
+</div>
+
+<!-- Модалка «Сохранить как заявку» -->
+<div class="modal-bg" id="draftModal">
+  <div class="modal-card">
+    <div class="modal-t">Сохранить корзину как заявку</div>
+    <div class="modal-d">Текущий состав корзины сохранится с зафиксированными ценами. Вы сможете открыть заявку позже из раздела «Сохранённое».</div>
+    <input type="text" class="modal-input" id="draftName" placeholder="Например: Канцелярия Q1 или Маршрут СНГ→ЕС май" maxlength="120">
+    <div class="modal-actions">
+      <button type="button" class="modal-btn secondary" id="draftCancel">Отмена</button>
+      <button type="button" class="modal-btn primary" id="draftSave">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='/api';
+const EM_ACCENT_PALETTE={
+  green:'#1E8A4C', blue:'#2479C8', navy:'#1E3A5F', teal:'#0E8A8A',
+  purple:'#7C5CC4', orange:'#D8741E', red:'#C8392E', graphite:'#3A4654'
+};
+const CURRENCY_SYMBOLS={RUB:'₽',USD:'$',EUR:'€'};
+const CURRENCY_LABELS={RUB:'руб',USD:'USD',EUR:'EUR'};
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){return((s||'?').trim()[0]||'?').toUpperCase();}
+function accent(s){return EM_ACCENT_PALETTE[s||'green']||EM_ACCENT_PALETTE.green;}
+function fmtMoney(amount,cur){
+  var sym=CURRENCY_SYMBOLS[cur]||'₽';
+  return Number(amount||0).toLocaleString('ru-RU',{maximumFractionDigits:2})+'\u00A0'+sym;
+}
+function toast(msg,type){
+  if(window.lastopToast)return window.lastopToast(msg,type||'info');
+}
+function plural(n,one,few,many){
+  n=Math.abs(n)%100;
+  var n1=n%10;
+  if(n>10&&n<20)return many;
+  if(n1>1&&n1<5)return few;
+  if(n1===1)return one;
+  return many;
+}
+function truncate(s,n){return s&&s.length>n?s.slice(0,n-1)+'…':s||'';}
+
+// ── state ──
+var CART={items:[],loaded:false};
+var UNDO={item:null,timer:null};
+var QTY_DEBOUNCE={};
+
+(async function init(){
+  if(!localStorage.getItem('token')){location.href='/login.html';return;}
+  renderRight();
+  await loadCart();
+  document.getElementById('undoBtn').addEventListener('click',undoRemove);
+  document.getElementById('draftCancel').addEventListener('click',closeDraftModal);
+  document.getElementById('draftSave').addEventListener('click',saveDraft);
+  document.getElementById('draftModal').addEventListener('click',function(e){
+    if(e.target.id==='draftModal')closeDraftModal();
+  });
+  document.getElementById('draftName').addEventListener('keydown',function(e){
+    if(e.key==='Enter')saveDraft();
+    if(e.key==='Escape')closeDraftModal();
+  });
+})();
+
+/* ── Загрузка корзины ── */
+async function loadCart(){
+  try{
+    var r=await lastopFetch(API+'/emarket/cart');
+    if(!r.ok)throw new Error('http');
+    var d=await r.json();
+    CART.items=(d&&d.items)||[];
+    CART.loaded=true;
+    renderCart();
+  }catch(e){
+    console.error('cart load',e);
+    CART.items=[];CART.loaded=true;
+    renderCart();
+  }
+}
+
+/* ── Рендер ── */
+function renderCart(){
+  var page=document.getElementById('cartPage');
+  if(!CART.items.length){
+    page.innerHTML=
+      '<div class="cart-empty">'+
+        '<div class="cart-empty-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>'+
+        '<div class="cart-empty-t">Ваша корзина пуста</div>'+
+        '<div class="cart-empty-d">Здесь будут товары и услуги, которые вы добавите из маркета. Все позиции группируются по магазину — каждый магазин оформляется отдельным заказом.</div>'+
+        '<div class="cart-empty-actions">'+
+          '<a href="/emarket.html" class="cart-empty-btn primary"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/></svg>Перейти в маркет</a>'+
+          '<a href="/emarket-saved.html" class="cart-empty-btn secondary"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Открыть сохранённое</a>'+
+        '</div>'+
+      '</div>';
+    return;
+  }
+  // группировка по магазинам (сохраняя порядок появления)
+  var groupsMap={};
+  var groupsArr=[];
+  CART.items.forEach(function(it){
+    if(!groupsMap[it.shop_id]){
+      groupsMap[it.shop_id]={shop:it,items:[]};
+      groupsArr.push(groupsMap[it.shop_id]);
+    }
+    groupsMap[it.shop_id].items.push(it);
+  });
+
+  // totals по валютам (только available)
+  var totalsByCurrency={};
+  var itemsCount=0;
+  var unavailableCount=0;
+  CART.items.forEach(function(it){
+    if(!it.available){unavailableCount++;return;}
+    itemsCount+=it.quantity;
+    var cur=it.currency||'RUB';
+    totalsByCurrency[cur]=(totalsByCurrency[cur]||0)+(it.price*it.quantity);
+  });
+  var currencyKeys=Object.keys(totalsByCurrency).sort();
+  var shopsCount=groupsArr.length;
+
+  // ── HTML ──
+  var headHTML=
+    '<div class="cart-head">'+
+      '<div class="cart-head-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>'+
+      '<div class="cart-head-text">'+
+        '<div class="cart-head-t">Корзина</div>'+
+        '<div class="cart-head-d">'+itemsCount+' '+plural(itemsCount,'позиция','позиции','позиций')+' · '+shopsCount+' '+plural(shopsCount,'магазин','магазина','магазинов')+'</div>'+
+      '</div>'+
+      '<div class="cart-head-actions">'+
+        '<button type="button" class="cart-head-btn" onclick="openDraftModal()"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Сохранить как заявку</button>'+
+        '<button type="button" class="cart-head-btn danger" onclick="clearCart()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Очистить</button>'+
+      '</div>'+
+    '</div>';
+
+  var shopsHTML='<div class="cart-shops">';
+  groupsArr.forEach(function(g){shopsHTML+=buildShopGroup(g);});
+  shopsHTML+='</div>';
+
+  var summaryHTML='<div class="cart-summary">'+
+    '<div class="cs-t">Итого</div>'+
+    '<div class="cs-row"><span class="cs-lbl">Позиций</span><span class="cs-val">'+itemsCount+'</span></div>'+
+    '<div class="cs-row"><span class="cs-lbl">Магазинов</span><span class="cs-val">'+shopsCount+'</span></div>'+
+    (unavailableCount?'<div class="cs-row" style="color:var(--red)"><span class="cs-lbl" style="color:var(--red)">Недоступно</span><span class="cs-val" style="color:var(--red)">'+unavailableCount+'</span></div>':'')+
+    '<div class="cs-divider"></div>'+
+    '<div class="cs-totals-list">';
+
+  if(!currencyKeys.length){
+    summaryHTML+='<div class="cs-row"><span class="cs-lbl">Сумма</span><span class="cs-val">—</span></div>';
+  } else {
+    currencyKeys.forEach(function(cur){
+      summaryHTML+='<div class="cs-total-row"><span class="cs-tot-lbl">'+(CURRENCY_LABELS[cur]||cur)+'</span><span class="cs-tot-val">'+fmtMoney(totalsByCurrency[cur],cur)+'</span></div>';
+    });
+  }
+
+  summaryHTML+='</div>'+
+    (currencyKeys.length>1?'<div class="cs-tip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>В корзине несколько валют. Каждый магазин оформляется отдельным заказом в своей валюте — пересчёт делает банк при оплате.</div>':'')+
+    '<button type="button" class="cs-checkout" onclick="checkoutAll()"'+(itemsCount?'':' disabled')+'><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(shopsCount>1?('Оформить '+shopsCount+' '+plural(shopsCount,'заказ','заказа','заказов')):'Оформить заказ')+'</button>'+
+    '<div class="cs-note"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Оплата напрямую продавцу</div>'+
+  '</div>';
+
+  page.innerHTML=headHTML+shopsHTML+summaryHTML;
+}
+
+function buildShopGroup(g){
+  var shop=g.shop;
+  var logoBg=accent(shop.shop_accent);
+  var logoContent=shop.shop_logo?'<img src="'+esc(shop.shop_logo)+'" alt="">':esc(letter(shop.shop_name));
+
+  var groupTotalsByCurrency={};
+  var groupAvailableQty=0;
+  var groupTotalQty=0;
+  g.items.forEach(function(it){
+    groupTotalQty+=it.quantity;
+    if(it.available){
+      groupAvailableQty+=it.quantity;
+      var cur=it.currency||'RUB';
+      groupTotalsByCurrency[cur]=(groupTotalsByCurrency[cur]||0)+(it.price*it.quantity);
+    }
+  });
+  var groupCurrencies=Object.keys(groupTotalsByCurrency).sort();
+  var groupTotalLine=groupCurrencies.length?groupCurrencies.map(function(cur){return fmtMoney(groupTotalsByCurrency[cur],cur);}).join(' · '):'—';
+
+  var itemsHTML=g.items.map(buildCartItem).join('');
+
+  var hasUnavail=g.items.some(function(it){return !it.available;});
+
+  return '<div class="cart-shop" data-shop="'+shop.shop_id+'">'+
+    '<div class="cart-shop-head">'+
+      '<div class="cart-shop-logo" style="background:'+logoBg+'">'+logoContent+'</div>'+
+      '<div class="cart-shop-info">'+
+        '<a class="cart-shop-name" href="/shop/'+encodeURIComponent(shop.shop_slug||'')+'">'+esc(shop.shop_name)+'<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></a>'+
+        (shop.shop_region?'<div class="cart-shop-region">'+esc(shop.shop_region)+'</div>':'')+
+      '</div>'+
+    '</div>'+
+    '<div class="cart-items">'+itemsHTML+'</div>'+
+    '<div class="cart-shop-foot">'+
+      '<div class="cart-shop-totals">'+
+        '<div class="cart-shop-totals-lbl">Итого по магазину</div>'+
+        '<div class="cart-shop-totals-val">'+groupTotalLine+'</div>'+
+        (hasUnavail?'<div class="cart-shop-totals-sub" style="color:var(--red)">Без учёта недоступных позиций</div>':'')+
+      '</div>'+
+      '<button type="button" class="cart-shop-checkout" onclick="checkoutShop('+shop.shop_id+')"'+(groupAvailableQty?'':' disabled')+'><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Оформить заказ</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function buildCartItem(it){
+  var kindLabel=it.kind==='service'?'Услуга':'Товар';
+  var imgBg=accent(it.shop_accent);
+  var hasPhoto=!!it.photo;
+  var imgInner=hasPhoto?'<img src="'+esc(it.photo)+'" alt="">':esc(letter(it.title));
+  var imgStyle=hasPhoto?'':('background:'+imgBg);
+
+  var priceUnit=it.price>0?fmtMoney(it.price,it.currency)+' / шт':'Цена не указана';
+  var total=it.available&&it.price>0?fmtMoney(it.price*it.quantity,it.currency):'—';
+  var unavailableNote=it.available?'':'<span class="ci-unavailable">Товар больше недоступен</span>';
+  var totalClass='ci-total'+(it.available?'':' unavail');
+
+  return '<div class="cart-item'+(it.available?'':' unavailable')+'" data-id="'+it.id+'">'+
+    '<a href="/emarket-listing.html?id='+it.listing_id+'" class="ci-img" style="'+imgStyle+'">'+imgInner+'</a>'+
+    '<div class="ci-body">'+
+      '<div class="ci-kind">'+kindLabel+'</div>'+
+      '<a href="/emarket-listing.html?id='+it.listing_id+'" class="ci-title">'+esc(it.title)+'</a>'+
+      '<div class="ci-price-unit">'+priceUnit+'</div>'+
+      unavailableNote+
+    '</div>'+
+    '<div class="ci-controls">'+
+      '<div class="ci-qty">'+
+        '<button type="button" onclick="changeQty('+it.id+',-1)"'+(it.quantity<=1||!it.available?' disabled':'')+'>−</button>'+
+        '<input type="number" min="1" value="'+it.quantity+'" onchange="setQty('+it.id+',this.value)"'+(it.available?'':' disabled')+'>'+
+        '<button type="button" onclick="changeQty('+it.id+',1)"'+(it.available?'':' disabled')+'>+</button>'+
+      '</div>'+
+      '<div class="'+totalClass+'">'+total+'</div>'+
+      '<div class="ci-actions">'+
+        '<button type="button" class="ci-act" onclick="moveToSaved('+it.id+','+it.listing_id+')" title="В сохранённое"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'+
+        '<button type="button" class="ci-act danger" onclick="removeItem('+it.id+')" title="Удалить"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ── Изменение количества (debounce) ── */
+function changeQty(cartId,delta){
+  var it=CART.items.find(function(x){return x.id===cartId;});
+  if(!it||!it.available)return;
+  var newQty=Math.max(1,it.quantity+delta);
+  setQty(cartId,newQty);
+}
+function setQty(cartId,value){
+  var qty=Math.max(1,parseInt(value,10)||1);
+  var it=CART.items.find(function(x){return x.id===cartId;});
+  if(!it||!it.available)return;
+  it.quantity=qty;
+  updateItemDOM(cartId);
+  updateSummaryDOM();
+  clearTimeout(QTY_DEBOUNCE[cartId]);
+  QTY_DEBOUNCE[cartId]=setTimeout(function(){
+    lastopFetch(API+'/emarket/cart/'+cartId,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({quantity:qty})
+    }).then(function(r){if(!r.ok)throw new Error('http');})
+    .catch(function(){toast('Не удалось обновить количество','error');loadCart();});
+  },350);
+}
+function updateItemDOM(cartId){
+  var it=CART.items.find(function(x){return x.id===cartId;});
+  if(!it)return;
+  var card=document.querySelector('.cart-item[data-id="'+cartId+'"]');
+  if(!card)return;
+  var input=card.querySelector('.ci-qty input');
+  var btnMinus=card.querySelector('.ci-qty button:first-child');
+  var totalEl=card.querySelector('.ci-total');
+  if(input&&input.value!=String(it.quantity))input.value=it.quantity;
+  if(btnMinus)btnMinus.disabled=it.quantity<=1||!it.available;
+  if(totalEl)totalEl.textContent=it.available&&it.price>0?fmtMoney(it.price*it.quantity,it.currency):'—';
+  refreshShopTotals(it.shop_id);
+}
+function refreshShopTotals(shopId){
+  var groupItems=CART.items.filter(function(it){return it.shop_id===shopId;});
+  if(!groupItems.length)return;
+  var totals={};
+  groupItems.forEach(function(it){
+    if(!it.available)return;
+    var cur=it.currency||'RUB';
+    totals[cur]=(totals[cur]||0)+(it.price*it.quantity);
+  });
+  var curs=Object.keys(totals).sort();
+  var line=curs.length?curs.map(function(cur){return fmtMoney(totals[cur],cur);}).join(' · '):'—';
+  var card=document.querySelector('.cart-shop[data-shop="'+shopId+'"]');
+  if(!card)return;
+  var totalEl=card.querySelector('.cart-shop-totals-val');
+  if(totalEl)totalEl.textContent=line;
+}
+function updateSummaryDOM(){
+  // обновим только sticky-итого, не пересобирая весь HTML (чтобы не дёргать input при печати)
+  var summary=document.querySelector('.cart-summary');
+  if(!summary)return;
+  var totalsByCurrency={};
+  var itemsCount=0;
+  CART.items.forEach(function(it){
+    if(!it.available)return;
+    itemsCount+=it.quantity;
+    var cur=it.currency||'RUB';
+    totalsByCurrency[cur]=(totalsByCurrency[cur]||0)+(it.price*it.quantity);
+  });
+  var rows=summary.querySelectorAll('.cs-row .cs-val');
+  if(rows[0])rows[0].textContent=itemsCount;
+  // обновим строки валют
+  var totalsList=summary.querySelector('.cs-totals-list');
+  if(totalsList){
+    var curs=Object.keys(totalsByCurrency).sort();
+    if(!curs.length){
+      totalsList.innerHTML='<div class="cs-row"><span class="cs-lbl">Сумма</span><span class="cs-val">—</span></div>';
+    } else {
+      totalsList.innerHTML=curs.map(function(cur){
+        return '<div class="cs-total-row"><span class="cs-tot-lbl">'+(CURRENCY_LABELS[cur]||cur)+'</span><span class="cs-tot-val">'+fmtMoney(totalsByCurrency[cur],cur)+'</span></div>';
+      }).join('');
+    }
+  }
+}
+
+/* ── Удаление с undo ── */
+function removeItem(cartId){
+  var idx=CART.items.findIndex(function(x){return x.id===cartId;});
+  if(idx<0)return;
+  // если уже висит undo по другому товару — финализируем его
+  if(UNDO.item&&UNDO.item.id!==cartId){
+    finalizeRemove(UNDO.item);
+  }
+  var card=document.querySelector('.cart-item[data-id="'+cartId+'"]');
+  if(card)card.classList.add('removing');
+  var removed=CART.items.splice(idx,1)[0];
+  setTimeout(function(){
+    // не пересобираем целую корзину — только обновляем summary и удаляем DOM ноду
+    if(card&&card.parentNode)card.parentNode.removeChild(card);
+    // если в магазине больше нет позиций — убираем всю группу
+    var shopCard=document.querySelector('.cart-shop[data-shop="'+removed.shop_id+'"]');
+    var remainingInShop=CART.items.filter(function(x){return x.shop_id===removed.shop_id;}).length;
+    if(shopCard&&!remainingInShop){
+      shopCard.style.animation='none';
+      shopCard.style.opacity='0';
+      shopCard.style.transform='translateY(-6px)';
+      shopCard.style.transition='opacity .25s,transform .25s';
+      setTimeout(function(){if(shopCard.parentNode)shopCard.parentNode.removeChild(shopCard);},260);
+    } else if(shopCard){
+      refreshShopTotals(removed.shop_id);
+    }
+    updateSummaryDOM();
+    // обновим счётчик магазинов и позиций в шапке
+    refreshHeaderCounts();
+    // если корзина пуста — перерендер для empty state
+    if(!CART.items.length)renderCart();
+  },260);
+  showUndo(removed);
+}
+function refreshHeaderCounts(){
+  var head=document.querySelector('.cart-head-d');
+  if(!head)return;
+  var shopIds={};
+  var itemsCount=0;
+  CART.items.forEach(function(it){
+    shopIds[it.shop_id]=true;
+    if(it.available)itemsCount+=it.quantity;
+  });
+  var sc=Object.keys(shopIds).length;
+  head.textContent=itemsCount+' '+plural(itemsCount,'позиция','позиции','позиций')+' · '+sc+' '+plural(sc,'магазин','магазина','магазинов');
+}
+function showUndo(removedItem){
+  if(UNDO.timer)clearTimeout(UNDO.timer);
+  UNDO.item=removedItem;
+  var el=document.getElementById('undoToast');
+  document.getElementById('undoToastText').textContent='Позиция «'+esc(truncate(removedItem.title,32))+'» удалена';
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  UNDO.timer=setTimeout(function(){finalizeRemove(removedItem);},5000);
+}
+function undoRemove(){
+  if(!UNDO.item)return;
+  CART.items.push(UNDO.item);
+  CART.items.sort(function(a,b){
+    if(a.shop_id!==b.shop_id)return a.shop_id-b.shop_id;
+    return new Date(b.created_at)-new Date(a.created_at);
+  });
+  UNDO.item=null;
+  if(UNDO.timer){clearTimeout(UNDO.timer);UNDO.timer=null;}
+  document.getElementById('undoToast').classList.remove('show');
+  renderCart();
+}
+function finalizeRemove(item){
+  if(!item)return;
+  if(UNDO.item&&UNDO.item.id===item.id){
+    UNDO.item=null;
+    if(UNDO.timer){clearTimeout(UNDO.timer);UNDO.timer=null;}
+  }
+  document.getElementById('undoToast').classList.remove('show');
+  lastopFetch(API+'/emarket/cart/'+item.id,{method:'DELETE'}).then(function(r){
+    if(!r.ok&&r.status!==404)throw new Error('http');
+  }).catch(function(){
+    toast('Не удалось удалить позицию','error');
+    CART.items.push(item);
+    renderCart();
+  });
+}
+
+/* ── Перенести в сохранённое ── */
+async function moveToSaved(cartId,listingId){
+  try{
+    var r=await lastopFetch(API+'/emarket/saved',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({listing_id:listingId})
+    });
+    if(!r.ok&&r.status!==409){throw new Error('saved');}
+    var d=await lastopFetch(API+'/emarket/cart/'+cartId,{method:'DELETE'});
+    if(!d.ok&&d.status!==404){throw new Error('remove');}
+    CART.items=CART.items.filter(function(x){return x.id!==cartId;});
+    renderCart();
+    toast('Позиция перенесена в сохранённое','success');
+  }catch(e){
+    toast('Не удалось перенести в сохранённое','error');
+  }
+}
+
+/* ── Очистить всю корзину ── */
+async function clearCart(){
+  if(!CART.items.length)return;
+  var msg='Все '+CART.items.length+' '+plural(CART.items.length,'позиция','позиции','позиций')+' будут удалены без возможности возврата.';
+  var ok=window.lastopConfirm
+    ? await lastopConfirm({title:'Очистить корзину?',message:msg,confirmText:'Очистить',cancelText:'Отмена',variant:'danger'})
+    : confirm('Очистить корзину? '+msg);
+  if(!ok)return;
+  try{
+    var r=await lastopFetch(API+'/emarket/cart?clear=1',{method:'DELETE'});
+    if(!r.ok)throw new Error('http');
+    CART.items=[];
+    renderCart();
+    toast('Корзина очищена','success');
+  }catch(e){
+    toast('Не удалось очистить корзину','error');
+  }
+}
+
+/* ── Заглушки чекаута (до Слоя 6) ── */
+function checkoutShop(shopId){
+  toast('Оформление заказов появится со Слоем 6','info');
+}
+function checkoutAll(){
+  toast('Оформление заказов появится со Слоем 6','info');
+}
+
+/* ── Сохранить как заявку ── */
+function openDraftModal(){
+  if(!CART.items.length){toast('Корзина пуста','info');return;}
+  var input=document.getElementById('draftName');
+  var now=new Date();
+  var def='Заявка от '+now.toLocaleDateString('ru-RU',{day:'2-digit',month:'long'});
+  input.value='';
+  input.placeholder=def;
+  document.getElementById('draftModal').classList.add('show');
+  setTimeout(function(){input.focus();},100);
+}
+function closeDraftModal(){
+  document.getElementById('draftModal').classList.remove('show');
+}
+async function saveDraft(){
+  var name=document.getElementById('draftName').value.trim();
+  var btn=document.getElementById('draftSave');
+  btn.disabled=true;
+  btn.textContent='Сохранение…';
+  try{
+    var r=await lastopFetch(API+'/emarket/drafts',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name})
+    });
+    if(!r.ok){
+      var err=await r.json().catch(function(){return{};});
+      throw new Error(err.error||'Ошибка');
+    }
+    var d=await r.json();
+    toast('Заявка «'+(d.name||'без названия')+'» сохранена','success');
+    closeDraftModal();
+  }catch(e){
+    toast('Не удалось сохранить заявку: '+(e.message||'ошибка'),'error');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Сохранить';
+  }
+}
+
+/* ── Правый сайдбар ── */
+function renderRight(){
+  var right=document.getElementById('cartRight');
+  if(!right)return;
+  // на странице корзины сразу раскрываем «Мои покупки»
+  right.innerHTML=
+    '<div class="rs-card rs-shopping open" id="rsShopping">'+
+      '<button type="button" class="rs-shopping-head" onclick="toggleShopping()">'+
+        '<svg class="rs-shopping-ico" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>'+
+        '<div class="rs-shopping-headtext"><div class="rs-shopping-title">Мои покупки</div><div class="rs-shopping-sub">Корзина · Заказы · Сохранённое</div></div>'+
+        '<svg class="rs-shopping-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>'+
+      '</button>'+
+      '<div class="rs-shopping-body">'+
+        '<div class="rs-shopping-sec active"><div class="rs-shopping-sec-h"><span>Корзина</span><span class="rs-shopping-all" style="opacity:.5;cursor:default">Вы здесь</span></div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Активные заказы</span><a href="/emarket-orders.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-empty">Нет активных заказов</div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Сохранённое</span><a href="/emarket-saved.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-empty">Список пуст</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="rs-card"><div class="rs-title">Топ-магазины</div><div id="rsTop"><div class="rs-empty">Загрузка…</div></div></div>';
+  loadTopShops();
+}
+function toggleShopping(){
+  var el=document.getElementById('rsShopping');
+  if(!el)return;
+  el.classList.toggle('open');
+  try{localStorage.setItem('em_shopping_open',el.classList.contains('open')?'1':'0');}catch(e){}
+}
+async function loadTopShops(){
+  try{
+    var r=await lastopFetch(API+'/emarket/top-shops?limit=5');
+    if(!r.ok)throw new Error('http');
+    var d=await r.json();
+    var shops=(d&&d.shops)||[];
+    var box=document.getElementById('rsTop');
+    if(!box)return;
+    if(!shops.length){box.innerHTML='<div class="rs-empty">Пока пусто</div>';return;}
+    box.innerHTML=shops.map(function(s,i){
+      var bg=accent(s.accent_color);
+      var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
+      var rating=s.rating>0?Number(s.rating).toFixed(1)+' ★':'нет оценок';
+      return '<a href="/shop/'+encodeURIComponent(s.slug||'')+'" class="rs-top-item">'+
+        '<span class="rs-top-rank">'+(i+1)+'</span>'+
+        '<span class="rs-top-logo" style="background:'+bg+'">'+logo+'</span>'+
+        '<span class="rs-top-info"><span class="rs-top-name">'+esc(s.name)+'</span><span class="rs-top-rating">'+rating+'</span></span>'+
+      '</a>';
+    }).join('');
+  }catch(e){
+    var box=document.getElementById('rsTop');
+    if(box)box.innerHTML='<div class="rs-empty">Не удалось загрузить</div>';
+  }
+}
+</script>
+</body>
+</html>
