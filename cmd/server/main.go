@@ -6268,6 +6268,90 @@ func main() {
 		}
 	}))
 
+	mux.HandleFunc("/api/admin/emarket/access", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		actorID, ok := requireAdmin(w, r, db, sessions)
+		if !ok {
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			// компании + сообщества с флагом доступа к E-market
+			type ownerRow struct {
+				OwnerType string `json:"owner_type"`
+				OwnerID   int64  `json:"owner_id"`
+				Name      string `json:"name"`
+				Slug      string `json:"slug"`
+				LogoURL   string `json:"logo_url"`
+				HasAccess bool   `json:"has_access"`
+			}
+			owners := []ownerRow{}
+			crows, err := db.Query(`SELECT c.id, c.name, c.slug, COALESCE(c.logo_url,''),
+				COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
+				FROM companies c
+				LEFT JOIN emarket_access a ON a.owner_type='company' AND a.owner_id=c.id
+				WHERE c.deleted_at IS NULL ORDER BY c.name`)
+			if err == nil {
+				defer crows.Close()
+				for crows.Next() {
+					var o ownerRow
+					o.OwnerType = "company"
+					if crows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
+						owners = append(owners, o)
+					}
+				}
+			}
+			cmrows, err := db.Query(`SELECT cm.id, cm.name, COALESCE(cm.slug,''), COALESCE(cm.avatar_url,''),
+				COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
+				FROM communities cm
+				LEFT JOIN emarket_access a ON a.owner_type='community' AND a.owner_id=cm.id
+				WHERE cm.is_deleted = FALSE ORDER BY cm.name`)
+			if err == nil {
+				defer cmrows.Close()
+				for cmrows.Next() {
+					var o ownerRow
+					o.OwnerType = "community"
+					if cmrows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
+						owners = append(owners, o)
+					}
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"owners": owners})
+			return
+		case http.MethodPost:
+			var req struct {
+				OwnerType string `json:"owner_type"`
+				OwnerID   int64  `json:"owner_id"`
+				Active    bool   `json:"active"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.OwnerType != "company" && req.OwnerType != "community" && req.OwnerType != "user" {
+				writeError(w, http.StatusBadRequest, "Некорректный owner_type")
+				return
+			}
+			if req.OwnerID == 0 {
+				writeError(w, http.StatusBadRequest, "owner_id обязателен")
+				return
+			}
+			if _, err := db.Exec(`INSERT INTO emarket_access (owner_type, owner_id, active, paid_at)
+				VALUES ($1,$2,$3, CASE WHEN $3 THEN now() ELSE NULL END)
+				ON CONFLICT (owner_type, owner_id) DO UPDATE SET active=$3, paid_at=CASE WHEN $3 THEN COALESCE(emarket_access.paid_at, now()) ELSE emarket_access.paid_at END`,
+				req.OwnerType, req.OwnerID, req.Active); err != nil {
+				log.Printf("[admin/emarket/access POST] %v", err)
+				writeError(w, http.StatusInternalServerError, "Не удалось сохранить")
+				return
+			}
+			logAdminAction(db, actorID, "emarket.access.set", "emarket_access", req.OwnerID, clientIP(r), map[string]any{"owner_type": req.OwnerType, "active": req.Active})
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "has_access": req.Active})
+			return
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+	}))
+
 	mux.HandleFunc("/api/admin/emarket/featured", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
