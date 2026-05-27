@@ -10452,7 +10452,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
-			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
 			}
@@ -10646,7 +10646,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
-			if err := emarketResolveOwner(db, r, userID, aOwnerType, aOwnerID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
 			}
@@ -10774,7 +10774,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
-			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
 			}
@@ -10928,7 +10928,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
-			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
 			}
@@ -10958,7 +10958,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
-			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
 			}
@@ -11038,7 +11038,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Магазин не найден")
 				return
 			}
-			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
 			}
@@ -11379,7 +11379,7 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
 			return
 		}
-		if err := emarketCheckShopRights(db, r, userID, req.ShopID); err != nil {
+		if err := emarketCheckPermission(db, userID, req.ShopID, "listings"); err != nil {
 			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
 			return
 		}
@@ -11468,7 +11468,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Листинг не найден")
 				return
 			}
-			if err := emarketCheckShopRights(db, r, userID, shopID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа"})
 				return
 			}
@@ -11529,7 +11529,7 @@ func main() {
 				writeError(w, http.StatusNotFound, "Листинг не найден")
 				return
 			}
-			if err := emarketCheckShopRights(db, r, userID, shopID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа"})
 				return
 			}
@@ -11554,7 +11554,7 @@ func main() {
 			if !ok {
 				return
 			}
-			if err := emarketCheckShopRights(db, r, userID, shopID); err != nil {
+			if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
 				return
 			}
@@ -32648,7 +32648,7 @@ func emarketCheckShopRights(db *sql.DB, r *http.Request, userID, shopID int64) e
 	if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1 AND status<>'blocked'`, shopID).Scan(&ownerType, &ownerID); err != nil {
 		return fmt.Errorf("%w: магазин не найден", errValidation)
 	}
-	if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
+	if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
 		return err
 	}
 	if !emarketHasAccess(db, ownerType, ownerID) {
