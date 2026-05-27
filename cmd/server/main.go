@@ -10701,12 +10701,45 @@ func main() {
 				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 				return
 			}
+			lq := r.URL.Query()
+			conds := []string{"l.shop_id=$1"}
+			args := []any{shopID}
+			if s := strings.TrimSpace(lq.Get("q")); s != "" {
+				args = append(args, "%"+s+"%")
+				p := strconv.Itoa(len(args))
+				conds = append(conds, "(l.name ILIKE $"+p+" OR l.contact ILIKE $"+p+" OR l.message ILIKE $"+p+" OR l.subject_title ILIKE $"+p+")")
+			}
+			if st := lq.Get("status"); st == "new" || st == "in_progress" || st == "done" || st == "rejected" {
+				args = append(args, st)
+				conds = append(conds, "l.status=$"+strconv.Itoa(len(args)))
+			}
+			if lq.Get("unread") == "1" {
+				conds = append(conds, "l.is_read=FALSE")
+			}
+			whereSQL := strings.Join(conds, " AND ")
+			orderSQL := "l.created_at DESC"
+			if lq.Get("sort") == "date_asc" {
+				orderSQL = "l.created_at ASC"
+			}
+			var total int
+			_ = db.QueryRow(`SELECT count(*) FROM emarket_leads l WHERE `+whereSQL, args...).Scan(&total)
+			limit, _ := strconv.Atoi(lq.Get("limit"))
+			if limit <= 0 || limit > 100 {
+				limit = 30
+			}
+			offset, _ := strconv.Atoi(lq.Get("offset"))
+			if offset < 0 {
+				offset = 0
+			}
+			args = append(args, limit, offset)
+			limOff := "LIMIT $" + strconv.Itoa(len(args)-1) + " OFFSET $" + strconv.Itoa(len(args))
 			rows, err := db.Query(`SELECT l.id, l.name, l.contact, l.message, l.is_read, l.created_at,
 				COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, ''),
 				l.subject_type, l.subject_id, l.subject_title, l.status
 				FROM emarket_leads l LEFT JOIN users u ON u.id=l.sender_id
-				WHERE l.shop_id=$1 ORDER BY l.created_at DESC LIMIT 200`, shopID)
+				WHERE `+whereSQL+` ORDER BY `+orderSQL+` `+limOff, args...)
 			if err != nil {
+				log.Printf("[emarket/leads list] %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
 			}
@@ -10729,7 +10762,7 @@ func main() {
 					"status": leadStatus,
 				})
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"leads": leads})
+			writeJSON(w, http.StatusOK, map[string]any{"leads": leads, "total": total})
 			return
 		}
 		if len(parts) >= 2 && parts[1] == "site-publish" {
