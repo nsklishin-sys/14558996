@@ -234,6 +234,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lm-photo-add:hover{border-color:var(--g);color:var(--g);background:var(--gl)}
 .lm-photo-add svg{width:20px;height:20px}
 .lm-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.cab-create-wrap{display:flex;justify-content:center;padding:24px 16px;overflow-y:auto}
+.cab-create-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:26px;width:100%;max-width:460px}
+.cab-create-ico{width:52px;height:52px;border-radius:14px;background:var(--gl);display:grid;place-items:center;margin-bottom:14px}
+.cab-create-ico svg{width:26px;height:26px;fill:none;stroke:var(--g);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cab-create-t{font-size:19px;font-weight:800;color:var(--t);margin-bottom:6px}
+.cab-create-d{font-size:13px;color:var(--gmt);line-height:1.55;margin-bottom:18px}
+.nc-access{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;font-weight:600;line-height:1.45;padding:9px 11px;border-radius:var(--rm);margin-top:8px}
+.nc-access svg{width:15px;height:15px;flex-shrink:0;margin-top:1px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nc-access-load{background:var(--gp);color:var(--gmt)}
+.nc-access-ok{background:var(--gl);color:var(--g)}
+.nc-access-no{background:#FBF3E6;color:#8A6212}
 .staff-empty{font-size:13px;color:var(--gmt);line-height:1.5;padding:8px 0}
 .staff-card{border:1px solid var(--bdr);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px;background:var(--w)}
 .staff-top{display:flex;align-items:center;gap:11px}
@@ -458,16 +469,111 @@ async function init(){
   startLeadPolling();
 }
 
-/* ── нет магазина ── */
+/* ── нет магазина → форма создания ── */
 function renderNoShop(){
-  document.getElementById('cabMain').innerHTML=
-    '<div class="cab-empty">'
-    +'<svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>'
-    +'<div class="cab-empty-t">У вас пока нет магазина</div>'
-    +'<div class="cab-empty-d">Кабинет продавца открывается после создания витрины. Перейдите в E-market, чтобы открыть магазин от своего имени, компании или сообщества.</div>'
-    +'<a class="lead-btn lead-btn-pri" href="/emarket.html">Перейти в E-market</a>'
-    +'</div>';
   document.getElementById('cabRight').innerHTML='';
+  document.getElementById('cabMain').innerHTML=
+    '<div class="cab-create-wrap">'
+      +'<div class="cab-create-card">'
+        +'<div class="cab-create-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg></div>'
+        +'<div class="cab-create-t">Создание магазина</div>'
+        +'<div class="cab-create-d">Откройте витрину на торговой площадке. Магазин создаётся от лица выбранного владельца — вас лично, вашей компании или сообщества.</div>'
+        +'<label class="lm-label">Владелец магазина</label>'
+        +'<select class="lm-select" id="ncOwner" onchange="ncOnOwnerChange()"></select>'
+        +'<div id="ncAccessNote"></div>'
+        +'<label class="lm-label" style="margin-top:12px">Название магазина *</label>'
+        +'<input class="lm-input" id="ncName" placeholder="Например: Логистика и склады" maxlength="120">'
+        +'<label class="lm-label" style="margin-top:12px">Описание</label>'
+        +'<textarea class="lm-input" id="ncDesc" placeholder="Чем занимается магазин (необязательно)" style="height:72px;resize:none"></textarea>'
+        +'<label class="lm-label" style="margin-top:12px">Регион</label>'
+        +'<input class="lm-input" id="ncRegion" placeholder="Москва (необязательно)" maxlength="80">'
+        +'<button class="lead-btn lead-btn-pri" id="ncSubmit" style="margin-top:18px;width:100%;justify-content:center" onclick="submitCreateShop()">Создать магазин</button>'
+      +'</div>'
+    +'</div>';
+  buildOwnerOptions();
+}
+
+/* собрать список владельцев: личный + мои компании + мои сообщества */
+function ncOwnerList(){
+  const list=[{type:'user',id:0,name:'Личный профиль'}];
+  (window.__pcxCompaniesCache||[]).forEach(c=>list.push({type:'company',id:c.id,name:c.name}));
+  (window.__pcxCommunitiesCache||[]).forEach(c=>list.push({type:'community',id:c.id,name:c.name}));
+  return list;
+}
+function buildOwnerOptions(){
+  const sel=document.getElementById('ncOwner');
+  if(!sel)return;
+  // если свитчер контекста ещё не подгрузил компании/сообщества — подождём и перестроим
+  if(!window.__pcxCompaniesCache && !window.__pcxCommunitiesCache && !buildOwnerOptions._waited){
+    buildOwnerOptions._waited=true;
+    const retry=()=>{window.removeEventListener('lastop:context-changed',retry);buildOwnerOptions();};
+    window.addEventListener('lastop:context-changed',retry);
+    setTimeout(()=>{window.removeEventListener('lastop:context-changed',retry);buildOwnerOptions();},1200);
+  }
+  const list=ncOwnerList();
+  // активный контекст по умолчанию
+  let active={type:'user',id:0};
+  if(window.getActiveContext){const c=window.getActiveContext();if(c&&c.kind)active={type:c.kind,id:c.id||0};}
+  sel.innerHTML=list.map(o=>{
+    const val=o.type+':'+o.id;
+    const isActive=(o.type===active.type && (o.type==='user'||o.id===active.id));
+    return '<option value="'+val+'"'+(isActive?' selected':'')+'>'+esc(o.name)+(o.type==='company'?' · компания':o.type==='community'?' · сообщество':'')+'</option>';
+  }).join('');
+  ncOnOwnerChange();
+}
+
+/* при смене владельца — проверить доступ к E-market */
+async function ncOnOwnerChange(){
+  const sel=document.getElementById('ncOwner');
+  const note=document.getElementById('ncAccessNote');
+  const btn=document.getElementById('ncSubmit');
+  if(!sel||!note||!btn)return;
+  const [type,idStr]=sel.value.split(':');
+  const id=parseInt(idStr)||0;
+  note.innerHTML='<div class="nc-access nc-access-load">Проверка доступа…</div>';
+  btn.disabled=true;
+  try{
+    const r=await lastopFetch(API+'/emarket/access?owner_type='+encodeURIComponent(type)+'&owner_id='+id);
+    const d=await r.json();
+    if(d&&d.has_access){
+      note.innerHTML='<div class="nc-access nc-access-ok"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Доступ к E-market открыт</div>';
+      btn.disabled=false;
+    }else{
+      const who=type==='company'?'этой компании':type==='community'?'этому сообществу':'вам';
+      note.innerHTML='<div class="nc-access nc-access-no"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Доступ к E-market у '+who+' не открыт. Обратитесь к администратору платформы, чтобы получить доступ.</div>';
+      btn.disabled=true;
+    }
+  }catch(e){
+    note.innerHTML='<div class="nc-access nc-access-no">Не удалось проверить доступ. Попробуйте позже.</div>';
+    btn.disabled=true;
+  }
+}
+
+async function submitCreateShop(){
+  const sel=document.getElementById('ncOwner');
+  const btn=document.getElementById('ncSubmit');
+  const name=(document.getElementById('ncName').value||'').trim();
+  if(name.length<2){if(window.toast)toast('Введите название магазина (минимум 2 символа)','info');return;}
+  const [type,idStr]=sel.value.split(':');
+  const id=parseInt(idStr)||0;
+  const body={owner_type:type,name,description:(document.getElementById('ncDesc').value||'').trim(),region:(document.getElementById('ncRegion').value||'').trim()};
+  if(type!=='user')body.owner_id=id;
+  btn.disabled=true;btn.textContent='Создание…';
+  try{
+    const r=await lastopFetch(API+'/emarket/shops',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){
+      btn.disabled=false;btn.textContent='Создать магазин';
+      if(window.toast)toast(d.error||'Не удалось создать магазин','info');
+      return;
+    }
+    const newId=d.id||(d.shop&&d.shop.id);
+    // перезагрузить кабинет на новый магазин
+    location.href='/emarket-cabinet.html'+(newId?'?id='+newId:'');
+  }catch(e){
+    btn.disabled=false;btn.textContent='Создать магазин';
+    if(window.toast)toast('Ошибка соединения','info');
+  }
 }
 
 /* ── каркас: шапка + вкладки + панели ── */
@@ -478,11 +584,11 @@ function renderShell(){
     : letter(SHOP.name);
   const logoBg=SHOP.logo_url?'':('background:'+avc(SHOP.name));
 
-  const shopSelector=MY_SHOPS.length>1
-    ? '<div class="cab-shopsel"><select id="shopSel" onchange="onShopChange(this.value)">'
+  const shopSelector=
+    '<div class="cab-shopsel"><select id="shopSel" onchange="onShopChange(this.value)">'
       +MY_SHOPS.map(s=>'<option value="'+s.id+'"'+(s.id===SHOP.id?' selected':'')+'>'+esc(s.name)+'</option>').join('')
-      +'</select></div>'
-    : '';
+      +'<option value="__new__">+ Создать магазин</option>'
+      +'</select></div>';
 
   main.innerHTML=
     '<div class="cab-head">'
@@ -511,6 +617,7 @@ function renderShell(){
 }
 
 function onShopChange(id){
+  if(String(id)==='__new__'){stopLeadPolling();SHOP=null;renderNoShop();history.replaceState(null,'','/emarket-cabinet.html');return;}
   const next=MY_SHOPS.find(s=>String(s.id)===String(id));
   if(!next)return;
   SHOP=next;
