@@ -10506,6 +10506,134 @@ func main() {
 			}
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "analytics" {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			var aOwnerType string
+			var aOwnerID int64
+			if err := db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, shopID).Scan(&aOwnerType, &aOwnerID); err != nil {
+				writeError(w, http.StatusNotFound, "Магазин не найден")
+				return
+			}
+			if err := emarketResolveOwner(db, r, userID, aOwnerType, aOwnerID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+			if days < 1 || days > 365 {
+				days = 30
+			}
+			since := time.Now().AddDate(0, 0, -(days - 1))
+			sinceDay := time.Date(since.Year(), since.Month(), since.Day(), 0, 0, 0, 0, since.Location())
+
+			// посуточная агрегация
+			type dayRow struct {
+				SiteViews    int `json:"site_views"`
+				ListingViews int `json:"listing_views"`
+				Leads        int `json:"leads"`
+			}
+			byDay := map[string]*dayRow{}
+			rows, err := db.Query(`SELECT to_char(created_at,'YYYY-MM-DD') d, event_type, count(*)
+				FROM emarket_stat_events WHERE shop_id=$1 AND created_at>=$2
+				GROUP BY d, event_type`, shopID, sinceDay)
+			if err != nil {
+				log.Printf("[emarket/analytics daily] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			for rows.Next() {
+				var d, et string
+				var c int
+				if err := rows.Scan(&d, &et, &c); err != nil {
+					continue
+				}
+				if byDay[d] == nil {
+					byDay[d] = &dayRow{}
+				}
+				switch et {
+				case "site_view":
+					byDay[d].SiteViews = c
+				case "listing_view":
+					byDay[d].ListingViews = c
+				case "lead":
+					byDay[d].Leads = c
+				}
+			}
+			rows.Close()
+
+			// массив по дням (заполняем нули для дней без событий)
+			daily := []map[string]any{}
+			totalSiteViews, totalListingViews, totalLeads := 0, 0, 0
+			for i := 0; i < days; i++ {
+				d := sinceDay.AddDate(0, 0, i).Format("2006-01-02")
+				r := byDay[d]
+				if r == nil {
+					r = &dayRow{}
+				}
+				totalSiteViews += r.SiteViews
+				totalListingViews += r.ListingViews
+				totalLeads += r.Leads
+				daily = append(daily, map[string]any{
+					"date": d, "site_views": r.SiteViews, "listing_views": r.ListingViews, "leads": r.Leads,
+				})
+			}
+
+			// топ товаров по просмотрам за период
+			topListings := []map[string]any{}
+			trows, err := db.Query(`SELECT e.listing_id, COALESCE(l.title,''), count(*) c
+				FROM emarket_stat_events e LEFT JOIN emarket_listings l ON l.id=e.listing_id
+				WHERE e.shop_id=$1 AND e.event_type='listing_view' AND e.created_at>=$2 AND e.listing_id>0
+				GROUP BY e.listing_id, l.title ORDER BY c DESC LIMIT 8`, shopID, sinceDay)
+			if err == nil {
+				for trows.Next() {
+					var lid int64
+					var title string
+					var c int
+					if err := trows.Scan(&lid, &title, &c); err != nil {
+						continue
+					}
+					topListings = append(topListings, map[string]any{"listing_id": lid, "title": title, "views": c})
+				}
+				trows.Close()
+			}
+
+			// источники заявок за период
+			leadForm, leadListing := 0, 0
+			srows, err := db.Query(`SELECT source, count(*) FROM emarket_stat_events
+				WHERE shop_id=$1 AND event_type='lead' AND created_at>=$2 GROUP BY source`, shopID, sinceDay)
+			if err == nil {
+				for srows.Next() {
+					var src string
+					var c int
+					if err := srows.Scan(&src, &c); err != nil {
+						continue
+					}
+					if src == "listing" {
+						leadListing = c
+					} else {
+						leadForm += c
+					}
+				}
+				srows.Close()
+			}
+
+			writeJSON(w, http.StatusOK, map[string]any{
+				"days":  days,
+				"daily": daily,
+				"totals": map[string]any{
+					"site_views": totalSiteViews, "listing_views": totalListingViews, "leads": totalLeads,
+				},
+				"top_listings": topListings,
+				"lead_sources": map[string]any{"form": leadForm, "listing": leadListing},
+			})
+			return
+		}
 		if len(parts) >= 2 && parts[1] == "leads" {
 			if r.Method != http.MethodGet && r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
