@@ -10762,7 +10762,30 @@ func main() {
 					"status": leadStatus,
 				})
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"leads": leads, "total": total})
+			counts := map[string]int{"all": 0, "unread": 0, "new": 0, "in_progress": 0, "done": 0, "rejected": 0}
+			crows, cerr := db.Query(`SELECT status, is_read, count(*) FROM emarket_leads WHERE shop_id=$1 GROUP BY status, is_read`, shopID)
+			if cerr == nil {
+				for crows.Next() {
+					var st string
+					var rd bool
+					var c int
+					if err := crows.Scan(&st, &rd, &c); err != nil {
+						continue
+					}
+					if st == "" {
+						st = "new"
+					}
+					counts["all"] += c
+					if !rd {
+						counts["unread"] += c
+					}
+					if _, ok := counts[st]; ok {
+						counts[st] += c
+					}
+				}
+				crows.Close()
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"leads": leads, "total": total, "counts": counts})
 			return
 		}
 		if len(parts) >= 2 && parts[1] == "site-publish" {
