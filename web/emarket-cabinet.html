@@ -139,6 +139,40 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lst-price{font-size:13px;color:var(--gmt);font-weight:600;margin-top:2px}
 .lst-views{font-size:11px;color:var(--gmt);flex-shrink:0;display:flex;align-items:center;gap:4px}
 .lst-views svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6}
+.lst-card.is-hidden{opacity:.62}
+.lst-badges{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
+.lst-kind{margin-bottom:0}
+.lst-status{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px}
+.lst-status.active{background:var(--gl);color:var(--g)}
+.lst-status.hidden{background:#F1EFE8;color:#5F5E5A}
+.lst-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.lst-iconbtn{width:34px;height:34px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--w);color:var(--gmt);cursor:pointer;display:grid;place-items:center;transition:all .15s}
+.lst-iconbtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.lst-iconbtn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.lst-iconbtn.danger:hover{background:#FCEBEB;color:var(--red);border-color:#F0C2C2}
+
+/* ── Модалка листинга ── */
+.lm-bg{display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,25,18,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:18px}
+.lm-box{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:0 24px 60px rgba(30,138,76,.2);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:22px;scrollbar-width:none}
+.lm-box::-webkit-scrollbar{display:none}
+.lm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.lm-head-t{font-size:17px;font-weight:800;color:var(--t)}
+.lm-x{width:30px;height:30px;flex-shrink:0;border:none;background:var(--gp);border-radius:var(--r);cursor:pointer;color:var(--gmt);font-size:18px;line-height:1}
+.lm-label{display:block;font-size:12px;font-weight:700;color:var(--gmt);margin-bottom:6px}
+.lm-row{margin-bottom:14px}
+.lm-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lm-input,.lm-select,.lm-area{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:10px 12px;font-family:inherit;font-size:14px;color:var(--t);background:var(--gp);outline:none;transition:border-color .15s}
+.lm-input:focus,.lm-select:focus,.lm-area:focus{border-color:var(--gm)}
+.lm-area{resize:none;height:86px;line-height:1.5}
+.lm-select{cursor:pointer}
+.lm-photos{display:flex;flex-wrap:wrap;gap:8px}
+.lm-photo{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--bdr);flex-shrink:0}
+.lm-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.lm-photo button{position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(20,30,24,.7);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.lm-photo-add{width:64px;height:64px;border-radius:10px;border:1.5px dashed var(--gb);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
+.lm-photo-add:hover{border-color:var(--g);color:var(--g);background:var(--gl)}
+.lm-photo-add svg{width:20px;height:20px}
+.lm-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 
 /* ── Правый сайдбар ── */
 .rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:15px;box-shadow:var(--sh)}
@@ -184,6 +218,65 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <aside class="right" id="cabRight"></aside>
 
+</div>
+
+<div class="lm-bg" id="listingModalBg" onclick="if(event.target===this)closeListingModal()">
+  <div class="lm-box">
+    <div class="lm-head">
+      <div class="lm-head-t" id="lmTitle">Новая позиция</div>
+      <button class="lm-x" onclick="closeListingModal()">×</button>
+    </div>
+    <div class="lm-2col">
+      <div class="lm-row">
+        <label class="lm-label">Тип</label>
+        <select class="lm-select" id="lmKind">
+          <option value="product">Товар</option>
+          <option value="service">Услуга</option>
+        </select>
+      </div>
+      <div class="lm-row">
+        <label class="lm-label">Статус</label>
+        <select class="lm-select" id="lmStatus">
+          <option value="active">Опубликован</option>
+          <option value="hidden">Скрыт</option>
+        </select>
+      </div>
+    </div>
+    <div class="lm-row">
+      <label class="lm-label">Название</label>
+      <input class="lm-input" id="lmName" maxlength="200" placeholder="Например: Доставка сборных грузов">
+    </div>
+    <div class="lm-2col">
+      <div class="lm-row">
+        <label class="lm-label">Цена (пусто = договорная)</label>
+        <input class="lm-input" id="lmPrice" inputmode="decimal" placeholder="—">
+      </div>
+      <div class="lm-row">
+        <label class="lm-label">Валюта</label>
+        <select class="lm-select" id="lmCurrency">
+          <option value="RUB">₽ RUB</option>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+        </select>
+      </div>
+    </div>
+    <div class="lm-row">
+      <label class="lm-label">Категория (необязательно)</label>
+      <input class="lm-input" id="lmCategory" placeholder="Например: перевозки">
+    </div>
+    <div class="lm-row">
+      <label class="lm-label">Описание</label>
+      <textarea class="lm-area" id="lmDesc" placeholder="Опишите товар или услугу"></textarea>
+    </div>
+    <div class="lm-row">
+      <label class="lm-label">Фотографии</label>
+      <div class="lm-photos" id="lmPhotos"></div>
+    </div>
+    <div class="lm-foot">
+      <button class="lead-btn" onclick="closeListingModal()">Отмена</button>
+      <button class="lead-btn lead-btn-pri" id="lmSaveBtn" onclick="saveListing()">Создать</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -519,7 +612,7 @@ async function loadListings(){
   if(LISTINGS===null){
     pan.innerHTML=skeletons(3);
     try{
-      const r=await lastopFetch(API+'/emarket/shop-listings?shop_id='+SHOP.id);
+      const r=await lastopFetch(API+'/emarket/shop-listings?shop_id='+SHOP.id+'&mine=1');
       const d=await r.json();
       LISTINGS=(d&&d.listings)||[];
     }catch(e){LISTINGS=[];}
@@ -531,14 +624,15 @@ function renderListings(){
   const pan=document.getElementById('panel-listings');
   const head='<div class="leads-bar">'
     +'<div class="leads-title">Товары и услуги'+(LISTINGS.length?'<span class="leads-count">'+LISTINGS.length+'</span>':'')+'</div>'
-    +'<a class="lead-btn lead-btn-pri" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить в конструкторе</a>'
+    +'<button class="lead-btn lead-btn-pri" onclick="openListingModal(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить</button>'
   +'</div>';
 
   if(!LISTINGS.length){
     pan.innerHTML=head
       +'<div class="cab-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'
       +'<div class="cab-empty-t">Пока нет товаров и услуг</div>'
-      +'<div class="cab-empty-d">Добавляйте товары и услуги — они появятся на странице магазина и в ленте E-market. Управление каталогом прямо из кабинета добавим следующим шагом.</div></div>';
+      +'<div class="cab-empty-d">Добавьте первый товар или услугу — они появятся на странице магазина и в ленте E-market.</div>'
+      +'<button class="lead-btn lead-btn-pri" onclick="openListingModal(0)">+ Добавить товар или услугу</button></div>';
     return;
   }
   pan.innerHTML=head+LISTINGS.map(buildListingCard).join('');
@@ -550,16 +644,144 @@ function buildListingCard(it){
     ? '<img class="lst-thumb" src="'+esc(photos[0])+'" alt="">'
     : '<div class="lst-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>';
   const kindLbl=it.kind==='service'?'Услуга':'Товар';
-  const price=(it.price!=null)?(num(it.price)+' '+(it.currency||'₽')):'Цена не указана';
-  return '<div class="lst-card">'
+  const cur=it.currency==='USD'?'$':it.currency==='EUR'?'€':'₽';
+  const price=(it.price!=null&&it.price!==0)?(Number(it.price).toLocaleString('ru-RU')+' '+cur):'Договорная';
+  const hidden=it.status==='hidden';
+  const statusBadge=hidden?'<span class="lst-status hidden">Скрыт</span>':'<span class="lst-status active">Опубликован</span>';
+  return '<div class="lst-card'+(hidden?' is-hidden':'')+'" id="lst-'+it.id+'">'
     +thumb
     +'<div class="lst-info">'
-      +'<span class="lst-kind '+(it.kind==='service'?'service':'product')+'">'+kindLbl+'</span>'
+      +'<div class="lst-badges"><span class="lst-kind '+(it.kind==='service'?'service':'product')+'">'+kindLbl+'</span>'+statusBadge+'</div>'
       +'<div class="lst-name">'+esc(it.title||'Без названия')+'</div>'
       +'<div class="lst-price">'+esc(price)+'</div>'
     +'</div>'
-    +'<div class="lst-views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+num(it.views_count||0)+'</div>'
+    +'<div class="lst-actions">'
+      +'<button class="lst-iconbtn" title="Редактировать" onclick="openListingModal('+it.id+')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>'
+      +'<button class="lst-iconbtn" title="'+(hidden?'Опубликовать':'Скрыть')+'" onclick="toggleListingStatus('+it.id+')">'+(hidden
+        ? '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>')+'</button>'
+      +'<button class="lst-iconbtn danger" title="Удалить" onclick="deleteListing('+it.id+')"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+    +'</div>'
   +'</div>';
+}
+
+async function toggleListingStatus(id){
+  const it=LISTINGS.find(x=>x.id===id);
+  if(!it)return;
+  const next=it.status==='hidden'?'active':'hidden';
+  // PUT требует все поля — шлём текущие, меняем только status
+  try{
+    const r=await lastopFetch(API+'/emarket/listings/'+id,{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        kind:it.kind,title:it.title,description:it.description||'',
+        characteristics:Array.isArray(it.characteristics)?it.characteristics:[],
+        category_key:it.category_key||'',
+        price:(it.price!=null&&it.price!==0)?Number(it.price):null,
+        currency:it.currency||'RUB',payment_method:it.payment_method||'',
+        photos:Array.isArray(it.photos)?it.photos:[],
+        status:next
+      })
+    });
+    if(!r.ok)throw 0;
+    it.status=next;
+    const el=document.getElementById('lst-'+id);
+    if(el)el.outerHTML=buildListingCard(it);
+  }catch(e){if(window.toast)toast('Не удалось изменить статус','info');}
+}
+
+async function deleteListing(id){
+  const it=LISTINGS.find(x=>x.id===id);
+  if(!it)return;
+  const ok=await lastopConfirm('Удалить «'+(it.title||'позицию')+'»? Это действие необратимо.');
+  if(!ok)return;
+  try{
+    const r=await lastopFetch(API+'/emarket/listings/'+id,{method:'DELETE'});
+    if(!r.ok)throw 0;
+    LISTINGS=LISTINGS.filter(x=>x.id!==id);
+    renderListings();
+  }catch(e){if(window.toast)toast('Не удалось удалить','info');}
+}
+
+/* ── модалка создания/редактирования листинга ── */
+let EDIT_LISTING_ID=0;
+let MODAL_PHOTOS=[];
+
+function openListingModal(id){
+  EDIT_LISTING_ID=id;
+  const it=id?LISTINGS.find(x=>x.id===id):null;
+  MODAL_PHOTOS=(it&&Array.isArray(it.photos))?it.photos.slice():[];
+  document.getElementById('lmTitle').textContent=id?'Редактировать позицию':'Новая позиция';
+  document.getElementById('lmKind').value=(it&&it.kind)||'product';
+  document.getElementById('lmName').value=(it&&it.title)||'';
+  document.getElementById('lmPrice').value=(it&&it.price!=null&&it.price!==0)?it.price:'';
+  document.getElementById('lmCurrency').value=(it&&it.currency)||'RUB';
+  document.getElementById('lmCategory').value=(it&&it.category_key)||'';
+  document.getElementById('lmDesc').value=(it&&it.description)||'';
+  document.getElementById('lmStatus').value=(it&&it.status==='hidden')?'hidden':'active';
+  renderModalPhotos();
+  const btn=document.getElementById('lmSaveBtn');
+  btn.disabled=false;btn.textContent=id?'Сохранить':'Создать';
+  document.getElementById('listingModalBg').style.display='flex';
+}
+function closeListingModal(){document.getElementById('listingModalBg').style.display='none';}
+
+function renderModalPhotos(){
+  const box=document.getElementById('lmPhotos');
+  box.innerHTML=MODAL_PHOTOS.map((p,i)=>'<div class="lm-photo"><img src="'+esc(p)+'" alt=""><button type="button" onclick="removeModalPhoto('+i+')">×</button></div>').join('')
+    +'<label class="lm-photo-add"><input type="file" accept="image/*" style="display:none" onchange="uploadModalPhoto(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label>';
+}
+function removeModalPhoto(i){MODAL_PHOTOS.splice(i,1);renderModalPhotos();}
+async function uploadModalPhoto(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  const lbl=input.closest('.lm-photo-add');
+  if(lbl)lbl.style.opacity='.5';
+  try{
+    const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d&&d.url){MODAL_PHOTOS.push(d.url);renderModalPhotos();}
+    else if(window.toast)toast('Не удалось загрузить фото','info');
+  }catch(e){if(window.toast)toast('Не удалось загрузить фото','info');}
+  if(lbl)lbl.style.opacity='';
+  input.value='';
+}
+
+async function saveListing(){
+  const title=document.getElementById('lmName').value.trim();
+  if(title.length<2){if(window.toast)toast('Название от 2 символов','info');return;}
+  const priceRaw=document.getElementById('lmPrice').value.trim();
+  const price=priceRaw===''?null:Number(priceRaw.replace(',','.'));
+  const body={
+    kind:document.getElementById('lmKind').value,
+    title:title,
+    description:document.getElementById('lmDesc').value.trim(),
+    category_key:document.getElementById('lmCategory').value.trim(),
+    price:(price!=null&&!isNaN(price))?price:null,
+    currency:document.getElementById('lmCurrency').value,
+    payment_method:'',
+    photos:MODAL_PHOTOS.slice(),
+    status:document.getElementById('lmStatus').value
+  };
+  const btn=document.getElementById('lmSaveBtn');
+  btn.disabled=true;btn.textContent='Сохранение…';
+  try{
+    let r;
+    if(EDIT_LISTING_ID){
+      r=await lastopFetch(API+'/emarket/listings/'+EDIT_LISTING_ID,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    }else{
+      body.shop_id=SHOP.id;
+      r=await lastopFetch(API+'/emarket/listings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    }
+    if(!r.ok)throw 0;
+    closeListingModal();
+    LISTINGS=null;            // перезагрузить с сервера (получим актуальные id/views)
+    await loadListings();
+  }catch(e){
+    btn.disabled=false;btn.textContent=EDIT_LISTING_ID?'Сохранить':'Создать';
+    if(window.toast)toast('Не удалось сохранить','info');
+  }
 }
 
 /* ════════════ ВКЛАДКА: АНАЛИТИКА ════════════ */
