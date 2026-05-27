@@ -177,6 +177,25 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .dev-back svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 .rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px}
+.rs-shopping{padding:0;overflow:hidden}
+.rs-shopping-head{width:100%;padding:14px 16px;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:11px;font-family:inherit;text-align:left;transition:background .15s}
+.rs-shopping-head:hover{background:var(--gp)}
+.rs-shopping-ico{width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rs-shopping-headtext{flex:1;min-width:0}
+.rs-shopping-title{font-size:13px;font-weight:800;color:var(--t)}
+.rs-shopping-sub{font-size:11px;color:var(--gmt);margin-top:2px}
+.rs-shopping-chev{width:16px;height:16px;flex-shrink:0;fill:none;stroke:var(--gmt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.rs-shopping.open .rs-shopping-chev{transform:rotate(180deg)}
+.rs-shopping.open .rs-shopping-head{background:var(--gp);border-bottom:1px solid var(--bdr)}
+.rs-shopping-body{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1)}
+.rs-shopping.open .rs-shopping-body{max-height:600px}
+.rs-shopping-sec{padding:11px 16px;border-bottom:1px solid var(--bdr)}
+.rs-shopping-sec:last-child{border-bottom:none}
+.rs-shopping-sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.rs-shopping-sec-h>span{font-size:10px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em}
+.rs-shopping-all{font-size:11px;color:var(--g);font-weight:700;text-decoration:none;transition:color .15s}
+.rs-shopping-all:hover{color:var(--gm)}
+.rs-shopping-empty{font-size:12px;color:var(--gmt)}
 .rs-title{font-size:11px;font-weight:800;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
 .rs-shop{text-align:center}
 .rs-shop-ico{width:50px;height:50px;border-radius:14px;margin:0 auto 10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--gl),var(--gp));border:1px solid var(--bdr)}
@@ -230,6 +249,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 <script>
 const API='/api';
+const EM_ACCENT_PALETTE={
+  green:'#1E8A4C', blue:'#2479C8', navy:'#1E3A5F', teal:'#0E8A8A',
+  purple:'#7C5CC4', orange:'#D8741E', red:'#C8392E', graphite:'#3A4654'
+};
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function letter(s){return((s||'?').trim()[0]||'?').toUpperCase();}
 function fmtPrice(p,cur){
@@ -290,6 +313,12 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
   initCarousel();
   loadFeatured();
   renderRight();
+  try{
+    if(localStorage.getItem('em_shopping_open')==='1'){
+      var el=document.getElementById('rsShopping');
+      if(el)el.classList.add('open');
+    }
+  }catch(e){}
   bindSearch();
   loadDicts();
   renderSortMenu();
@@ -579,7 +608,11 @@ function openListing(id){location.href='/emarket-listing.html?id='+id;}
 function openShop(slug){if(!slug){showToast('Магазин недоступен');return;}location.href='/shop/'+slug;}
 
 function buildShopCard(s, regMap, withFeatured){
-  var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
+  var accentColor=EM_ACCENT_PALETTE[s.accent_color||'green']||EM_ACCENT_PALETTE.green;
+  var logo=s.logo_url
+    ? '<img src="'+esc(s.logo_url)+'" alt="">'
+    : '<span style="display:grid;place-items:center;width:100%;height:100%;background:'+accentColor+';color:#fff;font-weight:900;font-size:18px;border-radius:12px">'+esc(letter(s.name))+'</span>';
+
   var rating=s.rating>0
     ? '<span class="em-shop-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1)+' ('+(s.reviews_count||0)+')</span>'
     : '<span class="em-shop-rating em-shop-rating-empty">Нет отзывов</span>';
@@ -615,12 +648,18 @@ async function renderRight(){
   if(!right)return;
   right.innerHTML=
     '<div class="rs-card rs-shop" id="rsShop"><div class="rs-shop-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg></div><div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Загрузка…</div></div>'+
-    '<div class="rs-card"><div class="rs-title">Корзина</div>'+
-      '<div class="rs-stub-row"><div class="rs-stub-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div><div class="rs-stub-txt"><div class="rs-stub-t">Корзина пуста</div><div class="rs-stub-d">Добавляйте товары к заявке</div></div><span class="rs-stub-soon">Скоро</span></div></div>'+
-    '<div class="rs-card"><div class="rs-title">Активные заказы</div>'+
-      '<div class="rs-stub-row"><div class="rs-stub-ico"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div class="rs-stub-txt"><div class="rs-stub-t">Нет активных заказов</div><div class="rs-stub-d">Статусы заказов появятся здесь</div></div><span class="rs-stub-soon">Скоро</span></div></div>'+
-    '<div class="rs-card"><div class="rs-title">Сохранённое</div>'+
-      '<div class="rs-stub-row"><div class="rs-stub-ico"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div><div class="rs-stub-txt"><div class="rs-stub-t">Список пуст</div><div class="rs-stub-d">Товары из закладок</div></div><span class="rs-stub-soon">Скоро</span></div></div>'+
+    '<div class="rs-card rs-shopping" id="rsShopping">'+
+      '<button type="button" class="rs-shopping-head" onclick="toggleShopping()">'+
+        '<svg class="rs-shopping-ico" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>'+
+        '<div class="rs-shopping-headtext"><div class="rs-shopping-title">Мои покупки</div><div class="rs-shopping-sub">Корзина · Заказы · Сохранённое</div></div>'+
+        '<svg class="rs-shopping-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>'+
+      '</button>'+
+      '<div class="rs-shopping-body">'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Корзина</span><a href="/emarket-cart.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsCartBody"><div class="rs-shopping-empty">Корзина пуста</div></div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Активные заказы</span><a href="/emarket-orders.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsOrdersBody"><div class="rs-shopping-empty">Нет активных заказов</div></div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Сохранённое</span><a href="/emarket-saved.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsSavedBody"><div class="rs-shopping-empty">Список пуст</div></div></div>'+
+      '</div>'+
+    '</div>'+
     '<div class="rs-card"><div class="rs-title">Топ-магазины</div><div id="rsTop"><div class="rs-empty">Загрузка…</div></div></div>'+
     '<div class="rs-ad"><div class="rs-ad-label">реклама</div><div class="rs-ad-slide"><div class="rs-ad-t" id="rsAdT">Рекламное место</div><div class="rs-ad-s" id="rsAdS">Здесь появится реклама</div></div><div class="rs-ad-dots" id="rsAdDots"></div></div>';
   loadMyShop();
@@ -693,11 +732,23 @@ async function loadTopShops(){
     var shops=(d&&d.shops)||[];
     if(!shops.length){box.innerHTML='<div class="rs-empty">Пока нет магазинов<br>в рейтинге.</div>';return;}
     box.innerHTML=shops.map(function(s,i){
-      var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
+      var accentColor=EM_ACCENT_PALETTE[s.accent_color||'green']||EM_ACCENT_PALETTE.green;
+  var logo=s.logo_url
+    ? '<img src="'+esc(s.logo_url)+'" alt="">'
+    : '<span style="display:grid;place-items:center;width:100%;height:100%;background:'+accentColor+';color:#fff;font-weight:900;font-size:18px;border-radius:12px">'+esc(letter(s.name))+'</span>';
+
       var rating=s.rating>0?'<svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1):'нет оценок';
       return '<div class="rs-top-item" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')"><div class="rs-top-rank">'+(i+1)+'</div><div class="rs-top-logo">'+logo+'</div><div class="rs-top-info"><div class="rs-top-name">'+esc(s.name)+'</div><div class="rs-top-rating">'+rating+'</div></div></div>';
     }).join('');
   }catch(e){box.innerHTML='<div class="rs-empty">Не удалось загрузить.</div>';}
+}
+
+function toggleShopping(){
+  var el=document.getElementById('rsShopping');
+  if(!el)return;
+  var nowOpen=!el.classList.contains('open');
+  el.classList.toggle('open',nowOpen);
+  try{localStorage.setItem('em_shopping_open',nowOpen?'1':'0');}catch(e){}
 }
 </script>
 </body>
