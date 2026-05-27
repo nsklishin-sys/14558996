@@ -133,6 +133,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .pay-toggle{display:flex;gap:6px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:4px}
 .pay-opt{flex:1;font-family:inherit;font-size:13px;font-weight:700;color:var(--gmt);background:transparent;border:none;border-radius:var(--r);padding:9px 12px;cursor:pointer;transition:all .15s}
 .pay-opt.active{background:var(--w);color:var(--g);box-shadow:0 1px 4px rgba(30,138,76,.12)}
+.se-media{display:flex;gap:8px;align-items:center}
+.se-media-prev{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--bdr);flex-shrink:0}
+.se-media-prev.se-cover{width:120px}
+.se-media-prev img{width:100%;height:100%;object-fit:cover;display:block}
+.se-media-prev button{position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(20,30,24,.7);color:#fff;font-size:12px;line-height:1;cursor:pointer}
+.se-media-add{width:64px;height:64px;border-radius:10px;border:1.5px dashed var(--gb);background:var(--gp);display:grid;place-items:center;cursor:pointer;color:var(--gmt);transition:all .15s;flex-shrink:0}
+.se-media-add:hover{border-color:var(--g);color:var(--g);background:var(--gl)}
+.se-media-add svg{width:20px;height:20px}
 
 /* ── Аналитика ── */
 .an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
@@ -994,10 +1002,34 @@ function renderAnSources(src){
 /* ════════════ ВКЛАДКА: НАСТРОЙКИ ════════════ */
 function renderSettings(){
   const pan=document.getElementById('panel-settings');
+  const s=SHOP;
+  const logoBox=s.logo_url
+    ? '<div class="se-media-prev"><img src="'+esc(s.logo_url)+'" alt=""><button type="button" onclick="clearShopMedia(\'logo\')">×</button></div>'
+    : '';
+  const coverBox=s.cover_url
+    ? '<div class="se-media-prev se-cover"><img src="'+esc(s.cover_url)+'" alt=""><button type="button" onclick="clearShopMedia(\'cover\')">×</button></div>'
+    : '';
   pan.innerHTML=
     '<div class="cab-section">'
-      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/></svg>Витрина и бренд</div>'
-      +'<div class="cab-section-d">Название, логотип, обложка, акцентный цвет, блоки сайта и контакты для заявок настраиваются в конструкторе магазина.</div>'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Магазин</div>'
+      +'<div class="cab-section-d" style="margin-bottom:16px">Основные данные магазина. Дизайн сайта (акцентный цвет, блоки, слоган) — в конструкторе.</div>'
+      +'<div class="lm-row"><label class="lm-label">Название</label><input class="lm-input" id="seName" maxlength="120" value="'+esc(s.name||'')+'"></div>'
+      +'<div class="lm-row"><label class="lm-label">Краткое описание</label><textarea class="lm-area" id="seDesc" maxlength="600">'+esc(s.description||'')+'</textarea></div>'
+      +'<div class="lm-row"><label class="lm-label">Регион</label><input class="lm-input" id="seRegion" maxlength="120" placeholder="Например: Москва" value="'+esc(s.region||'')+'"></div>'
+      +'<div class="lm-2col">'
+        +'<div class="lm-row"><label class="lm-label">Телефон</label><input class="lm-input" id="sePhone" maxlength="60" value="'+esc(s.contact_phone||'')+'"></div>'
+        +'<div class="lm-row"><label class="lm-label">Email</label><input class="lm-input" id="seEmail" maxlength="120" value="'+esc(s.contact_email||'')+'"></div>'
+      +'</div>'
+      +'<div class="lm-row"><label class="lm-label">Сайт</label><input class="lm-input" id="seSite" maxlength="200" placeholder="https://..." value="'+esc(s.contact_site||'')+'"></div>'
+      +'<div class="lm-2col">'
+        +'<div class="lm-row"><label class="lm-label">Логотип</label><div class="se-media" id="seLogoWrap">'+logoBox+'<label class="se-media-add" id="seLogoAdd"'+(s.logo_url?' style="display:none"':'')+'><input type="file" accept="image/*" style="display:none" onchange="uploadShopMedia(this,\'logo\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label></div></div>'
+        +'<div class="lm-row"><label class="lm-label">Обложка</label><div class="se-media" id="seCoverWrap">'+coverBox+'<label class="se-media-add" id="seCoverAdd"'+(s.cover_url?' style="display:none"':'')+'><input type="file" accept="image/*" style="display:none" onchange="uploadShopMedia(this,\'cover\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label></div></div>'
+      +'</div>'
+      +'<button class="lead-btn lead-btn-pri" id="seSaveBtn" style="margin-top:8px" onclick="saveShop()">Сохранить изменения</button>'
+    +'</div>'
+    +'<div class="cab-section">'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Дизайн сайта</div>'
+      +'<div class="cab-section-d">Акцентный цвет, логотип в шапке сайта, блоки (hero, услуги, портфолио, контакты, форма заявки) и слоган настраиваются в конструкторе.</div>'
       +'<a class="lead-btn lead-btn-pri" style="margin-top:14px" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Открыть конструктор</a>'
     +'</div>'
     +'<div class="cab-section">'
@@ -1019,6 +1051,86 @@ function renderSettings(){
       +'<div class="cab-section-d">Адрес магазина: <b>lastop.ru/shop/'+esc(SHOP.slug)+'</b><br>Создан: '+esc(fmtDate(SHOP.created_at))+'</div>'
     +'</div>';
   loadPayment();
+}
+
+// временное состояние медиа при редактировании магазина
+let SE_LOGO=null, SE_COVER=null;
+function uploadShopMedia(input,kind){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  const addBtn=document.getElementById(kind==='logo'?'seLogoAdd':'seCoverAdd');
+  if(addBtn)addBtn.style.opacity='.5';
+  (async()=>{
+    try{
+      const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});
+      const d=await r.json();
+      if(d&&d.url){
+        if(kind==='logo')SE_LOGO=d.url; else SE_COVER=d.url;
+        setShopMediaPreview(kind,d.url);
+      }else if(window.toast)toast('Не удалось загрузить','info');
+    }catch(e){if(window.toast)toast('Не удалось загрузить','info');}
+    if(addBtn)addBtn.style.opacity='';
+    input.value='';
+  })();
+}
+function setShopMediaPreview(kind,url){
+  const wrap=document.getElementById(kind==='logo'?'seLogoWrap':'seCoverWrap');
+  const add=document.getElementById(kind==='logo'?'seLogoAdd':'seCoverAdd');
+  if(!wrap)return;
+  const old=wrap.querySelector('.se-media-prev');if(old)old.remove();
+  const prev=document.createElement('div');
+  prev.className='se-media-prev'+(kind==='cover'?' se-cover':'');
+  prev.innerHTML='<img src="'+esc(url)+'" alt=""><button type="button" onclick="clearShopMedia(\''+kind+'\')">×</button>';
+  wrap.insertBefore(prev,add);
+  if(add)add.style.display='none';
+}
+function clearShopMedia(kind){
+  if(kind==='logo')SE_LOGO=''; else SE_COVER='';
+  const wrap=document.getElementById(kind==='logo'?'seLogoWrap':'seCoverWrap');
+  const add=document.getElementById(kind==='logo'?'seLogoAdd':'seCoverAdd');
+  if(wrap){const p=wrap.querySelector('.se-media-prev');if(p)p.remove();}
+  if(add)add.style.display='';
+}
+async function saveShop(){
+  const name=document.getElementById('seName').value.trim();
+  if(name.length<2){if(window.toast)toast('Название от 2 символов','info');return;}
+  const body={
+    name:name,
+    description:document.getElementById('seDesc').value.trim(),
+    region:document.getElementById('seRegion').value.trim(),
+    contact_phone:document.getElementById('sePhone').value.trim(),
+    contact_email:document.getElementById('seEmail').value.trim(),
+    contact_site:document.getElementById('seSite').value.trim(),
+    logo_url:SE_LOGO!=null?SE_LOGO:(SHOP.logo_url||''),
+    cover_url:SE_COVER!=null?SE_COVER:(SHOP.cover_url||'')
+  };
+  const btn=document.getElementById('seSaveBtn');
+  btn.disabled=true;btn.textContent='Сохранение…';
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw 0;
+    // обновляем локальную модель и шапку
+    Object.assign(SHOP,body);
+    const idx=MY_SHOPS.findIndex(x=>x.id===SHOP.id);
+    if(idx>=0)Object.assign(MY_SHOPS[idx],body);
+    SE_LOGO=null;SE_COVER=null;
+    updateCabHeader();
+    btn.disabled=false;btn.textContent='Сохранено ✓';
+    setTimeout(()=>{const b=document.getElementById('seSaveBtn');if(b)b.textContent='Сохранить изменения';},1800);
+  }catch(e){
+    btn.disabled=false;btn.textContent='Сохранить изменения';
+    if(window.toast)toast('Не удалось сохранить','info');
+  }
+}
+function updateCabHeader(){
+  const nameEl=document.querySelector('.cab-name');
+  if(nameEl)nameEl.textContent=SHOP.name;
+  const logoEl=document.querySelector('.cab-logo');
+  if(logoEl){
+    if(SHOP.logo_url){logoEl.style.background='';logoEl.innerHTML='<img src="'+esc(SHOP.logo_url)+'" alt="">';}
+    else{logoEl.style.background=avc(SHOP.name);logoEl.textContent=letter(SHOP.name);}
+  }
 }
 
 let PAY_TYPE='none';
