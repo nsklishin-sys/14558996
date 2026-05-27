@@ -388,6 +388,7 @@ let ACTIVE_TAB='leads';
 
 /* ── boot ── */
 window.addEventListener('DOMContentLoaded',init);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SHOP)pollLeadCounts();});
 
 async function init(){
   // shopID из ?id=, иначе — из списка моих магазинов
@@ -410,6 +411,8 @@ async function init(){
   }
   renderShell();
   switchTab('leads');
+  updateTabTitle(0);
+  startLeadPolling();
 }
 
 /* ── нет магазина ── */
@@ -474,6 +477,8 @@ function onShopChange(id){
   history.replaceState(null,'','/emarket-cabinet.html?id='+SHOP.id);
   renderShell();
   switchTab(ACTIVE_TAB);
+  updateTabTitle(0);
+  startLeadPolling();
 }
 
 /* ── переключение вкладок ── */
@@ -793,10 +798,50 @@ function refreshLeadsBar(){
 
 function updateLeadsBadge(){
   const badge=document.getElementById('leadsBadge');
-  if(!badge)return;
   const unread=(LEAD_COUNTS&&LEAD_COUNTS.unread)||0;
-  if(unread){badge.textContent=unread;badge.style.display='';}
-  else badge.style.display='none';
+  if(badge){
+    if(unread){badge.textContent=unread>99?'99+':unread;badge.style.display='';}
+    else badge.style.display='none';
+  }
+  updateTabTitle(unread);
+}
+
+function updateTabTitle(unread){
+  const base=SHOP&&SHOP.name?('Кабинет — '+SHOP.name):'Кабинет продавца';
+  document.title=(unread>0?'('+(unread>99?'99+':unread)+') ':'')+base;
+}
+
+/* лёгкий опрос счётчика непрочитанных — ловит новые заявки пока кабинет открыт */
+let _leadPollT=null;
+function startLeadPolling(){
+  stopLeadPolling();
+  _leadPollT=setInterval(pollLeadCounts,60000);
+}
+function stopLeadPolling(){if(_leadPollT){clearInterval(_leadPollT);_leadPollT=null;}}
+async function pollLeadCounts(){
+  if(document.hidden||!SHOP)return;          // не дёргаем фоновую вкладку
+  if(ACTIVE_TAB==='leads'&&LEAD_LOADING)return;
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads?limit=1');
+    if(!r.ok)return;
+    const d=await r.json();
+    if(!d||!d.counts)return;
+    const prevUnread=(LEAD_COUNTS&&LEAD_COUNTS.unread)||0;
+    const newUnread=d.counts.unread||0;
+    // обновляем счётчики, но НЕ трогаем открытый список (чтобы не сбить позицию/поиск)
+    LEAD_COUNTS=d.counts;
+    if(ACTIVE_TAB==='leads'){
+      // обновим только бар (числа на табах), список не перерисовываем
+      const pan=document.getElementById('panel-leads');
+      if(pan&&pan.querySelector('.leads-filter'))refreshLeadsBar();
+      else updateLeadsBadge();
+    }else{
+      updateLeadsBadge();
+    }
+    if(newUnread>prevUnread&&window.toast){
+      toast('Новая заявка'+(newUnread-prevUnread>1?' ('+(newUnread-prevUnread)+')':''),'info');
+    }
+  }catch(e){/* тихо */}
 }
 
 /* ════════════ ВКЛАДКА: ЛИСТИНГИ ════════════ */
