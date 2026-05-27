@@ -1,4 +1,5 @@
-// LASTOP — стилизованный dropdown для <select data-lt-select> и <select data-category-picker>.
+// LASTOP — стилизованный dropdown для <select data-lt-select>.
+// (data-category-picker — отдельный специализированный компонент category-picker.js для дерева категорий.)
 // Превращает любой нативный <select> с этим атрибутом в кастомный popup с группами и поиском.
 // Нативный <select> остаётся в DOM, скрыт визуально, через него работает форма и change event.
 (function(){
