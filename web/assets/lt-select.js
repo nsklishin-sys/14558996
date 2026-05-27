@@ -136,6 +136,14 @@
     // Слежение за внешними изменениями value (например при загрузке существующего event для редактирования)
     const mo=new MutationObserver(()=>syncLabel());
     mo.observe(nativeSel,{attributes:true,attributeFilter:['value']});
+    // Слежение за программным наполнением <option> (innerHTML после API-ответа):
+    // перерисовать popup-список и обновить label кнопки.
+    const moOpts=new MutationObserver(()=>{
+      const isOpen=pop.classList.contains('open');
+      renderList(isOpen?(search.value||''):'');
+      syncLabel();
+    });
+    moOpts.observe(nativeSel,{childList:true,subtree:true});
     nativeSel.addEventListener('change',syncLabel);
     // Также — если страница после рендера набивает options и устанавливает value программно
     setTimeout(syncLabel,50);
