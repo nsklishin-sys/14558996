@@ -2145,6 +2145,31 @@ var errs errtrack.Tracker
 // metricsReg — глобальный реестр метрик.
 var metricsReg = metrics.New()
 
+// emarketStatEventsRetentionLoop — фоновая чистка лога аналитики E-market.
+// Раз в сутки удаляет события старше 90 дней (этого достаточно для аналитики 7/30/90).
+func emarketStatEventsRetentionLoop(db *sql.DB) {
+	// первая чистка при старте — через минуту (не сразу, чтобы не нагружать запуск)
+	time.Sleep(time.Minute)
+	emarketStatEventsCleanup(db)
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		emarketStatEventsCleanup(db)
+	}
+}
+
+func emarketStatEventsCleanup(db *sql.DB) {
+	res, err := db.Exec(`DELETE FROM emarket_stat_events WHERE created_at < NOW() - INTERVAL '90 days'`)
+	if err != nil {
+		log.Printf("[emarket/stat_events] cleanup failed: %v", err)
+		return
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		log.Printf("[emarket/stat_events] cleaned up %d events older than 90 days", n)
+	}
+}
+
 func main() {
 	// Структурированное логирование: переключаем глобальный log на slog (JSON или text).
 	// LOG_FORMAT=json (default в проде) — JSON-вывод, удобный для агрегаторов.
@@ -2183,6 +2208,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	sessions = newSessionStore(db)
+	go emarketStatEventsRetentionLoop(db)
 	presenceDB = db
 	mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
 		handleWebSocket(w, r, sessions, db)
