@@ -90,6 +90,22 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lead-stsel{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:0 8px 0 10px;background:var(--w);color:var(--gmt);height:33px}
 .lead-stsel svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .lead-stsel select{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--tm);cursor:pointer;outline:none;padding:6px 2px}
+.cab-controls{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.cab-search{flex:1;min-width:200px;position:relative;display:flex;align-items:center}
+.cab-search svg{position:absolute;left:12px;width:15px;height:15px;fill:none;stroke:var(--gmt);stroke-width:1.8;stroke-linecap:round;pointer-events:none}
+.cab-search input{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:9px 32px 9px 36px;font-family:inherit;font-size:13px;color:var(--t);outline:none;background:var(--w);transition:border-color .15s}
+.cab-search input:focus{border-color:var(--g)}
+.cab-search-x{position:absolute;right:8px;width:20px;height:20px;border:none;border-radius:50%;background:var(--gp);color:var(--gmt);font-size:14px;line-height:1;cursor:pointer}
+.cab-search-x:hover{background:var(--gl);color:var(--g)}
+.cab-sort{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.cab-sort label{font-size:12px;color:var(--gmt);font-weight:600}
+.cab-sort select{border:1.5px solid var(--bdr);border-radius:var(--rm);padding:8px 10px;font-family:inherit;font-size:12px;font-weight:700;color:var(--tm);cursor:pointer;outline:none;background:var(--w)}
+.cab-sort select:focus{border-color:var(--g)}
+.lf-num{display:inline-block;min-width:16px;padding:0 4px;border-radius:99px;background:rgba(0,0,0,.06);font-size:10px;font-weight:800;line-height:16px;text-align:center;vertical-align:middle}
+.lf-btn.active .lf-num{background:rgba(255,255,255,.28)}
+.lf-sep{width:1px;align-self:stretch;background:var(--bdr);margin:2px 4px}
+.cab-more{display:block;width:100%;margin-top:6px;padding:11px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--w);color:var(--g);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.cab-more:hover{background:var(--gl);border-color:var(--gb)}
 .lead-subject{display:flex;align-items:center;gap:8px;background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 12px;margin-bottom:10px;text-decoration:none;transition:background .15s}
 .lead-subject:hover{background:#dcefe4}
 .lead-subject svg{width:15px;height:15px;flex-shrink:0;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -349,10 +365,26 @@ function isPhone(s){return /^[\d\s()+\-]{6,}$/.test(String(s||'').trim());}
 /* ── состояние ── */
 let MY_SHOPS=[];
 let SHOP=null;        // текущий магазин
-let LEADS=[];         // загруженные заявки
-let LEAD_FILTER='all';// all | unread
-let LISTINGS=null;    // ленивая загрузка вкладки
+let LEADS=[];         // загруженные заявки (текущая страница, аккумулируются)
+let LEAD_FILTER='all';// all | unread | new | in_progress | done | rejected
+let LEAD_Q='';        // поиск
+let LEAD_SORT='date_desc';
+let LEAD_OFFSET=0;
+let LEAD_TOTAL=0;     // всего под текущий фильтр+поиск
+let LEAD_COUNTS={};   // счётчики по статусам (со всего магазина)
+let LEAD_LOADING=false;
+const LEAD_PAGE=20;
+let LISTINGS=null;    // загруженные листинги (текущая страница, аккумулируются)
+let LST_Q='';
+let LST_SORT='date_desc';
+let LST_KIND='';      // '' | product | service
+let LST_STATUS='';    // '' | active | hidden
+let LST_OFFSET=0;
+let LST_TOTAL=0;
+let LST_LOADING=false;
+const LST_PAGE=20;
 let ACTIVE_TAB='leads';
+
 
 /* ── boot ── */
 window.addEventListener('DOMContentLoaded',init);
@@ -437,6 +469,8 @@ function onShopChange(id){
   if(!next)return;
   SHOP=next;
   LEADS=[];LISTINGS=null;
+  LEAD_FILTER='all';LEAD_Q='';LEAD_SORT='date_desc';LEAD_OFFSET=0;LEAD_TOTAL=0;LEAD_COUNTS={};
+  LST_Q='';LST_SORT='date_desc';LST_KIND='';LST_STATUS='';LST_OFFSET=0;LST_TOTAL=0;
   history.replaceState(null,'','/emarket-cabinet.html?id='+SHOP.id);
   renderShell();
   switchTab(ACTIVE_TAB);
@@ -458,62 +492,102 @@ function switchTab(tab){
 }
 
 /* ════════════ ВКЛАДКА: ЗАЯВКИ ════════════ */
-async function loadLeads(){
+async function loadLeads(reset){
   const pan=document.getElementById('panel-leads');
-  if(LEADS.length===0 && !pan.dataset.loaded){
-    pan.innerHTML=leadsBarHTML()+skeletons(3);
+  if(reset!==false){LEAD_OFFSET=0;LEADS=[];}
+  if(LEAD_LOADING)return;
+  LEAD_LOADING=true;
+  // первичная отрисовка каркаса (бар + скелетоны) только если список пуст
+  if(LEAD_OFFSET===0 && !pan.dataset.loaded){
+    pan.innerHTML=leadsBarHTML()+'<div id="leadsList">'+skeletons(3)+'</div>';
   }
+  const params=new URLSearchParams();
+  params.set('limit',LEAD_PAGE);
+  params.set('offset',LEAD_OFFSET);
+  if(LEAD_Q)params.set('q',LEAD_Q);
+  if(LEAD_SORT==='date_asc')params.set('sort','date_asc');
+  if(LEAD_FILTER==='unread')params.set('unread','1');
+  else if(LEAD_FILTER!=='all')params.set('status',LEAD_FILTER);
   try{
-    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads');
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads?'+params.toString());
     if(!r.ok)throw new Error('http '+r.status);
     const d=await r.json();
-    LEADS=(d&&d.leads)||[];
+    const page=(d&&d.leads)||[];
+    LEADS=LEAD_OFFSET===0?page:LEADS.concat(page);
+    LEAD_TOTAL=d&&typeof d.total==='number'?d.total:LEADS.length;
+    if(d&&d.counts)LEAD_COUNTS=d.counts;
     pan.dataset.loaded='1';
+    LEAD_LOADING=false;
     renderLeads();
   }catch(e){
-    pan.innerHTML=leadsBarHTML()
-      +'<div class="cab-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-      +'<div class="cab-empty-t">Не удалось загрузить заявки</div>'
-      +'<div class="cab-empty-d">Проверьте подключение и попробуйте обновить страницу.</div>'
-      +'<button class="lead-btn lead-btn-pri" onclick="loadLeads()">Повторить</button></div>';
+    LEAD_LOADING=false;
+    if(LEAD_OFFSET===0){
+      pan.innerHTML=leadsBarHTML()
+        +'<div class="cab-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        +'<div class="cab-empty-t">Не удалось загрузить заявки</div>'
+        +'<div class="cab-empty-d">Проверьте подключение и попробуйте обновить страницу.</div>'
+        +'<button class="lead-btn lead-btn-pri" onclick="loadLeads(true)">Повторить</button></div>';
+    }
   }
+}
+
+function loadMoreLeads(){
+  LEAD_OFFSET+=LEAD_PAGE;
+  loadLeads(false);
 }
 
 function leadsBarHTML(){
-  const total=LEADS.length;
-  const unread=LEADS.filter(l=>!l.is_read).length;
-  const cnt=s=>LEADS.filter(l=>(l.status||'new')===s).length;
-  const f=(key,label,n)=>'<button class="lf-btn'+(LEAD_FILTER===key?' active':'')+'" onclick="setLeadFilter(\''+key+'\')">'+label+(n?' ('+n+')':'')+'</button>';
+  const c=LEAD_COUNTS||{};
+  const cnt=k=>c[k]||0;
+  const unread=cnt('unread');
+  const f=(key,label,n)=>'<button class="lf-btn'+(LEAD_FILTER===key?' active':'')+'" onclick="setLeadFilter(\''+key+'\')">'+label+(n?' <span class="lf-num">'+n+'</span>':'')+'</button>';
   return '<div class="leads-bar">'
     +'<div class="leads-title">Заявки'
-      +(total?'<span class="leads-count">'+total+(unread?' · '+unread+' новых':'')+'</span>':'')
-    +'</div>'
-    +'<div class="leads-filter">'
-      +f('all','Все',0)
-      +f('unread','Непрочит.',unread)
-      +f('new','Новые',cnt('new'))
-      +f('in_progress','В работе',cnt('in_progress'))
-      +f('done','Сделка',cnt('done'))
-      +f('rejected','Отказ',cnt('rejected'))
+      +(cnt('all')?'<span class="leads-count">'+cnt('all')+(unread?' · '+unread+' новых':'')+'</span>':'')
     +'</div>'
     +(unread?'<button class="lead-btn" onclick="markAllRead()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Прочитать все</button>':'')
+  +'</div>'
+  +'<div class="cab-controls">'
+    +'<div class="cab-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+      +'<input type="text" id="leadSearch" placeholder="Поиск по имени, контакту, сообщению…" value="'+esc(LEAD_Q)+'" oninput="onLeadSearch(this.value)">'
+      +(LEAD_Q?'<button class="cab-search-x" onclick="clearLeadSearch()">×</button>':'')+'</div>'
+    +'<div class="cab-sort"><label>Сортировка</label>'
+      +'<select onchange="setLeadSort(this.value)">'
+        +'<option value="date_desc"'+(LEAD_SORT==='date_desc'?' selected':'')+'>Сначала новые</option>'
+        +'<option value="date_asc"'+(LEAD_SORT==='date_asc'?' selected':'')+'>Сначала старые</option>'
+      +'</select></div>'
+  +'</div>'
+  +'<div class="leads-filter">'
+    +f('all','Все',cnt('all'))
+    +f('unread','Непрочит.',unread)
+    +f('new','Новые',cnt('new'))
+    +f('in_progress','В работе',cnt('in_progress'))
+    +f('done','Сделка',cnt('done'))
+    +f('rejected','Отказ',cnt('rejected'))
   +'</div>';
 }
 
-function setLeadFilter(f){LEAD_FILTER=f;renderLeads();}
-
-function leadMatchesFilter(l){
-  if(LEAD_FILTER==='all')return true;
-  if(LEAD_FILTER==='unread')return !l.is_read;
-  return (l.status||'new')===LEAD_FILTER;
+let _leadSearchT=null;
+function onLeadSearch(v){
+  LEAD_Q=v.trim();
+  clearTimeout(_leadSearchT);
+  _leadSearchT=setTimeout(()=>loadLeads(true),350);
 }
+function clearLeadSearch(){LEAD_Q='';loadLeads(true);}
+function setLeadSort(v){LEAD_SORT=v;loadLeads(true);}
+function setLeadFilter(f){LEAD_FILTER=f;loadLeads(true);}
 
 function renderLeads(){
   const pan=document.getElementById('panel-leads');
   updateLeadsBadge();
-  let list=LEADS.filter(leadMatchesFilter);
+  // если каркас (бар) ещё не на странице или фильтры сменились — перерисуем целиком бар + список
+  pan.innerHTML=leadsBarHTML()+'<div id="leadsList"></div>';
+  const listEl=document.getElementById('leadsList');
+  // привязка фокуса поиска после перерисовки
+  const si=document.getElementById('leadSearch');
+  if(si&&document.activeElement!==si&&LEAD_Q){si.focus();si.setSelectionRange(si.value.length,si.value.length);}
 
-  if(!list.length){
+  if(!LEADS.length){
     const emptyMap={
       unread:{t:'Непрочитанных нет',d:'Все заявки просмотрены.'},
       new:{t:'Новых заявок нет',d:'Заявки со статусом «Новая» появятся здесь.'},
@@ -522,13 +596,17 @@ function renderLeads(){
       rejected:{t:'Нет отклонённых',d:'Заявки со статусом «Отказ» появятся здесь.'},
       all:{t:'Заявок пока нет',d:'Когда клиенты заполнят форму обратной связи на странице вашего магазина, заявки появятся здесь.'}
     };
-    const m=emptyMap[LEAD_FILTER]||emptyMap.all;
-    pan.innerHTML=leadsBarHTML()
-      +'<div class="cab-empty"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>'
+    const m=(LEAD_Q?{t:'Ничего не найдено',d:'По запросу «'+esc(LEAD_Q)+'» заявок нет. Измените поиск или фильтр.'}:(emptyMap[LEAD_FILTER]||emptyMap.all));
+    listEl.innerHTML='<div class="cab-empty"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>'
       +'<div class="cab-empty-t">'+m.t+'</div><div class="cab-empty-d">'+m.d+'</div></div>';
     return;
   }
-  pan.innerHTML=leadsBarHTML()+list.map(buildLeadCard).join('');
+  listEl.innerHTML=LEADS.map(buildLeadCard).join('')+moreBtnHTML(LEADS.length,LEAD_TOTAL,'loadMoreLeads()');
+}
+
+function moreBtnHTML(shown,total,onclick){
+  if(shown>=total)return '';
+  return '<button class="cab-more" onclick="'+onclick+'">Показать ещё '+Math.min(total-shown,LEAD_PAGE)+' из '+(total-shown)+'</button>';
 }
 
 function buildLeadCard(l){
@@ -615,10 +693,12 @@ async function setLeadStatus(leadId,status){
   const lead=LEADS.find(l=>l.id===leadId);
   if(!lead)return;
   const prev=lead.status||'new';
+  const prevRead=lead.is_read;
   if(prev===status)return;
+  // локально правим counts: было prev → стало status
+  bumpCount(prev,-1);bumpCount(status,+1);
+  if(!lead.is_read){lead.is_read=true;bumpCount('unread',-1);}
   lead.status=status;
-  // если статус сменили — заявка явно просмотрена
-  if(!lead.is_read)lead.is_read=true;
   replaceLeadCard(lead);
   refreshLeadsBar();
   try{
@@ -628,33 +708,40 @@ async function setLeadStatus(leadId,status){
     });
     if(!r.ok)throw 0;
   }catch(e){
-    lead.status=prev;
-    replaceLeadCard(lead);
-    refreshLeadsBar();
+    // откат
+    bumpCount(status,-1);bumpCount(prev,+1);
+    if(!prevRead){bumpCount('unread',+1);}
+    lead.status=prev;lead.is_read=prevRead;
+    replaceLeadCard(lead);refreshLeadsBar();
     if(window.toast)toast('Не удалось изменить статус','info');
   }
 }
 
+function bumpCount(key,delta){
+  if(!LEAD_COUNTS)LEAD_COUNTS={};
+  LEAD_COUNTS[key]=Math.max(0,(LEAD_COUNTS[key]||0)+delta);
+}
+
 function replyInChat(pid){location.href='/chat.html?user='+encodeURIComponent(pid);}
 
-/* пометка прочитанным — точечное обновление узла, без пересборки списка */
+/* пометка прочитанным — точечное обновление узла */
 async function toggleRead(leadId,read){
   const lead=LEADS.find(l=>l.id===leadId);
   if(!lead)return;
-  lead.is_read=read;                 // оптимистично
+  const prev=lead.is_read;
+  if(prev===read)return;
+  lead.is_read=read;
+  bumpCount('unread',read?-1:+1);
   replaceLeadCard(lead);
   refreshLeadsBar();
   try{
     const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads/'+leadId+'/read',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({is_read:read})
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_read:read})
     });
     if(!r.ok)throw new Error('http '+r.status);
   }catch(e){
-    lead.is_read=!read;              // откат
-    replaceLeadCard(lead);
-    refreshLeadsBar();
+    lead.is_read=prev;bumpCount('unread',read?+1:-1);
+    replaceLeadCard(lead);refreshLeadsBar();
     if(window.toast)toast('Не удалось обновить статус','info');
   }
 }
@@ -663,20 +750,20 @@ async function markAllRead(){
   const unread=LEADS.filter(l=>!l.is_read);
   if(!unread.length)return;
   unread.forEach(l=>{l.is_read=true;replaceLeadCard(l);});
+  LEAD_COUNTS.unread=0;
   refreshLeadsBar();
   for(const l of unread){
     try{
       await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads/'+l.id+'/read',{
         method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_read:true})
       });
-    }catch(e){/* тихо: UI уже обновлён, при ошибке статус подтянется при следующей загрузке */}
+    }catch(e){/* тихо: UI уже обновлён */}
   }
 }
 
 function replaceLeadCard(lead){
   const el=document.getElementById('lead-'+lead.id);
   if(!el)return;
-  // если активен фильтр «новые» и заявка стала прочитанной — убрать из списка
   if(LEAD_FILTER==='unread' && lead.is_read){el.remove();maybeEmptyAfterFilter();return;}
   const wasOpen=el.classList.contains('open');
   el.outerHTML=buildLeadCard(lead);
@@ -684,55 +771,120 @@ function replaceLeadCard(lead){
 }
 
 function maybeEmptyAfterFilter(){
-  const pan=document.getElementById('panel-leads');
-  if(!pan.querySelector('.lead-card'))renderLeads();
+  const listEl=document.getElementById('leadsList');
+  if(listEl && !listEl.querySelector('.lead-card'))renderLeads();
 }
 
 function refreshLeadsBar(){
+  // перерисовываем бар целиком (заголовок счётчик + фильтры с числами), список не трогаем
   const pan=document.getElementById('panel-leads');
   const bar=pan.querySelector('.leads-bar');
-  if(bar)bar.outerHTML=leadsBarHTML();
+  const ctrls=pan.querySelector('.cab-controls');
+  const filt=pan.querySelector('.leads-filter');
+  if(bar&&ctrls&&filt){
+    const tmp=document.createElement('div');
+    tmp.innerHTML=leadsBarHTML();
+    bar.replaceWith(tmp.querySelector('.leads-bar'));
+    ctrls.replaceWith(tmp.querySelector('.cab-controls'));
+    filt.replaceWith(tmp.querySelector('.leads-filter'));
+  }
   updateLeadsBadge();
 }
 
 function updateLeadsBadge(){
   const badge=document.getElementById('leadsBadge');
   if(!badge)return;
-  const unread=LEADS.filter(l=>!l.is_read).length;
+  const unread=(LEAD_COUNTS&&LEAD_COUNTS.unread)||0;
   if(unread){badge.textContent=unread;badge.style.display='';}
   else badge.style.display='none';
 }
 
 /* ════════════ ВКЛАДКА: ЛИСТИНГИ ════════════ */
-async function loadListings(){
+async function loadListings(reset){
   const pan=document.getElementById('panel-listings');
-  if(LISTINGS===null){
-    pan.innerHTML=skeletons(3);
-    try{
-      const r=await lastopFetch(API+'/emarket/shop-listings?shop_id='+SHOP.id+'&mine=1');
-      const d=await r.json();
-      LISTINGS=(d&&d.listings)||[];
-    }catch(e){LISTINGS=[];}
+  if(reset!==false || LISTINGS===null){LST_OFFSET=0;LISTINGS=[];}
+  if(LST_LOADING)return;
+  LST_LOADING=true;
+  if(LST_OFFSET===0 && !pan.dataset.loaded){
+    pan.innerHTML=listingsBarHTML()+'<div id="lstList">'+skeletons(3)+'</div>';
   }
-  renderListings();
+  const params=new URLSearchParams();
+  params.set('shop_id',SHOP.id);params.set('mine','1');
+  params.set('limit',LST_PAGE);params.set('offset',LST_OFFSET);
+  if(LST_Q)params.set('q',LST_Q);
+  if(LST_SORT!=='date_desc')params.set('sort',LST_SORT);
+  if(LST_KIND)params.set('kind',LST_KIND);
+  if(LST_STATUS)params.set('status',LST_STATUS);
+  try{
+    const r=await lastopFetch(API+'/emarket/shop-listings?'+params.toString());
+    const d=await r.json();
+    const page=(d&&d.listings)||[];
+    LISTINGS=LST_OFFSET===0?page:LISTINGS.concat(page);
+    LST_TOTAL=d&&typeof d.total==='number'?d.total:LISTINGS.length;
+    pan.dataset.loaded='1';
+    LST_LOADING=false;
+    renderListings();
+  }catch(e){
+    LST_LOADING=false;
+    if(LST_OFFSET===0){LISTINGS=[];renderListings();}
+  }
 }
+
+function loadMoreListings(){LST_OFFSET+=LST_PAGE;loadListings(false);}
+
+function listingsBarHTML(){
+  return '<div class="leads-bar">'
+    +'<div class="leads-title">Товары и услуги'+(LST_TOTAL?'<span class="leads-count">'+LST_TOTAL+'</span>':'')+'</div>'
+    +'<button class="lead-btn lead-btn-pri" onclick="openListingModal(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить</button>'
+  +'</div>'
+  +'<div class="cab-controls">'
+    +'<div class="cab-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+      +'<input type="text" id="lstSearch" placeholder="Поиск по названию и описанию…" value="'+esc(LST_Q)+'" oninput="onLstSearch(this.value)">'
+      +(LST_Q?'<button class="cab-search-x" onclick="clearLstSearch()">×</button>':'')+'</div>'
+    +'<div class="cab-sort"><label>Сортировка</label>'
+      +'<select onchange="setLstSort(this.value)">'
+        +'<option value="date_desc"'+(LST_SORT==='date_desc'?' selected':'')+'>Сначала новые</option>'
+        +'<option value="date_asc"'+(LST_SORT==='date_asc'?' selected':'')+'>Сначала старые</option>'
+        +'<option value="price_asc"'+(LST_SORT==='price_asc'?' selected':'')+'>Цена ↑</option>'
+        +'<option value="price_desc"'+(LST_SORT==='price_desc'?' selected':'')+'>Цена ↓</option>'
+        +'<option value="popular"'+(LST_SORT==='popular'?' selected':'')+'>Популярные</option>'
+      +'</select></div>'
+  +'</div>'
+  +'<div class="leads-filter">'
+    +lstFilterBtn('kind','','Все типы')+lstFilterBtn('kind','product','Товары')+lstFilterBtn('kind','service','Услуги')
+    +'<span class="lf-sep"></span>'
+    +lstFilterBtn('status','','Все')+lstFilterBtn('status','active','Активные')+lstFilterBtn('status','hidden','Скрытые')
+  +'</div>';
+}
+function lstFilterBtn(group,val,label){
+  const cur=group==='kind'?LST_KIND:LST_STATUS;
+  return '<button class="lf-btn'+(cur===val?' active':'')+'" onclick="setLstFilter(\''+group+'\',\''+val+'\')">'+label+'</button>';
+}
+
+let _lstSearchT=null;
+function onLstSearch(v){LST_Q=v.trim();clearTimeout(_lstSearchT);_lstSearchT=setTimeout(()=>loadListings(true),350);}
+function clearLstSearch(){LST_Q='';loadListings(true);}
+function setLstSort(v){LST_SORT=v;loadListings(true);}
+function setLstFilter(group,val){if(group==='kind')LST_KIND=val;else LST_STATUS=val;loadListings(true);}
 
 function renderListings(){
   const pan=document.getElementById('panel-listings');
-  const head='<div class="leads-bar">'
-    +'<div class="leads-title">Товары и услуги'+(LISTINGS.length?'<span class="leads-count">'+LISTINGS.length+'</span>':'')+'</div>'
-    +'<button class="lead-btn lead-btn-pri" onclick="openListingModal(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить</button>'
-  +'</div>';
+  pan.innerHTML=listingsBarHTML()+'<div id="lstList"></div>';
+  const listEl=document.getElementById('lstList');
+  const si=document.getElementById('lstSearch');
+  if(si&&LST_Q){si.focus();si.setSelectionRange(si.value.length,si.value.length);}
 
   if(!LISTINGS.length){
-    pan.innerHTML=head
-      +'<div class="cab-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'
-      +'<div class="cab-empty-t">Пока нет товаров и услуг</div>'
-      +'<div class="cab-empty-d">Добавьте первый товар или услугу — они появятся на странице магазина и в ленте E-market.</div>'
-      +'<button class="lead-btn lead-btn-pri" onclick="openListingModal(0)">+ Добавить товар или услугу</button></div>';
+    const m=(LST_Q||LST_KIND||LST_STATUS)
+      ? {t:'Ничего не найдено',d:'Измените поиск или фильтры.'}
+      : {t:'Пока нет товаров и услуг',d:'Добавьте первый товар или услугу — они появятся на странице магазина и в ленте E-market.'};
+    listEl.innerHTML='<div class="cab-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'
+      +'<div class="cab-empty-t">'+m.t+'</div><div class="cab-empty-d">'+m.d+'</div>'
+      +((LST_Q||LST_KIND||LST_STATUS)?'':'<button class="lead-btn lead-btn-pri" onclick="openListingModal(0)">+ Добавить товар или услугу</button>')+'</div>';
     return;
   }
-  pan.innerHTML=head+LISTINGS.map(buildListingCard).join('');
+  listEl.innerHTML=LISTINGS.map(buildListingCard).join('')
+    +(LISTINGS.length<LST_TOTAL?'<button class="cab-more" onclick="loadMoreListings()">Показать ещё '+Math.min(LST_TOTAL-LISTINGS.length,LST_PAGE)+' из '+(LST_TOTAL-LISTINGS.length)+'</button>':'');
 }
 
 function buildListingCard(it){
@@ -796,6 +948,7 @@ async function deleteListing(id){
     const r=await lastopFetch(API+'/emarket/listings/'+id,{method:'DELETE'});
     if(!r.ok)throw 0;
     LISTINGS=LISTINGS.filter(x=>x.id!==id);
+    LST_TOTAL=Math.max(0,LST_TOTAL-1);
     renderListings();
   }catch(e){if(window.toast)toast('Не удалось удалить','info');}
 }
