@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/utils.js"></script>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Кабинет продавца</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0;padding-bottom:16px;scrollbar-width:none;-ms-overflow-style:none}
+.main::-webkit-scrollbar{display:none}
+.main>*{flex-shrink:0}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0;scrollbar-width:none;-ms-overflow-style:none}
+.right::-webkit-scrollbar{display:none}
+
+/* ── Шапка кабинета ── */
+.cab-head{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh);display:flex;align-items:center;gap:14px}
+.cab-logo{width:52px;height:52px;border-radius:14px;flex-shrink:0;display:grid;place-items:center;font-size:20px;font-weight:800;color:#fff;overflow:hidden;background:var(--g)}
+.cab-logo img{width:100%;height:100%;object-fit:cover}
+.cab-hi{flex:1;min-width:0}
+.cab-name{font-size:18px;font-weight:800;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cab-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+.cab-shopsel{flex-shrink:0}
+.cab-shopsel select{font-family:inherit;font-size:13px;font-weight:600;color:var(--t);background:var(--gp);border:1.5px solid var(--bdr);border-radius:var(--rm);padding:8px 12px;cursor:pointer;outline:none}
+.cab-shopsel select:focus{border-color:var(--gm)}
+.cab-openbtn{flex-shrink:0;font-family:inherit;font-size:12px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:9px 14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.cab-openbtn:hover{background:var(--g);color:#fff;border-color:var(--g)}
+.cab-openbtn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Вкладки ── */
+.cab-tabs{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:6px;box-shadow:var(--sh);display:flex;gap:4px;flex-wrap:wrap}
+.cab-tab{flex:1;min-width:120px;font-family:inherit;font-size:13px;font-weight:700;color:var(--gmt);background:transparent;border:none;border-radius:var(--rl);padding:10px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px;position:relative}
+.cab-tab svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cab-tab:hover{background:var(--gp);color:var(--g)}
+.cab-tab.active{background:var(--g);color:#fff}
+.cab-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--red);color:#fff;font-size:10px;font-weight:800;line-height:1}
+.cab-tab.active .cab-tab-badge{background:rgba(255,255,255,.28)}
+
+/* ── Панель вкладки ── */
+.cab-panel{display:none;flex-direction:column;gap:12px}
+.cab-panel.active{display:flex}
+
+/* ── Заявки: панель фильтров ── */
+.leads-bar{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:12px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.leads-title{font-size:15px;font-weight:800;color:var(--t);margin-right:auto;display:flex;align-items:center;gap:8px}
+.leads-count{font-size:12px;font-weight:700;color:var(--gmt);background:var(--gp);border:1px solid var(--bdr);border-radius:99px;padding:3px 10px}
+.leads-filter{display:flex;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:3px;gap:2px}
+.lf-btn{font-family:inherit;font-size:12px;font-weight:700;color:var(--gmt);background:transparent;border:none;border-radius:var(--r);padding:6px 14px;cursor:pointer;transition:all .15s}
+.lf-btn.active{background:var(--w);color:var(--g);box-shadow:0 1px 4px rgba(30,138,76,.12)}
+
+/* ── Карточка заявки ── */
+.lead-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh);transition:box-shadow .2s;position:relative}
+.lead-card:hover{box-shadow:var(--shm)}
+.lead-card.unread{border-left:4px solid var(--g)}
+.lead-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.lead-av{width:42px;height:42px;border-radius:12px;flex-shrink:0;display:grid;place-items:center;font-size:16px;font-weight:800;color:#fff}
+.lead-meta{flex:1;min-width:0}
+.lead-name{font-size:15px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lead-newdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--g);flex-shrink:0}
+.lead-contact{font-size:13px;color:var(--g);font-weight:700;margin-top:3px;word-break:break-word}
+.lead-contact a{color:inherit;text-decoration:none}
+.lead-contact a:hover{text-decoration:underline}
+.lead-time{font-size:11px;color:var(--gmt);flex-shrink:0;white-space:nowrap;margin-top:3px}
+.lead-msg{font-size:13px;color:var(--tm);line-height:1.6;white-space:pre-wrap;word-break:break-word;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:11px 13px;margin-bottom:12px}
+.lead-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lead-btn{font-family:inherit;font-size:12px;font-weight:700;border-radius:var(--rm);padding:8px 16px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--bdr);background:var(--w);color:var(--tm)}
+.lead-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lead-btn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.lead-btn-pri{background:var(--g);color:#fff;border-color:var(--g)}
+.lead-btn-pri:hover{background:var(--gm);color:#fff;border-color:var(--gm)}
+.lead-registered{font-size:11px;color:var(--gmt);display:inline-flex;align-items:center;gap:5px;margin-left:auto}
+.lead-registered svg{width:13px;height:13px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Пустые/состояния ── */
+.cab-empty{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:48px 24px;box-shadow:var(--sh);text-align:center}
+.cab-empty svg{width:48px;height:48px;fill:none;stroke:var(--gb);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;margin-bottom:14px}
+.cab-empty-t{font-size:16px;font-weight:800;color:var(--t);margin-bottom:6px}
+.cab-empty-d{font-size:13px;color:var(--gmt);line-height:1.6;max-width:380px;margin:0 auto}
+.cab-empty .lead-btn{margin-top:16px}
+
+/* ── Скелетоны ── */
+.sk-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh)}
+.sk{background:var(--bg);border-radius:var(--r);animation:skp 1.4s ease-in-out infinite}
+@keyframes skp{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* ── Карточки заглушек других вкладок ── */
+.cab-section{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;box-shadow:var(--sh)}
+.cab-section-h{font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.cab-section-h svg{width:17px;height:17px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cab-section-d{font-size:13px;color:var(--gmt);line-height:1.6}
+
+/* ── Аналитика ── */
+.an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.an-cell{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh)}
+.an-num{font-size:28px;font-weight:900;color:var(--g);line-height:1}
+.an-lbl{font-size:12px;color:var(--gmt);font-weight:600;margin-top:6px}
+
+/* ── Листинги ── */
+.lst-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:13px;transition:box-shadow .2s}
+.lst-card:hover{box-shadow:var(--shm)}
+.lst-thumb{width:54px;height:54px;border-radius:12px;flex-shrink:0;object-fit:cover;background:var(--gp);border:1px solid var(--bdr);display:grid;place-items:center;color:var(--gb)}
+.lst-thumb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6}
+.lst-info{flex:1;min-width:0}
+.lst-kind{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px;margin-bottom:4px}
+.lst-kind.product{background:var(--gl);color:var(--g)}
+.lst-kind.service{background:#E6F1FB;color:#185FA5}
+.lst-name{font-size:14px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lst-price{font-size:13px;color:var(--gmt);font-weight:600;margin-top:2px}
+.lst-views{font-size:11px;color:var(--gmt);flex-shrink:0;display:flex;align-items:center;gap:4px}
+.lst-views svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6}
+
+/* ── Правый сайдбар ── */
+.rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:15px;box-shadow:var(--sh)}
+.rs-h{font-size:11px;font-weight:800;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:11px}
+.rs-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.rs-row:last-child{border-bottom:none;padding-bottom:0}
+.rs-row-l{font-size:12px;color:var(--gmt)}
+.rs-row-v{font-size:14px;font-weight:800;color:var(--t)}
+.rs-link{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--bdr);text-decoration:none;color:var(--tm);font-size:13px;font-weight:600;transition:color .15s}
+.rs-link:last-child{border-bottom:none}
+.rs-link:hover{color:var(--g)}
+.rs-link svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+@media(max-width:560px){
+  .cab-head{flex-wrap:wrap}
+  .cab-shopsel,.cab-openbtn{width:100%}
+  .cab-tab{min-width:0;padding:9px 8px;font-size:12px}
+  .cab-tab span.tab-label{display:none}
+  .cab-tab svg{width:18px;height:18px}
+}
+</style>
+</head>
+<body>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+<div class="shell">
+
+<header class="topbar"></header>
+<nav class="nav"></nav>
+
+<main class="main" id="cabMain">
+  <!-- наполняется JS после загрузки магазина -->
+  <div class="sk-card" id="cabBoot">
+    <div style="display:flex;gap:13px;align-items:center">
+      <div class="sk" style="width:52px;height:52px;border-radius:14px"></div>
+      <div style="flex:1">
+        <div class="sk" style="height:18px;width:45%;margin-bottom:8px"></div>
+        <div class="sk" style="height:12px;width:30%"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<aside class="right" id="cabRight"></aside>
+
+</div>
+
+<script>
+const API='/api';
+
+/* ── утилиты (как в соседних emarket-страницах) ── */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){s=String(s||'').trim();return s?s[0].toUpperCase():'?';}
+const AVC=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
+function avc(s){s=String(s||'');let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return AVC[h%AVC.length];}
+function ago(ts){
+  if(!ts)return'';
+  const d=new Date(ts);if(isNaN(d))return'';
+  const m=Math.max(1,Math.floor((Date.now()-d)/60000));
+  if(m<60)return m+' мин назад';
+  if(m<1440)return Math.floor(m/60)+' ч назад';
+  if(m<10080)return Math.floor(m/1440)+' д назад';
+  return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});
+}
+function fmtDate(ts){const d=new Date(ts);if(isNaN(d))return'';return d.toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});}
+function num(n){n=+n||0;return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'к':String(n);}
+function isEmail(s){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||'').trim());}
+function isPhone(s){return /^[\d\s()+\-]{6,}$/.test(String(s||'').trim());}
+
+/* ── состояние ── */
+let MY_SHOPS=[];
+let SHOP=null;        // текущий магазин
+let LEADS=[];         // загруженные заявки
+let LEAD_FILTER='all';// all | unread
+let LISTINGS=null;    // ленивая загрузка вкладки
+let ACTIVE_TAB='leads';
+
+/* ── boot ── */
+window.addEventListener('DOMContentLoaded',init);
+
+async function init(){
+  // shopID из ?id=, иначе — из списка моих магазинов
+  const qid=parseInt(new URLSearchParams(location.search).get('id'))||0;
+  try{
+    const rs=await lastopFetch(API+'/emarket/shops/my');
+    const ds=await rs.json();
+    MY_SHOPS=(ds&&ds.shops)||[];
+  }catch(e){MY_SHOPS=[];}
+
+  if(!MY_SHOPS.length){renderNoShop();return;}
+
+  if(qid){
+    SHOP=MY_SHOPS.find(s=>s.id===qid)||MY_SHOPS[0];
+  }else{
+    SHOP=MY_SHOPS[0];
+  }
+  if(qid && SHOP.id!==qid){
+    // запрошенный id не наш — но магазины есть: показываем первый свой
+  }
+  renderShell();
+  switchTab('leads');
+}
+
+/* ── нет магазина ── */
+function renderNoShop(){
+  document.getElementById('cabMain').innerHTML=
+    '<div class="cab-empty">'
+    +'<svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>'
+    +'<div class="cab-empty-t">У вас пока нет магазина</div>'
+    +'<div class="cab-empty-d">Кабинет продавца открывается после создания витрины. Перейдите в E-market, чтобы открыть магазин от своего имени, компании или сообщества.</div>'
+    +'<a class="lead-btn lead-btn-pri" href="/emarket.html">Перейти в E-market</a>'
+    +'</div>';
+  document.getElementById('cabRight').innerHTML='';
+}
+
+/* ── каркас: шапка + вкладки + панели ── */
+function renderShell(){
+  const main=document.getElementById('cabMain');
+  const logoInner=SHOP.logo_url
+    ? '<img src="'+esc(SHOP.logo_url)+'" alt="">'
+    : letter(SHOP.name);
+  const logoBg=SHOP.logo_url?'':('background:'+avc(SHOP.name));
+
+  const shopSelector=MY_SHOPS.length>1
+    ? '<div class="cab-shopsel"><select id="shopSel" onchange="onShopChange(this.value)">'
+      +MY_SHOPS.map(s=>'<option value="'+s.id+'"'+(s.id===SHOP.id?' selected':'')+'>'+esc(s.name)+'</option>').join('')
+      +'</select></div>'
+    : '';
+
+  main.innerHTML=
+    '<div class="cab-head">'
+      +'<div class="cab-logo" style="'+logoBg+'">'+logoInner+'</div>'
+      +'<div class="cab-hi">'
+        +'<div class="cab-name">'+esc(SHOP.name)+'</div>'
+        +'<div class="cab-sub">Кабинет продавца'+(SHOP.status&&SHOP.status!=='active'?' · '+esc(SHOP.status):'')+'</div>'
+      +'</div>'
+      +shopSelector
+      +'<a class="cab-openbtn" href="/shop/'+esc(SHOP.slug)+'"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Открыть магазин</a>'
+    +'</div>'
+
+    +'<div class="cab-tabs">'
+      +'<button class="cab-tab active" id="tabBtn-leads" onclick="switchTab(\'leads\')"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg><span class="tab-label">Заявки</span><span class="cab-tab-badge" id="leadsBadge" style="display:none">0</span></button>'
+      +'<button class="cab-tab" id="tabBtn-listings" onclick="switchTab(\'listings\')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="tab-label">Листинги</span></button>'
+      +'<button class="cab-tab" id="tabBtn-analytics" onclick="switchTab(\'analytics\')"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="tab-label">Аналитика</span></button>'
+      +'<button class="cab-tab" id="tabBtn-settings" onclick="switchTab(\'settings\')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="tab-label">Настройки</span></button>'
+    +'</div>'
+
+    +'<div class="cab-panel active" id="panel-leads"></div>'
+    +'<div class="cab-panel" id="panel-listings"></div>'
+    +'<div class="cab-panel" id="panel-analytics"></div>'
+    +'<div class="cab-panel" id="panel-settings"></div>';
+
+  renderRight();
+}
+
+function onShopChange(id){
+  const next=MY_SHOPS.find(s=>String(s.id)===String(id));
+  if(!next)return;
+  SHOP=next;
+  LEADS=[];LISTINGS=null;
+  history.replaceState(null,'','/emarket-cabinet.html?id='+SHOP.id);
+  renderShell();
+  switchTab(ACTIVE_TAB);
+}
+
+/* ── переключение вкладок ── */
+function switchTab(tab){
+  ACTIVE_TAB=tab;
+  ['leads','listings','analytics','settings'].forEach(t=>{
+    const btn=document.getElementById('tabBtn-'+t);
+    const pan=document.getElementById('panel-'+t);
+    if(btn)btn.classList.toggle('active',t===tab);
+    if(pan)pan.classList.toggle('active',t===tab);
+  });
+  if(tab==='leads')loadLeads();
+  else if(tab==='listings')loadListings();
+  else if(tab==='analytics')renderAnalytics();
+  else if(tab==='settings')renderSettings();
+}
+
+/* ════════════ ВКЛАДКА: ЗАЯВКИ ════════════ */
+async function loadLeads(){
+  const pan=document.getElementById('panel-leads');
+  if(LEADS.length===0 && !pan.dataset.loaded){
+    pan.innerHTML=leadsBarHTML()+skeletons(3);
+  }
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads');
+    if(!r.ok)throw new Error('http '+r.status);
+    const d=await r.json();
+    LEADS=(d&&d.leads)||[];
+    pan.dataset.loaded='1';
+    renderLeads();
+  }catch(e){
+    pan.innerHTML=leadsBarHTML()
+      +'<div class="cab-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+      +'<div class="cab-empty-t">Не удалось загрузить заявки</div>'
+      +'<div class="cab-empty-d">Проверьте подключение и попробуйте обновить страницу.</div>'
+      +'<button class="lead-btn lead-btn-pri" onclick="loadLeads()">Повторить</button></div>';
+  }
+}
+
+function leadsBarHTML(){
+  const total=LEADS.length;
+  const unread=LEADS.filter(l=>!l.is_read).length;
+  return '<div class="leads-bar">'
+    +'<div class="leads-title">Заявки'
+      +(total?'<span class="leads-count">'+total+(unread?' · '+unread+' новых':'')+'</span>':'')
+    +'</div>'
+    +'<div class="leads-filter">'
+      +'<button class="lf-btn'+(LEAD_FILTER==='all'?' active':'')+'" onclick="setLeadFilter(\'all\')">Все</button>'
+      +'<button class="lf-btn'+(LEAD_FILTER==='unread'?' active':'')+'" onclick="setLeadFilter(\'unread\')">Новые'+(unread?' ('+unread+')':'')+'</button>'
+    +'</div>'
+    +(unread?'<button class="lead-btn" onclick="markAllRead()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Прочитать все</button>':'')
+  +'</div>';
+}
+
+function setLeadFilter(f){LEAD_FILTER=f;renderLeads();}
+
+function renderLeads(){
+  const pan=document.getElementById('panel-leads');
+  updateLeadsBadge();
+  let list=LEADS.slice();
+  if(LEAD_FILTER==='unread')list=list.filter(l=>!l.is_read);
+
+  if(!list.length){
+    const emptyMsg=LEAD_FILTER==='unread'
+      ? {t:'Новых заявок нет',d:'Все заявки прочитаны. Новые появятся здесь, как только клиенты заполнят форму на вашем сайте-магазине.'}
+      : {t:'Заявок пока нет',d:'Когда клиенты заполнят форму обратной связи на странице вашего магазина, заявки появятся здесь.'};
+    pan.innerHTML=leadsBarHTML()
+      +'<div class="cab-empty"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>'
+      +'<div class="cab-empty-t">'+emptyMsg.t+'</div><div class="cab-empty-d">'+emptyMsg.d+'</div></div>';
+    return;
+  }
+  pan.innerHTML=leadsBarHTML()+list.map(buildLeadCard).join('');
+}
+
+function buildLeadCard(l){
+  const name=l.name||'Без имени';
+  const contact=String(l.contact||'').trim();
+  let contactHTML='';
+  if(contact){
+    if(isEmail(contact))contactHTML='<a href="mailto:'+esc(contact)+'">'+esc(contact)+'</a>';
+    else if(isPhone(contact))contactHTML='<a href="tel:'+esc(contact.replace(/[^\d+]/g,''))+'">'+esc(contact)+'</a>';
+    else contactHTML=esc(contact);
+  }
+  const registered=l.sender_public_id
+    ? '<a class="lead-registered" href="/profile_user.html?id='+esc(l.sender_public_id)+'" title="Зарегистрированный пользователь"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'+esc(l.sender_name||'Профиль')+'</a>'
+    : '';
+  // кнопка «Ответить»: если есть зарегистрированный отправитель — в чат; иначе по email/тел
+  let replyBtn='';
+  if(l.sender_public_id){
+    replyBtn='<button class="lead-btn lead-btn-pri" onclick="replyInChat(\''+esc(l.sender_public_id)+'\')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Ответить в чате</button>';
+  }else if(contact && isEmail(contact)){
+    replyBtn='<a class="lead-btn lead-btn-pri" href="mailto:'+esc(contact)+'"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>Написать письмо</a>';
+  }else if(contact && isPhone(contact)){
+    replyBtn='<a class="lead-btn lead-btn-pri" href="tel:'+esc(contact.replace(/[^\d+]/g,''))+'"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>Позвонить</a>';
+  }
+  const readBtn=l.is_read
+    ? '<button class="lead-btn" onclick="toggleRead('+l.id+',false)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Не прочитано</button>'
+    : '<button class="lead-btn" onclick="toggleRead('+l.id+',true)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Прочитано</button>';
+
+  return '<div class="lead-card'+(l.is_read?'':' unread')+'" id="lead-'+l.id+'">'
+    +'<div class="lead-top">'
+      +'<div class="lead-av" style="background:'+avc(name)+'">'+letter(name)+'</div>'
+      +'<div class="lead-meta">'
+        +'<div class="lead-name">'+(l.is_read?'':'<span class="lead-newdot"></span>')+esc(name)+'</div>'
+        +(contactHTML?'<div class="lead-contact">'+contactHTML+'</div>':'')
+      +'</div>'
+      +'<div class="lead-time" title="'+esc(fmtDate(l.created_at))+'">'+esc(ago(l.created_at))+'</div>'
+    +'</div>'
+    +(l.message?'<div class="lead-msg">'+esc(l.message)+'</div>':'')
+    +'<div class="lead-actions">'+replyBtn+readBtn+registered+'</div>'
+  +'</div>';
+}
+
+function replyInChat(pid){location.href='/chat.html?user='+encodeURIComponent(pid);}
+
+/* пометка прочитанным — точечное обновление узла, без пересборки списка */
+async function toggleRead(leadId,read){
+  const lead=LEADS.find(l=>l.id===leadId);
+  if(!lead)return;
+  lead.is_read=read;                 // оптимистично
+  replaceLeadCard(lead);
+  refreshLeadsBar();
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads/'+leadId+'/read',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({is_read:read})
+    });
+    if(!r.ok)throw new Error('http '+r.status);
+  }catch(e){
+    lead.is_read=!read;              // откат
+    replaceLeadCard(lead);
+    refreshLeadsBar();
+    if(window.toast)toast('Не удалось обновить статус','info');
+  }
+}
+
+async function markAllRead(){
+  const unread=LEADS.filter(l=>!l.is_read);
+  if(!unread.length)return;
+  unread.forEach(l=>{l.is_read=true;replaceLeadCard(l);});
+  refreshLeadsBar();
+  for(const l of unread){
+    try{
+      await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads/'+l.id+'/read',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_read:true})
+      });
+    }catch(e){/* тихо: UI уже обновлён, при ошибке статус подтянется при следующей загрузке */}
+  }
+}
+
+function replaceLeadCard(lead){
+  const el=document.getElementById('lead-'+lead.id);
+  if(!el)return;
+  // если активен фильтр «новые» и заявка стала прочитанной — убрать из списка
+  if(LEAD_FILTER==='unread' && lead.is_read){el.remove();maybeEmptyAfterFilter();return;}
+  el.outerHTML=buildLeadCard(lead);
+}
+
+function maybeEmptyAfterFilter(){
+  const pan=document.getElementById('panel-leads');
+  if(!pan.querySelector('.lead-card'))renderLeads();
+}
+
+function refreshLeadsBar(){
+  const pan=document.getElementById('panel-leads');
+  const bar=pan.querySelector('.leads-bar');
+  if(bar)bar.outerHTML=leadsBarHTML();
+  updateLeadsBadge();
+}
+
+function updateLeadsBadge(){
+  const badge=document.getElementById('leadsBadge');
+  if(!badge)return;
+  const unread=LEADS.filter(l=>!l.is_read).length;
+  if(unread){badge.textContent=unread;badge.style.display='';}
+  else badge.style.display='none';
+}
+
+/* ════════════ ВКЛАДКА: ЛИСТИНГИ ════════════ */
+async function loadListings(){
+  const pan=document.getElementById('panel-listings');
+  if(LISTINGS===null){
+    pan.innerHTML=skeletons(3);
+    try{
+      const r=await lastopFetch(API+'/emarket/shop-listings?shop_id='+SHOP.id);
+      const d=await r.json();
+      LISTINGS=(d&&d.listings)||[];
+    }catch(e){LISTINGS=[];}
+  }
+  renderListings();
+}
+
+function renderListings(){
+  const pan=document.getElementById('panel-listings');
+  const head='<div class="leads-bar">'
+    +'<div class="leads-title">Товары и услуги'+(LISTINGS.length?'<span class="leads-count">'+LISTINGS.length+'</span>':'')+'</div>'
+    +'<a class="lead-btn lead-btn-pri" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить в конструкторе</a>'
+  +'</div>';
+
+  if(!LISTINGS.length){
+    pan.innerHTML=head
+      +'<div class="cab-empty"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'
+      +'<div class="cab-empty-t">Пока нет товаров и услуг</div>'
+      +'<div class="cab-empty-d">Добавляйте товары и услуги — они появятся на странице магазина и в ленте E-market. Управление каталогом прямо из кабинета добавим следующим шагом.</div></div>';
+    return;
+  }
+  pan.innerHTML=head+LISTINGS.map(buildListingCard).join('');
+}
+
+function buildListingCard(it){
+  const photos=Array.isArray(it.photos)?it.photos:[];
+  const thumb=photos.length
+    ? '<img class="lst-thumb" src="'+esc(photos[0])+'" alt="">'
+    : '<div class="lst-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>';
+  const kindLbl=it.kind==='service'?'Услуга':'Товар';
+  const price=(it.price!=null)?(num(it.price)+' '+(it.currency||'₽')):'Цена не указана';
+  return '<div class="lst-card">'
+    +thumb
+    +'<div class="lst-info">'
+      +'<span class="lst-kind '+(it.kind==='service'?'service':'product')+'">'+kindLbl+'</span>'
+      +'<div class="lst-name">'+esc(it.title||'Без названия')+'</div>'
+      +'<div class="lst-price">'+esc(price)+'</div>'
+    +'</div>'
+    +'<div class="lst-views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+num(it.views_count||0)+'</div>'
+  +'</div>';
+}
+
+/* ════════════ ВКЛАДКА: АНАЛИТИКА ════════════ */
+function renderAnalytics(){
+  const pan=document.getElementById('panel-analytics');
+  const views=SHOP.site_views||0;
+  const leads=SHOP.leads_count!=null?SHOP.leads_count:LEADS.length;
+  const rating=SHOP.rating?(+SHOP.rating).toFixed(1):'—';
+  const reviews=SHOP.reviews_count||0;
+  pan.innerHTML=
+    '<div class="an-grid">'
+      +anCell(num(views),'Просмотров сайта')
+      +anCell(num(leads),'Заявок всего')
+      +anCell(rating,'Рейтинг')
+      +anCell(num(reviews),'Отзывов')
+    +'</div>'
+    +'<div class="cab-section">'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Подробная аналитика</div>'
+      +'<div class="cab-section-d">Здесь появятся графики просмотров по дням, статистика по каждому товару и источники заявок. Расширенную аналитику подключим в ближайшем обновлении кабинета.</div>'
+    +'</div>';
+}
+function anCell(n,l){return '<div class="an-cell"><div class="an-num">'+n+'</div><div class="an-lbl">'+esc(l)+'</div></div>';}
+
+/* ════════════ ВКЛАДКА: НАСТРОЙКИ ════════════ */
+function renderSettings(){
+  const pan=document.getElementById('panel-settings');
+  pan.innerHTML=
+    '<div class="cab-section">'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/></svg>Витрина и бренд</div>'
+      +'<div class="cab-section-d">Название, логотип, обложка, акцентный цвет, блоки сайта и контакты для заявок настраиваются в конструкторе магазина.</div>'
+      +'<a class="lead-btn lead-btn-pri" style="margin-top:14px" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Открыть конструктор</a>'
+    +'</div>'
+    +'<div class="cab-section">'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Приём оплаты</div>'
+      +'<div class="cab-section-d">Подключение платёжной ссылки продавца (ЮKassa, Тинькофф и т.п.) и приём заказов появятся вместе с разделом «Заказы». Платформа не проводит платежи — оплата идёт напрямую вам.</div>'
+    +'</div>'
+    +'<div class="cab-section">'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>О магазине</div>'
+      +'<div class="cab-section-d">Адрес магазина: <b>lastop.ru/shop/'+esc(SHOP.slug)+'</b><br>Создан: '+esc(fmtDate(SHOP.created_at))+'</div>'
+    +'</div>';
+}
+
+/* ════════════ ПРАВЫЙ САЙДБАР ════════════ */
+function renderRight(){
+  const right=document.getElementById('cabRight');
+  const views=SHOP.site_views||0;
+  const leads=SHOP.leads_count!=null?SHOP.leads_count:0;
+  right.innerHTML=
+    '<div class="rs-card">'
+      +'<div class="rs-h">Сводка</div>'
+      +'<div class="rs-row"><span class="rs-row-l">Просмотры сайта</span><span class="rs-row-v">'+num(views)+'</span></div>'
+      +'<div class="rs-row"><span class="rs-row-l">Заявки</span><span class="rs-row-v">'+num(leads)+'</span></div>'
+      +'<div class="rs-row"><span class="rs-row-l">Рейтинг</span><span class="rs-row-v">'+(SHOP.rating?(+SHOP.rating).toFixed(1):'—')+'</span></div>'
+    +'</div>'
+    +'<div class="rs-card">'
+      +'<div class="rs-h">Быстрые ссылки</div>'
+      +'<a class="rs-link" href="/shop/'+esc(SHOP.slug)+'"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Страница магазина</a>'
+      +'<a class="rs-link" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Конструктор магазина</a>'
+      +'<a class="rs-link" href="/emarket.html"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>В E-market</a>'
+    +'</div>';
+}
+
+/* ── общий скелетон ── */
+function skeletons(n){
+  let h='';
+  for(let i=0;i<n;i++){
+    h+='<div class="sk-card">'
+      +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">'
+        +'<div class="sk" style="width:42px;height:42px;border-radius:12px"></div>'
+        +'<div style="flex:1"><div class="sk" style="height:15px;width:40%;margin-bottom:7px"></div><div class="sk" style="height:12px;width:55%"></div></div>'
+      +'</div>'
+      +'<div class="sk" style="height:46px;width:100%;border-radius:12px"></div>'
+    +'</div>';
+  }
+  return h;
+}
+</script>
+</body>
+</html>
