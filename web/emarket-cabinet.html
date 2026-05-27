@@ -79,6 +79,21 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lead-time{font-size:11px;color:var(--gmt);flex-shrink:0;white-space:nowrap;margin-top:3px}
 .lead-msg{font-size:13px;color:var(--tm);line-height:1.6;white-space:pre-wrap;word-break:break-word;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:11px 13px;margin-bottom:12px}
 .lead-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lead-subject{display:flex;align-items:center;gap:8px;background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 12px;margin-bottom:10px;text-decoration:none;transition:background .15s}
+.lead-subject:hover{background:#dcefe4}
+.lead-subject svg{width:15px;height:15px;flex-shrink:0;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lead-subject-txt{font-size:12px;color:var(--g);min-width:0}
+.lead-subject-txt b{color:var(--t);font-weight:700}
+.lead-subject-arrow{margin-left:auto;flex-shrink:0;color:var(--gmt)}
+.lead-expand{display:none;margin-top:10px;padding-top:12px;border-top:1px dashed var(--bdr)}
+.lead-card.open .lead-expand{display:block}
+.lead-detail-row{display:flex;gap:8px;font-size:12px;line-height:1.7}
+.lead-detail-row .dl{color:var(--gmt);flex-shrink:0;min-width:96px}
+.lead-detail-row .dv{color:var(--t);font-weight:600;word-break:break-word}
+.lead-toggle{flex-shrink:0;width:30px;height:30px;border-radius:var(--r);border:1.5px solid var(--bdr);background:var(--w);color:var(--gmt);cursor:pointer;display:grid;place-items:center;transition:all .15s}
+.lead-toggle:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.lead-toggle svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.lead-card.open .lead-toggle svg{transform:rotate(180deg)}
 .lead-btn{font-family:inherit;font-size:12px;font-weight:700;border-radius:var(--rm);padding:8px 16px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--bdr);background:var(--w);color:var(--tm)}
 .lead-btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .lead-btn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
@@ -385,6 +400,29 @@ function buildLeadCard(l){
     ? '<button class="lead-btn" onclick="toggleRead('+l.id+',false)"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Не прочитано</button>'
     : '<button class="lead-btn" onclick="toggleRead('+l.id+',true)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Прочитано</button>';
 
+  // привязка к товару (subject_type=listing)
+  let subjectHTML='';
+  if(l.subject_type==='listing' && l.subject_title){
+    const inner='<svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
+      +'<div class="lead-subject-txt">Заявка по позиции: <b>'+esc(l.subject_title)+'</b></div>';
+    subjectHTML=l.subject_id
+      ? '<a class="lead-subject" href="/emarket-listing.html?id='+l.subject_id+'" onclick="event.stopPropagation()">'+inner
+        +'<span class="lead-subject-arrow"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></a>'
+      : '<div class="lead-subject" style="cursor:default">'+inner+'</div>';
+  }
+
+  // деталка-разворот
+  const senderStatus=l.sender_public_id
+    ? '<a href="/profile_user.html?id='+esc(l.sender_public_id)+'" style="color:var(--g);font-weight:700;text-decoration:none" onclick="event.stopPropagation()">'+esc(l.sender_name||'Профиль')+'</a> (зарегистрирован)'
+    : 'Гость (не зарегистрирован)';
+  const subjLine=(l.subject_type==='listing'&&l.subject_title)?esc(l.subject_title):'Форма обратной связи магазина';
+  const expandHTML='<div class="lead-expand">'
+    +'<div class="lead-detail-row"><span class="dl">Получена</span><span class="dv">'+esc(fmtDate(l.created_at))+'</span></div>'
+    +'<div class="lead-detail-row"><span class="dl">Отправитель</span><span class="dv">'+senderStatus+'</span></div>'
+    +(contact?'<div class="lead-detail-row"><span class="dl">Контакт</span><span class="dv">'+esc(contact)+'</span></div>':'')
+    +'<div class="lead-detail-row"><span class="dl">Источник</span><span class="dv">'+subjLine+'</span></div>'
+  +'</div>';
+
   return '<div class="lead-card'+(l.is_read?'':' unread')+'" id="lead-'+l.id+'">'
     +'<div class="lead-top">'
       +'<div class="lead-av" style="background:'+avc(name)+'">'+letter(name)+'</div>'
@@ -393,10 +431,18 @@ function buildLeadCard(l){
         +(contactHTML?'<div class="lead-contact">'+contactHTML+'</div>':'')
       +'</div>'
       +'<div class="lead-time" title="'+esc(fmtDate(l.created_at))+'">'+esc(ago(l.created_at))+'</div>'
+      +'<button class="lead-toggle" title="Подробнее" onclick="toggleLeadExpand('+l.id+')"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>'
     +'</div>'
+    +subjectHTML
     +(l.message?'<div class="lead-msg">'+esc(l.message)+'</div>':'')
     +'<div class="lead-actions">'+replyBtn+readBtn+registered+'</div>'
+    +expandHTML
   +'</div>';
+}
+
+function toggleLeadExpand(leadId){
+  const el=document.getElementById('lead-'+leadId);
+  if(el)el.classList.toggle('open');
 }
 
 function replyInChat(pid){location.href='/chat.html?user='+encodeURIComponent(pid);}
@@ -442,7 +488,9 @@ function replaceLeadCard(lead){
   if(!el)return;
   // если активен фильтр «новые» и заявка стала прочитанной — убрать из списка
   if(LEAD_FILTER==='unread' && lead.is_read){el.remove();maybeEmptyAfterFilter();return;}
+  const wasOpen=el.classList.contains('open');
   el.outerHTML=buildLeadCard(lead);
+  if(wasOpen){const ne=document.getElementById('lead-'+lead.id);if(ne)ne.classList.add('open');}
 }
 
 function maybeEmptyAfterFilter(){
