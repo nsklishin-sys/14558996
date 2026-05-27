@@ -79,6 +79,17 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lead-time{font-size:11px;color:var(--gmt);flex-shrink:0;white-space:nowrap;margin-top:3px}
 .lead-msg{font-size:13px;color:var(--tm);line-height:1.6;white-space:pre-wrap;word-break:break-word;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:11px 13px;margin-bottom:12px}
 .lead-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lead-st{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:middle}
+.lead-st.st-new{background:var(--gl);color:var(--g)}
+.lead-st.st-prog{background:#E6F1FB;color:#185FA5}
+.lead-st.st-done{background:#E8F0DA;color:#3B6D11}
+.lead-st.st-rej{background:#F1EFE8;color:#7A776E}
+.lead-card.lcard-in_progress{border-left:4px solid #2479C8}
+.lead-card.lcard-done{border-left:4px solid #3B6D11}
+.lead-card.lcard-rejected{border-left:4px solid #C0BDB2}
+.lead-stsel{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:0 8px 0 10px;background:var(--w);color:var(--gmt);height:33px}
+.lead-stsel svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.lead-stsel select{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--tm);cursor:pointer;outline:none;padding:6px 2px}
 .lead-subject{display:flex;align-items:center;gap:8px;background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 12px;margin-bottom:10px;text-decoration:none;transition:background .15s}
 .lead-subject:hover{background:#dcefe4}
 .lead-subject svg{width:15px;height:15px;flex-shrink:0;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -463,13 +474,19 @@ async function loadLeads(){
 function leadsBarHTML(){
   const total=LEADS.length;
   const unread=LEADS.filter(l=>!l.is_read).length;
+  const cnt=s=>LEADS.filter(l=>(l.status||'new')===s).length;
+  const f=(key,label,n)=>'<button class="lf-btn'+(LEAD_FILTER===key?' active':'')+'" onclick="setLeadFilter(\''+key+'\')">'+label+(n?' ('+n+')':'')+'</button>';
   return '<div class="leads-bar">'
     +'<div class="leads-title">Заявки'
       +(total?'<span class="leads-count">'+total+(unread?' · '+unread+' новых':'')+'</span>':'')
     +'</div>'
     +'<div class="leads-filter">'
-      +'<button class="lf-btn'+(LEAD_FILTER==='all'?' active':'')+'" onclick="setLeadFilter(\'all\')">Все</button>'
-      +'<button class="lf-btn'+(LEAD_FILTER==='unread'?' active':'')+'" onclick="setLeadFilter(\'unread\')">Новые'+(unread?' ('+unread+')':'')+'</button>'
+      +f('all','Все',0)
+      +f('unread','Непрочит.',unread)
+      +f('new','Новые',cnt('new'))
+      +f('in_progress','В работе',cnt('in_progress'))
+      +f('done','Сделка',cnt('done'))
+      +f('rejected','Отказ',cnt('rejected'))
     +'</div>'
     +(unread?'<button class="lead-btn" onclick="markAllRead()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Прочитать все</button>':'')
   +'</div>';
@@ -477,19 +494,30 @@ function leadsBarHTML(){
 
 function setLeadFilter(f){LEAD_FILTER=f;renderLeads();}
 
+function leadMatchesFilter(l){
+  if(LEAD_FILTER==='all')return true;
+  if(LEAD_FILTER==='unread')return !l.is_read;
+  return (l.status||'new')===LEAD_FILTER;
+}
+
 function renderLeads(){
   const pan=document.getElementById('panel-leads');
   updateLeadsBadge();
-  let list=LEADS.slice();
-  if(LEAD_FILTER==='unread')list=list.filter(l=>!l.is_read);
+  let list=LEADS.filter(leadMatchesFilter);
 
   if(!list.length){
-    const emptyMsg=LEAD_FILTER==='unread'
-      ? {t:'Новых заявок нет',d:'Все заявки прочитаны. Новые появятся здесь, как только клиенты заполнят форму на вашем сайте-магазине.'}
-      : {t:'Заявок пока нет',d:'Когда клиенты заполнят форму обратной связи на странице вашего магазина, заявки появятся здесь.'};
+    const emptyMap={
+      unread:{t:'Непрочитанных нет',d:'Все заявки просмотрены.'},
+      new:{t:'Новых заявок нет',d:'Заявки со статусом «Новая» появятся здесь.'},
+      in_progress:{t:'Нет заявок в работе',d:'Переведите заявку в статус «В работе», чтобы она появилась здесь.'},
+      done:{t:'Нет завершённых сделок',d:'Заявки со статусом «Сделка» появятся здесь.'},
+      rejected:{t:'Нет отклонённых',d:'Заявки со статусом «Отказ» появятся здесь.'},
+      all:{t:'Заявок пока нет',d:'Когда клиенты заполнят форму обратной связи на странице вашего магазина, заявки появятся здесь.'}
+    };
+    const m=emptyMap[LEAD_FILTER]||emptyMap.all;
     pan.innerHTML=leadsBarHTML()
       +'<div class="cab-empty"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>'
-      +'<div class="cab-empty-t">'+emptyMsg.t+'</div><div class="cab-empty-d">'+emptyMsg.d+'</div></div>';
+      +'<div class="cab-empty-t">'+m.t+'</div><div class="cab-empty-d">'+m.d+'</div></div>';
     return;
   }
   pan.innerHTML=leadsBarHTML()+list.map(buildLeadCard).join('');
@@ -542,11 +570,22 @@ function buildLeadCard(l){
     +'<div class="lead-detail-row"><span class="dl">Источник</span><span class="dv">'+subjLine+'</span></div>'
   +'</div>';
 
-  return '<div class="lead-card'+(l.is_read?'':' unread')+'" id="lead-'+l.id+'">'
+  // статус воронки
+  const st=l.status||'new';
+  const stMap={new:{l:'Новая',c:'st-new'},in_progress:{l:'В работе',c:'st-prog'},done:{l:'Сделка',c:'st-done'},rejected:{l:'Отказ',c:'st-rej'}};
+  const stInfo=stMap[st]||stMap.new;
+  const statusChip='<span class="lead-st '+stInfo.c+'">'+stInfo.l+'</span>';
+  const statusSelect='<div class="lead-stsel" onclick="event.stopPropagation()">'
+    +'<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+    +'<select onchange="setLeadStatus('+l.id+',this.value)">'
+      +['new','in_progress','done','rejected'].map(k=>'<option value="'+k+'"'+(k===st?' selected':'')+'>'+stMap[k].l+'</option>').join('')
+    +'</select></div>';
+
+  return '<div class="lead-card'+(l.is_read?'':' unread')+' lcard-'+st+'" id="lead-'+l.id+'">'
     +'<div class="lead-top" onclick="toggleLeadExpand('+l.id+')">'
       +'<div class="lead-av" style="background:'+avc(name)+'">'+letter(name)+'</div>'
       +'<div class="lead-meta">'
-        +'<div class="lead-name">'+(l.is_read?'':'<span class="lead-newdot"></span>')+esc(name)+'</div>'
+        +'<div class="lead-name">'+(l.is_read?'':'<span class="lead-newdot"></span>')+esc(name)+statusChip+'</div>'
         +(contactHTML?'<div class="lead-contact" onclick="event.stopPropagation()">'+contactHTML+'</div>':'')
       +'</div>'
       +'<div class="lead-time" title="'+esc(fmtDate(l.created_at))+'">'+esc(ago(l.created_at))+'</div>'
@@ -554,7 +593,7 @@ function buildLeadCard(l){
     +'</div>'
     +subjectHTML
     +(l.message?'<div class="lead-msg">'+esc(l.message)+'</div>':'')
-    +'<div class="lead-actions">'+replyBtn+readBtn+registered+'</div>'
+    +'<div class="lead-actions">'+replyBtn+statusSelect+readBtn+registered+'</div>'
     +expandHTML
   +'</div>';
 }
@@ -562,6 +601,30 @@ function buildLeadCard(l){
 function toggleLeadExpand(leadId){
   const el=document.getElementById('lead-'+leadId);
   if(el)el.classList.toggle('open');
+}
+
+async function setLeadStatus(leadId,status){
+  const lead=LEADS.find(l=>l.id===leadId);
+  if(!lead)return;
+  const prev=lead.status||'new';
+  if(prev===status)return;
+  lead.status=status;
+  // если статус сменили — заявка явно просмотрена
+  if(!lead.is_read)lead.is_read=true;
+  replaceLeadCard(lead);
+  refreshLeadsBar();
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/leads/'+leadId+'/read',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({status:status,is_read:true})
+    });
+    if(!r.ok)throw 0;
+  }catch(e){
+    lead.status=prev;
+    replaceLeadCard(lead);
+    refreshLeadsBar();
+    if(window.toast)toast('Не удалось изменить статус','info');
+  }
 }
 
 function replyInChat(pid){location.href='/chat.html?user='+encodeURIComponent(pid);}
