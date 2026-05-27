@@ -2656,7 +2656,8 @@ function setupChatWS(){
     }
     state.typingUsers = list;
     refreshChatHeaderStatus();
-    renderMessages();
+    // renderMessages() убран: индикатор печати живёт в шапке (refreshChatHeaderStatus),
+    // перерисовка всего списка ради него вызывала моргание диалога.
   });
   // Онлайн-статус собеседника
   window.wsClient.on('presence:update', function(data){
