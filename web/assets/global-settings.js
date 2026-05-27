@@ -412,6 +412,20 @@
     } catch { /* без шума */ }
   }
 
+  // Пометить прочитанными уведомления от источника (диалог/тема/пост/проект).
+  // types — массив source_type ('chat'+'chat_message' для диалога и т.п.), publicId — source_public_id.
+  window.markNotifsReadBySource = async function(types, publicId){
+    if(!publicId || !types) return;
+    if(!Array.isArray(types)) types=[types];
+    try{
+      await Promise.all(types.map(t=>lastopFetch('/api/notifications/read_by_source',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({source_type:t,source_public_id:publicId})
+      })));
+      if(typeof refreshUnreadCount==='function') refreshUnreadCount();
+    }catch(e){ /* без шума */ }
+  };
+
   async function loadNotifList() {
     const list = document.getElementById('notifList');
     if (!list) return;
