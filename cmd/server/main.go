@@ -14713,6 +14713,31 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"count": n})
 	})
 
+	mux.HandleFunc("/api/notifications/read_by_source", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			SourceType     string `json:"source_type"`
+			SourcePublicID string `json:"source_public_id"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if err := markNotificationsReadBySource(db, userID, strings.TrimSpace(req.SourceType), strings.TrimSpace(req.SourcePublicID)); err != nil {
+			log.Printf("markNotificationsReadBySource: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
+
 	mux.HandleFunc("/api/notifications/read_all", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -22391,6 +22416,16 @@ func markNotificationRead(db *sql.DB, userID int64, notifID int64) error {
 		return nil
 	}
 	return nil
+}
+
+func markNotificationsReadBySource(db *sql.DB, userID int64, sourceType, sourcePublicID string) error {
+	if sourceType == "" || sourcePublicID == "" {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE notifications SET is_read = TRUE
+		WHERE recipient_id = $1 AND is_read = FALSE
+		AND source_type = $2 AND source_public_id = $3`, userID, sourceType, sourcePublicID)
+	return err
 }
 
 func markAllNotificationsRead(db *sql.DB, userID int64) error {
