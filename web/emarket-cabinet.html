@@ -518,8 +518,19 @@ async function buildOwnerOptions(){
     if(rc&&rc.ok){const d=await rc.json();(d.items||[]).forEach(c=>list.push({type:'company',id:c.id,name:c.name}));}
     if(rcm&&rcm.ok){const d=await rcm.json();(d.communities||d.items||[]).forEach(c=>list.push({type:'community',id:c.id,name:c.name}));}
   }catch(e){}
+  // убираем владельцев, у которых магазин уже есть (один владелец = один магазин)
+  const taken=new Set((MY_SHOPS||[]).map(s=>s.owner_type+':'+(s.owner_type==='user'?'0':s.owner_id)));
+  const avail=list.filter(o=>!taken.has(o.type+':'+(o.type==='user'?'0':o.id)));
+  if(!avail.length){
+    sel.innerHTML='';
+    const note=document.getElementById('ncAccessNote');
+    const btn=document.getElementById('ncSubmit');
+    if(note)note.innerHTML='<div class="nc-access nc-access-no">У всех доступных владельцев (вы, ваши компании и сообщества) уже есть магазин. Один владелец может иметь один магазин.</div>';
+    if(btn)btn.disabled=true;
+    return;
+  }
   const active=ncActiveContext();
-  sel.innerHTML=list.map(o=>{
+  sel.innerHTML=avail.map(o=>{
     const val=o.type+':'+o.id;
     const isActive=(o.type===active.type && (o.type==='user'||o.id===active.id));
     return '<option value="'+val+'"'+(isActive?' selected':'')+'>'+esc(o.name)+(o.type==='company'?' · компания':o.type==='community'?' · сообщество':'')+'</option>';
