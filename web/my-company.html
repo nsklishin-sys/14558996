@@ -302,7 +302,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="modal-body" style="overflow:visible">
       <div class="fld">
         <label class="fld-label">Выберите из списка</label>
-        <select class="fld-select" id="pPreset" data-category-picker onchange="onPresetChange()">
+        <select data-lt-select class="fld-select" id="pPreset" data-category-picker onchange="onPresetChange()">
           <option value="">— Не указана —</option>
           <optgroup label="Руководство">
             <option>Генеральный директор</option>
@@ -576,7 +576,7 @@ function render(){
 
   let selectorHtml = '';
   if (myCompanies.length > 1) {
-    selectorHtml = '<select class="mc-select" onchange="switchCompany(this.value)">' +
+    selectorHtml = '<select data-lt-select class="mc-select" onchange="switchCompany(this.value)">' +
       myCompanies.map(co => '<option value="' + escAttr(co.public_id) + '"' + (co.public_id === c.public_id ? ' selected' : '') + '>' + esc(co.name) + '</option>').join('') +
     '</select>';
   }
@@ -769,7 +769,7 @@ function renderAbout(wrap){
 
       '<div class="fld-row">' +
         '<div class="fld"><label class="fld-label">ИНН</label><input class="fld-input" id="aboutINN"' + dis + ' value="' + escAttr(c.inn || '') + '"></div>' +
-        '<div class="fld"><label class="fld-label">Категория</label><select class="fld-select" id="aboutCategory"' + dis + ' data-category-picker></select></div>' +
+        '<div class="fld"><label class="fld-label">Категория</label><select data-lt-select class="fld-select" id="aboutCategory"' + dis + ' data-category-picker></select></div>' +
       '</div>' +
       '<div class="fld"><label class="fld-label">Описание</label><textarea class="fld-textarea" id="aboutDesc"' + dis + '>' + esc(c.description || '') + '</textarea></div>' +
 

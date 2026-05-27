@@ -500,11 +500,11 @@ function renderFilters(){
   if(EM.mode==='shops'){
     // магазины: регион
     var ropts='<option value="">Все регионы</option>'+EM.regions.map(function(r){return '<option value="'+esc(r.key)+'"'+(EM.region===r.key?' selected':'')+'>'+esc(r.label)+'</option>';}).join('');
-    html+='<div class="em-fgroup"><label>Регион</label><select id="fRegion">'+ropts+'</select></div>';
+    html+='<div class="em-fgroup"><label>Регион</label><select data-lt-select id="fRegion">'+ropts+'</select></div>';
   }else{
     // товары/услуги: категория + цена
     var copts='<option value="">Все категории</option>'+EM.cats.map(function(c){return '<option value="'+esc(c.key)+'"'+(EM.cat===c.key?' selected':'')+'>'+esc(c.label)+'</option>';}).join('');
-    html+='<div class="em-fgroup"><label>Категория</label><select id="fCat">'+copts+'</select></div>';
+    html+='<div class="em-fgroup"><label>Категория</label><select data-lt-select id="fCat">'+copts+'</select></div>';
     html+='<div class="em-fgroup price"><label>Цена, ₽</label><div class="em-fprice"><input id="fPriceFrom" type="number" min="0" placeholder="от" value="'+esc(EM.priceFrom)+'"><span>—</span><input id="fPriceTo" type="number" min="0" placeholder="до" value="'+esc(EM.priceTo)+'"></div></div>';
   }
   html+='<div class="em-factions"><button class="em-fbtn-reset" onclick="resetFilters()">Сбросить</button><button class="em-fbtn-apply" onclick="applyFilters()">Применить</button></div>';

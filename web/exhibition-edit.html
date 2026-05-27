@@ -544,13 +544,13 @@ function renderForm(){
       <div class="ee-grid2">
         <div class="ee-field">
           <label class="ee-field-label">Категория<span class="req">*</span></label>
-          <select class="ee-select" id="fCategory" data-category-picker>
+          <select data-lt-select class="ee-select" id="fCategory" data-category-picker>
             ${buildCatOptions(ex.category||'')}
           </select>
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Формат<span class="req">*</span></label>
-          <select class="ee-select" id="fFormat">
+          <select data-lt-select class="ee-select" id="fFormat">
             <option value="offline"${(ex.format||'offline')==='offline'?' selected':''}>Офлайн</option>
             <option value="online"${ex.format==='online'?' selected':''}>Онлайн</option>
             <option value="hybrid"${ex.format==='hybrid'?' selected':''}>Гибрид</option>
@@ -574,7 +574,7 @@ function renderForm(){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Статус</label>
-          <select class="ee-select" id="fStatus">
+          <select data-lt-select class="ee-select" id="fStatus">
             <option value="upcoming"${(ex.status||'upcoming')==='upcoming'?' selected':''}>Предстоит</option>
             <option value="ongoing"${ex.status==='ongoing'?' selected':''}>Идёт сейчас</option>
             <option value="finished"${ex.status==='finished'?' selected':''}>Завершена</option>
@@ -603,7 +603,7 @@ function renderForm(){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Компания-организатор</label>
-          <select class="ee-input" id="fOrgCompanyID">
+          <select data-lt-select class="ee-input" id="fOrgCompanyID">
             <option value="">— не указана —</option>
           </select>
           <input type="hidden" id="fOrgCompanyIDHidden" value="${ex.organizer_company_id||''}">
@@ -1077,7 +1077,7 @@ function openSessionForm(dayID,sessionID){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Тип</label>
-          <select class="ee-select" id="sesType-${dayID}">
+          <select data-lt-select class="ee-select" id="sesType-${dayID}">
             ${Object.entries(SESSION_TYPES).map(([k,v])=>`<option value="${k}"${(s.session_type||'talk')===k?' selected':''}>${v}</option>`).join('')}
           </select>
         </div>
@@ -1213,7 +1213,7 @@ function openTicketForm(ticketID){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Тип<span class="req">*</span></label>
-          <select class="ee-select" id="tckRole">
+          <select data-lt-select class="ee-select" id="tckRole">
             ${Object.entries(TICKET_ROLES).map(([k,v])=>`<option value="${k}"${(t.role||'visitor')===k?' selected':''}>${v}</option>`).join('')}
           </select>
         </div>
@@ -1225,7 +1225,7 @@ function openTicketForm(ticketID){
         </div>
         <div class="ee-field">
           <label class="ee-field-label">Валюта</label>
-          <select class="ee-select" id="tckCurrency">
+          <select data-lt-select class="ee-select" id="tckCurrency">
             <option value="RUB"${(t.currency||'RUB')==='RUB'?' selected':''}>RUB ₽</option>
             <option value="USD"${t.currency==='USD'?' selected':''}>USD $</option>
             <option value="EUR"${t.currency==='EUR'?' selected':''}>EUR €</option>

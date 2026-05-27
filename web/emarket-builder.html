@@ -467,7 +467,7 @@ function reviewsRepeater(i,items){
   h+=items.map((it,j)=>'<div class="item-row"><button class="item-del" onclick="delItem('+i+',\'items\','+j+')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
     +'<input class="inp" style="margin-bottom:7px" placeholder="Автор" value="'+esc(it.author)+'" oninput="setItem('+i+',\'items\','+j+',\'author\',this.value)">'
     +'<textarea class="inp" style="margin-bottom:7px;min-height:50px" placeholder="Текст отзыва" oninput="setItem('+i+',\'items\','+j+',\'text\',this.value)">'+esc(it.text)+'</textarea>'
-    +'<label class="lbl">Оценка</label><select class="inp" onchange="setItem('+i+',\'items\','+j+',\'rating\',parseInt(this.value))">'+[5,4,3,2,1].map(n=>'<option value="'+n+'"'+((it.rating||5)===n?' selected':'')+'>'+('★'.repeat(n))+'</option>').join('')+'</select>'
+    +'<label class="lbl">Оценка</label><select data-lt-select class="inp" onchange="setItem('+i+',\'items\','+j+',\'rating\',parseInt(this.value))">'+[5,4,3,2,1].map(n=>'<option value="'+n+'"'+((it.rating||5)===n?' selected':'')+'>'+('★'.repeat(n))+'</option>').join('')+'</select>'
     +'</div>').join('');
   h+='</div>';
   if(items.length<LIMITS.reviews)h+='<button class="add-item" onclick="addItem('+i+',\'items\',[\'author\',\'text\',\'rating\'])">+ Добавить отзыв</button>';
