@@ -188,7 +188,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .rs-shopping.open .rs-shopping-chev{transform:rotate(180deg)}
 .rs-shopping.open .rs-shopping-head{background:var(--gp);border-bottom:1px solid var(--bdr)}
 .rs-shopping-body{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1)}
-.rs-shopping.open .rs-shopping-body{max-height:1200px}
+.rs-shopping.open .rs-shopping-body{max-height:none}
 .rs-shopping-sec{padding:11px 16px;border-bottom:1px solid var(--bdr)}
 .rs-shopping-sec:last-child{border-bottom:none}
 .rs-shopping-sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -315,8 +315,11 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
   renderRight();
   try{
     if(localStorage.getItem('em_shopping_open')==='1'){
-      var el=document.getElementById('rsShopping');
-      if(el)el.classList.add('open');
+      var elInit=document.getElementById('rsShopping');
+      if(elInit){
+        elInit.classList.add('open');
+        // при initial open inline max-height не нужен — CSS .open .rs-shopping-body{max-height:none} раскроет естественно без анимации
+      }
     }
   }catch(e){}
   bindSearch();
@@ -746,9 +749,29 @@ async function loadTopShops(){
 function toggleShopping(){
   var el=document.getElementById('rsShopping');
   if(!el)return;
+  var body=el.querySelector('.rs-shopping-body');
+  if(!body)return;
   var nowOpen=!el.classList.contains('open');
-  el.classList.toggle('open',nowOpen);
   try{localStorage.setItem('em_shopping_open',nowOpen?'1':'0');}catch(e){}
+  if(nowOpen){
+    // открываем: ставим scrollHeight inline, далее класс .open снимает max-height ограничение
+    body.style.maxHeight=body.scrollHeight+'px';
+    el.classList.add('open');
+    // после окончания анимации убираем inline-стиль чтобы max-height:none из .open работало (на случай ресайза/изменения контента)
+    var onEnd=function(e){
+      if(e.propertyName!=='max-height')return;
+      body.style.maxHeight='';
+      body.removeEventListener('transitionend',onEnd);
+    };
+    body.addEventListener('transitionend',onEnd);
+  } else {
+    // закрываем: сначала ставим текущую высоту inline (чтобы из none анимация шла от реального значения), затем в next frame ставим 0
+    body.style.maxHeight=body.scrollHeight+'px';
+    // форсируем reflow чтобы браузер «зафиксировал» это значение
+    body.offsetHeight; // eslint-disable-line no-unused-expressions
+    el.classList.remove('open');
+    body.style.maxHeight='0px';
+  }
 }
 </script>
 </body>
