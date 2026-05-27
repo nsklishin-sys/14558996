@@ -179,6 +179,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 .ch-act:hover{border-color:var(--gb);background:var(--gl);color:var(--g)}
 .ch-act svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ch-back{
+  width:34px;height:34px;border-radius:50%;border:none;background:transparent;
+  display:grid;place-items:center;cursor:pointer;transition:background .15s;color:var(--t);flex-shrink:0;margin-right:-4px
+}
+.ch-back:hover{background:var(--gp)}
+.ch-back svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 .chat-friend-btn{
   display:inline-flex;align-items:center;gap:6px;
@@ -841,6 +847,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
     <!-- Шапка -->
     <div class="chat-head">
+      <button type="button" class="ch-back" id="chatBackBtn" onclick="closeActiveChat()" style="display:none" title="Назад к диалогам">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
       <div class="ch-av-wrap">
         <div class="ch-av" id="chatAv" style="background:transparent"></div>
         <div class="ch-online-dot" id="chatOnlineDot" style="display:none"></div>
@@ -850,9 +859,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="ch-status" id="chatStatus"></div>
       </div>
       <div class="ch-actions">
-        <button type="button" class="ch-act" id="chatCloseBtn" onclick="closeActiveChat()" style="display:none" title="Закрыть диалог">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
         <button type="button" class="chat-friend-btn" id="chatFriendBtn" onclick="chatFriendClick()" style="display:none" title="">
           <svg id="chatFriendIcon" viewBox="0 0 24 24"></svg>
           <span id="chatFriendLabel"></span>
@@ -1074,11 +1080,9 @@ function applyChatFriendButton(){
 
   switch (_chatPeerFriendStatus) {
     case 'friends':
-      lbl.textContent = 'В друзьях';
-      btn.classList.add('is-friends');
-      btn.title = 'Удалить из друзей';
-      if (icon) icon.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
-      break;
+      // «В друзьях» — чистый индикатор, в шапке не показываем (удалить из друзей — в инфо-панели)
+      btn.style.display = 'none';
+      return;
     case 'outgoing':
       lbl.textContent = 'Заявка отправлена';
       btn.classList.add('is-outgoing');
@@ -1468,7 +1472,7 @@ function applyConversation(c){
 }
 const chatDrafts = {};
 function saveDraft(){ if(state.activeConvPublicID && typeof msgInput!=='undefined' && msgInput){ const v=msgInput.value; if(v && v.trim()) chatDrafts[state.activeConvPublicID]=v; else delete chatDrafts[state.activeConvPublicID]; } }
-async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();saveDraft();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();_chatNewCount=0;updateNewBtn();bindChatScrollWatcher();const _cb=document.getElementById('chatCloseBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display='';if(typeof msgInput!=='undefined'&&msgInput){msgInput.value=chatDrafts[pid]||'';autoGrow(msgInput);}}
+async function selectConversation(pid){if(typeof resetVoiceRecorder==='function'&&_voiceRec&&(_voiceRec.mediaRecorder||_voiceRec.blob))resetVoiceRecorder();saveDraft();state.activeConvPublicID=pid;state.typingUsers=[];renderCache.conversationsSig='';renderCache.messagesSig='';renderCache.typingSig='';window._chatJustSelected=true;renderConversations();const cachedConv=state.conversations.find(c=>c.public_id===pid);if(cachedConv){applyConversation(cachedConv);renderInfoPanel();if(cachedConv.type==='direct'&&cachedConv.other_public_id){loadChatPeerStatus(cachedConv.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}loadCachedMessages(pid);try{const d=await api(`/chat/conversations/${pid}`);const c=d.conversation;applyConversation(c);renderInfoPanel();if(c&&c.type==='direct'&&c.other_public_id){loadChatPeerStatus(c.other_public_id);}else{const btn=document.getElementById('chatFriendBtn');if(btn)btn.style.display='none';_chatPeerPublicID='';_chatPeerFriendStatus='none';}}catch{}await loadMessages();window._chatJustSelected=false;markRead();_chatNewCount=0;updateNewBtn();bindChatScrollWatcher();const _cb=document.getElementById('chatBackBtn');if(_cb)_cb.style.display='';const _iw=document.querySelector('.chat-input-wrap');if(_iw)_iw.style.display='';if(typeof msgInput!=='undefined'&&msgInput){msgInput.value=chatDrafts[pid]||'';autoGrow(msgInput);}}
 function closeActiveChat(){
   state.activeConvPublicID=null;
   state.messages=[];
@@ -1480,7 +1484,7 @@ function closeActiveChat(){
   if(window.chatStatus)chatStatus.textContent='';
   if(window.chatAv){chatAv.innerHTML='';chatAv.style.background='transparent';}
   const dot=document.getElementById('chatOnlineDot');if(dot)dot.style.display='none';
-  ['chatCloseBtn','chatFriendBtn','chatManageBtn'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  ['chatBackBtn','chatFriendBtn','chatManageBtn'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
   const cb=document.getElementById('chatBody');
   if(cb)cb.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--gmt);font-size:13px">Выберите диалог слева, чтобы начать общение</div>';
   const iw=document.querySelector('.chat-input-wrap');if(iw)iw.style.display='none';
