@@ -10982,6 +10982,7 @@ func main() {
 			Currency        string   `json:"currency"`
 			PaymentMethod   string   `json:"payment_method"`
 			Photos          []string `json:"photos"`
+			Status          string   `json:"status"`
 		}
 		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -11008,13 +11009,16 @@ func main() {
 		if req.Photos == nil {
 			req.Photos = []string{}
 		}
+		if req.Status != "active" && req.Status != "hidden" {
+			req.Status = "active"
+		}
 		charsJSON, _ := json.Marshal(req.Characteristics)
 		photosJSON, _ := json.Marshal(req.Photos)
 		var newID int64
-		err := db.QueryRow(`INSERT INTO emarket_listings (shop_id, kind, title, description, characteristics, category_key, price, currency, payment_method, photos)
-			VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10::jsonb) RETURNING id`,
+		err := db.QueryRow(`INSERT INTO emarket_listings (shop_id, kind, title, description, characteristics, category_key, price, currency, payment_method, photos, status)
+			VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10::jsonb,$11) RETURNING id`,
 			req.ShopID, req.Kind, req.Title, strings.TrimSpace(req.Description), string(charsJSON),
-			strings.TrimSpace(req.CategoryKey), req.Price, req.Currency, strings.TrimSpace(req.PaymentMethod), string(photosJSON)).Scan(&newID)
+			strings.TrimSpace(req.CategoryKey), req.Price, req.Currency, strings.TrimSpace(req.PaymentMethod), string(photosJSON), req.Status).Scan(&newID)
 		if err != nil {
 			log.Printf("[emarket/listings POST] %v", err)
 			writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -11086,10 +11090,14 @@ func main() {
 				Currency        string   `json:"currency"`
 				PaymentMethod   string   `json:"payment_method"`
 				Photos          []string `json:"photos"`
+				Status          string   `json:"status"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
+			}
+			if req.Status != "active" && req.Status != "hidden" {
+				req.Status = "active"
 			}
 			req.Title = strings.TrimSpace(req.Title)
 			if utf8.RuneCountInString(req.Title) < 2 || utf8.RuneCountInString(req.Title) > 200 {
@@ -11110,9 +11118,9 @@ func main() {
 			}
 			charsJSON, _ := json.Marshal(req.Characteristics)
 			photosJSON, _ := json.Marshal(req.Photos)
-			_, err := db.Exec(`UPDATE emarket_listings SET kind=$1, title=$2, description=$3, characteristics=$4::jsonb, category_key=$5, price=$6, currency=$7, payment_method=$8, photos=$9::jsonb, updated_at=now() WHERE id=$10`,
+			_, err := db.Exec(`UPDATE emarket_listings SET kind=$1, title=$2, description=$3, characteristics=$4::jsonb, category_key=$5, price=$6, currency=$7, payment_method=$8, photos=$9::jsonb, status=$10, updated_at=now() WHERE id=$11`,
 				req.Kind, req.Title, strings.TrimSpace(req.Description), string(charsJSON), strings.TrimSpace(req.CategoryKey),
-				req.Price, req.Currency, strings.TrimSpace(req.PaymentMethod), string(photosJSON), listingID)
+				req.Price, req.Currency, strings.TrimSpace(req.PaymentMethod), string(photosJSON), req.Status, listingID)
 			if err != nil {
 				log.Printf("[emarket/listings PUT] %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -11146,8 +11154,22 @@ func main() {
 			writeError(w, http.StatusBadRequest, "shop_id обязателен")
 			return
 		}
-		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, created_at
-			FROM emarket_listings WHERE shop_id=$1 AND deleted_at IS NULL AND status='active' ORDER BY created_at DESC`, shopID)
+		// ?mine=1 — режим владельца: все листинги (active+hidden), с проверкой прав
+		mine := r.URL.Query().Get("mine") == "1"
+		statusCond := "AND status='active'"
+		if mine {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckShopRights(db, r, userID, shopID); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
+				return
+			}
+			statusCond = "AND status<>'blocked'"
+		}
+		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, status, created_at
+			FROM emarket_listings WHERE shop_id=$1 AND deleted_at IS NULL `+statusCond+` ORDER BY created_at DESC`, shopID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
 			return
@@ -11156,12 +11178,12 @@ func main() {
 		items := []map[string]any{}
 		for rows.Next() {
 			var id int64
-			var kind, title, desc, catKey, currency, photosJSON string
+			var kind, title, desc, catKey, currency, photosJSON, status string
 			var price sql.NullFloat64
 			var rating float64
 			var reviews, views int
 			var created time.Time
-			if err := rows.Scan(&id, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &created); err != nil {
+			if err := rows.Scan(&id, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &status, &created); err != nil {
 				continue
 			}
 			var photos any
@@ -11173,7 +11195,7 @@ func main() {
 			items = append(items, map[string]any{
 				"id": id, "kind": kind, "title": title, "description": desc, "category_key": catKey,
 				"price": priceVal, "currency": currency, "photos": photos, "rating": rating,
-				"reviews_count": reviews, "views_count": views, "created_at": created,
+				"reviews_count": reviews, "views_count": views, "status": status, "created_at": created,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
