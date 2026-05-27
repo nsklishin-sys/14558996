@@ -237,6 +237,19 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* ── Правый сайдбар ── */
 .rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:15px;box-shadow:var(--sh)}
+.rs-alert{display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .15s;padding:14px 15px}
+.rs-alert:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.rs-alert-ico{width:38px;height:38px;border-radius:11px;background:var(--gp);display:grid;place-items:center;flex-shrink:0;transition:background .15s}
+.rs-alert-ico svg{width:19px;height:19px;fill:none;stroke:var(--gmt);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.rs-alert-body{flex:1;min-width:0}
+.rs-alert-num{font-size:22px;font-weight:900;color:var(--t);line-height:1}
+.rs-alert-lbl{font-size:11px;color:var(--gmt);font-weight:600;margin-top:2px}
+.rs-alert-arr{width:16px;height:16px;fill:none;stroke:var(--gb);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.rs-alert.has-new{border-color:var(--gb);background:var(--gp)}
+.rs-alert.has-new .rs-alert-ico{background:var(--g)}
+.rs-alert.has-new .rs-alert-ico svg{stroke:#fff}
+.rs-alert.has-new .rs-alert-num{color:var(--g)}
+.rs-alert.has-new .rs-alert-arr{stroke:var(--g)}
 .rs-h{font-size:11px;font-weight:800;color:var(--gmt);letter-spacing:.06em;text-transform:uppercase;margin-bottom:11px}
 .rs-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)}
 .rs-row:last-child{border-bottom:none;padding-bottom:0}
@@ -804,6 +817,7 @@ function updateLeadsBadge(){
     else badge.style.display='none';
   }
   updateTabTitle(unread);
+  updateNewLeadsCard();
 }
 
 function updateTabTitle(unread){
@@ -1378,7 +1392,12 @@ function renderRight(){
   const views=SHOP.site_views||0;
   const leads=SHOP.leads_count!=null?SHOP.leads_count:0;
   right.innerHTML=
-    '<div class="rs-card">'
+    '<div class="rs-card rs-alert" id="rsNewLeads" onclick="goToUnreadLeads()">'
+      +'<div class="rs-alert-ico"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg></div>'
+      +'<div class="rs-alert-body"><div class="rs-alert-num" id="rsNewLeadsNum">0</div><div class="rs-alert-lbl" id="rsNewLeadsLbl">новых заявок</div></div>'
+      +'<svg class="rs-alert-arr" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>'
+    +'</div>'
+    +'<div class="rs-card">'
       +'<div class="rs-h">Сводка</div>'
       +'<div class="rs-row"><span class="rs-row-l">Просмотры сайта</span><span class="rs-row-v">'+num(views)+'</span></div>'
       +'<div class="rs-row"><span class="rs-row-l">Заявки</span><span class="rs-row-v">'+num(leads)+'</span></div>'
@@ -1390,6 +1409,32 @@ function renderRight(){
       +'<a class="rs-link" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Конструктор магазина</a>'
       +'<a class="rs-link" href="/emarket.html"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>В E-market</a>'
     +'</div>';
+  updateNewLeadsCard();
+}
+
+function updateNewLeadsCard(){
+  const card=document.getElementById('rsNewLeads');
+  if(!card)return;
+  const unread=(LEAD_COUNTS&&LEAD_COUNTS.unread)||0;
+  const num=document.getElementById('rsNewLeadsNum');
+  const lbl=document.getElementById('rsNewLeadsLbl');
+  if(num)num.textContent=unread>99?'99+':unread;
+  if(lbl)lbl.textContent=pluralLeads(unread);
+  card.classList.toggle('has-new',unread>0);
+}
+function pluralLeads(n){
+  const m10=n%10,m100=n%100;
+  if(m100>=11&&m100<=14)return'новых заявок';
+  if(m10===1)return'новая заявка';
+  if(m10>=2&&m10<=4)return'новые заявки';
+  return'новых заявок';
+}
+function goToUnreadLeads(){
+  if(ACTIVE_TAB!=='leads')switchTab('leads');
+  LEAD_FILTER='unread';
+  loadLeads(true);
+  const pan=document.getElementById('panel-leads');
+  if(pan)pan.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 /* ── общий скелетон ── */
