@@ -119,6 +119,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cab-section-h{font-size:15px;font-weight:800;color:var(--t);margin-bottom:4px;display:flex;align-items:center;gap:8px}
 .cab-section-h svg{width:17px;height:17px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .cab-section-d{font-size:13px;color:var(--gmt);line-height:1.6}
+.pay-toggle{display:flex;gap:6px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:4px}
+.pay-opt{flex:1;font-family:inherit;font-size:13px;font-weight:700;color:var(--gmt);background:transparent;border:none;border-radius:var(--r);padding:9px 12px;cursor:pointer;transition:all .15s}
+.pay-opt.active{background:var(--w);color:var(--g);box-shadow:0 1px 4px rgba(30,138,76,.12)}
 
 /* ── Аналитика ── */
 .an-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
@@ -816,12 +819,64 @@ function renderSettings(){
     +'</div>'
     +'<div class="cab-section">'
       +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Приём оплаты</div>'
-      +'<div class="cab-section-d">Подключение платёжной ссылки продавца (ЮKassa, Тинькофф и т.п.) и приём заказов появятся вместе с разделом «Заказы». Платформа не проводит платежи — оплата идёт напрямую вам.</div>'
+      +'<div class="cab-section-d" style="margin-bottom:14px">Платформа не проводит платежи — оплата идёт напрямую вам. Укажите свою платёжную ссылку (ЮKassa, Тинькофф, Робокасса и т.п.). Кнопка «Оплатить» в заказе будет вести на неё.</div>'
+      +'<div class="pay-toggle">'
+        +'<button type="button" class="pay-opt" id="payOptNone" onclick="setPayType(\'none\')">Не принимать онлайн</button>'
+        +'<button type="button" class="pay-opt" id="payOptLink" onclick="setPayType(\'link\')">Платёжная ссылка</button>'
+      +'</div>'
+      +'<div id="payUrlRow" style="display:none;margin-top:12px">'
+        +'<label class="lm-label">Платёжная ссылка</label>'
+        +'<input class="lm-input" id="payUrl" placeholder="https://yookassa.ru/my/..." maxlength="500">'
+        +'<div class="cab-section-d" style="margin-top:6px;font-size:12px">Ссылка должна начинаться с https://</div>'
+      +'</div>'
+      +'<button class="lead-btn lead-btn-pri" id="payeSaveBtn" style="margin-top:14px" onclick="savePayment()">Сохранить</button>'
     +'</div>'
     +'<div class="cab-section">'
       +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>О магазине</div>'
       +'<div class="cab-section-d">Адрес магазина: <b>lastop.ru/shop/'+esc(SHOP.slug)+'</b><br>Создан: '+esc(fmtDate(SHOP.created_at))+'</div>'
     +'</div>';
+  loadPayment();
+}
+
+let PAY_TYPE='none';
+async function loadPayment(){
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/payment');
+    const d=await r.json();
+    PAY_TYPE=(d&&d.payment_type==='link')?'link':'none';
+    const urlInput=document.getElementById('payUrl');
+    if(urlInput)urlInput.value=(d&&d.payment_url)||'';
+  }catch(e){PAY_TYPE='none';}
+  applyPayType();
+}
+function setPayType(t){PAY_TYPE=t;applyPayType();}
+function applyPayType(){
+  const bNone=document.getElementById('payOptNone'),bLink=document.getElementById('payOptLink'),row=document.getElementById('payUrlRow');
+  if(!bNone||!bLink||!row)return;
+  bNone.classList.toggle('active',PAY_TYPE==='none');
+  bLink.classList.toggle('active',PAY_TYPE==='link');
+  row.style.display=PAY_TYPE==='link'?'block':'none';
+}
+async function savePayment(){
+  const btn=document.getElementById('payeSaveBtn');
+  const url=PAY_TYPE==='link'?((document.getElementById('payUrl')||{}).value||'').trim():'';
+  if(PAY_TYPE==='link' && url && !/^https?:\/\//.test(url)){
+    if(window.toast)toast('Ссылка должна начинаться с https://','info');
+    return;
+  }
+  btn.disabled=true;btn.textContent='Сохранение…';
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/payment',{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({payment_type:PAY_TYPE,payment_url:url})
+    });
+    if(!r.ok)throw 0;
+    btn.disabled=false;btn.textContent='Сохранено ✓';
+    setTimeout(()=>{const b=document.getElementById('payeSaveBtn');if(b)b.textContent='Сохранить';},1800);
+  }catch(e){
+    btn.disabled=false;btn.textContent='Сохранить';
+    if(window.toast)toast('Не удалось сохранить','info');
+  }
 }
 
 /* ════════════ ПРАВЫЙ САЙДБАР ════════════ */
