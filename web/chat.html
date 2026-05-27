@@ -371,9 +371,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* Картинка */
 .msg-image{
   margin-top:5px;border-radius:var(--rm);overflow:hidden;
-  max-width:260px;cursor:pointer;border:1px solid var(--bdr)
+  max-width:260px;cursor:pointer;border:1px solid var(--bdr);
+  min-height:140px;background:var(--gp)
 }
-.msg-image img{width:100%;display:block}
+.msg-image img{width:100%;display:block;min-height:140px;object-fit:cover}
+.msg-image img.loaded{min-height:0;object-fit:initial}
 
 /* Индикатор печати */
 .typing-bubble{
@@ -1601,12 +1603,12 @@ function renderMessages(){
   // typing теперь отображается в шапке (#chatStatus), здесь не дублируем
   if(el){
     if(wasAtBottom){
-      const scrollDown=()=>{el.scrollTop=el.scrollHeight};
-      scrollDown();
-      requestAnimationFrame(scrollDown);
-      setTimeout(scrollDown,100);
-      setTimeout(scrollDown,400);
+      // держим низ; дозагружающиеся картинки сами доскроллят через _chatStickBottom (onload)
+      window._chatStickBottom=()=>{const b=document.getElementById('chatBody');if(b)b.scrollTop=b.scrollHeight;};
+      window._chatStickBottom();
+      requestAnimationFrame(window._chatStickBottom);
     }else{
+      window._chatStickBottom=null;
       el.scrollTop=prevScroll;
     }
   }
@@ -1686,7 +1688,7 @@ function renderAttachment(m){
 
   if (isImage) {
     return `<div class='msg-image' data-img-url='${esc(url)}'>
-      <img src='${esc(url)}' alt='${esc(name)}' loading='lazy'>
+      <img src='${esc(url)}' alt='${esc(name)}' loading='lazy' onload='this.classList.add("loaded");if(window._chatStickBottom)window._chatStickBottom();'>
     </div>`;
   }
   if (isVideo) {
