@@ -11516,6 +11516,312 @@ func main() {
 		}
 	})
 
+	// ── КОРЗИНА ──
+	// GET /api/emarket/cart — позиции корзины пользователя, сгруппированные по магазинам
+	mux.HandleFunc("/api/emarket/cart", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`
+				SELECT c.id, c.listing_id, c.quantity, c.created_at,
+					l.title, l.kind, l.price, l.currency, l.photos, l.status, l.deleted_at,
+					s.id, s.name, s.slug, s.logo_url, COALESCE(s.accent_color,'green'), s.region
+				FROM emarket_cart c
+				JOIN emarket_listings l ON l.id = c.listing_id
+				JOIN emarket_shops s ON s.id = l.shop_id
+				WHERE c.user_id = $1
+				ORDER BY s.id, c.created_at DESC`, userID)
+			if err != nil {
+				log.Printf("[emarket/cart GET] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var cartID, listingID, shopID int64
+				var quantity int
+				var created time.Time
+				var title, kind, currency, photosJSON, listingStatus, shopName, shopSlug, shopLogo, accent, region string
+				var price sql.NullFloat64
+				var deletedAt sql.NullTime
+				if err := rows.Scan(&cartID, &listingID, &quantity, &created,
+					&title, &kind, &price, &currency, &photosJSON, &listingStatus, &deletedAt,
+					&shopID, &shopName, &shopSlug, &shopLogo, &accent, &region); err != nil {
+					continue
+				}
+				// первая фотография из photos JSONB-массива
+				var photos []string
+				_ = json.Unmarshal([]byte(photosJSON), &photos)
+				var photo string
+				if len(photos) > 0 {
+					photo = photos[0]
+				}
+				priceVal := 0.0
+				if price.Valid {
+					priceVal = price.Float64
+				}
+				available := !deletedAt.Valid && listingStatus == "active"
+				items = append(items, map[string]any{
+					"id":          cartID,
+					"listing_id":  listingID,
+					"quantity":    quantity,
+					"created_at":  created,
+					"title":       title,
+					"kind":        kind,
+					"price":       priceVal,
+					"currency":    currency,
+					"photo":       photo,
+					"available":   available,
+					"shop_id":     shopID,
+					"shop_name":   shopName,
+					"shop_slug":   shopSlug,
+					"shop_logo":   shopLogo,
+					"shop_accent": accent,
+					"shop_region": region,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"items": items})
+
+		case http.MethodPost:
+			// POST /api/emarket/cart — добавить позицию { listing_id, quantity? }
+			var body struct {
+				ListingID int64 `json:"listing_id"`
+				Quantity  int   `json:"quantity"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ListingID == 0 {
+				writeError(w, http.StatusBadRequest, "Некорректные данные")
+				return
+			}
+			if body.Quantity <= 0 {
+				body.Quantity = 1
+			}
+			// проверим что товар существует и активен
+			var exists bool
+			if err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_listings WHERE id=$1 AND deleted_at IS NULL AND status='active')`, body.ListingID).Scan(&exists); err != nil || !exists {
+				writeError(w, http.StatusNotFound, "Товар недоступен")
+				return
+			}
+			_, err := db.Exec(`
+				INSERT INTO emarket_cart (user_id, listing_id, quantity)
+				VALUES ($1, $2, $3)
+				ON CONFLICT (user_id, listing_id) DO UPDATE
+				SET quantity = emarket_cart.quantity + EXCLUDED.quantity, updated_at = now()`,
+				userID, body.ListingID, body.Quantity)
+			if err != nil {
+				log.Printf("[emarket/cart POST] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+
+		case http.MethodDelete:
+			// DELETE /api/emarket/cart?clear=1 — очистить корзину полностью
+			if r.URL.Query().Get("clear") == "1" {
+				_, err := db.Exec(`DELETE FROM emarket_cart WHERE user_id=$1`, userID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+				return
+			}
+			writeError(w, http.StatusBadRequest, "Используйте /api/emarket/cart/{id} для удаления позиции")
+
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	// PATCH /api/emarket/cart/{id} — изменить количество, DELETE /api/emarket/cart/{id} — удалить
+	mux.HandleFunc("/api/emarket/cart/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/emarket/cart/")
+		cartID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || cartID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный ID")
+			return
+		}
+		switch r.Method {
+		case http.MethodPatch:
+			var body struct {
+				Quantity int `json:"quantity"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Quantity <= 0 {
+				writeError(w, http.StatusBadRequest, "Некорректное количество")
+				return
+			}
+			res, err := db.Exec(`UPDATE emarket_cart SET quantity=$1, updated_at=now() WHERE id=$2 AND user_id=$3`, body.Quantity, cartID, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				writeError(w, http.StatusNotFound, "Позиция не найдена")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		case http.MethodDelete:
+			res, err := db.Exec(`DELETE FROM emarket_cart WHERE id=$1 AND user_id=$2`, cartID, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				writeError(w, http.StatusNotFound, "Позиция не найдена")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	// ── ЗАЯВКИ (сохранённые корзины) ──
+	// GET /api/emarket/drafts — список заявок пользователя
+	// POST /api/emarket/drafts — сохранить корзину как заявку { name }
+	mux.HandleFunc("/api/emarket/drafts", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`SELECT id, name, snapshot, created_at FROM emarket_drafts WHERE user_id=$1 ORDER BY created_at DESC`, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			drafts := []map[string]any{}
+			for rows.Next() {
+				var id int64
+				var name, snapshotJSON string
+				var created time.Time
+				if err := rows.Scan(&id, &name, &snapshotJSON, &created); err != nil {
+					continue
+				}
+				var snapshot []map[string]any
+				_ = json.Unmarshal([]byte(snapshotJSON), &snapshot)
+				drafts = append(drafts, map[string]any{
+					"id": id, "name": name, "snapshot": snapshot, "created_at": created,
+					"items_count": len(snapshot),
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"drafts": drafts})
+
+		case http.MethodPost:
+			var body struct {
+				Name string `json:"name"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректные данные")
+				return
+			}
+			name := strings.TrimSpace(body.Name)
+			if name == "" {
+				name = "Заявка от " + time.Now().Format("02.01.2006")
+			}
+			if len(name) > 120 {
+				name = name[:120]
+			}
+			// собираем snapshot текущей корзины
+			rows, err := db.Query(`
+				SELECT c.listing_id, c.quantity, l.title, l.kind, l.price, l.currency, l.photos,
+					s.id, s.name, s.slug, s.logo_url, COALESCE(s.accent_color,'green')
+				FROM emarket_cart c
+				JOIN emarket_listings l ON l.id=c.listing_id
+				JOIN emarket_shops s ON s.id=l.shop_id
+				WHERE c.user_id=$1
+				ORDER BY s.id, c.created_at DESC`, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			snapshot := []map[string]any{}
+			for rows.Next() {
+				var listingID, shopID int64
+				var quantity int
+				var title, kind, currency, photosJSON, shopName, shopSlug, shopLogo, accent string
+				var price sql.NullFloat64
+				if err := rows.Scan(&listingID, &quantity, &title, &kind, &price, &currency, &photosJSON, &shopID, &shopName, &shopSlug, &shopLogo, &accent); err != nil {
+					continue
+				}
+				var photos []string
+				_ = json.Unmarshal([]byte(photosJSON), &photos)
+				var photo string
+				if len(photos) > 0 {
+					photo = photos[0]
+				}
+				priceVal := 0.0
+				if price.Valid {
+					priceVal = price.Float64
+				}
+				snapshot = append(snapshot, map[string]any{
+					"listing_id": listingID, "quantity": quantity,
+					"title": title, "kind": kind, "price": priceVal, "currency": currency, "photo": photo,
+					"shop_id": shopID, "shop_name": shopName, "shop_slug": shopSlug,
+					"shop_logo": shopLogo, "shop_accent": accent,
+				})
+			}
+			if len(snapshot) == 0 {
+				writeError(w, http.StatusBadRequest, "Корзина пуста — нечего сохранять")
+				return
+			}
+			snapshotJSON, _ := json.Marshal(snapshot)
+			var draftID int64
+			err = db.QueryRow(`INSERT INTO emarket_drafts (user_id, name, snapshot) VALUES ($1, $2, $3::jsonb) RETURNING id`, userID, name, string(snapshotJSON)).Scan(&draftID)
+			if err != nil {
+				log.Printf("[emarket/drafts POST] %v", err)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "id": draftID, "name": name})
+
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	// DELETE /api/emarket/drafts/{id} — удалить заявку
+	mux.HandleFunc("/api/emarket/drafts/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
+			return
+		}
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/emarket/drafts/")
+		draftID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || draftID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный ID")
+			return
+		}
+		if r.Method != http.MethodDelete {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		res, err := db.Exec(`DELETE FROM emarket_drafts WHERE id=$1 AND user_id=$2`, draftID, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			writeError(w, http.StatusNotFound, "Заявка не найдена")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
+
 	mux.HandleFunc("/api/emarket/listings", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -18564,6 +18870,26 @@ CREATE TABLE IF NOT EXISTS emarket_saved (
     UNIQUE (user_id, listing_id)
 );
 CREATE INDEX IF NOT EXISTS emarket_saved_user_idx ON emarket_saved(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS emarket_cart (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    listing_id BIGINT NOT NULL REFERENCES emarket_listings(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, listing_id)
+);
+CREATE INDEX IF NOT EXISTS emarket_cart_user_idx ON emarket_cart(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS emarket_drafts (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    snapshot JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_drafts_user_idx ON emarket_drafts(user_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS emarket_ads (
   id BIGSERIAL PRIMARY KEY,
   placement TEXT NOT NULL DEFAULT 'banner',
