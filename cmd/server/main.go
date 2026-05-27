@@ -10558,7 +10558,8 @@ func main() {
 				return
 			}
 			rows, err := db.Query(`SELECT l.id, l.name, l.contact, l.message, l.is_read, l.created_at,
-				COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, '')
+				COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, ''),
+				l.subject_type, l.subject_id, l.subject_title
 				FROM emarket_leads l LEFT JOIN users u ON u.id=l.sender_id
 				WHERE l.shop_id=$1 ORDER BY l.created_at DESC LIMIT 200`, shopID)
 			if err != nil {
@@ -10569,16 +10570,18 @@ func main() {
 			leads := []map[string]any{}
 			for rows.Next() {
 				var id int64
-				var name, contact, message, senderPID, senderName string
+				var name, contact, message, senderPID, senderName, subjType, subjTitle string
+				var subjID int64
 				var isRead bool
 				var createdAt time.Time
-				if err := rows.Scan(&id, &name, &contact, &message, &isRead, &createdAt, &senderPID, &senderName); err != nil {
+				if err := rows.Scan(&id, &name, &contact, &message, &isRead, &createdAt, &senderPID, &senderName, &subjType, &subjID, &subjTitle); err != nil {
 					continue
 				}
 				leads = append(leads, map[string]any{
 					"id": id, "name": name, "contact": contact, "message": message,
 					"is_read": isRead, "created_at": createdAt,
 					"sender_public_id": senderPID, "sender_name": senderName,
+					"subject_type": subjType, "subject_id": subjID, "subject_title": subjTitle,
 				})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"leads": leads})
@@ -10700,9 +10703,12 @@ func main() {
 			}
 			senderID, _ := authenticatedUserID(w, r, sessions)
 			var req struct {
-				Name    string `json:"name"`
-				Contact string `json:"contact"`
-				Message string `json:"message"`
+				Name         string `json:"name"`
+				Contact      string `json:"contact"`
+				Message      string `json:"message"`
+				SubjectType  string `json:"subject_type"`
+				SubjectID    int64  `json:"subject_id"`
+				SubjectTitle string `json:"subject_title"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -10729,8 +10735,16 @@ func main() {
 			if senderID > 0 {
 				senderArg = senderID
 			}
-			if _, err := db.Exec(`INSERT INTO emarket_leads (shop_id, sender_id, name, contact, message) VALUES ($1,$2,$3,$4,$5)`,
-				leadShopID, senderArg, req.Name, req.Contact, req.Message); err != nil {
+			subjType := ""
+			if req.SubjectType == "listing" {
+				subjType = "listing"
+			}
+			subjTitle := strings.TrimSpace(req.SubjectTitle)
+			if len(subjTitle) > 300 {
+				subjTitle = subjTitle[:300]
+			}
+			if _, err := db.Exec(`INSERT INTO emarket_leads (shop_id, sender_id, name, contact, message, subject_type, subject_id, subject_title) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				leadShopID, senderArg, req.Name, req.Contact, req.Message, subjType, req.SubjectID, subjTitle); err != nil {
 				log.Printf("[emarket/lead INSERT] %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
@@ -17846,6 +17860,9 @@ CREATE TABLE IF NOT EXISTS emarket_leads (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS emarket_leads_shop_idx ON emarket_leads(shop_id, created_at DESC);
+ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS subject_type TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS subject_id BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS subject_title TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS emarket_listings (
     id BIGSERIAL PRIMARY KEY,
