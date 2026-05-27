@@ -10810,6 +10810,11 @@ func main() {
 				return
 			}
 			_, _ = db.Exec(`UPDATE emarket_shops SET leads_count=leads_count+1 WHERE id=$1`, leadShopID)
+			leadSource := "form"
+			if subjType == "listing" {
+				leadSource = "listing"
+			}
+			_, _ = db.Exec(`INSERT INTO emarket_stat_events (shop_id, event_type, listing_id, source) VALUES ($1,'lead',$2,$3)`, leadShopID, req.SubjectID, leadSource)
 			// Уведомление владельцу (только если владелец — пользователь)
 			if leadOwnerType == "user" && leadOwnerID > 0 {
 				_ = createNotification(db, createNotificationParams{
@@ -10862,6 +10867,7 @@ func main() {
 			_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, ownerID).Scan(&ownerPublicID)
 		}
 		_, _ = db.Exec(`UPDATE emarket_shops SET site_views=site_views+1 WHERE id=$1`, shopID)
+		_, _ = db.Exec(`INSERT INTO emarket_stat_events (shop_id, event_type) VALUES ($1,'site_view')`, shopID)
 		var config any = []any{}
 		_ = json.Unmarshal([]byte(configText), &config)
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -11113,6 +11119,7 @@ func main() {
 				return
 			}
 			_, _ = db.Exec(`UPDATE emarket_listings SET views_count=views_count+1 WHERE id=$1`, listingID)
+			_, _ = db.Exec(`INSERT INTO emarket_stat_events (shop_id, event_type, listing_id) SELECT shop_id, 'listing_view', id FROM emarket_listings WHERE id=$1`, listingID)
 			var chars, photos any
 			_ = json.Unmarshal([]byte(charsJSON), &chars)
 			_ = json.Unmarshal([]byte(photosJSON), &photos)
@@ -17931,6 +17938,15 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAU
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_at TIMESTAMPTZ;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'none';
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_url TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS emarket_stat_events (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL DEFAULT '',
+    listing_id BIGINT NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_stat_events_idx ON emarket_stat_events(shop_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS emarket_shops_published_idx ON emarket_shops(site_published) WHERE site_published = TRUE;
 
 CREATE TABLE IF NOT EXISTS emarket_leads (
