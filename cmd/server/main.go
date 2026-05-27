@@ -6275,7 +6275,6 @@ func main() {
 		}
 		switch r.Method {
 		case http.MethodGet:
-			// компании + сообщества с флагом доступа к E-market
 			type ownerRow struct {
 				OwnerType string `json:"owner_type"`
 				OwnerID   int64  `json:"owner_id"`
@@ -6284,38 +6283,84 @@ func main() {
 				LogoURL   string `json:"logo_url"`
 				HasAccess bool   `json:"has_access"`
 			}
+			section := r.URL.Query().Get("section")
+			if section == "" {
+				section = "companies"
+			}
+			q := strings.TrimSpace(r.URL.Query().Get("q"))
 			owners := []ownerRow{}
-			crows, err := db.Query(`SELECT c.id, c.name, c.slug, COALESCE(c.logo_image,''),
-				COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
-				FROM companies c
-				LEFT JOIN emarket_access a ON a.owner_type='company' AND a.owner_id=c.id
-				WHERE c.deleted_at IS NULL ORDER BY c.name`)
-			if err == nil {
-				defer crows.Close()
-				for crows.Next() {
-					var o ownerRow
-					o.OwnerType = "company"
-					if crows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
-						owners = append(owners, o)
+			switch section {
+			case "companies":
+				rows, err := db.Query(`SELECT c.id, c.name, c.slug, COALESCE(c.logo_image,''),
+					COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
+					FROM companies c
+					LEFT JOIN emarket_access a ON a.owner_type='company' AND a.owner_id=c.id
+					WHERE c.deleted_at IS NULL AND ($1='' OR c.name ILIKE '%'||$1||'%')
+					ORDER BY c.name`, q)
+				if err == nil {
+					defer rows.Close()
+					for rows.Next() {
+						var o ownerRow
+						o.OwnerType = "company"
+						if rows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
+							owners = append(owners, o)
+						}
 					}
+				} else {
+					log.Printf("[admin/emarket/access companies] %v", err)
+				}
+			case "communities":
+				rows, err := db.Query(`SELECT cm.id, cm.name, COALESCE(cm.slug,''), COALESCE(cm.avatar_url,''),
+					COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
+					FROM communities cm
+					LEFT JOIN emarket_access a ON a.owner_type='community' AND a.owner_id=cm.id
+					WHERE cm.is_deleted = FALSE AND ($1='' OR cm.name ILIKE '%'||$1||'%')
+					ORDER BY cm.name`, q)
+				if err == nil {
+					defer rows.Close()
+					for rows.Next() {
+						var o ownerRow
+						o.OwnerType = "community"
+						if rows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
+							owners = append(owners, o)
+						}
+					}
+				} else {
+					log.Printf("[admin/emarket/access communities] %v", err)
+				}
+			case "users":
+				// без поиска — только те, у кого доступ уже есть (чтобы не грузить всех);
+				// с поиском — по всем пользователям (имя/email/handle), лимит 50.
+				var rows *sql.Rows
+				var err error
+				if q == "" {
+					rows, err = db.Query(`SELECT u.id, COALESCE(NULLIF(u.full_name,''), u.handle, u.email), COALESCE(u.handle,''), COALESCE(u.avatar_url,''), TRUE
+						FROM users u
+						JOIN emarket_access a ON a.owner_type='user' AND a.owner_id=u.id AND a.active=TRUE AND (a.expires_at IS NULL OR a.expires_at > now())
+						WHERE u.is_deleted=FALSE
+						ORDER BY u.full_name LIMIT 100`)
+				} else {
+					rows, err = db.Query(`SELECT u.id, COALESCE(NULLIF(u.full_name,''), u.handle, u.email), COALESCE(u.handle,''), COALESCE(u.avatar_url,''),
+						COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
+						FROM users u
+						LEFT JOIN emarket_access a ON a.owner_type='user' AND a.owner_id=u.id
+						WHERE u.is_deleted=FALSE AND (u.full_name ILIKE '%'||$1||'%' OR u.email ILIKE '%'||$1||'%' OR u.handle ILIKE '%'||$1||'%')
+						ORDER BY u.full_name LIMIT 50`, q)
+				}
+				if err == nil {
+					defer rows.Close()
+					for rows.Next() {
+						var o ownerRow
+						o.OwnerType = "user"
+						if rows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
+							owners = append(owners, o)
+						}
+					}
+				} else {
+					log.Printf("[admin/emarket/access users] %v", err)
 				}
 			}
-			cmrows, err := db.Query(`SELECT cm.id, cm.name, COALESCE(cm.slug,''), COALESCE(cm.avatar_url,''),
-				COALESCE(a.active,false) AND (a.expires_at IS NULL OR a.expires_at > now())
-				FROM communities cm
-				LEFT JOIN emarket_access a ON a.owner_type='community' AND a.owner_id=cm.id
-				WHERE cm.is_deleted = FALSE ORDER BY cm.name`)
-			if err == nil {
-				defer cmrows.Close()
-				for cmrows.Next() {
-					var o ownerRow
-					o.OwnerType = "community"
-					if cmrows.Scan(&o.OwnerID, &o.Name, &o.Slug, &o.LogoURL, &o.HasAccess) == nil {
-						owners = append(owners, o)
-					}
-				}
-			}
-			writeJSON(w, http.StatusOK, map[string]any{"owners": owners})
+			writeJSON(w, http.StatusOK, map[string]any{"owners": owners, "section": section})
 			return
 		case http.MethodPost:
 			var req struct {
