@@ -4,7 +4,7 @@
 // Нативный <select> остаётся в DOM, скрыт визуально, через него работает форма и change event.
 (function(){
   const STYLE = `
-.lt-sel-wrap{position:relative;width:100%}
+.lt-sel-wrap{position:relative;width:100%;background:none !important;background-image:none !important;border:none !important;padding:0 !important;height:auto !important}
 .lt-sel-native{position:absolute !important;width:1px !important;height:1px !important;padding:0 !important;border:0 !important;clip:rect(0 0 0 0) !important;overflow:hidden !important;opacity:0 !important;pointer-events:none !important}
 .lt-sel-btn{width:100%;height:34px;padding:0 28px 0 11px;border:1.5px solid #DDE8E2;border-radius:10px;background:#fff;font-family:'Manrope',sans-serif;font-size:12px;color:#1A2A22;cursor:pointer;text-align:left;display:flex;align-items:center;position:relative;transition:border-color .15s}
 .lt-sel-btn:hover{border-color:#C0DECA}
