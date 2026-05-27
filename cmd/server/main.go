@@ -28193,6 +28193,41 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 	m.IsMine = true
 	m.AuthorColor = stableColorForName(m.AuthorName)
 
+	// Догрузка reply_to для одиночного сообщения (иначе POST-ответ и WS-push
+	// приходят без привязки — плашка «в ответ на…» не рисуется до перезагрузки).
+	{
+		var parentID sql.NullInt64
+		if err := db.QueryRow(`SELECT reply_to_id FROM chat_messages WHERE id=$1`, m.ID).Scan(&parentID); err == nil && parentID.Valid {
+			var rp chatReplyPreview
+			var pContent, pAttName, pAttType string
+			if err := db.QueryRow(`
+				SELECT m.id, COALESCE(u.full_name,''), COALESCE(m.content,''),
+				       COALESCE(m.attachment_name,''), COALESCE(m.attachment_type,'')
+				FROM chat_messages m JOIN users u ON u.id=m.author_id
+				WHERE m.id=$1`, parentID.Int64).Scan(&rp.ID, &rp.AuthorName, &pContent, &pAttName, &pAttType); err == nil {
+				preview := pContent
+				if preview == "" {
+					if pAttName != "" {
+						preview = "📎 " + pAttName
+					} else if strings.HasPrefix(pAttType, "audio/") {
+						preview = "🎤 Голосовое"
+					} else if strings.HasPrefix(pAttType, "image/") {
+						preview = "🖼 Изображение"
+					} else if pAttType != "" {
+						preview = "📎 Вложение"
+					} else {
+						preview = "—"
+					}
+				}
+				if r := []rune(preview); len(r) > 80 {
+					preview = string(r[:80]) + "…"
+				}
+				rp.ContentPreview = preview
+				m.ReplyTo = &rp
+			}
+		}
+	}
+
 	recordEvent(db, "message_sent", userID, "chat_message", m.ID, 0, 0, 0, nil)
 
 	// Real-time push: всем participants диалога (включая отправителя на других устройствах).
