@@ -225,7 +225,8 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 }
 
 /* Пузыри */
-.msg{display:flex;gap:8px;max-width:70%;animation:msgIn .25s ease both}
+.msg{display:flex;gap:8px;max-width:70%}
+.msg.msg-new{animation:msgIn .25s ease both}
 .msg-reply{display:flex;gap:6px;align-items:stretch;background:rgba(30,138,76,.10);border-radius:6px;padding:4px 8px 4px 6px;margin-bottom:4px;cursor:pointer;transition:background .15s;max-width:100%;overflow:hidden}
 .msg-reply:hover{background:rgba(30,138,76,.18)}
 .msg-reply-bar{width:3px;flex-shrink:0;background:#1E8A4C;border-radius:2px;align-self:stretch}
@@ -1523,58 +1524,38 @@ function bindChatScrollWatcher(){
   el._newWatcher = true;
   el.addEventListener('scroll', ()=>{ if(chatAtBottom()){ _chatNewCount = 0; updateNewBtn(); } });
 }
-function renderMessages(){
-  const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0,(m.reactions||[]).map(r=>r.emoji+r.count+(r.mine?'1':'0')).join(',')]));
-  const typingSig=makeSig((state.typingUsers||[]).map(u=>u.public_id||u.user_id||u));
-  const fullSig=sig+'|'+typingSig+'|'+(state.activeConvPublicID||'');
-  if(fullSig===renderCache.messagesSig)return;
-  renderCache.messagesSig=fullSig;
-  renderCache.typingSig=typingSig;
-  const el=chatBody;
-  const justSelected=!!window._chatJustSelected;
-  const wasAtBottom=justSelected?true:(el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true);
-  const prevScroll=el?el.scrollTop:0;
-  let html='';let prevDate='';const _allUrls=[];state.messages.forEach(m=>{
-    const createdAt = new Date(m.created_at);
-    const date = createdAt.toDateString();
-    if(date!==prevDate){
-      prevDate=date;
-      const divider = window.LastopFormat ? window.LastopFormat.date(m.created_at) : createdAt.toLocaleDateString('ru-RU');
-      html+=`<div class='date-sep'>${divider}</div>`;
-    }
-    const mine=m.author_public_id===state.currentUser.public_id;
-    const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-    const attachHTML = renderAttachment(m);
-    const contentHTML = m.content ? linkifyContent(m.content).replace(/\n/g,'<br>') : '';
-    const _urls = m.content ? extractURLs(m.content) : [];
-    const previewSlotsHTML = _urls.map(u=>`<div class="lp-slot" data-url="${esc(u)}"></div>`).join('');
-    const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
-    const replyHTML = m.reply_to ? `<div class='msg-reply' onclick='scrollToMessage(${m.reply_to.id})'><div class='msg-reply-bar'></div><div class='msg-reply-body'><div class='msg-reply-author'>${esc(m.reply_to.author_name)}</div><div class='msg-reply-text'>${esc(m.reply_to.content_preview||'—')}</div></div></div>` : '';
-
-    // A2.1: вычисляем effective автора и аватар с учётом контекста
-    let avatarHtml = '';
-    let displayName = m.author_name;
-    if(m.sender_company_id && m.sender_company_name){
-      displayName = m.sender_company_name;
-      const color = '#1E8A4C';
-      avatarHtml = m.sender_company_logo
-        ? `<div class='msg-av' style='background-image:url("${esc(m.sender_company_logo)}");background-color:${color}'></div>`
-        : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
-    } else if(m.sender_community_id && m.sender_community_name){
-      displayName = m.sender_community_name;
-      const color = '#9060C0';
-      avatarHtml = m.sender_community_avatar
-        ? `<div class='msg-av' style='background-image:url("${esc(m.sender_community_avatar)}");background-color:${color}'></div>`
-        : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
-    } else {
-      avatarHtml = m.author_avatar
-        ? `<div class='msg-av' style='background-image:url("${esc(m.author_avatar)}");background-color:${m.author_color}'></div>`
-        : `<div class='msg-av' style='background:${m.author_color}'>${esc(letter(m.author_name))}</div>`;
-    }
-    const showName = !mine && (m.sender_company_id || m.sender_community_id);
-    const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` : '';
-    if(_urls.length)_allUrls.push({id:m.id,urls:_urls});
-    html += `
+function buildMessageHTML(m){
+  const createdAt = new Date(m.created_at);
+  const mine=m.author_public_id===state.currentUser.public_id;
+  const msgTime = window.LastopFormat ? window.LastopFormat.time(m.created_at) : createdAt.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const attachHTML = renderAttachment(m);
+  const contentHTML = m.content ? linkifyContent(m.content).replace(/\n/g,'<br>') : '';
+  const _urls = m.content ? extractURLs(m.content) : [];
+  const previewSlotsHTML = _urls.map(u=>`<div class="lp-slot" data-url="${esc(u)}"></div>`).join('');
+  const deletedNote = m.is_deleted ? ' <i>(удалено)</i>' : '';
+  const replyHTML = m.reply_to ? `<div class='msg-reply' onclick='scrollToMessage(${m.reply_to.id})'><div class='msg-reply-bar'></div><div class='msg-reply-body'><div class='msg-reply-author'>${esc(m.reply_to.author_name)}</div><div class='msg-reply-text'>${esc(m.reply_to.content_preview||'—')}</div></div></div>` : '';
+  let avatarHtml = '';
+  let displayName = m.author_name;
+  if(m.sender_company_id && m.sender_company_name){
+    displayName = m.sender_company_name;
+    const color = '#1E8A4C';
+    avatarHtml = m.sender_company_logo
+      ? `<div class='msg-av' style='background-image:url("${esc(m.sender_company_logo)}");background-color:${color}'></div>`
+      : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
+  } else if(m.sender_community_id && m.sender_community_name){
+    displayName = m.sender_community_name;
+    const color = '#9060C0';
+    avatarHtml = m.sender_community_avatar
+      ? `<div class='msg-av' style='background-image:url("${esc(m.sender_community_avatar)}");background-color:${color}'></div>`
+      : `<div class='msg-av' style='background:${color}'>${esc(letter(displayName))}</div>`;
+  } else {
+    avatarHtml = m.author_avatar
+      ? `<div class='msg-av' style='background-image:url("${esc(m.author_avatar)}");background-color:${m.author_color}'></div>`
+      : `<div class='msg-av' style='background:${m.author_color}'>${esc(letter(m.author_name))}</div>`;
+  }
+  const showName = !mine && (m.sender_company_id || m.sender_community_id);
+  const nameHTML = showName ? `<div class='msg-as-name'>${esc(displayName)}</div>` : '';
+  return `
       <div class='msg ${mine?'me':'them'}' data-msg-id='${m.id}' ondblclick='event.stopPropagation();openReactionPicker(${m.id},this)'>
         ${avatarHtml}
         <div class='msg-group'>
@@ -1600,6 +1581,56 @@ function renderMessages(){
           ${(m.reactions && m.reactions.length) ? `<div class='msg-reactions'>${m.reactions.map(r=>`<span class='reaction${r.mine?' mine':''}' onclick='event.stopPropagation();toggleReaction(${m.id},"${r.emoji}")'>${r.emoji} ${r.count}</span>`).join('')}</div>` : ''}
         </div>
       </div>`;
+}
+function dateSepHTML(m){
+  const createdAt=new Date(m.created_at);
+  const divider = window.LastopFormat ? window.LastopFormat.date(m.created_at) : createdAt.toLocaleDateString('ru-RU');
+  return `<div class='date-sep'>${divider}</div>`;
+}
+// Инкрементально добавить ОДНО сообщение в конец (без пересборки DOM — как в Telegram).
+// Существующие узлы (аватары, картинки) не трогаются → нет мигания.
+function appendMessage(m){
+  const el=chatBody;
+  if(!el)return;
+  if(el.querySelector(`[data-msg-id="${m.id}"]`))return; // уже есть
+  // дата-разделитель, если сменился день относительно последнего сообщения в DOM
+  const msgs=el.querySelectorAll('.msg[data-msg-id]');
+  let needSep=true;
+  if(msgs.length){
+    const lastId=msgs[msgs.length-1].getAttribute('data-msg-id');
+    const lastMsg=(state.messages||[]).find(x=>String(x.id)===String(lastId));
+    if(lastMsg && new Date(lastMsg.created_at).toDateString()===new Date(m.created_at).toDateString())needSep=false;
+  }
+  const wasBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-50;
+  el.insertAdjacentHTML('beforeend',(needSep?dateSepHTML(m):'')+buildMessageHTML(m));
+  const node=el.querySelector(`[data-msg-id="${m.id}"]`);
+  if(node)node.classList.add('msg-new');
+  const _urls=m.content?extractURLs(m.content):[];
+  if(node&&_urls.length)hydrateLinkPreviews(node,_urls);
+  // обновляем сигнатуру, чтобы последующий renderMessages не делал лишнюю пересборку
+  renderCache.messagesSig='';
+  if(wasBottom){window._chatStickBottom=()=>{const b=document.getElementById('chatBody');if(b)b.scrollTop=b.scrollHeight;};window._chatStickBottom();requestAnimationFrame(window._chatStickBottom);}
+}
+function renderMessages(){
+  const sig=makeSig((state.messages||[]).map(m=>[m.id,m.content,m.is_edited?1:0,m.is_deleted?1:0,m.created_at,m.sender_company_id||0,m.sender_community_id||0,(m.reactions||[]).map(r=>r.emoji+r.count+(r.mine?'1':'0')).join(',')]));
+  const typingSig=makeSig((state.typingUsers||[]).map(u=>u.public_id||u.user_id||u));
+  const fullSig=sig+'|'+typingSig+'|'+(state.activeConvPublicID||'');
+  if(fullSig===renderCache.messagesSig)return;
+  renderCache.messagesSig=fullSig;
+  renderCache.typingSig=typingSig;
+  const el=chatBody;
+  const justSelected=!!window._chatJustSelected;
+  const wasAtBottom=justSelected?true:(el?(el.scrollTop+el.clientHeight>=el.scrollHeight-50):true);
+  const prevScroll=el?el.scrollTop:0;
+  let html='';let prevDate='';const _allUrls=[];state.messages.forEach(m=>{
+    const date = new Date(m.created_at).toDateString();
+    if(date!==prevDate){
+      prevDate=date;
+      html+=dateSepHTML(m);
+    }
+    const _urls = m.content ? extractURLs(m.content) : [];
+    if(_urls.length)_allUrls.push({id:m.id,urls:_urls});
+    html += buildMessageHTML(m);
   });
   el.innerHTML=html;
   // гидратация превью ссылок после атомарного присваивания
@@ -1957,25 +1988,38 @@ async function submitMessage(){
     }
     state.messages = state.messages || [];
     state.messages.push(optimistic);
-    renderMessages();
+    appendMessage(optimistic);
     scrollBottom();
 
     const sent = await api(`/chat/conversations/${convPid}/messages`, {method: 'POST', body});
     const sm = sent && sent.message;
     const idx = state.messages.findIndex(m => m.id === tempId);
+    const tmpNode = chatBody ? chatBody.querySelector(`[data-msg-id="${tempId}"]`) : null;
     if (sm) {
       if (state.messages.some(m => m.id === sm.id)) {
-        // WS-эхо уже добавило реальное — убираем оптимистичное
+        // WS-эхо уже добавило реальное — убираем оптимистичное (узел + из массива)
         if (idx !== -1) state.messages.splice(idx, 1);
+        if (tmpNode) tmpNode.remove();
       } else if (idx !== -1) {
+        // заменяем оптимистичный на реальный: точечно обновляем узел (без пересборки списка)
         state.messages[idx] = sm;
+        if (tmpNode) {
+          tmpNode.outerHTML = buildMessageHTML(sm);
+          const newNode = chatBody.querySelector(`[data-msg-id="${sm.id}"]`);
+          const _u = sm.content ? extractURLs(sm.content) : [];
+          if (newNode && _u.length) hydrateLinkPreviews(newNode, _u);
+        } else {
+          appendMessage(sm);
+        }
       } else {
         state.messages.push(sm);
+        appendMessage(sm);
       }
     } else if (idx !== -1) {
       state.messages.splice(idx, 1);
+      if (tmpNode) tmpNode.remove();
     }
-    renderMessages();
+    renderCache.messagesSig='';
     scrollBottom();
     delete chatDrafts[convPid];
     loadConversations();
@@ -2723,7 +2767,7 @@ function setupChatWS(){
         state.messages = state.messages || [];
         const wasBottom = chatAtBottom();
         state.messages.push(msg);
-        renderMessages();
+        appendMessage(msg);
         if(wasBottom){
           // пользователь у дна — доскроллить и пометить прочитанным
           scrollChatToBottom(true);
