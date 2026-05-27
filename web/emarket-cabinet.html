@@ -493,27 +493,32 @@ function renderNoShop(){
   buildOwnerOptions();
 }
 
-/* собрать список владельцев: личный + мои компании + мои сообщества */
-function ncOwnerList(){
-  const list=[{type:'user',id:0,name:'Личный профиль'}];
-  (window.__pcxCompaniesCache||[]).forEach(c=>list.push({type:'company',id:c.id,name:c.name}));
-  (window.__pcxCommunitiesCache||[]).forEach(c=>list.push({type:'community',id:c.id,name:c.name}));
-  return list;
+/* активный контекст по умолчанию: getActiveContext если есть, иначе localStorage */
+function ncActiveContext(){
+  if(window.getActiveContext){const c=window.getActiveContext();if(c&&c.kind)return{type:c.kind,id:c.id||0};}
+  try{
+    const co=localStorage.getItem('active_company_id');
+    if(co&&+co>0)return{type:'company',id:+co};
+    const cm=localStorage.getItem('active_community_id');
+    if(cm&&+cm>0)return{type:'community',id:+cm};
+  }catch(e){}
+  return{type:'user',id:0};
 }
-function buildOwnerOptions(){
+
+/* грузим владельцев напрямую через API (кабинет не подключает свитчер контекста) */
+async function buildOwnerOptions(){
   const sel=document.getElementById('ncOwner');
   if(!sel)return;
-  // если свитчер контекста ещё не подгрузил компании/сообщества — подождём и перестроим
-  if(!window.__pcxCompaniesCache && !window.__pcxCommunitiesCache && !buildOwnerOptions._waited){
-    buildOwnerOptions._waited=true;
-    const retry=()=>{window.removeEventListener('lastop:context-changed',retry);buildOwnerOptions();};
-    window.addEventListener('lastop:context-changed',retry);
-    setTimeout(()=>{window.removeEventListener('lastop:context-changed',retry);buildOwnerOptions();},1200);
-  }
-  const list=ncOwnerList();
-  // активный контекст по умолчанию
-  let active={type:'user',id:0};
-  if(window.getActiveContext){const c=window.getActiveContext();if(c&&c.kind)active={type:c.kind,id:c.id||0};}
+  const list=[{type:'user',id:0,name:'Личный профиль'}];
+  try{
+    const [rc,rcm]=await Promise.all([
+      lastopFetch(API+'/companies?tab=my&limit=50').catch(()=>null),
+      lastopFetch(API+'/communities?tab=my&role_filter=admin&limit=200').catch(()=>null)
+    ]);
+    if(rc&&rc.ok){const d=await rc.json();(d.items||[]).forEach(c=>list.push({type:'company',id:c.id,name:c.name}));}
+    if(rcm&&rcm.ok){const d=await rcm.json();(d.communities||d.items||[]).forEach(c=>list.push({type:'community',id:c.id,name:c.name}));}
+  }catch(e){}
+  const active=ncActiveContext();
   sel.innerHTML=list.map(o=>{
     const val=o.type+':'+o.id;
     const isActive=(o.type===active.type && (o.type==='user'||o.id===active.id));
