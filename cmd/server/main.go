@@ -10330,7 +10330,15 @@ func main() {
 		}
 		rows, err := db.Query(`SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url,
 			contact_phone, contact_email, contact_site, rating, reviews_count, status, created_at, region
-			FROM emarket_shops WHERE owner_type='user' AND owner_id=$1 AND status<>'blocked' ORDER BY created_at DESC`, userID)
+			FROM emarket_shops s
+			WHERE s.status<>'blocked' AND (
+				(s.owner_type='user' AND s.owner_id=$1)
+				OR (s.owner_type='company' AND s.owner_id IN (
+					SELECT company_id FROM company_members WHERE user_id=$1 AND role='owner'
+				))
+				OR EXISTS (SELECT 1 FROM emarket_shop_staff st WHERE st.shop_id=s.id AND st.user_id=$1)
+			)
+			ORDER BY s.created_at DESC`, userID)
 		if err != nil {
 			log.Printf("[emarket/shops/my] %v", err)
 			writeError(w, http.StatusInternalServerError, "Ошибка")
