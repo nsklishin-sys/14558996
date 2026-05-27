@@ -654,7 +654,7 @@ async function renderCompanyDashboard(){
   const coSelector = state.companies.length > 1 ? `
     <div class="ctx-selector">
       <span class="ctx-label">Компания:</span>
-      <select class="ctx-select" id="ctxCompanySelect" onchange="onCompanyChange()">
+      <select data-lt-select class="ctx-select" id="ctxCompanySelect" onchange="onCompanyChange()">
         ${state.companies.map(c=>`<option value="${c.id}|${c.slug||''}" ${c.id===state.selectedCompanyId?'selected':''}>${esc(c.name||c.title||'')}</option>`).join('')}
       </select>
     </div>` : `<div class="ctx-selector"><span class="ctx-label">Компания:</span><span class="ctx-current">${esc((state.companies[0]||{}).name||'')}</span></div>`;
@@ -760,7 +760,7 @@ async function renderCommunityDashboard(){
   const cmSelector = state.communities.length > 1 ? `
     <div class="ctx-selector">
       <span class="ctx-label">Сообщество:</span>
-      <select class="ctx-select" id="ctxCommunitySelect" onchange="onCommunityChange()">
+      <select data-lt-select class="ctx-select" id="ctxCommunitySelect" onchange="onCommunityChange()">
         ${state.communities.map(c=>`<option value="${c.id}" ${c.id===state.selectedCommunityId?'selected':''}>${esc(c.name||c.title||'')}</option>`).join('')}
       </select>
     </div>` : `<div class="ctx-selector"><span class="ctx-label">Сообщество:</span><span class="ctx-current">${esc((state.communities[0]||{}).name||'')}</span></div>`;

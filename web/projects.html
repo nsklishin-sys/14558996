@@ -329,12 +329,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <input id="searchInput" type="search" placeholder="Поиск по названию или описанию…" oninput="applyFilters()">
     </div>
     <span class="pf-label">Категория</span>
-    <select class="pf-select" id="filterCat" data-category-picker onchange="applyFilters()">
+    <select data-lt-select class="pf-select" id="filterCat" data-category-picker onchange="applyFilters()">
       <option value="">Все категории</option>
       <!-- optgroup'ы заполнятся скриптом ниже -->
     </select>
     <span class="pf-label">Сортировка</span>
-    <select class="pf-select" id="filterSort" onchange="applyFilters()">
+    <select data-lt-select class="pf-select" id="filterSort" onchange="applyFilters()">
       <option value="new">Новые</option>
       <option value="popular">Популярные</option>
       <option value="deadline">По дедлайну</option>
@@ -410,7 +410,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     </div>
     <div class="modal-body">
       <label class="mf-label">От лица</label>
-      <select class="mf-select" id="mAuthor" style="margin-bottom:14px">
+      <select data-lt-select class="mf-select" id="mAuthor" style="margin-bottom:14px">
         <option value="personal">Личный профиль</option>
       </select>
       <label class="mf-label">Название проекта *</label>
@@ -420,14 +420,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <div class="mf-row">
         <div>
           <label class="mf-label">Категория</label>
-          <select class="mf-select" id="mCat" data-category-picker>
+          <select data-lt-select class="mf-select" id="mCat" data-category-picker>
             <option value="">Выберите категорию</option>
             <!-- Заполняется через renderProjectCategoriesInto при открытии модалки -->
           </select>
         </div>
         <div>
           <label class="mf-label">Статус</label>
-          <select class="mf-select" id="mStatus">
+          <select data-lt-select class="mf-select" id="mStatus">
             <option value="planned">Планируется</option>
             <option value="active">Активный</option>
           </select>
@@ -522,7 +522,7 @@ function fillFilterCategories(){
   const sel = document.getElementById('filterCat');
   if (sel && window.renderProjectCategoriesInto) {
     window.renderProjectCategoriesInto(sel, 'Все категории');
-    // Поскольку picker уже мог инициализироваться на пустом <select>,
+    // Поскольку picker уже мог инициализироваться на пустом <select data-lt-select>,
     // удаляем старый wrapper если есть, и инициализируем заново
     if (sel.dataset.cpReady === '1') {
       const wrap = sel.closest('.cp-wrap');

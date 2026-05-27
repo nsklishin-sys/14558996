@@ -223,7 +223,7 @@ function render(){
   if (!currentCommunity){ renderEmpty(); return; }
   const c = currentCommunity;
   const switcher = myCommunities.length > 1
-    ? '<select class="mc-select" onchange="switchCommunity(parseInt(this.value))">'
+    ? '<select data-lt-select class="mc-select" onchange="switchCommunity(parseInt(this.value))">'
       + myCommunities.map(co => '<option value="'+co.id+'"'+(co.id===c.id?' selected':'')+'>'+esc(co.name)+'</option>').join('')
       + '</select>'
     : '';
@@ -276,10 +276,10 @@ function renderAbout(wrap){
       '<div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>О сообществе</div>'+
       '<div class="fld"><label class="fld-label">Название *</label><input class="fld-input" id="fName" value="'+esc(c.name||'')+'" maxlength="120"></div>'+
       '<div class="fld-row">'+
-        '<div class="fld"><label class="fld-label">Категория</label><select class="fld-select" id="fCategory">'+
+        '<div class="fld"><label class="fld-label">Категория</label><select data-lt-select class="fld-select" id="fCategory">'+
           COMMUNITY_CATEGORIES.map(cat => '<option value="'+esc(cat)+'"'+(c.category===cat?' selected':'')+'>'+esc(cat)+'</option>').join('')+
         '</select></div>'+
-        '<div class="fld"><label class="fld-label">Тип</label><select class="fld-select" id="fPrivacy">'+
+        '<div class="fld"><label class="fld-label">Тип</label><select data-lt-select class="fld-select" id="fPrivacy">'+
           '<option value="open"'+(c.privacy_level==='open'?' selected':'')+'>Открытое</option>'+
           '<option value="closed"'+(c.privacy_level==='closed'?' selected':'')+'>Закрытое</option>'+
         '</select></div>'+
