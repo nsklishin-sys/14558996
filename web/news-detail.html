@@ -1005,6 +1005,8 @@ async function loadPostAndComments(){
   }
   if (!post || !post.public_id) return;
 
+  if(window.markNotifsReadBySource)window.markNotifsReadBySource(['post','comment'],post.public_id);
+
   lastopFetch(`${API}/posts/${encodeURIComponent(postPublicID)}/view`, { method: 'POST', headers: authHeaders() })
     .then(r => r.ok ? r.json() : null)
     .then(d => {

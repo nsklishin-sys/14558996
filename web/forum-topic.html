@@ -389,6 +389,7 @@ async function loadCategoryColors(){
 
 // ─── Тема ───
 async function loadTopic(){
+  if(window.markNotifsReadBySource&&TOPIC_PUBLIC_ID)window.markNotifsReadBySource(['forum_topic','forum_message'],TOPIC_PUBLIC_ID);
   if (!TOPIC_PUBLIC_ID) {
     document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не указана. <a href="/forum.html">К списку тем →</a></div>';
     return;
