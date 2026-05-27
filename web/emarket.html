@@ -58,18 +58,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-featured-h .sub{font-size:11px;color:var(--gmt);margin-left:2px}
 .em-featured-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
 .em-featured-scroll::-webkit-scrollbar{height:5px}.em-featured-scroll::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
-.em-feat-card{min-width:210px;max-width:210px;height:170px;scroll-snap-align:start;background:var(--w);border:1.5px solid #F0DCA0;border-radius:var(--rxl);overflow:hidden;cursor:pointer;transition:all .18s;box-shadow:var(--sh);position:relative;display:flex;flex-direction:column}
-.em-feat-card:hover{box-shadow:var(--shm);transform:translateY(-2px)}
-.em-feat-badge{position:absolute;top:8px;right:8px;z-index:1;padding:3px 9px;border-radius:99px;background:#FFF3D6;color:#A06A00;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:3px}
-.em-feat-badge svg{width:9px;height:9px;fill:#F0A030;stroke:none}
-.em-feat-cover{height:64px;flex-shrink:0;background:linear-gradient(120deg,var(--g),var(--gm))}
-.em-feat-cover img{width:100%;height:100%;object-fit:cover}
-.em-feat-body{padding:0 13px 13px;flex:1;display:flex;flex-direction:column}
-.em-feat-logo{width:44px;height:44px;border-radius:12px;background:var(--w);border:3px solid var(--w);margin-top:-22px;box-shadow:var(--sh);display:grid;place-items:center;font-size:17px;font-weight:900;color:#fff;overflow:hidden;background:linear-gradient(135deg,var(--g),var(--gm));flex-shrink:0}
-.em-feat-logo img{width:100%;height:100%;object-fit:cover;border-radius:9px}
-.em-feat-name{font-size:13.5px;font-weight:800;color:var(--t);margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
-.em-feat-rating{font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:3px;margin-top:auto;padding-top:4px}
-.em-feat-rating svg{width:12px;height:12px;fill:#F0A030;stroke:none}
+/* единая карточка магазина — визитка компании, используется и в ленте, и в «LASTOP рекомендует» */
+.em-feat-card{display:none}
+.em-feat-cover,.em-feat-badge,.em-feat-body,.em-feat-logo,.em-feat-name,.em-feat-rating{display:none}
+.em-featured-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
+.em-featured-scroll .em-shop-card{min-width:300px;max-width:300px;scroll-snap-align:start;flex-shrink:0}
 
 /* ── Тулбар: вкладки + поиск ── */
 .em-tabs{display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
@@ -140,29 +133,26 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-card-rating{font-size:11px;color:var(--gmt);display:flex;align-items:center;gap:3px}
 .em-card-rating svg{width:12px;height:12px;fill:#F0A030;stroke:none}
 
-.em-shop-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);overflow:hidden;cursor:pointer;transition:all .18s;display:flex;flex-direction:column}
+.em-shop-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;gap:10px}
 .em-shop-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
-.em-shop-cover{height:56px;background:linear-gradient(120deg,var(--g),var(--gm));position:relative}
-.em-shop-cover:empty{height:0;background:none;border:none}
-.em-shop-cover img{width:100%;height:100%;object-fit:cover}
-.em-shop-body{padding:0 16px 16px;position:relative;flex:1;display:flex;flex-direction:column}
-.em-shop-logo{width:54px;height:54px;border-radius:14px;background:var(--w);border:3px solid var(--w);margin-top:-27px;box-shadow:var(--sh);display:grid;place-items:center;font-size:20px;font-weight:900;color:#fff;overflow:hidden;background:linear-gradient(135deg,var(--g),var(--gm))}
-.em-shop-logo img{width:100%;height:100%;object-fit:cover;border-radius:11px}
-.em-shop-name{font-size:15px;font-weight:800;color:var(--t);margin-top:8px}
-.em-shop-region{font-size:11px;color:var(--g);font-weight:700;display:flex;align-items:center;gap:3px;margin-top:3px;min-height:15px}
-.em-shop-region svg{width:11px;height:11px;fill:none;stroke:var(--g);stroke-width:1.8}
-.em-shop-desc{font-size:12px;color:var(--gmt);line-height:1.5;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
-.em-shop-meta{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:10px;font-size:11px;color:var(--gmt)}
-.em-shop-meta .star{display:flex;align-items:center;gap:3px}
-.em-shop-meta .star svg{width:12px;height:12px;fill:#F0A030;stroke:none}
-.em-shop-cover{position:relative}
-.em-shop-badge{position:absolute;top:10px;left:10px;background:#fff;color:var(--g);border:1px solid var(--gb);border-radius:99px;font-size:10px;font-weight:800;padding:4px 9px 4px 7px;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(30,138,76,.14);text-transform:uppercase;letter-spacing:.04em}
-.em-shop-badge svg{width:11px;height:11px;fill:currentColor;stroke:none}
-.em-shop-direction{font-size:11px;font-weight:600;color:var(--gmt);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
-.em-shop-tagline{font-size:13px;color:var(--tm);line-height:1.45;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
-.em-shop-no-rating{color:var(--gmt);font-size:12px}
-.em-shop-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr);flex-wrap:wrap}
-.em-shop-meta .em-shop-region{margin:0}
+.em-shop-card--featured{border-color:#F0DCA0;border-width:1.5px;box-shadow:0 1px 4px rgba(240,160,48,.18)}
+.em-shop-card--featured:hover{border-color:#E5C770}
+.em-shop-head{display:flex;align-items:flex-start;gap:12px}
+.em-shop-logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--g),var(--gm));display:grid;place-items:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden}
+.em-shop-logo img{width:100%;height:100%;object-fit:cover}
+.em-shop-headinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.em-shop-headtop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.em-shop-name{font-size:15px;font-weight:800;color:var(--t);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.em-shop-rating{font-size:12px;color:var(--gmt);display:flex;align-items:center;gap:3px}
+.em-shop-rating svg{width:13px;height:13px;fill:#F0A030;stroke:none;flex-shrink:0}
+.em-shop-rating .em-shop-rating-empty{color:var(--gmt)}
+.em-shop-badge{padding:3px 9px;border-radius:99px;background:#FFF3D6;color:#A06A00;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;white-space:nowrap}
+.em-shop-badge svg{width:9px;height:9px;fill:#F0A030;stroke:none}
+.em-shop-divider{height:1px;background:var(--bdr);margin:2px 0}
+.em-shop-direction{font-size:12px;color:var(--gmt);font-weight:600}
+.em-shop-tagline{font-size:13px;color:var(--tm);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.em-shop-region{font-size:12px;color:var(--g);font-weight:600;display:flex;align-items:center;gap:4px;margin-top:auto;padding-top:6px}
+.em-shop-region svg{width:13px;height:13px;fill:none;stroke:var(--g);stroke-width:1.8;flex-shrink:0}
 
 .em-empty{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--gmt)}
 .em-empty svg{width:44px;height:44px;stroke:var(--gb);fill:none;stroke-width:1.3;stroke-linecap:round;margin-bottom:14px}
@@ -392,17 +382,8 @@ async function loadFeaturedShops(box){
     var d=await r.json();
     var shops=(d&&d.shops)||[];
     if(!shops.length){box.style.display='none';return;}
-    var cards=shops.map(function(s){
-      var cover=s.cover_url?'<img src="'+esc(s.cover_url)+'" alt="" onerror="this.style.display=\'none\'">':'';
-      var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
-      var rating=s.rating>0?'<svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1):'нет оценок';
-      return '<div class="em-feat-card" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')">'+
-        '<div class="em-feat-cover">'+cover+'</div>'+
-        '<div class="em-feat-body"><div class="em-feat-logo">'+logo+'</div>'+
-        '<div class="em-feat-name">'+esc(s.name)+'</div>'+
-        '<div class="em-feat-rating">'+rating+'</div></div>'+
-      '</div>';
-    }).join('');
+    var regMap={};EM.regions.forEach(function(r){regMap[r.key]=r.label;});
+    var cards=shops.map(function(s){return buildShopCard(s, regMap, true);}).join('');
     box.innerHTML='<div class="em-featured-h"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg><span class="ttl">LASTOP рекомендует</span><span class="sub">проверенные магазины платформы</span></div><div class="em-featured-scroll">'+cards+'</div>';
     box.style.display='block';
   }catch(e){box.style.display='none';}
@@ -589,22 +570,44 @@ async function loadShops(grid){
     }
     var regMap={};EM.regions.forEach(function(r){regMap[r.key]=r.label;});
     grid.innerHTML=items.map(function(s){
-      var cover=s.cover_url?'<img src="'+esc(s.cover_url)+'" alt="" onerror="this.style.display=\'none\'">':'';
-      var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
-      var featured=s.is_featured?'<span class="em-shop-badge"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>Рекомендуем</span>':'';
-      var direction=s.direction?'<div class="em-shop-direction">'+esc(s.direction)+'</div>':'';
-      var region=s.region&&regMap[s.region]?'<div class="em-shop-region"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(regMap[s.region])+'</div>':'';
-      var rating=s.rating>0?'<span class="star"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1)+' ('+(s.reviews_count||0)+')</span>':'<span class="em-shop-no-rating">Нет отзывов</span>';
-      var tagline=s.tagline||s.description||'';
-      var taglineHtml=tagline?'<div class="em-shop-tagline">'+esc(tagline)+'</div>':'';
-      var coverBlock=(cover||featured)?('<div class="em-shop-cover">'+cover+featured+'</div>'):'';
-      return '<div class="em-shop-card" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')">'+coverBlock+'<div class="em-shop-body"><div class="em-shop-logo">'+logo+'</div><div class="em-shop-name">'+esc(s.name)+'</div>'+direction+taglineHtml+'<div class="em-shop-meta">'+region+rating+'</div></div></div>';
+      return buildShopCard(s, regMap, false);
     }).join('');
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 
 function openListing(id){location.href='/emarket-listing.html?id='+id;}
 function openShop(slug){if(!slug){showToast('Магазин недоступен');return;}location.href='/shop/'+slug;}
+
+function buildShopCard(s, regMap, withFeatured){
+  var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
+  var rating=s.rating>0
+    ? '<span class="em-shop-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1)+' ('+(s.reviews_count||0)+')</span>'
+    : '<span class="em-shop-rating em-shop-rating-empty">Нет отзывов</span>';
+  var badge=(withFeatured&&s.is_featured)
+    ? '<span class="em-shop-badge"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>Рекомендуем</span>'
+    : '';
+  var direction=s.direction?'<div class="em-shop-direction">'+esc(s.direction)+'</div>':'';
+  var tagline=s.tagline||s.description||'';
+  var taglineHtml=tagline?'<div class="em-shop-tagline">'+esc(tagline)+'</div>':'';
+  var region=(s.region&&regMap&&regMap[s.region])
+    ? '<div class="em-shop-region"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(regMap[s.region])+'</div>'
+    : '';
+  var cls='em-shop-card'+(withFeatured&&s.is_featured?' em-shop-card--featured':'');
+  return '<div class="'+cls+'" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')">'+
+    '<div class="em-shop-head">'+
+      '<div class="em-shop-logo">'+logo+'</div>'+
+      '<div class="em-shop-headinfo">'+
+        '<div class="em-shop-headtop"><div class="em-shop-name">'+esc(s.name)+'</div>'+badge+'</div>'+
+        rating+
+      '</div>'+
+    '</div>'+
+    '<div class="em-shop-divider"></div>'+
+    direction+
+    taglineHtml+
+    region+
+  '</div>';
+}
+
 
 /* ── Правый сайдбар ── */
 async function renderRight(){
