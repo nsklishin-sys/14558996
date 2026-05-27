@@ -161,6 +161,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="sanctions"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Санкции</button>
       <button class="admin-tab" data-tab="dicts"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Категории</button>
       <button class="admin-tab" data-tab="emads"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Реклама E-market</button>
+      <button class="admin-tab" data-tab="emaccess"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Доступ E-market</button>
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
@@ -386,6 +387,25 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         <div class="users-tbody" id="dictList"></div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmAccess">
+      <div class="panel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div class="panel-title" style="margin-bottom:6px">Доступ к E-market</div>
+        <div style="font-size:12px;color:var(--gmt);margin-bottom:12px">Здесь можно вручную открыть или закрыть компании/сообществу доступ к торговой площадке. Доступ нужен, чтобы создать магазин. Помимо ручной выдачи, в будущем доступ открывается автоматически после оплаты.</div>
+        <div class="users-toolbar" style="margin-bottom:10px">
+          <input id="emAccessSearch" class="lt-input" placeholder="Поиск по названию…" oninput="renderEmAccess()" style="flex:1;min-width:200px">
+          <select id="emAccessFilter" data-lt-select onchange="renderEmAccess()">
+            <option value="all">Все</option>
+            <option value="granted">С доступом</option>
+            <option value="none">Без доступа</option>
+            <option value="company">Только компании</option>
+            <option value="community">Только сообщества</option>
+          </select>
+        </div>
+        <div id="emAccessList" style="flex:1;overflow-y:auto">
+          <div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>
+        </div>
+      </div>
+    </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmAds">
       <div class="users-toolbar">
         <select id="emAdPlacement" data-lt-select onchange="loadEmAds()">
@@ -561,7 +581,7 @@ async function loadAnalytics(){
 }
 function refreshModerationBadge(){loadModerationCount();}
 async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';document.getElementById('paneEmAccess').style.display=name==='emaccess'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();if(name==='emaccess')loadEmAccess();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -1269,6 +1289,53 @@ function renderAdPreview(){
   var b=document.getElementById('adBody').value||'';
   var img=document.getElementById('adImageUrl').value;
   document.getElementById('adPreview').innerHTML='<div style="background:#F8F5FF;border:1px solid #DDD0F0;border-radius:18px;padding:14px;position:relative;overflow:hidden"><div style="position:absolute;top:10px;left:10px;background:#EAE0FA;color:#8060C0;font-size:9px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:6px">реклама</div><div style="margin-top:20px;text-align:center">'+(img?'<img src="'+esc(img)+'" style="max-width:100%;border-radius:8px;margin-bottom:8px">':'')+'<div style="font-size:13px;font-weight:700;color:#5040A0">'+esc(t)+'</div><div style="font-size:11px;color:#7060B0;margin-top:3px">'+esc(b)+'</div><button class="dp-btn" style="background:#7060B0;color:#fff;margin-top:10px;padding:7px 20px">Узнать подробнее</button></div></div>';
+}
+var EM_ACCESS_OWNERS=[];
+async function loadEmAccess(){
+  var box=document.getElementById('emAccessList');
+  box.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/emarket/access');
+    var d=await r.json();
+    EM_ACCESS_OWNERS=(d&&d.owners)||[];
+    renderEmAccess();
+  }catch(e){box.innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">Ошибка загрузки</div>';}
+}
+function renderEmAccess(){
+  var box=document.getElementById('emAccessList');
+  var q=(document.getElementById('emAccessSearch').value||'').toLowerCase().trim();
+  var f=document.getElementById('emAccessFilter').value;
+  var list=EM_ACCESS_OWNERS.filter(function(o){
+    if(q && o.name.toLowerCase().indexOf(q)<0)return false;
+    if(f==='granted'&&!o.has_access)return false;
+    if(f==='none'&&o.has_access)return false;
+    if(f==='company'&&o.owner_type!=='company')return false;
+    if(f==='community'&&o.owner_type!=='community')return false;
+    return true;
+  });
+  if(!list.length){box.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Ничего не найдено.</div>';return;}
+  box.innerHTML=list.map(function(o){
+    var av=o.logo_url?'<img src="'+esc(o.logo_url)+'" style="width:34px;height:34px;border-radius:9px;object-fit:cover;flex-shrink:0">':'<div style="width:34px;height:34px;border-radius:9px;background:var(--g);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0">'+esc((o.name||'?')[0].toUpperCase())+'</div>';
+    var typeLabel=o.owner_type==='company'?'Компания':'Сообщество';
+    var badge=o.has_access?'<span class="u-badge active">Доступ открыт</span>':'<span class="u-badge banned">Нет доступа</span>';
+    var btn=o.has_access
+      ? '<button class="dp-btn" style="padding:6px 12px;color:var(--red)" onclick="setEmAccess(\''+o.owner_type+'\','+o.owner_id+',false)">Закрыть</button>'
+      : '<button class="dp-btn" style="padding:6px 12px;color:var(--g)" onclick="setEmAccess(\''+o.owner_type+'\','+o.owner_id+',true)">Открыть доступ</button>';
+    return '<div class="users-row" style="display:flex;align-items:center;gap:12px;padding:10px 12px">'+av+
+      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+esc(o.name)+'</div><div style="font-size:11px;color:var(--gmt)">'+typeLabel+'</div></div>'+
+      badge+btn+
+    '</div>';
+  }).join('');
+}
+async function setEmAccess(ownerType,ownerID,active){
+  try{
+    var r=await lastopFetch('/api/admin/emarket/access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({owner_type:ownerType,owner_id:ownerID,active:active})});
+    if(!r.ok){lastopToast('Не удалось изменить доступ','error');return;}
+    var o=EM_ACCESS_OWNERS.find(function(x){return x.owner_type===ownerType&&x.owner_id===ownerID;});
+    if(o)o.has_access=active;
+    renderEmAccess();
+    lastopToast(active?'Доступ открыт':'Доступ закрыт','success');
+  }catch(e){lastopToast('Ошибка соединения','error');}
 }
 async function loadEmAds(){
   var placement=document.getElementById('emAdPlacement').value;
