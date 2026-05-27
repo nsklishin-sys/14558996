@@ -10507,7 +10507,7 @@ func main() {
 			return
 		}
 		if len(parts) >= 2 && parts[1] == "leads" {
-			if r.Method != http.MethodGet {
+			if r.Method != http.MethodGet && r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 				return
 			}
@@ -10523,6 +10523,38 @@ func main() {
 			}
 			if err := emarketResolveOwner(db, r, userID, ownerType, ownerID); err != nil {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			// POST /api/emarket/shops/{id}/leads/{leadID}/read — пометить заявку прочитанной/непрочитанной
+			if r.Method == http.MethodPost {
+				if len(parts) < 4 || parts[3] != "read" {
+					writeError(w, http.StatusNotFound, "Не найдено")
+					return
+				}
+				leadID, _ := strconv.ParseInt(parts[2], 10, 64)
+				if leadID == 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный id заявки")
+					return
+				}
+				var body struct {
+					IsRead *bool `json:"is_read"`
+				}
+				_ = decodeJSON(w, r, &body)
+				isRead := true
+				if body.IsRead != nil {
+					isRead = *body.IsRead
+				}
+				res, err := db.Exec(`UPDATE emarket_leads SET is_read=$1 WHERE id=$2 AND shop_id=$3`, isRead, leadID, shopID)
+				if err != nil {
+					log.Printf("[emarket/leads read] %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				if n, _ := res.RowsAffected(); n == 0 {
+					writeError(w, http.StatusNotFound, "Заявка не найдена")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "is_read": isRead})
 				return
 			}
 			rows, err := db.Query(`SELECT l.id, l.name, l.contact, l.message, l.is_read, l.created_at,
