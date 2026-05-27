@@ -68,7 +68,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .lead-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px 18px;box-shadow:var(--sh);transition:box-shadow .2s;position:relative}
 .lead-card:hover{box-shadow:var(--shm)}
 .lead-card.unread{border-left:4px solid var(--g)}
-.lead-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.lead-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;cursor:pointer}
 .lead-av{width:42px;height:42px;border-radius:12px;flex-shrink:0;display:grid;place-items:center;font-size:16px;font-weight:800;color:#fff}
 .lead-meta{flex:1;min-width:0}
 .lead-name{font-size:15px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -165,6 +165,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <link rel="stylesheet" href="/assets/dark-theme.css">
 <div class="shell">
 
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
 <header class="topbar"></header>
 <nav class="nav"></nav>
 
@@ -419,19 +420,18 @@ function buildLeadCard(l){
   const expandHTML='<div class="lead-expand">'
     +'<div class="lead-detail-row"><span class="dl">Получена</span><span class="dv">'+esc(fmtDate(l.created_at))+'</span></div>'
     +'<div class="lead-detail-row"><span class="dl">Отправитель</span><span class="dv">'+senderStatus+'</span></div>'
-    +(contact?'<div class="lead-detail-row"><span class="dl">Контакт</span><span class="dv">'+esc(contact)+'</span></div>':'')
     +'<div class="lead-detail-row"><span class="dl">Источник</span><span class="dv">'+subjLine+'</span></div>'
   +'</div>';
 
   return '<div class="lead-card'+(l.is_read?'':' unread')+'" id="lead-'+l.id+'">'
-    +'<div class="lead-top">'
+    +'<div class="lead-top" onclick="toggleLeadExpand('+l.id+')">'
       +'<div class="lead-av" style="background:'+avc(name)+'">'+letter(name)+'</div>'
       +'<div class="lead-meta">'
         +'<div class="lead-name">'+(l.is_read?'':'<span class="lead-newdot"></span>')+esc(name)+'</div>'
-        +(contactHTML?'<div class="lead-contact">'+contactHTML+'</div>':'')
+        +(contactHTML?'<div class="lead-contact" onclick="event.stopPropagation()">'+contactHTML+'</div>':'')
       +'</div>'
       +'<div class="lead-time" title="'+esc(fmtDate(l.created_at))+'">'+esc(ago(l.created_at))+'</div>'
-      +'<button class="lead-toggle" title="Подробнее" onclick="toggleLeadExpand('+l.id+')"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>'
+      +'<button class="lead-toggle" title="Подробнее" onclick="event.stopPropagation();toggleLeadExpand('+l.id+')"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>'
     +'</div>'
     +subjectHTML
     +(l.message?'<div class="lead-msg">'+esc(l.message)+'</div>':'')
