@@ -11953,7 +11953,7 @@ func main() {
 		if offset < 0 {
 			offset = 0
 		}
-		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, logo_url, cover_url, rating, reviews_count, region, is_featured, created_at
+		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, COALESCE(tagline,''), COALESCE(direction,''), logo_url, cover_url, rating, reviews_count, region, is_featured, created_at
 			FROM emarket_shops WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
 		rows, err := db.Query(sqlStr, args...)
 		if err != nil {
@@ -11965,17 +11965,18 @@ func main() {
 		shops := []map[string]any{}
 		for rows.Next() {
 			var id, ownerID int64
-			var ownerType, name, slug, desc, logo, cover, region string
+			var ownerType, name, slug, desc, tagline, direction, logo, cover, region string
 			var rating float64
 			var reviews int
 			var featured bool
 			var created time.Time
-			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &logo, &cover, &rating, &reviews, &region, &featured, &created); err != nil {
+			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &tagline, &direction, &logo, &cover, &rating, &reviews, &region, &featured, &created); err != nil {
 				continue
 			}
 			shops = append(shops, map[string]any{
 				"id": id, "owner_type": ownerType, "owner_id": ownerID, "name": name, "slug": slug,
-				"description": desc, "logo_url": logo, "cover_url": cover, "rating": rating,
+				"description": desc, "tagline": tagline, "direction": direction,
+				"logo_url": logo, "cover_url": cover, "rating": rating,
 				"reviews_count": reviews, "region": region, "is_featured": featured, "created_at": created,
 			})
 		}
@@ -11984,7 +11985,7 @@ func main() {
 
 	// LASTOP рекомендует — избранные магазины
 	mux.HandleFunc("/api/emarket/featured-shops", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`SELECT id, name, slug, logo_url, cover_url, description, rating, reviews_count, region
+		rows, err := db.Query(`SELECT id, name, slug, logo_url, cover_url, description, COALESCE(tagline,''), COALESCE(direction,''), rating, reviews_count, region
 			FROM emarket_shops WHERE status='active' AND is_featured=TRUE ORDER BY rating DESC, created_at DESC LIMIT 12`)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -11994,13 +11995,13 @@ func main() {
 		shops := []map[string]any{}
 		for rows.Next() {
 			var id int64
-			var name, slug, logo, cover, desc, region string
+			var name, slug, logo, cover, desc, tagline, direction, region string
 			var rating float64
 			var reviews int
-			if err := rows.Scan(&id, &name, &slug, &logo, &cover, &desc, &rating, &reviews, &region); err != nil {
+			if err := rows.Scan(&id, &name, &slug, &logo, &cover, &desc, &tagline, &direction, &rating, &reviews, &region); err != nil {
 				continue
 			}
-			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "cover_url": cover, "description": desc, "rating": rating, "reviews_count": reviews, "region": region})
+			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "cover_url": cover, "description": desc, "tagline": tagline, "direction": direction, "rating": rating, "reviews_count": reviews, "region": region})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
 	})
@@ -12026,7 +12027,7 @@ func main() {
 
 	// Топ-магазины по рейтингу
 	mux.HandleFunc("/api/emarket/top-shops", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`SELECT id, name, slug, logo_url, rating, reviews_count
+		rows, err := db.Query(`SELECT id, name, slug, logo_url, COALESCE(tagline,''), COALESCE(direction,''), rating, reviews_count
 			FROM emarket_shops WHERE status='active' ORDER BY rating DESC, reviews_count DESC, created_at DESC LIMIT 5`)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -12036,13 +12037,13 @@ func main() {
 		shops := []map[string]any{}
 		for rows.Next() {
 			var id int64
-			var name, slug, logo string
+			var name, slug, logo, tagline, direction string
 			var rating float64
 			var reviews int
-			if err := rows.Scan(&id, &name, &slug, &logo, &rating, &reviews); err != nil {
+			if err := rows.Scan(&id, &name, &slug, &logo, &tagline, &direction, &rating, &reviews); err != nil {
 				continue
 			}
-			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "rating": rating, "reviews_count": reviews})
+			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "tagline": tagline, "direction": direction, "rating": rating, "reviews_count": reviews})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
 	})

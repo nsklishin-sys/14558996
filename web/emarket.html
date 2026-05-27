@@ -154,6 +154,14 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-shop-meta{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:10px;font-size:11px;color:var(--gmt)}
 .em-shop-meta .star{display:flex;align-items:center;gap:3px}
 .em-shop-meta .star svg{width:12px;height:12px;fill:#F0A030;stroke:none}
+.em-shop-cover{position:relative}
+.em-shop-badge{position:absolute;top:10px;left:10px;background:#fff;color:var(--g);border:1px solid var(--gb);border-radius:99px;font-size:10px;font-weight:800;padding:4px 9px 4px 7px;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(30,138,76,.14);text-transform:uppercase;letter-spacing:.04em}
+.em-shop-badge svg{width:11px;height:11px;fill:currentColor;stroke:none}
+.em-shop-direction{font-size:11px;font-weight:600;color:var(--gmt);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.em-shop-tagline{font-size:13px;color:var(--tm);line-height:1.45;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+.em-shop-no-rating{color:var(--gmt);font-size:12px}
+.em-shop-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr);flex-wrap:wrap}
+.em-shop-meta .em-shop-region{margin:0}
 
 .em-empty{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--gmt)}
 .em-empty svg{width:44px;height:44px;stroke:var(--gb);fill:none;stroke-width:1.3;stroke-linecap:round;margin-bottom:14px}
@@ -584,9 +592,13 @@ async function loadShops(grid){
     grid.innerHTML=items.map(function(s){
       var cover=s.cover_url?'<img src="'+esc(s.cover_url)+'" alt="" onerror="this.style.display=\'none\'">':'';
       var logo=s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name));
+      var featured=s.is_featured?'<span class="em-shop-badge"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>Рекомендуем</span>':'';
+      var direction=s.direction?'<div class="em-shop-direction">'+esc(s.direction)+'</div>':'';
       var region=s.region&&regMap[s.region]?'<div class="em-shop-region"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(regMap[s.region])+'</div>':'';
-      var rating=s.rating>0?'<span class="star"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1)+' ('+(s.reviews_count||0)+')</span>':'<span>Нет отзывов</span>';
-      return '<div class="em-shop-card" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')"><div class="em-shop-cover">'+cover+'</div><div class="em-shop-body"><div class="em-shop-logo">'+logo+'</div><div class="em-shop-name">'+esc(s.name)+'</div>'+region+'<div class="em-shop-desc">'+esc(s.description||'Описание не указано')+'</div><div class="em-shop-meta">'+rating+'</div></div></div>';
+      var rating=s.rating>0?'<span class="star"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(s.rating).toFixed(1)+' ('+(s.reviews_count||0)+')</span>':'<span class="em-shop-no-rating">Нет отзывов</span>';
+      var tagline=s.tagline||s.description||'';
+      var taglineHtml=tagline?'<div class="em-shop-tagline">'+esc(tagline)+'</div>':'';
+      return '<div class="em-shop-card" onclick="openShop(\''+encodeURIComponent(s.slug||'')+'\')"><div class="em-shop-cover">'+cover+featured+'</div><div class="em-shop-body"><div class="em-shop-logo">'+logo+'</div><div class="em-shop-name">'+esc(s.name)+'</div>'+direction+taglineHtml+'<div class="em-shop-meta">'+region+rating+'</div></div></div>';
     }).join('');
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
