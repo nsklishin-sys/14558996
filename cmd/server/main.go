@@ -10665,29 +10665,44 @@ func main() {
 					return
 				}
 				var body struct {
-					IsRead *bool `json:"is_read"`
+					IsRead *bool   `json:"is_read"`
+					Status *string `json:"status"`
 				}
 				_ = decodeJSON(w, r, &body)
-				isRead := true
 				if body.IsRead != nil {
-					isRead = *body.IsRead
+					if _, err := db.Exec(`UPDATE emarket_leads SET is_read=$1 WHERE id=$2 AND shop_id=$3`, *body.IsRead, leadID, shopID); err != nil {
+						log.Printf("[emarket/leads read] %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
 				}
-				res, err := db.Exec(`UPDATE emarket_leads SET is_read=$1 WHERE id=$2 AND shop_id=$3`, isRead, leadID, shopID)
-				if err != nil {
-					log.Printf("[emarket/leads read] %v", err)
-					writeError(w, http.StatusInternalServerError, "Ошибка")
-					return
+				if body.Status != nil {
+					st := *body.Status
+					allowed := map[string]bool{"new": true, "in_progress": true, "done": true, "rejected": true}
+					if !allowed[st] {
+						writeJSON(w, http.StatusBadRequest, map[string]any{"error": "недопустимый статус"})
+						return
+					}
+					if _, err := db.Exec(`UPDATE emarket_leads SET status=$1 WHERE id=$2 AND shop_id=$3`, st, leadID, shopID); err != nil {
+						log.Printf("[emarket/leads status] %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
 				}
-				if n, _ := res.RowsAffected(); n == 0 {
-					writeError(w, http.StatusNotFound, "Заявка не найдена")
-					return
+				if body.IsRead == nil && body.Status == nil {
+					// дефолт-поведение как раньше: пометить прочитанным
+					if _, err := db.Exec(`UPDATE emarket_leads SET is_read=TRUE WHERE id=$1 AND shop_id=$2`, leadID, shopID); err != nil {
+						log.Printf("[emarket/leads read] %v", err)
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
 				}
-				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "is_read": isRead})
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 				return
 			}
 			rows, err := db.Query(`SELECT l.id, l.name, l.contact, l.message, l.is_read, l.created_at,
 				COALESCE(u.public_id,''), COALESCE(NULLIF(u.full_name,''), u.handle, ''),
-				l.subject_type, l.subject_id, l.subject_title
+				l.subject_type, l.subject_id, l.subject_title, l.status
 				FROM emarket_leads l LEFT JOIN users u ON u.id=l.sender_id
 				WHERE l.shop_id=$1 ORDER BY l.created_at DESC LIMIT 200`, shopID)
 			if err != nil {
@@ -10698,11 +10713,11 @@ func main() {
 			leads := []map[string]any{}
 			for rows.Next() {
 				var id int64
-				var name, contact, message, senderPID, senderName, subjType, subjTitle string
+				var name, contact, message, senderPID, senderName, subjType, subjTitle, leadStatus string
 				var subjID int64
 				var isRead bool
 				var createdAt time.Time
-				if err := rows.Scan(&id, &name, &contact, &message, &isRead, &createdAt, &senderPID, &senderName, &subjType, &subjID, &subjTitle); err != nil {
+				if err := rows.Scan(&id, &name, &contact, &message, &isRead, &createdAt, &senderPID, &senderName, &subjType, &subjID, &subjTitle, &leadStatus); err != nil {
 					continue
 				}
 				leads = append(leads, map[string]any{
@@ -10710,6 +10725,7 @@ func main() {
 					"is_read": isRead, "created_at": createdAt,
 					"sender_public_id": senderPID, "sender_name": senderName,
 					"subject_type": subjType, "subject_id": subjID, "subject_title": subjTitle,
+					"status": leadStatus,
 				})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"leads": leads})
@@ -18091,6 +18107,7 @@ CREATE INDEX IF NOT EXISTS emarket_leads_shop_idx ON emarket_leads(shop_id, crea
 ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS subject_type TEXT NOT NULL DEFAULT '';
 ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS subject_id BIGINT NOT NULL DEFAULT 0;
 ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS subject_title TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
 
 CREATE TABLE IF NOT EXISTS emarket_listings (
     id BIGSERIAL PRIMARY KEY,
