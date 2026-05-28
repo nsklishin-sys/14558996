@@ -308,7 +308,7 @@ function ltr(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.classList.remove('show'),2800)}
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -364,7 +364,7 @@ function buildCard(user, type){
       </button>`;
   }
 
-  return `<div class="friend-card${type==='incoming'?' incoming':''}" data-id="${esc(id)}" data-uid="${esc(id)}" onclick="if(!event.target.closest('button'))location.href='/profile_user.html?id=${encodeURIComponent(id)}'">
+  return `<div class="friend-card${type==='incoming'?' incoming':''}" data-id="${esc(id)}" data-uid="${esc(id)}" onclick="if(!event.target.closest('button'))location.href='/profile_user?id=${encodeURIComponent(id)}'">
     <div class="fc-av-wrap">
       <div class="fc-av" style="background:${color}${avatarURL?`;background-image:url('${esc(avatarURL)}');background-size:cover;background-position:center`:''}">${avatarURL?'':letter}</div>
       ${online?'<span class="fc-online"></span>':''}
@@ -457,7 +457,7 @@ function renderRecommendations(){
     const id=u.id||u.friend_id||'';
     const color=avc(name);
     const avatarURL=u.avatar_url||'';
-    return`<div class="rec-item" style="cursor:pointer" onclick="if(!event.target.closest('button'))location.href='/profile_user.html?id=${encodeURIComponent(id)}'">
+    return`<div class="rec-item" style="cursor:pointer" onclick="if(!event.target.closest('button'))location.href='/profile_user?id=${encodeURIComponent(id)}'">
       <div class="rec-av" style="background:${color}${avatarURL?`;background-image:url('${esc(avatarURL)}');background-size:cover;background-position:center`:''}">${avatarURL?'':ltr(name)}</div>
       <div class="rec-body">
         <div class="rec-name">${esc(name)}</div>
@@ -539,7 +539,7 @@ async function runAddSearch(q){
       else btn=`<button type="button" class="add-dd-btn" onclick="sendRequestByPublicID('${escAttr(u.public_id)}','${escAttr(u.full_name||'')}',this)">+ В друзья</button>`;
       return `<div class="add-dd-row">
         <div class="add-dd-av" style="background:${color}">${escHTML(ltr)}</div>
-        <div class="add-dd-info" onclick="location.href='/profile_user.html?id=${encodeURIComponent(u.public_id)}'">
+        <div class="add-dd-info" onclick="location.href='/profile_user?id=${encodeURIComponent(u.public_id)}'">
           <div class="add-dd-name">${escHTML(u.full_name||'')}</div>
           ${sub?`<div class="add-dd-sub">${escHTML(sub)}</div>`:''}
         </div>
@@ -649,7 +649,7 @@ async function addFriend(id,name,btn){
 
 function goChat(id,name){
   toast('Открываем чат с '+name+'…','ok');
-  setTimeout(()=>{location.href='/chat.html?user='+encodeURIComponent(id)},600);
+  setTimeout(()=>{location.href='/chat?user='+encodeURIComponent(id)},600);
 }
 
 /* ══ АВТОРИЗАЦИЯ ══ */

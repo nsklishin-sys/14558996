@@ -396,9 +396,9 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/events.html">Мероприятия</a>
+    <a class="bc-item" href="/events">Мероприятия</a>
     <span class="bc-sep" id="bcCategorySep">›</span>
-    <a class="bc-item" id="bcCategory" href="/events.html"></a>
+    <a class="bc-item" id="bcCategory" href="/events"></a>
     <span class="bc-sep">›</span>
     <span class="bc-item cur" id="bcCurrent"></span>
   </nav>
@@ -828,7 +828,7 @@ ${url}`;
     toast('Отправлено '+friendName+' ✓',true);
   }catch{toast('Ошибка сети');}
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -924,7 +924,7 @@ async function loadSimilar(){
       const fmt=ev.format==='online'?'Онлайн':(ev.city||'Офлайн');
       const fee=(ev.fee_cents||0)>0?'от '+new Intl.NumberFormat('ru-RU').format(Math.round(ev.fee_cents/100))+' ₽':'Бесплатно';
       const title=(ev.title||'').replace(/"/g,'&quot;');
-      return `<div class="sim-item" onclick="location.href='/event-detail.html?id=${encodeURIComponent(ev.public_id)}'">
+      return `<div class="sim-item" onclick="location.href='/event-detail?id=${encodeURIComponent(ev.public_id)}'">
         <div class="sim-date-box"><div class="sim-d">${day}</div><div class="sim-m">${mon}</div></div>
         <div class="sim-body"><div class="sim-title">${title}</div><div class="sim-meta">${fmt} · ${fee}</div></div>
       </div>`;
@@ -932,7 +932,7 @@ async function loadSimilar(){
     block.style.display='';
   }catch{}
 }
-function openSimilar(el){const pid=el?.dataset?.pid;if(pid)location.href='/event-detail.html?id='+encodeURIComponent(pid)}
+function openSimilar(el){const pid=el?.dataset?.pid;if(pid)location.href='/event-detail?id='+encodeURIComponent(pid)}
 async function messageOrganizer(){
   if(!state.currentEvent)return;
   const ev=state.currentEvent;
@@ -942,12 +942,12 @@ async function messageOrganizer(){
   const companyID = ev.author_company_id || ev.organizer_company_id;
   const companySlug = ev.author_company_slug || ev.organizer_company_slug;
   if(companyID && companySlug){
-    location.href='/company-detail.html?slug='+encodeURIComponent(companySlug);
+    location.href='/company-detail?slug='+encodeURIComponent(companySlug);
     return;
   }
   if(companyID && !companySlug){
     // Slug не пришёл — fallback: открыть каталог компаний
-    location.href='/companies.html';
+    location.href='/companies';
     return;
   }
   // Личный организатор — открываем direct-чат как раньше
@@ -959,9 +959,9 @@ async function messageOrganizer(){
   const d=await r.json().catch(()=>({}));
   if(!r.ok){toast(d.error||'Не удалось открыть чат');return;}
   const conv=(d.conversation||{}).public_id||(d.conversation||{}).id||'';
-  location.href='/chat.html?conv='+encodeURIComponent(conv);
+  location.href='/chat?conv='+encodeURIComponent(conv);
 }
-async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events.html';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events.html',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
+async function loadEvent(){const id=new URLSearchParams(location.search).get('id');if(!id){location.href='/events';return;}const r=await lastopFetch(`${API}/events/${encodeURIComponent(id)}`,{headers:{}});if(!r.ok){if(r.status===404){toast('Мероприятие не найдено');setTimeout(()=>location.href='/events',1500);return;}toast('Не удалось загрузить');return;}const d=await r.json();applyEvent(d.event);loadSimilar();}
 function applyEvent(ev){
   state.currentEvent=ev;
   if (state.currentEvent && state.currentEvent.id) {
@@ -1070,7 +1070,7 @@ function applyEvent(ev){
     const tags=Array.isArray(ev.tags)?ev.tags:[];
     if(tags.length){
       tagsEl.innerHTML=tags.map(function(t){
-        return '<a href="/events.html?tag='+encodeURIComponent(t)+'" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);color:var(--g);text-decoration:none;font-size:11px;font-weight:600">'+esc(t)+'</a>';
+        return '<a href="/events?tag='+encodeURIComponent(t)+'" style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--bdr);border-radius:99px;background:var(--gp);color:var(--g);text-decoration:none;font-size:11px;font-weight:600">'+esc(t)+'</a>';
       }).join('');
     }else{
       tagsEl.innerHTML='<span style="font-size:12px;color:var(--gmt);font-style:italic">Метки не добавлены</span>';
@@ -1263,9 +1263,9 @@ function applyEvent(ev){
 function openOrganizerProfile(){
   const ev=state.currentEvent;
   if(!ev)return;
-  if(ev.community_id)location.href=`/community-detail.html?id=${ev.community_id}`;
-  else if(ev.author_company_slug)location.href=`/company-detail.html?slug=${ev.author_company_slug}`;
-  else if(ev.organizer_public_id)location.href=`/profile_user.html?id=${ev.organizer_public_id}`;
+  if(ev.community_id)location.href=`/community-detail?id=${ev.community_id}`;
+  else if(ev.author_company_slug)location.href=`/company-detail?slug=${ev.author_company_slug}`;
+  else if(ev.organizer_public_id)location.href=`/profile_user?id=${ev.organizer_public_id}`;
 }
 let speakerCounter=0,programCounter=0,ticketCounter=0;
 const escAttr = window.lastopEsc;
@@ -1441,7 +1441,7 @@ async function deleteCurrentEvent(){
       const d=await r.json().catch(()=>({}));
       throw new Error(d.error||'не удалось удалить');
     }
-    location.href='/events.html';
+    location.href='/events';
   }catch(e){
     alert('Не удалось удалить мероприятие: '+e.message);
   }
@@ -1525,22 +1525,22 @@ function renderEventMessages(){
       ? '<div style="font-size:11px;color:var(--gmt);font-style:italic">[удалено]</div>'
       : '<div style="font-size:11px;color:var(--t);line-height:1.45;white-space:pre-wrap;word-wrap:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + _evDiscEsc(m.content || '') + '</div>';
     return '<div style="display:flex;gap:8px;padding:8px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp)' + (m.is_deleted ? ';opacity:.55' : '') + '">'
-      + '<a href="/profile_user.html?id=' + pid + '" style="width:24px;height:24px;border-radius:6px;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;text-decoration:none;' + bg + '">'
+      + '<a href="/profile_user?id=' + pid + '" style="width:24px;height:24px;border-radius:6px;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;text-decoration:none;' + bg + '">'
       + (m.author_avatar ? '' : ltr) + '</a>'
       + '<div style="flex:1;min-width:0">'
       + '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">'
-      + '<a href="/profile_user.html?id=' + pid + '" style="font-size:11px;font-weight:700;color:var(--t);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</a>'
+      + '<a href="/profile_user?id=' + pid + '" style="font-size:11px;font-weight:700;color:var(--t);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</a>'
       + '<span style="font-size:10px;color:var(--gmt);flex-shrink:0">' + _evDiscEsc(time) + '</span>'
       + '</div>' + content + '</div></div>';
   }).join('');
 }
 
-// sendEventMessage и deleteEventMessage перенесены в /event-discussion.html
+// sendEventMessage и deleteEventMessage перенесены в /event-discussion
 
 
 function _initEventDiscussion(eventPublicID){
   // Линки на полную страницу
-  const fullURL = '/event-discussion.html?id=' + encodeURIComponent(eventPublicID);
+  const fullURL = '/event-discussion?id=' + encodeURIComponent(eventPublicID);
   const lnk = document.getElementById('evDiscOpenLink');
   if (lnk) lnk.setAttribute('href', fullURL);
   const btn = document.getElementById('evDiscOpenBtn');

@@ -595,7 +595,7 @@ a.nc-author{text-decoration:none}
 <script>
 const API='/api';
 const esc = window.lastopEsc;
-function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
+function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user?handle=$1">@$1</a>');}
 const escAttr = window.lastopEsc;
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
@@ -617,7 +617,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* ── ДАННЫЕ ── */
 const BADGE={
@@ -671,7 +671,7 @@ function pickPostAuthor(p){
   if (p.community_id && p.community_name) {
     return {
       name: p.community_name,
-      href: '/community-detail.html?id=' + p.community_id,
+      href: '/community-detail?id=' + p.community_id,
       avatar: p.community_avatar || '',
       bgColor: p.community_color || (typeof avc==='function' ? avc(p.community_name) : '#5AB080'),
       subline: 'Сообщество',
@@ -682,7 +682,7 @@ function pickPostAuthor(p){
   if (p.author_company_id && p.author_company_name) {
     return {
       name: p.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(p.author_company_slug || ''),
       avatar: p.author_company_logo || '',
       bgColor: typeof avc==='function' ? avc(p.author_company_name) : '#5AB080',
       subline: 'Компания',
@@ -692,7 +692,7 @@ function pickPostAuthor(p){
   }
   return {
     name: p.author || '',
-    href: p.author_public_id ? '/profile_user.html?id=' + p.author_public_id : '#',
+    href: p.author_public_id ? '/profile_user?id=' + p.author_public_id : '#',
     avatar: p.author_avatar || '',
     bgColor: typeof avc==='function' ? avc(p.author || '') : '#5AB080',
     subline: p.author_role || '',
@@ -751,7 +751,7 @@ function renderCard(n,idx){
         : '';
       const origCover = orig.cover_url ? `<div class="nc-orig-cover" style="background-image:url('${esc(orig.cover_url)}')"></div>`
         : `<div class="nc-orig-cover"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
-      const origLink = orig.public_id ? `event.stopPropagation();window.location.href='/news-detail.html?id=${esc(orig.public_id)}'` : 'event.stopPropagation()';
+      const origLink = orig.public_id ? `event.stopPropagation();window.location.href='/news-detail?id=${esc(orig.public_id)}'` : 'event.stopPropagation()';
       origCardHtml = `<div class="nc-orig" onclick="${origLink}">
         ${origCover}
         <div class="nc-orig-body">
@@ -809,7 +809,7 @@ function openNewsDetail(publicID,event){
     showToast('Публикация пока недоступна');
     return;
   }
-  location.href='/news-detail.html?id='+encodeURIComponent(publicID);
+  location.href='/news-detail?id='+encodeURIComponent(publicID);
 }
 
 
@@ -885,7 +885,7 @@ async function toggleLike(postKey,btn){
 function openComments(postKey){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
   if(!n||!n.public_id){showToast('Публикация недоступна');return;}
-  location.href='/news-detail.html?id='+encodeURIComponent(n.public_id)+'#comments';
+  location.href='/news-detail?id='+encodeURIComponent(n.public_id)+'#comments';
 }
 async function toggleSave(postKey,btn){
   const n=allNews.find(x=>(x.public_id||String(x.id||''))===postKey);
@@ -916,7 +916,7 @@ function sharePost(postKey, btnEl){
     return;
   }
   if (!window.lastopRepostPicker) {
-    if (window.lastopCopy) lastopCopy(`${location.origin}/news-detail.html?id=${encodeURIComponent(n.public_id)}`,'Ссылка скопирована','Не удалось скопировать');
+    if (window.lastopCopy) lastopCopy(`${location.origin}/news-detail?id=${encodeURIComponent(n.public_id)}`,'Ссылка скопирована','Не удалось скопировать');
     return;
   }
   window.lastopRepostPicker.open({
@@ -1156,7 +1156,7 @@ async function loadHeroNews(){
     document.getElementById('heroTime').textContent = ago(post.created_at);
 
     heroCard.onclick = () => {
-      location.href = '/news-detail.html?id=' + encodeURIComponent(post.public_id);
+      location.href = '/news-detail?id=' + encodeURIComponent(post.public_id);
     };
     heroCard.style.cursor = 'pointer';
     heroCard.style.display = 'block';
@@ -1202,7 +1202,7 @@ function renderTopList(posts){
     const cat = (n.tags && n.tags.length ? '#' + esc(n.tags[0]) : 'Публикация');
     const views = num(n.views_count || 0);
     const pid = n.public_id || '';
-    return `<div class="top-item" onclick="location.href='/news-detail.html?id=${encodeURIComponent(pid)}'">
+    return `<div class="top-item" onclick="location.href='/news-detail?id=${encodeURIComponent(pid)}'">
       <div class="top-num ${medals[i] || ''}">${i + 1}</div>
       <div class="top-body">
         <div class="top-title">${title}</div>
@@ -1378,7 +1378,7 @@ async function loadTrends(){
       const tag = _dashEsc(t.tag);
       const tagDisplay = tag.startsWith('#') ? tag : '#' + tag;
       const count = _dashFmt(t.count) + ' ' + (t.count === 1 ? 'публикация' : t.count < 5 ? 'публикации' : 'публикаций');
-      return '<div class="trend-item" onclick="location.href=\'/dashboard.html?tag=' + encodeURIComponent(t.tag) + '\'">'
+      return '<div class="trend-item" onclick="location.href=\'/dashboard?tag=' + encodeURIComponent(t.tag) + '\'">'
         + '<span class="trend-num">' + (i+1) + '</span>'
         + '<div class="trend-body"><div class="trend-tag">' + tagDisplay + '</div><div class="trend-count">' + count + '</div></div>'
         + '</div>';
@@ -1412,7 +1412,7 @@ async function loadTopSources(){
         : 'background:' + _dashColor(a.name);
       return '<div class="source-item">'
         + '<div class="src-av" style="' + bg + '">' + (a.avatar ? '' : ltr) + '</div>'
-        + '<div class="src-body"><div class="src-name" onclick="location.href=\'/profile_user.html?id=' + pid + '\'" style="cursor:pointer">' + name + '</div><div class="src-count">' + count + '</div></div>'
+        + '<div class="src-body"><div class="src-name" onclick="location.href=\'/profile_user?id=' + pid + '\'" style="cursor:pointer">' + name + '</div><div class="src-count">' + count + '</div></div>'
         + '</div>';
     }).join('');
   } catch {

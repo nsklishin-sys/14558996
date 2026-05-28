@@ -221,7 +221,7 @@ function toast(msg){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -238,7 +238,7 @@ function authHeaders(){ return {}; }
 
 // PROFILE
 async function loadProfile(){
-  if (!tk()) { location.href = '/login.html'; return; }
+  if (!tk()) { location.href = '/login'; return; }
   try {
     const r = await lastopFetch(API + '/me', { headers: authHeaders() });
     if (!r.ok) return;
@@ -378,7 +378,7 @@ function renderCard(type, i){
 }
 
 function renderEventCard(e){
-  const url = '/event-detail.html?id=' + encodeURIComponent(e.public_id || '');
+  const url = '/event-detail?id=' + encodeURIComponent(e.public_id || '');
   const title = e.title || 'Мероприятие';
   const stripe = stableColor(e.type || e.title || '?');
   const dateStr = e.starts_at ? new Date(e.starts_at).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}) : '';
@@ -396,7 +396,7 @@ function renderPostCard(p){
   let author = p.author_name || p.author || 'Без имени';
   if (p.author_company_id && p.author_company_name) author = p.author_company_name;
   else if (p.author_community_id && p.author_community_name) author = p.author_community_name;
-  const url = p.public_id ? '/news-detail.html?id=' + encodeURIComponent(p.public_id) : '#';
+  const url = p.public_id ? '/news-detail?id=' + encodeURIComponent(p.public_id) : '#';
   const text = p.content || p.text || p.title || '';
   const preview = text.length > 200 ? text.slice(0, 200) + '…' : text;
   return '<a class="gc" href="' + escAttr(url) + '">' +
@@ -409,7 +409,7 @@ function renderPostCard(p){
 }
 
 function renderProjectCard(p){
-  const url = '/project-detail.html?id=' + encodeURIComponent(p.public_id);
+  const url = '/project-detail?id=' + encodeURIComponent(p.public_id);
   const stripe = p.cover_color || stableColor(p.category || p.title);
   const status = p.status || 'active';
   const statusLabel = {active:'Активный', planning:'Планируется', completed:'Завершён', paused:'На паузе'}[status] || status;
@@ -427,7 +427,7 @@ function renderProjectCard(p){
 }
 
 function renderJobCard(j){
-  const url = '/job-detail.html?id=' + encodeURIComponent(j.public_id);
+  const url = '/job-detail?id=' + encodeURIComponent(j.public_id);
   const cat = j.category_label || j.category || '';
   const catColor = j.category_color || stableColor(j.category || '?');
   const sal = fmtSalary(j.salary_from);
@@ -449,7 +449,7 @@ function renderJobCard(j){
 }
 
 function renderResumeCard(r){
-  const url = '/resume-detail.html?id=' + encodeURIComponent(r.public_id);
+  const url = '/resume-detail?id=' + encodeURIComponent(r.public_id);
   const cat = r.category_label || r.category || '';
   const catColor = r.category_color || stableColor(r.category || '?');
   const sal = fmtSalary(r.salary_from);
@@ -472,7 +472,7 @@ function renderResumeCard(r){
 
 function renderCatalogCard(c){
   const isProduct = c.type === 'product';
-  const url = (isProduct ? '/product-detail.html?id=' : '/service-detail.html?id=') + encodeURIComponent(c.public_id);
+  const url = (isProduct ? '/product-detail?id=' : '/service-detail?id=') + encodeURIComponent(c.public_id);
   const groupLabel = c.category_group || '';
   const catColor = stableColor(c.category || '?');
   const cover = (isProduct && c.cover_image) ? c.cover_image : '';
@@ -500,12 +500,12 @@ function renderCatalogCard(c){
 function renderEmpty(tabKey){
   const map = {
     all:      { text: 'Ты пока ничего не сохранил.', link: 'Перейти на главную', href: '/' },
-    posts:    { text: 'Сохранённых новостей пока нет.',     link: 'Перейти к новостям →',      href: '/dashboard.html' },
-    projects: { text: 'Сохранённых проектов пока нет.',     link: 'Перейти к проектам →',      href: '/projects.html' },
-    jobs:     { text: 'Сохранённых вакансий пока нет.',     link: 'Перейти к вакансиям →',     href: '/jobs.html' },
-    resumes:  { text: 'Сохранённых резюме пока нет.',       link: 'Перейти к резюме →',         href: '/jobs.html' },
-    events:   { text: 'Сохранённых мероприятий пока нет.',  link: 'Перейти к мероприятиям →',  href: '/events.html' },
-    catalog:  { text: 'Сохранённых товаров и услуг пока нет.', link: 'Перейти в каталог →', href: '/catalog.html' },
+    posts:    { text: 'Сохранённых новостей пока нет.',     link: 'Перейти к новостям →',      href: '/dashboard' },
+    projects: { text: 'Сохранённых проектов пока нет.',     link: 'Перейти к проектам →',      href: '/projects' },
+    jobs:     { text: 'Сохранённых вакансий пока нет.',     link: 'Перейти к вакансиям →',     href: '/jobs' },
+    resumes:  { text: 'Сохранённых резюме пока нет.',       link: 'Перейти к резюме →',         href: '/jobs' },
+    events:   { text: 'Сохранённых мероприятий пока нет.',  link: 'Перейти к мероприятиям →',  href: '/events' },
+    catalog:  { text: 'Сохранённых товаров и услуг пока нет.', link: 'Перейти в каталог →', href: '/catalog' },
   };
   const m = map[tabKey] || map.all;
   return '<div class="feed-section"><div class="empty">' + esc(m.text) + ' <a href="' + escAttr(m.href) + '">' + esc(m.link) + '</a></div></div>';

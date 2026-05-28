@@ -418,10 +418,10 @@ function dateTimeLocalToISO(v){if(!v)return '';const d=new Date(v);if(isNaN(d))r
 
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('profileDD').classList.toggle('open');document.getElementById('topbarProfile').classList.toggle('open');}
 document.addEventListener('click',()=>{document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');});
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 async function loadProfile(){
-  if(!tk()){location.href='/login.html';return;}
+  if(!tk()){location.href='/login';return;}
   try{
     const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
@@ -481,7 +481,7 @@ function renderAccessDenied(){
     <div class="ee-card ee-access-denied">
       <h2>Доступ запрещён</h2>
       <p>Создание и редактирование выставок доступно только администраторам платформы.</p>
-      <p style="margin-top:14px"><a href="/exhibitions.html" class="ee-btn ee-btn-sec">← К списку выставок</a></p>
+      <p style="margin-top:14px"><a href="/exhibitions" class="ee-btn ee-btn-sec">← К списку выставок</a></p>
     </div>`;
 }
 
@@ -520,7 +520,7 @@ function renderForm(){
           <div class="ee-page-sub">${isEdit?escHtml(ex.title||'Без названия'):'Заполните основные данные. Остальные разделы откроются после сохранения.'}</div>
         </div>
         <div style="display:flex;gap:8px">
-          <a href="${isEdit?'/exhibition-detail.html?id='+encodeURIComponent(state.publicID):'/exhibitions.html'}" class="ee-btn ee-btn-sec">Отмена</a>
+          <a href="${isEdit?'/exhibition-detail?id='+encodeURIComponent(state.publicID):'/exhibitions'}" class="ee-btn ee-btn-sec">Отмена</a>
           <button type="button" class="ee-btn ee-btn-primary" id="btnSaveBasic" onclick="saveBasic()">${isEdit?'Сохранить изменения':'Создать выставку'}</button>
         </div>
       </div>
@@ -688,7 +688,7 @@ function renderForm(){
     <div class="ee-card">
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button type="button" class="ee-btn ee-btn-danger" onclick="deleteExhibition()">Удалить выставку</button>
-        <a href="/exhibition-detail.html?id=${encodeURIComponent(state.publicID)}" class="ee-btn ee-btn-sec">Открыть страницу выставки →</a>
+        <a href="/exhibition-detail?id=${encodeURIComponent(state.publicID)}" class="ee-btn ee-btn-sec">Открыть страницу выставки →</a>
       </div>
     </div>
     `:`
@@ -740,7 +740,7 @@ async function saveBasic(){
     if(!r.ok){const txt=await r.text().catch(()=>'');console.error('save failed',r.status,txt);eeToast('Ошибка: '+(txt||r.status),'err');btn.disabled=false;btn.textContent=oldText;return;}
     const data=await r.json();const ex=data.exhibition||data;
     eeToast(state.mode==='edit'?'Сохранено ✓':'Выставка создана ✓','ok');
-    if(state.mode==='create'&&ex.public_id){location.href='/exhibition-edit.html?id='+encodeURIComponent(ex.public_id);}
+    if(state.mode==='create'&&ex.public_id){location.href='/exhibition-edit?id='+encodeURIComponent(ex.public_id);}
     else{
       state.exhibition=ex;btn.disabled=false;btn.textContent=oldText;
       // обновляем values input'ов чтобы отразить сохранённые данные
@@ -1490,7 +1490,7 @@ async function deleteExhibition(){
   try{
     const r=await lastopFetch(API+'/exhibitions/'+encodeURIComponent(state.publicID),{method:'DELETE'});
     if(!r.ok){eeToast('Ошибка удаления','err');return;}
-    eeToast('Выставка удалена','ok');setTimeout(()=>{location.href='/exhibitions.html';},800);
+    eeToast('Выставка удалена','ok');setTimeout(()=>{location.href='/exhibitions';},800);
   }catch{eeToast('Ошибка сети','err');}
 }
 

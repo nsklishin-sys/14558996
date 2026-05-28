@@ -492,7 +492,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* ── ДАННЫЕ ── */
 const ICON_SETS={
@@ -726,7 +726,7 @@ function setView(view,btn){
   btn.classList.add('active');
   renderCurrentView();
 }
-function openProject(id){location.href='/project-detail.html?id='+encodeURIComponent(id);}
+function openProject(id){location.href='/project-detail?id='+encodeURIComponent(id);}
 function joinProject(btn){
   btn.textContent='Участвую ✓';btn.style.color='var(--gmt)';btn.disabled=true;
   showToast('Вы присоединились к проекту ✓','success');
@@ -988,7 +988,7 @@ async function loadMyProj(){
     list.querySelectorAll('.my-proj-item').forEach(function(item){
       item.addEventListener('click', function(){
         const pid = item.getAttribute('data-pid');
-        if (pid) location.href = '/project-detail.html?id=' + encodeURIComponent(pid);
+        if (pid) location.href = '/project-detail?id=' + encodeURIComponent(pid);
       });
     });
     const moreLink = list.querySelector('a[data-action="all-my"]');
@@ -1060,7 +1060,7 @@ async function loadProjRec(){
     list.querySelectorAll('.rec-proj').forEach(function(item){
       item.addEventListener('click', function(){
         const pid = item.getAttribute('data-pid');
-        if (pid) location.href = '/project-detail.html?id=' + encodeURIComponent(pid);
+        if (pid) location.href = '/project-detail?id=' + encodeURIComponent(pid);
       });
     });
   } catch {

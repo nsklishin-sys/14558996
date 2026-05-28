@@ -347,8 +347,8 @@ a.sb-org-card:hover{border-color:var(--gb);text-decoration:none!important}
 
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a><span class="bc-sep">›</span>
-    <a class="bc-item" href="/exhibitions.html">Выставки</a><span class="bc-sep">›</span>
-    <a class="bc-item" id="bcCategory" href="/exhibitions.html">Все категории</a><span class="bc-sep">›</span>
+    <a class="bc-item" href="/exhibitions">Выставки</a><span class="bc-sep">›</span>
+    <a class="bc-item" id="bcCategory" href="/exhibitions">Все категории</a><span class="bc-sep">›</span>
     <span class="bc-item cur" id="bcTitle"></span>
   </nav>
 
@@ -617,7 +617,7 @@ const esc = window.lastopEsc;
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -777,7 +777,7 @@ function renderHead(ex){
   if(ex.category){
     const bc=document.getElementById('bcCategory');
     bc.textContent=ex.category;
-    bc.href='/exhibitions.html?category='+encodeURIComponent(ex.category);
+    bc.href='/exhibitions?category='+encodeURIComponent(ex.category);
   }
 
   // Cover
@@ -818,7 +818,7 @@ function renderHead(ex){
   meta.push(`<span class="ex-meta-sep"></span><span class="ex-meta-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${days} ${pluralRu(days,['день','дня','дней'])}</span>`);
   if(ex.organizer_company_name||ex.organizer_label){
     const orgName=ex.organizer_company_name||ex.organizer_label;
-    const orgLink=ex.organizer_company_slug?`<a href="/company-detail.html?slug=${encodeURIComponent(ex.organizer_company_slug)}" style="color:inherit;text-decoration:none">${esc(orgName)}</a>`:esc(orgName);
+    const orgLink=ex.organizer_company_slug?`<a href="/company-detail?slug=${encodeURIComponent(ex.organizer_company_slug)}" style="color:inherit;text-decoration:none">${esc(orgName)}</a>`:esc(orgName);
     meta.push(`<span class="ex-meta-sep"></span><span class="ex-meta-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7"/><rect x="5" y="9" width="14" height="12" rx="1"/></svg>${orgLink}</span>`);
   }
   meta.push(`<span class="ex-meta-sep"></span><span class="ex-meta-item"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${fmtNum(ex.views_count)} просмотров</span>`);
@@ -1038,7 +1038,7 @@ function renderExhibitors(ex){
   grid.innerHTML=exhs.map(e=>{
     const photo=e.company_logo?`background-image:url(${escD(e.company_logo)})`:'';
     const initial=e.company_logo?'':((e.company_name||'?')[0]||'?').toUpperCase();
-    const href=e.company_slug?'/company-detail.html?slug='+encodeURIComponent(e.company_slug):'#';
+    const href=e.company_slug?'/company-detail?slug='+encodeURIComponent(e.company_slug):'#';
     return `<a class="exh-card" href="${href}">
       <div class="exh-logo" style="${photo}">${initial}</div>
       <div class="exh-info">
@@ -1084,7 +1084,7 @@ function renderTags(ex){
   const tags=ex.tags||[];
   if(!tags.length){sec.style.display='none';return;}
   sec.style.display='';
-  list.innerHTML=tags.map(t=>`<a class="ex-tag" href="/exhibitions.html?tag=${encodeURIComponent(t)}"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${escD(t)}</a>`).join('');
+  list.innerHTML=tags.map(t=>`<a class="ex-tag" href="/exhibitions?tag=${encodeURIComponent(t)}"><svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>${escD(t)}</a>`).join('');
 }
 
 
@@ -1121,7 +1121,7 @@ function renderSidebar(ex){
     const initial=((orgName||'?')[0]||'?').toUpperCase();
     const subText=ex.organizer_company_slug?'Открыть профиль':'Организатор';
     const isLink=!!ex.organizer_company_slug;
-    const href=isLink?'/company-detail.html?slug='+encodeURIComponent(ex.organizer_company_slug):'javascript:void(0)';
+    const href=isLink?'/company-detail?slug='+encodeURIComponent(ex.organizer_company_slug):'javascript:void(0)';
     const tag=isLink?'a':'div';
     // строим карточку без <a><div></div></a> вложенности — только flex с inline-стилями
     orgEl.innerHTML=`
@@ -1149,7 +1149,7 @@ async function renderAdminControls(){
     const card=document.getElementById('sidebarAdminCard');
     const link=document.getElementById('sidebarEditLink');
     if(card&&link){
-      link.href='/exhibition-edit.html?id='+encodeURIComponent(state.publicID);
+      link.href='/exhibition-edit?id='+encodeURIComponent(state.publicID);
       card.style.display='';
     }
   }catch{}
@@ -1157,11 +1157,11 @@ async function renderAdminControls(){
 
 window.writeOrganizer=function(companyID,companySlug){
   if(companyID&&companySlug){
-    location.href='/company-detail.html?slug='+encodeURIComponent(companySlug);
+    location.href='/company-detail?slug='+encodeURIComponent(companySlug);
     return;
   }
   if(companyID&&!companySlug){
-    location.href='/companies.html';
+    location.href='/companies';
     return;
   }
 };
@@ -1182,7 +1182,7 @@ async function loadSimilar(ex){
       const logoBG=e.cover_url?`background-image:url(${escD(e.cover_url)});background-size:cover;background-position:center;color:transparent`:'';
       const initial=((e.title||'?')[0]||'?').toUpperCase();
       const cityDates=[e.city,fmtDateRange(e.starts_at,e.ends_at)].filter(Boolean).join(' · ');
-      return `<a href="/exhibition-detail.html?id=${encodeURIComponent(e.public_id)}" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--rm);text-decoration:none;color:var(--t);transition:background .15s;cursor:pointer;margin-bottom:4px" onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
+      return `<a href="/exhibition-detail?id=${encodeURIComponent(e.public_id)}" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--rm);text-decoration:none;color:var(--t);transition:background .15s;cursor:pointer;margin-bottom:4px" onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
         <span style="width:34px;height:34px;border-radius:8px;background:var(--gl);display:grid;place-items:center;font-size:13px;flex-shrink:0;color:var(--g);font-weight:800;${logoBG}">${initial}</span>
         <span style="display:flex;flex-direction:column;min-width:0;flex:1">
           <span style="font-size:12px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escD(e.title||'')}</span>
@@ -1416,17 +1416,17 @@ function _renderExhDiscPreview(){
       ? '<div style="font-size:11px;color:var(--gmt);font-style:italic">[удалено]</div>'
       : '<div style="font-size:11px;color:var(--t);line-height:1.45;white-space:pre-wrap;word-wrap:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + _exhDiscEsc(m.content || '') + '</div>';
     return '<div style="display:flex;gap:8px;padding:8px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp)' + (m.is_deleted ? ';opacity:.55' : '') + '">'
-      + '<a href="/profile_user.html?id=' + pid + '" style="width:24px;height:24px;border-radius:6px;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;text-decoration:none;' + bg + '">'
+      + '<a href="/profile_user?id=' + pid + '" style="width:24px;height:24px;border-radius:6px;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;text-decoration:none;' + bg + '">'
       + (m.author_avatar ? '' : ltr) + '</a>'
       + '<div style="flex:1;min-width:0">'
       + '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px">'
-      + '<a href="/profile_user.html?id=' + pid + '" style="font-size:11px;font-weight:700;color:var(--t);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</a>'
+      + '<a href="/profile_user?id=' + pid + '" style="font-size:11px;font-weight:700;color:var(--t);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</a>'
       + '<span style="font-size:10px;color:var(--gmt);flex-shrink:0">' + _exhDiscEsc(time) + '</span>'
       + '</div>' + content + '</div></div>';
   }).join('');
 }
 function _initExhibitionDiscussion(exhPublicID){
-  const fullURL = '/exhibition-discussion.html?id=' + encodeURIComponent(exhPublicID);
+  const fullURL = '/exhibition-discussion?id=' + encodeURIComponent(exhPublicID);
   const lnk = document.getElementById('exhDiscOpenLink');
   if (lnk) lnk.setAttribute('href', fullURL);
   const btn = document.getElementById('exhDiscOpenBtn');

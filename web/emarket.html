@@ -608,7 +608,7 @@ async function loadShops(grid){
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 
-function openListing(id){location.href='/emarket-listing.html?id='+id;}
+function openListing(id){location.href='/emarket-listing?id='+id;}
 function openShop(slug){if(!slug){showToast('Магазин недоступен');return;}location.href='/shop/'+slug;}
 
 function buildShopCard(s, regMap, withFeatured){
@@ -659,9 +659,9 @@ async function renderRight(){
         '<svg class="rs-shopping-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>'+
       '</button>'+
       '<div class="rs-shopping-body">'+
-        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Корзина</span><a href="/emarket-cart.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsCartBody"><div class="rs-shopping-empty">Корзина пуста</div></div></div>'+
-        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Активные заказы</span><a href="/emarket-orders.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsOrdersBody"><div class="rs-shopping-empty">Нет активных заказов</div></div></div>'+
-        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Сохранённое</span><a href="/emarket-saved.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsSavedBody"><div class="rs-shopping-empty">Список пуст</div></div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Корзина</span><a href="/emarket-cart" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsCartBody"><div class="rs-shopping-empty">Корзина пуста</div></div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Активные заказы</span><a href="/emarket-orders" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsOrdersBody"><div class="rs-shopping-empty">Нет активных заказов</div></div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Сохранённое</span><a href="/emarket-saved" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-sec-body" id="rsSavedBody"><div class="rs-shopping-empty">Список пуст</div></div></div>'+
       '</div>'+
     '</div>'+
     '<div class="rs-card"><div class="rs-title">Топ-магазины</div><div id="rsTop"><div class="rs-empty">Загрузка…</div></div></div>'+
@@ -720,7 +720,7 @@ async function loadMyShop(){
     var rs=await lastopFetch(API+'/emarket/shops/my');var ds=await rs.json();
     var shops=(ds&&ds.shops)||[];
     if(shops.length){
-      box.innerHTML=ico+'<div class="rs-shop-t">'+esc(shops[0].name)+'</div><div class="rs-shop-d">Ваш магазин активен.</div><a class="rs-shop-btn" href="/emarket-cabinet.html?id='+shops[0].id+'">Управление магазином</a>';
+      box.innerHTML=ico+'<div class="rs-shop-t">'+esc(shops[0].name)+'</div><div class="rs-shop-d">Ваш магазин активен.</div><a class="rs-shop-btn" href="/emarket-cabinet?id='+shops[0].id+'">Управление магазином</a>';
     }else if(da&&da.has_access){
       box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Доступ открыт. Создайте витрину.</div><button class="rs-shop-btn" onclick="showToast(\'Создание магазина — в СЛОЕ 5\')">Открыть магазин</button>';
     }else{

@@ -141,7 +141,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button type="button" class="mode-btn" id="mMy" onclick="setMode('my')">Мои</button>
       <button type="button" class="mode-btn" id="mVer" onclick="setMode('verified')">Верифицированные ✓</button>
     </div>
-    <a href="/my-company.html?create=1" class="btn-create">
+    <a href="/my-company?create=1" class="btn-create">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Зарегистрировать
     </a>
@@ -207,7 +207,7 @@ function stableColor(s){
   for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;
   return ['#1E8A4C','#0891B2','#7C3AED','#DB2777','#EA580C','#65A30D','#475569','#2563EB','#9333EA','#0EA5E9','#F59E0B'][Math.abs(h)%11];
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('profileDD').classList.toggle('open');document.getElementById('topbarProfile').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');if(dd&&tp&&!tp.contains(e.target)&&!dd.contains(e.target)){dd.classList.remove('open');tp.classList.remove('open');}});
 function authHeaders(){return {};}
@@ -321,7 +321,7 @@ function renderFeed(){
   document.getElementById('counter').textContent=list.length+' '+pluralRu(list.length,['компания','компании','компаний']);
   const feed=document.getElementById('feed');
   if(!list.length){
-    feed.innerHTML='<div class="placeholder">'+(mode==='my'?'Вы не состоите ни в одной компании. <a href="/my-company.html?create=1" style="color:var(--g);font-weight:700;font-style:normal">Создать свою →</a>':'Компаний не найдено.')+'</div>';
+    feed.innerHTML='<div class="placeholder">'+(mode==='my'?'Вы не состоите ни в одной компании. <a href="/my-company?create=1" style="color:var(--g);font-weight:700;font-style:normal">Создать свою →</a>':'Компаний не найдено.')+'</div>';
     return;
   }
   feed.innerHTML='<div class="grid">'+list.map(renderCard).join('')+'</div>';
@@ -338,7 +338,7 @@ function renderCard(c){
   if(c.city)meta.push(esc(c.city));
   const coverOk=c.cover_url&&(c.cover_url.startsWith('http://')||c.cover_url.startsWith('https://')||c.cover_url.startsWith('/uploads/')||c.cover_url.startsWith('data:image/'));
   const bannerBg=coverOk?'url(\''+escAttr(c.cover_url)+'\') center/cover no-repeat':'linear-gradient(135deg,'+esc(accent)+','+esc(accent)+')';
-  return '<a class="co-card" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
+  return '<a class="co-card" href="/company-detail?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
     '<div class="co-banner" style="background:'+bannerBg+'">'+
       '<div class="co-logo" style="background:'+esc(accent)+';color:#fff">'+logoHtml+'</div>'+
     '</div>'+
@@ -366,12 +366,12 @@ function renderStats(){
 function renderMyList(){
   const wrap=document.getElementById('myList');
   if(!myCompanies.length){
-    wrap.innerHTML='<div style="font-size:11px;color:var(--gmt);font-style:italic">Вы не состоите ни в одной компании.<br><a href="/my-company.html?create=1" style="color:var(--g);font-weight:700;font-style:normal">Создать свою →</a></div>';
+    wrap.innerHTML='<div style="font-size:11px;color:var(--gmt);font-style:italic">Вы не состоите ни в одной компании.<br><a href="/my-company?create=1" style="color:var(--g);font-weight:700;font-style:normal">Создать свою →</a></div>';
     return;
   }
   wrap.innerHTML=myCompanies.slice(0,5).map(c=>{
     const av=c.logo_image?'<img src="'+escAttr(c.logo_image)+'" alt="">':esc(initials(c.name));
-    return '<a class="recom-row" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
+    return '<a class="recom-row" href="/company-detail?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
       '<div class="recom-av" style="background:'+esc(c.accent_color||'#1E8A4C')+'">'+av+'</div>'+
       '<div class="recom-info">'+
         '<div class="recom-name">'+esc(c.name)+'</div>'+
@@ -394,7 +394,7 @@ function renderRecom(){
   }
   wrap.innerHTML=list.map(c=>{
     const av=c.logo_image?'<img src="'+escAttr(c.logo_image)+'" alt="">':esc(initials(c.name));
-    return '<a class="recom-row" href="/company-detail.html?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
+    return '<a class="recom-row" href="/company-detail?id='+encodeURIComponent(c.slug||c.public_id)+'">'+
       '<div class="recom-av" style="background:'+esc(c.accent_color||'#1E8A4C')+'">'+av+'</div>'+
       '<div class="recom-info">'+
         '<div class="recom-name">'+esc(c.name)+'</div>'+

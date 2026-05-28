@@ -543,7 +543,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/projects.html">Проекты</a>
+    <a class="bc-item" href="/projects">Проекты</a>
     <span class="bc-sep">›</span>
     <span class="bc-item cur" id="bcProjectTitle"></span>
   </nav>
@@ -1048,7 +1048,7 @@ function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 function toast(msg,ok){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
 function showToast(msg,type){toast(msg,type==='success')}
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* DROPDOWN */
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
@@ -1556,7 +1556,7 @@ function showProjectError(msg){
   const title = document.getElementById('projTitle');
   if (title) title.textContent = msg;
   const desc = document.getElementById('projDesc');
-  if (desc) desc.innerHTML = `<p style="color:var(--gmt)">${esc(msg)}. <a href="/projects.html" style="color:var(--g)">Вернуться к списку проектов</a></p>`;
+  if (desc) desc.innerHTML = `<p style="color:var(--gmt)">${esc(msg)}. <a href="/projects" style="color:var(--g)">Вернуться к списку проектов</a></p>`;
 }
 
 function renderProject(){
@@ -1725,7 +1725,7 @@ function renderProjectMembers(){
 }
 
 function goToUserProfile(publicID){
-  if (publicID) location.href = '/profile_user.html?id=' + encodeURIComponent(publicID);
+  if (publicID) location.href = '/profile_user?id=' + encodeURIComponent(publicID);
 }
 
 function openProjectAuthor(){
@@ -1744,7 +1744,7 @@ async function confirmDeleteProject(){
     });
     if (!r.ok) throw new Error('Ошибка ' + r.status);
     showToast('Проект удалён', 'success');
-    setTimeout(() => { location.href = '/projects.html'; }, 800);
+    setTimeout(() => { location.href = '/projects'; }, 800);
   } catch (err) {
     showToast('Не удалось удалить проект');
   }
@@ -2294,10 +2294,10 @@ async function openResponsesModal(needID, needTitle){
       const color = stableProjColor(rsp.responder_name || '');
       const date = formatRuDate(rsp.created_at);
       const chatBtn = rsp.chat_conversation_id
-        ? `<a href="/chat.html" class="resp-chat-link"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Открыть чат</a>`
+        ? `<a href="/chat" class="resp-chat-link"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Открыть чат</a>`
         : '';
       const profileLink = rsp.responder_public_id
-        ? `onclick="location.href='/profile_user.html?id=${esc(rsp.responder_public_id)}'" style="cursor:pointer"`
+        ? `onclick="location.href='/profile_user?id=${esc(rsp.responder_public_id)}'" style="cursor:pointer"`
         : '';
       return `<div class="resp-item">
         <div class="resp-head">

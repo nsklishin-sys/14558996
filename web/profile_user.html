@@ -788,7 +788,7 @@ function applyViewedUserProfile(u){
   // Если это сам пользователь — мгновенный редирект на личный профиль
   // (на profile_user.html нет кнопки «Редактировать» и блока обложки)
   if(u && u.is_self){
-    location.replace('/profile.html');
+    location.replace('/profile');
     return;
   }
   const fullName=(u.full_name||`${u.first_name||''} ${u.last_name||''}`.trim()||'Пользователь').trim();
@@ -944,7 +944,7 @@ async function loadViewedUser(){
     const me=getCurrentUser();
     const myPid=String(me?.public_id||'').trim();
     if(uid && myPid && String(uid).trim()===myPid){
-      location.replace('/profile.html');
+      location.replace('/profile');
       return;
     }
   }catch{}
@@ -1017,7 +1017,7 @@ function renderUserNotFound(){
 function toggleProfileDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open');}
 document.addEventListener('click',e=>{const dd=document.getElementById('profileDD');const btn=document.getElementById('topbarProfile');if(dd&&!dd.contains(e.target)&&!btn.contains(e.target)){dd.classList.remove('open');btn.classList.remove('open');}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function switchTab(tab, btn){
   if(tab==='communities')renderViewedCommunities();
   if(tab==='events')renderViewedEvents();
@@ -1033,7 +1033,7 @@ function switchTab(tab, btn){
   if(tab==='experience'){void loadViewedExperience();}
   document.querySelector('.prof-tabs-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function goToChat(){const uid=getViewedUid();location.href='/chat.html'+(uid?`?uid=${encodeURIComponent(uid)}`:'');}
+function goToChat(){const uid=getViewedUid();location.href='/chat'+(uid?`?uid=${encodeURIComponent(uid)}`:'');}
 async function loadViewedPublications(){
   const uid=getViewedUid(); if(!uid)return;
   const list=document.getElementById('publicationsList');
@@ -1046,7 +1046,7 @@ async function loadViewedPublications(){
     if(!posts.length){list.innerHTML='<div class="section"><p class="sec-p">Публикаций нет</p></div>';return;}
     const fullName=document.getElementById('profileFullName').textContent||'Пользователь';
     const av=avatarLetters(fullName);
-    list.innerHTML=posts.map(p=>`<div class="post-card" onclick="location.href='${(p.type==='news'?'/news-detail.html':'/dashboard.html')}?id=${encodeURIComponent(p.public_id)}'"><div class="pc-head"><div class="pc-av">${esc(av)}</div><div><div class="pc-name">${esc(fullName)}</div><div class="pc-meta">${esc(p.author_role||'Участник LASTOP')} · ${esc(ago(p.created_at))}</div></div><span class="pc-tag t-news">${esc(p.type||'news')}</span></div><div class="pc-text">${esc(p.text||p.content||'')}</div><div class="pc-foot"><div class="pc-act"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||0}</div><div class="pc-act"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||0}</div><span class="pc-time">${esc(ago(p.created_at))}</span></div></div>`).join('');
+    list.innerHTML=posts.map(p=>`<div class="post-card" onclick="location.href='${(p.type==='news'?'/news-detail':'/dashboard')}?id=${encodeURIComponent(p.public_id)}'"><div class="pc-head"><div class="pc-av">${esc(av)}</div><div><div class="pc-name">${esc(fullName)}</div><div class="pc-meta">${esc(p.author_role||'Участник LASTOP')} · ${esc(ago(p.created_at))}</div></div><span class="pc-tag t-news">${esc(p.type||'news')}</span></div><div class="pc-text">${esc(p.text||p.content||'')}</div><div class="pc-foot"><div class="pc-act"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||0}</div><div class="pc-act"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||0}</div><span class="pc-time">${esc(ago(p.created_at))}</span></div></div>`).join('');
   }catch{list.innerHTML='<div class="section"><p class="sec-p">Публикаций нет</p></div>';}
 }
 
@@ -1146,7 +1146,7 @@ async function loadViewedProjects(){
       const name=m.full_name||m.name||'?';
       return `<div class="proj-team-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>`;
     }).join('');
-    return `<div class="proj-card" onclick="location.href='/project-detail.html?id=${encodeURIComponent(p.public_id||p.id)}'">
+    return `<div class="proj-card" onclick="location.href='/project-detail?id=${encodeURIComponent(p.public_id||p.id)}'">
       <span class="proj-status ${esc(status)}">${esc(statusLbl)}</span>
       <div class="proj-title">${esc(p.title||p.name||'Проект')}</div>
       <div class="proj-desc">${esc(p.short_description||p.description||'')}</div>
@@ -1176,7 +1176,7 @@ async function loadViewedFriends(){
         const avInner=f.avatar_url
           ? `<div class="friend-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${viewedColor(name)}"></div>`
           : `<div class="friend-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}</div>`;
-        return `<div class="friend-card" onclick="location.href='/profile_user.html?id=${encodeURIComponent(pid)}'">
+        return `<div class="friend-card" onclick="location.href='/profile_user?id=${encodeURIComponent(pid)}'">
           ${avInner}
           <div class="friend-name">${esc(name)}</div>
           <div class="friend-role">${esc(f.position||f.company_name||'')}</div>
@@ -1197,7 +1197,7 @@ async function loadViewedFriends(){
         const av=f.avatar_url
           ? `<div class="fmini-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${viewedColor(name)}"><div class="fmini-online"></div></div>`
           : `<div class="fmini-av" style="background:${viewedColor(name)}">${esc(viewedLetter(name))}<div class="fmini-online"></div></div>`;
-        return `<a class="fmini" href="/profile_user.html?id=${encodeURIComponent(pid)}" style="text-decoration:none;color:inherit">
+        return `<a class="fmini" href="/profile_user?id=${encodeURIComponent(pid)}" style="text-decoration:none;color:inherit">
           ${av}
           <div style="min-width:0;flex:1"><div class="fmini-name">${esc(name)}</div><div class="fmini-role">${esc(f.position||f.company_name||'')}</div></div>
         </a>`;
@@ -1240,7 +1240,7 @@ function renderViewedCommunities(){
     const av=c.avatar_url
       ? `<img src="${esc(c.avatar_url)}" alt="" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`
       : `<div style="width:44px;height:44px;border-radius:12px;background:${viewedColor(c.name||'')};color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800">${esc(viewedLetter(c.name||''))}</div>`;
-    return `<a href="/community-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;gap:10px;align-items:center;padding:12px;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
+    return `<a href="/community-detail?id=${encodeURIComponent(slug)}" style="display:flex;gap:10px;align-items:center;padding:12px;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       ${av}
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||'')}</div>
@@ -1263,7 +1263,7 @@ function renderViewedEvents(){
     const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):'';
     const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
     const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:'';
-    return `<a href="/event-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
+    return `<a href="/event-detail?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       ${cover}
       <div style="padding:12px">
         <div style="font-size:13px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(ev.title||'')}</div>
