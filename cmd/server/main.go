@@ -15685,6 +15685,24 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"notifications": items})
 	})
 
+	mux.HandleFunc("/api/chat/unread_total", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		n, err := countUnreadChatTotal(db, r, userID)
+		if err != nil {
+			log.Printf("countUnreadChatTotal: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"count": n})
+	})
+
 	mux.HandleFunc("/api/notifications/unread_count", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -28769,6 +28787,38 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 		c.IsOnline = chatPresence.isOnline(otherUID.Int64)
 	}
 	return c, nil
+}
+
+func countUnreadChatTotal(db *sql.DB, r *http.Request, userID int64) (int, error) {
+	activeKind := "user"
+	var activeID int64 = userID
+	if cid, err := resolveActiveCompanyID(db, r, userID, 0); err == nil && cid > 0 {
+		activeKind = "company"
+		activeID = cid
+	} else if cmid, err := resolveActiveCommunityID(db, r, userID, 0); err == nil && cmid > 0 {
+		activeKind = "community"
+		activeID = cmid
+	}
+	var total int
+	err := db.QueryRow(`
+		SELECT COALESCE(SUM(
+			(SELECT COUNT(*) FROM chat_messages m
+			 WHERE m.conversation_id = c.id
+			   AND m.id > p.last_read_message_id
+			   AND m.author_id <> $1
+			   AND m.is_deleted = FALSE)
+		),0)
+		FROM chat_conversations c
+		JOIN chat_participants p ON p.conversation_id = c.id
+		WHERE p.user_id = $1
+		  AND p.participant_kind = $2::text
+		  AND p.participant_id = $3
+		  AND COALESCE(p.muted,false) = FALSE`,
+		userID, activeKind, activeID).Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 func listConversations(db *sql.DB, r *http.Request, userID int64, filter, q string, limit int) ([]chatConversation, error) {
