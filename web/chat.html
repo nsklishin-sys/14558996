@@ -384,6 +384,26 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .msg-image img{width:100%;display:block;min-height:140px;object-fit:cover}
 .msg-image img.loaded{min-height:0;object-fit:initial}
 
+/* Сетка нескольких картинок в одном сообщении */
+.msg-grid{margin-top:5px;display:grid;gap:3px;max-width:300px;border-radius:var(--rm);overflow:hidden}
+.msg-grid.mg-1{grid-template-columns:1fr}
+.msg-grid.mg-2{grid-template-columns:1fr 1fr}
+.msg-grid.mg-3{grid-template-columns:1fr 1fr}
+.msg-grid.mg-3 .msg-grid-cell:first-child{grid-column:1/-1}
+.msg-grid.mg-4{grid-template-columns:1fr 1fr}
+.msg-grid-cell{cursor:pointer;background:var(--gp);overflow:hidden;aspect-ratio:1;border:1px solid var(--bdr)}
+.msg-grid-cell img{width:100%;height:100%;display:block;object-fit:cover}
+
+/* Превью-стопка вложений над полем ввода */
+.atp-item{position:relative;width:72px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.atp-thumb{width:60px;height:60px;border-radius:10px;background:var(--w);border:1px solid var(--bdr);display:grid;place-items:center;overflow:hidden}
+.atp-thumb img{width:100%;height:100%;object-fit:cover}
+.atp-name{font-size:10px;color:var(--gmt);max-width:68px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.atp-x{position:absolute;top:-6px;right:2px;width:20px;height:20px;border-radius:50%;background:var(--t);color:#fff;border:2px solid var(--gp);cursor:pointer;font-size:13px;line-height:1;display:grid;place-items:center;padding:0}
+.atp-x:hover{background:var(--red)}
+.atp-spin{width:22px;height:22px;border:2.5px solid var(--gb);border-top-color:var(--g);border-radius:50%;animation:atpSpin .7s linear infinite}
+@keyframes atpSpin{to{transform:rotate(360deg)}}
+
 /* Индикатор печати */
 .typing-bubble{
   align-self:flex-start;padding:10px 14px;background:var(--w);
@@ -1714,11 +1734,37 @@ function renderMsgStatus(m){
 }
 
 function renderAttachment(m){
-  if (!m.attachment_url) return '';
-  const url = m.attachment_url;
-  const name = m.attachment_name || 'файл';
-  const type = m.attachment_type || '';
-  const size = m.attachment_size || 0;
+  // Собираем массив вложений: новое поле attachments (мультивложения) ИЛИ старые одиночные поля (обратная совместимость)
+  let atts = Array.isArray(m.attachments) ? m.attachments.slice() : [];
+  if (!atts.length && m.attachment_url) {
+    atts = [{url:m.attachment_url, name:m.attachment_name, type:m.attachment_type, size:m.attachment_size}];
+  }
+  if (!atts.length) return '';
+  if (atts.length === 1) return renderSingleAttachment(atts[0]);
+  // Несколько вложений — разделяем картинки (в сетку) и остальные файлы (в список)
+  const images = atts.filter(a => {
+    const t = a.type || '';
+    return t.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(a.url || '');
+  });
+  const others = atts.filter(a => !images.includes(a));
+  let html = '';
+  if (images.length) {
+    const gridClass = images.length === 1 ? 'mg-1' : images.length === 2 ? 'mg-2' : images.length === 3 ? 'mg-3' : 'mg-4';
+    html += `<div class='msg-grid ${gridClass}'>` + images.map(a =>
+      `<div class='msg-grid-cell' data-img-url='${esc(a.url)}'><img src='${esc(a.url)}' alt='${esc(a.name||"")}' loading='lazy' onload='this.classList.add("loaded");if(window._chatStickBottom)window._chatStickBottom();'></div>`
+    ).join('') + `</div>`;
+  }
+  if (others.length) {
+    html += others.map(a => renderSingleAttachment(a)).join('');
+  }
+  return html;
+}
+function renderSingleAttachment(att){
+  if (!att || !att.url) return '';
+  const url = att.url;
+  const name = att.name || 'файл';
+  const type = att.type || '';
+  const size = att.size || 0;
   const isImage = type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
   // ВАЖНО: audio проверяется ПЕРЕД video, чтобы .webm от MediaRecorder (голосовые) попадали в audio-ветку
   const isAudio = type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|webm|mp4|aac|opus)$/i.test(url);
@@ -1939,13 +1985,13 @@ function autoGrow(el){if(!el)return;if(!el.value){el.style.height='22px';return;
 function handleEnter(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitMessage()}}
 async function submitMessage(){
   const txt = msgInput.value.trim();
-  if ((!txt && !pendingAttachment) || !state.activeConvPublicID) return;
+  if ((!txt && !pendingAttachments.length) || !state.activeConvPublicID) return;
 
   // СИНХРОННО (в gesture-контексте): захватываем данные, чистим поле, держим фокус.
   // Любой await ПОСЛЕ этого уже не уронит клавиатуру — поле очищено и сфокусировано заранее.
   const editing = state.editing;
   const replyToId = state.replyTo?.id || null;
-  const att = pendingAttachment;
+  const atts = pendingAttachments.slice();
   const convPid = state.activeConvPublicID;
 
   msgInput.value = '';
@@ -1953,7 +1999,7 @@ async function submitMessage(){
   msgInput.focus();
   state.editing = null;
   closeReply();
-  pendingAttachment = null;
+  pendingAttachments = [];
   hidePreview();
 
   const scrollBottom = () => {
@@ -1969,11 +2015,13 @@ async function submitMessage(){
       return;
     }
     const body = { content: txt, reply_to_id: replyToId };
-    if (att) {
-      body.attachment_url = att.url;
-      body.attachment_name = att.name;
-      body.attachment_type = att.type;
-      body.attachment_size = att.size;
+    if (atts.length) {
+      body.attachments = atts.map(a => ({url:a.url, name:a.name, type:a.type, size:a.size}));
+      // обратная совместимость: первый элемент в старые поля (бэк и так дублирует, но не повредит)
+      body.attachment_url = atts[0].url;
+      body.attachment_name = atts[0].name;
+      body.attachment_type = atts[0].type;
+      body.attachment_size = atts[0].size;
     }
     // Оптимистичный показ: сообщение сразу с часиками (sending)
     const tempId = 'tmp_' + Date.now();
@@ -1982,9 +2030,10 @@ async function submitMessage(){
       author_public_id: (state.currentUser && state.currentUser.public_id) || '',
       reply_to_id: replyToId, created_at: new Date().toISOString()
     };
-    if (att) {
-      optimistic.attachment_url = att.url; optimistic.attachment_name = att.name;
-      optimistic.attachment_type = att.type; optimistic.attachment_size = att.size;
+    if (atts.length) {
+      optimistic.attachments = atts.slice();
+      optimistic.attachment_url = atts[0].url; optimistic.attachment_name = atts[0].name;
+      optimistic.attachment_type = atts[0].type; optimistic.attachment_size = atts[0].size;
     }
     state.messages = state.messages || [];
     state.messages.push(optimistic);
@@ -2199,17 +2248,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
     const files = Array.from(e.dataTransfer?.files || []);
     if (!files.length) return;
-    state.uploading = true;
-    showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…');
-    for (const f of files) await uploadAndSendFile(f);
-    state.uploading = false;
-    await loadMessages();
-    await loadConversations();
+    await addFilesToPending(files);
   });
 });
 
 // ── Вложения ─────────────────────────────────────────────────────
-let pendingAttachment = null; // {url, name, size, type} — файл готов к отправке
+let pendingAttachments = []; // [{url, name, size, type}] — файлы готовы к отправке одним сообщением
 
 function triggerAttach(){
   // Сбрасываем флаг если он застрял от предыдущей попытки
@@ -2287,111 +2331,97 @@ async function uploadAndSendFile(file){
 }
 
 chatHiddenFile?.addEventListener('change', async (e) => {
-  lastopDebug('[upload] change event fired');
   const files = Array.from(e.target.files || []);
-  lastopDebug('[upload] files count:', files.length, 'activeConv:', state.activeConvPublicID);
-  if (!files.length) { lastopDebug('[upload] no files'); return; }
+  if (!files.length) return;
   e.target.value = '';
   if (!state.activeConvPublicID) {showToast('Сначала откройте диалог');return;}
-  state.uploading = true;
-  lastopDebug('[upload] before showToast');
-  try { showToast(files.length > 1 ? `Загружаю ${files.length} файлов…` : 'Загружаю файл…'); } catch(e){ console.error('[upload] showToast failed', e); }
-  lastopDebug('[upload] before loop');
-  try {
-    for (const f of files) { lastopDebug('[upload] processing file:', f.name); await uploadAndSendFile(f); }
-  } catch (e) {
-    console.error('[upload] handler crashed', e);
-  } finally {
-    state.uploading = false;
-    lastopDebug('[upload] state.uploading reset');
-  }
-  try { await loadMessages(); } catch {}
-  try { await loadConversations(); } catch {}
-  return;
-  // ↓ старая логика (одиночный файл с превью) оставлена ниже, не выполняется
-  const file = files[0];
-
-  // Лимит: видео — 100 МБ, остальное — 25 МБ
-  const isVideo = (file.type||'').startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
-  const maxBytes = isVideo ? 100*1024*1024 : 25*1024*1024;
-  if (file.size > maxBytes) {
-    showToast(isVideo ? 'Видео слишком большое (макс. 100 МБ)' : 'Файл слишком большой (макс. 25 МБ)');
-    return;
-  }
-
-  state.uploading = true;
-  showUploadingPreview(file);
-
-  try {
-    const fd = new FormData();
-    fd.append('file', file);
-    const r = await lastopFetch('/api/upload', {
-      method: 'POST',
-      body: fd
-    });
-    if (!r.ok) {
-      const errData = await r.json().catch(() => ({}));
-      throw new Error(errData.error || 'Загрузка не удалась');
-    }
-    const data = await r.json();
-    pendingAttachment = {
-      url: data.url,
-      name: data.name,
-      size: data.size,
-      type: data.type
-    };
-    showReadyPreview();
-  } catch (err) {
-    showToast(err.message || 'Не удалось загрузить файл');
-    pendingAttachment = null;
-    hidePreview();
-  } finally {
-    state.uploading = false;
-  }
+  await addFilesToPending(files);
 });
 
-function showUploadingPreview(file){
+// Загрузка набора файлов в pendingAttachments + показ превью (НЕ отправка)
+async function addFilesToPending(files){
+  if (!files || !files.length) return;
+  // лимит на общее число вложений в одном сообщении
+  const MAX_ATT = 10;
+  let slotsLeft = MAX_ATT - pendingAttachments.length;
+  if (slotsLeft <= 0) { showToast(`Максимум ${MAX_ATT} файлов в сообщении`); return; }
+  const toUpload = files.slice(0, slotsLeft);
+  state.uploading = true;
+  renderAttachPreview(); // покажем заглушки-плейсхолдеры
+  for (const f of toUpload) {
+    const MAX_BYTES = 100*1024*1024;
+    if (f.size > MAX_BYTES) {
+      showToast(`${f.name}: слишком большой (макс. 100 МБ)`);
+      continue;
+    }
+    // плейсхолдер «загружается»
+    const ph = { _uploading:true, name:f.name, size:f.size, type:f.type||'', _localId:'up_'+Date.now()+'_'+Math.random().toString(36).slice(2,7) };
+    pendingAttachments.push(ph);
+    renderAttachPreview();
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      const r = await lastopFetch('/api/upload', { method:'POST', body: fd });
+      if (!r.ok) { const ed = await r.json().catch(()=>({})); throw new Error(ed.error || 'Загрузка не удалась'); }
+      const data = await r.json();
+      const url = data.url || data.file_url || '';
+      if (!url) throw new Error('Сервер не вернул URL');
+      // заменяем плейсхолдер реальными данными
+      const i = pendingAttachments.findIndex(a => a._localId === ph._localId);
+      if (i !== -1) {
+        pendingAttachments[i] = { url, name: data.name || f.name, size: data.size || f.size, type: data.type || f.type || '' };
+      }
+    } catch(err) {
+      showToast(err.message || 'Не удалось загрузить файл');
+      const i = pendingAttachments.findIndex(a => a._localId === ph._localId);
+      if (i !== -1) pendingAttachments.splice(i, 1);
+    }
+    renderAttachPreview();
+  }
+  state.uploading = false;
+  renderAttachPreview();
+  if (files.length > toUpload.length) showToast(`Добавлено ${toUpload.length}, остальные превысили лимит ${MAX_ATT}`);
+}
+
+
+// Превью-стопка нескольких вложений над полем ввода
+function renderAttachPreview(){
   let bar = document.getElementById('attachPreview');
+  if (!pendingAttachments.length) { if (bar) bar.remove(); return; }
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'attachPreview';
-    bar.style.cssText = 'padding:8px 14px;background:var(--gp);border-top:1px solid var(--bdr);display:flex;align-items:center;gap:10px;flex-shrink:0;font-size:12px';
+    bar.style.cssText = 'padding:10px 14px;background:var(--gp);border-top:1px solid var(--bdr);display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start';
     const wrap = document.querySelector('.chat-input-wrap');
     if (wrap && wrap.parentNode) wrap.parentNode.insertBefore(bar, wrap);
   }
-  const sizeStr = formatFileSize(file.size);
-  bar.innerHTML = `
-    <div style="width:32px;height:32px;border-radius:8px;background:var(--w);display:grid;place-items:center;flex-shrink:0">
-      <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:var(--gmt);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M12 2v6m0 0l3-3m-3 3l-3-3"/><path d="M3 12v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(file.name)}</div>
-      <div style="font-size:11px;color:var(--gmt)">Загрузка… ${sizeStr}</div>
+  bar.innerHTML = pendingAttachments.map((a, idx) => {
+    const isImage = (a.type || '').startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(a.url || '');
+    const uploading = a._uploading;
+    let thumb;
+    if (uploading) {
+      thumb = `<div class="atp-spin"></div>`;
+    } else if (isImage && a.url) {
+      thumb = `<img src="${esc(a.url)}" style="width:100%;height:100%;object-fit:cover">`;
+    } else {
+      thumb = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    }
+    return `<div class="atp-item" title="${esc(a.name||'')}">
+      <div class="atp-thumb">${thumb}</div>
+      <div class="atp-name">${esc((a.name||'файл').length>14?(a.name.slice(0,12)+'…'):(a.name||'файл'))}</div>
+      ${uploading ? '' : `<button type="button" class="atp-x" onclick="removePendingAttachment(${idx})">×</button>`}
     </div>`;
-  bar.style.display = 'flex';
+  }).join('');
 }
 
-function showReadyPreview(){
-  const bar = document.getElementById('attachPreview');
-  if (!bar || !pendingAttachment) return;
-  const isImage = (pendingAttachment.type || '').startsWith('image/');
-  const sizeStr = formatFileSize(pendingAttachment.size);
-  const iconHTML = isImage
-    ? `<img src="${esc(pendingAttachment.url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover">`
-    : `<div style="width:32px;height:32px;border-radius:8px;background:var(--w);display:grid;place-items:center;flex-shrink:0">
-        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      </div>`;
-  bar.innerHTML = `
-    ${iconHTML}
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(pendingAttachment.name)}</div>
-      <div style="font-size:11px;color:var(--g)">✓ Готово · ${sizeStr}</div>
-    </div>
-    <button type="button" onclick="cancelAttachment()" style="background:none;border:none;color:var(--gmt);cursor:pointer;font-size:18px;line-height:1;padding:4px 8px">×</button>`;
+function removePendingAttachment(idx){
+  if (idx < 0 || idx >= pendingAttachments.length) return;
+  pendingAttachments.splice(idx, 1);
+  renderAttachPreview();
 }
 
 function cancelAttachment(){
-  pendingAttachment = null;
+  pendingAttachments = [];
   hidePreview();
 }
 
@@ -2546,7 +2576,7 @@ async function sendVoiceMessage(){
     const r=await lastopFetch('/api/upload',{method:'POST',body:fd});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Не удалось загрузить голосовое');}
     const data=await r.json();
-    pendingAttachment={url:data.url,name:'Голосовое сообщение ('+Math.floor(dur/60)+':'+String(dur%60).padStart(2,'0')+')',size:data.size,type:data.type||blob.type||'audio/webm'};
+    pendingAttachments=[{url:data.url,name:'Голосовое сообщение ('+Math.floor(dur/60)+':'+String(dur%60).padStart(2,'0')+')',size:data.size,type:data.type||blob.type||'audio/webm'}];
     resetVoiceRecorder();
     await submitMessage();
   }catch(e){
@@ -3065,7 +3095,7 @@ let _clImages = [];
 let _clIdx = 0;
 
 function _collectChatImages(){
-  const imgs = document.querySelectorAll('.msg-image[data-img-url]');
+  const imgs = document.querySelectorAll('.msg-image[data-img-url], .msg-grid-cell[data-img-url]');
   _clImages = Array.from(imgs).map(function(el){ return el.getAttribute('data-img-url'); });
 }
 
@@ -3110,9 +3140,9 @@ function _renderClFrame(){
   }
 }
 
-// Делегирование: клик на любую .msg-image в чате
+// Делегирование: клик на любую .msg-image или ячейку сетки .msg-grid-cell в чате
 document.addEventListener('click', function(e){
-  const wrap = e.target.closest('.msg-image[data-img-url]');
+  const wrap = e.target.closest('.msg-image[data-img-url], .msg-grid-cell[data-img-url]');
   if (!wrap) return;
   e.preventDefault();
   const url = wrap.getAttribute('data-img-url');
