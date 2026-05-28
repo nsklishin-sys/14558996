@@ -586,7 +586,7 @@ async function submitCreateShop(){
     }
     const newId=d.id||(d.shop&&d.shop.id);
     // перезагрузить кабинет на новый магазин
-    location.href='/emarket-cabinet.html'+(newId?'?id='+newId:'');
+    location.href='/emarket-cabinet'+(newId?'?id='+newId:'');
   }catch(e){
     btn.disabled=false;btn.textContent='Создать магазин';
     if(window.toast)toast('Ошибка соединения','info');
@@ -634,14 +634,14 @@ function renderShell(){
 }
 
 function onShopChange(id){
-  if(String(id)==='__new__'){stopLeadPolling();SHOP=null;renderNoShop();history.replaceState(null,'','/emarket-cabinet.html');return;}
+  if(String(id)==='__new__'){stopLeadPolling();SHOP=null;renderNoShop();history.replaceState(null,'','/emarket-cabinet');return;}
   const next=MY_SHOPS.find(s=>String(s.id)===String(id));
   if(!next)return;
   SHOP=next;
   LEADS=[];LISTINGS=null;
   LEAD_FILTER='all';LEAD_Q='';LEAD_SORT='date_desc';LEAD_OFFSET=0;LEAD_TOTAL=0;LEAD_COUNTS={};
   LST_Q='';LST_SORT='date_desc';LST_KIND='';LST_STATUS='';LST_OFFSET=0;LST_TOTAL=0;
-  history.replaceState(null,'','/emarket-cabinet.html?id='+SHOP.id);
+  history.replaceState(null,'','/emarket-cabinet?id='+SHOP.id);
   renderShell();
   switchTab(ACTIVE_TAB);
   updateTabTitle(0);
@@ -791,7 +791,7 @@ function buildLeadCard(l){
     else contactHTML=esc(contact);
   }
   const registered=l.sender_public_id
-    ? '<a class="lead-registered" href="/profile_user.html?id='+esc(l.sender_public_id)+'" title="Зарегистрированный пользователь"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'+esc(l.sender_name||'Профиль')+'</a>'
+    ? '<a class="lead-registered" href="/profile_user?id='+esc(l.sender_public_id)+'" title="Зарегистрированный пользователь"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'+esc(l.sender_name||'Профиль')+'</a>'
     : '';
   // кнопка «Ответить»: если есть зарегистрированный отправитель — в чат; иначе по email/тел
   let replyBtn='';
@@ -812,14 +812,14 @@ function buildLeadCard(l){
     const inner='<svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'
       +'<div class="lead-subject-txt">Заявка по позиции: <b>'+esc(l.subject_title)+'</b></div>';
     subjectHTML=l.subject_id
-      ? '<a class="lead-subject" href="/emarket-listing.html?id='+l.subject_id+'" onclick="event.stopPropagation()">'+inner
+      ? '<a class="lead-subject" href="/emarket-listing?id='+l.subject_id+'" onclick="event.stopPropagation()">'+inner
         +'<span class="lead-subject-arrow"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></a>'
       : '<div class="lead-subject" style="cursor:default">'+inner+'</div>';
   }
 
   // деталка-разворот
   const senderStatus=l.sender_public_id
-    ? '<a href="/profile_user.html?id='+esc(l.sender_public_id)+'" style="color:var(--g);font-weight:700;text-decoration:none" onclick="event.stopPropagation()">'+esc(l.sender_name||'Профиль')+'</a> (зарегистрирован)'
+    ? '<a href="/profile_user?id='+esc(l.sender_public_id)+'" style="color:var(--g);font-weight:700;text-decoration:none" onclick="event.stopPropagation()">'+esc(l.sender_name||'Профиль')+'</a> (зарегистрирован)'
     : 'Гость (не зарегистрирован)';
   const subjLine=(l.subject_type==='listing'&&l.subject_title)?esc(l.subject_title):'Форма обратной связи магазина';
   const expandHTML='<div class="lead-expand">'
@@ -894,7 +894,7 @@ function bumpCount(key,delta){
   LEAD_COUNTS[key]=Math.max(0,(LEAD_COUNTS[key]||0)+delta);
 }
 
-function replyInChat(pid){location.href='/chat.html?user='+encodeURIComponent(pid);}
+function replyInChat(pid){location.href='/chat?user='+encodeURIComponent(pid);}
 
 /* пометка прочитанным — точечное обновление узла */
 async function toggleRead(leadId,read){
@@ -1396,7 +1396,7 @@ function renderSettings(){
     +'<div class="cab-section">'
       +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Дизайн сайта</div>'
       +'<div class="cab-section-d">Акцентный цвет, логотип в шапке сайта, блоки (hero, услуги, портфолио, контакты, форма заявки) и слоган настраиваются в конструкторе.</div>'
-      +'<a class="lead-btn lead-btn-pri" style="margin-top:14px" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Открыть конструктор</a>'
+      +'<a class="lead-btn lead-btn-pri" style="margin-top:14px" href="/emarket-builder?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Открыть конструктор</a>'
     +'</div>'
     +'<div class="cab-section">'
       +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Приём оплаты</div>'
@@ -1689,8 +1689,8 @@ function renderRight(){
     +'<div class="rs-card">'
       +'<div class="rs-h">Быстрые ссылки</div>'
       +'<a class="rs-link" href="/shop/'+esc(SHOP.slug)+'"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Страница магазина</a>'
-      +'<a class="rs-link" href="/emarket-builder.html?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Конструктор магазина</a>'
-      +'<a class="rs-link" href="/emarket.html"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>В E-market</a>'
+      +'<a class="rs-link" href="/emarket-builder?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Конструктор магазина</a>'
+      +'<a class="rs-link" href="/emarket"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>В E-market</a>'
     +'</div>';
   updateNewLeadsCard();
 }

@@ -398,7 +398,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -443,7 +443,7 @@ function pickAuthor(item){
   if (item.author_community_id && item.author_community_name) {
     return {
       name: item.author_community_name,
-      href: '/community-detail.html?id=' + item.author_community_id,
+      href: '/community-detail?id=' + item.author_community_id,
       avatar: item.author_community_avatar || '',
       color: item.author_community_color || '#5AB080',
       kind: 'community'
@@ -452,7 +452,7 @@ function pickAuthor(item){
   if (item.author_company_id && item.author_company_name) {
     return {
       name: item.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(item.author_company_slug || ''),
       avatar: item.author_company_logo || '',
       color: '#1E8A4C',
       kind: 'company'
@@ -460,7 +460,7 @@ function pickAuthor(item){
   }
   return {
     name: item.author_name || item.author || 'Участник',
-    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    href: item.author_public_id ? '/profile_user?id=' + item.author_public_id : '#',
     avatar: item.author_avatar || '',
     color: '#5A8A6A',
     kind: 'user'
@@ -599,7 +599,7 @@ function renderFeed(items){
 
 function renderCard(it){
   const isProduct = it.type === 'product';
-  const detailUrl = isProduct ? '/product-detail.html?id=' : '/service-detail.html?id=';
+  const detailUrl = isProduct ? '/product-detail?id=' : '/service-detail?id=';
   const cover = (isProduct && it.cover_image) ? it.cover_image : '';
   const stripeColor = stableColor(it.category_group || it.category || '?');
   const priceHtml = it.price != null
@@ -759,7 +759,7 @@ async function submitItem(){
     closeCreateModal();
     toast(type === 'product' ? 'Товар опубликован' : 'Услуга опубликована', true);
     if (d.item && d.item.public_id) {
-      const url = (type === 'product' ? '/product-detail.html?id=' : '/service-detail.html?id=') + d.item.public_id;
+      const url = (type === 'product' ? '/product-detail?id=' : '/service-detail?id=') + d.item.public_id;
       setTimeout(() => location.href = url, 600);
     } else {
       loadList();

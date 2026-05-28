@@ -243,7 +243,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <div class="crumbs">
     <a href="/">Главная</a>
     <span class="crumbs-sep">›</span>
-    <a href="/catalog.html">Товары и услуги</a>
+    <a href="/catalog">Товары и услуги</a>
     <span class="crumbs-sep">›</span>
     <span class="crumbs-cur" id="crumbCurrent"></span>
   </div>
@@ -468,7 +468,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -537,7 +537,7 @@ async function loadItem(){
     if (!item) throw new Error('пустой ответ');
     if (item.type === 'service') {
       // Если это услуга — редирект на правильную страницу
-      location.href = '/service-detail.html?id=' + encodeURIComponent(publicID);
+      location.href = '/service-detail?id=' + encodeURIComponent(publicID);
       return;
     }
     document.getElementById('crumbCurrent').textContent = item.title;
@@ -559,7 +559,7 @@ function pickAuthor(item){
   if (item.author_community_id && item.author_community_name) {
     return {
       name: item.author_community_name,
-      href: '/community-detail.html?id=' + item.author_community_id,
+      href: '/community-detail?id=' + item.author_community_id,
       avatar: item.author_community_avatar || '',
       color: item.author_community_color || '#5AB080',
       kind: 'community'
@@ -568,7 +568,7 @@ function pickAuthor(item){
   if (item.author_company_id && item.author_company_name) {
     return {
       name: item.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(item.author_company_slug || ''),
       avatar: item.author_company_logo || '',
       color: '#1E8A4C',
       kind: 'company'
@@ -576,7 +576,7 @@ function pickAuthor(item){
   }
   return {
     name: item.author_name || item.author || 'Участник',
-    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    href: item.author_public_id ? '/profile_user?id=' + item.author_public_id : '#',
     avatar: item.author_avatar || '',
     color: '#5A8A6A',
     kind: 'user'
@@ -844,8 +844,8 @@ async function loadOrders(){
       return;
     }
     wrap.innerHTML = orders.map(o => {
-      const buyerHref = o.buyer_public_id ? '/profile_user.html?id=' + encodeURIComponent(o.buyer_public_id) : '#';
-      const chatHref = o.chat_public_id ? '/chat.html?id=' + encodeURIComponent(o.chat_public_id) : '#';
+      const buyerHref = o.buyer_public_id ? '/profile_user?id=' + encodeURIComponent(o.buyer_public_id) : '#';
+      const chatHref = o.chat_public_id ? '/chat?id=' + encodeURIComponent(o.chat_public_id) : '#';
       const color = stableColor(o.buyer_name || '?');
       return '<div class="order-item">' +
         '<div class="order-head">' +
@@ -922,7 +922,7 @@ async function submitOrder(){
     closeOrderModal();
     toast('Заявка отправлена', true);
     if (d.chat_public_id) {
-      setTimeout(() => location.href = '/chat.html?id=' + encodeURIComponent(d.chat_public_id), 800);
+      setTimeout(() => location.href = '/chat?id=' + encodeURIComponent(d.chat_public_id), 800);
     } else {
       item.viewer_has_ordered = true;
       renderHero();
@@ -967,7 +967,7 @@ async function submitContact(){
     closeContactModal();
     toast('Сообщение отправлено', true);
     if (d.chat_public_id) {
-      setTimeout(() => location.href = '/chat.html?id=' + encodeURIComponent(d.chat_public_id), 800);
+      setTimeout(() => location.href = '/chat?id=' + encodeURIComponent(d.chat_public_id), 800);
     }
   } catch (err) {
     console.error('submitContact', err);
@@ -1104,7 +1104,7 @@ async function submitDelete(){
     if (!r.ok) throw new Error('http ' + r.status);
     closeDeleteModal();
     toast('Товар удалён', true);
-    setTimeout(() => location.href = '/catalog.html', 600);
+    setTimeout(() => location.href = '/catalog', 600);
   } catch (err) {
     console.error('submitDelete', err);
     toast('Ошибка: ' + (err.message || 'не удалось'));
@@ -1127,7 +1127,7 @@ document.addEventListener('input', e => {
 document.addEventListener('DOMContentLoaded', async () => {
   publicID = new URLSearchParams(location.search).get('id');
   if (!publicID) {
-    document.getElementById('mainContent').innerHTML = '<div class="placeholder">Не указан id товара. <a href="/catalog.html" style="color:var(--g)">← К каталогу</a></div>';
+    document.getElementById('mainContent').innerHTML = '<div class="placeholder">Не указан id товара. <a href="/catalog" style="color:var(--g)">← К каталогу</a></div>';
     document.getElementById('crumbCurrent').textContent = 'Ошибка';
     document.getElementById('rightSide').innerHTML = '';
     return;

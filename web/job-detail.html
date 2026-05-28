@@ -210,7 +210,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/jobs.html">Вакансии</a>
+    <a class="bc-item" href="/jobs">Вакансии</a>
     <span class="bc-sep">›</span>
     <span class="bc-item cur" id="bcTitle"></span>
   </nav>
@@ -436,7 +436,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -488,7 +488,7 @@ function authHeaders(){
 async function loadJob(){
   const wrap = document.getElementById('contentWrap');
   if (!PUBLIC_ID){
-    wrap.innerHTML = '<div class="loader">Не указан идентификатор вакансии. <a href="/jobs.html" style="color:var(--g)">Вернуться к списку</a></div>';
+    wrap.innerHTML = '<div class="loader">Не указан идентификатор вакансии. <a href="/jobs" style="color:var(--g)">Вернуться к списку</a></div>';
     document.getElementById('bcTitle').textContent = 'Не найдено';
     return;
   }
@@ -496,7 +496,7 @@ async function loadJob(){
     const opts = tk() ? { headers:{}} : {};
     const r = await lastopFetch(API + '/jobs/' + encodeURIComponent(PUBLIC_ID), opts);
     if (r.status === 404){
-      wrap.innerHTML = '<div class="loader">Вакансия не найдена или удалена. <a href="/jobs.html" style="color:var(--g)">Вернуться к списку</a></div>';
+      wrap.innerHTML = '<div class="loader">Вакансия не найдена или удалена. <a href="/jobs" style="color:var(--g)">Вернуться к списку</a></div>';
       document.getElementById('bcTitle').textContent = 'Не найдено';
       document.title = 'LASTOP GROUP — Вакансия не найдена';
       return;
@@ -530,7 +530,7 @@ function pickAuthor(item){
   if (item.author_community_id && item.author_community_name) {
     return {
       name: item.author_community_name,
-      href: '/community-detail.html?id=' + item.author_community_id,
+      href: '/community-detail?id=' + item.author_community_id,
       avatar: item.author_community_avatar || '',
       color: item.author_community_color || '#5AB080',
       kind: 'community'
@@ -539,7 +539,7 @@ function pickAuthor(item){
   if (item.author_company_id && item.author_company_name) {
     return {
       name: item.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(item.author_company_slug || ''),
       avatar: item.author_company_logo || '',
       color: '#1E8A4C',
       kind: 'company'
@@ -547,7 +547,7 @@ function pickAuthor(item){
   }
   return {
     name: item.author_name || item.author || 'Участник',
-    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    href: item.author_public_id ? '/profile_user?id=' + item.author_public_id : '#',
     avatar: item.author_avatar || '',
     color: '#5A8A6A',
     kind: 'user'
@@ -591,7 +591,7 @@ function renderHero(){
       '<button type="button" class="btn-ghost danger" onclick="openDeleteModal()"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>Удалить</button>';
   } else if (!tk()){
     actions =
-      '<a class="btn-primary" href="/login.html"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Войти, чтобы откликнуться</a>';
+      '<a class="btn-primary" href="/login"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Войти, чтобы откликнуться</a>';
   } else if (j.status === 'closed'){
     actions =
       '<button type="button" class="btn-primary" disabled><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Вакансия закрыта</button>' +
@@ -752,7 +752,7 @@ function renderRight(){
       appsBody = '<div class="app-list">' + APPS.map(a => {
         const nm = a.applicant_name || 'Соискатель';
         const av = stableColor(nm);
-        const href = a.chat_public_id ? '/chat.html?id=' + encodeURIComponent(a.chat_public_id) : 'javascript:void(0)';
+        const href = a.chat_public_id ? '/chat?id=' + encodeURIComponent(a.chat_public_id) : 'javascript:void(0)';
         return '<a class="app-item" href="' + href + '">' +
           '<div class="app-av" style="background:' + escAttr(av) + '">' + esc(initials(nm)) + '</div>' +
           '<div class="app-info">' +
@@ -834,7 +834,7 @@ async function submitApply(){
     closeApplyModal();
     toast('Отклик отправлен', true);
     if (d.chat_public_id){
-      setTimeout(() => location.href = '/chat.html?id=' + encodeURIComponent(d.chat_public_id), 600);
+      setTimeout(() => location.href = '/chat?id=' + encodeURIComponent(d.chat_public_id), 600);
     } else {
       // на всякий случай, если бек не вернул чат
       JOB.viewer_has_applied = true;
@@ -951,7 +951,7 @@ async function submitDelete(){
       throw new Error(e.error || ('http ' + r.status));
     }
     toast('Вакансия удалена', true);
-    setTimeout(() => location.href = '/jobs.html', 600);
+    setTimeout(() => location.href = '/jobs', 600);
   } catch (err){
     console.error(err);
     toast('Ошибка: ' + (err.message || 'не удалось'));

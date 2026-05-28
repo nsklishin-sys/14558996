@@ -427,7 +427,7 @@ function forceRelogin(message){
   if(message)toast(message);
   
   localStorage.removeItem('user');
-  setTimeout(()=>{location.href='/login.html'},400);
+  setTimeout(()=>{location.href='/login'},400);
 }
 const esc = window.lastopEsc;
 function ltr(s){const p=String(s||'').trim().split(/\s+/).filter(Boolean);if(!p.length)return '?';if(p.length>=2)return (p[0][0]+p[1][0]).toUpperCase();return p[0][0].toUpperCase();}
@@ -452,7 +452,7 @@ function toast(msg,ok){const t=document.getElementById('toast');t.textContent=ms
 function toggleDD(e){e.stopPropagation();document.getElementById('topbarProfile').classList.toggle('open');document.getElementById('profileDD').classList.toggle('open')}
 document.addEventListener('click',e=>{const d=document.getElementById('profileDD'),b=document.getElementById('topbarProfile');if(d&&!d.contains(e.target)&&!b.contains(e.target)){d.classList.remove('open');b.classList.remove('open')}})
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open')}})
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* ── ДАННЫЕ ── */
 const GRADIENTS=['linear-gradient(135deg,#1E8A4C,#22A05A)','linear-gradient(135deg,#185FA5,#3A90C0)','linear-gradient(135deg,#6040A0,#9060C0)','linear-gradient(135deg,#B45309,#C07030)','linear-gradient(135deg,#B05090,#9060C0)','linear-gradient(135deg,#208090,#3A90C0)','linear-gradient(135deg,#633806,#C07030)','linear-gradient(135deg,#3B6D11,#5AB080)'];
@@ -678,7 +678,7 @@ function toggleHeroJoin(){
 function joinRec(id){
   joinCommunity(id);
 }
-function openCommunity(c){if(!c)return;location.href='/community-detail.html?id='+encodeURIComponent(c.slug||c.id)}
+function openCommunity(c){if(!c)return;location.href='/community-detail?id='+encodeURIComponent(c.slug||c.id)}
 
 /* ── МОДАЛКА СОЗДАНИЯ ── */
 function openModal(){
@@ -877,7 +877,7 @@ async function submitCommunity(){
     joinedSet.add(created.id);
     closeModal();
     toast('Сообщество «'+name+'» создано ✓',true);
-    location.href='/community-detail.html?id='+encodeURIComponent(created.slug||created.id);
+    location.href='/community-detail?id='+encodeURIComponent(created.slug||created.id);
   }catch{
     toast('Не удалось создать сообщество. Проверьте подключение к серверу.');
   }finally{

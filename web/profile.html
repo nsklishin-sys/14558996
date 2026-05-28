@@ -453,7 +453,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
   <!-- Hero-карточка с обложкой, аватаром, именем, статистикой -->
   <div class="prof-hero">
     <div class="prof-cover" id="profCover">
-      <button type="button" class="prof-cover-btn" onclick="location.href='/settings.html'">
+      <button type="button" class="prof-cover-btn" onclick="location.href='/settings'">
         <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Обложка
       </button>
@@ -482,7 +482,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
         </div>
 
         <div class="prof-actions">
-          <button type="button" class="btn-edit" onclick="location.href='/settings.html'">
+          <button type="button" class="btn-edit" onclick="location.href='/settings'">
             <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
             Редактировать
           </button>
@@ -582,7 +582,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
     <div class="section">
       <div class="block-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Сообщества</span>
-        <a href="/communities.html" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
+        <a href="/communities" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
       </div>
       <div id="profileCommunitiesList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:12px">
         <div class="lt-skel-loading" style="padding:0;grid-column:1/-1">
@@ -599,7 +599,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
     <div class="section">
       <div class="block-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Мероприятия</span>
-        <a href="/events.html" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
+        <a href="/events" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
       </div>
       <div id="profileEventsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:12px">
         <div class="lt-skel-loading" style="padding:0;grid-column:1/-1">
@@ -616,7 +616,7 @@ select.xpm-input{cursor:pointer;-webkit-appearance:none;appearance:none}
     <div class="section">
       <div class="block-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Друзья и контакты</span>
-        <a href="/friends.html" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
+        <a href="/friends" style="font-size:11px;color:var(--g);text-decoration:none;font-weight:700">Все →</a>
       </div>
       <div id="profileFriendsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding-top:10px"></div>
     </div>
@@ -746,7 +746,7 @@ async function applyCurrentUserProfile(){
     const btn = document.getElementById('btnShareMyProfile');
     if (btn && currentUser.public_id){
       const wrap = btn.closest('.lp-share-wrap') || btn;
-      wrap.dataset.shareUrl = location.origin + '/profile_user.html?id=' + encodeURIComponent(currentUser.public_id);
+      wrap.dataset.shareUrl = location.origin + '/profile_user?id=' + encodeURIComponent(currentUser.public_id);
       wrap.dataset.shareTitle = currentUser.full_name || currentUser.first_name || 'Мой профиль';
     }
   }, 0);
@@ -798,7 +798,7 @@ async function applyCurrentUserProfile(){
   if (_shareBtnSelf) {
     _shareBtnSelf.setAttribute('data-share-title', 'Профиль ' + fullName);
     const _myPid = (JSON.parse(localStorage.getItem('user')||'{}')).public_id || '';
-    _shareBtnSelf.setAttribute('data-share-url', location.origin + '/profile_user.html?id=' + encodeURIComponent(_myPid));
+    _shareBtnSelf.setAttribute('data-share-url', location.origin + '/profile_user?id=' + encodeURIComponent(_myPid));
   }
   const h=(mergedUser.handle||'').trim();
   const hh=document.getElementById('profileHandle');
@@ -870,7 +870,7 @@ async function loadProfileFriends(){
     if (tabCntFriends) tabCntFriends.textContent = String(friends.length);
     if (el) {
       if (!friends.length) {
-        el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gmt);padding:30px;font-size:13px">У вас пока нет друзей. <a href="/friends.html" style="color:var(--g);font-weight:700">Найти →</a></div>';
+        el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gmt);padding:30px;font-size:13px">У вас пока нет друзей. <a href="/friends" style="color:var(--g);font-weight:700">Найти →</a></div>';
       } else {
         el.innerHTML = friends.slice(0,12).map(function(f){
           var name = f.full_name || f.friend_name || 'Участник';
@@ -880,7 +880,7 @@ async function loadProfileFriends(){
           var av = f.avatar_url
             ? '<div style="width:36px;height:36px;border-radius:10px;background:url(\'' + f.avatar_url + '\') center/cover, ' + bg + ';flex-shrink:0"></div>'
             : '<div style="width:36px;height:36px;border-radius:10px;background:' + bg + ';color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;flex-shrink:0">' + ltr + '</div>';
-          return '<a href="/profile_user.html?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;text-decoration:none;color:var(--t);transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'">'
+          return '<a href="/profile_user?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;text-decoration:none;color:var(--t);transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gb)\'" onmouseout="this.style.borderColor=\'var(--bdr)\'">'
             + av
             + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div></div>'
             + '</a>';
@@ -900,7 +900,7 @@ async function loadProfileFriends(){
           var avInner = f.avatar_url
             ? '<div style="position:relative;width:28px;height:28px;border-radius:8px;background:url(\'' + f.avatar_url + '\') center/cover, ' + bg + '">'
             : '<div style="position:relative;width:28px;height:28px;border-radius:8px;background:' + bg + ';color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800">' + ltr;
-          return '<a href="/profile_user.html?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:8px;padding:6px 0;text-decoration:none;color:var(--t)">'
+          return '<a href="/profile_user?id=' + encodeURIComponent(pid) + '" style="display:flex;align-items:center;gap:8px;padding:6px 0;text-decoration:none;color:var(--t)">'
             + avInner
             + '<div style="position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#22CC66;border:1.5px solid var(--w)"></div></div>'
             + '<div style="font-size:12px;font-weight:600">' + name + '</div>'
@@ -939,7 +939,7 @@ async function loadOwnPublications(force=false){
       <div class="pc-foot"><div class="pc-act"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${p.likes_count||0}</div><div class="pc-act"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${p.comments_count||0}</div><span class="pc-time">${esc(ago(p.created_at))}</span></div>
     </div>`).join('');
 }
-function openProfilePost(publicID,type){location.href=(type==='news'?'/news-detail.html':'/dashboard.html')+'?id='+encodeURIComponent(publicID);}
+function openProfilePost(publicID,type){location.href=(type==='news'?'/news-detail':'/dashboard')+'?id='+encodeURIComponent(publicID);}
 async function deleteProfilePost(publicID){
   if(!await lastopConfirm({title:'Удалить публикацию?',danger:true}))return;
   const r=await lastopFetch(`${API}/posts/${encodeURIComponent(publicID)}`,{method:'DELETE'});
@@ -961,7 +961,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('profileDD').classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}
 });
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 function switchTab(tab, btn){
   // Подгрузка списков для новых табов
@@ -987,7 +987,7 @@ function switchTab(tab, btn){
 const COLORS=['#5AB080','#3A90C0','#9060C0','#C07030','#1A8A6A','#B05090','#208090','#3B6D11','#633806','#185FA5'];
 function colorFor(s){return COLORS[(String(s||'').charCodeAt(0)||0)%COLORS.length];}
 
-async function loadOwnProjects(){const grid=document.getElementById('profileProjectsGrid');if(!grid)return;try{const r=await lastopFetch(`${API}/projects?owner_only=1&limit=50`,{headers:{}});if(!r.ok)throw 0;const d=await r.json();const projects=d.projects||[];document.getElementById('psProjects').textContent=String(projects.length);const cnt=document.getElementById('ptabCntProjs');if(cnt)cnt.textContent=String(projects.length);if(!projects.length){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У вас пока нет проектов. <a href="/projects.html" style="color:var(--g);font-weight:700">Создать →</a></div>';return;}grid.innerHTML=projects.map(p=>{const status=p.status||'active';const statusLbl={active:'Активный',planned:'Планируется',done:'Завершён',completed:'Завершён',paused:'На паузе'}[status]||status;const team=(p.members||p.team||[]).slice(0,3);const memberCount=p.members_count||p.team_count||team.length||0;const teamHtml=team.map(m=>{const name=m.full_name||m.name||'?';return `<div class="proj-team-av" style="background:${colorFor(name)}">${esc(letter(name))}</div>`;}).join('');return `<div class="proj-card" onclick="location.href='/project-detail.html?id=${encodeURIComponent(p.public_id||p.id)}'"><span class="proj-status ${esc(status)}">${esc(statusLbl)}</span><div class="proj-title">${esc(p.title||p.name||'Проект')}</div><div class="proj-desc">${esc(p.short_description||p.description||'')}</div><div class="proj-foot"><div class="proj-team">${teamHtml}</div><div class="proj-meta">${memberCount?memberCount+' участник'+(memberCount===1?'':(memberCount<5?'а':'ов')):''}</div></div></div>`;}).join('');}catch(e){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">Не удалось загрузить проекты</div>';}}
+async function loadOwnProjects(){const grid=document.getElementById('profileProjectsGrid');if(!grid)return;try{const r=await lastopFetch(`${API}/projects?owner_only=1&limit=50`,{headers:{}});if(!r.ok)throw 0;const d=await r.json();const projects=d.projects||[];document.getElementById('psProjects').textContent=String(projects.length);const cnt=document.getElementById('ptabCntProjs');if(cnt)cnt.textContent=String(projects.length);if(!projects.length){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">У вас пока нет проектов. <a href="/projects" style="color:var(--g);font-weight:700">Создать →</a></div>';return;}grid.innerHTML=projects.map(p=>{const status=p.status||'active';const statusLbl={active:'Активный',planned:'Планируется',done:'Завершён',completed:'Завершён',paused:'На паузе'}[status]||status;const team=(p.members||p.team||[]).slice(0,3);const memberCount=p.members_count||p.team_count||team.length||0;const teamHtml=team.map(m=>{const name=m.full_name||m.name||'?';return `<div class="proj-team-av" style="background:${colorFor(name)}">${esc(letter(name))}</div>`;}).join('');return `<div class="proj-card" onclick="location.href='/project-detail?id=${encodeURIComponent(p.public_id||p.id)}'"><span class="proj-status ${esc(status)}">${esc(statusLbl)}</span><div class="proj-title">${esc(p.title||p.name||'Проект')}</div><div class="proj-desc">${esc(p.short_description||p.description||'')}</div><div class="proj-foot"><div class="proj-team">${teamHtml}</div><div class="proj-meta">${memberCount?memberCount+' участник'+(memberCount===1?'':(memberCount<5?'а':'ов')):''}</div></div></div>`;}).join('');}catch(e){grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--gmt);font-size:13px">Не удалось загрузить проекты</div>';}}
 
 // loadOwnFriends удалён — функционал перенесён в loadProfileFriends (ID profileFriendsList)
 
@@ -1037,7 +1037,7 @@ async function loadAllProfileCounts(){
         const av=f.avatar_url
           ? `<div class="fmini-av" style="background:url('${esc(f.avatar_url)}') center/cover, ${colorFor(name)}"><div class="fmini-online"></div></div>`
           : `<div class="fmini-av" style="background:${colorFor(name)}">${esc(letter(name))}<div class="fmini-online"></div></div>`;
-        return `<a class="fmini" href="/profile_user.html?id=${encodeURIComponent(pid)}">
+        return `<a class="fmini" href="/profile_user?id=${encodeURIComponent(pid)}">
           ${av}
           <div class="fmini-info">
             <div class="fmini-name">${esc(name)}</div>
@@ -1067,7 +1067,7 @@ function renderProfileCommunities(){
   const root=document.getElementById('profileCommunitiesList');if(!root)return;
   const list=window._profileCommunities||[];
   if(!list.length){
-    root.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;grid-column:1/-1">Вы пока не состоите в сообществах. <a href="/communities.html" style="color:var(--g)">Найти →</a></div>';
+    root.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;grid-column:1/-1">Вы пока не состоите в сообществах. <a href="/communities" style="color:var(--g)">Найти →</a></div>';
     return;
   }
   root.innerHTML=list.map(c=>{
@@ -1075,7 +1075,7 @@ function renderProfileCommunities(){
     const av=c.avatar_url
       ? `<img src="${esc(c.avatar_url)}" alt="" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`
       : `<div style="width:44px;height:44px;border-radius:12px;background:${colorFor(c.name||'')};color:#fff;display:grid;place-items:center;font-size:16px;font-weight:800">${esc(letter(c.name||''))}</div>`;
-    return `<a href="/community-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;gap:10px;align-items:center;padding:12px;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
+    return `<a href="/community-detail?id=${encodeURIComponent(slug)}" style="display:flex;gap:10px;align-items:center;padding:12px;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       ${av}
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||'')}</div>
@@ -1089,7 +1089,7 @@ function renderProfileEvents(){
   const root=document.getElementById('profileEventsList');if(!root)return;
   const list=window._profileEvents||[];
   if(!list.length){
-    root.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;grid-column:1/-1">Вы ещё не участвуете в мероприятиях. <a href="/events.html" style="color:var(--g)">Посмотреть →</a></div>';
+    root.innerHTML='<div style="padding:24px;text-align:center;color:var(--gmt);font-size:13px;grid-column:1/-1">Вы ещё не участвуете в мероприятиях. <a href="/events" style="color:var(--g)">Посмотреть →</a></div>';
     return;
   }
   root.innerHTML=list.map(ev=>{
@@ -1098,7 +1098,7 @@ function renderProfileEvents(){
     const dateStr=d?d.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):'';
     const timeStr=d?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'';
     const cover=ev.cover_url?`<div style="height:120px;background:#eee url('${esc(ev.cover_url)}') center/cover;border-radius:14px 14px 0 0"></div>`:'';
-    return `<a href="/event-detail.html?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
+    return `<a href="/event-detail?id=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;border:1px solid var(--bdr);border-radius:14px;background:var(--w);text-decoration:none;color:var(--t);transition:border-color .15s,box-shadow .15s;overflow:hidden" onmouseover="this.style.borderColor='var(--gb)';this.style.boxShadow='var(--sh)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       ${cover}
       <div style="padding:12px">
         <div style="font-size:13px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(ev.title||'')}</div>

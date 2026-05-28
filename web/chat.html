@@ -1249,7 +1249,7 @@ async function api(path,opt={}){
     Object.assign(h, window.withActiveContextHeaders({}));
   }
   const r=await lastopFetch(API+path,{...opt,headers:h});
-  if(r.status===401){location.href='/login.html';throw new Error('401')}
+  if(r.status===401){location.href='/login';throw new Error('401')}
   if(r.status===429)showToast('Слишком часто, подождите секунду');
   if(!r.ok)throw new Error((await r.text())||r.status);
   return r.status===204?{}:r.json()
@@ -1265,7 +1265,7 @@ function loadCachedConversations(){const cached=cacheRead(cacheKeyConversations(
 function saveCachedConversations(){cacheWrite(cacheKeyConversations(),sortConversationsByLastMessage(state.conversations||[]))}
 function loadCachedMessages(pid){const cached=cacheRead(cacheKeyMessages(pid),[]);if(Array.isArray(cached)&&cached.length){state.messages=cached;renderMessages();return true}return false}
 function saveCachedMessages(pid){if(pid)cacheWrite(cacheKeyMessages(pid),state.messages||[])}
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){e.stopPropagation();topbarProfile.classList.toggle('open');profileDD.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!profileDD.contains(e.target)&&!topbarProfile.contains(e.target)){profileDD.classList.remove('open');topbarProfile.classList.remove('open')}})
 // ════════════════════════════════════════════
@@ -2205,7 +2205,7 @@ async function renderInfoPanel(){
   }catch{fieldsEl.innerHTML='<div style="font-size:12px;color:var(--gmt);padding:8px 0">Не удалось загрузить</div>';}
   if(c && c.public_id) loadInfoAttachments(c.public_id);
 }
-function openPeerProfile(){const id=state.activeConversation?.other_public_id;if(id)location.href='/profile_user.html?id='+encodeURIComponent(id)}
+function openPeerProfile(){const id=state.activeConversation?.other_public_id;if(id)location.href='/profile_user?id='+encodeURIComponent(id)}
 async function sendFriendRequest(){
   const id=state.activeConversation?.other_public_id;
   if(!id){showToast('Не удалось определить пользователя');return;}
@@ -2836,7 +2836,7 @@ function closeNewDialog(){newDialogOverlay.classList.remove('open');newDialogMod
 function showChatToast(msg, type){
   // Универсальный toast платформы (см. /assets/confirm-modal.js).
   // type: 'error' | 'warn' | 'success' | 'info'. По умолчанию — 'error',
-  // т.к. showChatToast в /chat.html используется только для ошибок.
+  // т.к. showChatToast в /chat используется только для ошибок.
   if (typeof window.lastopToast === 'function') {
     window.lastopToast(msg, type || 'error');
     return;
@@ -3028,7 +3028,7 @@ function jumpToCurrentMatch(){
 window.addEventListener('DOMContentLoaded', async () => {
   // Шаг 0: проверка токена
   if (!tk()) {
-    location.href = '/login.html';
+    location.href = '/login';
     return;
   }
 

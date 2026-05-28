@@ -311,7 +311,7 @@ function updateCounts(){
 function switchTab(t){
   TAB=t;
   syncTabsUI();
-  history.replaceState(null,'','/emarket-saved.html?tab='+t);
+  history.replaceState(null,'','/emarket-saved?tab='+t);
   render();
 }
 function syncTabsUI(){
@@ -338,7 +338,7 @@ function renderListings(kind){
     box.innerHTML=emptyState(
       kind==='service'?'Нет сохранённых услуг':'Нет сохранённых товаров',
       'Нажимайте на закладку у товаров и услуг в маркете, чтобы вернуться к ним здесь.',
-      'Перейти в маркет','/emarket.html'
+      'Перейти в маркет','/emarket'
     );
     return;
   }
@@ -356,13 +356,13 @@ function buildListingCard(it){
   var shopLogo=it.shop_logo?'<img src="'+esc(it.shop_logo)+'" alt="">':esc(letter(it.shop_name));
 
   return '<div class="sv-card" data-listing="'+it.listing_id+'">'+
-    '<a href="/emarket-listing.html?id='+it.listing_id+'" class="sv-card-img" style="'+imgStyle+'">'+
+    '<a href="/emarket-listing?id='+it.listing_id+'" class="sv-card-img" style="'+imgStyle+'">'+
       imgInner+
       '<span class="sv-card-kind">'+kindLabel+'</span>'+
       (it.available?'':'<span class="sv-card-unavail">Больше недоступно</span>')+
     '</a>'+
     '<div class="sv-card-body">'+
-      '<a href="/emarket-listing.html?id='+it.listing_id+'" class="sv-card-title">'+esc(it.title)+'</a>'+
+      '<a href="/emarket-listing?id='+it.listing_id+'" class="sv-card-title">'+esc(it.title)+'</a>'+
       '<a href="/shop/'+encodeURIComponent(it.shop_slug||'')+'" class="sv-card-shop">'+
         '<span class="sv-card-shop-logo" style="background:'+bg+'">'+shopLogo+'</span>'+
         '<span class="sv-card-shop-name">'+esc(it.shop_name)+'</span>'+
@@ -386,7 +386,7 @@ function cartBtnHTML(listingId, available){
       '<svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>В корзину</button>';
   }
   if(CART_IDS[listingId]){
-    return '<a href="/emarket-cart.html" class="sv-btn sv-btn-incart" data-cart-btn="'+listingId+'">'+
+    return '<a href="/emarket-cart" class="sv-btn sv-btn-incart" data-cart-btn="'+listingId+'">'+
       '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>В корзине</a>';
   }
   return '<button type="button" class="sv-btn sv-btn-primary" data-cart-btn="'+listingId+'" onclick="addToCart('+listingId+',this)">'+
@@ -400,7 +400,7 @@ function renderShops(){
     box.innerHTML=emptyState(
       'Нет сохранённых магазинов',
       'Сохраняйте магазины, чтобы быстро возвращаться к их витринам.',
-      'Смотреть магазины','/emarket.html'
+      'Смотреть магазины','/emarket'
     );
     return;
   }
@@ -439,7 +439,7 @@ function renderDrafts(){
     box.innerHTML=emptyState(
       'Нет сохранённых заявок',
       'Соберите корзину и нажмите «Сохранить как заявку» — состав с ценами сохранится здесь.',
-      'Перейти в корзину','/emarket-cart.html'
+      'Перейти в корзину','/emarket-cart'
     );
     return;
   }
@@ -618,8 +618,8 @@ function renderRight(){
         '<svg class="rs-shopping-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>'+
       '</button>'+
       '<div class="rs-shopping-body">'+
-        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Корзина</span><a href="/emarket-cart.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-empty">Открыть корзину</div></div>'+
-        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Активные заказы</span><a href="/emarket-orders.html" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-empty">Нет активных заказов</div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Корзина</span><a href="/emarket-cart" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-empty">Открыть корзину</div></div>'+
+        '<div class="rs-shopping-sec"><div class="rs-shopping-sec-h"><span>Активные заказы</span><a href="/emarket-orders" class="rs-shopping-all">Все →</a></div><div class="rs-shopping-empty">Нет активных заказов</div></div>'+
         '<div class="rs-shopping-sec active"><div class="rs-shopping-sec-h"><span>Сохранённое</span><span class="rs-shopping-all" style="opacity:.5;cursor:default">Вы здесь</span></div></div>'+
       '</div>'+
     '</div>'+

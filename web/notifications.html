@@ -446,7 +446,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   <div class="card" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:16px">
     <div style="font-size:13px;font-weight:800;color:var(--t);margin-bottom:12px">Быстрые действия</div>
     <button type="button" onclick="pageMarkAll()" style="width:100%;padding:10px;border-radius:12px;background:var(--gp);border:1px solid var(--gb);color:var(--g);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;transition:all .15s" onmouseover="this.style.background='var(--gl)'" onmouseout="this.style.background='var(--gp)'">Прочитать всё</button>
-    <a href="/settings.html" style="display:block;width:100%;padding:10px;border-radius:12px;background:transparent;border:1.5px solid var(--bdr);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box;transition:all .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.color='var(--g)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--tm)'">Настройки уведомлений</a>
+    <a href="/settings" style="display:block;width:100%;padding:10px;border-radius:12px;background:transparent;border:1.5px solid var(--bdr);color:var(--tm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box;transition:all .15s" onmouseover="this.style.borderColor='var(--gb)';this.style.color='var(--g)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--tm)'">Настройки уведомлений</a>
   </div>
 </aside>
 </div><!-- /shell -->
@@ -466,7 +466,7 @@ document.addEventListener('click',e=>{
   if(!dd||!p)return;
   if(!dd.contains(e.target)&&!p.contains(e.target)){dd.classList.remove('open');p.classList.remove('open');}
 });
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 </script>
 <script src="/site-search.js" defer></script>
 <script>
@@ -556,7 +556,7 @@ let lastLoadedID=0;
 let allLoadedItems=[];
 let isLoading=false;
 
-if(!tk()){ location.href='/login.html'; }
+if(!tk()){ location.href='/login'; }
 
 (async function(){
   // Загружаем профиль для шапки
@@ -770,7 +770,7 @@ function openWarningModal(n){
   }
   const srcType=n.source_type||'post';
   const srcId=n.source_id||0;
-  const link=n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id):'';
+  const link=n.source_public_id?'/news-detail?id='+encodeURIComponent(n.source_public_id):'';
   const isSanction=n.type==='moderation_sanction';
   // Заголовок/иконка/акцент по типу.
   const head = isSanction
@@ -941,25 +941,25 @@ function itemHTML(n){
 
 function buildHref(n){
   // Приоритет по типу события (n.type), не по source_type
-  if(n.type==='friend_request')return '/friends.html?tab=incoming';
-  if(n.type==='friend_accepted')return '/friends.html';
-  if(n.type==='moderation_appeal_result')return n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id):'/dashboard.html';
+  if(n.type==='friend_request')return '/friends?tab=incoming';
+  if(n.type==='friend_accepted')return '/friends';
+  if(n.type==='moderation_appeal_result')return n.source_public_id?'/news-detail?id='+encodeURIComponent(n.source_public_id):'/dashboard';
   switch(n.source_type){
     case 'post':
     case 'comment':
-      return n.source_public_id?'/news-detail.html?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/dashboard.html';
+      return n.source_public_id?'/news-detail?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/dashboard';
     case 'project':
     case 'need':
-      return n.source_public_id?'/project-detail.html?id='+encodeURIComponent(n.source_public_id):'/projects.html';
+      return n.source_public_id?'/project-detail?id='+encodeURIComponent(n.source_public_id):'/projects';
     case 'forum_topic':
-      return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/forum.html';
+      return n.source_public_id?'/forum-topic?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/forum';
     case 'forum_message':
     case 'forum_post':
-      return n.source_public_id?'/forum-topic.html?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/forum.html';
+      return n.source_public_id?'/forum-topic?id='+encodeURIComponent(n.source_public_id)+(n.anchor||''):'/forum';
     case 'user':
-      return n.actor_public_id?'/profile_user.html?id='+encodeURIComponent(n.actor_public_id):'/friends.html';
+      return n.actor_public_id?'/profile_user?id='+encodeURIComponent(n.actor_public_id):'/friends';
     case 'chat':
-      return n.source_public_id?'/chat.html?conv='+encodeURIComponent(n.source_public_id):'/chat.html';
+      return n.source_public_id?'/chat?conv='+encodeURIComponent(n.source_public_id):'/chat';
     default: return '#';
   }
 }

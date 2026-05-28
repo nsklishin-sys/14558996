@@ -157,7 +157,7 @@ const API = '/api';
 const esc = window.lastopEsc;function ltr(name){ if(!name)return '?'; return name.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase(); }
 const avc = window.lastopAvc;
 function toast(msg, ok){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(ok?' success':''); requestAnimationFrame(()=>t.classList.add('show')); setTimeout(()=>t.classList.remove('show'),2500); }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 function toggleProfileDD(e){
   e.stopPropagation();
@@ -183,7 +183,7 @@ const PRIVACY_LABEL = { open: 'Открытое (любой может всту�
 async function loadProfile(){
   try {
     const r = await lastopFetch(API+'/me', { headers:{}});
-    if(!r.ok){ location.href='/login.html'; return; }
+    if(!r.ok){ location.href='/login'; return; }
     const u = await r.json();
     const name = u.full_name || u.handle || 'Пользователь';
     document.getElementById('topbarName').textContent = name;
@@ -215,7 +215,7 @@ function renderEmpty(){
   document.getElementById('mainArea').innerHTML =
     '<div class="panel"><div class="panel-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Нет сообществ для управления</div>'+
     '<p style="font-size:13px;color:var(--tm);line-height:1.5">Вы не являетесь владельцем ни одного сообщества. Создайте новое сообщество, чтобы получить возможность им управлять.</p>'+
-    '<a class="btn btn-primary" href="/communities.html?create=1" style="align-self:flex-start"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать сообщество</a></div>';
+    '<a class="btn btn-primary" href="/communities?create=1" style="align-self:flex-start"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Создать сообщество</a></div>';
   document.getElementById('rightArea').innerHTML = '';
 }
 
@@ -238,7 +238,7 @@ function render(){
         '<div class="mc-meta"><span>'+esc(c.category || 'Категория не задана')+'</span><span>·</span><span>'+esc(c.privacy_level === 'closed' ? 'Закрытое' : 'Открытое')+'</span><span>·</span><span>'+(c.members_count || 0)+' участников</span></div>'+
       '</div>'+
       switcher+
-      '<a class="btn btn-secondary" href="/community-detail.html?id='+c.id+'"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Перейти к сообществу</a>'+
+      '<a class="btn btn-secondary" href="/community-detail?id='+c.id+'"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Перейти к сообществу</a>'+
     '</div>';
 
   const tabs = [
@@ -428,9 +428,9 @@ async function renderMembers(wrap){
         actions += '<button type="button" class="btn btn-ghost" onclick="kickMember(\''+esc(m.user_public_id)+'\',\''+esc(m.full_name||'')+'\')" style="color:var(--red);border-color:#FFD5D2">Исключить</button>';
       }
       return '<div class="member-row">'+
-        '<a class="member-av" href="/profile_user.html?id='+encodeURIComponent(m.user_public_id||'')+'" style="background:'+esc(avc(m.full_name))+'">'+avSrc+'</a>'+
+        '<a class="member-av" href="/profile_user?id='+encodeURIComponent(m.user_public_id||'')+'" style="background:'+esc(avc(m.full_name))+'">'+avSrc+'</a>'+
         '<div class="member-info">'+
-          '<div class="member-name"><a href="/profile_user.html?id='+encodeURIComponent(m.user_public_id||'')+'">'+esc(m.full_name||'Участник')+'</a></div>'+
+          '<div class="member-name"><a href="/profile_user?id='+encodeURIComponent(m.user_public_id||'')+'">'+esc(m.full_name||'Участник')+'</a></div>'+
           '<div class="member-role-line">'+esc(roleLabel)+(m.position ? ' · '+esc(m.position) : '')+'</div>'+
         '</div>'+
         badge+
@@ -490,9 +490,9 @@ async function renderRequests(wrap){
       const msg = rq.message || '';
       const avSrc = rq.user_avatar ? '<img src="'+esc(rq.user_avatar)+'" alt="">' : esc(ltr(userName));
       return '<div class="req-row">'+
-        '<a class="member-av" href="/profile_user.html?id='+encodeURIComponent(upid)+'" style="background:'+esc(avc(userName))+'">'+avSrc+'</a>'+
+        '<a class="member-av" href="/profile_user?id='+encodeURIComponent(upid)+'" style="background:'+esc(avc(userName))+'">'+avSrc+'</a>'+
         '<div class="member-info">'+
-          '<div class="member-name"><a href="/profile_user.html?id='+encodeURIComponent(upid)+'">'+esc(userName)+'</a></div>'+
+          '<div class="member-name"><a href="/profile_user?id='+encodeURIComponent(upid)+'">'+esc(userName)+'</a></div>'+
           (msg ? '<div class="req-message">«'+esc(msg)+'»</div>' : '<div class="member-role-line">Без сообщения</div>')+
         '</div>'+
         '<div class="member-actions">'+
@@ -549,7 +549,7 @@ async function executeDelete(){
     if(!r.ok){toast('Ошибка '+r.status);btn.disabled=false;btn.textContent='Удалить';return;}
     closeDeleteModal();
     toast('Сообщество удалено',true);
-    setTimeout(()=>{location.href='/communities.html';},800);
+    setTimeout(()=>{location.href='/communities';},800);
   }catch(err){
     toast('Сеть: '+err.message);
     btn.disabled=false;btn.textContent='Удалить';
@@ -582,12 +582,12 @@ async function switchCommunity(id){
   if (!c) return;
   currentCommunity = c;
   await loadCurrentCommunity();
-  history.replaceState({}, '', '/my-community-edit.html?id='+id);
+  history.replaceState({}, '', '/my-community-edit?id='+id);
   render();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!tk()){ location.href='/login.html'; return; }
+  if (!tk()){ location.href='/login'; return; }
   await loadProfile();
   try {
     await loadMyCommunities();

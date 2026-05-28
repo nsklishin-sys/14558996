@@ -496,7 +496,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -700,7 +700,7 @@ function pickAuthor(item){
   if (item.author_community_id && item.author_community_name) {
     return {
       name: item.author_community_name,
-      href: '/community-detail.html?id=' + item.author_community_id,
+      href: '/community-detail?id=' + item.author_community_id,
       avatar: item.author_community_avatar || '',
       color: item.author_community_color || '#5AB080',
       kind: 'community'
@@ -709,7 +709,7 @@ function pickAuthor(item){
   if (item.author_company_id && item.author_company_name) {
     return {
       name: item.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(item.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(item.author_company_slug || ''),
       avatar: item.author_company_logo || '',
       color: '#1E8A4C',
       kind: 'company'
@@ -717,7 +717,7 @@ function pickAuthor(item){
   }
   return {
     name: item.author_name || item.author || 'Участник',
-    href: item.author_public_id ? '/profile_user.html?id=' + item.author_public_id : '#',
+    href: item.author_public_id ? '/profile_user?id=' + item.author_public_id : '#',
     avatar: item.author_avatar || '',
     color: '#5A8A6A',
     kind: 'user'
@@ -744,7 +744,7 @@ function renderJobCard(j){
     : '';
   const tagsHtml = (j.tags || []).slice(0, 6).map(t => '<span class="jc-tag">' + esc(t) + '</span>').join('');
   const author = pickAuthor(j);
-  return '<div class="job-card" onclick="location.href=\'/job-detail.html?id=' + esc(j.public_id) + '\'">' +
+  return '<div class="job-card" onclick="location.href=\'/job-detail?id=' + esc(j.public_id) + '\'">' +
     '<div class="jc-stripe" style="background:' + esc(color) + '"></div>' +
     '<div class="jc-body">' +
       '<div class="jc-head">' +
@@ -771,7 +771,7 @@ function renderCvCard(c){
     ({active:'🔥 Активно ищет', open:'Рассматривает', passive:'Открыт к офферам', hidden:'Скрытое'}[c.status] || c.status) +
     '</span>';
   const skillsHtml = (c.skills || []).slice(0, 6).map(s => '<span class="cv-skill">' + esc(s) + '</span>').join('');
-  return '<div class="cv-card" onclick="location.href=\'/resume-detail.html?id=' + esc(c.public_id) + '\'">' +
+  return '<div class="cv-card" onclick="location.href=\'/resume-detail?id=' + esc(c.public_id) + '\'">' +
     '<div class="cv-av" style="background:' + esc(color) + '">' + esc(initials(c.author_name)) + '</div>' +
     '<div class="cv-body">' +
       '<div class="cv-head">' +
@@ -794,7 +794,7 @@ function renderCvCard(c){
 
 // ─── Modals ───
 function openCreateModal(){
-  if (!tk()){ toast('Войдите чтобы публиковать'); setTimeout(() => location.href = '/login.html', 1200); return; }
+  if (!tk()){ toast('Войдите чтобы публиковать'); setTimeout(() => location.href = '/login', 1200); return; }
   if (currentMode === 'jobs') {
     ['jobTitle','jobCity','jobAddress','jobSalFrom','jobSalTo','jobDesc','jobTags'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('jobExp').value = 0;
@@ -853,7 +853,7 @@ async function submitJob(){
     const d = await r.json();
     closeCreateModal();
     toast('Вакансия опубликована', true);
-    setTimeout(() => location.href = '/job-detail.html?id=' + d.job.public_id, 600);
+    setTimeout(() => location.href = '/job-detail?id=' + d.job.public_id, 600);
   } catch (err) {
     console.error(err);
     toast('Ошибка: ' + (err.message || 'не удалось'));
@@ -895,7 +895,7 @@ async function submitCv(){
     const d = await r.json();
     closeCreateModal();
     toast('Резюме опубликовано', true);
-    setTimeout(() => location.href = '/resume-detail.html?id=' + d.resume.public_id, 600);
+    setTimeout(() => location.href = '/resume-detail?id=' + d.resume.public_id, 600);
   } catch (err) {
     console.error(err);
     toast('Ошибка: ' + (err.message || 'не удалось'));

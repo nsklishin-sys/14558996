@@ -126,7 +126,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 
   <div id="guestHint" class="guest-hint" style="display:none">
-    <a href="/login.html">Войдите</a>, чтобы участвовать в обсуждении
+    <a href="/login">Войдите</a>, чтобы участвовать в обсуждении
   </div>
 
   <div class="list-card">
@@ -166,8 +166,8 @@ let _messages = [];
 async function loadExhibition(){
   const params = new URLSearchParams(location.search);
   _publicID = params.get('id') || params.get('public_id') || '';
-  if (!_publicID) { location.href='/exhibitions.html'; return; }
-  const backHref = '/exhibition-detail.html?id=' + encodeURIComponent(_publicID);
+  if (!_publicID) { location.href='/exhibitions'; return; }
+  const backHref = '/exhibition-detail?id=' + encodeURIComponent(_publicID);
   document.getElementById('backLink').setAttribute('href', backHref);
   document.getElementById('openExhLink').setAttribute('href', backHref);
   try {
@@ -237,11 +237,11 @@ function renderMessages(){
       ? '<div class="disc-msg-actions"><button type="button" class="disc-msg-del" onclick="deleteMessage(' + m.id + ')">Удалить</button></div>'
       : '';
     return '<div class="disc-msg' + (m.is_deleted ? ' deleted' : '') + '" data-msg-id="' + m.id + '">'
-      + '<a href="/profile_user.html?id=' + pid + '" class="disc-av" style="' + bg + ';text-decoration:none">'
+      + '<a href="/profile_user?id=' + pid + '" class="disc-av" style="' + bg + ';text-decoration:none">'
       + (m.author_avatar ? '' : ltr) + '</a>'
       + '<div class="disc-msg-body">'
       + '<div class="disc-msg-head">'
-      + '<a href="/profile_user.html?id=' + pid + '" class="disc-msg-name">' + name + '</a>'
+      + '<a href="/profile_user?id=' + pid + '" class="disc-msg-name">' + name + '</a>'
       + '<span class="disc-msg-time">' + esc(time) + '</span>'
       + '</div>'
       + content

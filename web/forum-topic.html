@@ -196,7 +196,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/forum.html">Форум</a>
+    <a class="bc-item" href="/forum">Форум</a>
     <span class="bc-sep">›</span>
     <a class="bc-item" href="#" id="bcCategory">Категория</a>
     <span class="bc-sep">›</span>
@@ -307,7 +307,7 @@ function pickTopicAuthor(topic){
   if (topic.author_community_id && topic.author_community_name) {
     return {
       name: topic.author_community_name,
-      href: '/community-detail.html?id=' + encodeURIComponent(topic.author_community_id),
+      href: '/community-detail?id=' + encodeURIComponent(topic.author_community_id),
       avatar: topic.author_community_avatar || '',
       color: topic.author_community_color || '#5AB080',
       kind: 'community'
@@ -316,7 +316,7 @@ function pickTopicAuthor(topic){
   if (topic.author_company_id && topic.author_company_name) {
     return {
       name: topic.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(topic.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(topic.author_company_slug || ''),
       avatar: topic.author_company_logo || '',
       color: stableColor(topic.author_company_name),
       kind: 'company'
@@ -324,7 +324,7 @@ function pickTopicAuthor(topic){
   }
   return {
     name: topic.author_name || 'Аноним',
-    href: topic.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(topic.author_public_id) : '#',
+    href: topic.author_public_id ? '/profile_user?id=' + encodeURIComponent(topic.author_public_id) : '#',
     avatar: topic.author_avatar || '',
     color: stableColor(topic.author_name || 'Аноним'),
     kind: 'user'
@@ -338,7 +338,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 function toggleProfileDD(e){
   e.stopPropagation();
@@ -391,7 +391,7 @@ async function loadCategoryColors(){
 async function loadTopic(){
   if(window.markNotifsReadBySource&&TOPIC_PUBLIC_ID)window.markNotifsReadBySource(['forum_topic','forum_message'],TOPIC_PUBLIC_ID);
   if (!TOPIC_PUBLIC_ID) {
-    document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не указана. <a href="/forum.html">К списку тем →</a></div>';
+    document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не указана. <a href="/forum">К списку тем →</a></div>';
     return;
   }
   try {
@@ -399,7 +399,7 @@ async function loadTopic(){
       headers: {}
     });
     if (r.status === 404) {
-      document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не найдена или удалена. <a href="/forum.html">К списку тем →</a></div>';
+      document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Тема не найдена или удалена. <a href="/forum">К списку тем →</a></div>';
       return;
     }
     if (!r.ok) throw new Error('http ' + r.status);
@@ -428,7 +428,7 @@ async function loadTopic(){
     await loadIsSubscribed();
   } catch (err) {
     console.error('loadTopic', err);
-    document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Не удалось загрузить тему. <a href="/forum.html">К списку тем →</a></div>';
+    document.getElementById('topicHeaderWrap').innerHTML = '<div class="empty-state">Не удалось загрузить тему. <a href="/forum">К списку тем →</a></div>';
   }
 }
 
@@ -436,7 +436,7 @@ function updateBreadcrumbs(){
   if (!currentTopic) return;
   const bcCat = document.getElementById('bcCategory');
   bcCat.textContent = currentTopic.category_label || 'Категория';
-  bcCat.href = '/forum.html?cat=' + encodeURIComponent(currentTopic.category_key);
+  bcCat.href = '/forum?cat=' + encodeURIComponent(currentTopic.category_key);
   document.getElementById('bcTopic').textContent = currentTopic.title.length > 60 ? currentTopic.title.substring(0, 60) + '…' : currentTopic.title;
 }
 
@@ -473,7 +473,7 @@ function renderTopicHeader(){
   document.getElementById('topicHeaderWrap').innerHTML =
     '<div class="topic-header">' +
       '<div class="th-top">' +
-        '<a class="th-cat-tag" style="background:' + esc(color) + '" href="/forum.html?cat=' + esc(t.category_key) + '">' + esc(t.category_label) + '</a>' +
+        '<a class="th-cat-tag" style="background:' + esc(color) + '" href="/forum?cat=' + esc(t.category_key) + '">' + esc(t.category_label) + '</a>' +
         (t.is_pinned ? '<span class="th-pinned-icon" title="Закреплено"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-3V5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v9z"/></svg></span>' : '') +
         closedTag +
         '<div class="th-actions">' +
@@ -590,7 +590,7 @@ async function deleteTopic(){
     });
     if (!r.ok) throw new Error('http ' + r.status);
     toast('Тема удалена', true);
-    setTimeout(() => location.href = '/forum.html', 800);
+    setTimeout(() => location.href = '/forum', 800);
   } catch (err) {
     console.error('deleteTopic', err);
     toast('Не удалось удалить тему');
@@ -628,19 +628,19 @@ function renderMessages(){
 function renderMessage(m){
   // Контекст автора: компания / сообщество / личный.
   let displayName = m.author_name || 'Аноним';
-  let displayLink = '/profile_user.html?id=' + esc(m.author_public_id || '');
+  let displayLink = '/profile_user?id=' + esc(m.author_public_id || '');
   let displayAvatarText = initials(m.author_name);
   let displayAvatar = m.author_avatar || '';
   let displayAvatarColor = stableColor(m.author_name || '?');
   if (m.sender_company_id && m.sender_company_name) {
     displayName = m.sender_company_name;
-    displayLink = '/company_view.html?slug=' + esc(m.sender_company_slug || '');
+    displayLink = '/company_view?slug=' + esc(m.sender_company_slug || '');
     displayAvatarText = initials(m.sender_company_name);
     displayAvatar = m.sender_company_logo || '';
     displayAvatarColor = stableColor(m.sender_company_name);
   } else if (m.sender_community_id && m.sender_community_name) {
     displayName = m.sender_community_name;
-    displayLink = '/community_view.html?id=' + esc(m.sender_community_id);
+    displayLink = '/community_view?id=' + esc(m.sender_community_id);
     displayAvatarText = initials(m.sender_community_name);
     displayAvatar = m.sender_community_avatar || '';
     displayAvatarColor = stableColor(m.sender_community_name);
@@ -830,7 +830,7 @@ function renderReplyForm(quoteAuthor, quoteText){
   }
   if (!tk()) {
     wrap.innerHTML = '<div class="reply-login-prompt">' +
-      '<a href="/login.html">Войдите</a> чтобы ответить в теме' +
+      '<a href="/login">Войдите</a> чтобы ответить в теме' +
     '</div>';
     return;
   }

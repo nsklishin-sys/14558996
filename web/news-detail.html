@@ -375,9 +375,9 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
   <nav class="breadcrumb">
     <a class="bc-item" href="/">Главная</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/dashboard.html">Новости</a>
+    <a class="bc-item" href="/dashboard">Новости</a>
     <span class="bc-sep">›</span>
-    <a class="bc-item" href="/dashboard.html?cat=logistics">Логистика и ВЭД</a>
+    <a class="bc-item" href="/dashboard?cat=logistics">Логистика и ВЭД</a>
     <span class="bc-sep">›</span>
     <span class="bc-item active">Новые правила таможенного оформления…</span>
   </nav>
@@ -510,7 +510,7 @@ html,body{min-height:100%;font-family:'Manrope',sans-serif;background:var(--bg);
 
         <!-- Призыв к регистрации (только для гостя) -->
         <div data-guest-only style="display:none;padding:16px;background:var(--gp);border:1px solid var(--bdr);border-radius:12px;margin-bottom:16px;text-align:center">
-          <div style="font-size:13px;color:var(--tm);margin-bottom:10px"><a href="/login.html" style="color:var(--g);font-weight:700">Войдите</a> или <a href="/register.html" style="color:var(--g);font-weight:700">зарегистрируйтесь</a>, чтобы оставить комментарий и поставить лайк</div>
+          <div style="font-size:13px;color:var(--tm);margin-bottom:10px"><a href="/login" style="color:var(--g);font-weight:700">Войдите</a> или <a href="/register" style="color:var(--g);font-weight:700">зарегистрируйтесь</a>, чтобы оставить комментарий и поставить лайк</div>
         </div>
 
         <!-- Список комментариев -->
@@ -634,19 +634,19 @@ async function deleteThisPost(){
     });
     if (!r.ok) throw new Error('Ошибка');
     toast('Публикация удалена', true);
-    setTimeout(()=>location.href='/dashboard.html', 700);
+    setTimeout(()=>location.href='/dashboard', 700);
   } catch {
     toast('Не удалось удалить');
   }
 }
-if(!postPublicID){location.href='/dashboard.html';}
+if(!postPublicID){location.href='/dashboard';}
 const esc = window.lastopEsc;
-function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>')}
+function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user?handle=$1">@$1</a>')}
 function ltr(s){return((s||'?')[0]).toUpperCase()}
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
 function toast(msg,ok){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast show'+(ok?' ok':'');setTimeout(()=>t.classList.remove('show'),2400)}
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* DROPDOWN профиля */
 function toggleDD(e){e.stopPropagation();const tp=document.getElementById('topbarProfile');const pd=document.getElementById('profileDD');if(tp)tp.classList.toggle('open');if(pd)pd.classList.toggle('open')}
@@ -1089,7 +1089,7 @@ function pickPostAuthor(p){
   if (p.community_id && p.community_name) {
     return {
       name: p.community_name,
-      href: '/community-detail.html?id=' + p.community_id,
+      href: '/community-detail?id=' + p.community_id,
       avatar: p.community_avatar || '',
       bgColor: p.community_color || (typeof avc==='function' ? avc(p.community_name) : '#5AB080'),
       subline: 'Сообщество',
@@ -1100,7 +1100,7 @@ function pickPostAuthor(p){
   if (p.author_company_id && p.author_company_name) {
     return {
       name: p.author_company_name,
-      href: '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || ''),
+      href: '/company-detail?id=' + encodeURIComponent(p.author_company_slug || ''),
       avatar: p.author_company_logo || '',
       bgColor: typeof avc==='function' ? avc(p.author_company_name) : '#5AB080',
       subline: 'Компания',
@@ -1110,7 +1110,7 @@ function pickPostAuthor(p){
   }
   return {
     name: p.author || '',
-    href: p.author_public_id ? '/profile_user.html?id=' + encodeURIComponent(p.author_public_id) : '#',
+    href: p.author_public_id ? '/profile_user?id=' + encodeURIComponent(p.author_public_id) : '#',
     avatar: p.author_avatar || '',
     bgColor: typeof avc==='function' ? avc(p.author || '') : '#5AB080',
     subline: p.author_role || '',
@@ -1206,11 +1206,11 @@ function renderPost(p){
   if (newsAuthorLink) {
     let authorHref = '';
     if (fromCommunity && (author.community_public_id || author.community_id)) {
-      authorHref = '/community-detail.html?id=' + encodeURIComponent(author.community_public_id || author.community_id);
+      authorHref = '/community-detail?id=' + encodeURIComponent(author.community_public_id || author.community_id);
     } else if (fromCompany && (author.company_slug || author.company_public_id)) {
-      authorHref = '/company-detail.html?slug=' + encodeURIComponent(author.company_slug || author.company_public_id);
+      authorHref = '/company-detail?slug=' + encodeURIComponent(author.company_slug || author.company_public_id);
     } else if (authorPublicID) {
-      authorHref = '/profile_user.html?id=' + encodeURIComponent(authorPublicID);
+      authorHref = '/profile_user?id=' + encodeURIComponent(authorPublicID);
     }
     if (authorHref) {
       newsAuthorLink.setAttribute('href', authorHref);
@@ -1238,7 +1238,7 @@ function renderPost(p){
   if (tagsEl) {
     if (tags.length) {
       tagsEl.style.display = 'flex';
-      tagsEl.innerHTML = tags.map(t => `<a class="news-tag" href="/search.html?q=${encodeURIComponent('#' + t)}">#${esc(t)}</a>`).join('');
+      tagsEl.innerHTML = tags.map(t => `<a class="news-tag" href="/search?q=${encodeURIComponent('#' + t)}">#${esc(t)}</a>`).join('');
     } else {
       tagsEl.style.display = 'none';
       tagsEl.innerHTML = '';
@@ -1250,7 +1250,7 @@ function renderPost(p){
   const original = document.getElementById('newsRepostOriginal');
   if (isRepost && banner && bannerText && original) {
     banner.style.display = 'flex';
-    bannerText.innerHTML = `${esc(authorName)} поделился публикацией <a href="/profile_user.html?id=${encodeURIComponent(p.repost.author_public_id || '')}">${esc(p.repost.author || 'участника')}</a>`;
+    bannerText.innerHTML = `${esc(authorName)} поделился публикацией <a href="/profile_user?id=${encodeURIComponent(p.repost.author_public_id || '')}">${esc(p.repost.author || 'участника')}</a>`;
     original.style.display = 'block';
     const origAv = document.getElementById('newsRepostOriginalAv');
     if (origAv) {
@@ -1279,13 +1279,13 @@ function renderPost(p){
   if (sidebarBlock) {
     if (fromCommunity && author.community_id) {
       sidebarBlock.style.cursor = 'pointer';
-      sidebarBlock.onclick = () => location.href = '/community-detail.html?id=' + encodeURIComponent(author.community_id);
+      sidebarBlock.onclick = () => location.href = '/community-detail?id=' + encodeURIComponent(author.community_id);
     } else if (fromCompany && author.author_company_slug) {
       sidebarBlock.style.cursor = 'pointer';
-      sidebarBlock.onclick = () => location.href = '/company-detail.html?id=' + encodeURIComponent(author.author_company_slug);
+      sidebarBlock.onclick = () => location.href = '/company-detail?id=' + encodeURIComponent(author.author_company_slug);
     } else if (authorPublicID) {
       sidebarBlock.style.cursor = 'pointer';
-      sidebarBlock.onclick = () => location.href = '/profile_user.html?id=' + encodeURIComponent(authorPublicID);
+      sidebarBlock.onclick = () => location.href = '/profile_user?id=' + encodeURIComponent(authorPublicID);
     } else {
       sidebarBlock.style.cursor = 'default';
       sidebarBlock.onclick = null;
@@ -1415,7 +1415,7 @@ async function loadSimilarNews(){
         ? '<div class="rel-img-ph" style="background-image:url(\'' + _ndlEsc(it.cover_url) + '\');background-size:cover;background-position:center"></div>'
         : '<div class="rel-img-ph" style="background:' + colors[i % colors.length] + '"></div>';
       const meta = _ndlAgo(it.created_at) + ' · ' + _ndlFmtViews(it.views_count || 0) + ' просм.';
-      return '<div class="rel-item" onclick="location.href=\'/news-detail.html?id=' + encodeURIComponent(it.public_id) + '\'">'
+      return '<div class="rel-item" onclick="location.href=\'/news-detail?id=' + encodeURIComponent(it.public_id) + '\'">'
         + cover
         + '<div class="rel-body"><div class="rel-title">' + title + '</div><div class="rel-meta">' + _ndlEsc(meta) + '</div></div>'
         + '</div>';
@@ -1480,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 
 async function copyPostLink(){
-  const url = location.origin + '/news-detail.html?id=' + encodeURIComponent(postPublicID);
+  const url = location.origin + '/news-detail?id=' + encodeURIComponent(postPublicID);
   try {
     await navigator.clipboard.writeText(url);
     toast('Ссылка скопирована');

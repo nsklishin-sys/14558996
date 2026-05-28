@@ -469,7 +469,7 @@ function toast(msg, success){
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => t.classList.remove('show'), 2500);
 }
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){
   e.stopPropagation();
   document.getElementById('profileDD').classList.toggle('open');
@@ -485,10 +485,10 @@ document.addEventListener('click', e => {
 function authHeaders(){ return {}; }
 
 async function loadProfile(){
-  if (!tk()) { location.href = '/login.html'; return; }
+  if (!tk()) { location.href = '/login'; return; }
   try {
     const r = await lastopFetch(API + '/me', { headers: authHeaders() });
-    if (!r.ok) { location.href = '/login.html'; return; }
+    if (!r.ok) { location.href = '/login'; return; }
     const d = await r.json();
     const u = d.user || d;
     viewerID = u.id;
@@ -593,7 +593,7 @@ function render(){
         '</div>' +
       '</div>' +
       selectorHtml +
-      '<a class="btn btn-primary" href="/company-detail.html?id=' + encodeURIComponent(c.slug) + '"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль компании</a>' +
+      '<a class="btn btn-primary" href="/company-detail?id=' + encodeURIComponent(c.slug) + '"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль компании</a>' +
     '</div>';
 
   const canManage = isOwner || !!c.viewer_can_manage;
@@ -612,7 +612,7 @@ function render(){
   document.getElementById('mainArea').innerHTML = headerHtml + tabsHtml + '<div id="tabContent"></div>';
 
   // sidebar
-  const publicHref = '/company-detail.html?slug=' + encodeURIComponent(c.slug);
+  const publicHref = '/company-detail?slug=' + encodeURIComponent(c.slug);
   document.getElementById('rightArea').innerHTML =
     '<div class="panel">' +
       '<div class="panel-title">Краткая информация</div>' +
@@ -626,7 +626,7 @@ function render(){
         '<svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
         '<span>Открыть публичную страницу</span>' +
       '</a>' +
-      '<a href="/dashboard.html?company=' + encodeURIComponent(c.public_id) + '" class="mc-side-action">' +
+      '<a href="/dashboard?company=' + encodeURIComponent(c.public_id) + '" class="mc-side-action">' +
         '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
         '<span>Опубликовать пост</span>' +
       '</a>' +
@@ -673,7 +673,7 @@ async function loadCompanyPubsCount(){
 
 function copyPublicLink(){
   if (!currentCompany) return;
-  const url = location.origin + '/company-detail.html?slug=' + encodeURIComponent(currentCompany.slug);
+  const url = location.origin + '/company-detail?slug=' + encodeURIComponent(currentCompany.slug);
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(url).then(() => toast('Ссылка скопирована'), () => toast('Не удалось скопировать'));
   } else {
@@ -973,7 +973,7 @@ async function renderMembers(wrap){
       const av = m.user_avatar
         ? '<img src="' + escAttr(m.user_avatar) + '" alt="">'
         : esc(initials(m.user_name));
-      const profileHref = m.user_public_id ? '/profile_user.html?id=' + encodeURIComponent(m.user_public_id) : '#';
+      const profileHref = m.user_public_id ? '/profile_user?id=' + encodeURIComponent(m.user_public_id) : '#';
       return '<div class="member-row">' +
         '<a href="' + escAttr(profileHref) + '" class="member-av" style="background:' + esc(stableColor(m.user_name)) + '">' + av + '</a>' +
         '<div class="member-info">' +
@@ -1164,7 +1164,7 @@ async function renderInvites(wrap){
     }).length;
     const inactiveCount = invites.length - activeCount;
     const rows = filtered.map(inv => {
-      const url = location.origin + '/company-detail.html?id=' + encodeURIComponent(currentCompany.slug) + '&invite=' + encodeURIComponent(inv.code);
+      const url = location.origin + '/company-detail?id=' + encodeURIComponent(currentCompany.slug) + '&invite=' + encodeURIComponent(inv.code);
       const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
       const usedUp = inv.max_uses > 0 && inv.used_count >= inv.max_uses;
       const inactive = !inv.is_active || expired || usedUp;
@@ -1218,8 +1218,8 @@ async function renderPubs(wrap){
     const jobs = (jobsR.jobs || jobsR.items || []).filter(j => j.author_company_id === cid);
     const cats = (catR.items || []).filter(c => c.author_company_id === cid);
     const all = [
-      ...jobs.map(j => ({ kind: 'Вакансия', title: j.title, href: '/job-detail.html?id=' + encodeURIComponent(j.public_id), at: j.created_at })),
-      ...cats.map(c => ({ kind: c.type === 'product' ? 'Товар' : 'Услуга', title: c.title, href: (c.type === 'product' ? '/product-detail.html?id=' : '/service-detail.html?id=') + encodeURIComponent(c.public_id), at: c.created_at })),
+      ...jobs.map(j => ({ kind: 'Вакансия', title: j.title, href: '/job-detail?id=' + encodeURIComponent(j.public_id), at: j.created_at })),
+      ...cats.map(c => ({ kind: c.type === 'product' ? 'Товар' : 'Услуга', title: c.title, href: (c.type === 'product' ? '/product-detail?id=' : '/service-detail?id=') + encodeURIComponent(c.public_id), at: c.created_at })),
     ].sort((a, b) => new Date(b.at) - new Date(a.at));
 
     const rows = all.map(p =>
@@ -1440,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadProfile();
   try { const r = await lastopFetch(API + '/catalog/categories'); const d = await r.json(); CAT_TREE = d.groups || []; } catch (e) { CAT_TREE = []; }
   await loadCompanies();
-  // Если пришли с ?create=1 (например, из /companies.html) — сразу открыть модалку
+  // Если пришли с ?create=1 (например, из /companies) — сразу открыть модалку
   if (new URLSearchParams(location.search).get('create') === '1') {
     setTimeout(() => openCreate(), 200);
   }

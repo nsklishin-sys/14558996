@@ -365,7 +365,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
 .wmore:hover{background:var(--gp)}
 .widget-body{flex:1;min-height:0;overflow:auto;padding-right:2px}
 
-/* Виджет задач — карточный стиль (как .t-card на /tasks.html) */
+/* Виджет задач — карточный стиль (как .t-card на /tasks) */
 #tasksList{display:flex;flex-direction:column;gap:6px}
 .task-item{
   display:flex;align-items:flex-start;gap:10px;
@@ -671,7 +671,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
       <p id="greetingDate"></p>
     </div>
     <!-- "Что нового" — встроенный в баннер блок, не отдельная карточка. -->
-    <a class="hb-update" id="hbUpdate" href="/updates.html" style="display:none">
+    <a class="hb-update" id="hbUpdate" href="/updates" style="display:none">
       <div class="hb-update-ico">
         <svg viewBox="0 0 24 24"><path d="M12 3l1.7 4.5L18 9.2l-4.3 1.7L12 15.4l-1.7-4.5L6 9.2l4.3-1.7L12 3z"/><path d="M19 14l.7 1.9L21.5 16.6l-1.9.7L19 19l-.7-1.7-1.9-.7 1.9-.7L19 14z"/><path d="M5 16l.5 1.5L7 18l-1.5.5L5 20l-.5-1.5L3 18l1.5-.5L5 16z"/></svg>
       </div>
@@ -689,8 +689,8 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
   <!-- Строка публикации -->
   <div class="compose-bar">
     <div class="cb-av" id="composeAv">?</div>
-    <span class="cb-ph" onclick="location.href='/dashboard.html?compose=1'">Поделитесь новостью или проектом…</span>
-    <button type="button" class="cb-btn" onclick="location.href='/dashboard.html?compose=1'">Опубликовать</button>
+    <span class="cb-ph" onclick="location.href='/dashboard?compose=1'">Поделитесь новостью или проектом…</span>
+    <button type="button" class="cb-btn" onclick="location.href='/dashboard?compose=1'">Опубликовать</button>
   </div>
 
   <!-- Виджеты в ряд -->
@@ -698,8 +698,8 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     <!-- Задачи -->
     <div class="widget">
       <div class="wh">
-        <a class="wt wt-link" href="/tasks.html"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Мои задачи</a>
-        <a class="wmore" href="/tasks.html">Все →</a>
+        <a class="wt wt-link" href="/tasks"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Мои задачи</a>
+        <a class="wmore" href="/tasks">Все →</a>
       </div>
       <div id="tasksList" class="widget-body"></div>
       <button type="button" class="add-task-btn" onclick="openAddTask()">+ Добавить задачу</button>
@@ -707,16 +707,16 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     <!-- Чаты -->
     <div class="widget">
       <div class="wh">
-        <a class="wt wt-link" href="/chat.html"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="4,7 12,13 20,7"/></svg>Активные чаты</a>
-        <a class="wmore" href="/chat.html">Все →</a>
+        <a class="wt wt-link" href="/chat"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="4,7 12,13 20,7"/></svg>Активные чаты</a>
+        <a class="wmore" href="/chat">Все →</a>
       </div>
       <div id="chatsList" class="widget-body"></div>
     </div>
     <!-- Форум -->
     <div class="widget">
       <div class="wh">
-        <a class="wt wt-link" href="/forum.html"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Форум</a>
-        <a class="wmore" href="/forum.html">Все →</a>
+        <a class="wt wt-link" href="/forum"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Форум</a>
+        <a class="wmore" href="/forum">Все →</a>
       </div>
       <div id="forumList" class="widget-body"></div>
     </div>
@@ -736,7 +736,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
           <p class="cal-hero-sub" id="calHeroSub">Загрузка…</p>
         </div>
       </div>
-      <a href="/calendar.html" class="cal-hero-cta">Открыть полный
+      <a href="/calendar" class="cal-hero-cta">Открыть полный
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><polyline points="9 6 15 12 9 18"/></svg>
       </a>
     </div>
@@ -812,7 +812,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
         <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:var(--g);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         Последние проекты
       </div>
-      <a class="wmore" href="/projects.html">Все →</a>
+      <a class="wmore" href="/projects">Все →</a>
     </div>
     <div id="recentProjectsList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
   </div>
@@ -822,7 +822,7 @@ body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available}
     <div class="ad-content">
       <div class="ad-title">LogisticsPro 2026</div>
       <div class="ad-sub">Выставка · Москва · май</div>
-      <button type="button" class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button>
+      <button type="button" class="ad-btn" onclick="location.href='/events'">Узнать подробнее</button>
     </div>
   </div>
 
@@ -840,7 +840,7 @@ const USER_NAME_TO_PUBLIC_ID = {
 };
 
 const esc = window.lastopEsc;
-function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user.html?handle=$1">@$1</a>');}
+function fmtMentions(s){return esc(s).replace(/@([a-z0-9_]{3,24})/ig,'<a class="mention" href="/profile_user?handle=$1">@$1</a>');}
 const letter = window.lastopLetter;
 const avc = window.lastopAvc;
 const ago = window.lastopAgo;
@@ -861,7 +861,7 @@ function profileHref(userLike){
   const uid=getPublicID(userLike)||getPublicID(currentUser)||'u_demo_nikita';
   const currentUID=getPublicID(currentUser);
   const isSelf=!!currentUID && uid===currentUID;
-  const base=isSelf?'/profile.html':'/profile_user.html';
+  const base=isSelf?'/profile':'/profile_user';
   return `${base}?uid=${encodeURIComponent(uid)}`;
 }
 function skels(n,h=50){return Array(n).fill(0).map(()=>`
@@ -873,7 +873,7 @@ function skels(n,h=50){return Array(n).fill(0).map(()=>`
 /* ── АВТОРИЗАЦИЯ ── */
 let currentUser={};
 (async()=>{
-  if(!tk()){location.replace('/home-guest.html');return;}
+  if(!tk()){location.replace('/home-guest');return;}
   try{
     const r=await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
@@ -886,7 +886,7 @@ let currentUser={};
     localStorage.setItem('user',JSON.stringify(user));
   }catch{
     currentUser=JSON.parse(localStorage.getItem('user')||'{}');
-    if(!currentUser.id){location.href='/home-guest.html';return;}
+    if(!currentUser.id){location.href='/home-guest';return;}
   }
   populateUser();
 })();
@@ -909,7 +909,7 @@ function populateUser(){
   document.getElementById('pddName').textContent=name;
   document.getElementById('pddRole').textContent=currentUser.role||currentUser.position||'Участник LASTOP';
   const selfProfileHref = profileHref(currentUser);
-  document.querySelectorAll('a[href=\"/profile.html\"]').forEach((a)=>{a.href=selfProfileHref;});
+  document.querySelectorAll('a[href=\"/profile\"]').forEach((a)=>{a.href=selfProfileHref;});
 }
 
 /* ── ДРОПДАУН ПРОФИЛЯ ── */
@@ -932,7 +932,7 @@ document.addEventListener('keydown',e=>{
     document.getElementById('topbarProfile').classList.remove('open');
   }
 });
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 
 /* ── ИНИЦИАЛИЗАЦИЯ ── */
 window.addEventListener('DOMContentLoaded',()=>{
@@ -984,9 +984,9 @@ async function loadAttention(){
     if(r.ok){const d=await r.json();friendReqs=(d.requests||[]).length;}
   }catch{}
   const rows=[];
-  if(urgentTasks>0)rows.push('<a href="/tasks.html" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;text-decoration:none;border-bottom:1px solid var(--gb);transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.4)\'" onmouseout="this.style.background=\'transparent\'"><span style="font-size:16px">📋</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+urgentTasks+' '+pluralRu(urgentTasks,["задача на сегодня","задачи на сегодня","задач на сегодня"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
-  if(unreadMsgs>0)rows.push('<a href="/chat.html" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;text-decoration:none;border-bottom:1px solid var(--gb);transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.4)\'" onmouseout="this.style.background=\'transparent\'"><span style="font-size:16px">💬</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+unreadMsgs+' '+pluralRu(unreadMsgs,["новое сообщение","новых сообщения","новых сообщений"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
-  if(friendReqs>0)rows.push('<a href="/friends.html?tab=incoming" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;text-decoration:none;transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.4)\'" onmouseout="this.style.background=\'transparent\'"><span style="font-size:16px">👤</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+friendReqs+' '+pluralRu(friendReqs,["заявка в друзья","заявки в друзья","заявок в друзья"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
+  if(urgentTasks>0)rows.push('<a href="/tasks" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;text-decoration:none;border-bottom:1px solid var(--gb);transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.4)\'" onmouseout="this.style.background=\'transparent\'"><span style="font-size:16px">📋</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+urgentTasks+' '+pluralRu(urgentTasks,["задача на сегодня","задачи на сегодня","задач на сегодня"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
+  if(unreadMsgs>0)rows.push('<a href="/chat" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;text-decoration:none;border-bottom:1px solid var(--gb);transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.4)\'" onmouseout="this.style.background=\'transparent\'"><span style="font-size:16px">💬</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+unreadMsgs+' '+pluralRu(unreadMsgs,["новое сообщение","новых сообщения","новых сообщений"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
+  if(friendReqs>0)rows.push('<a href="/friends?tab=incoming" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;text-decoration:none;transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.4)\'" onmouseout="this.style.background=\'transparent\'"><span style="font-size:16px">👤</span><span style="flex:1;font-size:12px;font-weight:600;color:var(--t)">'+friendReqs+' '+pluralRu(friendReqs,["заявка в друзья","заявки в друзья","заявок в друзья"])+'</span><span style="font-size:14px;color:var(--g)">→</span></a>');
   if(!rows.length){
     box.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--gmt)"><span style="font-size:15px">✓</span>Всё разобрано</div>';
   } else {
@@ -1012,7 +1012,7 @@ async function loadMyDay(){
       const day=dt.getDate();
       const mon=dt.toLocaleDateString('ru-RU',{month:'short'}).replace('.','');
       const pid=e.public_id||e.id||'';
-      return '<a href="/event-detail.html?id='+encodeURIComponent(pid)+'" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none">'+
+      return '<a href="/event-detail?id='+encodeURIComponent(pid)+'" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none">'+
         '<div style="display:flex;flex-direction:column;align-items:center;width:30px;flex-shrink:0"><span style="font-size:15px;font-weight:800;color:var(--g);line-height:1">'+day+'</span><span style="font-size:9px;font-weight:700;color:var(--gmt);text-transform:uppercase">'+mon+'</span></div>'+
         '<span style="flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.title||'Событие')+'</span></a>';
     }).join('');
@@ -1039,7 +1039,7 @@ async function loadRecentProjects(){
       const stColor = p.status === 'active' ? 'var(--g)' :
                       p.status === 'planned' ? '#B45309' :
                       p.status === 'paused' ? '#7A6E1A' : 'var(--gmt)';
-      return `<a href="/project-detail.html?id=${encodeURIComponent(p.public_id)}"
+      return `<a href="/project-detail?id=${encodeURIComponent(p.public_id)}"
                  style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:var(--rm);text-decoration:none;color:inherit;transition:background .15s"
                  onmouseover="this.style.background='var(--gp)'" onmouseout="this.style.background='transparent'">
         <div style="width:30px;height:30px;border-radius:8px;background:${esc(p.cover_color || '#1E8A4C')};color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">${esc(initial)}</div>
@@ -1078,7 +1078,7 @@ async function loadPlatformStats(){
       if (d.top_news_week && d.top_news_week.public_id) {
         const truncated = (d.top_news_week.title || '').slice(0, 32);
         ltn.textContent = truncated + (d.top_news_week.title && d.top_news_week.title.length > 32 ? '… ↗' : ' ↗');
-        ltn.href = '/news-detail.html?id=' + encodeURIComponent(d.top_news_week.public_id);
+        ltn.href = '/news-detail?id=' + encodeURIComponent(d.top_news_week.public_id);
       } else {
         ltn.textContent = 'Пока нет публикаций';
         ltn.removeAttribute('href');
@@ -1092,7 +1092,7 @@ async function loadPlatformStats(){
     if (lt) {
       if (d.trend_today) {
         lt.textContent = '#' + d.trend_today;
-        lt.href = '/dashboard.html?tag=' + encodeURIComponent(d.trend_today);
+        lt.href = '/dashboard?tag=' + encodeURIComponent(d.trend_today);
       } else {
         lt.textContent = 'Пока без тренда';
         lt.removeAttribute('href');
@@ -1138,14 +1138,14 @@ async function loadLatestUpdate(){
     else if (diffMin < 10080) ago = Math.floor(diffMin/1440) + ' дн назад';
     else ago = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
     date.textContent = ago;
-    card.href = '/updates.html#' + (d.post.public_id || '');
+    card.href = '/updates#' + (d.post.public_id || '');
     card.style.display = 'flex';
   }catch(_){/* нет обновлений — баннер остаётся как есть */}
 }
 
 /* ── ЗАДАЧИ ── */
 // Виджет работает напрямую с источником истины — ключом tasks.html.
-// Так задачи созданные через виджет видны на /tasks.html и наоборот.
+// Так задачи созданные через виджет видны на /tasks и наоборот.
 const TASKS_STORAGE_PREFIX='tasksFull:v1:';
 const TASKS_LEGACY_PREFIX='homeTasks:v1:'; // legacy fallback при чтении
 const DEFAULT_TASKS=[];
@@ -1279,7 +1279,7 @@ async function loadTasks(){
 // клики по data-action: toggle (чекбокс) или open (переход на страницу задач).
 //
 // id задачи может быть как числом (старые дефолтные задачи), так и строкой
-// формата "t_<base36>" (создано через /tasks.html). Передаём как есть.
+// формата "t_<base36>" (создано через /tasks). Передаём как есть.
 function setupTasksWidgetClicks(){
   const list = document.getElementById('tasksList');
   if (!list) return;
@@ -1309,7 +1309,7 @@ function setupTasksWidgetClicks(){
     }
 
     // Клик по любой другой части карточки → переход на страницу задач
-    window.location.href = '/tasks.html';
+    window.location.href = '/tasks';
   });
 }
 function renderTasks(){
@@ -1336,7 +1336,7 @@ function renderTasks(){
 /* ── Слушатели обновлений виджета задач ──
    Виджет мгновенно перерисовывается, когда задачи меняются:
    - в другой вкладке (через storage event)
-   - в этой же вкладке через /tasks.html (через кастомный CustomEvent)
+   - в этой же вкладке через /tasks (через кастомный CustomEvent)
    - при возврате на страницу через back/forward (через pageshow)
 */
 function refreshTasksFromStorage(){
@@ -1356,7 +1356,7 @@ window.addEventListener('storage', e => {
   refreshTasksFromStorage();
 });
 
-// 2. Изменения в этой же вкладке (например, после возврата с /tasks.html
+// 2. Изменения в этой же вкладке (например, после возврата с /tasks
 //    через page-transitions без полной перезагрузки страницы).
 window.addEventListener('lastop:tasks-updated', () => {
   refreshTasksFromStorage();
@@ -1364,7 +1364,7 @@ window.addEventListener('lastop:tasks-updated', () => {
 
 // 3. Страховка: при показе страницы (включая back/forward через bfcache).
 window.addEventListener('pageshow', (e) => {
-  // при возврате с /tasks.html (в т.ч. из bfcache) перечитываем задачи с сервера,
+  // при возврате с /tasks (в т.ч. из bfcache) перечитываем задачи с сервера,
   // иначе виджет показывает устаревший localStorage-снимок
   try { loadTasks(); } catch { refreshTasksFromStorage(); }
 });
@@ -1451,7 +1451,7 @@ function renderChats(items){
     const avatar = c.display_avatar
       ? `<img src="${esc(c.display_avatar)}" style="width:100%;height:100%;border-radius:inherit;object-fit:cover">`
       : initials;
-    return `<div class="chat-item" onclick="location.href='/chat.html?conv=${encodeURIComponent(c.public_id||'')}'">
+    return `<div class="chat-item" onclick="location.href='/chat?conv=${encodeURIComponent(c.public_id||'')}'">
       <div class="ch-av" style="background:${color}">${avatar}${c.is_online?'<div class="ch-online"></div>':''}</div>
       <div class="ch-info"><div class="ch-name">${esc(name)}</div><div class="ch-msg">${esc(preview)}</div></div>
       <div class="ch-right">${time?`<div class="ch-time">${esc(time)}</div>`:''}${unread?`<div class="ch-bdg">${unread}</div>`:''}</div>
@@ -1491,12 +1491,12 @@ async function loadForumThreads(){
 }
 function renderForum(items){
   if(!items.length){
-    document.getElementById('forumList').innerHTML='<div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px;font-style:italic">Тем пока нет — <a href="/forum.html" style="color:var(--g);text-decoration:none;font-weight:700">создай первую</a></div>';
+    document.getElementById('forumList').innerHTML='<div style="padding:14px;text-align:center;color:var(--gmt);font-size:11px;font-style:italic">Тем пока нет — <a href="/forum" style="color:var(--g);text-decoration:none;font-weight:700">создай первую</a></div>';
     return;
   }
   document.getElementById('forumList').innerHTML=items.slice(0,5).map(t=>{
     const cnt=t.replies_count||0;
-    const url=t.public_id?'/forum-topic.html?id='+encodeURIComponent(t.public_id):'/forum.html';
+    const url=t.public_id?'/forum-topic?id='+encodeURIComponent(t.public_id):'/forum';
     return`<div class="forum-item" onclick="location.href='${url}'">
       <div class="fi-dot" style="background:${esc(t.category_color||'#5A8A6A')}"></div>
       <div class="fi-body">
@@ -1557,11 +1557,11 @@ function renderHomeCalendar(){
   const todayList=document.getElementById('calHeroTodayList'); if(todayList){const todayEvs=CAL_STATE.events.filter(ev=>{const sa=new Date(ev.starts_at),ea=new Date(ev.ends_at);const ts=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0).getTime();const te=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59).getTime();return sa.getTime()<=te&&ea.getTime()>=ts;}).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));todayList.innerHTML=!todayEvs.length?'<div class="cal-h-empty">Свободный день — ни одного события 🌿</div>':todayEvs.slice(0,4).map(ev=>buildEvRow(ev)).join('');}
   const soonList=document.getElementById('calHeroSoonList'); if(soonList){const tomorrow=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0).getTime();const upcoming=CAL_STATE.events.filter(ev=>new Date(ev.starts_at).getTime()>=tomorrow).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,4);soonList.innerHTML=!upcoming.length?'<div class="cal-h-empty">В ближайшие дни ничего не запланировано</div>':upcoming.map(ev=>buildEvRow(ev,true)).join('');}
 }
-function buildEvRow(ev,showDate){const sa=new Date(ev.starts_at);const time=ev.is_all_day?'весь день':sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});const dateStr=showDate?sa.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.',''):time;const color=ev.color||SRC_COLORS[ev.source]||'#1E8A4C';const label=SRC_LABELS[ev.source]||'Событие';const href=(ev.source==='personal'||!ev.link)?`/calendar.html?date=${sa.getFullYear()}-${String(sa.getMonth()+1).padStart(2,'0')}-${String(sa.getDate()).padStart(2,'0')}`:ev.link;return `<a class="cal-h-evrow" style="background:${color}14;border-left-color:${color}" href="${href}"><div class="cal-h-evrow-time">${esc(dateStr)}</div><div class="cal-h-evrow-body"><div class="cal-h-evrow-title">${esc(ev.title)}</div><div class="cal-h-evrow-meta">${esc(label)}${ev.location?' · '+esc(ev.location):''}</div></div></a>`;}
+function buildEvRow(ev,showDate){const sa=new Date(ev.starts_at);const time=ev.is_all_day?'весь день':sa.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});const dateStr=showDate?sa.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}).replace('.',''):time;const color=ev.color||SRC_COLORS[ev.source]||'#1E8A4C';const label=SRC_LABELS[ev.source]||'Событие';const href=(ev.source==='personal'||!ev.link)?`/calendar?date=${sa.getFullYear()}-${String(sa.getMonth()+1).padStart(2,'0')}-${String(sa.getDate()).padStart(2,'0')}`:ev.link;return `<a class="cal-h-evrow" style="background:${color}14;border-left-color:${color}" href="${href}"><div class="cal-h-evrow-time">${esc(dateStr)}</div><div class="cal-h-evrow-body"><div class="cal-h-evrow-title">${esc(ev.title)}</div><div class="cal-h-evrow-meta">${esc(label)}${ev.location?' · '+esc(ev.location):''}</div></div></a>`;}
 function pickDay(day, dateISO){
   // Двойной клик по уже выбранному дню → открыть полный календарь на этой дате
   if(CAL_STATE.selectedDay===day && dateISO){
-    location.href=`/calendar.html?date=${dateISO}`;
+    location.href=`/calendar?date=${dateISO}`;
     return;
   }
   CAL_STATE.selectedDay = (CAL_STATE.selectedDay === day) ? null : day;
@@ -1600,7 +1600,7 @@ async function loadForumHot(){
     box.innerHTML=top.map(t=>{
       const pid=t.public_id||t.id||'';
       const cnt=t.replies_count||0;
-      return '<a href="/forum-topic.html?id='+encodeURIComponent(pid)+'" style="display:block;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none">'+
+      return '<a href="/forum-topic?id='+encodeURIComponent(pid)+'" style="display:block;padding:8px 0;border-bottom:1px solid var(--bdr);text-decoration:none">'+
         '<div style="font-size:12px;font-weight:600;color:var(--t);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">'+esc(t.title||"Тема")+'</div>'+
         '<div style="font-size:10px;color:var(--gmt)">'+cnt+' '+pluralRu(cnt,["ответ","ответа","ответов"])+'</div></a>';
     }).join('');
@@ -1621,7 +1621,7 @@ async function loadRec(){
         name: u.full_name || 'Участник',
         sub: [u.position, u.company_name].filter(Boolean).join(' · ') || 'Участник LASTOP',
         c: '#3A90C0',
-        href: u.id ? '/profile_user.html?id=' + encodeURIComponent(u.id) : '/friends.html',
+        href: u.id ? '/profile_user?id=' + encodeURIComponent(u.id) : '/friends',
         logo: u.avatar_url || ''
       });
     });
@@ -1725,13 +1725,13 @@ function renderFeedFiltered(type){
     let displayName, displayHref, displayBg, displayLogo, displayRole;
     if (fromCommunity) {
       displayName = p.community_name;
-      displayHref = '/community-detail.html?id=' + p.community_id;
+      displayHref = '/community-detail?id=' + p.community_id;
       displayBg = p.community_color || avc(p.community_name);
       displayLogo = p.community_avatar || '';
       displayRole = 'Сообщество';
     } else if (fromCompany) {
       displayName = p.author_company_name;
-      displayHref = '/company-detail.html?id=' + encodeURIComponent(p.author_company_slug || '');
+      displayHref = '/company-detail?id=' + encodeURIComponent(p.author_company_slug || '');
       displayBg = avc(p.author_company_name);
       displayLogo = p.author_company_logo || '';
       displayRole = 'Компания';
@@ -1744,7 +1744,7 @@ function renderFeedFiltered(type){
     }
     const tag = TAG[p.type] || 't-news', lbl = LBL[p.type] || 'Публикация';
     const time = p.created_at ? ago(p.created_at) : (p.ago || '');
-    const href = p.type === 'news' ? '/news-detail.html' : (p.type === 'forum' ? '/forum.html' : '/dashboard.html');
+    const href = p.type === 'news' ? '/news-detail' : (p.type === 'forum' ? '/forum' : '/dashboard');
     const pid = p.public_id || p.id || '';
     const id = pid ? ('?id=' + encodeURIComponent(pid)) : '';
     const avInner = displayLogo
@@ -1788,7 +1788,7 @@ async function loadFeedProjects(feed){
       return;
     }
     feed.innerHTML = items.map(p => `
-      <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer" onclick="location.href='/project-detail.html?id=${escAttr(p.public_id||'')}'">
+      <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer" onclick="location.href='/project-detail?id=${escAttr(p.public_id||'')}'">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <span class="t-tag t-proj" style="background:var(--gl);color:var(--g);padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700">Проект</span>
           <span style="font-size:11px;color:var(--gmt)">${escHtml(p.status_label||p.status||'')}</span>
@@ -1814,7 +1814,7 @@ async function loadFeedForum(feed){
       return;
     }
     feed.innerHTML = items.map(t => `
-      <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer" onclick="location.href='/forum-topic.html?id=${escAttr(t.public_id||t.id||'')}'">
+      <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer" onclick="location.href='/forum-topic?id=${escAttr(t.public_id||t.id||'')}'">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <span class="t-tag t-forum" style="background:#FFF4E0;color:#C07030;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700">Форум</span>
           <span style="font-size:11px;color:var(--gmt)">${escHtml(t.category_name||'')}</span>
@@ -1856,7 +1856,7 @@ async function loadFeedCompanies(container){
       const logo = c.logo_image ? `<img src="${escAttr(c.logo_image)}" style="width:100%;height:100%;object-fit:cover">` : escHtml((c.name||'C').charAt(0).toUpperCase());
       const color = c.brand_color || '#1A8A6A';
       return `
-        <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer;animation-delay:${i*.05}s" onclick="location.href='/company-detail.html?slug=${slug}'">
+        <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px;margin-bottom:12px;cursor:pointer;animation-delay:${i*.05}s" onclick="location.href='/company-detail?slug=${slug}'">
           <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
             <div style="width:44px;height:44px;border-radius:10px;background:${color};display:grid;place-items:center;color:#fff;font-weight:800;overflow:hidden">${logo}</div>
             <div style="flex:1;min-width:0">
@@ -1899,7 +1899,7 @@ async function loadFeedCommunities(container){
       const desc = escHtml((c.description || '').slice(0, 140));
       const cover = c.cover_image ? `background-image:url('${escAttr(c.cover_image)}');background-size:cover` : 'background:linear-gradient(135deg,#9060C0,#6040A0)';
       return `
-        <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;margin-bottom:12px;cursor:pointer;animation-delay:${i*.05}s" onclick="location.href='/community-detail.html?id=${pid}'">
+        <div class="post" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);overflow:hidden;margin-bottom:12px;cursor:pointer;animation-delay:${i*.05}s" onclick="location.href='/community-detail?id=${pid}'">
           <div style="height:80px;${cover}"></div>
           <div style="padding:14px 18px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">

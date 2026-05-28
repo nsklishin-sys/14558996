@@ -242,7 +242,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
     <div class="ad-content">
       <div class="ad-title">LogisticsPro 2026</div>
       <div class="ad-sub">Выставка · Москва · май</div>
-      <button type="button" class="ad-btn" onclick="location.href='/events.html'">Узнать подробнее</button>
+      <button type="button" class="ad-btn" onclick="location.href='/events'">Узнать подробнее</button>
     </div>
   </div>
 </aside>
@@ -279,13 +279,13 @@ function fmtNum(n){
 function fmtPct(n){if(!n)return '0%';return (Math.round(n*10)/10).toFixed(1).replace(/\.0$/,'')+'%';}
 const ago = window.lastopAgo;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
-function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest.html');}
+function logout(){try{lastopFetch('/api/auth/logout',{method:'POST',keepalive:true});}catch{}try{localStorage.removeItem('user');}catch{}location.replace('/home-guest');}
 function toggleProfileDD(e){e.stopPropagation();const dd=document.getElementById('profileDD');const tp=document.getElementById('topbarProfile');dd.classList.toggle('open');tp.classList.toggle('open');}
 document.addEventListener('click',(e)=>{const dd=document.getElementById('profileDD');if(dd&&!dd.contains(e.target)&&!document.getElementById('topbarProfile').contains(e.target)){dd.classList.remove('open');document.getElementById('topbarProfile').classList.remove('open');}});
 
 // ── AUTH + USER ──
 async function loadUser(){
-  if(!tk()){location.href='/login.html';return;}
+  if(!tk()){location.href='/login';return;}
   try{
     const r = await lastopFetch(API+'/me',{headers:{}});
     if(!r.ok)throw 0;
@@ -295,7 +295,7 @@ async function loadUser(){
     populateProfile(user);
   }catch{
     state.user = JSON.parse(localStorage.getItem('user')||'{}');
-    if(!state.user.id){location.href='/login.html';return;}
+    if(!state.user.id){location.href='/login';return;}
     populateProfile(state.user);
   }
 }
@@ -612,7 +612,7 @@ function renderTopViewers(viewers){
     <tbody>${viewers.map(v=>{
       const photo = v.avatar_url ? `background-image:url(${esc(v.avatar_url)})` : `background:${avc(v.name)}`;
       const initial = v.avatar_url ? '' : letter(v.name);
-      return `<tr class="an-row-link" onclick="location.href='/profile.html?user=${encodeURIComponent(v.public_id)}'">
+      return `<tr class="an-row-link" onclick="location.href='/profile?user=${encodeURIComponent(v.public_id)}'">
         <td><div class="an-user"><div class="an-av" style="${photo}">${initial}</div><div><div class="an-name">${esc(v.name||'')}</div></div></div></td>
         <td style="color:var(--gmt);font-size:11px">${esc(v.position||'—')}</td>
         <td class="an-td-num">${fmtNum(v.visit_count)}</td>
@@ -713,7 +713,7 @@ function renderTopJobs(jobs){
     <thead><tr><th>Вакансия</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Отклики</th><th class="an-td-num">Конверсия</th></tr></thead>
     <tbody>${jobs.map(j=>{
       const conv = j.views>0 ? (j.applies/j.views*100) : 0;
-      return `<tr class="an-row-link" onclick="location.href='/job-detail.html?id=${encodeURIComponent(j.public_id)}'">
+      return `<tr class="an-row-link" onclick="location.href='/job-detail?id=${encodeURIComponent(j.public_id)}'">
         <td><div class="an-name">${esc(j.title||'')}</div></td>
         <td class="an-td-num">${fmtNum(j.views)}</td>
         <td class="an-td-num">${fmtNum(j.applies)}</td>
@@ -726,7 +726,7 @@ function renderTopProducts(products){
   if(!products.length)return '<div class="panel-empty">Нет данных по товарам.</div>';
   return `<table class="an-table">
     <thead><tr><th>Товар / услуга</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Сохранения</th></tr></thead>
-    <tbody>${products.map(p=>`<tr class="an-row-link" onclick="location.href='/catalog.html'">
+    <tbody>${products.map(p=>`<tr class="an-row-link" onclick="location.href='/catalog'">
       <td><div class="an-name">${esc(p.title||'')}</div></td>
       <td class="an-td-num">${fmtNum(p.views)}</td>
       <td class="an-td-num">${fmtNum(p.saves)}</td>
@@ -796,7 +796,7 @@ function renderTopPosts(posts){
   if(!posts.length)return '<div class="panel-empty">Нет постов с активностью за период.</div>';
   return `<table class="an-table">
     <thead><tr><th>Пост</th><th class="an-td-num">Просмотры</th><th class="an-td-num">Лайки</th><th class="an-td-num">Комментарии</th></tr></thead>
-    <tbody>${posts.map(p=>`<tr class="an-row-link" onclick="location.href='/news-detail.html?id=${encodeURIComponent(p.public_id)}'">
+    <tbody>${posts.map(p=>`<tr class="an-row-link" onclick="location.href='/news-detail?id=${encodeURIComponent(p.public_id)}'">
       <td><div class="an-name">${esc(p.title||'(без заголовка)')}</div></td>
       <td class="an-td-num">${fmtNum(p.views)}</td>
       <td class="an-td-num">${fmtNum(p.likes)}</td>
@@ -884,7 +884,7 @@ function renderTopActors(actors){
     <tbody>${actors.map(a=>{
       const photo = a.avatar_url ? `background-image:url(${esc(a.avatar_url)})` : `background:${avc(a.name)}`;
       const initial = a.avatar_url ? '' : letter(a.name);
-      return `<tr class="an-row-link" onclick="location.href='/profile.html?user=${encodeURIComponent(a.public_id)}'">
+      return `<tr class="an-row-link" onclick="location.href='/profile?user=${encodeURIComponent(a.public_id)}'">
         <td><div class="an-user"><div class="an-av" style="${photo}">${initial}</div><div class="an-name">${esc(a.name||'')}</div></div></td>
         <td class="an-td-num">${fmtNum(a.events_count)}</td>
       </tr>`;
@@ -898,7 +898,7 @@ function renderTopTargets(targets){
     <tbody>${targets.map(a=>{
       const photo = a.avatar_url ? `background-image:url(${esc(a.avatar_url)})` : `background:${avc(a.name)}`;
       const initial = a.avatar_url ? '' : letter(a.name);
-      return `<tr class="an-row-link" onclick="location.href='/profile.html?user=${encodeURIComponent(a.public_id)}'">
+      return `<tr class="an-row-link" onclick="location.href='/profile?user=${encodeURIComponent(a.public_id)}'">
         <td><div class="an-user"><div class="an-av" style="${photo}">${initial}</div><div class="an-name">${esc(a.name||'')}</div></div></td>
         <td class="an-td-num">${fmtNum(a.views_count)}</td>
       </tr>`;
@@ -1032,11 +1032,11 @@ function renderActionsBlock(actions){
 }
 
 // Действия по скоупу
-const ACTION_PRIVACY = {label:'Настройки приватности', href:'/settings.html', svg:'<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6"/>'};
+const ACTION_PRIVACY = {label:'Настройки приватности', href:'/settings', svg:'<circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6"/>'};
 
 function copyProfileLink(){
   if(!state.user || !state.user.public_id){showToast('Не удалось получить ссылку');return;}
-  const url = location.origin + '/profile.html?user=' + encodeURIComponent(state.user.public_id);
+  const url = location.origin + '/profile?user=' + encodeURIComponent(state.user.public_id);
   navigator.clipboard.writeText(url).then(()=>showToast('Ссылка на профиль скопирована')).catch(()=>showToast('Не удалось скопировать'));
 }
 
@@ -1048,12 +1048,12 @@ function renderSidebarMe(profileViews){
     sub: v.position||'',
     avatar_url: v.avatar_url,
     value: fmtNum(v.visit_count) + ' виз.',
-    href: '/profile.html?user='+encodeURIComponent(v.public_id||'')
+    href: '/profile?user='+encodeURIComponent(v.public_id||'')
   }));
   renderTopBlock('Кто смотрел профиль', viewers, 'Все зрители', '#');
   renderActionsBlock([
     {label:'Скопировать ссылку на профиль', onclick:'copyProfileLink()', svg:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'},
-    {label:'Мой профиль', href:'/profile.html', svg:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'Мой профиль', href:'/profile', svg:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     ACTION_PRIVACY
   ]);
 }
@@ -1072,15 +1072,15 @@ function renderSidebarCompany(jobsData, productsData){
       sub: fmtNum(j.views)+' просм. · '+fmtNum(j.applies)+' откл.',
       avatar_url: '',
       value: conv>0 ? Math.round(conv)+'%' : '—',
-      href: '/jobs.html'
+      href: '/jobs'
     };
   });
-  renderTopBlock('Топ вакансий по конверсии', jobs, 'Все вакансии', '/jobs.html');
+  renderTopBlock('Топ вакансий по конверсии', jobs, 'Все вакансии', '/jobs');
   const slug = state.selectedCompanySlug||'';
   renderActionsBlock([
-    {label:'Профиль компании', href:`/company.html?slug=${encodeURIComponent(slug)}`, svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'},
-    {label:'Мои вакансии', href:'/jobs.html', svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/>'},
-    {label:'Товары и услуги', href:'/catalog.html', svg:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>'},
+    {label:'Профиль компании', href:`/company?slug=${encodeURIComponent(slug)}`, svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'},
+    {label:'Мои вакансии', href:'/jobs', svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/>'},
+    {label:'Товары и услуги', href:'/catalog', svg:'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>'},
     ACTION_PRIVACY
   ]);
 }
@@ -1092,13 +1092,13 @@ function renderSidebarCommunity(overviewData){
     sub: fmtNum(p.likes||0)+' ♥ · '+fmtNum(p.comments||0)+' 💬',
     avatar_url: '',
     value: fmtNum(p.views||0),
-    href: '/dashboard.html'
+    href: '/dashboard'
   }));
-  renderTopBlock('Топ постов сообщества', posts, 'Открыть сообщество', `/communities.html`);
+  renderTopBlock('Топ постов сообщества', posts, 'Открыть сообщество', `/communities`);
   const cmId = state.selectedCommunityId || '';
   renderActionsBlock([
-    {label:'Открыть сообщество', href:`/communities.html`, svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
-    {label:'Все сообщества', href:'/communities.html', svg:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>'},
+    {label:'Открыть сообщество', href:`/communities`, svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Все сообщества', href:'/communities', svg:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>'},
     ACTION_PRIVACY
   ]);
 }
@@ -1110,11 +1110,11 @@ function renderSidebarPlatform(usersData){
     sub: 'Активный пользователь',
     avatar_url: a.avatar_url,
     value: fmtNum(a.events_count)+' соб.',
-    href: '/profile.html?user='+encodeURIComponent(a.public_id||'')
+    href: '/profile?user='+encodeURIComponent(a.public_id||'')
   }));
   renderTopBlock('Топ активных пользователей', top, '', '');
   renderActionsBlock([
-    {label:'Все пользователи', href:'/search.html?type=users', svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>'},
+    {label:'Все пользователи', href:'/search?type=users', svg:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>'},
     {label:'Сводный отчёт (скоро)', onclick:'showToast(\'Экспорт отчётов появится в следующих обновлениях\')', svg:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
     ACTION_PRIVACY
   ]);

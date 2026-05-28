@@ -193,7 +193,7 @@ async function loadShop(shopId){
 }
 
 function renderError(msg){
-  document.getElementById('ldMain').innerHTML='<div class="ld-sec"><div class="ld-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>'+esc(msg)+'</p><div style="margin-top:14px"><a class="ld-btn ghost" href="/emarket.html" style="text-decoration:none;display:inline-flex">← Вернуться в E-market</a></div></div></div>';
+  document.getElementById('ldMain').innerHTML='<div class="ld-sec"><div class="ld-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>'+esc(msg)+'</p><div style="margin-top:14px"><a class="ld-btn ghost" href="/emarket" style="text-decoration:none;display:inline-flex">← Вернуться в E-market</a></div></div></div>';
   document.getElementById('ldRight').innerHTML='';
 }
 
@@ -225,7 +225,7 @@ function render(){
   charsHTML+='</div>';
 
   document.getElementById('ldMain').innerHTML=
-    '<div class="crumb"><a href="/emarket.html">E-market</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><a href="/emarket.html?tab='+(isService?'services':'products')+'">'+(isService?'Услуги':'Товары')+'</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span>'+esc(l.title)+'</span></div>'
+    '<div class="crumb"><a href="/emarket">E-market</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><a href="/emarket?tab='+(isService?'services':'products')+'">'+(isService?'Услуги':'Товары')+'</a><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg><span>'+esc(l.title)+'</span></div>'
     +'<div class="ld-wrap">'
       +'<div class="ld-gallery"><div class="ld-main-img">'+mainImg+'</div>'+thumbs+'</div>'
       +'<div class="ld-info">'
@@ -287,7 +287,7 @@ async function loadOther(shopId){
     box.innerHTML=items.map(function(x){
       var img=(Array.isArray(x.photos)&&x.photos.length)?'<img src="'+esc(x.photos[0])+'" alt="">':'<div class="ld-other-ph"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>';
       var price=(x.price==null||x.price===0)?'Договорная':(Number(x.price).toLocaleString('ru-RU')+' '+(x.currency==='USD'?'$':x.currency==='EUR'?'€':'₽'));
-      return '<div class="ld-other" onclick="location.href=\'/emarket-listing.html?id='+x.id+'\'"><div class="ld-other-img">'+img+'</div><div class="ld-other-info"><div class="ld-other-title">'+esc(x.title)+'</div><div class="ld-other-price">'+price+'</div></div></div>';
+      return '<div class="ld-other" onclick="location.href=\'/emarket-listing?id='+x.id+'\'"><div class="ld-other-img">'+img+'</div><div class="ld-other-info"><div class="ld-other-title">'+esc(x.title)+'</div><div class="ld-other-price">'+price+'</div></div></div>';
     }).join('');
     card.style.display='';
   }catch(e){}
@@ -302,7 +302,7 @@ function toggleSave(){
 }
 function contactSeller(){
   if(LD.shop&&LD.shop.owner_type==='user'&&LD.shop.owner_id){
-    location.href='/chat.html?user='+LD.shop.owner_id;
+    location.href='/chat?user='+LD.shop.owner_id;
   }else if(LD.shop&&LD.shop.contact_phone){
     showToast('Контакт продавца: '+LD.shop.contact_phone);
   }else{
@@ -348,7 +348,7 @@ async function submitListingLead(e){
   }
   return false;
 }
-function openShop(id){location.href='/emarket-shop.html?id='+id;}
+function openShop(id){location.href='/emarket-shop?id='+id;}
 </script>
 <div id="leadModalBg" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,25,18,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:18px" onclick="if(event.target===this)closeLeadModal()">
   <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:0 24px 60px rgba(30,138,76,.2);width:100%;max-width:440px;padding:22px">
