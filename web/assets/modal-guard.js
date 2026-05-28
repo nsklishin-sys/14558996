@@ -93,7 +93,7 @@
       e.stopImmediatePropagation();
       e.preventDefault();
       var ask = (typeof window.lastopConfirm === 'function')
-        ? window.lastopConfirm('Закрыть без сохранения? Введённые данные будут потеряны.', { danger: true, okText: 'Закрыть', cancelText: 'Остаться' })
+        ? window.lastopConfirm({ title: 'Закрыть без сохранения?', message: 'Введённые данные будут потеряны.', danger: true, confirmText: 'Закрыть' })
         : Promise.resolve(window.confirm('Закрыть без сохранения? Введённые данные будут потеряны.'));
       Promise.resolve(ask).then(function (ok) {
         if (ok) {
