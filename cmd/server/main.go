@@ -1512,9 +1512,9 @@ html.pt-ready body {
   }
 
   // Мгновенный редирект залогиненного юзера с гостевых страниц
-  var path = location.pathname;
-  if ((path === '/home-guest.html' || path === '/index.html' || path === '/') && hasToken()) {
-    location.replace('/home-auth.html');
+  var path = location.pathname.replace(/\.html$/, '');
+  if ((path === '/home-guest' || path === '/index' || path === '/') && hasToken()) {
+    location.replace('/home-auth');
     return;
   }
 
@@ -1539,10 +1539,10 @@ html.pt-ready body {
   // "/" → /home-auth.html для залогиненного, /home-guest.html для гостя
   // /index.html и /home-guest.html для залогиненного → /home-auth.html
   function resolveHome(u){
-    var p = u.pathname;
-    var isHome = p === '/' || p === '/index.html' || p === '/home-guest.html';
+    var p = u.pathname.replace(/\.html$/, '');
+    var isHome = p === '/' || p === '/index' || p === '/home-guest';
     if (!isHome) return null;
-    var target = hasToken() ? '/home-auth.html' : '/home-guest.html';
+    var target = hasToken() ? '/home-auth' : '/home-guest';
     if (p === target) return null;
     return target + u.search + u.hash;
   }
@@ -1805,7 +1805,7 @@ func sendVerificationEmail(ctx context.Context, db *sql.DB, baseURL string, user
 	if err != nil {
 		return fmt.Errorf("create verification token: %w", err)
 	}
-	link := baseURL + "/verify-email.html?token=" + token
+	link := baseURL + "/verify-email?token=" + token
 	return mail.Send(ctx, toEmail, "Подтвердите ваш email — LASTOP GROUP", buildVerificationEmailHTML(userName, link))
 }
 
@@ -1814,7 +1814,7 @@ func sendPasswordResetEmail(ctx context.Context, db *sql.DB, baseURL string, use
 	if err != nil {
 		return fmt.Errorf("create reset token: %w", err)
 	}
-	link := baseURL + "/reset-password.html?token=" + token
+	link := baseURL + "/reset-password?token=" + token
 	return mail.Send(ctx, toEmail, "Восстановление пароля — LASTOP GROUP", buildPasswordResetEmailHTML(userName, link))
 }
 
@@ -32733,12 +32733,12 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 	// относительных путей (/job-detail.html?id=...) и для абсолютных
 	// (https://наш-домен/job-detail.html?id=...). Если path не из
 	// списка известных страниц — упадём в fallback на OG ниже.
-	path := parsed.Path
+	path := strings.TrimSuffix(parsed.Path, ".html")
 	q := parsed.Query()
 	idParam := q.Get("id")
 
 	switch path {
-	case "/product-detail.html", "/service-detail.html":
+	case "/product-detail", "/service-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32769,7 +32769,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": cover, "badge": badge, "url": urlStr,
 		}, true
 
-	case "/event-detail.html":
+	case "/event-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32795,7 +32795,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": cover, "badge": "Мероприятие", "url": urlStr,
 		}, true
 
-	case "/exhibition-detail.html":
+	case "/exhibition-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32818,7 +32818,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": cover, "badge": "Выставка", "url": urlStr,
 		}, true
 
-	case "/news-detail.html":
+	case "/news-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32845,7 +32845,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": cover, "badge": badge, "url": urlStr,
 		}, true
 
-	case "/project-detail.html":
+	case "/project-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32863,7 +32863,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": "", "badge": "Проект", "url": urlStr,
 		}, true
 
-	case "/forum-topic.html":
+	case "/forum-topic":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32886,7 +32886,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": "", "badge": "Форум", "url": urlStr,
 		}, true
 
-	case "/community-detail.html":
+	case "/community-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32908,7 +32908,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": avatar, "badge": "Сообщество", "url": urlStr,
 		}, true
 
-	case "/company-detail.html":
+	case "/company-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32948,7 +32948,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": avatar, "badge": "Профиль", "url": urlStr,
 		}, true
 
-	case "/job-detail.html":
+	case "/job-detail":
 		if idParam == "" {
 			return nil, false
 		}
@@ -32974,7 +32974,7 @@ func resolveLinkPreview(db *sql.DB, urlStr string) (map[string]any, bool) {
 			"image": "", "badge": "Вакансия", "url": urlStr,
 		}, true
 
-	case "/resume-detail.html":
+	case "/resume-detail":
 		if idParam == "" {
 			return nil, false
 		}
