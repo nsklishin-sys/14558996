@@ -1278,7 +1278,7 @@ async function deleteXp(pid){
   if(!pid)return;
   let confirmed=true;
   if(window.lastopConfirm){
-    confirmed=await lastopConfirm({title:'Удалить запись опыта?',message:'Действие необратимо.',danger:true,okLabel:'Удалить'});
+    confirmed=await lastopConfirm({title:'Удалить запись опыта?',message:'Действие необратимо.',danger:true,confirmText:'Удалить'});
   } else {
     confirmed=window.confirm('Удалить запись опыта? Действие необратимо.');
   }
