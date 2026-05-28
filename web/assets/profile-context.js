@@ -278,7 +278,7 @@
 
   function applyContextToMenu(kind) {
     // Скрываем/показываем пункты меню в зависимости от контекста
-    var friendsItem = document.querySelector('.profile-dd .pdd-item[href="/friends.html"]');
+    var friendsItem = document.querySelector('.profile-dd .pdd-item[href="/friends"]');
     var companyItem = document.querySelector('.profile-dd .pdd-item[href^="/my-company.html"]');
     var communityItem = document.querySelector('.profile-dd .pdd-item[href^="/communities.html"]');
     var viewBtn = document.querySelector('.profile-dd .pdd-view');

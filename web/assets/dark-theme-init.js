@@ -141,8 +141,8 @@
     if (document.getElementById('darkFab')) return;
 
     var settingsLink = document.querySelector(
-      '.nav .nav-item[href="/settings.html"], '
-      + '.global-sidebar a[href="/settings.html"], '
+      '.nav .nav-item[href="/settings"], '
+      + '.global-sidebar a[href="/settings"], '
       + '.nav .nav-item[href*="settings"], '
       + '.nav .nav-item[data-guest-locked][href*="settings"]'
     );
