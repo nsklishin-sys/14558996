@@ -521,23 +521,23 @@
     switch (n.source_type) {
       case 'post':
         return n.source_public_id
-          ? '/news-detail.html?id=' + encodeURIComponent(n.source_public_id)
-          : '/dashboard.html';
+          ? '/news-detail?id=' + encodeURIComponent(n.source_public_id)
+          : '/dashboard';
       case 'project':
       case 'need':
         return n.source_public_id
-          ? '/project-detail.html?id=' + encodeURIComponent(n.source_public_id)
-          : '/projects.html';
+          ? '/project-detail?id=' + encodeURIComponent(n.source_public_id)
+          : '/projects';
       case 'comment':
         return n.source_public_id
-          ? '/news-detail.html?id=' + encodeURIComponent(n.source_public_id)
-          : '/dashboard.html';
+          ? '/news-detail?id=' + encodeURIComponent(n.source_public_id)
+          : '/dashboard';
       case 'forum_topic':
         return n.source_public_id
-          ? '/forum.html?topic=' + encodeURIComponent(n.source_public_id)
-          : '/forum.html';
+          ? '/forum?topic=' + encodeURIComponent(n.source_public_id)
+          : '/forum';
       case 'chat':
-        return '/chat.html';
+        return '/chat';
       default:
         return '#';
     }
