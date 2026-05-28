@@ -48,18 +48,18 @@
    * из shell-injector.
    */
   const NAV_PREFETCH = {
-    '/home-auth.html':    ['/api/feed?limit=30', '/api/chat/conversations?limit=4'],
-    '/dashboard.html':    ['/api/feed?limit=30&type=news', '/api/posts/top?period=week&limit=5', '/api/posts/trends'],
-    '/projects.html':     ['/api/projects?limit=50'],
-    '/companies.html':    ['/api/companies?limit=50'],
-    '/communities.html':  ['/api/communities?limit=50'],
-    '/jobs.html':         ['/api/jobs?limit=30'],
-    '/exhibitions.html':  ['/api/exhibitions?limit=30'],
-    '/events.html':       ['/api/events?limit=30'],
-    '/chat.html':         ['/api/chat/conversations?limit=30'],
-    '/profile.html':      ['/api/me'],
-    '/forum.html':        ['/api/forum/topics?limit=30'],
-    '/notifications.html':['/api/notifications?limit=30'],
+    '/home-auth':    ['/api/feed?limit=30', '/api/chat/conversations?limit=4'],
+    '/dashboard':    ['/api/feed?limit=30&type=news', '/api/posts/top?period=week&limit=5', '/api/posts/trends'],
+    '/projects':     ['/api/projects?limit=50'],
+    '/companies':    ['/api/companies?limit=50'],
+    '/communities':  ['/api/communities?limit=50'],
+    '/jobs':         ['/api/jobs?limit=30'],
+    '/exhibitions':  ['/api/exhibitions?limit=30'],
+    '/events':       ['/api/events?limit=30'],
+    '/chat':         ['/api/chat/conversations?limit=30'],
+    '/profile':      ['/api/me'],
+    '/forum':        ['/api/forum/topics?limit=30'],
+    '/notifications':['/api/notifications?limit=30'],
   };
 
   /**
@@ -72,7 +72,7 @@
       a.__ltPrefetched = true;
       const enter = () => {
         try {
-          const href = new URL(a.href, location.origin).pathname;
+          const href = new URL(a.href, location.origin).pathname.replace(/\.html$/, '');
           const list = NAV_PREFETCH[href];
           if (!list) return;
           list.forEach(prefetch);
