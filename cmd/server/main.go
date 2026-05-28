@@ -903,6 +903,24 @@ type subtaskRequest struct {
 	IsDone *bool  `json:"is_done,omitempty"`
 }
 
+type projectBlock struct {
+	ID          int64     `json:"id"`
+	ProjectID   int64     `json:"project_id"`
+	Kind        string    `json:"kind"`
+	Title       string    `json:"title"`
+	ContentHTML string    `json:"content_html"`
+	SortOrder   int       `json:"sort_order"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type blockRequest struct {
+	Kind        string `json:"kind"`
+	Title       string `json:"title"`
+	ContentHTML string `json:"content_html"`
+	SortOrder   *int   `json:"sort_order,omitempty"`
+}
+
 type needRequest struct {
 	Title        string `json:"title"`
 	Description  string `json:"description"`
@@ -8853,6 +8871,80 @@ func main() {
 				return
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"saved": false})
+			return
+		}
+
+		if len(parts) >= 2 && parts[1] == "blocks" {
+			projectID, err := getProjectIDByPublicID(db, publicID)
+			if err != nil {
+				writeError(w, http.StatusNotFound, "Проект не найден")
+				return
+			}
+			if len(parts) == 2 {
+				switch r.Method {
+				case http.MethodGet:
+					blocks, err := listProjectBlocks(db, projectID)
+					if err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"blocks": blocks})
+				case http.MethodPost:
+					actorID, ok := authenticatedUserID(w, r, sessions)
+					if !ok {
+						return
+					}
+					var req blockRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					block, err := createProjectBlock(db, projectID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusCreated, map[string]any{"block": block})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+			if len(parts) == 3 {
+				blockID, err := strconv.ParseInt(parts[2], 10, 64)
+				if err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный id блока")
+					return
+				}
+				actorID, ok := authenticatedUserID(w, r, sessions)
+				if !ok {
+					return
+				}
+				switch r.Method {
+				case http.MethodPatch:
+					var req blockRequest
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					block, err := updateProjectBlock(db, projectID, blockID, actorID, req)
+					if err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"block": block})
+				case http.MethodDelete:
+					if err := deleteProjectBlock(db, projectID, blockID, actorID); err != nil {
+						handleProjectActionError(w, err)
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				}
+				return
+			}
+			writeError(w, http.StatusNotFound, "Маршрут не найден")
 			return
 		}
 
@@ -18492,6 +18584,19 @@ ALTER TABLE project_stages DROP CONSTRAINT IF EXISTS project_stages_description_
 ALTER TABLE project_stages ADD CONSTRAINT project_stages_description_check
     CHECK (char_length(description) <= 20000);
 
+-- Гибкие блоки-заметки в сайдбаре проекта.
+CREATE TABLE IF NOT EXISTS project_blocks (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'info',
+    title TEXT NOT NULL DEFAULT '' CHECK (char_length(title) <= 200),
+    content_html TEXT NOT NULL DEFAULT '' CHECK (char_length(content_html) <= 20000),
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_project_blocks_project ON project_blocks(project_id, sort_order);
+
 CREATE TABLE IF NOT EXISTS chat_typing (
     conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -24497,6 +24602,135 @@ func deleteProjectStage(db *sql.DB, projectID, stageID, actorID int64) error {
 		return fmt.Errorf("%w: только владелец/админ может удалять этапы", errForbidden)
 	}
 	res, err := db.Exec(`DELETE FROM project_stages WHERE id = $1 AND project_id = $2`, stageID, projectID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNotFound
+	}
+	return nil
+}
+
+func listProjectBlocks(db *sql.DB, projectID int64) ([]projectBlock, error) {
+	rows, err := db.Query(`SELECT id, project_id, kind, title, content_html, sort_order, created_at, updated_at
+		FROM project_blocks WHERE project_id = $1 ORDER BY sort_order, id`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []projectBlock{}
+	for rows.Next() {
+		var b projectBlock
+		if err := rows.Scan(&b.ID, &b.ProjectID, &b.Kind, &b.Title, &b.ContentHTML, &b.SortOrder, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, nil
+}
+
+var blockKinds = map[string]bool{"important": true, "info": true, "scenarios": true, "details": true}
+
+func normalizeBlockKind(k string) string {
+	k = strings.TrimSpace(k)
+	if blockKinds[k] {
+		return k
+	}
+	return "info"
+}
+
+func createProjectBlock(db *sql.DB, projectID, actorID int64, req blockRequest) (projectBlock, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return projectBlock{}, fmt.Errorf("%w: только владелец/админ может добавлять блоки", errForbidden)
+	}
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) > 200 {
+		return projectBlock{}, fmt.Errorf("%w: заголовок до 200", errValidation)
+	}
+	if utf8.RuneCountInString(req.ContentHTML) > 20000 {
+		return projectBlock{}, fmt.Errorf("%w: содержимое слишком длинное", errValidation)
+	}
+	content := sanitizeRichHTML(strings.TrimSpace(req.ContentHTML))
+	kind := normalizeBlockKind(req.Kind)
+	sortOrder := 0
+	if req.SortOrder != nil {
+		sortOrder = *req.SortOrder
+	} else {
+		_ = db.QueryRow(`SELECT COALESCE(MAX(sort_order), 0) + 1 FROM project_blocks WHERE project_id = $1`, projectID).Scan(&sortOrder)
+	}
+	var id int64
+	err := db.QueryRow(`INSERT INTO project_blocks (project_id, kind, title, content_html, sort_order)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`, projectID, kind, title, content, sortOrder).Scan(&id)
+	if err != nil {
+		return projectBlock{}, err
+	}
+	return getProjectBlock(db, id)
+}
+
+func getProjectBlock(db *sql.DB, blockID int64) (projectBlock, error) {
+	var b projectBlock
+	err := db.QueryRow(`SELECT id, project_id, kind, title, content_html, sort_order, created_at, updated_at
+		FROM project_blocks WHERE id = $1`, blockID).Scan(&b.ID, &b.ProjectID, &b.Kind, &b.Title, &b.ContentHTML, &b.SortOrder, &b.CreatedAt, &b.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return projectBlock{}, errNotFound
+	}
+	return b, err
+}
+
+func updateProjectBlock(db *sql.DB, projectID, blockID, actorID int64, req blockRequest) (projectBlock, error) {
+	if !canManageProject(db, projectID, actorID) {
+		return projectBlock{}, fmt.Errorf("%w: только владелец/админ может редактировать", errForbidden)
+	}
+	var existingPID int64
+	if err := db.QueryRow(`SELECT project_id FROM project_blocks WHERE id = $1`, blockID).Scan(&existingPID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return projectBlock{}, errNotFound
+		}
+		return projectBlock{}, err
+	}
+	if existingPID != projectID {
+		return projectBlock{}, errNotFound
+	}
+	sets := []string{}
+	args := []any{}
+	argIdx := 1
+	if req.Kind != "" {
+		sets = append(sets, fmt.Sprintf("kind = $%d", argIdx))
+		args = append(args, normalizeBlockKind(req.Kind))
+		argIdx++
+	}
+	title := strings.TrimSpace(req.Title)
+	if utf8.RuneCountInString(title) > 200 {
+		return projectBlock{}, fmt.Errorf("%w: заголовок до 200", errValidation)
+	}
+	sets = append(sets, fmt.Sprintf("title = $%d", argIdx))
+	args = append(args, title)
+	argIdx++
+	if utf8.RuneCountInString(req.ContentHTML) > 20000 {
+		return projectBlock{}, fmt.Errorf("%w: содержимое слишком длинное", errValidation)
+	}
+	sets = append(sets, fmt.Sprintf("content_html = $%d", argIdx))
+	args = append(args, sanitizeRichHTML(strings.TrimSpace(req.ContentHTML)))
+	argIdx++
+	if req.SortOrder != nil {
+		sets = append(sets, fmt.Sprintf("sort_order = $%d", argIdx))
+		args = append(args, *req.SortOrder)
+		argIdx++
+	}
+	sets = append(sets, "updated_at = NOW()")
+	args = append(args, blockID)
+	query := fmt.Sprintf(`UPDATE project_blocks SET %s WHERE id = $%d`, strings.Join(sets, ", "), argIdx)
+	if _, err := db.Exec(query, args...); err != nil {
+		return projectBlock{}, err
+	}
+	return getProjectBlock(db, blockID)
+}
+
+func deleteProjectBlock(db *sql.DB, projectID, blockID, actorID int64) error {
+	if !canManageProject(db, projectID, actorID) {
+		return fmt.Errorf("%w: только владелец/админ может удалять блоки", errForbidden)
+	}
+	res, err := db.Exec(`DELETE FROM project_blocks WHERE id = $1 AND project_id = $2`, blockID, projectID)
 	if err != nil {
 		return err
 	}
