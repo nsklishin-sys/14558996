@@ -40,6 +40,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/net/html"
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
 
@@ -1453,6 +1454,7 @@ const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/assets/lt-select.js" defer></script>
 <script src="/assets/confirm-modal.js" defer></script>
 <script src="/assets/modal-guard.js" defer></script>
+<script src="/assets/rich-editor.js" defer></script>
 <script src="/assets/calendar-modal.js" defer></script>
 <link rel="stylesheet" href="/assets/skeleton.css">
 <script src="/assets/api-cache.js" defer></script>
@@ -1898,6 +1900,122 @@ func buildPasswordResetEmailHTML(name, link string) string {
 func htmlSafe(s string) string {
 	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", "\"", "&quot;", "'", "&#39;")
 	return r.Replace(s)
+}
+
+// richAllowedTags — allowlist тегов для rich-text контента.
+var richAllowedTags = map[string]bool{
+	"p": true, "br": true, "b": true, "strong": true, "i": true, "em": true,
+	"u": true, "s": true, "strike": true, "ul": true, "ol": true, "li": true,
+	"h2": true, "h3": true, "h4": true, "blockquote": true, "a": true,
+	"div": true, "span": true,
+}
+
+var richAllowedAttrs = map[string]map[string]bool{
+	"a":          {"href": true},
+	"p":          {"style": true},
+	"div":        {"style": true},
+	"h2":         {"style": true},
+	"h3":         {"style": true},
+	"h4":         {"style": true},
+	"li":         {"style": true},
+	"blockquote": {"style": true},
+}
+
+// sanitizeRichHTML очищает HTML от rich-text редактора по allowlist (защита от XSS).
+func sanitizeRichHTML(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	z := html.NewTokenizer(strings.NewReader(raw))
+	var sb strings.Builder
+	var stack []string
+	for {
+		tt := z.Next()
+		if tt == html.ErrorToken {
+			break
+		}
+		switch tt {
+		case html.TextToken:
+			sb.WriteString(htmlSafe(string(z.Text())))
+		case html.StartTagToken, html.SelfClosingTagToken:
+			name, hasAttr := z.TagName()
+			tag := strings.ToLower(string(name))
+			if !richAllowedTags[tag] {
+				continue
+			}
+			sb.WriteString("<")
+			sb.WriteString(tag)
+			if hasAttr {
+				for {
+					k, v, more := z.TagAttr()
+					key := strings.ToLower(string(k))
+					val := string(v)
+					if allowed := richAllowedAttrs[tag]; allowed != nil && allowed[key] {
+						cleaned, ok := sanitizeRichAttr(tag, key, val)
+						if ok {
+							sb.WriteString(" ")
+							sb.WriteString(key)
+							sb.WriteString("=\"")
+							sb.WriteString(htmlSafe(cleaned))
+							sb.WriteString("\"")
+						}
+					}
+					if !more {
+						break
+					}
+				}
+			}
+			if tt == html.SelfClosingTagToken || tag == "br" {
+				sb.WriteString(">")
+			} else {
+				sb.WriteString(">")
+				stack = append(stack, tag)
+			}
+		case html.EndTagToken:
+			name, _ := z.TagName()
+			tag := strings.ToLower(string(name))
+			if !richAllowedTags[tag] || tag == "br" {
+				continue
+			}
+			for i := len(stack) - 1; i >= 0; i-- {
+				if stack[i] == tag {
+					sb.WriteString("</")
+					sb.WriteString(tag)
+					sb.WriteString(">")
+					stack = append(stack[:i], stack[i+1:]...)
+					break
+				}
+			}
+		}
+	}
+	for i := len(stack) - 1; i >= 0; i-- {
+		sb.WriteString("</")
+		sb.WriteString(stack[i])
+		sb.WriteString(">")
+	}
+	return strings.TrimSpace(sb.String())
+}
+
+func sanitizeRichAttr(tag, key, val string) (string, bool) {
+	val = strings.TrimSpace(val)
+	switch key {
+	case "href":
+		low := strings.ToLower(val)
+		if strings.HasPrefix(low, "http://") || strings.HasPrefix(low, "https://") || strings.HasPrefix(low, "mailto:") {
+			return val, true
+		}
+		return "", false
+	case "style":
+		low := strings.ToLower(val)
+		for _, dir := range []string{"left", "center", "right", "justify"} {
+			if strings.Contains(low, "text-align") && strings.Contains(low, dir) {
+				return "text-align:" + dir, true
+			}
+		}
+		return "", false
+	}
+	return "", false
 }
 
 var sessions *sessionStore
@@ -18369,6 +18487,11 @@ ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_or_att
 ALTER TABLE chat_messages ADD CONSTRAINT chat_messages_content_or_attachment_check
     CHECK (char_length(content) BETWEEN 0 AND 8000 AND (char_length(content) > 0 OR char_length(attachment_url) > 0 OR is_deleted = TRUE));
 
+-- Rich-text: описания этапов могут содержать HTML-разметку. Поднимаем лимит до 20000.
+ALTER TABLE project_stages DROP CONSTRAINT IF EXISTS project_stages_description_check;
+ALTER TABLE project_stages ADD CONSTRAINT project_stages_description_check
+    CHECK (char_length(description) <= 20000);
+
 CREATE TABLE IF NOT EXISTS chat_typing (
     conversation_id BIGINT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -24199,9 +24322,10 @@ func createProjectStage(db *sql.DB, projectID, actorID int64, req stageRequest) 
 		return projectStage{}, fmt.Errorf("%w: название этапа 1..200", errValidation)
 	}
 	desc := strings.TrimSpace(req.Description)
-	if utf8.RuneCountInString(desc) > 5000 {
-		return projectStage{}, fmt.Errorf("%w: описание этапа до 5000", errValidation)
+	if utf8.RuneCountInString(desc) > 20000 {
+		return projectStage{}, fmt.Errorf("%w: описание этапа слишком длинное", errValidation)
 	}
+	desc = sanitizeRichHTML(desc)
 	status := strings.TrimSpace(req.Status)
 	if status == "" {
 		status = "planned"
@@ -24305,11 +24429,11 @@ func updateProjectStage(db *sql.DB, projectID, stageID, actorID int64, req stage
 		args = append(args, title)
 		argIdx++
 	}
-	if utf8.RuneCountInString(req.Description) > 5000 {
-		return projectStage{}, fmt.Errorf("%w: описание до 5000", errValidation)
+	if utf8.RuneCountInString(req.Description) > 20000 {
+		return projectStage{}, fmt.Errorf("%w: описание слишком длинное", errValidation)
 	}
 	sets = append(sets, fmt.Sprintf("description = $%d", argIdx))
-	args = append(args, strings.TrimSpace(req.Description))
+	args = append(args, sanitizeRichHTML(strings.TrimSpace(req.Description)))
 	argIdx++
 	if status := strings.TrimSpace(req.Status); status != "" {
 		if err := validateStageStatus(status); err != nil {
