@@ -521,6 +521,20 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   .topbar{grid-template-columns:1fr 360px !important}
   .nav{padding:14px 12px 12px}
 }
+/* ── Отображение сохранённого rich-text (этапы, блоки, документы) ── */
+.rich-content{font-size:12.5px;color:var(--tm);line-height:1.6;word-wrap:break-word}
+.rich-content p{margin:0 0 8px}
+.rich-content p:last-child{margin-bottom:0}
+.rich-content h2,.rich-content h3,.rich-content h4{font-weight:800;color:var(--t);margin:12px 0 6px;line-height:1.3}
+.rich-content h2{font-size:15px}
+.rich-content h3{font-size:14px}
+.rich-content h4{font-size:13px}
+.rich-content h2:first-child,.rich-content h3:first-child,.rich-content h4:first-child,.rich-content p:first-child{margin-top:0}
+.rich-content ul,.rich-content ol{margin:0 0 8px;padding-left:20px}
+.rich-content li{margin-bottom:3px}
+.rich-content blockquote{margin:0 0 8px;padding:4px 0 4px 12px;border-left:3px solid var(--gb);color:var(--gmt);font-style:italic}
+.rich-content a{color:var(--g);text-decoration:underline;word-break:break-all}
+.rich-content b,.rich-content strong{font-weight:700;color:var(--t)}
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -880,7 +894,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       </div>
       <div>
         <label class="mng-label">Описание (необязательно)</label>
-        <textarea class="mng-textarea" id="stDescription" placeholder="Что именно делается на этом этапе…" maxlength="5000"></textarea>
+        <div id="stDescriptionEditor"></div>
       </div>
       <div class="mng-row-2">
         <div>
@@ -1853,7 +1867,7 @@ async function loadStages(){
       const dates = formatStageDates(s.start_date, s.end_date);
       const assignee = s.assignee_name ? ' · ' + esc(s.assignee_name) : '';
       const meta = (dates || assignee) ? '<div class="stage-meta">' + esc(dates) + assignee + '</div>' : '';
-      const desc = s.description ? '<div style="font-size:12px;color:var(--tm);line-height:1.5;margin-top:6px">' + esc(s.description) + '</div>' : '';
+      const desc = s.description ? '<div class="rich-content" style="margin-top:6px">' + s.description + '</div>' : '';
 
       // Подзадачи
       const subtasks = s.subtasks || [];
@@ -2038,6 +2052,7 @@ function pluralRu(n, forms){
 
 // ─── State модалок ───
 let _editingStageID = null;      // null = создание, число = редактирование
+let _stageEditor = null;         // экземпляр rich-text редактора описания этапа
 let _editingNeedID = null;
 let _currentResponsesNeedID = null;
 
@@ -2058,7 +2073,13 @@ function openStageModal(stage){
   _editingStageID = stage ? stage.id : null;
   document.getElementById('stageModalTitle').textContent = stage ? 'Редактировать этап' : 'Новый этап';
   document.getElementById('stTitle').value = stage ? (stage.title || '') : '';
-  document.getElementById('stDescription').value = stage ? (stage.description || '') : '';
+  // Rich-text редактор описания (создаём один раз, лениво)
+  if (!_stageEditor && window.LastopRichEditor) {
+    _stageEditor = window.LastopRichEditor.create(document.getElementById('stDescriptionEditor'), {
+      placeholder: 'Что именно делается на этом этапе… Можно выделять текст, делать списки и заголовки.'
+    });
+  }
+  if (_stageEditor) _stageEditor.setHTML(stage ? (stage.description || '') : '');
   document.getElementById('stStatus').value = stage ? (stage.status || 'planned') : 'planned';
   document.getElementById('stStartDate').value = stage ? (stage.start_date || '') : '';
   document.getElementById('stEndDate').value = stage ? (stage.end_date || '') : '';
@@ -2091,7 +2112,7 @@ async function submitStage(){
 
   const body = {
     title: title,
-    description: document.getElementById('stDescription').value.trim(),
+    description: (_stageEditor ? _stageEditor.getHTML() : ''),
     status: document.getElementById('stStatus').value || 'planned',
     start_date: document.getElementById('stStartDate').value || null,
     end_date: document.getElementById('stEndDate').value || null,
