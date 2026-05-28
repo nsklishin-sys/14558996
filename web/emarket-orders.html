@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/utils.js"></script>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Мои заказы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--orange:#D8741E;--blue:#2479C8;
+  --r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell img{height:38px;width:auto;max-width:100%;object-fit:contain;display:block}
+.main{grid-area:main;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;padding-bottom:16px;scrollbar-width:none;-ms-overflow-style:none}
+.main::-webkit-scrollbar{display:none}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+.right>*{flex-shrink:0}
+.right::-webkit-scrollbar{width:4px}.right::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
+
+/* ── Шапка ── */
+.page-head{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:18px 22px;box-shadow:var(--sh)}
+.page-title{font-size:20px;font-weight:800;color:var(--t);margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--gmt)}
+.tabs{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.tab{padding:7px 14px;border-radius:99px;font-size:13px;font-weight:600;color:var(--tm);background:var(--gp);border:1.5px solid var(--bdr);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:all .15s}
+.tab:hover{background:var(--gl);border-color:var(--gb)}
+.tab.active{background:var(--g);border-color:var(--g);color:#fff}
+.tab-count{display:inline-block;min-width:18px;padding:0 5px;height:18px;line-height:18px;text-align:center;background:rgba(255,255,255,.25);border-radius:99px;font-size:11px;font-weight:700}
+.tab:not(.active) .tab-count{background:var(--bdr);color:var(--gmt)}
+
+/* ── Список заказов ── */
+.orders-wrap{display:flex;flex-direction:column;gap:12px}
+.shop-group{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 18px;box-shadow:var(--sh)}
+.shop-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--bdr)}
+.shop-logo{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;background:var(--g)}
+.shop-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.shop-info{flex:1;min-width:0}
+.shop-name{font-size:14px;font-weight:700;color:var(--t);cursor:pointer}
+.shop-name:hover{color:var(--g)}
+.shop-meta{font-size:11px;color:var(--gmt);margin-top:2px}
+
+.order-card{background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:12px 14px;margin-bottom:10px;transition:border-color .15s}
+.order-card:hover{border-color:var(--gb)}
+.order-card:last-child{margin-bottom:0}
+.order-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.order-id{font-size:12px;font-weight:700;color:var(--t);font-family:'SF Mono',Menlo,monospace}
+.order-date{font-size:11px;color:var(--gmt)}
+.order-badges{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.badge{padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.badge-status-new{background:#E6F1FB;color:var(--blue)}
+.badge-status-accepted{background:var(--gl);color:var(--g)}
+.badge-status-processing{background:#FFF3DB;color:var(--orange)}
+.badge-status-shipped{background:#E8F0FF;color:#3956A8}
+.badge-status-done{background:#E5F5E5;color:#2E7A2E}
+.badge-status-cancelled{background:#FBE5E5;color:var(--red)}
+.badge-pay-pending{background:#FFF3DB;color:var(--orange);border:1px solid #F0DCA0}
+.badge-pay-paid{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+
+.order-items{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.oi-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--tm)}
+.oi-photo{width:36px;height:36px;border-radius:7px;background:var(--gl);object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--g);font-weight:800;font-size:12px}
+.oi-photo img{width:100%;height:100%;object-fit:cover;border-radius:7px}
+.oi-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oi-q{color:var(--gmt);font-size:11px}
+.oi-more{font-size:11px;color:var(--gmt);padding-left:46px}
+
+.order-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--bdr)}
+.order-total{font-size:14px;font-weight:800;color:var(--t)}
+.order-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.btn{padding:7px 14px;border-radius:var(--rm);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid transparent;display:inline-flex;align-items:center;gap:5px;transition:all .15s;text-decoration:none}
+.btn-pay{background:var(--g);color:#fff;border-color:var(--g)}
+.btn-pay:hover{background:var(--gm);border-color:var(--gm)}
+.btn-detail{background:var(--w);color:var(--g);border-color:var(--gb)}
+.btn-detail:hover{background:var(--gl)}
+
+/* ── Пустое состояние ── */
+.empty-state{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:60px 24px;text-align:center;box-shadow:var(--sh)}
+.empty-icon{font-size:48px;margin-bottom:14px;color:var(--gmt)}
+.empty-title{font-size:16px;font-weight:700;color:var(--t);margin-bottom:8px}
+.empty-text{font-size:13px;color:var(--gmt);margin-bottom:18px;line-height:1.5;max-width:380px;margin-left:auto;margin-right:auto}
+.empty-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn-pri-big{padding:10px 22px;border-radius:var(--rm);background:var(--g);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-pri-big:hover{background:var(--gm)}
+.btn-sec-big{padding:10px 22px;border-radius:var(--rm);background:var(--w);color:var(--g);border:1.5px solid var(--gb);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-sec-big:hover{background:var(--gl)}
+
+/* ── Правый сайдбар ── */
+.rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh)}
+.rs-title{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--gmt);text-transform:uppercase;margin-bottom:10px}
+.rs-link{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--rm);text-decoration:none;color:var(--tm);font-size:13px;font-weight:600;transition:all .15s;margin-bottom:4px}
+.rs-link:hover{background:var(--gp);color:var(--g)}
+.rs-link.active{background:var(--gl);color:var(--g)}
+.rs-link svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rs-link .rs-here{margin-left:auto;font-size:10px;font-weight:700;color:var(--g);background:var(--w);padding:2px 7px;border-radius:99px;border:1px solid var(--gb)}
+
+/* ── Скелетон ── */
+.skel{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh)}
+.skel-bar{height:14px;border-radius:7px;background:linear-gradient(90deg,#F0F4F1,#E5EBE7,#F0F4F1);background-size:200% 100%;animation:skel 1.4s ease-in-out infinite;margin-bottom:8px}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+@media(max-width:740px){
+  .page-head{padding:14px}
+  .shop-group{padding:12px}
+  .order-card{padding:10px}
+}
+
+/* ── Тёмная тема ── */
+html[data-theme="dark"] body{background:#0F1410;color:#E8E8E8}
+html[data-theme="dark"] .page-head,html[data-theme="dark"] .shop-group,html[data-theme="dark"] .empty-state,html[data-theme="dark"] .rs-card,html[data-theme="dark"] .skel{background:#1A211C;border-color:#2A3530;color:#E8E8E8}
+html[data-theme="dark"] .order-card{background:#212A24;border-color:#2F3B34}
+html[data-theme="dark"] .page-title,html[data-theme="dark"] .shop-name,html[data-theme="dark"] .order-id,html[data-theme="dark"] .empty-title,html[data-theme="dark"] .order-total{color:#F5F5F5}
+html[data-theme="dark"] .tab{background:#212A24;border-color:#2F3B34;color:#B8C3BD}
+html[data-theme="dark"] .tab.active{background:var(--g);color:#fff;border-color:var(--g)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <a href="/" class="logo-cell"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+  <header class="topbar"></header>
+  <nav class="nav"></nav>
+  <main class="main">
+    <div class="page-head">
+      <div class="page-title">Мои заказы</div>
+      <div class="page-sub" id="pageSub">Загрузка…</div>
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-filter="active" onclick="switchTab('active')">Активные <span class="tab-count" id="cntActive">0</span></button>
+        <button class="tab" data-filter="done" onclick="switchTab('done')">Завершённые <span class="tab-count" id="cntDone">0</span></button>
+        <button class="tab" data-filter="all" onclick="switchTab('all')">Все <span class="tab-count" id="cntAll">0</span></button>
+      </div>
+    </div>
+    <div id="ordersWrap"></div>
+  </main>
+  <aside class="right">
+    <div class="rs-card">
+      <div class="rs-title">Мои покупки</div>
+      <a class="rs-link" href="/emarket-cart">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+        Корзина
+      </a>
+      <a class="rs-link active" href="/emarket-orders">
+        <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        Активные заказы
+        <span class="rs-here">Вы здесь</span>
+      </a>
+      <a class="rs-link" href="/emarket-saved">
+        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        Сохранённое
+      </a>
+      <a class="rs-link" href="/emarket">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        В маркет
+      </a>
+    </div>
+  </aside>
+</div>
+
+<script>
+const API='/api';
+let ALL_ORDERS=[];
+let CURRENT_FILTER='active';
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function letter(s){return((s||'?')[0]||'?').toUpperCase();}
+const ACCENT={green:'#1E8A4C',blue:'#2479C8',navy:'#1E3A5F',teal:'#0E8A8A',purple:'#7C5CC4',orange:'#D8741E',red:'#C8392E',graphite:'#3A4654'};
+const CURRENCY={RUB:'₽',USD:'$',EUR:'€'};
+function fmtMoney(n,cur){
+  const c=CURRENCY[cur]||cur||'';
+  const v=Math.round((n||0)*100)/100;
+  const s=(Number.isInteger(v)?v.toFixed(0):v.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  return s+' '+c;
+}
+function fmtDate(ts){
+  try{
+    const d=new Date(ts);
+    const now=new Date();
+    const diffMs=now-d;
+    const diffMin=Math.floor(diffMs/60000);
+    if(diffMin<1)return'только что';
+    if(diffMin<60)return diffMin+' мин назад';
+    if(diffMin<1440)return Math.floor(diffMin/60)+' ч назад';
+    const months=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+    return d.getDate()+' '+months[d.getMonth()]+(d.getFullYear()!==now.getFullYear()?(' '+d.getFullYear()):'');
+  }catch{return'';}
+}
+function toast(msg,kind){
+  if(window.lastopToast){window.lastopToast(msg,kind);return;}
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--t);color:#fff;padding:10px 18px;border-radius:10px;z-index:9999;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.2)';
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2200);
+}
+
+/* ── Загрузка ── */
+async function loadOrders(){
+  const wrap=document.getElementById('ordersWrap');
+  wrap.innerHTML='<div class="skel"><div class="skel-bar" style="width:40%"></div><div class="skel-bar" style="width:80%"></div><div class="skel-bar" style="width:60%"></div></div>';
+  try{
+    const r=await lastopFetch(API+'/emarket/orders/my?status=all');
+    if(!r.ok)throw new Error('http');
+    const d=await r.json();
+    ALL_ORDERS=d.orders||[];
+  }catch{
+    ALL_ORDERS=[];
+  }
+  updateCounts();
+  render();
+}
+function updateCounts(){
+  const all=ALL_ORDERS.length;
+  const active=ALL_ORDERS.filter(o=>o.status!=='done'&&o.status!=='cancelled').length;
+  const done=all-active;
+  document.getElementById('cntActive').textContent=active;
+  document.getElementById('cntDone').textContent=done;
+  document.getElementById('cntAll').textContent=all;
+  document.getElementById('pageSub').textContent=all?(all+' '+plural(all,'заказ','заказа','заказов')):'Здесь будут все ваши заказы из E-маркета.';
+}
+function plural(n,one,few,many){
+  const m10=n%10,m100=n%100;
+  if(m10===1&&m100!==11)return one;
+  if(m10>=2&&m10<=4&&(m100<10||m100>=20))return few;
+  return many;
+}
+function switchTab(filter){
+  CURRENT_FILTER=filter;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.filter===filter));
+  render();
+}
+
+/* ── Рендер ── */
+function render(){
+  const wrap=document.getElementById('ordersWrap');
+  let list=ALL_ORDERS;
+  if(CURRENT_FILTER==='active')list=list.filter(o=>o.status!=='done'&&o.status!=='cancelled');
+  else if(CURRENT_FILTER==='done')list=list.filter(o=>o.status==='done'||o.status==='cancelled');
+  if(!list.length){
+    wrap.innerHTML=renderEmpty();
+    return;
+  }
+  // группируем по магазинам
+  const groups={};
+  const groupOrder=[];
+  list.forEach(o=>{
+    if(!groups[o.shop_id]){
+      groups[o.shop_id]={shop:o,orders:[]};
+      groupOrder.push(o.shop_id);
+    }
+    groups[o.shop_id].orders.push(o);
+  });
+  wrap.innerHTML='<div class="orders-wrap">'+groupOrder.map(sid=>renderShopGroup(groups[sid])).join('')+'</div>';
+}
+function renderEmpty(){
+  if(CURRENT_FILTER==='active'){
+    return `<div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <div class="empty-title">Нет активных заказов</div>
+      <div class="empty-text">Перейдите в маркет, чтобы найти товары и услуги от компаний — оформите заказ, и он появится здесь.</div>
+      <div class="empty-actions">
+        <a class="btn-pri-big" href="/emarket">В маркет</a>
+        <a class="btn-sec-big" href="/emarket-cart">Открыть корзину</a>
+      </div>
+    </div>`;
+  }
+  if(CURRENT_FILTER==='done'){
+    return `<div class="empty-state">
+      <div class="empty-icon">✓</div>
+      <div class="empty-title">Нет завершённых заказов</div>
+      <div class="empty-text">Заказы со статусом «Выполнен» или «Отменён» будут отображаться здесь.</div>
+    </div>`;
+  }
+  return `<div class="empty-state">
+    <div class="empty-icon">🛒</div>
+    <div class="empty-title">Пока нет заказов</div>
+    <div class="empty-text">Здесь появятся все заказы, которые вы оформите в магазинах E-маркета.</div>
+    <div class="empty-actions">
+      <a class="btn-pri-big" href="/emarket">Перейти в маркет</a>
+    </div>
+  </div>`;
+}
+function renderShopGroup(g){
+  const s=g.shop;
+  const accent=ACCENT[s.shop_accent]||ACCENT.green;
+  const logoInner=s.shop_logo
+    ? `<img src="${esc(s.shop_logo)}" alt="" onerror="this.parentElement.textContent='${esc(letter(s.shop_name))}'">`
+    : esc(letter(s.shop_name));
+  return `<div class="shop-group">
+    <div class="shop-head">
+      <div class="shop-logo" style="background:${accent}">${logoInner}</div>
+      <div class="shop-info">
+        <div class="shop-name" onclick="location.href='/shop/${esc(s.shop_slug)}'">${esc(s.shop_name)}</div>
+        <div class="shop-meta">${esc(s.shop_region||'')}${g.orders.length>1?(' · '+g.orders.length+' '+plural(g.orders.length,'заказ','заказа','заказов')):''}</div>
+      </div>
+    </div>
+    ${g.orders.map(renderOrderCard).join('')}
+  </div>`;
+}
+function renderOrderCard(o){
+  const items=o.items||[];
+  const visible=items.slice(0,3);
+  const more=items.length-visible.length;
+  const showPay=o.payment_status==='pending'&&o.payment_url;
+  return `<div class="order-card">
+    <div class="order-head">
+      <span class="order-id">№ ${esc(o.public_id)}</span>
+      <span class="order-date">${esc(fmtDate(o.created_at))}</span>
+      <div class="order-badges">
+        <span class="badge badge-status-${esc(o.status)}">${esc(o.status_label||o.status)}</span>
+        <span class="badge badge-pay-${esc(o.payment_status)}">${esc(o.payment_status_label||o.payment_status)}</span>
+      </div>
+    </div>
+    <div class="order-items">
+      ${visible.map(renderItemRow).join('')}
+      ${more>0?`<div class="oi-more">и ещё ${more} ${plural(more,'позиция','позиции','позиций')}</div>`:''}
+    </div>
+    <div class="order-foot">
+      <div class="order-total">${fmtMoney(o.total_amount,o.currency)}</div>
+      <div class="order-actions">
+        ${showPay?`<a class="btn btn-pay" href="${esc(o.payment_url)}" target="_blank" rel="noopener">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Оплатить
+        </a>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+function renderItemRow(it){
+  const photo=it.photo
+    ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.textContent='${esc(letter(it.title))}'">`
+    : esc(letter(it.title));
+  return `<div class="oi-row">
+    <div class="oi-photo">${photo}</div>
+    <div class="oi-title">${esc(it.title)}</div>
+    <div class="oi-q">${it.quantity}×${fmtMoney(it.price,it.currency)}</div>
+  </div>`;
+}
+
+/* ── Старт ── */
+loadOrders();
+
+/* Глубокая ссылка ?order=o_xxx — подсветить (на будущее, пока просто пометка) */
+const _qOrder=new URLSearchParams(location.search).get('order');
+if(_qOrder){
+  // Зарезервировано: на детальной модалке откроем этот заказ
+  // Пока — просто прокрутка к нему после рендера
+  setTimeout(()=>{
+    const el=Array.from(document.querySelectorAll('.order-id')).find(e=>e.textContent.includes(_qOrder));
+    if(el)el.closest('.order-card').scrollIntoView({behavior:'smooth',block:'center'});
+  },300);
+}
+</script>
+</body>
+</html>
