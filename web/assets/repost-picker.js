@@ -341,7 +341,7 @@
           return;
         }
         // 2) Сообщения: сначала комментарий пользователя (если есть) — отдельно, затем ссылка — отдельно
-        var link = location.origin + '/news-detail.html?id=' + encodeURIComponent(current.opts.postPublicID);
+        var link = location.origin + '/news-detail?id=' + encodeURIComponent(current.opts.postPublicID);
         var sendMsg = function (content) {
           return lastopFetch(API + '/chat/conversations/' + encodeURIComponent(convPID) + '/messages', {
             method: 'POST',
