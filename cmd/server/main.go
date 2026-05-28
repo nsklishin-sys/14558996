@@ -10760,6 +10760,8 @@ func main() {
 				ContactEmail string `json:"contact_email"`
 				ContactSite  string `json:"contact_site"`
 				Region       string `json:"region"`
+				PaymentType  string `json:"payment_type"`
+				PaymentURL   string `json:"payment_url"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -10784,16 +10786,28 @@ func main() {
 				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "название 2..120 символов"})
 				return
 			}
+			// Способ оплаты обязателен: магазин нельзя создать без ссылки на оплату
+			// (платёжный сервис / СБП / эквайринг-форма продавца).
+			req.PaymentURL = strings.TrimSpace(req.PaymentURL)
+			pLow := strings.ToLower(req.PaymentURL)
+			if !strings.HasPrefix(pLow, "https://") && !strings.HasPrefix(pLow, "http://") {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "укажите ссылку на оплату (платёжный сервис или СБП), начинающуюся с https://"})
+				return
+			}
+			if utf8.RuneCountInString(req.PaymentURL) > 500 {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "ссылка на оплату слишком длинная"})
+				return
+			}
 			slug, err := ensureUniqueShopSlug(db, slugifyCompanyName(req.Name))
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "Ошибка slug")
 				return
 			}
 			var newID int64
-			err = db.QueryRow(`INSERT INTO emarket_shops (owner_type, owner_id, name, slug, description, logo_url, cover_url, contact_phone, contact_email, contact_site, region)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+			err = db.QueryRow(`INSERT INTO emarket_shops (owner_type, owner_id, name, slug, description, logo_url, cover_url, contact_phone, contact_email, contact_site, region, payment_type, payment_url)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
 				req.OwnerType, req.OwnerID, req.Name, slug, strings.TrimSpace(req.Description),
-				req.LogoURL, req.CoverURL, strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite), strings.TrimSpace(req.Region)).Scan(&newID)
+				req.LogoURL, req.CoverURL, strings.TrimSpace(req.ContactPhone), strings.TrimSpace(req.ContactEmail), strings.TrimSpace(req.ContactSite), strings.TrimSpace(req.Region), "link", req.PaymentURL).Scan(&newID)
 			if err != nil {
 				if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
 					writeJSON(w, http.StatusConflict, map[string]any{"error": "магазин для этого владельца уже существует"})
