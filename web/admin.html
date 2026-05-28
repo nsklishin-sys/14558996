@@ -1458,7 +1458,7 @@ async function saveEmAd(){
   }catch(e){lastopToast('Ошибка сохранения','error');}
 }
 async function deleteEmAd(id){
-  if(!await lastopConfirm({title:'Удалить слайд?',text:'Действие необратимо.',confirmText:'Удалить'}))return;
+  if(!await lastopConfirm({title:'Удалить слайд?',message:'Действие необратимо.',confirmText:'Удалить'}))return;
   try{
     var r=await lastopFetch('/api/admin/emarket/ads?id='+id,{method:'DELETE'});
     if(!r.ok)throw 0;
