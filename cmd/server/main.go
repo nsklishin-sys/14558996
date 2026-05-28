@@ -11312,6 +11312,65 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"leads": leads, "total": total, "counts": counts})
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "orders" {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok { return }
+			if err := emarketCheckPermission(db, userID, shopID, "leads"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			filter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
+			oq := `SELECT o.public_id, o.buyer_id, o.items, o.total_amount, o.currency, o.status, o.payment_status,
+				o.comment, o.created_at, o.updated_at,
+				COALESCE(NULLIF(u.full_name,''), u.handle, u.email)
+				FROM emarket_orders o
+				JOIN users u ON u.id = o.buyer_id
+				WHERE o.shop_id = $1`
+			oargs := []any{shopID}
+			switch filter {
+			case "active":
+				oq += ` AND o.status NOT IN ('done','cancelled')`
+			case "done":
+				oq += ` AND o.status IN ('done','cancelled')`
+			}
+			oq += ` ORDER BY o.created_at DESC LIMIT 200`
+			orows, oerr := db.Query(oq, oargs...)
+			if oerr != nil {
+				log.Printf("[emarket/shops/%d/orders] %v", shopID, oerr)
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer orows.Close()
+			oOrderStatusLabels := map[string]string{"new":"Новый","accepted":"Принят","processing":"В обработке","shipped":"Отправлен","done":"Выполнен","cancelled":"Отменён"}
+			oPaymentStatusLabels := map[string]string{"pending":"Ожидает оплаты","paid":"Оплачен"}
+			out := []map[string]any{}
+			for orows.Next() {
+				var pid, status, paymentStatus, comment, currency, buyerName, itemsJSON string
+				var buyerID int64
+				var total float64
+				var createdAt, updatedAt time.Time
+				if err := orows.Scan(&pid, &buyerID, &itemsJSON, &total, &currency, &status, &paymentStatus,
+					&comment, &createdAt, &updatedAt, &buyerName); err != nil {
+					continue
+				}
+				var items []map[string]any
+				_ = json.Unmarshal([]byte(itemsJSON), &items)
+				out = append(out, map[string]any{
+					"public_id": pid, "buyer_id": buyerID, "buyer_name": buyerName,
+					"items": items, "items_count": len(items),
+					"total_amount": total, "currency": currency,
+					"status": status, "status_label": oOrderStatusLabels[status],
+					"payment_status": paymentStatus, "payment_status_label": oPaymentStatusLabels[paymentStatus],
+					"comment": comment, "created_at": createdAt, "updated_at": updatedAt,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"orders": out})
+			return
+		}
 		if len(parts) >= 2 && parts[1] == "site-publish" {
 			if r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
@@ -12254,6 +12313,349 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	})
+
+	// ═══════════════════════════════════════════════════════════════
+	// СЛОЙ 6 — ЗАКАЗЫ (информационные)
+	// ═══════════════════════════════════════════════════════════════
+
+	orderStatusLabels := map[string]string{
+		"new": "Новый", "accepted": "Принят", "processing": "В обработке",
+		"shipped": "Отправлен", "done": "Выполнен", "cancelled": "Отменён",
+	}
+	paymentStatusLabels := map[string]string{"pending": "Ожидает оплаты", "paid": "Оплачен"}
+
+	// POST /api/emarket/orders — создать заказ(ы) из корзины (отдельный на каждый магазин)
+	mux.HandleFunc("/api/emarket/orders", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok { return }
+		if r.Method == http.MethodGet {
+			writeError(w, http.StatusNotFound, "Используйте /api/emarket/orders/my или /api/emarket/orders/{public_id}")
+			return
+		}
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var body struct {
+			ShopID  int64  `json:"shop_id"`
+			Comment string `json:"comment"`
+		}
+		_ = decodeJSON(w, r, &body)
+		body.Comment = strings.TrimSpace(body.Comment)
+		if utf8.RuneCountInString(body.Comment) > 2000 {
+			writeError(w, http.StatusBadRequest, "Комментарий слишком длинный")
+			return
+		}
+		q := `SELECT c.id, c.listing_id, c.quantity,
+			l.title, l.kind, l.price, l.currency, l.photos, l.status, l.deleted_at,
+			s.id, s.name, s.slug, s.owner_type, s.owner_id, COALESCE(s.payment_url,'')
+			FROM emarket_cart c
+			JOIN emarket_listings l ON l.id = c.listing_id
+			JOIN emarket_shops s ON s.id = l.shop_id
+			WHERE c.user_id = $1`
+		args := []any{userID}
+		if body.ShopID > 0 {
+			q += ` AND s.id = $2`
+			args = append(args, body.ShopID)
+		}
+		q += ` ORDER BY s.id, c.created_at ASC`
+		rows, err := db.Query(q, args...)
+		if err != nil {
+			log.Printf("[emarket/orders POST] query: %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		type cartRow struct {
+			cartID, listingID, shopID int64
+			quantity                  int
+			title, kind, currency     string
+			price                     float64
+			photoFirst                string
+			available                 bool
+			shopName, shopSlug        string
+			ownerType                 string
+			ownerID                   int64
+			paymentURL                string
+		}
+		byShop := map[int64][]cartRow{}
+		shopOrder := []int64{}
+		for rows.Next() {
+			var c cartRow
+			var price sql.NullFloat64
+			var photosJSON, listingStatus string
+			var deletedAt sql.NullTime
+			if err := rows.Scan(&c.cartID, &c.listingID, &c.quantity,
+				&c.title, &c.kind, &price, &c.currency, &photosJSON, &listingStatus, &deletedAt,
+				&c.shopID, &c.shopName, &c.shopSlug, &c.ownerType, &c.ownerID, &c.paymentURL); err != nil {
+				continue
+			}
+			if price.Valid { c.price = price.Float64 }
+			var photos []string
+			_ = json.Unmarshal([]byte(photosJSON), &photos)
+			if len(photos) > 0 { c.photoFirst = photos[0] }
+			c.available = !deletedAt.Valid && listingStatus == "active"
+			if !c.available { continue }
+			if _, exists := byShop[c.shopID]; !exists {
+				shopOrder = append(shopOrder, c.shopID)
+			}
+			byShop[c.shopID] = append(byShop[c.shopID], c)
+		}
+		rows.Close()
+		if len(byShop) == 0 {
+			writeError(w, http.StatusBadRequest, "Корзина пуста или в ней нет доступных позиций")
+			return
+		}
+		type createdOrder struct {
+			PublicID string  `json:"public_id"`
+			ShopID   int64   `json:"shop_id"`
+			ShopName string  `json:"shop_name"`
+			Total    float64 `json:"total_amount"`
+			Currency string  `json:"currency"`
+		}
+		created := []createdOrder{}
+		for _, sid := range shopOrder {
+			items := byShop[sid]
+			if len(items) == 0 { continue }
+			type orderItem struct {
+				ListingID int64   `json:"listing_id"`
+				Title     string  `json:"title"`
+				Kind      string  `json:"kind"`
+				Price     float64 `json:"price"`
+				Currency  string  `json:"currency"`
+				Quantity  int     `json:"quantity"`
+				Photo     string  `json:"photo"`
+			}
+			snapshot := make([]orderItem, 0, len(items))
+			var total float64
+			currency := "RUB"
+			for _, c := range items {
+				snapshot = append(snapshot, orderItem{
+					ListingID: c.listingID, Title: c.title, Kind: c.kind,
+					Price: c.price, Currency: c.currency, Quantity: c.quantity, Photo: c.photoFirst,
+				})
+				total += c.price * float64(c.quantity)
+				if c.currency != "" { currency = c.currency }
+			}
+			snapshotJSON, _ := json.Marshal(snapshot)
+			publicID := generateOrderPublicID()
+			paymentSnapshot := items[0].paymentURL
+			var orderID int64
+			err := db.QueryRow(`INSERT INTO emarket_orders
+				(public_id, buyer_id, shop_id, items, total_amount, currency, comment, payment_url_snapshot)
+				VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8) RETURNING id`,
+				publicID, userID, sid, string(snapshotJSON), total, currency, body.Comment, paymentSnapshot).Scan(&orderID)
+			if err != nil {
+				log.Printf("[emarket/orders POST] insert: %v", err)
+				continue
+			}
+			_, _ = db.Exec(`DELETE FROM emarket_cart
+				WHERE user_id=$1 AND listing_id IN (SELECT id FROM emarket_listings WHERE shop_id=$2)`,
+				userID, sid)
+			if items[0].ownerType == "user" && items[0].ownerID > 0 {
+				currencySym := map[string]string{"RUB": "₽", "USD": "$", "EUR": "€"}[currency]
+				if currencySym == "" { currencySym = currency }
+				_ = createNotification(db, createNotificationParams{
+					RecipientID: items[0].ownerID, ActorID: userID,
+					Type:       "emarket_order_new",
+					SourceType: "emarket_order", SourceID: orderID,
+					Anchor:     "/emarket-cabinet?id=" + strconv.FormatInt(sid, 10) + "&tab=orders&order=" + publicID,
+					Title:      "Новый заказ в магазине «" + items[0].shopName + "»",
+					Preview:    strconv.FormatFloat(total, 'f', -1, 64) + " " + currencySym + " · позиций: " + strconv.Itoa(len(snapshot)),
+				})
+			}
+			created = append(created, createdOrder{
+				PublicID: publicID, ShopID: sid, ShopName: items[0].shopName,
+				Total: total, Currency: currency,
+			})
+		}
+		if len(created) == 0 {
+			writeError(w, http.StatusInternalServerError, "Не удалось создать заказы")
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"orders": created})
+	})
+
+	// GET /api/emarket/orders/my?status=active|done|all
+	mux.HandleFunc("/api/emarket/orders/my", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok { return }
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		filter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
+		q := `SELECT o.public_id, o.shop_id, o.items, o.total_amount, o.currency, o.status, o.payment_status,
+			o.comment, o.payment_url_snapshot, o.created_at, o.updated_at,
+			s.name, s.slug, s.logo_url, COALESCE(s.accent_color,'green'), s.region
+			FROM emarket_orders o
+			JOIN emarket_shops s ON s.id = o.shop_id
+			WHERE o.buyer_id = $1`
+		args := []any{userID}
+		switch filter {
+		case "active":
+			q += ` AND o.status NOT IN ('done','cancelled')`
+		case "done":
+			q += ` AND o.status IN ('done','cancelled')`
+		}
+		q += ` ORDER BY o.created_at DESC LIMIT 200`
+		rows, err := db.Query(q, args...)
+		if err != nil {
+			log.Printf("[emarket/orders/my] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		out := []map[string]any{}
+		for rows.Next() {
+			var pid, status, paymentStatus, comment, paymentURL, currency, shopName, shopSlug, shopLogo, accent, region string
+			var shopID int64
+			var itemsJSON string
+			var total float64
+			var createdAt, updatedAt time.Time
+			if err := rows.Scan(&pid, &shopID, &itemsJSON, &total, &currency, &status, &paymentStatus,
+				&comment, &paymentURL, &createdAt, &updatedAt,
+				&shopName, &shopSlug, &shopLogo, &accent, &region); err != nil {
+				continue
+			}
+			var items []map[string]any
+			_ = json.Unmarshal([]byte(itemsJSON), &items)
+			out = append(out, map[string]any{
+				"public_id": pid, "shop_id": shopID,
+				"shop_name": shopName, "shop_slug": shopSlug, "shop_logo": shopLogo,
+				"shop_accent": accent, "shop_region": region,
+				"items": items, "items_count": len(items),
+				"total_amount": total, "currency": currency,
+				"status": status, "status_label": orderStatusLabels[status],
+				"payment_status": paymentStatus, "payment_status_label": paymentStatusLabels[paymentStatus],
+				"payment_url": paymentURL, "comment": comment,
+				"created_at": createdAt, "updated_at": updatedAt,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"orders": out})
+	})
+
+	// GET /api/emarket/orders/{public_id}, PATCH .../status, PATCH .../payment-status
+	mux.HandleFunc("/api/emarket/orders/", func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok { return }
+		rest := strings.TrimPrefix(r.URL.Path, "/api/emarket/orders/")
+		parts := strings.Split(strings.Trim(rest, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" {
+			writeError(w, http.StatusNotFound, "Маршрут не найден")
+			return
+		}
+		publicID := parts[0]
+		var orderID, buyerID, shopID, ownerID int64
+		var ownerType, shopName, shopSlug, status, paymentStatus, currency, comment, paymentURL, itemsJSON string
+		var total float64
+		var createdAt, updatedAt time.Time
+		err := db.QueryRow(`SELECT o.id, o.buyer_id, o.shop_id, o.items, o.total_amount, o.currency,
+			o.status, o.payment_status, o.comment, o.payment_url_snapshot, o.created_at, o.updated_at,
+			s.name, s.slug, s.owner_type, s.owner_id
+			FROM emarket_orders o JOIN emarket_shops s ON s.id = o.shop_id
+			WHERE o.public_id = $1`, publicID).Scan(&orderID, &buyerID, &shopID, &itemsJSON, &total, &currency,
+			&status, &paymentStatus, &comment, &paymentURL, &createdAt, &updatedAt,
+			&shopName, &shopSlug, &ownerType, &ownerID)
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "Заказ не найден")
+			return
+		}
+		if err != nil {
+			log.Printf("[emarket/orders detail] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		isBuyer := buyerID == userID
+		isSeller := emarketCheckPermission(db, userID, shopID, "leads") == nil
+		if r.Method == http.MethodGet {
+			if !isBuyer && !isSeller {
+				writeError(w, http.StatusForbidden, "Нет доступа")
+				return
+			}
+			var items []map[string]any
+			_ = json.Unmarshal([]byte(itemsJSON), &items)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"public_id": publicID, "shop_id": shopID, "shop_name": shopName, "shop_slug": shopSlug,
+				"buyer_id": buyerID, "is_buyer": isBuyer, "is_seller": isSeller,
+				"items": items, "items_count": len(items),
+				"total_amount": total, "currency": currency,
+				"status": status, "status_label": orderStatusLabels[status],
+				"payment_status": paymentStatus, "payment_status_label": paymentStatusLabels[paymentStatus],
+				"comment": comment, "payment_url": paymentURL,
+				"created_at": createdAt, "updated_at": updatedAt,
+			})
+			return
+		}
+		if r.Method == http.MethodPatch && len(parts) == 2 {
+			if !isSeller {
+				writeError(w, http.StatusForbidden, "Только владелец магазина может менять статус заказа")
+				return
+			}
+			switch parts[1] {
+			case "status":
+				var body struct { Status string `json:"status"` }
+				if err := decodeJSON(w, r, &body); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if _, ok := orderStatusLabels[body.Status]; !ok {
+					writeError(w, http.StatusBadRequest, "Недопустимый статус")
+					return
+				}
+				if body.Status == status {
+					writeJSON(w, http.StatusOK, map[string]any{"status": body.Status})
+					return
+				}
+				if _, err := db.Exec(`UPDATE emarket_orders SET status=$1, updated_at=now() WHERE id=$2`, body.Status, orderID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				if buyerID != userID {
+					_ = createNotification(db, createNotificationParams{
+						RecipientID: buyerID, ActorID: userID,
+						Type: "emarket_order_status",
+						SourceType: "emarket_order", SourceID: orderID,
+						Anchor: "/emarket-orders?order=" + publicID,
+						Title: "Статус заказа в «" + shopName + "» изменён",
+						Preview: "Новый статус: " + orderStatusLabels[body.Status],
+					})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": body.Status})
+				return
+			case "payment-status":
+				var body struct { PaymentStatus string `json:"payment_status"` }
+				if err := decodeJSON(w, r, &body); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if _, ok := paymentStatusLabels[body.PaymentStatus]; !ok {
+					writeError(w, http.StatusBadRequest, "Недопустимый статус оплаты")
+					return
+				}
+				if body.PaymentStatus == paymentStatus {
+					writeJSON(w, http.StatusOK, map[string]any{"payment_status": body.PaymentStatus})
+					return
+				}
+				if _, err := db.Exec(`UPDATE emarket_orders SET payment_status=$1, updated_at=now() WHERE id=$2`, body.PaymentStatus, orderID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				if buyerID != userID {
+					_ = createNotification(db, createNotificationParams{
+						RecipientID: buyerID, ActorID: userID,
+						Type: "emarket_order_payment",
+						SourceType: "emarket_order", SourceID: orderID,
+						Anchor: "/emarket-orders?order=" + publicID,
+						Title: "Оплата заказа в «" + shopName + "» обновлена",
+						Preview: paymentStatusLabels[body.PaymentStatus],
+					})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"payment_status": body.PaymentStatus})
+				return
+			}
+		}
+		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 	})
 
 	mux.HandleFunc("/api/emarket/listings", func(w http.ResponseWriter, r *http.Request) {
@@ -19386,6 +19788,26 @@ CREATE TABLE IF NOT EXISTS emarket_drafts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS emarket_drafts_user_idx ON emarket_drafts(user_id, created_at DESC);
+-- Слой 6: информационные заказы (статусы и оплата ведутся вручную продавцом).
+-- items — снимок состава на момент оформления (название/цена/валюта замораживаются).
+-- payment_url_snapshot — снимок payment_url магазина (чтобы кнопка «Оплатить» работала, даже если продавец позже изменит URL).
+CREATE TABLE IF NOT EXISTS emarket_orders (
+    id BIGSERIAL PRIMARY KEY,
+    public_id TEXT NOT NULL UNIQUE,
+    buyer_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    total_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    status TEXT NOT NULL DEFAULT 'new',
+    payment_status TEXT NOT NULL DEFAULT 'pending',
+    comment TEXT NOT NULL DEFAULT '' CHECK (char_length(comment) <= 2000),
+    payment_url_snapshot TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_orders_buyer_idx ON emarket_orders(buyer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS emarket_orders_shop_idx ON emarket_orders(shop_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS emarket_ads (
   id BIGSERIAL PRIMARY KEY,
   placement TEXT NOT NULL DEFAULT 'banner',
@@ -20536,6 +20958,12 @@ func generateJobApplicationPublicID() string {
 	b := make([]byte, 6)
 	_, _ = rand.Read(b)
 	return "jap_" + hex.EncodeToString(b)
+}
+
+func generateOrderPublicID() string {
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	return "o_" + hex.EncodeToString(b)
 }
 
 // getJobByPublicID возвращает id вакансии по public_id.
