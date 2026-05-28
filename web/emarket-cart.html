@@ -690,12 +690,33 @@ async function clearCart(){
   }
 }
 
-/* ── Заглушки чекаута (до Слоя 6) ── */
-function checkoutShop(shopId){
-  toast('Оформление заказов появится со Слоем 6','info');
+/* ── Чекаут (Слой 6) ── */
+async function checkoutShop(shopId){
+  await doCheckout(shopId);
 }
-function checkoutAll(){
-  toast('Оформление заказов появится со Слоем 6','info');
+async function checkoutAll(){
+  await doCheckout(0);
+}
+async function doCheckout(shopId){
+  // shopId=0 → оформить ВСЁ (отдельный заказ на каждый магазин)
+  try {
+    const body = shopId ? { shop_id: shopId } : {};
+    const r = await lastopFetch(API + '/emarket/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      toast(d.error || 'Не удалось оформить заказ', 'info');
+      return;
+    }
+    const n = (d.orders || []).length;
+    toast(n > 1 ? ('Оформлено заказов: ' + n) : 'Заказ оформлен', 'info');
+    setTimeout(() => { location.href = '/emarket-orders'; }, 700);
+  } catch (e) {
+    toast('Ошибка соединения', 'info');
+  }
 }
 
 /* ── Сохранить как заявку ── */
