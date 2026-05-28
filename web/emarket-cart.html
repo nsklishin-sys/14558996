@@ -676,7 +676,7 @@ async function clearCart(){
   if(!CART.items.length)return;
   var msg='Все '+CART.items.length+' '+plural(CART.items.length,'позиция','позиции','позиций')+' будут удалены без возможности возврата.';
   var ok=window.lastopConfirm
-    ? await lastopConfirm({title:'Очистить корзину?',message:msg,confirmText:'Очистить',cancelText:'Отмена',variant:'danger'})
+    ? await lastopConfirm({title:'Очистить корзину?',message:msg,confirmText:'Очистить',danger:true})
     : confirm('Очистить корзину? '+msg);
   if(!ok)return;
   try{
