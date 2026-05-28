@@ -1155,7 +1155,7 @@ async function toggleListingStatus(id){
 async function deleteListing(id){
   const it=LISTINGS.find(x=>x.id===id);
   if(!it)return;
-  const ok=await lastopConfirm('Удалить «'+(it.title||'позицию')+'»? Это действие необратимо.');
+  const ok=await lastopConfirm({title:'Удалить позицию?',message:'«'+(it.title||'позицию')+'» будет удалена безвозвратно.',danger:true,confirmText:'Удалить'});
   if(!ok)return;
   try{
     const r=await lastopFetch(API+'/emarket/listings/'+id,{method:'DELETE'});
@@ -1611,7 +1611,7 @@ async function toggleStaffPerm(userId,key,val){
 
 async function removeStaff(userId){
   const m=STAFF.find(x=>x.user_id===userId);
-  const ok=await lastopConfirm('Убрать '+(m?'«'+m.name+'»':'сотрудника')+' из команды магазина? Доступ к магазину будет отозван.');
+  const ok=await lastopConfirm({title:'Убрать из команды?',message:(m?'«'+m.name+'»':'Сотрудник')+' потеряет доступ к магазину.',danger:true,confirmText:'Убрать'});
   if(!ok)return;
   try{
     const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/staff?user_id='+userId,{method:'DELETE'});
