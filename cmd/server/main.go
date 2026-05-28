@@ -17091,7 +17091,7 @@ func main() {
 
 	// SEO-инжектор: для страниц с динамическим контентом подменяем OG-теги
 	// до отдачи HTML, чтобы соцсети при шеринге видели правильное превью.
-	mux.HandleFunc("/company-detail.html", func(w http.ResponseWriter, r *http.Request) {
+	companyDetailOG := func(w http.ResponseWriter, r *http.Request) {
 		serveDetailWithOG(w, r, "./web/company-detail.html", func(publicID string) (ogMeta, bool) {
 			var m ogMeta
 			err := db.QueryRow(`
@@ -17101,13 +17101,15 @@ func main() {
 			if err != nil {
 				return ogMeta{}, false
 			}
-			m.URL = sitemapBaseURL(r) + "/company-detail.html?id=" + publicID
+			m.URL = sitemapBaseURL(r) + "/company-detail?id=" + publicID
 			m.Type = "profile"
 			return m, true
 		})
-	})
+	}
+	mux.HandleFunc("/company-detail.html", companyDetailOG)
+	mux.HandleFunc("/company-detail", companyDetailOG)
 
-	mux.HandleFunc("/event-detail.html", func(w http.ResponseWriter, r *http.Request) {
+	eventDetailOG := func(w http.ResponseWriter, r *http.Request) {
 		serveDetailWithOG(w, r, "./web/event-detail.html", func(publicID string) (ogMeta, bool) {
 			var m ogMeta
 			err := db.QueryRow(`
@@ -17117,13 +17119,15 @@ func main() {
 			if err != nil {
 				return ogMeta{}, false
 			}
-			m.URL = sitemapBaseURL(r) + "/event-detail.html?id=" + publicID
+			m.URL = sitemapBaseURL(r) + "/event-detail?id=" + publicID
 			m.Type = "article"
 			return m, true
 		})
-	})
+	}
+	mux.HandleFunc("/event-detail.html", eventDetailOG)
+	mux.HandleFunc("/event-detail", eventDetailOG)
 
-	mux.HandleFunc("/exhibition-detail.html", func(w http.ResponseWriter, r *http.Request) {
+	exhibitionDetailOG := func(w http.ResponseWriter, r *http.Request) {
 		serveDetailWithOG(w, r, "./web/exhibition-detail.html", func(publicID string) (ogMeta, bool) {
 			var m ogMeta
 			err := db.QueryRow(`
@@ -17133,13 +17137,15 @@ func main() {
 			if err != nil {
 				return ogMeta{}, false
 			}
-			m.URL = sitemapBaseURL(r) + "/exhibition-detail.html?id=" + publicID
+			m.URL = sitemapBaseURL(r) + "/exhibition-detail?id=" + publicID
 			m.Type = "article"
 			return m, true
 		})
-	})
+	}
+	mux.HandleFunc("/exhibition-detail.html", exhibitionDetailOG)
+	mux.HandleFunc("/exhibition-detail", exhibitionDetailOG)
 
-	mux.HandleFunc("/project-detail.html", func(w http.ResponseWriter, r *http.Request) {
+	projectDetailOG := func(w http.ResponseWriter, r *http.Request) {
 		serveDetailWithOG(w, r, "./web/project-detail.html", func(publicID string) (ogMeta, bool) {
 			var m ogMeta
 			err := db.QueryRow(`
@@ -17149,11 +17155,13 @@ func main() {
 			if err != nil {
 				return ogMeta{}, false
 			}
-			m.URL = sitemapBaseURL(r) + "/project-detail.html?id=" + publicID
+			m.URL = sitemapBaseURL(r) + "/project-detail?id=" + publicID
 			m.Type = "article"
 			return m, true
 		})
-	})
+	}
+	mux.HandleFunc("/project-detail.html", projectDetailOG)
+	mux.HandleFunc("/project-detail", projectDetailOG)
 
 	// ═════ /api/link-preview ═════
 	// GET ?url=<url> — возвращает {ok, preview:{type,title,subtitle,image,badge,url}}
