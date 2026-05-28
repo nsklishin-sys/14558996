@@ -193,7 +193,7 @@
   }
 
   function updateMyCompanyMenuItem(kind, activeID) {
-    var anchors = document.querySelectorAll('.pdd-item[href^="/my-company.html"]');
+    var anchors = document.querySelectorAll('.pdd-item[href^="/my-company"]');
     var cached = window.__pcxCompaniesCache || [];
     var activeCompany = (kind === 'company' && activeID != null)
       ? cached.find(function(c){ return c.id === activeID; })
@@ -209,9 +209,9 @@
         anchors[i].style.display = '';
       }
       if (activeCompany && activeCompany.slug) {
-        anchors[i].setAttribute('href', '/my-company.html?id=' + encodeURIComponent(activeCompany.slug));
+        anchors[i].setAttribute('href', '/my-company?id=' + encodeURIComponent(activeCompany.slug));
       } else {
-        anchors[i].setAttribute('href', '/my-company.html');
+        anchors[i].setAttribute('href', '/my-company');
       }
     }
   }
@@ -279,8 +279,8 @@
   function applyContextToMenu(kind) {
     // Скрываем/показываем пункты меню в зависимости от контекста
     var friendsItem = document.querySelector('.profile-dd .pdd-item[href="/friends"]');
-    var companyItem = document.querySelector('.profile-dd .pdd-item[href^="/my-company.html"]');
-    var communityItem = document.querySelector('.profile-dd .pdd-item[href^="/communities.html"]');
+    var companyItem = document.querySelector('.profile-dd .pdd-item[href^="/my-company"]');
+    var communityItem = document.querySelector('.profile-dd .pdd-item[href^="/communities"]');
     var viewBtn = document.querySelector('.profile-dd .pdd-view');
 
     if (kind === 'company') {
@@ -290,7 +290,7 @@
       if (viewBtn) {
         var co = (window.__pcxCompaniesCache || []).find(function(c){ return c.id === getActiveCompanyID(); });
         viewBtn.textContent = 'Профиль компании';
-        viewBtn.setAttribute('href', co && co.slug ? '/company-detail.html?id=' + encodeURIComponent(co.slug) : '/company-detail.html');
+        viewBtn.setAttribute('href', co && co.slug ? '/company-detail?id=' + encodeURIComponent(co.slug) : '/company-detail');
       }
     } else if (kind === 'community') {
       if (friendsItem) friendsItem.style.display = 'none';
@@ -298,7 +298,7 @@
       if (communityItem) communityItem.style.display = '';
       if (viewBtn) {
         viewBtn.textContent = 'Профиль сообщества';
-        viewBtn.setAttribute('href', '/community-detail.html?id=' + getActiveCommunityID());
+        viewBtn.setAttribute('href', '/community-detail?id=' + getActiveCommunityID());
       }
     } else {
       // Личный — восстановить всё
@@ -307,7 +307,7 @@
       if (communityItem) communityItem.style.display = '';
       if (viewBtn) {
         viewBtn.textContent = 'Открыть профиль';
-        viewBtn.setAttribute('href', '/profile.html');
+        viewBtn.setAttribute('href', '/profile');
       }
     }
   }
