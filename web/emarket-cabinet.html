@@ -488,6 +488,9 @@ function renderNoShop(){
         +'<textarea class="lm-input" id="ncDesc" placeholder="Чем занимается магазин (необязательно)" style="height:72px;resize:none"></textarea>'
         +'<label class="lm-label" style="margin-top:12px">Регион</label>'
         +'<input class="lm-input" id="ncRegion" placeholder="Москва (необязательно)" maxlength="80">'
+        +'<label class="lm-label" style="margin-top:12px">Ссылка на оплату *</label>'
+        +'<input class="lm-input" id="ncPayment" placeholder="https://… (платёжный сервис или СБП)" maxlength="500">'
+        +'<div class="lm-hint" style="font-size:11px;color:var(--gmt);margin-top:5px;line-height:1.5">Покупатели будут оплачивать заказы по этой ссылке. Укажите ссылку платёжного сервиса, эквайринга или СБП. Без способа оплаты магазин создать нельзя.</div>'
         +'<button class="lead-btn lead-btn-pri" id="ncSubmit" style="margin-top:18px;width:100%;justify-content:center" onclick="submitCreateShop()">Создать магазин</button>'
       +'</div>'
     +'</div>';
@@ -571,9 +574,11 @@ async function submitCreateShop(){
   const btn=document.getElementById('ncSubmit');
   const name=(document.getElementById('ncName').value||'').trim();
   if(name.length<2){if(window.toast)toast('Введите название магазина (минимум 2 символа)','info');return;}
+  const payment=(document.getElementById('ncPayment').value||'').trim();
+  if(!/^https?:\/\//i.test(payment)){if(window.toast)toast('Укажите ссылку на оплату (платёжный сервис или СБП), начинающуюся с https://','info');document.getElementById('ncPayment').focus();return;}
   const [type,idStr]=sel.value.split(':');
   const id=parseInt(idStr)||0;
-  const body={owner_type:type,name,description:(document.getElementById('ncDesc').value||'').trim(),region:(document.getElementById('ncRegion').value||'').trim()};
+  const body={owner_type:type,name,description:(document.getElementById('ncDesc').value||'').trim(),region:(document.getElementById('ncRegion').value||'').trim(),payment_url:payment};
   if(type!=='user')body.owner_id=id;
   btn.disabled=true;btn.textContent='Создание…';
   try{
