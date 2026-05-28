@@ -16284,7 +16284,7 @@ func main() {
 							Title: title, Description: descr,
 							StartsAt: sa.Format(time.RFC3339), EndsAt: ea.Format(time.RFC3339),
 							IsAllDay: false, Color: "#185FA5", Location: loc,
-							Link: "/event-detail.html?id=" + pid, Editable: false,
+							Link: "/event-detail?id=" + pid, Editable: false,
 						})
 					}
 				}
@@ -16328,7 +16328,7 @@ func main() {
 							Title: title, Description: descr,
 							StartsAt: sa.Format(time.RFC3339), EndsAt: ea.Format(time.RFC3339),
 							IsAllDay: true, Color: "#B07A00", Location: loc,
-							Link: "/exhibition-detail.html?id=" + pid, Editable: false,
+							Link: "/exhibition-detail?id=" + pid, Editable: false,
 						})
 					}
 				}
@@ -16365,7 +16365,7 @@ func main() {
 							Title: "📌 Дедлайн: " + title + roleSuffix, Description: descr,
 							StartsAt: dl.Format(time.RFC3339), EndsAt: dl.Format(time.RFC3339),
 							IsAllDay: true, Color: "#C04030", Location: "",
-							Link: "/project-detail.html?id=" + pid, Editable: false,
+							Link: "/project-detail?id=" + pid, Editable: false,
 						})
 					}
 				}
@@ -17200,15 +17200,15 @@ func main() {
 			freq     string
 		}{
 			{"/", "1.0", "daily"},
-			{"/companies.html", "0.9", "daily"},
-			{"/events.html", "0.9", "daily"},
-			{"/calendar.html", "0.9", "daily"},
-			{"/exhibitions.html", "0.9", "weekly"},
-			{"/projects.html", "0.8", "weekly"},
-			{"/jobs.html", "0.8", "daily"},
-			{"/forum.html", "0.7", "daily"},
-			{"/communities.html", "0.7", "weekly"},
-			{"/dashboard.html", "0.6", "daily"},
+			{"/companies", "0.9", "daily"},
+			{"/events", "0.9", "daily"},
+			{"/calendar", "0.9", "daily"},
+			{"/exhibitions", "0.9", "weekly"},
+			{"/projects", "0.8", "weekly"},
+			{"/jobs", "0.8", "daily"},
+			{"/forum", "0.7", "daily"},
+			{"/communities", "0.7", "weekly"},
+			{"/dashboard", "0.6", "daily"},
 		}
 		for _, p := range staticPaths {
 			sb.WriteString("  <url>\n")
@@ -17244,23 +17244,23 @@ func main() {
 		}
 		appendURLs(
 			`SELECT public_id, updated_at FROM companies WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
-			"/company-detail.html?id={id}", "weekly", "0.7",
+			"/company-detail?id={id}", "weekly", "0.7",
 		)
 		appendURLs(
 			`SELECT public_id, updated_at FROM events WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
-			"/event-detail.html?id={id}", "weekly", "0.7",
+			"/event-detail?id={id}", "weekly", "0.7",
 		)
 		appendURLs(
 			`SELECT public_id, updated_at FROM exhibitions WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
-			"/exhibition-detail.html?id={id}", "weekly", "0.7",
+			"/exhibition-detail?id={id}", "weekly", "0.7",
 		)
 		appendURLs(
 			`SELECT public_id, updated_at FROM projects WHERE COALESCE(is_deleted, FALSE) = FALSE ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
-			"/project-detail.html?id={id}", "weekly", "0.6",
+			"/project-detail?id={id}", "weekly", "0.6",
 		)
 		appendURLs(
 			`SELECT public_id, updated_at FROM forum_topics ORDER BY updated_at DESC NULLS LAST LIMIT 1000`,
-			"/forum-topic.html?id={id}", "weekly", "0.5",
+			"/forum-topic?id={id}", "weekly", "0.5",
 		)
 		sb.WriteString(`</urlset>` + "\n")
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
@@ -24784,7 +24784,7 @@ func removeProjectMember(db *sql.DB, viewerID int64, publicID, targetUserPublicI
 
 // listTopPosts возвращает посты, отсортированные по weighted score
 // за указанный период. Используется для hero-блока ("Главная новость дня",
-// period=day) и блока "Топ недели" (period=week) на /dashboard.html.
+// period=day) и блока "Топ недели" (period=week) на /dashboard.
 //
 // score = likes_count*3 + comments_count*2 + saves_count*5 + views_count*0.1
 //
@@ -33226,9 +33226,9 @@ func applyToCatalogItem(db *sql.DB, itemID, buyerID int64, message string) (map[
 	// public_id товара/услуги для ссылки в сообщении
 	var itemPublicIDForLink string
 	_ = db.QueryRow(`SELECT public_id FROM catalog_items WHERE id = $1`, itemID).Scan(&itemPublicIDForLink)
-	itemPath := "/service-detail.html?id="
+	itemPath := "/service-detail?id="
 	if itemType == "product" {
-		itemPath = "/product-detail.html?id="
+		itemPath = "/product-detail?id="
 	}
 
 	// Отправляем сообщение с маркером и ссылкой на товар/услугу
