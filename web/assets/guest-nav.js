@@ -51,8 +51,8 @@
       var div=document.createElement('div');
       div.id='guestTopbarBtns';
       div.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0';
-      div.innerHTML='<a href="/login.html" style="height:32px;padding:0 14px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap">Войти</a>'
-        +'<a href="/register.html" style="height:32px;padding:0 16px;border-radius:99px;background:var(--g);color:#fff;font-family:inherit;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap">Регистрация</a>';
+      div.innerHTML='<a href="/login" style="height:32px;padding:0 14px;border-radius:99px;border:1.5px solid var(--bdr);background:var(--w);font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap">Войти</a>'
+        +'<a href="/register" style="height:32px;padding:0 16px;border-radius:99px;background:var(--g);color:#fff;font-family:inherit;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap">Регистрация</a>';
       profile.parentNode.insertBefore(div, profile);
       profile.style.display='none';
     }
@@ -73,8 +73,8 @@
         +'<div style="width:52px;height:52px;border-radius:16px;background:#E8F5EE;border:2px solid #C0DECA;display:grid;place-items:center;margin:0 auto 14px"><svg viewBox="0 0 24 24" style="width:22px;height:22px;stroke:#1E8A4C;fill:none;stroke-width:1.7;stroke-linecap:round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>'
         +'<div style="font-size:15px;font-weight:800;color:#1A2A22;margin-bottom:7px">Раздел только для участников</div>'
         +'<div style="font-size:12px;color:#5A8A6A;line-height:1.6;margin-bottom:18px">Зарегистрируйтесь бесплатно, чтобы получить полный доступ к платформе LASTOP.</div>'
-        +'<a href="/register.html" style="display:block;padding:10px;border-radius:12px;background:#1E8A4C;color:#fff;font-family:inherit;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:8px">Зарегистрироваться бесплатно</a>'
-        +'<a href="/login.html" style="display:block;padding:9px;border-radius:12px;background:transparent;border:1.5px solid #DDE8E2;color:#3A5245;font-family:inherit;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:8px">Уже есть аккаунт — войти</a>'
+        +'<a href="/register" style="display:block;padding:10px;border-radius:12px;background:#1E8A4C;color:#fff;font-family:inherit;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:8px">Зарегистрироваться бесплатно</a>'
+        +'<a href="/login" style="display:block;padding:9px;border-radius:12px;background:transparent;border:1.5px solid #DDE8E2;color:#3A5245;font-family:inherit;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:8px">Уже есть аккаунт — войти</a>'
         +'<button id="guestNavModalClose" style="font-size:11px;color:#5A8A6A;cursor:pointer;border:none;background:none;font-family:inherit">Продолжить просмотр</button>'
         +'</div>';
       document.body.appendChild(bg);

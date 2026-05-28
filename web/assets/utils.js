@@ -138,8 +138,8 @@
       // Исключения: /, /login.html, /register.html, /reset-password.html — 
       // чтобы не зациклиться и не сломать auth-страницы.
       if (response.status === 401) {
-        var p = window.location.pathname;
-        var isPublic = p === '/' || p === '/login.html' || p === '/register.html' || p === '/reset-password.html';
+        var p = window.location.pathname.replace(/\.html$/, '');
+        var isPublic = p === '/' || p === '/login' || p === '/register' || p === '/reset-password';
         // Был ли пользователь залогинен. Для ГОСТЯ 401 — норма (авторизованные
         // эндпоинты недоступны), редиректить не нужно. Редирект только когда сессия
         // реально слетела у залогиненного.
@@ -150,7 +150,7 @@
           try { localStorage.removeItem('token'); } catch(e){}
           if (!window.__lastopAuthRedirect) {
             window.__lastopAuthRedirect = true;
-            window.location.replace('/login.html?expired=1');
+            window.location.replace('/login?expired=1');
           }
         }
       }
@@ -164,11 +164,11 @@
             // На самой странице логина/регистрации бан показывает модалка
             // с полными данными (причина+срок) — глобальный редирект тут
             // только перезагрузил бы страницу и стёр данные модалки.
-            var curPath = (location.pathname || '');
-            var onAuthPage = curPath === '/login.html' || curPath === '/register.html';
+            var curPath = (location.pathname || '').replace(/\.html$/, '');
+            var onAuthPage = curPath === '/login' || curPath === '/register';
             if (!onAuthPage && !window.__lastopAuthRedirect) {
               window.__lastopAuthRedirect = true;
-              window.location.replace('/login.html?banned=1');
+              window.location.replace('/login?banned=1');
             }
           }
         }).catch(function(){});

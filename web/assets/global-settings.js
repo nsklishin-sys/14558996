@@ -298,7 +298,7 @@
         '<div class="notif-list" id="notifList">' +
           '<div class="notif-empty"><span class="nei">📭</span>Загрузка…</div>' +
         '</div>' +
-        '<div class="notif-dd-foot"><a href="/notifications.html">Все уведомления →</a></div>' +
+        '<div class="notif-dd-foot"><a href="/notifications">Все уведомления →</a></div>' +
       '</div>';
 
     const topbarProfile = profileWrap ? profileWrap.querySelector('.topbar-profile') : null;
