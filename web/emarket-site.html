@@ -500,7 +500,7 @@ async function submitReview(shopId){
   }catch(e){showToast(e.message||'Не удалось отправить отзыв');}
 }
 async function deleteReview(reviewId,shopId){
-  const ok=await lastopConfirm('Удалить этот отзыв?');
+  const ok=await lastopConfirm({title:'Удалить отзыв?',danger:true,confirmText:'Удалить'});
   if(!ok)return;
   try{
     const r=await lastopFetch(API+'/emarket/reviews?id='+reviewId,{method:'DELETE'});
