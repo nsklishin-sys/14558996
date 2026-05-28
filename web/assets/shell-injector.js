@@ -126,6 +126,7 @@
   <a class="nav-item" href="/chat.html" data-match="^/chat">
     <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
     <span>Чат</span>
+    <span class="nav-badge" id="navChatUnread" style="display:none"></span>
   </a>
   <a class="nav-item" href="/profile.html" data-match="^/profile">
     <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -211,6 +212,12 @@
     setAv('topbarAv', ltr, color, avatarUrl);
     setAv('pddAv', ltr, color, avatarUrl);
     loadDropdownCounters();
+    loadChatUnread();
+    if (!window.__shellChatUnreadBound) {
+      window.__shellChatUnreadBound = true;
+      setInterval(function(){ if (!document.hidden) loadChatUnread(); }, 30000);
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden) loadChatUnread(); });
+    }
     // Если активен контекст компании/сообщества — применить его поверх личного
     // (profile-context.js может ещё не догрузиться — повторяем через RAF несколько раз)
     let _ctxTries = 0;
@@ -227,9 +234,36 @@
       window.__shellCtxBound = true;
       window.addEventListener('lastop:context-changed', function(){
         if (typeof window.__pcxApplyTopbar === 'function') window.__pcxApplyTopbar();
+        loadChatUnread();
       });
     }
   }
+
+  async function loadChatUnread() {
+    var hasUser = false;
+    try { hasUser = !!JSON.parse(localStorage.getItem('user') || '{}').id; } catch {}
+    if (!hasUser) return;
+    try {
+      const r = await lastopFetch('/api/chat/unread_total', { headers:{} });
+      if (!r.ok) return;
+      const d = await r.json();
+      const n = (d && typeof d.count === 'number') ? d.count : 0;
+      setChatUnreadBadge(n);
+    } catch {}
+  }
+  function setChatUnreadBadge(n) {
+    const el = document.getElementById('navChatUnread');
+    if (!el) return;
+    if (n > 0) {
+      el.textContent = n > 99 ? '99+' : String(n);
+      el.style.display = '';
+    } else {
+      el.textContent = '';
+      el.style.display = 'none';
+    }
+  }
+  window.lastopSetChatUnread = setChatUnreadBadge;
+  window.lastopRefreshChatUnread = loadChatUnread;
 
   async function loadDropdownCounters() {
     var hasUser = false;
