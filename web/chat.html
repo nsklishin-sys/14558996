@@ -1918,7 +1918,7 @@ async function deleteMessage(id){
   const m=state.messages.find(x=>x.id===id);
   if(!m)return;
   const confirmed = window.lastopConfirm
-    ? await window.lastopConfirm({title:'Удалить сообщение?',text:'Сообщение будет удалено для всех участников чата. Это действие нельзя отменить.',okText:'Удалить',danger:true})
+    ? await window.lastopConfirm({title:'Удалить сообщение?',message:'Сообщение будет удалено для всех участников чата. Это действие нельзя отменить.',confirmText:'Удалить',danger:true})
     : confirm('Удалить сообщение?');
   if(!confirmed)return;
   try{
@@ -3210,7 +3210,7 @@ async function cmLoadMembers(){
   }catch(e){}
 }
 async function cmSaveTitle(){if(!cmConv)return;const newTitle=document.getElementById('cmTitle').value.trim();if(!newTitle)return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle})});if(r.ok){cmConv.title=newTitle;cmConv.name=newTitle;renderConversations();if(window.lastopToast)lastopToast('Сохранено');}else{const d=await r.json().catch(()=>({}));if(window.lastopToast)lastopToast(d.error||'Ошибка');}}catch(e){}}
-async function cmRemoveMember(userPublicID,userName){if(!cmConv)return;if(window.lastopConfirm){const ok=await lastopConfirm({title:'Удалить из группы?',text:`Удалить ${userName} из группы?`,okText:'Удалить',danger:true});if(!ok)return;}else if(!confirm(`Удалить ${userName} из группы?`))return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members/${encodeURIComponent(userPublicID)}`,{method:'DELETE'});if(r.ok){cmLoadMembers();if(window.lastopToast)lastopToast('Удалён');}}catch(e){}}
+async function cmRemoveMember(userPublicID,userName){if(!cmConv)return;if(window.lastopConfirm){const ok=await lastopConfirm({title:'Удалить из группы?',message:`Удалить ${userName} из группы?`,confirmText:'Удалить',danger:true});if(!ok)return;}else if(!confirm(`Удалить ${userName} из группы?`))return;try{const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}/members/${encodeURIComponent(userPublicID)}`,{method:'DELETE'});if(r.ok){cmLoadMembers();if(window.lastopToast)lastopToast('Удалён');}}catch(e){}}
 let cmSearchTimer = null;
 function cmSearchFriends(q){
   clearTimeout(cmSearchTimer);
