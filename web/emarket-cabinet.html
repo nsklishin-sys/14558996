@@ -465,7 +465,8 @@ async function init(){
     // запрошенный id не наш — но магазины есть: показываем первый свой
   }
   renderShell();
-  switchTab('leads');
+  const _qTab=new URLSearchParams(location.search).get('tab');
+  switchTab(['leads','orders','listings','analytics','settings'].includes(_qTab)?_qTab:'leads');
   updateTabTitle(0);
   startLeadPolling();
 }
@@ -625,12 +626,14 @@ function renderShell(){
 
     +'<div class="cab-tabs">'
       +'<button class="cab-tab active" id="tabBtn-leads" onclick="switchTab(\'leads\')"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg><span class="tab-label">Заявки</span><span class="cab-tab-badge" id="leadsBadge" style="display:none">0</span></button>'
+      +'<button class="cab-tab" id="tabBtn-orders" onclick="switchTab(\'orders\')"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg><span class="tab-label">Заказы</span><span class="cab-tab-badge" id="ordersBadge" style="display:none">0</span></button>'
       +'<button class="cab-tab" id="tabBtn-listings" onclick="switchTab(\'listings\')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="tab-label">Листинги</span></button>'
       +'<button class="cab-tab" id="tabBtn-analytics" onclick="switchTab(\'analytics\')"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="tab-label">Аналитика</span></button>'
       +'<button class="cab-tab" id="tabBtn-settings" onclick="switchTab(\'settings\')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="tab-label">Настройки</span></button>'
     +'</div>'
 
     +'<div class="cab-panel active" id="panel-leads"></div>'
+    +'<div class="cab-panel" id="panel-orders"></div>'
     +'<div class="cab-panel" id="panel-listings"></div>'
     +'<div class="cab-panel" id="panel-analytics"></div>'
     +'<div class="cab-panel" id="panel-settings"></div>';
@@ -656,13 +659,14 @@ function onShopChange(id){
 /* ── переключение вкладок ── */
 function switchTab(tab){
   ACTIVE_TAB=tab;
-  ['leads','listings','analytics','settings'].forEach(t=>{
+  ['leads','orders','listings','analytics','settings'].forEach(t=>{
     const btn=document.getElementById('tabBtn-'+t);
     const pan=document.getElementById('panel-'+t);
     if(btn)btn.classList.toggle('active',t===tab);
     if(pan)pan.classList.toggle('active',t===tab);
   });
   if(tab==='leads')loadLeads();
+  else if(tab==='orders')loadShopOrders();
   else if(tab==='listings')loadListings();
   else if(tab==='analytics')renderAnalytics();
   else if(tab==='settings')renderSettings();
@@ -1015,6 +1019,179 @@ async function pollLeadCounts(){
       toast('Новая заявка'+(newUnread-prevUnread>1?' ('+(newUnread-prevUnread)+')':''),'info');
     }
   }catch(e){/* тихо */}
+}
+
+/* ════════════ ВКЛАДКА: ЗАКАЗЫ (продавцу) ════════════ */
+let SHOP_ORDERS=null;          // массив заказов после загрузки
+let ORDER_FILTER='active';     // active | done | all
+const ORDER_STATUSES=[
+  {key:'new',        label:'Новый'},
+  {key:'accepted',   label:'Принят'},
+  {key:'processing', label:'В обработке'},
+  {key:'shipped',    label:'Отправлен'},
+  {key:'done',       label:'Выполнен'},
+  {key:'cancelled',  label:'Отменён'},
+];
+const ORDER_PAYMENTS=[
+  {key:'pending', label:'Ожидает оплаты'},
+  {key:'paid',    label:'Оплачен'},
+];
+const ORDER_CURRENCY_SYM={RUB:'₽',USD:'$',EUR:'€'};
+
+function orderToastSafe(msg){
+  if(window.lastopToast){try{window.lastopToast(msg);return;}catch(_){}}
+  if(window.toast){try{window.toast(msg);return;}catch(_){}}
+}
+
+function fmtOrderMoney(n,cur){
+  const c=ORDER_CURRENCY_SYM[cur]||cur||'';
+  const v=Math.round((Number(n)||0)*100)/100;
+  const s=(Number.isInteger(v)?v.toFixed(0):v.toFixed(2)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  return s+' '+c;
+}
+function fmtOrderDate(ts){
+  try{
+    const d=new Date(ts);const now=new Date();
+    const diffMin=Math.floor((now-d)/60000);
+    if(diffMin<1)return'только что';
+    if(diffMin<60)return diffMin+' мин назад';
+    if(diffMin<1440)return Math.floor(diffMin/60)+' ч назад';
+    const months=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+    return d.getDate()+' '+months[d.getMonth()]+(d.getFullYear()!==now.getFullYear()?(' '+d.getFullYear()):'');
+  }catch{return'';}
+}
+function pluralOrders(n){
+  const m10=n%10,m100=n%100;
+  if(m10===1&&m100!==11)return'заказ';
+  if(m10>=2&&m10<=4&&(m100<10||m100>=20))return'заказа';
+  return'заказов';
+}
+
+async function loadShopOrders(){
+  const pan=document.getElementById('panel-orders');
+  if(!pan)return;
+  if(!SHOP||!SHOP.id){pan.innerHTML='<div class="empty"><div class="empty-ttl">Магазин не выбран</div></div>';return;}
+  pan.innerHTML='<div class="skel" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh)"><div style="height:14px;width:40%;background:var(--gp);border-radius:7px;margin-bottom:8px"></div><div style="height:14px;width:80%;background:var(--gp);border-radius:7px;margin-bottom:8px"></div><div style="height:14px;width:60%;background:var(--gp);border-radius:7px"></div></div>';
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/orders?status=all');
+    if(!r.ok)throw new Error('http');
+    const d=await r.json();
+    SHOP_ORDERS=d.orders||[];
+  }catch{
+    SHOP_ORDERS=[];
+  }
+  renderShopOrders();
+  updateOrdersBadge();
+  const q=new URLSearchParams(location.search);
+  const target=q.get('order');
+  if(target){
+    setTimeout(()=>{
+      const el=document.querySelector('[data-order-id="'+target+'"]');
+      if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+    },250);
+  }
+}
+
+function updateOrdersBadge(){
+  const b=document.getElementById('ordersBadge');
+  if(!b||!SHOP_ORDERS)return;
+  const active=SHOP_ORDERS.filter(o=>o.status==='new').length;
+  if(active>0){b.style.display='inline-flex';b.textContent=active;}
+  else b.style.display='none';
+}
+
+function renderShopOrders(){
+  const pan=document.getElementById('panel-orders');
+  if(!pan||!SHOP_ORDERS)return;
+  const all=SHOP_ORDERS.length;
+  const activeCnt=SHOP_ORDERS.filter(o=>o.status!=='done'&&o.status!=='cancelled').length;
+  const doneCnt=all-activeCnt;
+  let list=SHOP_ORDERS;
+  if(ORDER_FILTER==='active')list=list.filter(o=>o.status!=='done'&&o.status!=='cancelled');
+  else if(ORDER_FILTER==='done')list=list.filter(o=>o.status==='done'||o.status==='cancelled');
+  const filters=
+    '<div class="lead-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
+    +'<button class="lf-btn'+(ORDER_FILTER==='active'?' active':'')+'" onclick="setOrderFilter(\'active\')">Активные'+(activeCnt?' <span class="lf-num">'+activeCnt+'</span>':'')+'</button>'
+    +'<button class="lf-btn'+(ORDER_FILTER==='done'?' active':'')+'" onclick="setOrderFilter(\'done\')">Завершённые'+(doneCnt?' <span class="lf-num">'+doneCnt+'</span>':'')+'</button>'
+    +'<button class="lf-btn'+(ORDER_FILTER==='all'?' active':'')+'" onclick="setOrderFilter(\'all\')">Все'+(all?' <span class="lf-num">'+all+'</span>':'')+'</button>'
+    +'</div>';
+  if(!list.length){
+    pan.innerHTML=filters+'<div class="empty" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:36px 18px;text-align:center;box-shadow:var(--sh)"><div style="font-size:32px;margin-bottom:8px;opacity:.5">📦</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:4px">'+(ORDER_FILTER==='active'?'Нет активных заказов':(ORDER_FILTER==='done'?'Нет завершённых заказов':'Пока нет заказов'))+'</div><div style="font-size:12px;color:var(--gmt)">Заказы появятся, когда покупатели оформят их в вашем магазине.</div></div>';
+    return;
+  }
+  pan.innerHTML=filters+'<div style="display:flex;flex-direction:column;gap:10px">'+list.map(renderShopOrderCard).join('')+'</div>';
+}
+
+function setOrderFilter(f){ORDER_FILTER=f;renderShopOrders();}
+
+function renderShopOrderCard(o){
+  const items=o.items||[];
+  const statusOpts=ORDER_STATUSES.map(s=>'<option value="'+s.key+'"'+(s.key===o.status?' selected':'')+'>'+s.label+'</option>').join('');
+  const paymentOpts=ORDER_PAYMENTS.map(p=>'<option value="'+p.key+'"'+(p.key===o.payment_status?' selected':'')+'>'+p.label+'</option>').join('');
+  const itemsHTML=items.slice(0,5).map(it=>
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tm);padding:4px 0">'
+    +'<div style="width:32px;height:32px;border-radius:7px;background:var(--gl);color:var(--g);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;overflow:hidden">'
+    +(it.photo?'<img src="'+esc(it.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover">':esc((it.title||'?')[0].toUpperCase()))
+    +'</div>'
+    +'<div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.title)+'</div>'
+    +'<div style="color:var(--gmt);font-size:11px">'+it.quantity+'×'+fmtOrderMoney(it.price,it.currency)+'</div>'
+    +'</div>').join('');
+  const moreItems=items.length>5?('<div style="font-size:11px;color:var(--gmt);padding-left:40px">и ещё '+(items.length-5)+'</div>'):'';
+  return '<div class="lead-card" data-order-id="'+esc(o.public_id)+'" style="padding:14px 16px">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+      +'<span style="font-family:\'SF Mono\',Menlo,monospace;font-size:12px;font-weight:700;color:var(--t)">№ '+esc(o.public_id)+'</span>'
+      +'<span style="font-size:11px;color:var(--gmt)">'+esc(fmtOrderDate(o.created_at))+'</span>'
+      +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:var(--t)">'+fmtOrderMoney(o.total_amount,o.currency)+'</span>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:var(--gp);border-radius:var(--rm)">'
+      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+      +'<span style="font-size:12px;font-weight:600;color:var(--t)">'+esc(o.buyer_name||'Покупатель')+'</span>'
+    +'</div>'
+    +'<div style="border-top:1px solid var(--bdr);padding-top:8px;margin-bottom:10px">'+itemsHTML+moreItems+'</div>'
+    +(o.comment?'<div style="background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--t);line-height:1.5"><strong style="color:var(--g);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Комментарий:</strong> '+esc(o.comment)+'</div>':'')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--bdr)">'
+      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Статус заказа<select class="lt-select" onchange="patchOrderStatus(\''+esc(o.public_id)+'\',this.value)" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+statusOpts+'</select></label>'
+      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Оплата<select class="lt-select" onchange="patchOrderPayment(\''+esc(o.public_id)+'\',this.value)" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+paymentOpts+'</select></label>'
+    +'</div>'
+  +'</div>';
+}
+
+async function patchOrderStatus(publicID,status){
+  try{
+    const r=await lastopFetch(API+'/emarket/orders/'+encodeURIComponent(publicID)+'/status',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({status:status})
+    });
+    if(!r.ok){orderToastSafe('Не удалось изменить статус');return;}
+    const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
+    if(o){
+      o.status=status;
+      const lbl=(ORDER_STATUSES.find(s=>s.key===status)||{}).label||status;
+      o.status_label=lbl;
+    }
+    updateOrdersBadge();
+    renderShopOrders();
+    orderToastSafe('Статус заказа обновлён');
+  }catch{orderToastSafe('Ошибка соединения');}
+}
+async function patchOrderPayment(publicID,payment){
+  try{
+    const r=await lastopFetch(API+'/emarket/orders/'+encodeURIComponent(publicID)+'/payment-status',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({payment_status:payment})
+    });
+    if(!r.ok){orderToastSafe('Не удалось изменить статус оплаты');return;}
+    const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
+    if(o){
+      o.payment_status=payment;
+      const lbl=(ORDER_PAYMENTS.find(p=>p.key===payment)||{}).label||payment;
+      o.payment_status_label=lbl;
+    }
+    renderShopOrders();
+    orderToastSafe('Статус оплаты обновлён');
+  }catch{orderToastSafe('Ошибка соединения');}
 }
 
 /* ════════════ ВКЛАДКА: ЛИСТИНГИ ════════════ */
