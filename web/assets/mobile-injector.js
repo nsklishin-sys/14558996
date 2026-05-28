@@ -98,12 +98,12 @@
   // из-за чего bottom-nav пропадал. Залогиненность гарантирует сервер —
   // на внутренние страницы гость не попадёт. Поэтому судим по пути:
   // bottom-nav НЕ показываем только на явно гостевых/auth-страницах.
-  var path = location.pathname || '';
+  var path = (location.pathname || '').replace(/\.html$/, '');
   var GUEST_PATHS = [
-    '/login.html', '/register.html', '/home-guest.html',
-    '/forgot-password.html', '/reset-password.html', '/verify-email.html'
+    '/login', '/register', '/home-guest',
+    '/forgot-password', '/reset-password', '/verify-email'
   ];
-  if (path === '/home-guest.html') {
+  if (path === '/home-guest') {
     // Гостевая главная не адаптирована под мобилу — сразу на login.
     var hasUser = false;
     try { var uu = JSON.parse(localStorage.getItem('user') || '{}'); hasUser = !!(uu && (uu.id || uu.public_id)); } catch (_) {}
@@ -220,18 +220,18 @@
     // на exhibitions сначала ищем «Заявка на стенд» (.btn-add),
     // потом «Создать выставку» (#btnCreateExhibition).
     var PAGE_ACTIONS = {
-      '/companies.html':   ['.toolbar a.btn-create', '.toolbar .btn-create'],
-      '/projects.html':    ['.proj-toolbar .btn-create'],
-      '/events.html':      ['.ev-toolbar .btn-create', '.toolbar .btn-create'],
-      '/exhibitions.html': ['.ex-toolbar .btn-add', '.ex-toolbar #btnCreateExhibition'],
-      '/jobs.html':        ['.jobs-toolbar .btn-create-job'],
-      '/forum.html':       ['.forum-toolbar .btn-create'],
-      '/communities.html': ['.comm-toolbar .btn-create'],
-      '/catalog.html':     ['.cat-toolbar .btn-create'],
-      '/dashboard.html':   ['.news-toolbar .btn-write']
+      '/companies':   ['.toolbar a.btn-create', '.toolbar .btn-create'],
+      '/projects':    ['.proj-toolbar .btn-create'],
+      '/events':      ['.ev-toolbar .btn-create', '.toolbar .btn-create'],
+      '/exhibitions': ['.ex-toolbar .btn-add', '.ex-toolbar #btnCreateExhibition'],
+      '/jobs':        ['.jobs-toolbar .btn-create-job'],
+      '/forum':       ['.forum-toolbar .btn-create'],
+      '/communities': ['.comm-toolbar .btn-create'],
+      '/catalog':     ['.cat-toolbar .btn-create'],
+      '/dashboard':   ['.news-toolbar .btn-write']
     };
 
-    var path = location.pathname || '';
+    var path = (location.pathname || '').replace(/\.html$/, '');
     var selectors = PAGE_ACTIONS[path];
     if (!selectors) return; // эта страница без FAB
 
@@ -327,7 +327,7 @@
   // Список диалогов и открытый чат — два full-width view, переключаются
   // классами .m-show-dialogs / .m-show-chat на .chat-panel.
   (function initMobileChat() {
-    if (location.pathname !== '/chat.html') return;
+    if ((location.pathname||'').replace(/\.html$/,'') !== '/chat') return;
 
     function init() {
       var panel = document.querySelector('.chat-panel');
@@ -422,7 +422,7 @@
   // Тап на пункт меню → выпадашка закрывается, switchPanel срабатывает
   // через свой собственный обработчик (мы не вмешиваемся в его логику).
   (function initSettingsDropdown() {
-    if (location.pathname !== '/settings.html') return;
+    if ((location.pathname||'').replace(/\.html$/,'') !== '/settings') return;
 
     function init() {
       var body = document.querySelector('.settings-body');
@@ -528,7 +528,7 @@
   // Привязываемся только к /home-auth.html (главная для авторизованных).
   (function initHomeCalDaySheet() {
     var path = location.pathname || '';
-    if (path !== '/home-auth.html' && path !== '/') return;
+    if (path !== '/home-auth' && path !== '/') return;
 
     // Контейнер dom-grid пересоздаётся при каждом renderHomeCalendar(),
     // поэтому ставим делегирование на .cal-hero (родитель) — он стабилен.
@@ -575,7 +575,7 @@
         var iso = sa.getFullYear() + '-' +
           String(sa.getMonth() + 1).padStart(2, '0') + '-' +
           String(sa.getDate()).padStart(2, '0');
-        return '/calendar.html?date=' + iso;
+        return '/calendar?date=' + iso;
       }
       return ev.link;
     }
@@ -628,7 +628,7 @@
       var dayBtn = e.target.closest('.cal-h-day:not(.other-month)');
       if (!dayBtn) return;
       // Проверяем что мы на главной (страница могла поменяться после initial load)
-      if (location.pathname !== '/home-auth.html' && location.pathname !== '/') return;
+      { var _hp=(location.pathname||'').replace(/\.html$/,''); if (_hp !== '/home-auth' && _hp !== '/') return; }
 
       // Парсим число из onclick="pickDay(d, 'YYYY-MM-DD')"
       var onclick = dayBtn.getAttribute('onclick') || '';
