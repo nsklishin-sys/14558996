@@ -2772,6 +2772,8 @@ function setupChatWS(){
           // пользователь у дна — доскроллить и пометить прочитанным
           scrollChatToBottom(true);
           api(`/chat/conversations/${convPid}/read`,{method:'POST'}).catch(()=>{});
+          // гасим уведомление в колокольчике для этого диалога (живое прочтение)
+          if(window.markNotifsReadBySource)window.markNotifsReadBySource(['chat','chat_message'],convPid);
         } else {
           // пользователь читает историю выше — не дёргаем, показываем «↓ N новых»
           _chatNewCount++;
