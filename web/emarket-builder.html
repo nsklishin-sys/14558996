@@ -334,7 +334,7 @@ function toggleExpand(i){
 function toggleBlock(i){STATE.config[i].enabled=STATE.config[i].enabled===false;markDirty();renderBlocks();}
 function toggleNav(i){STATE.config[i].in_nav=!STATE.config[i].in_nav;markDirty();renderBlocks();}
 function deleteBlock(i){
-  lastopConfirm('Удалить этот блок?').then(ok=>{if(!ok)return;STATE.config.splice(i,1);markDirty();renderBlocks();});
+  lastopConfirm({title:'Удалить блок?',danger:true,confirmText:'Удалить'}).then(ok=>{if(!ok)return;STATE.config.splice(i,1);markDirty();renderBlocks();});
 }
 
 /* ── DRAG & DROP ── */
@@ -596,7 +596,7 @@ async function publish(){
 }
 
 async function unpublish(){
-  const ok=await lastopConfirm('Снять магазин с публикации? Он станет недоступен по ссылке.');
+  const ok=await lastopConfirm({title:'Снять с публикации?',message:'Магазин станет недоступен по ссылке.',danger:true,confirmText:'Снять'});
   if(!ok)return;
   try{
     const r=await lastopFetch(API+'/emarket/shops/'+SHOP_ID+'/site-publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unpublish'})});
