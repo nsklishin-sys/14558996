@@ -491,6 +491,13 @@ type chatReplyPreview struct {
 	ContentPreview string `json:"content_preview"`
 }
 
+type chatAttachment struct {
+	URL  string `json:"url"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Size int64  `json:"size"`
+}
+
 type chatMessage struct {
 	ID                    int64             `json:"id"`
 	ConversationID        int64             `json:"conversation_id"`
@@ -510,6 +517,7 @@ type chatMessage struct {
 	AttachmentName        string            `json:"attachment_name,omitempty"`
 	AttachmentType        string            `json:"attachment_type,omitempty"`
 	AttachmentSize        int64             `json:"attachment_size,omitempty"`
+	Attachments           []chatAttachment  `json:"attachments,omitempty"`
 	ReplyTo               *chatReplyPreview `json:"reply_to,omitempty"`
 	IsEdited              bool              `json:"is_edited"`
 	IsDeleted             bool              `json:"is_deleted"`
@@ -539,6 +547,7 @@ type sendMessageRequest struct {
 	AttachmentName string `json:"attachment_name,omitempty"`
 	AttachmentType string `json:"attachment_type,omitempty"`
 	AttachmentSize int64  `json:"attachment_size,omitempty"`
+	Attachments    []chatAttachment `json:"attachments,omitempty"`
 	// Контекст отправки (резолвится handler'ом из X-Active-Company-Id / X-Active-Community-Id, не приходит из тела)
 	SenderCompanyID   int64 `json:"-"`
 	SenderCommunityID int64 `json:"-"`
@@ -18121,6 +18130,7 @@ ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_type TEXT NOT NULL
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL;
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS sender_community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL;
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_size BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb;
 -- Новый CHECK: либо есть текст, либо есть attachment.
 ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_content_or_attachment_check;
 ALTER TABLE chat_messages ADD CONSTRAINT chat_messages_content_or_attachment_check
@@ -29038,7 +29048,7 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 	if limit > 200 {
 		limit = 200
 	}
-	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,''),m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size,m.sender_company_id,COALESCE(c.name,''),COALESCE(c.slug,''),COALESCE(c.logo_image,''),m.sender_community_id,COALESCE(cm.name,''),COALESCE(cm.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id LEFT JOIN companies c ON c.id=m.sender_company_id LEFT JOIN communities cm ON cm.id=m.sender_community_id WHERE m.conversation_id=$1`
+	q := `SELECT m.id,m.conversation_id,m.content,m.reply_to_id,m.is_edited,m.is_deleted,m.created_at,m.edited_at,u.public_id,u.full_name,COALESCE(u.avatar_url,''),m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size,m.attachments,m.sender_company_id,COALESCE(c.name,''),COALESCE(c.slug,''),COALESCE(c.logo_image,''),m.sender_community_id,COALESCE(cm.name,''),COALESCE(cm.avatar_url,'') FROM chat_messages m JOIN users u ON u.id=m.author_id LEFT JOIN companies c ON c.id=m.sender_company_id LEFT JOIN communities cm ON cm.id=m.sender_community_id WHERE m.conversation_id=$1`
 	args := []any{cid}
 	if beforeID > 0 {
 		q += ` AND m.id < $2`
@@ -29061,8 +29071,15 @@ func listMessages(db *sql.DB, userID int64, conversationPublicID string, limit i
 		var m chatMessage
 		var reply sql.NullInt64
 		var coID, cmID sql.NullInt64
-		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize, &coID, &m.SenderCompanyName, &m.SenderCompanySlug, &m.SenderCompanyLogo, &cmID, &m.SenderCommunityName, &m.SenderCommunityAvatar); err != nil {
+		var attJSONRow []byte
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Content, &reply, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt, &m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar, &m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize, &attJSONRow, &coID, &m.SenderCompanyName, &m.SenderCompanySlug, &m.SenderCompanyLogo, &cmID, &m.SenderCommunityName, &m.SenderCommunityAvatar); err != nil {
 			return nil, err
+		}
+		if len(attJSONRow) > 0 {
+			_ = json.Unmarshal(attJSONRow, &m.Attachments)
+		}
+		if len(m.Attachments) == 0 && m.AttachmentURL != "" {
+			m.Attachments = []chatAttachment{{URL: m.AttachmentURL, Name: m.AttachmentName, Type: m.AttachmentType, Size: m.AttachmentSize}}
 		}
 		if coID.Valid {
 			m.SenderCompanyID = coID.Int64
@@ -29180,7 +29197,38 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 	}
 	content := strings.TrimSpace(req.Content)
 	contentLen := utf8.RuneCountInString(content)
-	hasAttachment := strings.TrimSpace(req.AttachmentURL) != ""
+	// Нормализуем массив вложений. Если массив пуст, но пришли старые одиночные поля — собираем массив из одного (обратная совместимость с фронтом до мультизагрузки).
+	atts := make([]chatAttachment, 0, len(req.Attachments))
+	for _, a := range req.Attachments {
+		u := strings.TrimSpace(a.URL)
+		if u == "" {
+			continue
+		}
+		if !isAllowedAttachmentURL(u) {
+			return chatMessage{}, fmt.Errorf("%w: некорректный attachment url", errValidation)
+		}
+		nm := strings.TrimSpace(a.Name)
+		tp := strings.TrimSpace(a.Type)
+		if len(nm) > 255 {
+			nm = nm[:255]
+		}
+		if len(tp) > 100 {
+			tp = tp[:100]
+		}
+		atts = append(atts, chatAttachment{URL: u, Name: nm, Type: tp, Size: a.Size})
+		if len(atts) >= 10 {
+			break
+		}
+	}
+	if len(atts) == 0 && strings.TrimSpace(req.AttachmentURL) != "" {
+		atts = append(atts, chatAttachment{
+			URL:  strings.TrimSpace(req.AttachmentURL),
+			Name: strings.TrimSpace(req.AttachmentName),
+			Type: strings.TrimSpace(req.AttachmentType),
+			Size: req.AttachmentSize,
+		})
+	}
+	hasAttachment := len(atts) > 0
 
 	// Валидация: либо текст 1..8000, либо вложение, либо и то и другое
 	if !hasAttachment {
@@ -29191,23 +29239,18 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 		if contentLen > 8000 {
 			return chatMessage{}, fmt.Errorf("%w: длина сообщения до 8000", errValidation)
 		}
-		// Дополнительная защита — URL должен быть из нашего хранилища
-		// (легаси /uploads/... ИЛИ полный публичный URL S3-бакета)
-		if !isAllowedAttachmentURL(req.AttachmentURL) {
-			return chatMessage{}, fmt.Errorf("%w: некорректный attachment_url", errValidation)
-		}
 	}
 
-	// Нормализуем поля вложения
-	aURL := strings.TrimSpace(req.AttachmentURL)
-	aName := strings.TrimSpace(req.AttachmentName)
-	aType := strings.TrimSpace(req.AttachmentType)
-	if len(aName) > 255 {
-		aName = aName[:255]
+	// Первый элемент массива дублируется в старые одиночные поля — для превью диалога, поиска и легаси-рендера
+	var aURL, aName, aType string
+	var aSize int64
+	if len(atts) > 0 {
+		aURL = atts[0].URL
+		aName = atts[0].Name
+		aType = atts[0].Type
+		aSize = atts[0].Size
 	}
-	if len(aType) > 100 {
-		aType = aType[:100]
-	}
+	attsJSON, _ := json.Marshal(atts)
 
 	var mid int64
 	var senderCoParam, senderCmParam sql.NullInt64
@@ -29218,9 +29261,9 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 		senderCmParam = sql.NullInt64{Int64: req.SenderCommunityID, Valid: true}
 	}
 	err = db.QueryRow(`
-		INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id,attachment_url,attachment_name,attachment_type,attachment_size,sender_company_id,sender_community_id)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-		cid, userID, content, req.ReplyToID, aURL, aName, aType, req.AttachmentSize, senderCoParam, senderCmParam).Scan(&mid)
+		INSERT INTO chat_messages(conversation_id,author_id,content,reply_to_id,attachment_url,attachment_name,attachment_type,attachment_size,attachments,sender_company_id,sender_community_id)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11) RETURNING id`,
+		cid, userID, content, req.ReplyToID, aURL, aName, aType, aSize, string(attsJSON), senderCoParam, senderCmParam).Scan(&mid)
 	if err != nil {
 		return chatMessage{}, err
 	}
@@ -29229,10 +29272,11 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 	var m chatMessage
 	var coID, cmID sql.NullInt64
 	var coName, coSlug, coLogo, cmName, cmAvatar sql.NullString
+	var attJSONOut []byte
 	if err := db.QueryRow(`
 		SELECT m.id,m.conversation_id,m.content,m.is_edited,m.is_deleted,m.created_at,m.edited_at,
 		       u.public_id,u.full_name,COALESCE(u.avatar_url,''),
-		       m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size,
+		       m.attachment_url,m.attachment_name,m.attachment_type,m.attachment_size,m.attachments,
 		       m.sender_company_id, c.name, c.slug, c.logo_image,
 		       m.sender_community_id, cm.name, cm.avatar_url
 		FROM chat_messages m
@@ -29242,11 +29286,17 @@ func sendMessage(db *sql.DB, userID int64, conversationPublicID string, req send
 		WHERE m.id=$1`, mid).Scan(
 		&m.ID, &m.ConversationID, &m.Content, &m.IsEdited, &m.IsDeleted, &m.CreatedAt, &m.EditedAt,
 		&m.AuthorPublicID, &m.AuthorName, &m.AuthorAvatar,
-		&m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize,
+		&m.AttachmentURL, &m.AttachmentName, &m.AttachmentType, &m.AttachmentSize, &attJSONOut,
 		&coID, &coName, &coSlug, &coLogo,
 		&cmID, &cmName, &cmAvatar,
 	); err != nil {
 		return chatMessage{}, err
+	}
+	if len(attJSONOut) > 0 {
+		_ = json.Unmarshal(attJSONOut, &m.Attachments)
+	}
+	if len(m.Attachments) == 0 && m.AttachmentURL != "" {
+		m.Attachments = []chatAttachment{{URL: m.AttachmentURL, Name: m.AttachmentName, Type: m.AttachmentType, Size: m.AttachmentSize}}
 	}
 	if coID.Valid {
 		m.SenderCompanyID = coID.Int64
