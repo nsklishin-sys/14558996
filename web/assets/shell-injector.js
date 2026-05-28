@@ -201,7 +201,7 @@
       searchInput.addEventListener('keydown', function(e){
         if (e.key === 'Enter') {
           const q = e.target.value.trim();
-          if (q) location.href = '/search.html?q=' + encodeURIComponent(q);
+          if (q) location.href = '/search?q=' + encodeURIComponent(q);
         }
       });
     }
@@ -445,7 +445,7 @@
       window.logout = async function () {
         try { await lastopFetch('/api/auth/logout', { method: 'POST' }); } catch {}
         try { localStorage.removeItem('user'); } catch {}
-        location.href = '/home-guest.html';
+        location.href = '/home-guest';
       };
     }
   }
