@@ -28881,10 +28881,15 @@ func createGroupConversation(db *sql.DB, r *http.Request, creatorID int64, req c
 	}
 	for i, uid := range members {
 		role := "member"
+		pKind := "user"
+		var pID int64 = uid
 		if i == 0 {
 			role = "owner"
+			// создатель участвует в контексте, в котором создал группу (личный/компания/сообщество)
+			pKind = ownerKind
+			pID = ownerID
 		}
-		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role) VALUES($1,$2,$3)`, convID, uid, role); err != nil {
+		if _, err := tx.Exec(`INSERT INTO chat_participants(conversation_id,user_id,role,participant_kind,participant_id) VALUES($1,$2,$3,$4,$5)`, convID, uid, role, pKind, pID); err != nil {
 			return chatConversation{}, err
 		}
 	}
