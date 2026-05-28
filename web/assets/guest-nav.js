@@ -14,11 +14,11 @@
 
   // Список путей доступных только авторизованным
   var BLOCKED=[
-    '/chat.html','/profile.html','/profile_user.html',
-    '/notifications.html','/saved.html','/tasks.html',
-    '/jobs.html','/catalog.html',
-    '/my-company.html','/my-community-edit.html',
-    '/settings.html','/friends.html'
+    '/chat','/profile','/profile_user',
+    '/notifications','/saved','/tasks',
+    '/jobs','/catalog',
+    '/my-company','/my-community-edit',
+    '/settings','/friends'
   ];
 
   function lockNavItems(){
@@ -27,7 +27,7 @@
     items.forEach(function(it){
       var href=it.getAttribute('href')||'';
       // Точное совпадение по пути (без query/hash)
-      var path=href.split('?')[0].split('#')[0];
+      var path=href.split('?')[0].split('#')[0].replace(/\.html$/,'');
       if(BLOCKED.indexOf(path)===-1)return;
       it.classList.add('locked');
       it.setAttribute('href','javascript:void(0)');
