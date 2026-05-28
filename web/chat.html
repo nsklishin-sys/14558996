@@ -1411,7 +1411,7 @@ function updateTabCounts(){
   if(!conv.length && state.activeFilter !== 'all') return; // не сбрасываем счётчики
   const all=conv.length;
   const unread=conv.filter(c=>c.unread_count>0).length;
-  const companies=conv.filter(c=>{const r=(c.display_role||'').toString();return r.includes('·');}).length;
+  const companies=conv.filter(c=>c.has_company_message).length;
   const groups=conv.filter(c=>c.type==='group'||c.type==='community').length;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=String(v);};
   set('dTabCntAll',all);
