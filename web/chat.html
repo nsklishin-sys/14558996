@@ -1385,6 +1385,7 @@ async function loadConversations(){
     state.conversations = sortConversationsByLastMessage(d.conversations || []);
     saveCachedConversations();
     renderConversations();
+    updateNavChatUnread();
   }catch(err){
     // Не затираем кеш если запрос упал. Просто оставляем что было.
     // Если кеша не было — state.conversations останется [] и UI покажет «Нет диалогов».
@@ -1392,6 +1393,15 @@ async function loadConversations(){
     if(!state.conversations) state.conversations = [];
     renderConversations();
   }
+}
+function updateNavChatUnread(){
+  // Бейдж на плашке «Чат» в навигации: сумма непрочитанных сообщений активного контекста, кроме замьюченных.
+  const conv = state.allConversationsForCounts && state.allConversationsForCounts.length
+    ? state.allConversationsForCounts
+    : (state.conversations||[]);
+  let total = 0;
+  conv.forEach(c=>{ if(!c.muted) total += (c.unread_count||0); });
+  if(window.lastopSetChatUnread) window.lastopSetChatUnread(total);
 }
 function updateTabCounts(){
   // Считаем по полному списку, не по отфильтрованному
