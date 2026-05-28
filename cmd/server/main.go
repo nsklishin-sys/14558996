@@ -475,6 +475,7 @@ type chatConversation struct {
 	LastMessageAuthor              string     `json:"last_message_author"`
 	LastMessageSenderCompanyName   string     `json:"last_message_sender_company_name,omitempty"`
 	LastMessageSenderCommunityName string     `json:"last_message_sender_community_name,omitempty"`
+	HasCompanyMessage              bool       `json:"has_company_message"`
 	UnreadCount                    int        `json:"unread_count"`
 	OtherLastReadMessageID         int64      `json:"other_last_read_message_id,omitempty"`
 	OtherLastReadAt                *time.Time `json:"other_last_read_at,omitempty"`
@@ -28725,11 +28726,12 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
        COALESCE((SELECT u2.avatar_url FROM chat_participants cp2 JOIN users u2 ON u2.id=cp2.user_id WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),''),
        COALESCE((SELECT cp2.last_read_message_id FROM chat_participants cp2 WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),0),
        (SELECT cp2.last_read_at FROM chat_participants cp2 WHERE cp2.conversation_id=c.id AND cp2.user_id<>$1 LIMIT 1),
+       EXISTS(SELECT 1 FROM chat_messages mc WHERE mc.conversation_id=c.id AND mc.sender_company_id IS NOT NULL AND mc.is_deleted=FALSE),
        COALESCE(co.name,''), COALESCE(cm.name,''), COALESCE(co.logo_image,''), COALESCE(cm.avatar_url,'')
 FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
-WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &otherLastReadMsgID, &otherLastReadAt, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
+WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &otherLastReadMsgID, &otherLastReadAt, &c.HasCompanyMessage, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c, errNotFound
@@ -28875,9 +28877,7 @@ ORDER BY p.pinned DESC, c.last_message_at DESC NULLS LAST, c.id DESC`, args...)
 			continue
 		}
 		if filter == "companies" {
-			role := strings.TrimSpace(c.DisplayRole)
-			isCompany := role != "" && strings.Contains(role, "·")
-			if !isCompany {
+			if !c.HasCompanyMessage {
 				continue
 			}
 		}
