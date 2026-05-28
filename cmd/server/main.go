@@ -17269,7 +17269,7 @@ func main() {
 		r2.URL.Path = "/emarket-site.html"
 		shopPageHandler.ServeHTTP(w, r2)
 	})
-	mux.Handle("/", staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web"))))))
+	mux.Handle("/", cleanURLRewrite(staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web")))))))
 
 	addr := ":8080"
 	handler := recoverPanic(gzipMiddleware(accessLog(securityHeaders(mux))))
@@ -30081,6 +30081,38 @@ func injectHTML(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(rec, r)
 		rec.flush()
+	})
+}
+
+// cleanURLRewrite реализует «чистые» URL без расширения .html.
+// Для запроса вида /terms (без расширения, не заканчивается на «/») проверяет
+// наличие файла web/terms.html и, если он есть, внутренне подменяет путь —
+// пользователь видит /terms, сервер отдаёт terms.html через общую цепочку.
+// Существующие /*.html-ссылки продолжают работать без изменений.
+// API, ассеты с расширениями и каталоги (путь с «/») не затрагиваются.
+func cleanURLRewrite(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		// Пропускаем: API, корень, каталоги (оканчиваются на «/»), пути с расширением.
+		if p == "/" || strings.HasPrefix(p, "/api/") || strings.HasSuffix(p, "/") || path.Ext(p) != "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// Защита от обхода каталога: только безопасные сегменты.
+		clean := path.Clean(p)
+		if clean != p || strings.Contains(p, "..") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// Если существует web/{path}.html — подменяем путь внутренне.
+		candidate := filepath.Join("./web", filepath.FromSlash(strings.TrimPrefix(p, "/"))) + ".html"
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = p + ".html"
+			next.ServeHTTP(w, r2)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
