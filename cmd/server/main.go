@@ -1447,7 +1447,8 @@ type statusRecorder struct {
 //     на клике "Главная".
 //  3. Редирект залогиненного юзера с /home-guest.html и /index.html
 //     сразу на /home-auth.html, без рендера гостевой.
-const htmlInject = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+const htmlInject = `<script src="/assets/utils.js"></script>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon-192.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/assets/icon-192.png">
