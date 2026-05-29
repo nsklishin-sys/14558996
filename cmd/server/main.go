@@ -13856,6 +13856,231 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/emarket/products", func(w http.ResponseWriter, r *http.Request) {
+		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
+		if shopID == 0 {
+			writeError(w, http.StatusBadRequest, "shop_id обязателен")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			lq := r.URL.Query()
+			conds := []string{"p.shop_id=$1", "p.deleted_at IS NULL"}
+			args := []any{shopID}
+			if s := strings.TrimSpace(lq.Get("q")); s != "" {
+				args = append(args, "%"+s+"%")
+				p := strconv.Itoa(len(args))
+				conds = append(conds, "(p.name ILIKE $"+p+" OR p.sku ILIKE $"+p+" OR p.barcode ILIKE $"+p+")")
+			}
+			whereSQL := strings.Join(conds, " AND ")
+			var total int
+			_ = db.QueryRow(`SELECT COUNT(*) FROM emarket_products p WHERE `+whereSQL, args...).Scan(&total)
+			limit := 50
+			if n, err := strconv.Atoi(lq.Get("limit")); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
+			offset := 0
+			if n, err := strconv.Atoi(lq.Get("offset")); err == nil && n > 0 {
+				offset = n
+			}
+			args = append(args, limit, offset)
+			q := `SELECT p.id, p.sku, p.barcode, p.name, p.unit, p.external_id, p.category, p.price, p.currency, p.low_stock_threshold,
+				COALESCE(SUM(s.qty),0), COALESCE(SUM(s.reserved_qty),0)
+				FROM emarket_products p LEFT JOIN emarket_stock s ON s.product_id=p.id
+				WHERE ` + whereSQL + ` GROUP BY p.id ORDER BY p.name LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
+			rows, err := db.Query(q, args...)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var id int64
+				var sku, barcode, name, unit, extID, category, currency string
+				var price, threshold, qty, reserved float64
+				if err := rows.Scan(&id, &sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &threshold, &qty, &reserved); err != nil {
+					continue
+				}
+				available := qty - reserved
+				items = append(items, map[string]any{
+					"id": id, "sku": sku, "barcode": barcode, "name": name, "unit": unit,
+					"external_id": extID, "category": category, "price": price, "currency": currency,
+					"low_stock_threshold": threshold, "qty": qty, "reserved_qty": reserved, "available": available,
+					"low_stock": threshold > 0 && available <= threshold,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"products": items, "total": total})
+		case http.MethodPost:
+			var req struct {
+				SKU        string  `json:"sku"`
+				Barcode    string  `json:"barcode"`
+				Name       string  `json:"name"`
+				Unit       string  `json:"unit"`
+				ExternalID string  `json:"external_id"`
+				Category   string  `json:"category"`
+				Price      float64 `json:"price"`
+				Currency   string  `json:"currency"`
+				Weight     float64 `json:"weight"`
+				Volume     float64 `json:"volume"`
+				LowStock   float64 `json:"low_stock_threshold"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			req.Name = strings.TrimSpace(req.Name)
+			if req.Name == "" {
+				writeError(w, http.StatusBadRequest, "Название обязательно")
+				return
+			}
+			unit := strings.TrimSpace(req.Unit)
+			if unit == "" {
+				unit = "шт"
+			}
+			currency := strings.TrimSpace(req.Currency)
+			if currency == "" {
+				currency = "RUB"
+			}
+			sku := strings.TrimSpace(req.SKU)
+			if sku != "" {
+				var exists bool
+				_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_products WHERE shop_id=$1 AND sku=$2 AND deleted_at IS NULL)`, shopID, sku).Scan(&exists)
+				if exists {
+					writeJSON(w, http.StatusConflict, map[string]any{"error": "Артикул уже существует"})
+					return
+				}
+			}
+			var newID int64
+			if err := db.QueryRow(`INSERT INTO emarket_products (shop_id, sku, barcode, name, unit, external_id, category, price, currency, weight, volume, low_stock_threshold)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+				shopID, sku, strings.TrimSpace(req.Barcode), req.Name, unit, strings.TrimSpace(req.ExternalID), strings.TrimSpace(req.Category),
+				req.Price, currency, req.Weight, req.Volume, req.LowStock).Scan(&newID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "id": newID})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
+	mux.HandleFunc("/api/emarket/products/", func(w http.ResponseWriter, r *http.Request) {
+		productID, _ := strconv.ParseInt(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/products/"), "/"), 10, 64)
+		if productID == 0 {
+			writeError(w, http.StatusBadRequest, "Некорректный id")
+			return
+		}
+		var shopID int64
+		if err := db.QueryRow(`SELECT shop_id FROM emarket_products WHERE id=$1 AND deleted_at IS NULL`, productID).Scan(&shopID); err != nil {
+			writeError(w, http.StatusNotFound, "Товар не найден")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			var sku, barcode, name, unit, extID, category, currency string
+			var price, weight, volume, threshold float64
+			if err := db.QueryRow(`SELECT sku, barcode, name, unit, external_id, category, price, currency, weight, volume, low_stock_threshold
+				FROM emarket_products WHERE id=$1`, productID).Scan(&sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &weight, &volume, &threshold); err != nil {
+				writeError(w, http.StatusNotFound, "Товар не найден")
+				return
+			}
+			rows, err := db.Query(`SELECT w.id, w.name, COALESCE(s.qty,0), COALESCE(s.reserved_qty,0)
+				FROM emarket_warehouses w LEFT JOIN emarket_stock s ON s.warehouse_id=w.id AND s.product_id=$1
+				WHERE w.shop_id=$2 ORDER BY w.sort, w.id`, productID, shopID)
+			stock := []map[string]any{}
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var wid int64
+					var wname string
+					var qty, reserved float64
+					if err := rows.Scan(&wid, &wname, &qty, &reserved); err != nil {
+						continue
+					}
+					stock = append(stock, map[string]any{"warehouse_id": wid, "warehouse_name": wname, "qty": qty, "reserved_qty": reserved, "available": qty - reserved})
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"product": map[string]any{
+				"id": productID, "sku": sku, "barcode": barcode, "name": name, "unit": unit,
+				"external_id": extID, "category": category, "price": price, "currency": currency,
+				"weight": weight, "volume": volume, "low_stock_threshold": threshold,
+			}, "stock": stock})
+		case http.MethodPut:
+			var req struct {
+				SKU        string  `json:"sku"`
+				Barcode    string  `json:"barcode"`
+				Name       string  `json:"name"`
+				Unit       string  `json:"unit"`
+				ExternalID string  `json:"external_id"`
+				Category   string  `json:"category"`
+				Price      float64 `json:"price"`
+				Currency   string  `json:"currency"`
+				Weight     float64 `json:"weight"`
+				Volume     float64 `json:"volume"`
+				LowStock   float64 `json:"low_stock_threshold"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			req.Name = strings.TrimSpace(req.Name)
+			if req.Name == "" {
+				writeError(w, http.StatusBadRequest, "Название обязательно")
+				return
+			}
+			unit := strings.TrimSpace(req.Unit)
+			if unit == "" {
+				unit = "шт"
+			}
+			currency := strings.TrimSpace(req.Currency)
+			if currency == "" {
+				currency = "RUB"
+			}
+			sku := strings.TrimSpace(req.SKU)
+			if sku != "" {
+				var exists bool
+				_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_products WHERE shop_id=$1 AND sku=$2 AND id<>$3 AND deleted_at IS NULL)`, shopID, sku, productID).Scan(&exists)
+				if exists {
+					writeJSON(w, http.StatusConflict, map[string]any{"error": "Артикул уже существует"})
+					return
+				}
+			}
+			if _, err := db.Exec(`UPDATE emarket_products SET sku=$1, barcode=$2, name=$3, unit=$4, external_id=$5, category=$6, price=$7, currency=$8, weight=$9, volume=$10, low_stock_threshold=$11, updated_at=now() WHERE id=$12`,
+				sku, strings.TrimSpace(req.Barcode), req.Name, unit, strings.TrimSpace(req.ExternalID), strings.TrimSpace(req.Category),
+				req.Price, currency, req.Weight, req.Volume, req.LowStock, productID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+		case http.MethodDelete:
+			if _, err := db.Exec(`UPDATE emarket_products SET deleted_at=now(), updated_at=now() WHERE id=$1`, productID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			_, _ = db.Exec(`DELETE FROM emarket_listing_product WHERE product_id=$1`, productID)
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	})
+
 	mux.HandleFunc("/api/emarket/shop-listings", func(w http.ResponseWriter, r *http.Request) {
 		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
 		if shopID == 0 {
