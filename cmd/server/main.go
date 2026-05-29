@@ -12093,6 +12093,64 @@ func main() {
 	mux.HandleFunc("/api/emarket/reviews", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			// Отзывы на товар/услугу: ?listing_id=
+			if lidStr := r.URL.Query().Get("listing_id"); lidStr != "" {
+				listingID, _ := strconv.ParseInt(lidStr, 10, 64)
+				if listingID == 0 {
+					writeError(w, http.StatusBadRequest, "listing_id обязателен")
+					return
+				}
+				rows, err := db.Query(`SELECT rv.id, rv.author_id, rv.rating, rv.text, rv.created_at,
+					COALESCE(NULLIF(u.full_name,''), u.handle, ''), COALESCE(u.public_id,''), COALESCE(u.avatar_url,'')
+					FROM emarket_reviews rv JOIN users u ON u.id=rv.author_id
+					WHERE rv.target_type='listing' AND rv.target_id=$1
+					ORDER BY rv.created_at DESC LIMIT 100`, listingID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				defer rows.Close()
+				reviews := []map[string]any{}
+				for rows.Next() {
+					var id, authorID int64
+					var rating int
+					var text, authorName, authorPID, authorAvatar string
+					var createdAt time.Time
+					if err := rows.Scan(&id, &authorID, &rating, &text, &createdAt, &authorName, &authorPID, &authorAvatar); err != nil {
+						continue
+					}
+					reviews = append(reviews, map[string]any{
+						"id": id, "author_id": authorID, "rating": rating, "text": text, "created_at": createdAt,
+						"author_name": authorName, "author_public_id": authorPID, "author_avatar": authorAvatar,
+					})
+				}
+				canReview := false
+				var myReview map[string]any
+				if uid, ok := optionalAuthenticatedUserID(r, sessions); ok && uid > 0 {
+					var lShopID int64
+					_ = db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1`, listingID).Scan(&lShopID)
+					isOwner := false
+					if lShopID > 0 {
+						var ot string
+						var oid int64
+						if db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, lShopID).Scan(&ot, &oid) == nil {
+							isOwner = emarketResolveOwner(db, r, uid, ot, oid) == nil
+						}
+					}
+					var hasDone bool
+					_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_orders WHERE buyer_id=$1 AND status='done' AND items @> $2::jsonb)`,
+						uid, fmt.Sprintf(`[{"listing_id":%d}]`, listingID)).Scan(&hasDone)
+					canReview = hasDone && !isOwner
+					var mrID int64
+					var mrRating int
+					var mrText string
+					if db.QueryRow(`SELECT id, rating, text FROM emarket_reviews WHERE target_type='listing' AND target_id=$1 AND author_id=$2`, listingID, uid).Scan(&mrID, &mrRating, &mrText) == nil {
+						myReview = map[string]any{"id": mrID, "rating": mrRating, "text": mrText}
+					}
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"reviews": reviews, "can_review": canReview, "my_review": myReview})
+				return
+			}
 			// Публичный список отзывов магазина: ?shop_id=
 			shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
 			if shopID == 0 {
@@ -12133,21 +12191,61 @@ func main() {
 				return
 			}
 			var req struct {
-				ShopID int64  `json:"shop_id"`
-				Rating int    `json:"rating"`
-				Text   string `json:"text"`
+				ShopID    int64  `json:"shop_id"`
+				ListingID int64  `json:"listing_id"`
+				Rating    int    `json:"rating"`
+				Text      string `json:"text"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
 				return
 			}
-			if req.ShopID == 0 || req.Rating < 1 || req.Rating > 5 {
-				writeError(w, http.StatusBadRequest, "Нужны shop_id и оценка 1-5")
+			if req.Rating < 1 || req.Rating > 5 {
+				writeError(w, http.StatusBadRequest, "Оценка должна быть 1-5")
 				return
 			}
 			req.Text = strings.TrimSpace(req.Text)
 			if len(req.Text) > 2000 {
 				req.Text = req.Text[:2000]
+			}
+			// Отзыв на товар/услугу — только после выполненного заказа (status=done), не владельцу позиции.
+			if req.ListingID > 0 {
+				var lShopID int64
+				if err := db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1`, req.ListingID).Scan(&lShopID); err != nil {
+					writeError(w, http.StatusNotFound, "Позиция не найдена")
+					return
+				}
+				var ot string
+				var oid int64
+				if db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, lShopID).Scan(&ot, &oid) == nil {
+					if emarketResolveOwner(db, r, userID, ot, oid) == nil {
+						writeJSON(w, http.StatusForbidden, map[string]any{"error": "Нельзя оставить отзыв на свою позицию"})
+						return
+					}
+				}
+				var hasDone bool
+				_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_orders WHERE buyer_id=$1 AND status='done' AND items @> $2::jsonb)`,
+					userID, fmt.Sprintf(`[{"listing_id":%d}]`, req.ListingID)).Scan(&hasDone)
+				if !hasDone {
+					writeJSON(w, http.StatusForbidden, map[string]any{"error": "Отзыв можно оставить только после выполненного заказа"})
+					return
+				}
+				if _, err := db.Exec(`INSERT INTO emarket_reviews (target_type, target_id, author_id, rating, text)
+					VALUES ('listing', $1, $2, $3, $4)
+					ON CONFLICT (target_type, target_id, author_id)
+					DO UPDATE SET rating=EXCLUDED.rating, text=EXCLUDED.text, created_at=now()`,
+					req.ListingID, userID, req.Rating, req.Text); err != nil {
+					log.Printf("[emarket/reviews POST listing] %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				recalcListingRating(db, req.ListingID)
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+				return
+			}
+			if req.ShopID == 0 {
+				writeError(w, http.StatusBadRequest, "Нужен shop_id или listing_id")
+				return
 			}
 			var ownerType string
 			var ownerID int64
@@ -12205,6 +12303,18 @@ func main() {
 					}
 				}
 			}
+			if !allowed && targetType == "listing" {
+				var lShopID int64
+				if db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1`, targetID).Scan(&lShopID) == nil {
+					var ownerType string
+					var ownerID int64
+					if db.QueryRow(`SELECT owner_type, owner_id FROM emarket_shops WHERE id=$1`, lShopID).Scan(&ownerType, &ownerID) == nil {
+						if emarketResolveOwner(db, r, userID, ownerType, ownerID) == nil {
+							allowed = true
+						}
+					}
+				}
+			}
 			if !allowed {
 				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
 				return
@@ -12212,6 +12322,8 @@ func main() {
 			_, _ = db.Exec(`DELETE FROM emarket_reviews WHERE id=$1`, reviewID)
 			if targetType == "shop" {
 				recalcShopRating(db, targetID)
+			} else if targetType == "listing" {
+				recalcListingRating(db, targetID)
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 			return
@@ -34912,6 +35024,13 @@ func recalcShopRating(db *sql.DB, shopID int64) {
 		rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM emarket_reviews WHERE target_type='shop' AND target_id=$1), 0),
 		reviews_count = (SELECT COUNT(*) FROM emarket_reviews WHERE target_type='shop' AND target_id=$1)
 		WHERE id=$1`, shopID)
+}
+
+func recalcListingRating(db *sql.DB, listingID int64) {
+	_, _ = db.Exec(`UPDATE emarket_listings SET
+		rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 2) FROM emarket_reviews WHERE target_type='listing' AND target_id=$1), 0),
+		reviews_count = (SELECT COUNT(*) FROM emarket_reviews WHERE target_type='listing' AND target_id=$1)
+		WHERE id=$1`, listingID)
 }
 
 // emarketAccentHex переводит ключ палитры accent_color магазина в hex-цвет (как на фронте EM_ACCENT_PALETTE).
