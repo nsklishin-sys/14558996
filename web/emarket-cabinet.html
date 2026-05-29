@@ -1021,9 +1021,18 @@ async function pollLeadCounts(){
   }catch(e){/* тихо */}
 }
 
-/* ════════════ ВКЛАДКА: ЗАКАЗЫ (продавцу) ════════════ */
-let SHOP_ORDERS=null;          // массив заказов после загрузки
+/* ════════════ ВКЛАДКА: ЗАКАЗЫ (продавцу) — EM-S6-PLUS ════════════ */
+let SHOP_ORDERS=[];            // аккумулирующийся массив заказов
 let ORDER_FILTER='active';     // active | done | all
+let ORDER_SORT='date_desc';    // date_desc | date_asc | amount_desc | amount_asc
+let ORDER_Q='';
+let ORDER_OFFSET=0;
+let ORDER_TOTAL=0;
+let ORDER_COUNTS={all:0,active:0,done:0,new:0};
+let ORDER_DEBOUNCE=null;
+let ORDER_EVENTS_CACHE={};     // public_id → массив событий (lazy load)
+let ORDER_NOTE_TIMERS={};      // public_id → setTimeout id (debounced save)
+const ORDER_LIMIT=20;
 const ORDER_STATUSES=[
   {key:'new',        label:'Новый'},
   {key:'accepted',   label:'Принят'},
@@ -1037,6 +1046,11 @@ const ORDER_PAYMENTS=[
   {key:'paid',    label:'Оплачен'},
 ];
 const ORDER_CURRENCY_SYM={RUB:'₽',USD:'$',EUR:'€'};
+const ORDER_EVENT_LABELS={
+  created:'Заказ создан',
+  status_change:'Смена статуса',
+  payment_change:'Смена оплаты',
+};
 
 function orderToastSafe(msg){
   if(window.lastopToast){try{window.lastopToast(msg);return;}catch(_){}}
@@ -1067,62 +1081,130 @@ function pluralOrders(n){
   return'заказов';
 }
 
-async function loadShopOrders(){
+async function loadShopOrders(reset){
   const pan=document.getElementById('panel-orders');
   if(!pan)return;
   if(!SHOP||!SHOP.id){pan.innerHTML='<div class="empty"><div class="empty-ttl">Магазин не выбран</div></div>';return;}
-  pan.innerHTML='<div class="skel" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh)"><div style="height:14px;width:40%;background:var(--gp);border-radius:7px;margin-bottom:8px"></div><div style="height:14px;width:80%;background:var(--gp);border-radius:7px;margin-bottom:8px"></div><div style="height:14px;width:60%;background:var(--gp);border-radius:7px"></div></div>';
+  if(reset!==false){ORDER_OFFSET=0;SHOP_ORDERS=[];}
+  if(ORDER_OFFSET===0){
+    pan.innerHTML='<div class="skel" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;box-shadow:var(--sh)"><div style="height:14px;width:40%;background:var(--gp);border-radius:7px;margin-bottom:8px"></div><div style="height:14px;width:80%;background:var(--gp);border-radius:7px;margin-bottom:8px"></div><div style="height:14px;width:60%;background:var(--gp);border-radius:7px"></div></div>';
+  }
+  const params=new URLSearchParams({
+    status:ORDER_FILTER, sort:ORDER_SORT,
+    limit:String(ORDER_LIMIT), offset:String(ORDER_OFFSET),
+  });
+  if(ORDER_Q)params.set('q',ORDER_Q);
   try{
-    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/orders?status=all');
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/orders?'+params.toString());
     if(!r.ok)throw new Error('http');
     const d=await r.json();
-    SHOP_ORDERS=d.orders||[];
+    SHOP_ORDERS=SHOP_ORDERS.concat(d.orders||[]);
+    ORDER_TOTAL=d.total||0;
+    ORDER_COUNTS=d.counts||ORDER_COUNTS;
   }catch{
-    SHOP_ORDERS=[];
+    if(ORDER_OFFSET===0)SHOP_ORDERS=[];
   }
   renderShopOrders();
   updateOrdersBadge();
-  const q=new URLSearchParams(location.search);
-  const target=q.get('order');
-  if(target){
-    setTimeout(()=>{
-      const el=document.querySelector('[data-order-id="'+target+'"]');
-      if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
-    },250);
+  if(ORDER_OFFSET===0){
+    const q=new URLSearchParams(location.search);
+    const target=q.get('order');
+    if(target){
+      setTimeout(()=>{
+        const el=document.querySelector('[data-order-id="'+target+'"]');
+        if(el){
+          el.scrollIntoView({behavior:'smooth',block:'center'});
+          el.classList.add('open');
+          const chev=el.querySelector('.order-chev');
+          if(chev)chev.style.transform='rotate(180deg)';
+          loadOrderEvents(target);
+          if(window.markNotifsReadBySource){
+            window.markNotifsReadBySource(['emarket_order_new','emarket_order_status','emarket_order_payment'], target);
+          }
+        }
+      },250);
+    }
   }
 }
 
 function updateOrdersBadge(){
   const b=document.getElementById('ordersBadge');
-  if(!b||!SHOP_ORDERS)return;
-  const active=SHOP_ORDERS.filter(o=>o.status==='new').length;
+  if(!b)return;
+  const active=(ORDER_COUNTS&&ORDER_COUNTS.new!=null)
+    ? ORDER_COUNTS.new
+    : (SHOP_ORDERS||[]).filter(o=>o.status==='new').length;
   if(active>0){b.style.display='inline-flex';b.textContent=active;}
   else b.style.display='none';
 }
 
 function renderShopOrders(){
   const pan=document.getElementById('panel-orders');
-  if(!pan||!SHOP_ORDERS)return;
-  const all=SHOP_ORDERS.length;
-  const activeCnt=SHOP_ORDERS.filter(o=>o.status!=='done'&&o.status!=='cancelled').length;
-  const doneCnt=all-activeCnt;
-  let list=SHOP_ORDERS;
-  if(ORDER_FILTER==='active')list=list.filter(o=>o.status!=='done'&&o.status!=='cancelled');
-  else if(ORDER_FILTER==='done')list=list.filter(o=>o.status==='done'||o.status==='cancelled');
-  const filters=
-    '<div class="lead-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-    +'<button class="lf-btn'+(ORDER_FILTER==='active'?' active':'')+'" onclick="setOrderFilter(\'active\')">Активные'+(activeCnt?' <span class="lf-num">'+activeCnt+'</span>':'')+'</button>'
-    +'<button class="lf-btn'+(ORDER_FILTER==='done'?' active':'')+'" onclick="setOrderFilter(\'done\')">Завершённые'+(doneCnt?' <span class="lf-num">'+doneCnt+'</span>':'')+'</button>'
-    +'<button class="lf-btn'+(ORDER_FILTER==='all'?' active':'')+'" onclick="setOrderFilter(\'all\')">Все'+(all?' <span class="lf-num">'+all+'</span>':'')+'</button>'
+  if(!pan)return;
+  const c=ORDER_COUNTS||{all:0,active:0,done:0,new:0};
+  const head=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">'
+      +'<input id="orderSearchInput" placeholder="Поиск по № заказа, покупателю, комментарию…" value="'+esc(ORDER_Q)+'" style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t)" oninput="onOrderSearch(this.value)">'
+      +'<select class="lt-select" onchange="setOrderSort(this.value)" style="padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'
+        +'<option value="date_desc"'+(ORDER_SORT==='date_desc'?' selected':'')+'>Сначала новые</option>'
+        +'<option value="date_asc"'+(ORDER_SORT==='date_asc'?' selected':'')+'>Сначала старые</option>'
+        +'<option value="amount_desc"'+(ORDER_SORT==='amount_desc'?' selected':'')+'>Сумма убыв.</option>'
+        +'<option value="amount_asc"'+(ORDER_SORT==='amount_asc'?' selected':'')+'>Сумма возр.</option>'
+      +'</select>'
+      +'<button onclick="exportOrdersCSV()" title="Экспорт в CSV" style="padding:8px 14px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);color:var(--g);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+        +'<span>CSV</span>'
+      +'</button>'
+    +'</div>'
+    +'<div class="lead-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
+      +'<button class="lf-btn'+(ORDER_FILTER==='active'?' active':'')+'" onclick="setOrderFilter(\'active\')">Активные'+(c.active?' <span class="lf-num">'+c.active+'</span>':'')+'</button>'
+      +'<button class="lf-btn'+(ORDER_FILTER==='done'?' active':'')+'" onclick="setOrderFilter(\'done\')">Завершённые'+(c.done?' <span class="lf-num">'+c.done+'</span>':'')+'</button>'
+      +'<button class="lf-btn'+(ORDER_FILTER==='all'?' active':'')+'" onclick="setOrderFilter(\'all\')">Все'+(c.all?' <span class="lf-num">'+c.all+'</span>':'')+'</button>'
     +'</div>';
-  if(!list.length){
-    pan.innerHTML=filters+'<div class="empty" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:36px 18px;text-align:center;box-shadow:var(--sh)"><div style="font-size:32px;margin-bottom:8px;opacity:.5">📦</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:4px">'+(ORDER_FILTER==='active'?'Нет активных заказов':(ORDER_FILTER==='done'?'Нет завершённых заказов':'Пока нет заказов'))+'</div><div style="font-size:12px;color:var(--gmt)">Заказы появятся, когда покупатели оформят их в вашем магазине.</div></div>';
+  if(!SHOP_ORDERS.length){
+    const emptyTitle=ORDER_Q?'Ничего не найдено':(ORDER_FILTER==='active'?'Нет активных заказов':(ORDER_FILTER==='done'?'Нет завершённых заказов':'Пока нет заказов'));
+    const emptyHint=ORDER_Q?'Попробуйте изменить запрос или фильтр.':'Заказы появятся, когда покупатели оформят их в вашем магазине.';
+    pan.innerHTML=head+'<div class="empty" style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:36px 18px;text-align:center;box-shadow:var(--sh)"><div style="font-size:32px;margin-bottom:8px;opacity:.5">📦</div><div style="font-size:14px;font-weight:700;color:var(--t);margin-bottom:4px">'+emptyTitle+'</div><div style="font-size:12px;color:var(--gmt)">'+emptyHint+'</div></div>';
     return;
   }
-  pan.innerHTML=filters+'<div style="display:flex;flex-direction:column;gap:10px">'+list.map(renderShopOrderCard).join('')+'</div>';
+  const cards='<div style="display:flex;flex-direction:column;gap:10px">'+SHOP_ORDERS.map(renderShopOrderCard).join('')+'</div>';
+  const loaded=SHOP_ORDERS.length;
+  const more=loaded<ORDER_TOTAL
+    ? '<div style="margin-top:12px;text-align:center"><button onclick="loadMoreOrders()" style="padding:8px 18px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);color:var(--g);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Показать ещё '+Math.min(ORDER_LIMIT,ORDER_TOTAL-loaded)+' из '+(ORDER_TOTAL-loaded)+'</button></div>'
+    : '';
+  pan.innerHTML=head+cards+more;
 }
 
-function setOrderFilter(f){ORDER_FILTER=f;renderShopOrders();}
+function onOrderSearch(v){
+  clearTimeout(ORDER_DEBOUNCE);
+  ORDER_DEBOUNCE=setTimeout(()=>{
+    ORDER_Q=v.trim();
+    loadShopOrders(true);
+    // вернуть фокус инпуту после перерендера
+    setTimeout(()=>{
+      const el=document.getElementById('orderSearchInput');
+      if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);}
+    },50);
+  },350);
+}
+function setOrderFilter(f){ORDER_FILTER=f;loadShopOrders(true);}
+function setOrderSort(s){ORDER_SORT=s;loadShopOrders(true);}
+function loadMoreOrders(){ORDER_OFFSET+=ORDER_LIMIT;loadShopOrders(false);}
+
+function exportOrdersCSV(){
+  if(!SHOP||!SHOP.id)return;
+  const url=API+'/emarket/shops/'+SHOP.id+'/orders/export?status='+encodeURIComponent(ORDER_FILTER);
+  // открытие через временный <a> с credentials:include нужно нативно — fetch+blob
+  lastopFetch(url).then(r=>{
+    if(!r.ok)throw new Error('http');
+    return r.blob();
+  }).then(blob=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='orders-'+(new Date().toISOString().slice(0,10))+'.csv';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  }).catch(()=>orderToastSafe('Не удалось экспортировать'));
+}
 
 function renderShopOrderCard(o){
   const items=o.items||[];
@@ -1137,26 +1219,123 @@ function renderShopOrderCard(o){
     +'<div style="color:var(--gmt);font-size:11px">'+it.quantity+'×'+fmtOrderMoney(it.price,it.currency)+'</div>'
     +'</div>').join('');
   const moreItems=items.length>5?('<div style="font-size:11px;color:var(--gmt);padding-left:40px">и ещё '+(items.length-5)+'</div>'):'';
+  // Развёрнутая часть (история, заметка продавца, кнопка чата)
+  const chatBtn=o.buyer_public_id
+    ? '<button onclick="openChatWithBuyer(\''+esc(o.buyer_public_id)+'\')" style="padding:6px 12px;border:1.5px solid var(--gb);border-radius:var(--rm);background:var(--gl);color:var(--g);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать в чат</button>'
+    : '';
+  const expandHTML='<div class="lead-expand" id="order-expand-'+esc(o.public_id)+'" style="margin-top:10px;padding-top:12px;border-top:1px dashed var(--bdr)">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+chatBtn+'</div>'
+    +'<div style="margin-bottom:12px">'
+      +'<label style="display:block;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Заметка продавца <span style="text-transform:none;font-weight:500;font-size:10px;color:var(--gmt)">(покупателю не видна)</span></label>'
+      +'<textarea id="order-note-'+esc(o.public_id)+'" rows="2" maxlength="2000" placeholder="Внутренняя заметка…" style="width:100%;padding:8px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:12px;background:var(--w);color:var(--t);resize:vertical;line-height:1.4" oninput="onShopNoteInput(\''+esc(o.public_id)+'\',this.value)">'+esc(o.shop_note||'')+'</textarea>'
+    +'</div>'
+    +'<div>'
+      +'<div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">История</div>'
+      +'<div id="order-events-'+esc(o.public_id)+'" style="font-size:12px;color:var(--tm);line-height:1.6"><span style="color:var(--gmt)">Загрузка…</span></div>'
+    +'</div>'
+  +'</div>';
   return '<div class="lead-card" data-order-id="'+esc(o.public_id)+'" style="padding:14px 16px">'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
-      +'<span style="font-family:\'SF Mono\',Menlo,monospace;font-size:12px;font-weight:700;color:var(--t)">№ '+esc(o.public_id)+'</span>'
-      +'<span style="font-size:11px;color:var(--gmt)">'+esc(fmtOrderDate(o.created_at))+'</span>'
-      +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:var(--t)">'+fmtOrderMoney(o.total_amount,o.currency)+'</span>'
+    +'<div onclick="toggleOrderExpand(\''+esc(o.public_id)+'\')" style="cursor:pointer">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+        +'<span style="font-family:&quot;SF Mono&quot;,Menlo,monospace;font-size:12px;font-weight:700;color:var(--t)">№ '+esc(o.public_id)+'</span>'
+        +'<span style="font-size:11px;color:var(--gmt)">'+esc(fmtOrderDate(o.created_at))+'</span>'
+        +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:var(--t)">'+fmtOrderMoney(o.total_amount,o.currency)+'</span>'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);transition:transform .15s" class="order-chev"><polyline points="6 9 12 15 18 9"/></svg>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:var(--gp);border-radius:var(--rm)">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+        +'<span style="font-size:12px;font-weight:600;color:var(--t)">'+esc(o.buyer_name||'Покупатель')+'</span>'
+      +'</div>'
+      +'<div style="border-top:1px solid var(--bdr);padding-top:8px;margin-bottom:10px">'+itemsHTML+moreItems+'</div>'
+      +(o.comment?'<div style="background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--t);line-height:1.5"><strong style="color:var(--g);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Комментарий:</strong> '+esc(o.comment)+'</div>':'')
     +'</div>'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:var(--gp);border-radius:var(--rm)">'
-      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
-      +'<span style="font-size:12px;font-weight:600;color:var(--t)">'+esc(o.buyer_name||'Покупатель')+'</span>'
-    +'</div>'
-    +'<div style="border-top:1px solid var(--bdr);padding-top:8px;margin-bottom:10px">'+itemsHTML+moreItems+'</div>'
-    +(o.comment?'<div style="background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--t);line-height:1.5"><strong style="color:var(--g);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Комментарий:</strong> '+esc(o.comment)+'</div>':'')
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--bdr)">'
-      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Статус заказа<select class="lt-select" onchange="patchOrderStatus(\''+esc(o.public_id)+'\',this.value)" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+statusOpts+'</select></label>'
-      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Оплата<select class="lt-select" onchange="patchOrderPayment(\''+esc(o.public_id)+'\',this.value)" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+paymentOpts+'</select></label>'
+      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Статус заказа<select class="lt-select" onchange="patchOrderStatus(\''+esc(o.public_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+statusOpts+'</select></label>'
+      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Оплата<select class="lt-select" onchange="patchOrderPayment(\''+esc(o.public_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+paymentOpts+'</select></label>'
     +'</div>'
+    +expandHTML
   +'</div>';
 }
 
+function toggleOrderExpand(publicID){
+  const card=document.querySelector('[data-order-id="'+publicID+'"]');
+  if(!card)return;
+  const wasOpen=card.classList.contains('open');
+  card.classList.toggle('open');
+  const chev=card.querySelector('.order-chev');
+  if(chev)chev.style.transform=card.classList.contains('open')?'rotate(180deg)':'';
+  if(!wasOpen){
+    // открыли — лениво грузим события + гасим уведомления конкретного заказа
+    loadOrderEvents(publicID);
+    if(window.markNotifsReadBySource){
+      window.markNotifsReadBySource(['emarket_order_new','emarket_order_status','emarket_order_payment'], publicID);
+    }
+  }
+}
+
+async function loadOrderEvents(publicID){
+  const target=document.getElementById('order-events-'+publicID);
+  if(!target)return;
+  if(ORDER_EVENTS_CACHE[publicID]){
+    target.innerHTML=renderOrderEvents(ORDER_EVENTS_CACHE[publicID]);
+    return;
+  }
+  try{
+    const r=await lastopFetch(API+'/emarket/orders/'+encodeURIComponent(publicID)+'/events');
+    if(!r.ok)throw new Error('http');
+    const d=await r.json();
+    ORDER_EVENTS_CACHE[publicID]=d.events||[];
+    target.innerHTML=renderOrderEvents(ORDER_EVENTS_CACHE[publicID]);
+  }catch{
+    target.innerHTML='<span style="color:var(--gmt)">Не удалось загрузить историю</span>';
+  }
+}
+
+function renderOrderEvents(events){
+  if(!events||!events.length)return '<span style="color:var(--gmt)">Событий нет</span>';
+  const statusMap=Object.fromEntries(ORDER_STATUSES.map(s=>[s.key,s.label]));
+  const payMap=Object.fromEntries(ORDER_PAYMENTS.map(p=>[p.key,p.label]));
+  return '<div style="display:flex;flex-direction:column;gap:6px">'+events.map(e=>{
+    const lbl=ORDER_EVENT_LABELS[e.event_type]||e.event_type;
+    let detail='';
+    if(e.event_type==='status_change'){
+      detail=': '+(statusMap[e.from_value]||e.from_value)+' → '+(statusMap[e.to_value]||e.to_value);
+    } else if(e.event_type==='payment_change'){
+      detail=': '+(payMap[e.from_value]||e.from_value)+' → '+(payMap[e.to_value]||e.to_value);
+    } else if(e.event_type==='created'){
+      detail='';
+    }
+    const who=e.actor_name?' · '+esc(e.actor_name):'';
+    return '<div style="padding:6px 10px;background:var(--gp);border-radius:var(--rm);font-size:12px"><span style="color:var(--gmt);font-size:11px">'+esc(fmtOrderDate(e.created_at))+who+'</span><div style="color:var(--t);font-weight:600;margin-top:2px">'+esc(lbl)+esc(detail)+'</div></div>';
+  }).join('')+'</div>';
+}
+
+function onShopNoteInput(publicID, value){
+  clearTimeout(ORDER_NOTE_TIMERS[publicID]);
+  ORDER_NOTE_TIMERS[publicID]=setTimeout(()=>saveShopNote(publicID,value),700);
+}
+
+async function saveShopNote(publicID, value){
+  try{
+    const r=await lastopFetch(API+'/emarket/orders/'+encodeURIComponent(publicID)+'/shop-note',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({shop_note:value||''})
+    });
+    if(!r.ok){orderToastSafe('Не удалось сохранить заметку');return;}
+    const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
+    if(o)o.shop_note=value||'';
+  }catch{orderToastSafe('Ошибка соединения');}
+}
+
+function openChatWithBuyer(buyerPID){
+  if(!buyerPID)return;
+  location.href='/chat?user='+encodeURIComponent(buyerPID);
+}
+
 async function patchOrderStatus(publicID,status){
+  const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
+  const prev=o?o.status:null;
   try{
     const r=await lastopFetch(API+'/emarket/orders/'+encodeURIComponent(publicID)+'/status',{
       method:'PATCH',
@@ -1164,18 +1343,30 @@ async function patchOrderStatus(publicID,status){
       body:JSON.stringify({status:status})
     });
     if(!r.ok){orderToastSafe('Не удалось изменить статус');return;}
-    const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
     if(o){
       o.status=status;
-      const lbl=(ORDER_STATUSES.find(s=>s.key===status)||{}).label||status;
-      o.status_label=lbl;
+      o.status_label=(ORDER_STATUSES.find(s=>s.key===status)||{}).label||status;
     }
+    // локально подкручиваем counts
+    if(prev && prev!==status && ORDER_COUNTS){
+      const wasDone=prev==='done'||prev==='cancelled';
+      const nowDone=status==='done'||status==='cancelled';
+      if(wasDone!==nowDone){
+        if(wasDone){ORDER_COUNTS.done=Math.max(0,(ORDER_COUNTS.done||0)-1);ORDER_COUNTS.active=(ORDER_COUNTS.active||0)+1;}
+        else {ORDER_COUNTS.active=Math.max(0,(ORDER_COUNTS.active||0)-1);ORDER_COUNTS.done=(ORDER_COUNTS.done||0)+1;}
+      }
+      if(prev==='new')ORDER_COUNTS.new=Math.max(0,(ORDER_COUNTS.new||0)-1);
+      if(status==='new')ORDER_COUNTS.new=(ORDER_COUNTS.new||0)+1;
+    }
+    // сбросить кэш событий — там появилось новое
+    delete ORDER_EVENTS_CACHE[publicID];
     updateOrdersBadge();
     renderShopOrders();
     orderToastSafe('Статус заказа обновлён');
   }catch{orderToastSafe('Ошибка соединения');}
 }
 async function patchOrderPayment(publicID,payment){
+  const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
   try{
     const r=await lastopFetch(API+'/emarket/orders/'+encodeURIComponent(publicID)+'/payment-status',{
       method:'PATCH',
@@ -1183,12 +1374,11 @@ async function patchOrderPayment(publicID,payment){
       body:JSON.stringify({payment_status:payment})
     });
     if(!r.ok){orderToastSafe('Не удалось изменить статус оплаты');return;}
-    const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
     if(o){
       o.payment_status=payment;
-      const lbl=(ORDER_PAYMENTS.find(p=>p.key===payment)||{}).label||payment;
-      o.payment_status_label=lbl;
+      o.payment_status_label=(ORDER_PAYMENTS.find(p=>p.key===payment)||{}).label||payment;
     }
+    delete ORDER_EVENTS_CACHE[publicID];
     renderShopOrders();
     orderToastSafe('Статус оплаты обновлён');
   }catch{orderToastSafe('Ошибка соединения');}
