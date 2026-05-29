@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	qrcode "github.com/skip2/go-qrcode"
 	"hash/fnv"
 	"io"
 	"log"
@@ -12384,6 +12385,30 @@ func main() {
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
+	})
+
+	// SHARE: QR-код по тексту/URL → PNG. Публичный, кэшируется CDN'ом на день.
+	mux.HandleFunc("/api/share/qr", func(w http.ResponseWriter, r *http.Request) {
+		text := strings.TrimSpace(r.URL.Query().Get("text"))
+		if text == "" {
+			writeError(w, http.StatusBadRequest, "text обязателен")
+			return
+		}
+		if len(text) > 2000 {
+			text = text[:2000]
+		}
+		size, _ := strconv.Atoi(r.URL.Query().Get("size"))
+		if size < 64 || size > 1024 {
+			size = 320
+		}
+		png, err := qrcode.Encode(text, qrcode.Medium, size)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка генерации QR")
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Write(png)
 	})
 
 	// GET /api/emarket/cart — позиции корзины пользователя, сгруппированные по магазинам
