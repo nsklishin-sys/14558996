@@ -8,8 +8,8 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
-	"encoding/hex"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -545,12 +545,12 @@ type createGroupConversationRequest struct {
 	MemberIDs []string `json:"member_public_ids"`
 }
 type sendMessageRequest struct {
-	Content        string `json:"content"`
-	ReplyToID      *int64 `json:"reply_to_id,omitempty"`
-	AttachmentURL  string `json:"attachment_url,omitempty"`
-	AttachmentName string `json:"attachment_name,omitempty"`
-	AttachmentType string `json:"attachment_type,omitempty"`
-	AttachmentSize int64  `json:"attachment_size,omitempty"`
+	Content        string           `json:"content"`
+	ReplyToID      *int64           `json:"reply_to_id,omitempty"`
+	AttachmentURL  string           `json:"attachment_url,omitempty"`
+	AttachmentName string           `json:"attachment_name,omitempty"`
+	AttachmentType string           `json:"attachment_type,omitempty"`
+	AttachmentSize int64            `json:"attachment_size,omitempty"`
 	Attachments    []chatAttachment `json:"attachments,omitempty"`
 	// Контекст отправки (резолвится handler'ом из X-Active-Company-Id / X-Active-Community-Id, не приходит из тела)
 	SenderCompanyID   int64 `json:"-"`
@@ -5198,10 +5198,10 @@ func main() {
 				}
 				defer rows.Close()
 				payload := map[string]any{
-					"conversation_public_id":  convPID,
-					"reader_user_id":          readerID,
-					"last_read_message_id":    msgID,
-					"read_at":                 time.Now().UTC(),
+					"conversation_public_id": convPID,
+					"reader_user_id":         readerID,
+					"last_read_message_id":   msgID,
+					"read_at":                time.Now().UTC(),
 				}
 				for rows.Next() {
 					var uid int64
@@ -7040,7 +7040,7 @@ func main() {
 					items = append(items, map[string]any{
 						"action": action, "ip_address": ip, "city": city,
 						"provider": provider, "user_agent": ua,
-						"created_at": created.Format(time.RFC3339),
+						"created_at":  created.Format(time.RFC3339),
 						"entity_type": entityType, "entity_public_id": entityPID,
 					})
 				}
@@ -8570,6 +8570,44 @@ func main() {
 			"posts":  items,
 			"period": period,
 		})
+	})
+
+	// PROFILE-SHOP-LINK: краткая инфо о магазине по владельцу — для блока «Сайт на маркете» на профиле.
+	// GET /api/emarket/shop-by-owner?owner_type=user|company&owner_id=N
+	// Возвращает {slug,name,logo_url,is_verified,site_published,rating,reviews_count} или 404.
+	mux.HandleFunc("/api/emarket/shop-by-owner", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		ownerType := strings.TrimSpace(r.URL.Query().Get("owner_type"))
+		ownerID, _ := strconv.ParseInt(r.URL.Query().Get("owner_id"), 10, 64)
+		if ownerID <= 0 || (ownerType != "user" && ownerType != "company") {
+			writeError(w, http.StatusBadRequest, "owner_type и owner_id обязательны")
+			return
+		}
+		var id int64
+		var slug, name, logo string
+		var verified, sitePublished bool
+		var rating float64
+		var reviews int
+		err := db.QueryRow(`SELECT id, slug, name, COALESCE(logo_url,''), COALESCE(is_verified,FALSE), COALESCE(site_published,FALSE), COALESCE(rating,0), COALESCE(reviews_count,0)
+			FROM emarket_shops WHERE owner_type=$1 AND owner_id=$2 AND status<>'blocked' LIMIT 1`,
+			ownerType, ownerID).Scan(&id, &slug, &name, &logo, &verified, &sitePublished, &rating, &reviews)
+		if err == sql.ErrNoRows {
+			writeJSON(w, http.StatusOK, map[string]any{"shop": nil})
+			return
+		}
+		if err != nil {
+			log.Printf("[emarket/shop-by-owner] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"shop": map[string]any{
+			"id": id, "slug": slug, "name": name, "logo_url": logo,
+			"is_verified": verified, "site_published": sitePublished,
+			"rating": rating, "reviews_count": reviews,
+		}})
 	})
 
 	// Phase 5 — обновления платформы. Возвращает посты с category='platform-update'.
@@ -11843,22 +11881,22 @@ func main() {
 		_ = json.Unmarshal([]byte(configText), &config)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"shop": map[string]any{
-				"id":            shopID,
-				"slug":          slug,
-				"name":          name,
-				"description":   desc,
-				"logo_url":      logo,
-				"cover_url":     cover,
-				"region":        region,
-				"accent_color":  accent,
-				"header_theme":  headerTheme,
-				"site_logo_url": siteLogo,
-				"tagline":       tagline,
-				"lead_email":    leadEmail,
-				"lead_phone":    leadPhone,
-				"direction":     direction,
-				"contact_phone": phone,
-				"contact_email": email,
+				"id":              shopID,
+				"slug":            slug,
+				"name":            name,
+				"description":     desc,
+				"logo_url":        logo,
+				"cover_url":       cover,
+				"region":          region,
+				"accent_color":    accent,
+				"header_theme":    headerTheme,
+				"site_logo_url":   siteLogo,
+				"tagline":         tagline,
+				"lead_email":      leadEmail,
+				"lead_phone":      leadPhone,
+				"direction":       direction,
+				"contact_phone":   phone,
+				"contact_email":   email,
 				"contact_site":    site,
 				"rating":          rating,
 				"reviews_count":   reviews,
@@ -14957,7 +14995,14 @@ func main() {
 			SELECT co.id, COALESCE(co.slug,''), co.name, co.category, COALESCE(co.avatar_url,''),
 			       co.is_verified, co.created_at,
 			       (SELECT COUNT(*)::int FROM community_members cm WHERE cm.community_id = co.id)
-			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT $`+strconv.Itoa(len(args)+1)+` OFFSET $`+strconv.Itoa(len(args)+2), append(args, parseLimit(r.URL.Query().Get("limit"), 100, 200), func() int { if v := r.URL.Query().Get("offset"); v != "" { if n, e := strconv.Atoi(v); e == nil && n >= 0 { return n } }; return 0 }())...)
+			FROM communities co `+where+` ORDER BY co.created_at DESC LIMIT $`+strconv.Itoa(len(args)+1)+` OFFSET $`+strconv.Itoa(len(args)+2), append(args, parseLimit(r.URL.Query().Get("limit"), 100, 200), func() int {
+			if v := r.URL.Query().Get("offset"); v != "" {
+				if n, e := strconv.Atoi(v); e == nil && n >= 0 {
+					return n
+				}
+			}
+			return 0
+		}())...)
 		items := []map[string]any{}
 		if err == nil {
 			defer rows.Close()
