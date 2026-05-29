@@ -14386,9 +14386,14 @@ func main() {
 			}
 			reply("success")
 		case "query":
-			// Выгрузка заказов добавляется в WMS-5d. Пока — пустой валидный CommerceML.
+			xmlDoc, n, err := emarket1cExportOrders(db, shopID)
+			if err != nil {
+				reply("failure\n" + err.Error())
+				return
+			}
+			_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_export_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, fmt.Sprintf("выгружено заказов: %d", n), shopID)
 			w.Header().Set("Content-Type", "text/xml; charset=utf-8")
-			_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?>`+"\n"+`<КоммерческаяИнформация ВерсияСхемы="2.05"></КоммерческаяИнформация>`)
+			_, _ = io.WriteString(w, xmlDoc)
 		case "success":
 			_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_export_at=now(), updated_at=now() WHERE shop_id=$1`, shopID)
 			reply("success")
@@ -36721,6 +36726,142 @@ func emarket1cImportOffers(db *sql.DB, shopID int64, path string) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// ── WMS-5d: выгрузка заказов платформа→1С (CommerceML) ──
+
+func emarket1cXMLEscape(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&apos;")
+	return r.Replace(s)
+}
+
+// emarket1cExportOrders — формирует CommerceML по неэкспортированным заказам магазина
+// и помечает их exported_at. Возвращает XML и число выгруженных заказов.
+func emarket1cExportOrders(db *sql.DB, shopID int64) (string, int, error) {
+	const head = `<?xml version="1.0" encoding="UTF-8"?>` + "\n" + `<КоммерческаяИнформация ВерсияСхемы="2.05">`
+	const tail = `</КоммерческаяИнформация>`
+
+	var orderSync bool
+	_ = db.QueryRow(`SELECT order_sync FROM emarket_1c_exchange WHERE shop_id=$1`, shopID).Scan(&orderSync)
+	if !orderSync {
+		return head + tail, 0, nil
+	}
+
+	rows, err := db.Query(`SELECT o.id, o.public_id, o.items::text, o.total_amount, o.currency, o.status, o.payment_status, COALESCE(o.comment,''), o.created_at, COALESCE(NULLIF(u.full_name,''),'Покупатель')
+		FROM emarket_orders o JOIN users u ON u.id=o.buyer_id
+		WHERE o.shop_id=$1 AND o.exported_at IS NULL
+		ORDER BY o.created_at`, shopID)
+	if err != nil {
+		return "", 0, err
+	}
+	defer rows.Close()
+
+	type ordItem struct {
+		ListingID int64   `json:"listing_id"`
+		Title     string  `json:"title"`
+		Price     float64 `json:"price"`
+		Currency  string  `json:"currency"`
+		Quantity  int     `json:"quantity"`
+	}
+	type ordRow struct {
+		id        int64
+		publicID  string
+		itemsJSON string
+		total     float64
+		currency  string
+		status    string
+		payStatus string
+		comment   string
+		created   time.Time
+		buyer     string
+	}
+	var orders []ordRow
+	for rows.Next() {
+		var o ordRow
+		if err := rows.Scan(&o.id, &o.publicID, &o.itemsJSON, &o.total, &o.currency, &o.status, &o.payStatus, &o.comment, &o.created, &o.buyer); err != nil {
+			continue
+		}
+		orders = append(orders, o)
+	}
+	rows.Close()
+	if len(orders) == 0 {
+		return head + tail, 0, nil
+	}
+
+	guidCache := map[int64]string{}
+	productGUID := func(listingID int64) string {
+		if g, ok := guidCache[listingID]; ok {
+			return g
+		}
+		var g string
+		_ = db.QueryRow(`SELECT p.external_id FROM emarket_listing_product lp JOIN emarket_products p ON p.id=lp.product_id WHERE lp.listing_id=$1`, listingID).Scan(&g)
+		guidCache[listingID] = g
+		return g
+	}
+
+	var b strings.Builder
+	b.WriteString(head)
+	var exported []int64
+	for _, o := range orders {
+		cur := o.currency
+		if cur == "" {
+			cur = "RUB"
+		}
+		b.WriteString(`<Документ>`)
+		b.WriteString(`<Ид>` + emarket1cXMLEscape(o.publicID) + `</Ид>`)
+		b.WriteString(`<Номер>` + emarket1cXMLEscape(o.publicID) + `</Номер>`)
+		b.WriteString(`<Дата>` + o.created.Format("2006-01-02") + `</Дата>`)
+		b.WriteString(`<Время>` + o.created.Format("15:04:05") + `</Время>`)
+		b.WriteString(`<ХозОперация>Заказ товара</ХозОперация>`)
+		b.WriteString(`<Роль>Продавец</Роль>`)
+		b.WriteString(`<Валюта>` + emarket1cXMLEscape(cur) + `</Валюта>`)
+		b.WriteString(`<Курс>1</Курс>`)
+		b.WriteString(fmt.Sprintf(`<Сумма>%.2f</Сумма>`, o.total))
+		b.WriteString(`<Контрагенты><Контрагент>`)
+		b.WriteString(`<Ид>` + emarket1cXMLEscape(o.publicID) + `-buyer</Ид>`)
+		b.WriteString(`<Наименование>` + emarket1cXMLEscape(o.buyer) + `</Наименование>`)
+		b.WriteString(`<ПолноеНаименование>` + emarket1cXMLEscape(o.buyer) + `</ПолноеНаименование>`)
+		b.WriteString(`<Роль>Покупатель</Роль>`)
+		b.WriteString(`</Контрагент></Контрагенты>`)
+
+		var items []ordItem
+		_ = json.Unmarshal([]byte(o.itemsJSON), &items)
+		b.WriteString(`<Товары>`)
+		for _, it := range items {
+			guid := productGUID(it.ListingID)
+			if guid == "" {
+				guid = fmt.Sprintf("listing-%d", it.ListingID)
+			}
+			qty := it.Quantity
+			if qty <= 0 {
+				qty = 1
+			}
+			b.WriteString(`<Товар>`)
+			b.WriteString(`<Ид>` + emarket1cXMLEscape(guid) + `</Ид>`)
+			b.WriteString(`<Наименование>` + emarket1cXMLEscape(it.Title) + `</Наименование>`)
+			b.WriteString(fmt.Sprintf(`<ЦенаЗаЕдиницу>%.2f</ЦенаЗаЕдиницу>`, it.Price))
+			b.WriteString(fmt.Sprintf(`<Количество>%d</Количество>`, qty))
+			b.WriteString(fmt.Sprintf(`<Сумма>%.2f</Сумма>`, it.Price*float64(qty)))
+			b.WriteString(`</Товар>`)
+		}
+		b.WriteString(`</Товары>`)
+
+		b.WriteString(`<ЗначенияРеквизитов>`)
+		b.WriteString(`<ЗначениеРеквизита><Наименование>Статус заказа</Наименование><Значение>` + emarket1cXMLEscape(o.status) + `</Значение></ЗначениеРеквизита>`)
+		b.WriteString(`<ЗначениеРеквизита><Наименование>Статус оплаты</Наименование><Значение>` + emarket1cXMLEscape(o.payStatus) + `</Значение></ЗначениеРеквизита>`)
+		if o.comment != "" {
+			b.WriteString(`<ЗначениеРеквизита><Наименование>Комментарий</Наименование><Значение>` + emarket1cXMLEscape(o.comment) + `</Значение></ЗначениеРеквизита>`)
+		}
+		b.WriteString(`</ЗначенияРеквизитов>`)
+		b.WriteString(`</Документ>`)
+		exported = append(exported, o.id)
+	}
+	b.WriteString(tail)
+
+	for _, id := range exported {
+		_, _ = db.Exec(`UPDATE emarket_orders SET exported_at=now(), updated_at=now() WHERE id=$1`, id)
+	}
+	return b.String(), len(exported), nil
 }
 
 // emarket1cResolveSession — авторизация запроса обмена 1С по cookie-сессии или Basic.
