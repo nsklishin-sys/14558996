@@ -28,7 +28,7 @@ aws --version
 Создайте файл `.env.backup` (НЕ коммитить!) с переменными:
 
 ```bash
-export DATABASE_URL=postgresql://user:pass@host:5432/dbname
+export DATABASE_URL=<your-postgres-connection-string>
 export S3_BUCKET=lastop-backups
 export S3_ENDPOINT=https://storage.yandexcloud.net
 export S3_REGION=ru-central1

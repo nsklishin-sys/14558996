@@ -13,7 +13,7 @@ B2B-платформа для логистической отрасли: нов�
 ## Запуск локально
 
 ```bash
-export DATABASE_URL='postgresql://user:password@host:5432/dbname?sslmode=require'
+export DATABASE_URL='<your-postgres-connection-string>'
 go run ./cmd/server
 ```
 
