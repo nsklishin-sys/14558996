@@ -12040,6 +12040,19 @@ func main() {
 
 	// ── КОРЗИНА ──
 	// GET /api/emarket/saved — сохранённые листинги; POST {listing_id} — добавить; DELETE ?listing_id= — убрать
+	// SAVED-V2: хелперы для сериализации nullable значений в JSON
+	nullableFloat := func(v sql.NullFloat64) any {
+		if v.Valid {
+			return v.Float64
+		}
+		return nil
+	}
+	nullableString := func(v sql.NullString) any {
+		if v.Valid {
+			return v.String
+		}
+		return nil
+	}
 	mux.HandleFunc("/api/emarket/saved", func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := authenticatedUserID(w, r, sessions)
 		if !ok {
@@ -12049,7 +12062,7 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			rows, err := db.Query(`
-				SELECT sv.listing_id, sv.created_at,
+				SELECT sv.listing_id, sv.created_at, sv.price_at_save, sv.currency_at_save,
 					l.title, l.kind, l.price, l.currency, l.photos, l.status, l.deleted_at, l.rating, l.reviews_count,
 					s.id, s.name, s.slug, s.logo_url, COALESCE(s.accent_color,'green'), s.region
 				FROM emarket_saved sv
@@ -12068,11 +12081,12 @@ func main() {
 				var listingID, shopID int64
 				var created time.Time
 				var title, kind, currency, photosJSON, listingStatus, shopName, shopSlug, shopLogo, accent, region string
-				var price sql.NullFloat64
+				var price, priceAtSave sql.NullFloat64
+				var currencyAtSave sql.NullString
 				var rating sql.NullFloat64
 				var reviewsCount int
 				var deletedAt sql.NullTime
-				if err := rows.Scan(&listingID, &created,
+				if err := rows.Scan(&listingID, &created, &priceAtSave, &currencyAtSave,
 					&title, &kind, &price, &currency, &photosJSON, &listingStatus, &deletedAt, &rating, &reviewsCount,
 					&shopID, &shopName, &shopSlug, &shopLogo, &accent, &region); err != nil {
 					continue
@@ -12092,23 +12106,30 @@ func main() {
 					ratingVal = rating.Float64
 				}
 				available := !deletedAt.Valid && listingStatus == "active"
+				priceChanged := price.Valid && priceAtSave.Valid && price.Float64 != priceAtSave.Float64
+				if !priceChanged && currencyAtSave.Valid {
+					priceChanged = currencyAtSave.String != currency
+				}
 				items = append(items, map[string]any{
-					"listing_id":    listingID,
-					"created_at":    created,
-					"title":         title,
-					"kind":          kind,
-					"price":         priceVal,
-					"currency":      currency,
-					"photo":         photo,
-					"available":     available,
-					"rating":        ratingVal,
-					"reviews_count": reviewsCount,
-					"shop_id":       shopID,
-					"shop_name":     shopName,
-					"shop_slug":     shopSlug,
-					"shop_logo":     shopLogo,
-					"shop_accent":   accent,
-					"shop_region":   region,
+					"listing_id":       listingID,
+					"created_at":       created,
+					"title":            title,
+					"kind":             kind,
+					"price":            priceVal,
+					"currency":         currency,
+					"photo":            photo,
+					"available":        available,
+					"rating":           ratingVal,
+					"reviews_count":    reviewsCount,
+					"shop_id":          shopID,
+					"shop_name":        shopName,
+					"shop_slug":        shopSlug,
+					"shop_logo":        shopLogo,
+					"shop_accent":      accent,
+					"shop_region":      region,
+					"price_at_save":    nullableFloat(priceAtSave),
+					"currency_at_save": nullableString(currencyAtSave),
+					"price_changed":    priceChanged,
 				})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"items": items})
@@ -12122,7 +12143,9 @@ func main() {
 				writeError(w, http.StatusBadRequest, "listing_id обязателен")
 				return
 			}
-			if _, err := db.Exec(`INSERT INTO emarket_saved (user_id, listing_id) VALUES ($1,$2) ON CONFLICT (user_id, listing_id) DO NOTHING`, userID, body.ListingID); err != nil {
+			if _, err := db.Exec(`INSERT INTO emarket_saved (user_id, listing_id, price_at_save, currency_at_save)
+				SELECT $1, $2, l.price, l.currency FROM emarket_listings l WHERE l.id=$2
+				ON CONFLICT (user_id, listing_id) DO NOTHING`, userID, body.ListingID); err != nil {
 				log.Printf("[emarket/saved POST] %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
@@ -12512,17 +12535,75 @@ func main() {
 		}
 	})
 
-	// DELETE /api/emarket/drafts/{id} — удалить заявку
+	// PATCH /api/emarket/drafts/{id} — переименовать; DELETE — удалить; POST /duplicate — скопировать
 	mux.HandleFunc("/api/emarket/drafts/", func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := authenticatedUserID(w, r, sessions)
 		if !ok {
 			writeError(w, http.StatusUnauthorized, "Требуется авторизация")
 			return
 		}
-		idStr := strings.TrimPrefix(r.URL.Path, "/api/emarket/drafts/")
-		draftID, err := strconv.ParseInt(idStr, 10, 64)
+		path := strings.TrimPrefix(r.URL.Path, "/api/emarket/drafts/")
+		parts := strings.Split(path, "/")
+		draftID, err := strconv.ParseInt(parts[0], 10, 64)
 		if err != nil || draftID == 0 {
 			writeError(w, http.StatusBadRequest, "Некорректный ID")
+			return
+		}
+		// /api/emarket/drafts/{id}/duplicate
+		if len(parts) == 2 && parts[1] == "duplicate" && r.Method == http.MethodPost {
+			var name, snapshotJSON string
+			err := db.QueryRow(`SELECT name, snapshot::text FROM emarket_drafts WHERE id=$1 AND user_id=$2`, draftID, userID).Scan(&name, &snapshotJSON)
+			if err == sql.ErrNoRows {
+				writeError(w, http.StatusNotFound, "Заявка не найдена")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			newName := name + " (копия)"
+			if len(newName) > 120 {
+				newName = newName[:120]
+			}
+			var newID int64
+			if err := db.QueryRow(`INSERT INTO emarket_drafts (user_id, name, snapshot) VALUES ($1, $2, $3::jsonb) RETURNING id`, userID, newName, snapshotJSON).Scan(&newID); err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "id": newID, "name": newName})
+			return
+		}
+		if len(parts) != 1 {
+			writeError(w, http.StatusNotFound, "Заявка не найдена")
+			return
+		}
+		// /api/emarket/drafts/{id} — PATCH (rename) или DELETE
+		if r.Method == http.MethodPatch {
+			var body struct {
+				Name string `json:"name"`
+			}
+			if err := decodeJSON(w, r, &body); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			newName := strings.TrimSpace(body.Name)
+			if newName == "" {
+				writeError(w, http.StatusBadRequest, "Имя не может быть пустым")
+				return
+			}
+			if len(newName) > 120 {
+				newName = newName[:120]
+			}
+			res, err := db.Exec(`UPDATE emarket_drafts SET name=$1 WHERE id=$2 AND user_id=$3`, newName, draftID, userID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				writeError(w, http.StatusNotFound, "Заявка не найдена")
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "name": newName})
 			return
 		}
 		if r.Method != http.MethodDelete {
@@ -20104,6 +20185,9 @@ CREATE TABLE IF NOT EXISTS emarket_saved (
     UNIQUE (user_id, listing_id)
 );
 CREATE INDEX IF NOT EXISTS emarket_saved_user_idx ON emarket_saved(user_id, created_at DESC);
+-- SAVED-V2: snapshot цены и валюты на момент сохранения — для индикатора изменения цены
+ALTER TABLE emarket_saved ADD COLUMN IF NOT EXISTS price_at_save NUMERIC;
+ALTER TABLE emarket_saved ADD COLUMN IF NOT EXISTS currency_at_save TEXT;
 
 CREATE TABLE IF NOT EXISTS emarket_saved_shops (
     id BIGSERIAL PRIMARY KEY,
