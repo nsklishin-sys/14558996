@@ -20558,6 +20558,7 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAU
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_at TIMESTAMPTZ;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'none';
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS wms_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS verified_by BIGINT;
@@ -20718,6 +20719,81 @@ CREATE TABLE IF NOT EXISTS emarket_order_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS emarket_order_events_order_idx ON emarket_order_events(order_id, created_at DESC);
+
+-- ═══ WMS (онлайн-склад) ═══
+-- Складская номенклатура (SKU) — ядро модуля, синхронизируется с 1С по external_id.
+CREATE TABLE IF NOT EXISTS emarket_products (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    sku TEXT NOT NULL DEFAULT '',
+    barcode TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    unit TEXT NOT NULL DEFAULT 'шт',
+    external_id TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    price NUMERIC(14,2) NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    weight NUMERIC(12,3) NOT NULL DEFAULT 0,
+    volume NUMERIC(12,3) NOT NULL DEFAULT 0,
+    low_stock_threshold NUMERIC(14,3) NOT NULL DEFAULT 0,
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_products_shop_idx ON emarket_products(shop_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_products_shop_sku_idx ON emarket_products(shop_id, sku) WHERE sku <> '' AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS emarket_products_extid_idx ON emarket_products(shop_id, external_id) WHERE external_id <> '';
+
+-- Склады (точки хранения) магазина. Мультисклад.
+CREATE TABLE IF NOT EXISTS emarket_warehouses (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    sort INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_warehouses_shop_idx ON emarket_warehouses(shop_id, sort);
+
+-- Остатки по паре (товар, склад). Доступно к продаже = qty - reserved_qty.
+CREATE TABLE IF NOT EXISTS emarket_stock (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES emarket_products(id) ON DELETE CASCADE,
+    warehouse_id BIGINT NOT NULL REFERENCES emarket_warehouses(id) ON DELETE CASCADE,
+    qty NUMERIC(14,3) NOT NULL DEFAULT 0,
+    reserved_qty NUMERIC(14,3) NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (product_id, warehouse_id)
+);
+CREATE INDEX IF NOT EXISTS emarket_stock_product_idx ON emarket_stock(product_id);
+CREATE INDEX IF NOT EXISTS emarket_stock_warehouse_idx ON emarket_stock(warehouse_id);
+
+-- Журнал движений (неизменяемый). type: receipt/shipment/adjustment/reserve/release/writeoff/transfer.
+CREATE TABLE IF NOT EXISTS emarket_stock_moves (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    product_id BIGINT NOT NULL REFERENCES emarket_products(id) ON DELETE CASCADE,
+    warehouse_id BIGINT REFERENCES emarket_warehouses(id) ON DELETE SET NULL,
+    to_warehouse_id BIGINT REFERENCES emarket_warehouses(id) ON DELETE SET NULL,
+    type TEXT NOT NULL,
+    qty NUMERIC(14,3) NOT NULL DEFAULT 0,
+    ref_type TEXT NOT NULL DEFAULT '',
+    ref_id BIGINT,
+    comment TEXT NOT NULL DEFAULT '',
+    actor_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_stock_moves_product_idx ON emarket_stock_moves(product_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS emarket_stock_moves_shop_idx ON emarket_stock_moves(shop_id, created_at DESC);
+
+-- Связь листинг ↔ SKU (1:1 для старта; листинг уникален).
+CREATE TABLE IF NOT EXISTS emarket_listing_product (
+    listing_id BIGINT PRIMARY KEY REFERENCES emarket_listings(id) ON DELETE CASCADE,
+    product_id BIGINT NOT NULL REFERENCES emarket_products(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_listing_product_product_idx ON emarket_listing_product(product_id);
 CREATE TABLE IF NOT EXISTS emarket_ads (
   id BIGSERIAL PRIMARY KEY,
   placement TEXT NOT NULL DEFAULT 'banner',
