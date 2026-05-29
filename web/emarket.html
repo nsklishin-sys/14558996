@@ -333,7 +333,7 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
     }
   }catch(e){}
   bindSearch();
-  loadDicts();
+  loadDicts().then(function(){if(EM.mode==='shops')renderShopChips();});
   renderSortMenu();
   reloadFeed();
 })();
