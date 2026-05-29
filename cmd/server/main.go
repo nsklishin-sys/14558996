@@ -14290,6 +14290,92 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"moves": moves})
 	})
 
+	// ── 1С CommerceML обмен (WMS-5). Публичный endpoint со своей авторизацией (Basic → cookie-сессия). ──
+	mux.HandleFunc("/api/emarket/1c-exchange", func(w http.ResponseWriter, r *http.Request) {
+		typ := r.URL.Query().Get("type")
+		mode := r.URL.Query().Get("mode")
+		reply := func(s string) {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = io.WriteString(w, s)
+		}
+		if mode == "checkauth" {
+			login, pass, ok := r.BasicAuth()
+			if !ok || login == "" {
+				reply("failure\nНе переданы учётные данные")
+				return
+			}
+			var shopID int64
+			var hash string
+			var enabled bool
+			err := db.QueryRow(`SELECT shop_id, exchange_password_hash, enabled FROM emarket_1c_exchange WHERE exchange_login=$1`, login).Scan(&shopID, &hash, &enabled)
+			if err != nil || !enabled || hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(pass)) != nil {
+				reply("failure\nНеверный логин или пароль")
+				return
+			}
+			tokenBytes := make([]byte, 16)
+			if _, e := rand.Read(tokenBytes); e != nil {
+				reply("failure\nОшибка сервера")
+				return
+			}
+			token := hex.EncodeToString(tokenBytes)
+			_, _ = db.Exec(`UPDATE emarket_1c_exchange SET session_token=$1, session_expires=now()+interval '24 hours', updated_at=now() WHERE shop_id=$2`, token, shopID)
+			reply("success\nlastop1c\n" + token)
+			return
+		}
+
+		shopID, ok := emarket1cResolveSession(db, r)
+		if !ok {
+			reply("failure\nСессия не авторизована")
+			return
+		}
+
+		switch mode {
+		case "init":
+			reply("zip=no\nfile_limit=104857600")
+		case "file":
+			if r.Method != http.MethodPost {
+				reply("failure\nОжидался POST")
+				return
+			}
+			filename := filepath.Base(r.URL.Query().Get("filename"))
+			if filename == "" || filename == "." || filename == "/" || strings.Contains(filename, "..") {
+				reply("failure\nНекорректное имя файла")
+				return
+			}
+			dir := filepath.Join(os.TempDir(), "lastop1c", typ, strconv.FormatInt(shopID, 10))
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				reply("failure\nОшибка хранилища")
+				return
+			}
+			f, err := os.OpenFile(filepath.Join(dir, filename), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+			if err != nil {
+				reply("failure\nОшибка записи")
+				return
+			}
+			defer f.Close()
+			r.Body = http.MaxBytesReader(w, r.Body, 104857600)
+			if _, err := io.Copy(f, r.Body); err != nil {
+				reply("failure\nОшибка приёма файла")
+				return
+			}
+			reply("success")
+		case "import":
+			// Парсинг import.xml/offers.xml добавляется в WMS-5b/5c. Пока подтверждаем приём.
+			fn := filepath.Base(r.URL.Query().Get("filename"))
+			_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, "принят файл "+fn, shopID)
+			reply("success")
+		case "query":
+			// Выгрузка заказов добавляется в WMS-5d. Пока — пустой валидный CommerceML.
+			w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+			_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?>`+"\n"+`<КоммерческаяИнформация ВерсияСхемы="2.05"></КоммерческаяИнформация>`)
+		case "success":
+			_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_export_at=now(), updated_at=now() WHERE shop_id=$1`, shopID)
+			reply("success")
+		default:
+			reply("failure\nНеизвестный режим")
+		}
+	})
+
 	mux.HandleFunc("/api/emarket/shop-listings", func(w http.ResponseWriter, r *http.Request) {
 		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
 		if shopID == 0 {
@@ -36172,6 +36258,25 @@ func emarketSettleOrderReserves(db *sql.DB, shopID, orderID int64, moveType stri
 			log.Printf("[wms/settle %s order=%d product=%d] %v", moveType, orderID, l.pid, err)
 		}
 	}
+}
+
+// emarket1cResolveSession — авторизация запроса обмена 1С по cookie-сессии или Basic.
+func emarket1cResolveSession(db *sql.DB, r *http.Request) (int64, bool) {
+	if c, err := r.Cookie("lastop1c"); err == nil && c.Value != "" {
+		var shopID int64
+		if err := db.QueryRow(`SELECT shop_id FROM emarket_1c_exchange WHERE session_token=$1 AND session_expires>now() AND enabled`, c.Value).Scan(&shopID); err == nil {
+			return shopID, true
+		}
+	}
+	if login, pass, ok := r.BasicAuth(); ok && login != "" {
+		var shopID int64
+		var hash string
+		var enabled bool
+		if err := db.QueryRow(`SELECT shop_id, exchange_password_hash, enabled FROM emarket_1c_exchange WHERE exchange_login=$1`, login).Scan(&shopID, &hash, &enabled); err == nil && enabled && hash != "" && bcrypt.CompareHashAndPassword([]byte(hash), []byte(pass)) == nil {
+			return shopID, true
+		}
+	}
+	return 0, false
 }
 
 // emarketListingStock — статус наличия листинга по привязанному SKU.
