@@ -70,8 +70,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ld-btn.ghost{background:var(--gp);color:var(--tm);border:1.5px solid var(--bdr)}
 .ld-btn.ghost:hover{background:var(--gl);color:var(--g);border-color:var(--gb)}
 .ld-btn.saved{background:var(--gl);color:var(--g);border-color:var(--gb)}
-.ld-soon{position:relative}
-.ld-soon::after{content:'скоро';position:absolute;top:-7px;right:-6px;background:var(--gmt);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:99px;text-transform:uppercase}
+/* EM-LISTING-WIRE: ld-soon больше не нужен — корзина и сохранения подключены к работающему бэку */
 .ld-info-desc{margin-top:4px;padding-top:16px;border-top:1px solid var(--bdr)}
 .ld-info-desc-h{font-size:13px;font-weight:800;margin-bottom:8px}
 
@@ -174,6 +173,7 @@ async function loadListing(){
     LD.listing=d.listing;
     if(!LD.listing)throw new Error('empty');
     LD.gallery=Array.isArray(LD.listing.photos)?LD.listing.photos:[];
+    LD.saved=!!LD.listing.is_saved;
     render();
     loadShop(LD.listing.shop_id);
   }catch(e){
@@ -238,10 +238,10 @@ function render(){
         +priceHTML(l.price,l.currency)
         +(l.payment_method?'<div class="ld-pay">Оплата: '+esc(l.payment_method)+'</div>':'<div style="height:8px"></div>')
         +'<div class="ld-actions">'
-          +'<button class="ld-btn primary ld-soon" onclick="addToCart()"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>В корзину</button>'
+          +'<button class="ld-btn primary" id="ldCartBtn" onclick="addToCart()"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>В корзину</button>'
           +'<button class="ld-btn ghost" onclick="contactSeller()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Связаться</button>'
           +'<button class="ld-btn primary" onclick="openLeadModal()"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>Оставить заявку</button>'
-          +'<button class="ld-btn ghost ld-soon" id="ldSaveBtn" onclick="toggleSave()"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'
+          +'<button class="ld-btn ghost'+(LD.saved?' saved':'')+'" id="ldSaveBtn" onclick="toggleSave()" title="'+(LD.saved?'Убрать из сохранённого':'Сохранить')+'"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" fill="'+(LD.saved?'currentColor':'none')+'"/></svg></button>'
         +'</div>'
         +'<div class="ld-info-desc"><div class="ld-info-desc-h">Описание</div><div class="ld-desc">'+(l.description?esc(l.description):'<span style="color:var(--gmt)">Описание не указано</span>')+'</div></div>'
       +'</div>'
@@ -293,12 +293,39 @@ async function loadOther(shopId){
   }catch(e){}
 }
 
-function addToCart(){showToast('Корзина появится в ближайшем обновлении');}
-function toggleSave(){
-  LD.saved=!LD.saved;
+async function addToCart(){
+  var btn=document.getElementById('ldCartBtn');
+  if(!btn||btn.disabled)return;
+  btn.disabled=true;
+  try{
+    var r=await lastopFetch(API+'/emarket/cart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id,quantity:1})});
+    if(r.status===401){showToast('Войдите, чтобы добавлять в корзину');return;}
+    if(!r.ok){showToast('Не удалось добавить в корзину');return;}
+    showToast('Добавлено в корзину');
+  }catch(e){showToast('Сеть недоступна');}
+  finally{btn.disabled=false;}
+}
+async function toggleSave(){
   var btn=document.getElementById('ldSaveBtn');
-  if(btn)btn.classList.toggle('saved',LD.saved);
-  showToast(LD.saved?'Добавлено в сохранённое (скоро)':'Убрано из сохранённого');
+  if(!btn||btn.disabled)return;
+  btn.disabled=true;
+  try{
+    var r;
+    if(LD.saved){
+      r=await lastopFetch(API+'/emarket/saved?listing_id='+LD.id,{method:'DELETE'});
+    }else{
+      r=await lastopFetch(API+'/emarket/saved',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id})});
+    }
+    if(r.status===401){showToast('Войдите, чтобы сохранять');return;}
+    if(!r.ok){showToast('Не удалось сохранить');return;}
+    LD.saved=!LD.saved;
+    btn.classList.toggle('saved',LD.saved);
+    btn.title=LD.saved?'Убрать из сохранённого':'Сохранить';
+    var path=btn.querySelector('path');
+    if(path)path.setAttribute('fill',LD.saved?'currentColor':'none');
+    showToast(LD.saved?'Добавлено в сохранённое':'Убрано из сохранённого');
+  }catch(e){showToast('Сеть недоступна');}
+  finally{btn.disabled=false;}
 }
 function contactSeller(){
   if(LD.shop&&LD.shop.owner_type==='user'&&LD.shop.owner_id){
