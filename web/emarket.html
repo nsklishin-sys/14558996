@@ -65,7 +65,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 /* ── Тулбар: вкладки + поиск ── */
 .em-tabs{display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
-.em-sortrow{display:flex;justify-content:flex-start;flex-shrink:0}
+.em-sortrow{display:flex;justify-content:flex-start;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
 .em-switch{display:inline-flex;background:var(--w);border:1px solid var(--bdr);border-radius:var(--rm);padding:3px;box-shadow:var(--sh)}
 .em-switch button{border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--gmt);padding:8px 16px;border-radius:9px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px}
 .em-switch button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -88,15 +88,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-sortmenu button.active{background:var(--gl);color:var(--g);font-weight:700}
 
 /* ── Кнопка фильтров (только в поиске) ── */
-/* EM-CHIPS-FILTERS: чипы для фильтра магазинов по региону и направлению */
-.em-chips-wrap{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
-.em-chips-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.em-chips-label{font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;padding-right:4px}
-.em-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--w);font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);cursor:pointer;transition:all .15s;white-space:nowrap}
-.em-chip:hover{border-color:var(--gb);color:var(--g)}
-.em-chip.active{background:var(--g);border-color:var(--g);color:#fff}
-.em-chip .cnt{background:rgba(0,0,0,.06);border-radius:99px;padding:0 6px;font-size:10px;font-weight:800;color:inherit}
-.em-chip.active .cnt{background:rgba(255,255,255,.22)}
+/* EM-FILTERS-SELECTS: компактные селекты «Регион» и «Направление» в одной строке с сортировкой (только для shops) */
+.em-shop-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.em-shop-filters:empty{display:none}
+.em-fselect.lt-sel-wrap{width:auto;flex-shrink:0}
+.em-fselect.lt-sel-wrap .lt-sel-btn{height:42px;border-radius:var(--rm);padding:0 34px 0 14px;font-size:13px;font-weight:600;min-width:170px;color:var(--tm)}
+.em-fselect.lt-sel-wrap .lt-sel-btn:hover{border-color:var(--gb);color:var(--g)}
 .em-filterbtn{height:42px;padding:0 16px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;white-space:nowrap;flex-shrink:0}
 .em-filterbtn:hover{border-color:var(--gb);color:var(--g)}
 .em-filterbtn.active{background:var(--g);border-color:var(--g);color:#fff}
@@ -310,9 +307,8 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
       '<button class="em-filterbtn" id="emFilterBtn" style="display:none" onclick="toggleFilters()"><svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Фильтры<span class="cnt" id="emFilterCnt" style="display:none">0</span></button>'+
     '</div>'+
     '<div class="em-filters" id="emFilters"></div>'+
-    '<div class="em-chips-wrap" id="emShopChips" style="display:none"></div>'+
     '<div class="em-featured" id="emFeatured" style="display:none"></div>'+
-    '<div class="em-sortrow"><div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div></div>'+
+    '<div class="em-sortrow"><div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div><div class="em-shop-filters" id="emShopFilters"></div></div>'+
     '<div class="em-feedwrap"><div class="em-grid" id="emGrid"></div></div>';
 
   document.addEventListener('click',function(e){
@@ -333,7 +329,7 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
     }
   }catch(e){}
   bindSearch();
-  loadDicts().then(function(){if(EM.mode==='shops')renderShopChips();});
+  loadDicts().then(function(){if(EM.mode==='shops')renderShopFilters();});
   renderSortMenu();
   reloadFeed();
 })();
@@ -477,7 +473,7 @@ function setMode(m){
   document.getElementById('emFilters').classList.remove('open');
   document.getElementById('emFilterBtn').classList.remove('active');
   updateSearchUI();
-  renderShopChips();
+  renderShopFilters();
   renderSortMenu();
   loadFeatured();
   reloadFeed();
@@ -558,7 +554,7 @@ function applyFilters(){
 }
 function resetFilters(){
   EM.cat='';EM.region='';EM.direction='';EM.priceFrom='';EM.priceTo='';
-  renderFilters();renderShopChips();updateFilterCount();reloadFeed();
+  renderFilters();renderShopFilters();updateFilterCount();reloadFeed();
 }
 function updateFilterCount(){
   var n=0;
@@ -602,7 +598,7 @@ async function loadListings(grid){
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 async function loadShops(grid){
-  renderShopChips();
+  renderShopFilters();
   var qs=[];
   if(EM.search)qs.push('q='+encodeURIComponent(EM.search));
   if(EM.region)qs.push('region='+encodeURIComponent(EM.region));
@@ -623,33 +619,28 @@ async function loadShops(grid){
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 
-function renderShopChips(){
-  var wrap=document.getElementById('emShopChips');
+function renderShopFilters(){
+  var wrap=document.getElementById('emShopFilters');
   if(!wrap)return;
-  if(EM.mode!=='shops'){wrap.style.display='none';wrap.innerHTML='';return;}
-  var html='';
-  // Регион
+  if(EM.mode!=='shops'){wrap.innerHTML='';return;}
+  var parts=[];
   if(EM.regions&&EM.regions.length){
-    var rChips='<button class="em-chip'+(EM.region===''?' active':'')+'" onclick="setShopRegion(\'\')">Все</button>';
-    rChips+=EM.regions.map(function(r){
-      return '<button class="em-chip'+(EM.region===r.key?' active':'')+'" onclick="setShopRegion(\''+esc(r.key).replace(/'/g,"\\'")+'\')">'+esc(r.label)+'</button>';
+    var rOpts='<option value="">Все регионы</option>'+EM.regions.map(function(r){
+      return '<option value="'+esc(r.key)+'"'+(EM.region===r.key?' selected':'')+'>'+esc(r.label)+'</option>';
     }).join('');
-    html+='<div class="em-chips-row"><span class="em-chips-label">Регион</span>'+rChips+'</div>';
+    parts.push('<select class="em-fselect" data-lt-select onchange="setShopRegion(this.value)">'+rOpts+'</select>');
   }
-  // Направление
   if(EM.directions&&EM.directions.length){
-    var dChips='<button class="em-chip'+(EM.direction===''?' active':'')+'" onclick="setShopDirection(\'\')">Все</button>';
-    dChips+=EM.directions.map(function(d){
-      var cnt=d.count?' <span class="cnt">'+d.count+'</span>':'';
-      return '<button class="em-chip'+(EM.direction===d.key?' active':'')+'" onclick="setShopDirection(\''+esc(d.key).replace(/'/g,"\\'")+'\')">'+esc(d.label)+cnt+'</button>';
+    var dOpts='<option value="">Все направления</option>'+EM.directions.map(function(d){
+      var cnt=d.count?' ('+d.count+')':'';
+      return '<option value="'+esc(d.key)+'"'+(EM.direction===d.key?' selected':'')+'>'+esc(d.label)+cnt+'</option>';
     }).join('');
-    html+='<div class="em-chips-row"><span class="em-chips-label">Направление</span>'+dChips+'</div>';
+    parts.push('<select class="em-fselect" data-lt-select onchange="setShopDirection(this.value)">'+dOpts+'</select>');
   }
-  if(html){wrap.innerHTML=html;wrap.style.display='flex';}
-  else{wrap.style.display='none';wrap.innerHTML='';}
+  wrap.innerHTML=parts.join('');
 }
-function setShopRegion(v){EM.region=v;renderShopChips();updateFilterCount();reloadFeed();}
-function setShopDirection(v){EM.direction=v;renderShopChips();updateFilterCount();reloadFeed();}
+function setShopRegion(v){EM.region=v;updateFilterCount();reloadFeed();}
+function setShopDirection(v){EM.direction=v;updateFilterCount();reloadFeed();}
 function openListing(id){location.href='/emarket-listing?id='+id;}
 function openShop(slug){if(!slug){showToast('Магазин недоступен');return;}location.href='/shop/'+slug;}
 
