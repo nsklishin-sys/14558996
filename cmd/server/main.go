@@ -11146,11 +11146,13 @@ func main() {
 			since := time.Now().AddDate(0, 0, -(days - 1))
 			sinceDay := time.Date(since.Year(), since.Month(), since.Day(), 0, 0, 0, 0, since.Location())
 
-			// посуточная агрегация
+			// посуточная агрегация — FUNNEL-BACK: добавлены orders + orders_done
 			type dayRow struct {
 				SiteViews    int `json:"site_views"`
 				ListingViews int `json:"listing_views"`
 				Leads        int `json:"leads"`
+				Orders       int `json:"orders"`
+				OrdersDone   int `json:"orders_done"`
 			}
 			byDay := map[string]*dayRow{}
 			rows, err := db.Query(`SELECT to_char(created_at,'YYYY-MM-DD') d, event_type, count(*)
@@ -11181,9 +11183,46 @@ func main() {
 			}
 			rows.Close()
 
-			// массив по дням (заполняем нули для дней без событий)
+			// FUNNEL-BACK: заказы по дням (created_at) и выполненные (events status_change → done)
+			orows, err := db.Query(`SELECT to_char(created_at,'YYYY-MM-DD') d, count(*)
+				FROM emarket_orders WHERE shop_id=$1 AND created_at>=$2 GROUP BY d`, shopID, sinceDay)
+			if err == nil {
+				for orows.Next() {
+					var d string
+					var c int
+					if err := orows.Scan(&d, &c); err != nil {
+						continue
+					}
+					if byDay[d] == nil {
+						byDay[d] = &dayRow{}
+					}
+					byDay[d].Orders = c
+				}
+				orows.Close()
+			}
+			drows, err := db.Query(`SELECT to_char(created_at,'YYYY-MM-DD') d, count(*)
+				FROM emarket_order_events
+				WHERE event_type='status_change' AND to_value='done' AND created_at>=$2
+				  AND order_id IN (SELECT id FROM emarket_orders WHERE shop_id=$1) GROUP BY d`, shopID, sinceDay)
+			if err == nil {
+				for drows.Next() {
+					var d string
+					var c int
+					if err := drows.Scan(&d, &c); err != nil {
+						continue
+					}
+					if byDay[d] == nil {
+						byDay[d] = &dayRow{}
+					}
+					byDay[d].OrdersDone = c
+				}
+				drows.Close()
+			}
+
+			// массив по дням (заполняем нули для дней без событий) — FUNNEL-BACK: + orders/orders_done
 			daily := []map[string]any{}
 			totalSiteViews, totalListingViews, totalLeads := 0, 0, 0
+			totalOrders, totalOrdersDone := 0, 0
 			for i := 0; i < days; i++ {
 				d := sinceDay.AddDate(0, 0, i).Format("2006-01-02")
 				r := byDay[d]
@@ -11193,8 +11232,11 @@ func main() {
 				totalSiteViews += r.SiteViews
 				totalListingViews += r.ListingViews
 				totalLeads += r.Leads
+				totalOrders += r.Orders
+				totalOrdersDone += r.OrdersDone
 				daily = append(daily, map[string]any{
 					"date": d, "site_views": r.SiteViews, "listing_views": r.ListingViews, "leads": r.Leads,
+					"orders": r.Orders, "orders_done": r.OrdersDone,
 				})
 			}
 
@@ -11237,11 +11279,96 @@ func main() {
 				srows.Close()
 			}
 
+			// FUNNEL-BACK: метрики заказов за период (created_at в окне)
+			ordersByStatus := map[string]int{}
+			revenueByCurrency := map[string]float64{}
+			doneByCurrency := map[string]int{}
+			brows, err := db.Query(`SELECT status, total_amount, currency FROM emarket_orders
+				WHERE shop_id=$1 AND created_at>=$2`, shopID, sinceDay)
+			if err == nil {
+				for brows.Next() {
+					var st, cur string
+					var amt sql.NullFloat64
+					if err := brows.Scan(&st, &amt, &cur); err != nil {
+						continue
+					}
+					if st == "" {
+						st = "new"
+					}
+					if cur == "" {
+						cur = "RUB"
+					}
+					ordersByStatus[st]++
+					if st == "done" && amt.Valid {
+						revenueByCurrency[cur] += amt.Float64
+						doneByCurrency[cur]++
+					}
+				}
+				brows.Close()
+			}
+			avgTicketByCurrency := map[string]float64{}
+			for cur, sum := range revenueByCurrency {
+				if doneByCurrency[cur] > 0 {
+					avgTicketByCurrency[cur] = sum / float64(doneByCurrency[cur])
+				}
+			}
+			ordersTotal, ordersDoneTotal, ordersCancelledTotal := 0, 0, 0
+			for st, c := range ordersByStatus {
+				ordersTotal += c
+				if st == "done" {
+					ordersDoneTotal = c
+				}
+				if st == "cancelled" {
+					ordersCancelledTotal = c
+				}
+			}
+
+			// FUNNEL-BACK: воронки — лидовая и заказовая (rate = % от предыдущего шага, у первого 100)
+			mkFunnel := func(steps [][2]any) []map[string]any {
+				out := []map[string]any{}
+				var prev float64
+				for i, s := range steps {
+					key, _ := s[0].(string)
+					cnt, _ := s[1].(int)
+					rate := 0.0
+					if i == 0 {
+						if cnt > 0 {
+							rate = 100
+						}
+					} else if prev > 0 {
+						rate = float64(cnt) / prev * 100
+					}
+					out = append(out, map[string]any{"step": key, "count": cnt, "rate": rate})
+					prev = float64(cnt)
+				}
+				return out
+			}
+			leadFunnel := mkFunnel([][2]any{
+				{"site_views", totalSiteViews}, {"listing_views", totalListingViews}, {"leads", totalLeads},
+			})
+			orderFunnel := mkFunnel([][2]any{
+				{"site_views", totalSiteViews}, {"listing_views", totalListingViews},
+				{"orders", totalOrders}, {"orders_done", totalOrdersDone},
+			})
+
 			writeJSON(w, http.StatusOK, map[string]any{
 				"days":  days,
 				"daily": daily,
 				"totals": map[string]any{
 					"site_views": totalSiteViews, "listing_views": totalListingViews, "leads": totalLeads,
+					"orders": totalOrders, "orders_done": totalOrdersDone,
+				},
+				"orders": map[string]any{
+					"total":      ordersTotal,
+					"done":       ordersDoneTotal,
+					"cancelled":  ordersCancelledTotal,
+					"by_status":  ordersByStatus,
+					"revenue":    revenueByCurrency,
+					"avg_ticket": avgTicketByCurrency,
+				},
+				"funnels": map[string]any{
+					"lead":  leadFunnel,
+					"order": orderFunnel,
 				},
 				"top_listings": topListings,
 				"lead_sources": map[string]any{"form": leadForm, "listing": leadListing},
