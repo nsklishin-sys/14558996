@@ -427,7 +427,6 @@ async function loadFeaturedShops(box){
   }catch(e){box.style.display='none';}
 }
 async function loadFeaturedListings(box){
-  // СЛОЙ 4.5b: эндпоинт featured-listings появится позже. Пока блок скрывается на товарах/услугах.
   var kind=EM.mode==='services'?'service':'product';
   var word=EM.mode==='services'?'услуги':'товары';
   try{
@@ -758,9 +757,9 @@ async function loadMyShop(){
     if(shops.length){
       box.innerHTML=ico+'<div class="rs-shop-t">'+esc(shops[0].name)+'</div><div class="rs-shop-d">Ваш магазин активен.</div><a class="rs-shop-btn" href="/emarket-cabinet?id='+shops[0].id+'">Управление магазином</a>';
     }else if(da&&da.has_access){
-      box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Доступ открыт. Создайте витрину.</div><button class="rs-shop-btn" onclick="showToast(\'Создание магазина — в СЛОЕ 5\')">Открыть магазин</button>';
+      box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Доступ открыт. Создайте витрину.</div><a class="rs-shop-btn" href="/emarket-cabinet">Открыть магазин</a>';
     }else{
-      box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Откройте витрину от своего имени, компании или сообщества.</div><button class="rs-shop-btn" onclick="showToast(\'Оплата доступа — в СЛОЕ 6\')">Получить доступ</button>';
+      box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Откройте витрину от своего имени, компании или сообщества.</div><a class="rs-shop-btn" href="/emarket-cabinet">Получить доступ</a>';
     }
   }catch(e){box.innerHTML=ico+'<div class="rs-shop-t">Мой магазин</div><div class="rs-shop-d">Не удалось загрузить.</div>';}
 }

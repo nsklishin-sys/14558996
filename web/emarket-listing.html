@@ -280,7 +280,7 @@ function setMainImg(i,el){
 function renderRight(){
   var l=LD.listing,s=LD.shop;
   var box=document.getElementById('ldRight');
-  var sellerCard=s?'<div class="rcard"><div class="rcard-h">Продавец</div><div class="ld-seller" onclick="openShop('+s.id+')" style="cursor:pointer"><div class="ld-seller-logo" style="width:42px;height:42px;font-size:15px">'+(s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name)))+'</div><div class="ld-seller-info"><div class="ld-seller-name" style="font-size:14px">'+esc(s.name)+'</div><div class="ld-seller-sub">'+(s.rating>0?('★ '+Number(s.rating).toFixed(1)):'Нет оценок')+'</div></div></div></div>':'';
+  var sellerCard=s?'<div class="rcard"><div class="rcard-h">Продавец</div><div class="ld-seller" onclick="openShop()" style="cursor:pointer"><div class="ld-seller-logo" style="width:42px;height:42px;font-size:15px">'+(s.logo_url?'<img src="'+esc(s.logo_url)+'" alt="">':esc(letter(s.name)))+'</div><div class="ld-seller-info"><div class="ld-seller-name" style="font-size:14px">'+esc(s.name)+'</div><div class="ld-seller-sub">'+(s.rating>0?('★ '+Number(s.rating).toFixed(1)):'Нет оценок')+'</div></div></div></div>':'';
   box.innerHTML=
     sellerCard
     +'<div class="rcard"><div class="rcard-h">О позиции</div>'
@@ -322,6 +322,8 @@ async function addToCart(){
     if(r.status===401){showToast('Войдите, чтобы добавлять в корзину','warn');return;}
     if(!r.ok){showToast('Не удалось добавить в корзину','error');return;}
     showToast('Добавлено в корзину','success');
+    btn.innerHTML='✓ Перейти в корзину';
+    btn.onclick=function(){location.href='/emarket-cart';};
   }catch(e){showToast('Сеть недоступна','error');}
   finally{btn.disabled=false;}
 }
@@ -418,7 +420,7 @@ function contactSeller(){
     showToast('Контакт продавца: '+LD.shop.contact_phone);
   }else{
     showToast('Свяжитесь с продавцом через страницу магазина');
-    if(LD.shop)setTimeout(function(){openShop(LD.shop.id);},900);
+    if(LD.shop)setTimeout(function(){openShop();},900);
   }
 }
 function openLeadModal(){
@@ -459,7 +461,7 @@ async function submitListingLead(e){
   }
   return false;
 }
-function openShop(id){location.href='/emarket-shop?id='+id;}
+function openShop(){if(LD.shop&&LD.shop.slug){location.href='/shop/'+LD.shop.slug;}else{showToast('Магазин недоступен','warn');}}
 </script>
 <div id="leadModalBg" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,25,18,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:18px" onclick="if(event.target===this)closeLeadModal()">
   <div style="background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:0 24px 60px rgba(30,138,76,.2);width:100%;max-width:440px;padding:22px">

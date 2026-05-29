@@ -256,7 +256,7 @@ async function load(){
   const slug=getSlug();
   if(!slug){renderState('Магазин не найден','Не указан адрес магазина');return;}
   try{
-    const r=await fetch(API+'/emarket/site/'+encodeURIComponent(slug),{headers:{Authorization:'Bearer '+(localStorage.getItem('token')||'')}});
+    const r=await fetch(API+'/emarket/site/'+encodeURIComponent(slug),{credentials:'include'});
     if(!r.ok)throw new Error('not found');
     const d=await r.json();
     SITE=d;
@@ -428,7 +428,7 @@ function renderBlock(b,shop,i){
 function renderRight(shop){
   const box=document.getElementById('msRight');
   const logo=shop.site_logo_url?'<img src="'+esc(shop.site_logo_url)+'" alt="">':(shop.logo_url?'<img src="'+esc(shop.logo_url)+'" alt="">':esc(letter(shop.name)));
-  const isOwner=MY_PID&&shop.owner_public_id&&MY_PID===shop.owner_public_id;
+  const isOwner=!!shop.is_owner;
   box.innerHTML=
     '<div class="rcard"><div class="r-shop-head"><div class="r-shop-logo">'+logo+'</div><div><div class="r-shop-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="r-shop-tag">'+esc(shop.tagline)+'</div>':'')+'</div></div>'
       +(shop.rating>0?'<div class="rstat"><span class="l">Рейтинг</span><span class="v">★ '+Number(shop.rating).toFixed(1)+'</span></div>':'')
@@ -470,7 +470,7 @@ async function loadReviews(shopId,blockIdx){
     const r=await fetch(API+'/emarket/reviews?shop_id='+shopId);
     if(r.ok){const d=await r.json();reviews=d.reviews||[];}
   }catch(e){}
-  const isOwner=CUR_SHOP&&MY_PID&&CUR_SHOP.owner_public_id&&MY_PID===CUR_SHOP.owner_public_id;
+  const isOwner=!!(CUR_SHOP&&CUR_SHOP.is_owner);
   const myReview=reviews.find(rv=>rv.author_public_id&&rv.author_public_id===MY_PID);
   let html='';
   // Форма (если залогинен, не владелец)
