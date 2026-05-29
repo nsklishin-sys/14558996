@@ -6479,6 +6479,93 @@ func main() {
 		}
 	}))
 
+	// Модерация всех листингов маркета (5.8): список + блок/разблок/удаление.
+	mux.HandleFunc("/api/admin/emarket/listings", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireAdmin(w, r, db, sessions); !ok {
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			q := strings.TrimSpace(r.URL.Query().Get("q"))
+			statusF := r.URL.Query().Get("status")
+			query := `SELECT l.id, l.title, l.kind, l.price, l.currency, l.status, l.created_at, s.id, s.name, COALESCE(s.slug,'')
+				FROM emarket_listings l JOIN emarket_shops s ON s.id=l.shop_id
+				WHERE l.deleted_at IS NULL`
+			args := []any{}
+			if statusF == "active" || statusF == "hidden" || statusF == "blocked" {
+				args = append(args, statusF)
+				query += fmt.Sprintf(" AND l.status=$%d", len(args))
+			}
+			if q != "" {
+				args = append(args, "%"+q+"%")
+				query += fmt.Sprintf(" AND (l.title ILIKE $%d OR s.name ILIKE $%d)", len(args), len(args))
+			}
+			query += " ORDER BY l.created_at DESC LIMIT 300"
+			rows, err := db.Query(query, args...)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка")
+				return
+			}
+			defer rows.Close()
+			items := []map[string]any{}
+			for rows.Next() {
+				var id, shopID int64
+				var title, kind, currency, status, shopName, shopSlug string
+				var price sql.NullFloat64
+				var createdAt time.Time
+				if err := rows.Scan(&id, &title, &kind, &price, &currency, &status, &createdAt, &shopID, &shopName, &shopSlug); err != nil {
+					continue
+				}
+				var priceVal any
+				if price.Valid {
+					priceVal = price.Float64
+				}
+				items = append(items, map[string]any{
+					"id": id, "title": title, "kind": kind, "price": priceVal, "currency": currency,
+					"status": status, "created_at": createdAt, "shop_id": shopID, "shop_name": shopName, "shop_slug": shopSlug,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"listings": items})
+		case http.MethodPost:
+			var req struct {
+				ListingID int64  `json:"listing_id"`
+				Action    string `json:"action"`
+			}
+			if err := decodeJSON(w, r, &req); err != nil {
+				writeError(w, http.StatusBadRequest, "Некорректный JSON")
+				return
+			}
+			if req.ListingID == 0 {
+				writeError(w, http.StatusBadRequest, "listing_id обязателен")
+				return
+			}
+			switch req.Action {
+			case "block":
+				if _, err := db.Exec(`UPDATE emarket_listings SET status='blocked', updated_at=now() WHERE id=$1`, req.ListingID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "new_status": "blocked"})
+			case "unblock":
+				if _, err := db.Exec(`UPDATE emarket_listings SET status='active', updated_at=now() WHERE id=$1`, req.ListingID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "new_status": "active"})
+			case "delete":
+				if _, err := db.Exec(`UPDATE emarket_listings SET deleted_at=now(), updated_at=now() WHERE id=$1`, req.ListingID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": true})
+			default:
+				writeError(w, http.StatusBadRequest, "Неизвестное действие")
+			}
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+		}
+	}))
+
 	mux.HandleFunc("/api/admin/emarket/access", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		actorID, ok := requireAdmin(w, r, db, sessions)
 		if !ok {
