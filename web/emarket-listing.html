@@ -99,6 +99,25 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ld-empty{text-align:center;padding:24px 12px;color:var(--gmt)}
 .ld-empty svg{width:34px;height:34px;fill:none;stroke:var(--gb);stroke-width:1.4;margin-bottom:8px}
 .ld-empty p{font-size:13px}
+.lr-form{background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:14px;margin-bottom:14px}
+.lr-form-t{font-size:13px;font-weight:700;margin-bottom:10px}
+.lr-stars{display:flex;gap:5px;margin-bottom:10px}
+.lr-star{font-size:26px;line-height:1;color:var(--bdr);cursor:pointer;transition:color .12s,transform .1s}
+.lr-star:hover{transform:scale(1.15)}
+.lr-star.on{color:#E8A52A}
+.lr-ta{width:100%;height:80px;resize:none;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:10px 12px;font-family:inherit;font-size:13px;color:var(--t);background:var(--w);outline:none;line-height:1.5;margin-bottom:10px}
+.lr-ta:focus{border-color:var(--gm)}
+.lr-send{background:var(--g);color:#fff;border:none;padding:9px 18px;border-radius:var(--rm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.lr-send:hover{background:var(--gm)}
+.lr-note{font-size:12px;color:var(--gmt);background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm);padding:10px 12px;margin-bottom:14px}
+.lr-item{padding:12px 0;border-top:1px solid var(--bdr)}
+.lr-item:first-child{border-top:none}
+.lr-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.lr-rating{color:#E8A52A;font-size:13px;letter-spacing:1px}
+.lr-author{font-size:13px;font-weight:700;color:var(--t)}
+.lr-del{margin-left:auto;background:none;border:none;color:var(--gmt);cursor:pointer;font-size:13px;padding:0 4px}
+.lr-del:hover{color:#E04040}
+.lr-text{font-size:13px;color:var(--tm);line-height:1.55}
 
 /* right sidebar */
 .rcard{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px;box-shadow:var(--sh)}
@@ -247,7 +266,8 @@ function render(){
       +'</div>'
     +'</div>'
     +charsHTML
-    +'<div class="ld-sec"><div class="ld-sec-h">Отзывы</div><div class="ld-empty"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Отзывы появятся здесь. Раздел в разработке.</p></div></div>';
+    +'<div class="ld-sec" id="ldReviews"><div class="ld-sec-h">Отзывы</div><div id="ldRevBody"><div class="ld-empty"><p>Загрузка…</p></div></div></div>';
+  loadListingReviews();
 }
 
 function setMainImg(i,el){
@@ -326,6 +346,64 @@ async function toggleSave(){
     showToast(LD.saved?'Добавлено в сохранённое':'Убрано из сохранённого','success');
   }catch(e){showToast('Сеть недоступна','error');}
   finally{btn.disabled=false;}
+}
+var LR_RATING=0, LR_MINE=null;
+async function loadListingReviews(){
+  var box=document.getElementById('ldRevBody');
+  if(!box||!LD.id)return;
+  var canReview=false, reviews=[]; LR_MINE=null;
+  try{
+    var r=await fetch(API+'/emarket/reviews?listing_id='+LD.id,{credentials:'include'});
+    if(r.ok){var d=await r.json();reviews=d.reviews||[];canReview=!!d.can_review;LR_MINE=d.my_review||null;}
+  }catch(e){}
+  var html='';
+  if(canReview){
+    var rt=LR_MINE?(LR_MINE.rating||0):0;
+    LR_RATING=rt;
+    var stars=[1,2,3,4,5].map(function(n){return '<span class="lr-star'+(n<=rt?' on':'')+'" data-n="'+n+'" onclick="setLrStars('+n+')">★</span>';}).join('');
+    html+='<div class="lr-form"><div class="lr-form-t">'+(LR_MINE?'Ваш отзыв':'Оставить отзыв')+'</div>'
+      +'<div class="lr-stars" id="lrStars">'+stars+'</div>'
+      +'<textarea class="lr-ta" id="lrText" placeholder="Поделитесь впечатлением о '+(LD.listing&&LD.listing.kind==="service"?"услуге":"товаре")+'…">'+(LR_MINE?esc(LR_MINE.text||''):'')+'</textarea>'
+      +'<button class="lr-send" onclick="submitListingReview()">'+(LR_MINE?'Обновить отзыв':'Отправить отзыв')+'</button></div>';
+  }else{
+    html+='<div class="lr-note">Отзыв можно оставить после выполненного заказа этой позиции.</div>';
+  }
+  if(reviews.length){
+    html+=reviews.map(function(rv){
+      var n=Math.max(0,Math.min(5,rv.rating||5));
+      var st='★'.repeat(n)+'☆'.repeat(5-n);
+      var mine=LR_MINE&&LR_MINE.id===rv.id;
+      var del=mine?'<button class="lr-del" onclick="deleteListingReview('+rv.id+')" title="Удалить">✕</button>':'';
+      return '<div class="lr-item"><div class="lr-head"><span class="lr-rating">'+st+'</span><span class="lr-author">'+esc(rv.author_name||'Пользователь')+'</span>'+del+'</div>'+(rv.text?'<div class="lr-text">'+esc(rv.text)+'</div>':'')+'</div>';
+    }).join('');
+  }else if(!canReview){
+    html+='<div class="ld-empty"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Пока нет отзывов.</p></div>';
+  }
+  box.innerHTML=html;
+}
+function setLrStars(n){
+  LR_RATING=n;
+  document.querySelectorAll('#lrStars .lr-star').forEach(function(s){s.classList.toggle('on',parseInt(s.dataset.n)<=n);});
+}
+async function submitListingReview(){
+  if(!LR_RATING){showToast('Поставьте оценку','warn');return;}
+  var text=(document.getElementById('lrText')||{}).value||'';
+  try{
+    var r=await lastopFetch(API+'/emarket/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id,rating:LR_RATING,text:text.trim()})});
+    if(!r.ok){var d=await r.json().catch(function(){return {};});throw new Error(d.error||'Ошибка');}
+    showToast('Спасибо за отзыв!','success');
+    loadListingReviews();
+  }catch(e){showToast(e.message||'Не удалось отправить отзыв','error');}
+}
+async function deleteListingReview(reviewId){
+  var ok=await lastopConfirm({title:'Удалить отзыв?',danger:true,confirmText:'Удалить'});
+  if(!ok)return;
+  try{
+    var r=await lastopFetch(API+'/emarket/reviews?id='+reviewId,{method:'DELETE'});
+    if(!r.ok)throw 0;
+    showToast('Отзыв удалён','success');
+    loadListingReviews();
+  }catch(e){showToast('Не удалось удалить','error');}
 }
 function shareListing(){
   var l=LD.listing;if(!l)return;
