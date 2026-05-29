@@ -211,3 +211,23 @@ func (s *S3Storage) PublicURL(key string) string {
 	}
 	return s.publicURL + "/" + strings.TrimLeft(key, "/")
 }
+
+func (s *S3Storage) Get(ctx context.Context, urlOrKey string) ([]byte, error) {
+	key := urlOrKey
+	if s.publicURL != "" && strings.HasPrefix(key, s.publicURL) {
+		key = strings.TrimPrefix(key, s.publicURL)
+	}
+	key = strings.TrimLeft(strings.TrimPrefix(key, "/uploads/"), "/")
+	if key == "" || strings.Contains(key, "..") {
+		return nil, fmt.Errorf("invalid key")
+	}
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer out.Body.Close()
+	return io.ReadAll(out.Body)
+}

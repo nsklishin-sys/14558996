@@ -34,6 +34,10 @@ type Storage interface {
 
 	// Type возвращает тип хранилища ("local" / "s3") — для логов.
 	Type() string
+
+	// Get читает байты ранее сохранённого файла по его публичному URL или ключу.
+	// Используется для серверной обработки изображений (наложение лого на QR).
+	Get(ctx context.Context, urlOrKey string) ([]byte, error)
 }
 
 // New возвращает Storage на основе env-переменных:
@@ -129,7 +133,7 @@ func (s *LocalStorage) Serve(w http.ResponseWriter, r *http.Request) {
 	http.StripPrefix("/uploads/", http.FileServer(http.Dir(s.baseDir))).ServeHTTP(w, r)
 }
 
-// urlPathEscapeName кодирует строку для filename*=UTF-8'' заголовка.
+// urlPathEscapeName кодирует строку для filename*=UTF-8” заголовка.
 // Использует url.PathEscape (заменяет специальные символы на %XX).
 func urlPathEscapeName(s string) string {
 	return urlPkg.PathEscape(s)
@@ -137,4 +141,15 @@ func urlPathEscapeName(s string) string {
 
 func (s *LocalStorage) PublicURL(key string) string {
 	return "/uploads/" + strings.TrimLeft(key, "/")
+}
+
+func (s *LocalStorage) Get(ctx context.Context, urlOrKey string) ([]byte, error) {
+	if strings.HasPrefix(urlOrKey, "http://") || strings.HasPrefix(urlOrKey, "https://") {
+		return nil, fmt.Errorf("local storage: внешний url не поддерживается")
+	}
+	key := strings.TrimLeft(strings.TrimPrefix(urlOrKey, "/uploads/"), "/")
+	if key == "" || strings.Contains(key, "..") {
+		return nil, fmt.Errorf("invalid key")
+	}
+	return os.ReadFile(filepath.Join(s.baseDir, key))
 }
