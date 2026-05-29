@@ -8436,6 +8436,7 @@ func main() {
 				SELECT unnest(tags) AS tag
 				FROM posts
 				WHERE is_deleted = FALSE
+				  AND COALESCE(category, '') <> 'platform-update'
 				  AND created_at >= NOW() - INTERVAL '30 days'
 			) t
 			WHERE tag IS NOT NULL AND length(trim(tag)) > 0
@@ -24505,6 +24506,7 @@ func listFeed(db *sql.DB, authUserID int64, hasAuth bool, limit int, beforeID in
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.is_deleted = FALSE AND p.privacy_level = 'public'
 		  AND p.is_hidden_by_admin = FALSE
+		  AND COALESCE(p.category, '') <> 'platform-update'
 		  AND (p.author_company_id IS NULL OR EXISTS (SELECT 1 FROM companies cc WHERE cc.id = p.author_company_id AND cc.deleted_at IS NULL))`
 	if postType != "" {
 		postType = strings.ToLower(strings.TrimSpace(postType))
@@ -25951,6 +25953,7 @@ func listUserPosts(db *sql.DB, userPublicID string, authUserID int64, hasAuth bo
 		LEFT JOIN post_saves ps ON ps.post_id = p.id AND ps.user_id = $1::bigint
 		LEFT JOIN communities c ON c.id = p.community_id
 		WHERE p.author_id = $2 AND p.is_deleted = FALSE
+		  AND COALESCE(p.category, '') <> 'platform-update'
 		  AND (p.is_hidden_by_admin = FALSE OR p.author_id = $1::bigint)`
 	args := []any{currentUser, targetID, limit + 1}
 	if !isOwner {
