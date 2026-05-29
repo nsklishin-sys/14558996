@@ -403,9 +403,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .subtasks-items{display:flex;flex-direction:column;gap:0;overflow:hidden}
 .subtasks-collapsed .subtasks-items{display:none}
 .subtasks-collapsed .subtasks-add{display:none}
-.block-toggle{display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;user-select:none}
+.block-toggle{display:flex;align-items:flex-start;gap:7px;margin-bottom:8px;cursor:pointer;user-select:none}
 .block-toggle:hover .block-title{opacity:.85}
-.block-chev{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease;flex-shrink:0;margin-left:auto}
+.block-toggle > span:first-child{flex-shrink:0;line-height:1.3}
+.block-title{flex:1;min-width:0;line-height:1.3}
+.block-toggle-right{display:flex;align-items:center;gap:4px;margin-left:auto;flex-shrink:0;margin-top:1px}
+.block-chev{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease;flex-shrink:0}
 .block-collapsed .block-chev{transform:rotate(-90deg)}
 .block-collapsed .rich-content{display:none}
 .subtask-row{
@@ -2549,18 +2552,18 @@ function renderBlocks(){
   wrap.innerHTML = _blocks.map(b => {
     const k = BLOCK_KINDS[b.kind] || BLOCK_KINDS.info;
     const manage = viewerCanManage ? `
-      <div style="display:flex;gap:4px;margin-left:auto">
         <button type="button" onclick="openBlockModal(${b.id})" title="Изменить" style="border:none;background:transparent;cursor:pointer;color:var(--gmt);padding:2px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
-        <button type="button" onclick="deleteBlock(${b.id})" title="Удалить" style="border:none;background:transparent;cursor:pointer;color:var(--gmt);padding:2px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-      </div>` : '';
+        <button type="button" onclick="deleteBlock(${b.id})" title="Удалить" style="border:none;background:transparent;cursor:pointer;color:var(--gmt);padding:2px"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : '';
     const blockCollapsed = localStorage.getItem('project_block_collapsed_' + b.id) === '1';
     const blockClass = 'card' + (blockCollapsed ? ' block-collapsed' : '');
     return `<div class="${blockClass}" id="block-card-${b.id}" style="border-left:3px solid ${k.color};background:${k.bg}">
       <div class="block-toggle" onclick="toggleBlock(${b.id}, event)">
         <span style="font-size:15px">${k.icon}</span>
         <span class="block-title" style="font-size:13px;font-weight:800;color:${k.color}">${esc(b.title || k.label)}</span>
-        ${manage}
-        <svg class="block-chev" style="color:${k.color}" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        <div class="block-toggle-right">
+          ${manage}
+          <svg class="block-chev" style="color:${k.color}" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
       </div>
       <div class="rich-content">${b.content_html || ''}</div>
     </div>`;
