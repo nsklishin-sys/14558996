@@ -2797,6 +2797,41 @@ function setupChatWS(){
       updateMessageReactions(data.message_id, merged);
     }
   });
+  // CHAT-READ-LIVE: собеседник дочитал — обновляем «прочитано/отправлено» у моих сообщений в активном диалоге.
+  window.wsClient.on('chat:read', function(data){
+    if(!data || !data.conversation_public_id) return;
+    const conv = state.conversations.find(c => c.public_id === data.conversation_public_id);
+    if(!conv) return;
+    const myID = state.currentUser && state.currentUser.id;
+    // нас интересует чтение чужим юзером (не моё)
+    if(data.reader_user_id && myID && data.reader_user_id === myID) return;
+    const newReadID = Number(data.last_read_message_id) || 0;
+    if(newReadID > (conv.other_last_read_message_id || 0)){
+      conv.other_last_read_message_id = newReadID;
+    }
+    if(data.read_at) conv.other_last_read_at = data.read_at;
+    // если это активный диалог — точечно обновим индикаторы у видимых моих сообщений
+    if(state.activeConvPublicID === data.conversation_public_id){
+      const otherReadAt = conv.other_last_read_at;
+      let tip = 'Прочитано';
+      if(otherReadAt){
+        const tStr = window.LastopFormat ? window.LastopFormat.time(otherReadAt) : new Date(otherReadAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+        tip = 'Прочитано в ' + tStr;
+      }
+      document.querySelectorAll('.msg.me[data-msg-id]').forEach(function(el){
+        const mid = Number(el.getAttribute('data-msg-id')) || 0;
+        if(mid > 0 && mid <= newReadID){
+          const st = el.querySelector('.msg-status');
+          if(st && !st.classList.contains('read')){
+            st.classList.remove('delivered','sent','sending');
+            st.classList.add('read');
+            st.setAttribute('title', tip);
+          }
+        }
+      });
+    }
+  });
+
   window.wsClient.on('chat:message', function(data){
     if(!data || !data.conversation_public_id || !data.message) return;
     const convPid = data.conversation_public_id;
