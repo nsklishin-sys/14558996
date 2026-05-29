@@ -14364,7 +14364,8 @@ func main() {
 		case "import":
 			fn := filepath.Base(r.URL.Query().Get("filename"))
 			fpath := filepath.Join(os.TempDir(), "lastop1c", typ, strconv.FormatInt(shopID, 10), fn)
-			if typ == "catalog" && strings.HasPrefix(strings.ToLower(fn), "import") {
+			lowerFn := strings.ToLower(fn)
+			if typ == "catalog" && strings.HasPrefix(lowerFn, "import") {
 				n, err := emarket1cImportCatalog(db, shopID, fpath)
 				if err != nil {
 					_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_status=$1, updated_at=now() WHERE shop_id=$2`, "ошибка импорта каталога: "+err.Error(), shopID)
@@ -14372,8 +14373,15 @@ func main() {
 					return
 				}
 				_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, fmt.Sprintf("каталог импортирован, товаров: %d", n), shopID)
+			} else if typ == "catalog" && strings.HasPrefix(lowerFn, "offers") {
+				n, err := emarket1cImportOffers(db, shopID, fpath)
+				if err != nil {
+					_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_status=$1, updated_at=now() WHERE shop_id=$2`, "ошибка импорта предложений: "+err.Error(), shopID)
+					reply("failure\n" + err.Error())
+					return
+				}
+				_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, fmt.Sprintf("предложения импортированы, позиций: %d", n), shopID)
 			} else {
-				// offers*.xml (цены/остатки) — WMS-5c
 				_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, "принят файл "+fn, shopID)
 			}
 			reply("success")
@@ -36463,6 +36471,248 @@ func emarket1cImportCatalog(db *sql.DB, shopID int64, path string) (int, error) 
 			if err = tx.QueryRow(`INSERT INTO emarket_products (shop_id, sku, barcode, name, unit, external_id, category_id, unit_id, description, vat_rate, image_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
 				shopID, sku, strings.TrimSpace(g.ШтрихКод), name, unitName, extID, catID, unitID, strings.TrimSpace(g.Описание), vat, img).Scan(&pid); err != nil {
 				return 0, err
+			}
+		}
+		count++
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// ── WMS-5c: разбор предложений CommerceML (offers.xml) — цены и остатки ──
+
+type ce1cOffer struct {
+	Ид   string `xml:"Ид"`
+	Цены struct {
+		Цена []struct {
+			ИдТипаЦены    string `xml:"ИдТипаЦены"`
+			ЦенаЗаЕдиницу string `xml:"ЦенаЗаЕдиницу"`
+			Валюта        string `xml:"Валюта"`
+		} `xml:"Цена"`
+	} `xml:"Цены"`
+	Количество string `xml:"Количество"`
+	Склад      []struct {
+		ИдСклада           string `xml:"ИдСклада,attr"`
+		КоличествоНаСкладе string `xml:"КоличествоНаСкладе,attr"`
+	} `xml:"Склад"`
+}
+
+type ce1cOffersInfo struct {
+	ПакетПредложений struct {
+		ТипыЦен struct {
+			ТипЦены []struct {
+				Ид           string `xml:"Ид"`
+				Наименование string `xml:"Наименование"`
+				Валюта       string `xml:"Валюта"`
+			} `xml:"ТипЦены"`
+		} `xml:"ТипыЦен"`
+		Склады struct {
+			Склад []struct {
+				Ид           string `xml:"Ид"`
+				Наименование string `xml:"Наименование"`
+			} `xml:"Склад"`
+		} `xml:"Склады"`
+		Предложения struct {
+			Предложение []ce1cOffer `xml:"Предложение"`
+		} `xml:"Предложения"`
+	} `xml:"ПакетПредложений"`
+}
+
+func emarket1cUpsertPriceType(tx *sql.Tx, shopID int64, extID, name string) (int64, error) {
+	extID = strings.TrimSpace(extID)
+	var id int64
+	if err := tx.QueryRow(`SELECT id FROM emarket_price_types WHERE shop_id=$1 AND external_id=$2`, shopID, extID).Scan(&id); err == nil {
+		if name != "" {
+			_, _ = tx.Exec(`UPDATE emarket_price_types SET name=$1 WHERE id=$2`, name, id)
+		}
+		return id, nil
+	}
+	err := tx.QueryRow(`INSERT INTO emarket_price_types (shop_id, name, external_id) VALUES ($1,$2,$3) RETURNING id`, shopID, name, extID).Scan(&id)
+	return id, err
+}
+
+func emarket1cUpsertWarehouse(tx *sql.Tx, shopID int64, extID, name string) (int64, error) {
+	extID = strings.TrimSpace(extID)
+	var id int64
+	if extID != "" {
+		if err := tx.QueryRow(`SELECT id FROM emarket_warehouses WHERE shop_id=$1 AND external_id=$2`, shopID, extID).Scan(&id); err == nil {
+			if name != "" {
+				_, _ = tx.Exec(`UPDATE emarket_warehouses SET name=$1 WHERE id=$2`, name, id)
+			}
+			return id, nil
+		}
+	}
+	if name == "" {
+		name = "Склад 1С"
+	}
+	err := tx.QueryRow(`INSERT INTO emarket_warehouses (shop_id, name, external_id, is_primary, sort) VALUES ($1,$2,$3,FALSE,100) RETURNING id`, shopID, name, extID).Scan(&id)
+	return id, err
+}
+
+func emarket1cPrimaryWarehouse(tx *sql.Tx, shopID int64) (int64, error) {
+	var id int64
+	if err := tx.QueryRow(`SELECT id FROM emarket_warehouses WHERE shop_id=$1 ORDER BY is_primary DESC, sort, id LIMIT 1`, shopID).Scan(&id); err == nil {
+		return id, nil
+	}
+	err := tx.QueryRow(`INSERT INTO emarket_warehouses (shop_id, name, is_primary, sort) VALUES ($1,'Основной склад',TRUE,0) RETURNING id`, shopID).Scan(&id)
+	return id, err
+}
+
+// emarket1cImportOffers — разбирает offers.xml: типы цен, цены товаров и остатки по складам.
+// Остатки из 1С — абсолютные; reserved_qty платформы сохраняется, дельта пишется в журнал движений.
+func emarket1cImportOffers(db *sql.DB, shopID int64, path string) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, fmt.Errorf("файл не найден")
+	}
+	defer f.Close()
+	dec := xml.NewDecoder(f)
+	dec.CharsetReader = emarket1cCharsetReader
+	var oi ce1cOffersInfo
+	if err := dec.Decode(&oi); err != nil {
+		return 0, fmt.Errorf("ошибка разбора XML: %v", err)
+	}
+
+	var priceSync, stockSync bool
+	_ = db.QueryRow(`SELECT price_sync, stock_sync FROM emarket_1c_exchange WHERE shop_id=$1`, shopID).Scan(&priceSync, &stockSync)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Типы цен
+	ptype := map[string]int64{}
+	for _, pt := range oi.ПакетПредложений.ТипыЦен.ТипЦены {
+		ext := strings.TrimSpace(pt.Ид)
+		if ext == "" {
+			continue
+		}
+		id, e := emarket1cUpsertPriceType(tx, shopID, ext, strings.TrimSpace(pt.Наименование))
+		if e != nil {
+			return 0, e
+		}
+		ptype[ext] = id
+	}
+	// Тип цены по умолчанию
+	var defaultPTExt string
+	var dext sql.NullString
+	_ = tx.QueryRow(`SELECT external_id FROM emarket_price_types WHERE shop_id=$1 AND is_default=TRUE LIMIT 1`, shopID).Scan(&dext)
+	if dext.Valid && dext.String != "" {
+		defaultPTExt = dext.String
+	} else if len(oi.ПакетПредложений.ТипыЦен.ТипЦены) > 0 {
+		defaultPTExt = strings.TrimSpace(oi.ПакетПредложений.ТипыЦен.ТипЦены[0].Ид)
+		if id, ok := ptype[defaultPTExt]; ok {
+			_, _ = tx.Exec(`UPDATE emarket_price_types SET is_default=TRUE WHERE id=$1`, id)
+		}
+	}
+
+	// Склады из пакета
+	wh := map[string]int64{}
+	for _, s := range oi.ПакетПредложений.Склады.Склад {
+		ext := strings.TrimSpace(s.Ид)
+		if ext == "" {
+			continue
+		}
+		id, e := emarket1cUpsertWarehouse(tx, shopID, ext, strings.TrimSpace(s.Наименование))
+		if e != nil {
+			return 0, e
+		}
+		wh[ext] = id
+	}
+
+	count := 0
+	for _, of := range oi.ПакетПредложений.Предложения.Предложение {
+		ext := strings.TrimSpace(of.Ид)
+		if i := strings.Index(ext, "#"); i >= 0 {
+			ext = ext[:i]
+		}
+		if ext == "" {
+			continue
+		}
+		var pid int64
+		if e := tx.QueryRow(`SELECT id FROM emarket_products WHERE shop_id=$1 AND external_id=$2 AND deleted_at IS NULL`, shopID, ext).Scan(&pid); e != nil {
+			continue // товара ещё нет — каталог импортируется первым
+		}
+
+		if priceSync {
+			type pv struct {
+				v   float64
+				cur string
+			}
+			prices := map[string]pv{}
+			for _, pr := range of.Цены.Цена {
+				ptExt := strings.TrimSpace(pr.ИдТипаЦены)
+				ptID, ok := ptype[ptExt]
+				if !ok {
+					continue
+				}
+				val, _ := strconv.ParseFloat(strings.Replace(strings.TrimSpace(pr.ЦенаЗаЕдиницу), ",", ".", 1), 64)
+				cur := strings.TrimSpace(pr.Валюта)
+				if cur == "" {
+					cur = "RUB"
+				}
+				_, _ = tx.Exec(`INSERT INTO emarket_product_prices (product_id, price_type_id, price, currency) VALUES ($1,$2,$3,$4)
+					ON CONFLICT (product_id, price_type_id) DO UPDATE SET price=$3, currency=$4`, pid, ptID, val, cur)
+				prices[ptExt] = pv{val, cur}
+			}
+			if len(prices) > 0 {
+				chosen, ok := prices[defaultPTExt]
+				if !ok {
+					for _, v := range prices {
+						chosen = v
+						break
+					}
+				}
+				if chosen.cur == "" {
+					chosen.cur = "RUB"
+				}
+				_, _ = tx.Exec(`UPDATE emarket_products SET price=$1, currency=$2, updated_at=now() WHERE id=$3`, chosen.v, chosen.cur, pid)
+			}
+		}
+
+		if stockSync {
+			type whQty struct {
+				id  int64
+				qty float64
+			}
+			var targets []whQty
+			if len(of.Склад) > 0 {
+				for _, sw := range of.Склад {
+					ext2 := strings.TrimSpace(sw.ИдСклада)
+					id, ok := wh[ext2]
+					if !ok {
+						var e error
+						id, e = emarket1cUpsertWarehouse(tx, shopID, ext2, "")
+						if e != nil {
+							return 0, e
+						}
+						wh[ext2] = id
+					}
+					q, _ := strconv.ParseFloat(strings.Replace(strings.TrimSpace(sw.КоличествоНаСкладе), ",", ".", 1), 64)
+					targets = append(targets, whQty{id, q})
+				}
+			} else {
+				q, _ := strconv.ParseFloat(strings.Replace(strings.TrimSpace(of.Количество), ",", ".", 1), 64)
+				wid, e := emarket1cPrimaryWarehouse(tx, shopID)
+				if e != nil {
+					return 0, e
+				}
+				targets = append(targets, whQty{wid, q})
+			}
+			for _, t := range targets {
+				var cur float64
+				_ = tx.QueryRow(`SELECT qty FROM emarket_stock WHERE product_id=$1 AND warehouse_id=$2`, pid, t.id).Scan(&cur)
+				if _, e := tx.Exec(`INSERT INTO emarket_stock (product_id, warehouse_id, qty, reserved_qty) VALUES ($1,$2,$3,0)
+					ON CONFLICT (product_id, warehouse_id) DO UPDATE SET qty=$3, updated_at=now()`, pid, t.id, t.qty); e != nil {
+					return 0, e
+				}
+				if delta := t.qty - cur; delta != 0 {
+					_, _ = tx.Exec(`INSERT INTO emarket_stock_moves (shop_id, product_id, warehouse_id, type, qty, ref_type, comment) VALUES ($1,$2,$3,'adjustment',$4,'1c','синхронизация остатков 1С')`, shopID, pid, t.id, delta)
+				}
 			}
 		}
 		count++
