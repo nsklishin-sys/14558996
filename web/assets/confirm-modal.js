@@ -128,8 +128,15 @@
   };
 
   // Fallback для страниц без своего toast() / showToast()
-  if(typeof window.toast !== 'function')     window.toast     = (m,ok)=>window.lastopToast(m, ok?'success':'info');
-  if(typeof window.showToast !== 'function') window.showToast = (m,ok)=>window.lastopToast(m, ok?'success':'info');
+  // Поддерживает: true → 'success', строки 'success'/'error'/'warn'/'info', без типа → 'info'
+  function _ltToastMap(t){
+    if(t===true||t==='success'||t==='ok')return'success';
+    if(t==='error'||t==='err')return'error';
+    if(t==='warn'||t==='warning')return'warn';
+    return'info';
+  }
+  if(typeof window.toast !== 'function')     window.toast     = (m,t)=>window.lastopToast(m, _ltToastMap(t));
+  if(typeof window.showToast !== 'function') window.showToast = (m,t)=>window.lastopToast(m, _ltToastMap(t));
 
   // ── Universal alert: window.lastopAlert({title,message,type}) ──
   // type: 'info' | 'success' | 'error' | 'warn'

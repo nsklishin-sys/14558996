@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <script src="/assets/utils.js"></script>
+<script src="/assets/confirm-modal.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -232,8 +233,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .rs-ad-dot{width:6px;height:6px;border-radius:99px;background:#CBB8EC;transition:all .2s}
 .rs-ad-dot.active{background:#7B5BC4;width:18px}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.25)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* EM-TOAST-UNIFY: локальный .toast удалён */
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 <script src="/assets/profile-context.js" defer></script>
@@ -246,7 +246,6 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <main class="main" id="emarketMain"></main>
 <aside class="right" id="emarketRight"></aside>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
 const API='/api';
@@ -261,7 +260,7 @@ function fmtPrice(p,cur){
   var sym=cur==='USD'?'$':cur==='EUR'?'€':'₽';
   return '<span class="em-card-price">'+Number(p).toLocaleString('ru-RU')+' '+sym+'</span>';
 }
-function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2600);}
+/* EM-TOAST-UNIFY: глобальная window.showToast */
 
 var EM={mode:'shops',sort:'',search:'',cat:'',region:'',priceFrom:'',priceTo:'',filtersOpen:false,cats:[],regions:[],carIdx:0,carTimer:null};
 var SORT_LABELS={'':'Сначала новые','price_asc':'Дешевле','price_desc':'Дороже','rating':'По рейтингу','popular':'Популярные'};
