@@ -3254,7 +3254,47 @@ document.addEventListener('keydown', function(e){
 
 // ── Управление группой
 let cmConv = null;
-function openChatManage(){const c=state.conversations.find(x=>x.public_id===state.activeConvPublicID);if(!c||c.type!=='group')return;cmConv=c;document.getElementById('cmTitle').value=c.title||c.name||'';document.getElementById('chatManageModal').style.display='flex';cmLoadMembers();}
+function openChatManage(){const c=state.conversations.find(x=>x.public_id===state.activeConvPublicID);if(!c||c.type!=='group')return;cmConv=c;document.getElementById('cmTitle').value=c.title||c.name||'';cmRenderAvatar();document.getElementById('chatManageModal').style.display='flex';cmLoadMembers();}
+function cmRenderAvatar(){
+  const wrap=document.getElementById('cmAvatarPrev');if(!wrap||!cmConv)return;
+  const url=cmConv.avatar_url||cmConv.display_avatar||'';
+  const ltr=(cmConv.title||cmConv.name||'G').charAt(0).toUpperCase();
+  if(url){
+    wrap.innerHTML='<img src="'+url+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:14px">';
+    document.getElementById('cmAvatarRemoveBtn').style.display='';
+  }else{
+    wrap.innerHTML='<span style="font-size:22px;font-weight:800;color:#fff">'+ltr+'</span>';
+    document.getElementById('cmAvatarRemoveBtn').style.display='none';
+  }
+}
+async function cmUploadAvatar(input){
+  if(!cmConv||!input||!input.files||!input.files[0])return;
+  const file=input.files[0];
+  const fd=new FormData();fd.append('file',file);
+  try{
+    const ur=await lastopFetch('/api/upload',{method:'POST',body:fd});
+    if(!ur.ok){if(window.lastopToast)lastopToast('Не удалось загрузить');return;}
+    const ud=await ur.json();
+    if(!ud||!ud.url){if(window.lastopToast)lastopToast('Не удалось загрузить');return;}
+    const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar_url:ud.url})});
+    if(!r.ok){if(window.lastopToast)lastopToast('Не удалось сохранить');return;}
+    cmConv.avatar_url=ud.url;cmConv.display_avatar=ud.url;
+    cmRenderAvatar();renderConversations();
+    if(window.lastopToast)lastopToast('Аватарка обновлена');
+  }catch(e){if(window.lastopToast)lastopToast('Сеть недоступна');}
+  finally{input.value='';}
+}
+async function cmRemoveAvatar(){
+  if(!cmConv)return;
+  if(window.lastopConfirm){const ok=await lastopConfirm({title:'Убрать аватарку?',message:'Группа вернётся к стандартному виду.',confirmText:'Убрать',danger:true});if(!ok)return;}
+  try{
+    const r=await lastopFetch(`/api/chat/conversations/${encodeURIComponent(cmConv.public_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar_url:''})});
+    if(!r.ok)return;
+    cmConv.avatar_url='';cmConv.display_avatar='';
+    cmRenderAvatar();renderConversations();
+    if(window.lastopToast)lastopToast('Аватарка убрана');
+  }catch(e){}
+}
 function closeChatManage(){document.getElementById('chatManageModal').style.display='none';cmConv=null;}
 async function cmLoadMembers(){
   if(!cmConv) return;
@@ -3352,6 +3392,12 @@ async function cmInvite(userPublicID,userName){if(!cmConv)return;try{const r=awa
   </div>
 </div>
 
-<div id="chatManageModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-modal);align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeChatManage()"><div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:22px;font-family:Manrope,sans-serif"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="font-size:16px;font-weight:800;color:#1A2A22;margin:0">Управление группой</h3><button type="button" onclick="closeChatManage()" style="background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;color:#5A8A6A"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Название группы</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmTitle" maxlength="100" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4"><button type="button" onclick="cmSaveTitle()" style="padding:9px 16px;border-radius:10px;background:#1E8A4C;color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Сохранить</button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Добавить участника</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmInviteSearch" placeholder="Имя или email друга…" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4" oninput="cmSearchFriends(this.value)"></div><div id="cmInviteList" style="margin-bottom:18px;max-height:160px;overflow-y:auto"></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Участники</label><div id="cmMembersList" style="max-height:240px;overflow-y:auto"></div></div></div>
+<div id="chatManageModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-modal);align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeChatManage()"><div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:22px;font-family:Manrope,sans-serif"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="font-size:16px;font-weight:800;color:#1A2A22;margin:0">Управление группой</h3><button type="button" onclick="closeChatManage()" style="background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;color:#5A8A6A"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Аватарка группы</label>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+  <div id="cmAvatarPrev" style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#1E8A4C,#22A05A);display:grid;place-items:center;overflow:hidden;flex-shrink:0"></div>
+  <label style="padding:9px 14px;border-radius:10px;background:#E8F5EE;border:1.5px solid #C0DECA;color:#1E8A4C;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">Загрузить<input type="file" accept="image/*" style="display:none" onchange="cmUploadAvatar(this)"></label>
+  <button type="button" id="cmAvatarRemoveBtn" onclick="cmRemoveAvatar()" style="padding:9px 14px;border-radius:10px;background:#fff;border:1.5px solid #DDE8E2;color:#5A8A6A;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:none">Убрать</button>
+</div>
+<label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Название группы</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmTitle" maxlength="100" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4"><button type="button" onclick="cmSaveTitle()" style="padding:9px 16px;border-radius:10px;background:#1E8A4C;color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Сохранить</button></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Добавить участника</label><div style="display:flex;gap:6px;margin-bottom:18px"><input id="cmInviteSearch" placeholder="Имя или email друга…" style="flex:1;border:1.5px solid #DDE8E2;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;background:#F0FAF4" oninput="cmSearchFriends(this.value)"></div><div id="cmInviteList" style="margin-bottom:18px;max-height:160px;overflow-y:auto"></div><label style="display:block;margin-bottom:10px;font-size:11px;font-weight:700;color:#5A8A6A;text-transform:uppercase;letter-spacing:.05em">Участники</label><div id="cmMembersList" style="max-height:240px;overflow-y:auto"></div></div></div>
 </body>
 </html>
