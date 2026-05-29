@@ -15,6 +15,11 @@ import (
 	"fmt"
 	qrcode "github.com/skip2/go-qrcode"
 	"hash/fnv"
+	"image"
+	"image/color"
+	"image/draw"
+	_ "image/jpeg"
+	"image/png"
 	"io"
 	"log"
 	"log/slog"
@@ -41,6 +46,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
+	xdraw "golang.org/x/image/draw"
 	"golang.org/x/net/html"
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
@@ -10929,6 +10935,53 @@ func main() {
 			writeError(w, http.StatusBadRequest, "Некорректный id")
 			return
 		}
+		if len(parts) >= 2 && parts[1] == "qr-style" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if r.Method == http.MethodGet {
+				var qrColor, accent, logoURL string
+				var qrLogo bool
+				if err := db.QueryRow(`SELECT COALESCE(qr_color,''), COALESCE(accent_color,'green'), COALESCE(qr_logo,FALSE), COALESCE(NULLIF(logo_url,''), site_logo_url, '') FROM emarket_shops WHERE id=$1`, shopID).Scan(&qrColor, &accent, &qrLogo, &logoURL); err != nil {
+					writeError(w, http.StatusNotFound, "Магазин не найден")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"qr_color": qrColor, "accent_hex": emarketAccentHex(accent), "qr_logo": qrLogo, "has_logo": logoURL != ""})
+				return
+			}
+			if r.Method == http.MethodPut {
+				var qReq struct {
+					QRColor string `json:"qr_color"`
+					QRLogo  bool   `json:"qr_logo"`
+				}
+				if err := decodeJSON(w, r, &qReq); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				qReq.QRColor = strings.TrimSpace(qReq.QRColor)
+				if qReq.QRColor != "" {
+					if _, ok := parseHexColor(qReq.QRColor); !ok {
+						writeJSON(w, http.StatusBadRequest, map[string]any{"error": "цвет должен быть в формате #RRGGBB"})
+						return
+					}
+				}
+				if _, err := db.Exec(`UPDATE emarket_shops SET qr_color=$1, qr_logo=$2, updated_at=now() WHERE id=$3`, qReq.QRColor, qReq.QRLogo, shopID); err != nil {
+					log.Printf("[emarket/qr-style PUT] %v", err)
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "qr_color": qReq.QRColor, "qr_logo": qReq.QRLogo})
+				return
+			}
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
 		if len(parts) >= 2 && parts[1] == "site-config" {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -12410,6 +12463,51 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Write(png)
+	})
+
+	// GET /api/emarket/shop-qr?id=N&size=320 — брендированный QR магазина (публичный).
+	mux.HandleFunc("/api/emarket/shop-qr", func(w http.ResponseWriter, r *http.Request) {
+		id, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+		if id == 0 {
+			writeError(w, http.StatusBadRequest, "id обязателен")
+			return
+		}
+		size, _ := strconv.Atoi(r.URL.Query().Get("size"))
+		if size < 64 || size > 1024 {
+			size = 320
+		}
+		var slug, qrColor, accent, logoURL string
+		var qrLogo bool
+		if err := db.QueryRow(`SELECT slug, COALESCE(qr_color,''), COALESCE(accent_color,'green'), COALESCE(qr_logo,FALSE), COALESCE(NULLIF(logo_url,''), site_logo_url, '') FROM emarket_shops WHERE id=$1`, id).Scan(&slug, &qrColor, &accent, &qrLogo, &logoURL); err != nil {
+			writeError(w, http.StatusNotFound, "Магазин не найден")
+			return
+		}
+		shareURL := strings.TrimRight(publicBaseURL(r), "/") + "/shop/" + slug
+		hex := strings.TrimSpace(qrColor)
+		if hex == "" {
+			hex = emarketAccentHex(accent)
+		}
+		fg, ok := parseHexColor(hex)
+		if !ok {
+			fg = color.RGBA{A: 255}
+		}
+		var logoBytes []byte
+		if qrLogo && logoURL != "" && store != nil {
+			if b, err := store.Get(r.Context(), logoURL); err == nil {
+				logoBytes = b
+			}
+		}
+		png, err := renderShopQR(shareURL, fg, logoBytes, size)
+		if err != nil {
+			png, err = qrcode.Encode(shareURL, qrcode.Medium, size)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "Ошибка генерации QR")
+				return
+			}
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
 		w.Write(png)
 	})
 
@@ -20252,6 +20350,8 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_url TEXT NOT NULL DEF
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS verified_by BIGINT;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS qr_color TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS qr_logo BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS emarket_shops_verified_idx ON emarket_shops(is_verified) WHERE is_verified = TRUE;
 CREATE TABLE IF NOT EXISTS emarket_stat_events (
     id BIGSERIAL PRIMARY KEY,
@@ -34805,6 +34905,78 @@ func recalcShopRating(db *sql.DB, shopID int64) {
 		rating = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM emarket_reviews WHERE target_type='shop' AND target_id=$1), 0),
 		reviews_count = (SELECT COUNT(*) FROM emarket_reviews WHERE target_type='shop' AND target_id=$1)
 		WHERE id=$1`, shopID)
+}
+
+// emarketAccentHex переводит ключ палитры accent_color магазина в hex-цвет (как на фронте EM_ACCENT_PALETTE).
+func emarketAccentHex(key string) string {
+	switch key {
+	case "blue":
+		return "#2479C8"
+	case "navy":
+		return "#1E3A5F"
+	case "teal":
+		return "#0E8A8A"
+	case "purple":
+		return "#7C5CC4"
+	case "orange":
+		return "#D8741E"
+	case "red":
+		return "#C8392E"
+	case "graphite":
+		return "#3A4654"
+	default:
+		return "#1E8A4C"
+	}
+}
+
+// parseHexColor парсит "#RRGGBB" или "#RGB" в color.RGBA.
+func parseHexColor(s string) (color.RGBA, bool) {
+	s = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(s), "#"))
+	if len(s) == 3 {
+		s = string([]byte{s[0], s[0], s[1], s[1], s[2], s[2]})
+	}
+	if len(s) != 6 {
+		return color.RGBA{}, false
+	}
+	v, err := strconv.ParseUint(s, 16, 32)
+	if err != nil {
+		return color.RGBA{}, false
+	}
+	return color.RGBA{R: uint8(v >> 16), G: uint8(v >> 8), B: uint8(v), A: 255}, true
+}
+
+// renderShopQR рендерит QR с заданным цветом точек и (опционально) логотипом в центре.
+// High-коррекция позволяет перекрыть центр логотипом без потери читаемости.
+// Если лого не декодится (например SVG/webp) — возвращается QR без лого.
+func renderShopQR(text string, fg color.RGBA, logoBytes []byte, size int) ([]byte, error) {
+	q, err := qrcode.New(text, qrcode.High)
+	if err != nil {
+		return nil, err
+	}
+	q.ForegroundColor = fg
+	q.BackgroundColor = color.White
+	base := q.Image(size)
+	canvas := image.NewRGBA(base.Bounds())
+	draw.Draw(canvas, canvas.Bounds(), base, base.Bounds().Min, draw.Src)
+	if len(logoBytes) > 0 {
+		if logoImg, _, derr := image.Decode(bytes.NewReader(logoBytes)); derr == nil {
+			b := canvas.Bounds()
+			boxSize := b.Dx() * 26 / 100
+			logoSize := boxSize * 78 / 100
+			cx, cy := b.Dx()/2, b.Dy()/2
+			box := image.Rect(cx-boxSize/2, cy-boxSize/2, cx+boxSize/2, cy+boxSize/2)
+			draw.Draw(canvas, box, &image.Uniform{C: color.White}, image.Point{}, draw.Src)
+			scaled := image.NewRGBA(image.Rect(0, 0, logoSize, logoSize))
+			xdraw.CatmullRom.Scale(scaled, scaled.Bounds(), logoImg, logoImg.Bounds(), xdraw.Over, nil)
+			lp := image.Rect(cx-logoSize/2, cy-logoSize/2, cx+logoSize/2, cy+logoSize/2)
+			draw.Draw(canvas, lp, scaled, scaled.Bounds().Min, draw.Over)
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, canvas); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
