@@ -168,6 +168,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="emads"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Реклама E-market</button>
       <button class="admin-tab" data-tab="emaccess"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Доступ E-market</button>
       <button class="admin-tab" data-tab="emshops"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Магазины E-market</button>
+      <button class="admin-tab" data-tab="emlistings"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Листинги E-market</button>
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
@@ -423,6 +424,24 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmListings">
+      <div class="panel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div class="panel-title" style="margin-bottom:6px">Листинги E-market</div>
+        <div style="font-size:12px;color:var(--gmt);margin-bottom:12px">Модерация всех товаров и услуг маркета. Блокировка скрывает позицию из витрины и со страницы магазина (обратимо), удаление — безвозвратно.</div>
+        <div class="users-toolbar" style="margin-bottom:10px">
+          <input id="emListingsSearch" class="lt-input" placeholder="Поиск по названию или магазину…" oninput="emListFilter(this.value)" style="flex:1;min-width:200px">
+          <select id="emListingsStatus" data-lt-select onchange="emListStatusFilter(this.value)">
+            <option value="">Все статусы</option>
+            <option value="active">Активные</option>
+            <option value="hidden">Скрытые</option>
+            <option value="blocked">Заблокированные</option>
+          </select>
+        </div>
+        <div id="emListingsList" style="flex:1;overflow-y:auto">
+          <div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>
+        </div>
+      </div>
+    </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmAds">
       <div class="users-toolbar">
         <select id="emAdPlacement" data-lt-select onchange="loadEmAds()">
@@ -598,7 +617,7 @@ async function loadAnalytics(){
 }
 function refreshModerationBadge(){loadModerationCount();}
 async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';document.getElementById('paneEmAccess').style.display=name==='emaccess'?'flex':'none';document.getElementById('paneEmShops').style.display=name==='emshops'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();if(name==='emaccess')loadEmAccess();if(name==='emshops')loadEmShops();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';document.getElementById('paneEmAccess').style.display=name==='emaccess'?'flex':'none';document.getElementById('paneEmShops').style.display=name==='emshops'?'flex':'none';document.getElementById('paneEmListings').style.display=name==='emlistings'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();if(name==='emaccess')loadEmAccess();if(name==='emshops')loadEmShops();if(name==='emlistings')loadEmListings();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -1315,6 +1334,9 @@ function loadEmAccess(){EM_ACCESS_SECTION='companies';var s=document.getElementB
 
 var EM_SHOPS_ALL=[];
 var EM_SHOPS_Q='';
+var EM_LIST_ALL=[];
+var EM_LIST_Q='';
+var EM_LIST_STATUS='';
 async function loadEmShops(){
   var list=document.getElementById('emShopsList');
   if(!list)return;
@@ -1390,6 +1412,71 @@ async function toggleShopVerified(shopID, val){
   }catch{
     if(typeof showToast==='function')showToast('Ошибка сохранения');
     loadEmShops();
+  }
+}
+async function loadEmListings(){
+  var list=document.getElementById('emListingsList');
+  if(!list)return;
+  list.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>';
+  try{
+    var u='/api/admin/emarket/listings';var p=[];
+    if(EM_LIST_STATUS)p.push('status='+encodeURIComponent(EM_LIST_STATUS));
+    if(EM_LIST_Q)p.push('q='+encodeURIComponent(EM_LIST_Q));
+    if(p.length)u+='?'+p.join('&');
+    var r=await lastopFetch(u);
+    if(!r.ok)throw new Error('http');
+    var d=await r.json();
+    EM_LIST_ALL=d.listings||[];
+    renderEmListings();
+  }catch{
+    list.innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">Не удалось загрузить листинги</div>';
+  }
+}
+function emListFilter(v){EM_LIST_Q=String(v||'').trim();loadEmListings();}
+function emListStatusFilter(v){EM_LIST_STATUS=String(v||'');loadEmListings();}
+function renderEmListings(){
+  var list=document.getElementById('emListingsList');
+  if(!list)return;
+  var items=EM_LIST_ALL;
+  if(!items.length){
+    list.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Листингов нет</div>';
+    return;
+  }
+  var rows=items.map(function(l){
+    var statusColor=l.status==='active'?'var(--g)':(l.status==='blocked'?'var(--red)':'var(--gmt)');
+    var statusLabel=l.status==='active'?'активен':(l.status==='blocked'?'заблокирован':(l.status==='hidden'?'скрыт':(l.status||'')));
+    var kindLabel=l.kind==='service'?'услуга':'товар';
+    var price=(l.price!=null)?(' · '+l.price+' '+esc(l.currency||'')):'';
+    var act='';
+    if(l.status==='blocked'){
+      act+='<button class="dp-btn" onclick="moderateListing('+l.id+',\'unblock\')" style="font-size:12px;padding:5px 10px">Разблокировать</button>';
+    }else{
+      act+='<button class="dp-btn" onclick="moderateListing('+l.id+',\'block\')" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red)">Заблокировать</button>';
+    }
+    act+='<button class="dp-btn" onclick="moderateListing('+l.id+',\'delete\')" style="font-size:12px;padding:5px 10px;color:var(--red);border-color:var(--red)">Удалить</button>';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--bdr)">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="/emarket-listing?id='+l.id+'" target="_blank" style="color:inherit;text-decoration:none">'+esc(l.title||'—')+'</a></div>'
+        +'<div style="font-size:11px;color:var(--gmt);margin-top:2px">'+kindLabel+' · '+esc(l.shop_name||'')+price+' · <span style="color:'+statusColor+';font-weight:600">'+statusLabel+'</span></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'+act+'</div>'
+    +'</div>';
+  }).join('');
+  list.innerHTML=rows;
+}
+async function moderateListing(id,action){
+  if(action==='delete'){
+    if(!await lastopConfirm({title:'Удалить листинг?',message:'Позиция будет удалена из маркета безвозвратно. Это действие нельзя отменить из админки.',confirmText:'Удалить',danger:true}))return;
+  }else if(action==='block'){
+    if(!await lastopConfirm({title:'Заблокировать листинг?',message:'Позиция скроется из витрины и со страницы магазина. Можно разблокировать позже.',confirmText:'Заблокировать',danger:true}))return;
+  }
+  try{
+    var r=await lastopFetch('/api/admin/emarket/listings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:id,action:action})});
+    if(!r.ok)throw new Error('http');
+    if(typeof showToast==='function')showToast(action==='delete'?'Листинг удалён':(action==='block'?'Листинг заблокирован':'Листинг разблокирован'));
+    loadEmListings();
+  }catch{
+    if(typeof showToast==='function')showToast('Ошибка');
   }
 }
 function emAccessSwitch(section){
