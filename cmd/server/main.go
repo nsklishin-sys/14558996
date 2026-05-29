@@ -12484,6 +12484,13 @@ func main() {
 			return
 		}
 		shareURL := strings.TrimRight(publicBaseURL(r), "/") + "/shop/" + slug
+		// Оверрайды для живого превью в редакторе кабинета (не сохранённое состояние).
+		if c := strings.TrimSpace(r.URL.Query().Get("color")); c != "" {
+			qrColor = c
+		}
+		if lg := r.URL.Query().Get("logo"); lg == "1" || lg == "0" {
+			qrLogo = lg == "1"
+		}
 		hex := strings.TrimSpace(qrColor)
 		if hex == "" {
 			hex = emarketAccentHex(accent)
