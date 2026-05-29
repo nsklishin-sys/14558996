@@ -164,6 +164,11 @@ img{max-width:100%}
 .ms-hr-star{color:#E8A52A;font-size:15px}
 .ms-hr-cnt{font-weight:600;font-size:12px;color:var(--gmt)}
 .ms-header.dark .ms-hr-cnt{color:rgba(255,255,255,.8)}
+.ms-header-share{margin-left:auto;flex-shrink:0;width:38px;height:38px;border-radius:var(--rm);background:var(--gp);border:1px solid var(--bdr);color:var(--gmt);display:grid;place-items:center;cursor:pointer;transition:all .15s}
+.ms-header-share:hover{background:var(--gl);color:var(--acc);border-color:var(--acc)}
+.ms-header-share svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ms-header.dark .ms-header-share{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff}
+.ms-header.dark .ms-header-share:hover{background:rgba(255,255,255,.28)}
 .ms-navbar{display:flex;gap:4px;flex-wrap:wrap;background:var(--w);border:1px solid var(--bdr);border-top:none;padding:8px}
 .ms-headwrap .ms-navbar{border-radius:0;border-top:1px solid var(--bdr)}
 .ms-navtab{padding:9px 18px;border-radius:var(--rm);font-size:14px;font-weight:700;color:var(--tm);background:transparent;border:none;font-family:inherit;cursor:pointer;transition:all .15s}
@@ -283,9 +288,13 @@ function shopHeader(shop){
     rating='<div class="ms-header-rating" onclick="goToReviews()" title="К отзывам"><span class="ms-hr-star">★</span> '+Number(shop.rating).toFixed(1)+(rc?' <span class="ms-hr-cnt">· '+rc+' '+plural(rc,'отзыв','отзыва','отзывов')+'</span>':'')+'</div>';
   }
   const verify=shop.is_verified?'<span class="ms-verify-badge" title="Проверенный продавец"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>':'';
-  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+verify+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+rating+'</div></div>';
+  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+verify+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+rating+'</div><button type="button" class="ms-header-share" onclick="shareShop()" title="Поделиться магазином"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button></div>';
 }
 function plural(n,one,few,many){const v=n%10,h=n%100;if(h>=11&&h<=19)return many;if(v===1)return one;if(v>=2&&v<=4)return few;return many;}
+function shareShop(){
+  if(!CUR_SHOP)return;
+  window.lastopShare({title:CUR_SHOP.name||'Магазин',url:location.href,description:CUR_SHOP.tagline||CUR_SHOP.description||''});
+}
 function goToReviews(){
   const el=document.querySelector('[data-reviews-block]');
   if(el){el.scrollIntoView({behavior:'smooth',block:'start'});return;}
