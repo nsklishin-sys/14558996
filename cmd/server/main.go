@@ -11,6 +11,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	qrcode "github.com/skip2/go-qrcode"
@@ -48,6 +49,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/net/html"
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/time/rate"
 	"nhooyr.io/websocket"
 
@@ -14360,9 +14362,20 @@ func main() {
 			}
 			reply("success")
 		case "import":
-			// Парсинг import.xml/offers.xml добавляется в WMS-5b/5c. Пока подтверждаем приём.
 			fn := filepath.Base(r.URL.Query().Get("filename"))
-			_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, "принят файл "+fn, shopID)
+			fpath := filepath.Join(os.TempDir(), "lastop1c", typ, strconv.FormatInt(shopID, 10), fn)
+			if typ == "catalog" && strings.HasPrefix(strings.ToLower(fn), "import") {
+				n, err := emarket1cImportCatalog(db, shopID, fpath)
+				if err != nil {
+					_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_status=$1, updated_at=now() WHERE shop_id=$2`, "ошибка импорта каталога: "+err.Error(), shopID)
+					reply("failure\n" + err.Error())
+					return
+				}
+				_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, fmt.Sprintf("каталог импортирован, товаров: %d", n), shopID)
+			} else {
+				// offers*.xml (цены/остатки) — WMS-5c
+				_, _ = db.Exec(`UPDATE emarket_1c_exchange SET last_import_at=now(), last_status=$1, updated_at=now() WHERE shop_id=$2`, "принят файл "+fn, shopID)
+			}
 			reply("success")
 		case "query":
 			// Выгрузка заказов добавляется в WMS-5d. Пока — пустой валидный CommerceML.
@@ -36258,6 +36271,206 @@ func emarketSettleOrderReserves(db *sql.DB, shopID, orderID int64, moveType stri
 			log.Printf("[wms/settle %s order=%d product=%d] %v", moveType, orderID, l.pid, err)
 		}
 	}
+}
+
+// ── WMS-5b: разбор каталога CommerceML (import.xml) ──
+
+type ce1cGroup struct {
+	Ид           string `xml:"Ид"`
+	Наименование string `xml:"Наименование"`
+	Группы       struct {
+		Группа []ce1cGroup `xml:"Группа"`
+	} `xml:"Группы"`
+}
+
+type ce1cGood struct {
+	Ид           string `xml:"Ид"`
+	Артикул      string `xml:"Артикул"`
+	Наименование string `xml:"Наименование"`
+	Описание     string `xml:"Описание"`
+	ШтрихКод     string `xml:"ШтрихКод"`
+	Группы       struct {
+		Ид []string `xml:"Ид"`
+	} `xml:"Группы"`
+	БазоваяЕдиница struct {
+		Код                string `xml:"Код,attr"`
+		НаименованиеПолное string `xml:"НаименованиеПолное,attr"`
+		Значение           string `xml:",chardata"`
+	} `xml:"БазоваяЕдиница"`
+	Картинка      []string `xml:"Картинка"`
+	СтавкиНалогов struct {
+		СтавкаНалога []struct {
+			Наименование string `xml:"Наименование"`
+			Ставка       string `xml:"Ставка"`
+		} `xml:"СтавкаНалога"`
+	} `xml:"СтавкиНалогов"`
+}
+
+type ce1cKommInfo struct {
+	Классификатор struct {
+		Группы struct {
+			Группа []ce1cGroup `xml:"Группа"`
+		} `xml:"Группы"`
+		ЕдиницыИзмерения struct {
+			ЕдиницаИзмерения []struct {
+				Ид                      string `xml:"Ид"`
+				Код                     string `xml:"Код"`
+				НаименованиеПолное      string `xml:"НаименованиеПолное"`
+				МеждународноеСокращение string `xml:"МеждународноеСокращение"`
+			} `xml:"ЕдиницаИзмерения"`
+		} `xml:"ЕдиницыИзмерения"`
+	} `xml:"Классификатор"`
+	Каталог struct {
+		Товары struct {
+			Товар []ce1cGood `xml:"Товар"`
+		} `xml:"Товары"`
+	} `xml:"Каталог"`
+}
+
+func emarket1cCharsetReader(charset string, input io.Reader) (io.Reader, error) {
+	switch strings.ToLower(charset) {
+	case "windows-1251", "cp1251", "windows1251":
+		return charmap.Windows1251.NewDecoder().Reader(input), nil
+	default:
+		return input, nil
+	}
+}
+
+func emarket1cUpsertCategory(tx *sql.Tx, shopID int64, extID, name string, parentID *int64) (int64, error) {
+	extID = strings.TrimSpace(extID)
+	var id int64
+	if err := tx.QueryRow(`SELECT id FROM emarket_product_categories WHERE shop_id=$1 AND external_id=$2`, shopID, extID).Scan(&id); err == nil {
+		_, err = tx.Exec(`UPDATE emarket_product_categories SET name=$1, parent_id=$2 WHERE id=$3`, name, parentID, id)
+		return id, err
+	}
+	err := tx.QueryRow(`INSERT INTO emarket_product_categories (shop_id, parent_id, name, external_id) VALUES ($1,$2,$3,$4) RETURNING id`, shopID, parentID, name, extID).Scan(&id)
+	return id, err
+}
+
+func emarket1cWalkGroups(tx *sql.Tx, shopID int64, groups []ce1cGroup, parentID *int64, cat map[string]int64) error {
+	for _, g := range groups {
+		if strings.TrimSpace(g.Ид) == "" {
+			continue
+		}
+		id, err := emarket1cUpsertCategory(tx, shopID, g.Ид, strings.TrimSpace(g.Наименование), parentID)
+		if err != nil {
+			return err
+		}
+		cat[strings.TrimSpace(g.Ид)] = id
+		if len(g.Группы.Группа) > 0 {
+			child := id
+			if err := emarket1cWalkGroups(tx, shopID, g.Группы.Группа, &child, cat); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// emarket1cImportCatalog — разбирает import.xml и апсертит категории/единицы/товары по external_id (GUID 1С).
+// Цены и остатки приходят отдельно (offers.xml, WMS-5c) — здесь не трогаются.
+func emarket1cImportCatalog(db *sql.DB, shopID int64, path string) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, fmt.Errorf("файл не найден")
+	}
+	defer f.Close()
+	dec := xml.NewDecoder(f)
+	dec.CharsetReader = emarket1cCharsetReader
+	var ki ce1cKommInfo
+	if err := dec.Decode(&ki); err != nil {
+		return 0, fmt.Errorf("ошибка разбора XML: %v", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	cat := map[string]int64{}
+	if err := emarket1cWalkGroups(tx, shopID, ki.Классификатор.Группы.Группа, nil, cat); err != nil {
+		return 0, err
+	}
+
+	unit := map[string]int64{}
+	for _, u := range ki.Классификатор.ЕдиницыИзмерения.ЕдиницаИзмерения {
+		code := strings.TrimSpace(u.Код)
+		ext := code
+		if ext == "" {
+			ext = strings.TrimSpace(u.Ид)
+		}
+		if ext == "" {
+			continue
+		}
+		name := strings.TrimSpace(u.МеждународноеСокращение)
+		if name == "" {
+			name = strings.TrimSpace(u.НаименованиеПолное)
+		}
+		var uid int64
+		if e := tx.QueryRow(`SELECT id FROM emarket_units WHERE shop_id=$1 AND external_id=$2`, shopID, ext).Scan(&uid); e == nil {
+			_, _ = tx.Exec(`UPDATE emarket_units SET name=$1, full_name=$2, code=$3 WHERE id=$4`, name, strings.TrimSpace(u.НаименованиеПолное), code, uid)
+		} else {
+			_ = tx.QueryRow(`INSERT INTO emarket_units (shop_id, name, full_name, code, external_id) VALUES ($1,$2,$3,$4,$5) RETURNING id`, shopID, name, strings.TrimSpace(u.НаименованиеПолное), code, ext).Scan(&uid)
+		}
+		unit[ext] = uid
+	}
+
+	count := 0
+	for _, g := range ki.Каталог.Товары.Товар {
+		extID := strings.TrimSpace(g.Ид)
+		if i := strings.Index(extID, "#"); i >= 0 {
+			extID = extID[:i] // характеристики — WMS-5c
+		}
+		if extID == "" {
+			continue
+		}
+		name := strings.TrimSpace(g.Наименование)
+		sku := strings.TrimSpace(g.Артикул)
+		unitName := strings.TrimSpace(g.БазоваяЕдиница.Значение)
+		if unitName == "" {
+			unitName = strings.TrimSpace(g.БазоваяЕдиница.НаименованиеПолное)
+		}
+		if unitName == "" {
+			unitName = "шт"
+		}
+		var catID *int64
+		if len(g.Группы.Ид) > 0 {
+			if cid, ok := cat[strings.TrimSpace(g.Группы.Ид[0])]; ok {
+				catID = &cid
+			}
+		}
+		var unitID *int64
+		if strings.TrimSpace(g.БазоваяЕдиница.Код) != "" {
+			if uid, ok := unit[strings.TrimSpace(g.БазоваяЕдиница.Код)]; ok {
+				unitID = &uid
+			}
+		}
+		var vat float64
+		if len(g.СтавкиНалогов.СтавкаНалога) > 0 {
+			vat, _ = strconv.ParseFloat(strings.Replace(strings.TrimSpace(g.СтавкиНалогов.СтавкаНалога[0].Ставка), ",", ".", 1), 64)
+		}
+		img := ""
+		if len(g.Картинка) > 0 {
+			img = strings.TrimSpace(g.Картинка[0])
+		}
+		var pid int64
+		if e := tx.QueryRow(`SELECT id FROM emarket_products WHERE shop_id=$1 AND external_id=$2`, shopID, extID).Scan(&pid); e == nil {
+			if _, err = tx.Exec(`UPDATE emarket_products SET name=$1, sku=COALESCE(NULLIF($2,''),sku), barcode=COALESCE(NULLIF($3,''),barcode), unit=$4, category_id=$5, unit_id=$6, description=$7, vat_rate=$8, deleted_at=NULL, updated_at=now() WHERE id=$9`,
+				name, sku, strings.TrimSpace(g.ШтрихКод), unitName, catID, unitID, strings.TrimSpace(g.Описание), vat, pid); err != nil {
+				return 0, err
+			}
+		} else {
+			if err = tx.QueryRow(`INSERT INTO emarket_products (shop_id, sku, barcode, name, unit, external_id, category_id, unit_id, description, vat_rate, image_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+				shopID, sku, strings.TrimSpace(g.ШтрихКод), name, unitName, extID, catID, unitID, strings.TrimSpace(g.Описание), vat, img).Scan(&pid); err != nil {
+				return 0, err
+			}
+		}
+		count++
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // emarket1cResolveSession — авторизация запроса обмена 1С по cookie-сессии или Basic.
