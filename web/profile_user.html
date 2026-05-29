@@ -1302,7 +1302,7 @@ async function loadUserShop(userID){
       : '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#1E8A4C,#22A05A);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;flex-shrink:0">'+(shop.name||'?').charAt(0).toUpperCase()+'</div>';
     const rating = shop.rating>0 ? '<div style="font-size:11px;color:var(--gmt);margin-top:2px">★ '+Number(shop.rating).toFixed(1)+' ('+(shop.reviews_count||0)+')</div>' : '';
     const safeName = (shop.name||'').replace(/[<>]/g,'');
-    body.innerHTML = `<a class="shop-link-card" href="/emarket/${encodeURIComponent(shop.slug)}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--gp);border:1px solid var(--bdr);text-decoration:none;color:var(--t);transition:border-color .15s">
+    body.innerHTML = `<a class="shop-link-card" href="/shop/${encodeURIComponent(shop.slug)}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:var(--gp);border:1px solid var(--bdr);text-decoration:none;color:var(--t);transition:border-color .15s">
       ${logoHTML}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeName}${verifyIcon}</div>
