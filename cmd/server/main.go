@@ -13728,10 +13728,73 @@ func main() {
 
 	mux.HandleFunc("/api/emarket/listings/", func(w http.ResponseWriter, r *http.Request) {
 		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/listings/"), "/")
-		listingID, _ := strconv.ParseInt(rest, 10, 64)
+		lparts := strings.Split(rest, "/")
+		listingID, _ := strconv.ParseInt(lparts[0], 10, 64)
 		if listingID == 0 {
 			writeError(w, http.StatusBadRequest, "Некорректный id")
 			return
+		}
+		// WMS-1e: привязка листинг ↔ складская позиция (SKU)
+		if len(lparts) >= 2 && lparts[1] == "product" {
+			var shopID int64
+			if err := db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1 AND deleted_at IS NULL`, listingID).Scan(&shopID); err != nil {
+				writeError(w, http.StatusNotFound, "Листинг не найден")
+				return
+			}
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			switch r.Method {
+			case http.MethodGet:
+				var productID int64
+				var name, sku string
+				if err := db.QueryRow(`SELECT p.id, p.name, p.sku FROM emarket_listing_product lp JOIN emarket_products p ON p.id=lp.product_id AND p.deleted_at IS NULL WHERE lp.listing_id=$1`, listingID).Scan(&productID, &name, &sku); err != nil {
+					writeJSON(w, http.StatusOK, map[string]any{"product": nil})
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"product": map[string]any{"id": productID, "name": name, "sku": sku}})
+				return
+			case http.MethodPut:
+				var req struct {
+					ProductID int64 `json:"product_id"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if req.ProductID == 0 {
+					writeError(w, http.StatusBadRequest, "product_id обязателен")
+					return
+				}
+				var pShop int64
+				if err := db.QueryRow(`SELECT shop_id FROM emarket_products WHERE id=$1 AND deleted_at IS NULL`, req.ProductID).Scan(&pShop); err != nil {
+					writeError(w, http.StatusNotFound, "Товар не найден")
+					return
+				}
+				if pShop != shopID {
+					writeError(w, http.StatusBadRequest, "Товар другого магазина")
+					return
+				}
+				if _, err := db.Exec(`INSERT INTO emarket_listing_product (listing_id, product_id) VALUES ($1,$2)
+					ON CONFLICT (listing_id) DO UPDATE SET product_id=$2, created_at=now()`, listingID, req.ProductID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+				return
+			case http.MethodDelete:
+				_, _ = db.Exec(`DELETE FROM emarket_listing_product WHERE listing_id=$1`, listingID)
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+				return
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
 		}
 		switch r.Method {
 		case http.MethodGet:
