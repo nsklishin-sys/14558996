@@ -14081,6 +14081,123 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/emarket/stock/move", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		var req struct {
+			ShopID        int64   `json:"shop_id"`
+			ProductID     int64   `json:"product_id"`
+			WarehouseID   int64   `json:"warehouse_id"`
+			ToWarehouseID int64   `json:"to_warehouse_id"`
+			Type          string  `json:"type"`
+			Qty           float64 `json:"qty"`
+			RefType       string  `json:"ref_type"`
+			RefID         *int64  `json:"ref_id"`
+			Comment       string  `json:"comment"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if req.ShopID == 0 || req.ProductID == 0 {
+			writeError(w, http.StatusBadRequest, "shop_id и product_id обязательны")
+			return
+		}
+		if err := emarketCheckPermission(db, userID, req.ShopID, "listings"); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
+			return
+		}
+		moveID, err := emarketApplyMove(db, req.ShopID, req.ProductID, req.WarehouseID, req.ToWarehouseID, strings.TrimSpace(req.Type), req.Qty, strings.TrimSpace(req.RefType), req.RefID, strings.TrimSpace(req.Comment), userID)
+		if err != nil {
+			if errors.Is(err, errValidation) {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": strings.TrimPrefix(err.Error(), errValidation.Error()+": ")})
+				return
+			}
+			log.Printf("[emarket/stock/move] %v", err)
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "id": moveID})
+	})
+
+	mux.HandleFunc("/api/emarket/stock/moves", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
+		if shopID == 0 {
+			writeError(w, http.StatusBadRequest, "shop_id обязателен")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
+			return
+		}
+		conds := []string{"m.shop_id=$1"}
+		args := []any{shopID}
+		if productID, _ := strconv.ParseInt(r.URL.Query().Get("product_id"), 10, 64); productID > 0 {
+			args = append(args, productID)
+			conds = append(conds, "m.product_id=$"+strconv.Itoa(len(args)))
+		}
+		if warehouseID, _ := strconv.ParseInt(r.URL.Query().Get("warehouse_id"), 10, 64); warehouseID > 0 {
+			args = append(args, warehouseID)
+			p := strconv.Itoa(len(args))
+			conds = append(conds, "(m.warehouse_id=$"+p+" OR m.to_warehouse_id=$"+p+")")
+		}
+		limit := 100
+		if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+		offset := 0
+		if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
+			offset = n
+		}
+		args = append(args, limit, offset)
+		q := `SELECT m.id, m.product_id, p.name, p.sku, m.warehouse_id, COALESCE(w.name,''), m.to_warehouse_id, COALESCE(tw.name,''), m.type, m.qty, m.ref_type, m.ref_id, m.comment, m.actor_id, m.created_at
+			FROM emarket_stock_moves m
+			JOIN emarket_products p ON p.id=m.product_id
+			LEFT JOIN emarket_warehouses w ON w.id=m.warehouse_id
+			LEFT JOIN emarket_warehouses tw ON tw.id=m.to_warehouse_id
+			WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY m.created_at DESC, m.id DESC LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
+		rows, err := db.Query(q, args...)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		moves := []map[string]any{}
+		for rows.Next() {
+			var id, productID int64
+			var productName, sku, moveType, refType, comment string
+			var warehouseID, toWarehouseID, refID, actorID sql.NullInt64
+			var warehouseName, toWarehouseName sql.NullString
+			var qty float64
+			var createdAt time.Time
+			if err := rows.Scan(&id, &productID, &productName, &sku, &warehouseID, &warehouseName, &toWarehouseID, &toWarehouseName, &moveType, &qty, &refType, &refID, &comment, &actorID, &createdAt); err != nil {
+				continue
+			}
+			moves = append(moves, map[string]any{
+				"id": id, "product_id": productID, "product_name": productName, "sku": sku,
+				"warehouse_id": warehouseID.Int64, "warehouse_name": warehouseName.String,
+				"to_warehouse_id": toWarehouseID.Int64, "to_warehouse_name": toWarehouseName.String,
+				"type": moveType, "qty": qty, "ref_type": refType, "ref_id": refID.Int64,
+				"comment": comment, "actor_id": actorID.Int64, "created_at": createdAt,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"moves": moves})
+	})
+
 	mux.HandleFunc("/api/emarket/shop-listings", func(w http.ResponseWriter, r *http.Request) {
 		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
 		if shopID == 0 {
@@ -35649,6 +35766,143 @@ func renderShopQR(text string, fg color.RGBA, logoBytes []byte, size int) ([]byt
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func emarketStockDelta(tx *sql.Tx, productID, warehouseID int64, qtyDelta, reservedDelta float64) error {
+	if productID == 0 || warehouseID == 0 {
+		return fmt.Errorf("%w: товар и склад обязательны", errValidation)
+	}
+	if _, err := tx.Exec(`INSERT INTO emarket_stock (product_id, warehouse_id, qty, reserved_qty, updated_at)
+		VALUES ($1,$2,$3,$4,now())
+		ON CONFLICT (product_id, warehouse_id) DO UPDATE
+		SET qty=emarket_stock.qty + EXCLUDED.qty,
+			reserved_qty=emarket_stock.reserved_qty + EXCLUDED.reserved_qty,
+			updated_at=now()`, productID, warehouseID, qtyDelta, reservedDelta); err != nil {
+		return err
+	}
+	var qty, reserved float64
+	if err := tx.QueryRow(`SELECT qty, reserved_qty FROM emarket_stock WHERE product_id=$1 AND warehouse_id=$2`, productID, warehouseID).Scan(&qty, &reserved); err != nil {
+		return err
+	}
+	if qty < -0.000001 || reserved < -0.000001 || qty-reserved < -0.000001 {
+		return fmt.Errorf("%w: недостаточно доступного остатка", errValidation)
+	}
+	return nil
+}
+
+func emarketApplyMove(db *sql.DB, shopID, productID, warehouseID, toWarehouseID int64, moveType string, qty float64, refType string, refID *int64, comment string, actorID int64) (int64, error) {
+	if shopID == 0 || productID == 0 {
+		return 0, fmt.Errorf("%w: shop_id и product_id обязательны", errValidation)
+	}
+	if qty <= 0 && moveType != "adjustment" {
+		return 0, fmt.Errorf("%w: количество должно быть больше нуля", errValidation)
+	}
+	if qty == 0 && moveType == "adjustment" {
+		return 0, fmt.Errorf("%w: количество не должно быть нулевым", errValidation)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	var productShopID int64
+	if err := tx.QueryRow(`SELECT shop_id FROM emarket_products WHERE id=$1 AND deleted_at IS NULL`, productID).Scan(&productShopID); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("%w: товар не найден", errValidation)
+		}
+		return 0, err
+	}
+	if productShopID != shopID {
+		return 0, fmt.Errorf("%w: товар не принадлежит магазину", errValidation)
+	}
+	checkWarehouse := func(id int64, required bool) error {
+		if id == 0 {
+			if required {
+				return fmt.Errorf("%w: склад обязателен", errValidation)
+			}
+			return nil
+		}
+		var ok bool
+		if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_warehouses WHERE id=$1 AND shop_id=$2)`, id, shopID).Scan(&ok); err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("%w: склад не найден", errValidation)
+		}
+		return nil
+	}
+
+	switch moveType {
+	case "receipt":
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, qty, 0); err != nil {
+			return 0, err
+		}
+	case "shipment", "writeoff":
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, -qty, 0); err != nil {
+			return 0, err
+		}
+	case "adjustment":
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, qty, 0); err != nil {
+			return 0, err
+		}
+	case "reserve":
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, 0, qty); err != nil {
+			return 0, err
+		}
+	case "release":
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, 0, -qty); err != nil {
+			return 0, err
+		}
+	case "transfer":
+		if warehouseID == toWarehouseID {
+			return 0, fmt.Errorf("%w: склады перемещения должны различаться", errValidation)
+		}
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := checkWarehouse(toWarehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, -qty, 0); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, toWarehouseID, qty, 0); err != nil {
+			return 0, err
+		}
+	default:
+		return 0, fmt.Errorf("%w: неизвестный тип движения", errValidation)
+	}
+
+	var ref sql.NullInt64
+	if refID != nil {
+		ref = sql.NullInt64{Int64: *refID, Valid: true}
+	}
+	var moveID int64
+	if err := tx.QueryRow(`INSERT INTO emarket_stock_moves (shop_id, product_id, warehouse_id, to_warehouse_id, type, qty, ref_type, ref_id, comment, actor_id)
+		VALUES ($1,$2,NULLIF($3,0),NULLIF($4,0),$5,$6,$7,$8,$9,$10) RETURNING id`,
+		shopID, productID, warehouseID, toWarehouseID, moveType, qty, refType, ref, comment, actorID).Scan(&moveID); err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return moveID, nil
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
