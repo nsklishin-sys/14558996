@@ -6602,8 +6602,8 @@ func main() {
 	mux.HandleFunc("/api/admin/emarket/featured", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			rows, err := db.Query(`SELECT id, name, slug, logo_url, rating, reviews_count, region, is_featured, status
-				FROM emarket_shops WHERE status<>'blocked' ORDER BY is_featured DESC, rating DESC, name LIMIT 200`)
+			rows, err := db.Query(`SELECT id, name, slug, logo_url, rating, reviews_count, region, is_featured, COALESCE(is_verified,FALSE), status
+				FROM emarket_shops WHERE status<>'blocked' ORDER BY is_featured DESC, is_verified DESC, rating DESC, name LIMIT 200`)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
@@ -6615,17 +6615,22 @@ func main() {
 				var name, slug, logo, region, status string
 				var rating float64
 				var reviews int
-				var featured bool
-				if err := rows.Scan(&id, &name, &slug, &logo, &rating, &reviews, &region, &featured, &status); err != nil {
+				var featured, verified bool
+				if err := rows.Scan(&id, &name, &slug, &logo, &rating, &reviews, &region, &featured, &verified, &status); err != nil {
 					continue
 				}
-				shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "rating": rating, "reviews_count": reviews, "region": region, "is_featured": featured, "status": status})
+				shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "rating": rating, "reviews_count": reviews, "region": region, "is_featured": featured, "is_verified": verified, "status": status})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
 		case http.MethodPost:
+			actorID, ok := requireAdmin(w, r, db, sessions)
+			if !ok {
+				return
+			}
 			var req struct {
 				ShopID     int64 `json:"shop_id"`
-				IsFeatured bool  `json:"is_featured"`
+				IsFeatured *bool `json:"is_featured,omitempty"`
+				IsVerified *bool `json:"is_verified,omitempty"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -6635,12 +6640,30 @@ func main() {
 				writeError(w, http.StatusBadRequest, "shop_id обязателен")
 				return
 			}
-			_, err := db.Exec(`UPDATE emarket_shops SET is_featured=$1, updated_at=now() WHERE id=$2`, req.IsFeatured, req.ShopID)
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, "Ошибка")
+			if req.IsFeatured == nil && req.IsVerified == nil {
+				writeError(w, http.StatusBadRequest, "укажите is_featured или is_verified")
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "is_featured": req.IsFeatured})
+			if req.IsFeatured != nil {
+				if _, err := db.Exec(`UPDATE emarket_shops SET is_featured=$1, updated_at=now() WHERE id=$2`, *req.IsFeatured, req.ShopID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+			}
+			if req.IsVerified != nil {
+				if *req.IsVerified {
+					if _, err := db.Exec(`UPDATE emarket_shops SET is_verified=TRUE, verified_at=now(), verified_by=$1, updated_at=now() WHERE id=$2`, actorID, req.ShopID); err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+				} else {
+					if _, err := db.Exec(`UPDATE emarket_shops SET is_verified=FALSE, verified_at=NULL, verified_by=NULL, updated_at=now() WHERE id=$1`, req.ShopID); err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+				}
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 		default:
 			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
 		}
@@ -11792,11 +11815,12 @@ func main() {
 		var accent, headerTheme, siteLogo, tagline, leadEmail, leadPhone, direction, phone, email, site string
 		var rating float64
 		var reviews int
+		var verified bool
 		err := db.QueryRow(`SELECT id, owner_type, owner_id, name, description, logo_url, cover_url, region, site_published_config::text,
-			accent_color, header_theme, site_logo_url, tagline, lead_email, lead_phone, direction, contact_phone, contact_email, contact_site, rating, reviews_count
+			accent_color, header_theme, site_logo_url, tagline, lead_email, lead_phone, direction, contact_phone, contact_email, contact_site, rating, reviews_count, COALESCE(is_verified,FALSE)
 			FROM emarket_shops
 			WHERE slug=$1 AND status<>'blocked' AND site_published=TRUE`, slug).Scan(&shopID, &ownerType, &ownerID, &name, &desc, &logo, &cover, &region, &configText,
-			&accent, &headerTheme, &siteLogo, &tagline, &leadEmail, &leadPhone, &direction, &phone, &email, &site, &rating, &reviews)
+			&accent, &headerTheme, &siteLogo, &tagline, &leadEmail, &leadPhone, &direction, &phone, &email, &site, &rating, &reviews, &verified)
 		if err == sql.ErrNoRows {
 			writeError(w, http.StatusNotFound, "Сайт магазина не опубликован")
 			return
@@ -11838,6 +11862,7 @@ func main() {
 				"contact_site":    site,
 				"rating":          rating,
 				"reviews_count":   reviews,
+				"is_verified":     verified,
 				"owner_public_id": ownerPublicID,
 			},
 			"config": config,
@@ -13346,7 +13371,7 @@ func main() {
 		if offset < 0 {
 			offset = 0
 		}
-		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, COALESCE(tagline,''), COALESCE(direction,''), logo_url, cover_url, rating, reviews_count, region, is_featured, COALESCE(accent_color,'green'), created_at
+		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, COALESCE(tagline,''), COALESCE(direction,''), logo_url, cover_url, rating, reviews_count, region, is_featured, COALESCE(is_verified,FALSE), COALESCE(accent_color,'green'), created_at
 			FROM emarket_shops WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
 		rows, err := db.Query(sqlStr, args...)
 		if err != nil {
@@ -13361,16 +13386,16 @@ func main() {
 			var ownerType, name, slug, desc, tagline, direction, logo, cover, region, accent string
 			var rating float64
 			var reviews int
-			var featured bool
+			var featured, verified bool
 			var created time.Time
-			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &tagline, &direction, &logo, &cover, &rating, &reviews, &region, &featured, &accent, &created); err != nil {
+			if err := rows.Scan(&id, &ownerType, &ownerID, &name, &slug, &desc, &tagline, &direction, &logo, &cover, &rating, &reviews, &region, &featured, &verified, &accent, &created); err != nil {
 				continue
 			}
 			shops = append(shops, map[string]any{
 				"id": id, "owner_type": ownerType, "owner_id": ownerID, "name": name, "slug": slug,
 				"description": desc, "tagline": tagline, "direction": direction,
 				"logo_url": logo, "cover_url": cover, "rating": rating,
-				"reviews_count": reviews, "region": region, "is_featured": featured,
+				"reviews_count": reviews, "region": region, "is_featured": featured, "is_verified": verified,
 				"accent_color": accent, "created_at": created,
 			})
 		}
@@ -13379,7 +13404,7 @@ func main() {
 
 	// LASTOP рекомендует — избранные магазины
 	mux.HandleFunc("/api/emarket/featured-shops", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`SELECT id, name, slug, logo_url, cover_url, description, COALESCE(tagline,''), COALESCE(direction,''), rating, reviews_count, region, COALESCE(accent_color,'green')
+		rows, err := db.Query(`SELECT id, name, slug, logo_url, cover_url, description, COALESCE(tagline,''), COALESCE(direction,''), rating, reviews_count, region, COALESCE(accent_color,'green'), COALESCE(is_verified,FALSE)
 			FROM emarket_shops WHERE status='active' AND is_featured=TRUE ORDER BY rating DESC, created_at DESC LIMIT 12`)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -13392,10 +13417,11 @@ func main() {
 			var name, slug, logo, cover, desc, tagline, direction, region, accent string
 			var rating float64
 			var reviews int
-			if err := rows.Scan(&id, &name, &slug, &logo, &cover, &desc, &tagline, &direction, &rating, &reviews, &region, &accent); err != nil {
+			var verified bool
+			if err := rows.Scan(&id, &name, &slug, &logo, &cover, &desc, &tagline, &direction, &rating, &reviews, &region, &accent, &verified); err != nil {
 				continue
 			}
-			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "cover_url": cover, "description": desc, "tagline": tagline, "direction": direction, "rating": rating, "reviews_count": reviews, "region": region, "accent_color": accent})
+			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "cover_url": cover, "description": desc, "tagline": tagline, "direction": direction, "rating": rating, "reviews_count": reviews, "region": region, "accent_color": accent, "is_verified": verified})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
 	})
@@ -19916,6 +19942,10 @@ ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS direction TEXT NOT NULL DEFAU
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS site_published_at TIMESTAMPTZ;
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'none';
 ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS payment_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+ALTER TABLE emarket_shops ADD COLUMN IF NOT EXISTS verified_by BIGINT;
+CREATE INDEX IF NOT EXISTS emarket_shops_verified_idx ON emarket_shops(is_verified) WHERE is_verified = TRUE;
 CREATE TABLE IF NOT EXISTS emarket_stat_events (
     id BIGSERIAL PRIMARY KEY,
     shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
