@@ -68,9 +68,11 @@
     LAST_FOCUS=document.activeElement;
     document.getElementById('ltShareSub').textContent=sub||url;
     document.getElementById('ltShareUrl').value=url;
+    var qrSrc=opts.qrSrc?String(opts.qrSrc):'';
+    function qrURL(sz){return qrSrc?(qrSrc+(qrSrc.indexOf('?')>=0?'&':'?')+'size='+sz):('/api/share/qr?size='+sz+'&text='+encodeURIComponent(url));}
     var qr=document.getElementById('ltShareQr');
-    qr.src='/api/share/qr?size=320&text='+encodeURIComponent(url);
-    document.getElementById('ltShareDl').href='/api/share/qr?size=720&text='+encodeURIComponent(url);
+    qr.src=qrURL(320);
+    document.getElementById('ltShareDl').href=qrURL(720);
     node.classList.add('open');
     setTimeout(function(){node.querySelector('.lt-share-box').focus();},40);
   }
