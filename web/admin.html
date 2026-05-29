@@ -437,6 +437,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
             <option value="blocked">Заблокированные</option>
           </select>
         </div>
+        <div id="emListKindBar" style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="emlk-btn" data-kind="product" onclick="emListKind('product')" style="padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--g);color:#fff;border:1px solid var(--g)">Товары</button>
+          <button class="emlk-btn" data-kind="service" onclick="emListKind('service')" style="padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--w);color:var(--tm);border:1px solid var(--bdr)">Услуги</button>
+        </div>
         <div id="emListingsList" style="flex:1;overflow-y:auto">
           <div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>
         </div>
@@ -1337,6 +1341,7 @@ var EM_SHOPS_Q='';
 var EM_LIST_ALL=[];
 var EM_LIST_Q='';
 var EM_LIST_STATUS='';
+var EM_LIST_KIND='product';
 async function loadEmShops(){
   var list=document.getElementById('emShopsList');
   if(!list)return;
@@ -1434,12 +1439,22 @@ async function loadEmListings(){
 }
 function emListFilter(v){EM_LIST_Q=String(v||'').trim();loadEmListings();}
 function emListStatusFilter(v){EM_LIST_STATUS=String(v||'');loadEmListings();}
+function emListKind(k){
+  EM_LIST_KIND=k;
+  document.querySelectorAll('#emListKindBar .emlk-btn').forEach(function(b){
+    var on=b.dataset.kind===k;
+    b.style.background=on?'var(--g)':'var(--w)';
+    b.style.color=on?'#fff':'var(--tm)';
+    b.style.borderColor=on?'var(--g)':'var(--bdr)';
+  });
+  renderEmListings();
+}
 function renderEmListings(){
   var list=document.getElementById('emListingsList');
   if(!list)return;
-  var items=EM_LIST_ALL;
+  var items=EM_LIST_ALL.filter(function(l){return l.kind===EM_LIST_KIND;});
   if(!items.length){
-    list.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Листингов нет</div>';
+    list.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">'+(EM_LIST_KIND==='service'?'Услуг нет':'Товаров нет')+'</div>';
     return;
   }
   var rows=items.map(function(l){
