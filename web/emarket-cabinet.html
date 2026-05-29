@@ -1948,6 +1948,20 @@ function renderSettings(){
       +'<a class="lead-btn lead-btn-pri" style="margin-top:14px" href="/emarket-builder?id='+SHOP.id+'"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Открыть конструктор</a>'
     +'</div>'
     +'<div class="cab-section">'
+      +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>QR-код магазина</div>'
+      +'<div class="cab-section-d" style="margin-bottom:14px">QR ведёт на ваш магазин и показывается в окне «Поделиться» и при скачивании. Настройте цвет точек и логотип в центре.</div>'
+      +'<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">'
+        +'<div style="flex-shrink:0"><img id="qrPrev" alt="QR" style="width:160px;height:160px;border:1px solid var(--bdr);border-radius:var(--rm);background:#fff;padding:8px;display:block"></div>'
+        +'<div style="flex:1;min-width:220px">'
+          +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t);cursor:pointer"><input type="checkbox" id="qrCustom" onchange="onQrCustomToggle();updateQrPreview()"> Свой цвет точек</label>'
+          +'<div style="margin-top:8px"><input type="color" id="qrColor" value="#1E8A4C" oninput="updateQrPreview()" style="width:60px;height:34px;padding:2px;border:1.5px solid var(--bdr);border-radius:var(--rm);cursor:pointer;background:var(--w)"></div>'
+          +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t);cursor:pointer;margin-top:10px"><input type="checkbox" id="qrLogo" onchange="updateQrPreview()"> Логотип в центре</label>'
+          +'<div class="cab-section-d" id="qrLogoNote" style="font-size:12px;margin-top:4px;display:none">Загрузите логотип магазина (в секции «Магазин» выше), чтобы добавить его в QR. SVG-логотипы не поддерживаются.</div>'
+          +'<button class="lead-btn lead-btn-pri" id="qrSaveBtn" style="margin-top:14px" onclick="saveQrStyle()">Сохранить</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="cab-section">'
       +'<div class="cab-section-h"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Приём оплаты</div>'
       +'<div class="cab-section-d" style="margin-bottom:14px">Платформа не проводит платежи — оплата идёт напрямую вам. Укажите свою платёжную ссылку (ЮKassa, Тинькофф, Робокасса и т.п.). Кнопка «Оплатить» в заказе будет вести на неё.</div>'
       +'<div class="pay-toggle">'
@@ -1974,6 +1988,7 @@ function renderSettings(){
       +'<div class="cab-section-d">Адрес магазина: <b>lastop.ru/shop/'+esc(SHOP.slug)+'</b><br>Создан: '+esc(fmtDate(SHOP.created_at))+'</div>'
     +'</div>';
   loadPayment();
+  loadQrStyle();
   if(SHOP.owner_type==='company')loadStaff();
 }
 
@@ -2079,6 +2094,51 @@ function applyPayType(){
   bNone.classList.toggle('active',PAY_TYPE==='none');
   bLink.classList.toggle('active',PAY_TYPE==='link');
   row.style.display=PAY_TYPE==='link'?'block':'none';
+}
+let QR_STYLE={qr_color:'',accent_hex:'#1E8A4C',qr_logo:false,has_logo:false};
+async function loadQrStyle(){
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/qr-style');
+    if(r.ok)QR_STYLE=await r.json();
+  }catch(e){}
+  const cust=document.getElementById('qrCustom'),col=document.getElementById('qrColor'),lg=document.getElementById('qrLogo'),note=document.getElementById('qrLogoNote');
+  if(!cust)return;
+  const hasCustom=!!(QR_STYLE.qr_color);
+  cust.checked=hasCustom;
+  col.value=hasCustom?QR_STYLE.qr_color:(QR_STYLE.accent_hex||'#1E8A4C');
+  col.disabled=!hasCustom;
+  lg.checked=!!QR_STYLE.qr_logo;
+  lg.disabled=!QR_STYLE.has_logo;
+  if(note)note.style.display=QR_STYLE.has_logo?'none':'';
+  updateQrPreview();
+}
+function onQrCustomToggle(){
+  const cust=document.getElementById('qrCustom'),col=document.getElementById('qrColor');
+  if(!cust||!col)return;
+  col.disabled=!cust.checked;
+  if(!cust.checked)col.value=QR_STYLE.accent_hex||'#1E8A4C';
+}
+function updateQrPreview(){
+  const img=document.getElementById('qrPrev');if(!img)return;
+  const cust=document.getElementById('qrCustom'),col=document.getElementById('qrColor'),lg=document.getElementById('qrLogo');
+  let u='/api/emarket/shop-qr?id='+SHOP.id+'&size=240';
+  if(cust&&cust.checked&&col)u+='&color='+encodeURIComponent(col.value.replace('#',''));
+  if(lg)u+='&logo='+(lg.checked?'1':'0');
+  img.src=u+'&_='+Date.now();
+}
+async function saveQrStyle(){
+  const btn=document.getElementById('qrSaveBtn');
+  const cust=document.getElementById('qrCustom'),col=document.getElementById('qrColor'),lg=document.getElementById('qrLogo');
+  const body={qr_color:(cust&&cust.checked&&col)?col.value:'',qr_logo:!!(lg&&lg.checked)};
+  btn.disabled=true;btn.textContent='Сохранение…';
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/qr-style',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw 0;
+    QR_STYLE.qr_color=body.qr_color;QR_STYLE.qr_logo=body.qr_logo;
+    btn.disabled=false;btn.textContent='Сохранено ✓';
+    updateQrPreview();
+    setTimeout(()=>{const b=document.getElementById('qrSaveBtn');if(b)b.textContent='Сохранить';},1800);
+  }catch(e){btn.disabled=false;btn.textContent='Сохранить';if(window.toast)toast('Не удалось сохранить','info');}
 }
 async function savePayment(){
   const btn=document.getElementById('payeSaveBtn');
