@@ -12145,6 +12145,10 @@ func main() {
 		if ownerType == "user" {
 			_ = db.QueryRow(`SELECT public_id FROM users WHERE id=$1`, ownerID).Scan(&ownerPublicID)
 		}
+		isOwner := false
+		if uid, ok := optionalAuthenticatedUserID(r, sessions); ok && uid > 0 {
+			isOwner = emarketResolveOwner(db, r, uid, ownerType, ownerID) == nil
+		}
 		_, _ = db.Exec(`UPDATE emarket_shops SET site_views=site_views+1 WHERE id=$1`, shopID)
 		_, _ = db.Exec(`INSERT INTO emarket_stat_events (shop_id, event_type) VALUES ($1,'site_view')`, shopID)
 		var config any = []any{}
@@ -12172,6 +12176,7 @@ func main() {
 				"reviews_count":   reviews,
 				"is_verified":     verified,
 				"owner_public_id": ownerPublicID,
+				"is_owner":        isOwner,
 			},
 			"config": config,
 		})
