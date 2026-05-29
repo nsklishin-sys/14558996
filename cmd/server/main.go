@@ -13970,6 +13970,7 @@ func main() {
 			}
 			args = append(args, limit, offset)
 			q := `SELECT p.id, p.sku, p.barcode, p.name, p.unit, p.external_id, p.category, p.price, p.currency, p.low_stock_threshold,
+				COALESCE(p.image_url,''),
 				COALESCE(SUM(s.qty),0), COALESCE(SUM(s.reserved_qty),0)
 				FROM emarket_products p LEFT JOIN emarket_stock s ON s.product_id=p.id
 				WHERE ` + whereSQL + ` GROUP BY p.id ORDER BY p.name LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
@@ -13982,15 +13983,15 @@ func main() {
 			items := []map[string]any{}
 			for rows.Next() {
 				var id int64
-				var sku, barcode, name, unit, extID, category, currency string
+				var sku, barcode, name, unit, extID, category, currency, imageURL string
 				var price, threshold, qty, reserved float64
-				if err := rows.Scan(&id, &sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &threshold, &qty, &reserved); err != nil {
+				if err := rows.Scan(&id, &sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &threshold, &imageURL, &qty, &reserved); err != nil {
 					continue
 				}
 				available := qty - reserved
 				items = append(items, map[string]any{
 					"id": id, "sku": sku, "barcode": barcode, "name": name, "unit": unit,
-					"external_id": extID, "category": category, "price": price, "currency": currency,
+					"external_id": extID, "category": category, "image_url": imageURL, "price": price, "currency": currency,
 					"low_stock_threshold": threshold, "qty": qty, "reserved_qty": reserved, "available": available,
 					"low_stock": threshold > 0 && available <= threshold,
 				})
@@ -13998,17 +13999,20 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"products": items, "total": total})
 		case http.MethodPost:
 			var req struct {
-				SKU        string  `json:"sku"`
-				Barcode    string  `json:"barcode"`
-				Name       string  `json:"name"`
-				Unit       string  `json:"unit"`
-				ExternalID string  `json:"external_id"`
-				Category   string  `json:"category"`
-				Price      float64 `json:"price"`
-				Currency   string  `json:"currency"`
-				Weight     float64 `json:"weight"`
-				Volume     float64 `json:"volume"`
-				LowStock   float64 `json:"low_stock_threshold"`
+				SKU         string  `json:"sku"`
+				Barcode     string  `json:"barcode"`
+				Name        string  `json:"name"`
+				Unit        string  `json:"unit"`
+				ExternalID  string  `json:"external_id"`
+				Category    string  `json:"category"`
+				Price       float64 `json:"price"`
+				Currency    string  `json:"currency"`
+				Weight      float64 `json:"weight"`
+				Volume      float64 `json:"volume"`
+				LowStock    float64 `json:"low_stock_threshold"`
+				Description string  `json:"description"`
+				VatRate     float64 `json:"vat_rate"`
+				ImageURL    string  `json:"image_url"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -14037,10 +14041,10 @@ func main() {
 				}
 			}
 			var newID int64
-			if err := db.QueryRow(`INSERT INTO emarket_products (shop_id, sku, barcode, name, unit, external_id, category, price, currency, weight, volume, low_stock_threshold)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+			if err := db.QueryRow(`INSERT INTO emarket_products (shop_id, sku, barcode, name, unit, external_id, category, price, currency, weight, volume, low_stock_threshold, description, vat_rate, image_url)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
 				shopID, sku, strings.TrimSpace(req.Barcode), req.Name, unit, strings.TrimSpace(req.ExternalID), strings.TrimSpace(req.Category),
-				req.Price, currency, req.Weight, req.Volume, req.LowStock).Scan(&newID); err != nil {
+				req.Price, currency, req.Weight, req.Volume, req.LowStock, strings.TrimSpace(req.Description), req.VatRate, strings.TrimSpace(req.ImageURL)).Scan(&newID); err != nil {
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
 			}
@@ -14071,10 +14075,10 @@ func main() {
 		}
 		switch r.Method {
 		case http.MethodGet:
-			var sku, barcode, name, unit, extID, category, currency string
-			var price, weight, volume, threshold float64
-			if err := db.QueryRow(`SELECT sku, barcode, name, unit, external_id, category, price, currency, weight, volume, low_stock_threshold
-				FROM emarket_products WHERE id=$1`, productID).Scan(&sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &weight, &volume, &threshold); err != nil {
+			var sku, barcode, name, unit, extID, category, currency, description, imageURL string
+			var price, weight, volume, threshold, vatRate float64
+			if err := db.QueryRow(`SELECT sku, barcode, name, unit, external_id, category, price, currency, weight, volume, low_stock_threshold, description, vat_rate, COALESCE(image_url,'')
+				FROM emarket_products WHERE id=$1`, productID).Scan(&sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &weight, &volume, &threshold, &description, &vatRate, &imageURL); err != nil {
 				writeError(w, http.StatusNotFound, "Товар не найден")
 				return
 			}
@@ -14098,20 +14102,24 @@ func main() {
 				"id": productID, "sku": sku, "barcode": barcode, "name": name, "unit": unit,
 				"external_id": extID, "category": category, "price": price, "currency": currency,
 				"weight": weight, "volume": volume, "low_stock_threshold": threshold,
+				"description": description, "vat_rate": vatRate, "image_url": imageURL,
 			}, "stock": stock})
 		case http.MethodPut:
 			var req struct {
-				SKU        string  `json:"sku"`
-				Barcode    string  `json:"barcode"`
-				Name       string  `json:"name"`
-				Unit       string  `json:"unit"`
-				ExternalID string  `json:"external_id"`
-				Category   string  `json:"category"`
-				Price      float64 `json:"price"`
-				Currency   string  `json:"currency"`
-				Weight     float64 `json:"weight"`
-				Volume     float64 `json:"volume"`
-				LowStock   float64 `json:"low_stock_threshold"`
+				SKU         string  `json:"sku"`
+				Barcode     string  `json:"barcode"`
+				Name        string  `json:"name"`
+				Unit        string  `json:"unit"`
+				ExternalID  string  `json:"external_id"`
+				Category    string  `json:"category"`
+				Price       float64 `json:"price"`
+				Currency    string  `json:"currency"`
+				Weight      float64 `json:"weight"`
+				Volume      float64 `json:"volume"`
+				LowStock    float64 `json:"low_stock_threshold"`
+				Description string  `json:"description"`
+				VatRate     float64 `json:"vat_rate"`
+				ImageURL    string  `json:"image_url"`
 			}
 			if err := decodeJSON(w, r, &req); err != nil {
 				writeError(w, http.StatusBadRequest, "Некорректный JSON")
@@ -14139,9 +14147,9 @@ func main() {
 					return
 				}
 			}
-			if _, err := db.Exec(`UPDATE emarket_products SET sku=$1, barcode=$2, name=$3, unit=$4, external_id=$5, category=$6, price=$7, currency=$8, weight=$9, volume=$10, low_stock_threshold=$11, updated_at=now() WHERE id=$12`,
+			if _, err := db.Exec(`UPDATE emarket_products SET sku=$1, barcode=$2, name=$3, unit=$4, external_id=$5, category=$6, price=$7, currency=$8, weight=$9, volume=$10, low_stock_threshold=$11, description=$12, vat_rate=$13, image_url=$14, updated_at=now() WHERE id=$15`,
 				sku, strings.TrimSpace(req.Barcode), req.Name, unit, strings.TrimSpace(req.ExternalID), strings.TrimSpace(req.Category),
-				req.Price, currency, req.Weight, req.Volume, req.LowStock, productID); err != nil {
+				req.Price, currency, req.Weight, req.Volume, req.LowStock, strings.TrimSpace(req.Description), req.VatRate, strings.TrimSpace(req.ImageURL), productID); err != nil {
 				writeError(w, http.StatusInternalServerError, "Ошибка")
 				return
 			}
