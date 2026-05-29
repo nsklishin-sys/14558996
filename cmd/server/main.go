@@ -11069,6 +11069,159 @@ func main() {
 			return
 		}
 
+		if len(parts) >= 2 && parts[1] == "wms" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if r.Method == http.MethodGet {
+				var enabled bool
+				if err := db.QueryRow(`SELECT COALESCE(wms_enabled,FALSE) FROM emarket_shops WHERE id=$1`, shopID).Scan(&enabled); err != nil {
+					writeError(w, http.StatusNotFound, "Магазин не найден")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"wms_enabled": enabled})
+				return
+			}
+			if r.Method == http.MethodPut {
+				var req struct {
+					WMSEnabled bool `json:"wms_enabled"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				if _, err := db.Exec(`UPDATE emarket_shops SET wms_enabled=$1, updated_at=now() WHERE id=$2`, req.WMSEnabled, shopID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "wms_enabled": req.WMSEnabled})
+				return
+			}
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
+		if len(parts) >= 2 && parts[1] == "warehouses" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if len(parts) == 2 {
+				if r.Method == http.MethodGet {
+					rows, err := db.Query(`SELECT id, name, address, is_primary, sort FROM emarket_warehouses WHERE shop_id=$1 ORDER BY sort, id`, shopID)
+					if err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					defer rows.Close()
+					items := []map[string]any{}
+					for rows.Next() {
+						var id int64
+						var name, address string
+						var isPrimary bool
+						var sort int
+						if err := rows.Scan(&id, &name, &address, &isPrimary, &sort); err != nil {
+							continue
+						}
+						items = append(items, map[string]any{"id": id, "name": name, "address": address, "is_primary": isPrimary, "sort": sort})
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"warehouses": items})
+					return
+				}
+				if r.Method == http.MethodPost {
+					var req struct {
+						Name      string `json:"name"`
+						Address   string `json:"address"`
+						IsPrimary bool   `json:"is_primary"`
+						Sort      int    `json:"sort"`
+					}
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					req.Name = strings.TrimSpace(req.Name)
+					if req.Name == "" {
+						writeError(w, http.StatusBadRequest, "Название обязательно")
+						return
+					}
+					if req.IsPrimary {
+						_, _ = db.Exec(`UPDATE emarket_warehouses SET is_primary=FALSE WHERE shop_id=$1`, shopID)
+					}
+					var newID int64
+					if err := db.QueryRow(`INSERT INTO emarket_warehouses (shop_id, name, address, is_primary, sort) VALUES ($1,$2,$3,$4,$5) RETURNING id`, shopID, req.Name, strings.TrimSpace(req.Address), req.IsPrimary, req.Sort).Scan(&newID); err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "id": newID})
+					return
+				}
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+				return
+			}
+			whID, _ := strconv.ParseInt(parts[2], 10, 64)
+			if whID == 0 {
+				writeError(w, http.StatusBadRequest, "Некорректный id склада")
+				return
+			}
+			var owns bool
+			_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_warehouses WHERE id=$1 AND shop_id=$2)`, whID, shopID).Scan(&owns)
+			if !owns {
+				writeError(w, http.StatusNotFound, "Склад не найден")
+				return
+			}
+			if r.Method == http.MethodPut {
+				var req struct {
+					Name      string `json:"name"`
+					Address   string `json:"address"`
+					IsPrimary bool   `json:"is_primary"`
+					Sort      int    `json:"sort"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				req.Name = strings.TrimSpace(req.Name)
+				if req.Name == "" {
+					writeError(w, http.StatusBadRequest, "Название обязательно")
+					return
+				}
+				if req.IsPrimary {
+					_, _ = db.Exec(`UPDATE emarket_warehouses SET is_primary=FALSE WHERE shop_id=$1 AND id<>$2`, shopID, whID)
+				}
+				if _, err := db.Exec(`UPDATE emarket_warehouses SET name=$1, address=$2, is_primary=$3, sort=$4 WHERE id=$5`, req.Name, strings.TrimSpace(req.Address), req.IsPrimary, req.Sort, whID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+				return
+			}
+			if r.Method == http.MethodDelete {
+				var hasStock bool
+				_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_stock WHERE warehouse_id=$1 AND (qty<>0 OR reserved_qty<>0))`, whID).Scan(&hasStock)
+				if hasStock {
+					writeJSON(w, http.StatusConflict, map[string]any{"error": "На складе есть остатки — обнулите перед удалением"})
+					return
+				}
+				if _, err := db.Exec(`DELETE FROM emarket_warehouses WHERE id=$1`, whID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+				return
+			}
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
 		if len(parts) >= 2 && parts[1] == "site-config" {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
