@@ -13387,6 +13387,14 @@ func main() {
 			_, _ = db.Exec(`DELETE FROM emarket_cart
 				WHERE user_id=$1 AND listing_id IN (SELECT id FROM emarket_listings WHERE shop_id=$2)`,
 				userID, sid)
+			// WMS-2: резерв остатков под заказ (только если магазин ведёт склад)
+			var wmsOn bool
+			_ = db.QueryRow(`SELECT COALESCE(wms_enabled,FALSE) FROM emarket_shops WHERE id=$1`, sid).Scan(&wmsOn)
+			if wmsOn {
+				for _, ci := range items {
+					emarketReserveOrderLine(db, sid, orderID, ci.listingID, float64(ci.quantity), userID)
+				}
+			}
 			// EM-S6-PLUS: событие создания заказа
 			_, _ = db.Exec(`INSERT INTO emarket_order_events(order_id, actor_id, event_type, to_value) VALUES ($1,$2,'created','new')`, orderID, userID)
 			if items[0].ownerType == "user" && items[0].ownerID > 0 {
@@ -13557,6 +13565,9 @@ func main() {
 					return
 				}
 				_, _ = db.Exec(`INSERT INTO emarket_order_events(order_id, actor_id, event_type, from_value, to_value) VALUES ($1,$2,'status_change',$3,$4)`, orderID, userID, status, body.Status)
+				if body.Status == "cancelled" && status != "cancelled" {
+					emarketSettleOrderReserves(db, shopID, orderID, "release", userID)
+				}
 				if buyerID != userID {
 					_ = createNotification(db, createNotificationParams{
 						RecipientID: buyerID, ActorID: userID,
@@ -13590,6 +13601,9 @@ func main() {
 					return
 				}
 				_, _ = db.Exec(`INSERT INTO emarket_order_events(order_id, actor_id, event_type, from_value, to_value) VALUES ($1,$2,'payment_change',$3,$4)`, orderID, userID, paymentStatus, body.PaymentStatus)
+				if body.PaymentStatus == "paid" && paymentStatus != "paid" {
+					emarketSettleOrderReserves(db, shopID, orderID, "shipment", userID)
+				}
 				if buyerID != userID {
 					_ = createNotification(db, createNotificationParams{
 						RecipientID: buyerID, ActorID: userID,
@@ -14176,7 +14190,13 @@ func main() {
 			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав или доступа к магазину"})
 			return
 		}
-		moveID, err := emarketApplyMove(db, req.ShopID, req.ProductID, req.WarehouseID, req.ToWarehouseID, strings.TrimSpace(req.Type), req.Qty, strings.TrimSpace(req.RefType), req.RefID, strings.TrimSpace(req.Comment), userID)
+		switch strings.TrimSpace(req.Type) {
+		case "receipt", "writeoff", "adjustment", "transfer":
+		default:
+			writeError(w, http.StatusBadRequest, "Недопустимый тип (через этот эндпоинт доступны receipt/writeoff/adjustment/transfer)")
+			return
+		}
+		moveID, err := emarketApplyMove(db, req.ShopID, req.ProductID, req.WarehouseID, req.ToWarehouseID, strings.TrimSpace(req.Type), req.Qty, "manual", nil, strings.TrimSpace(req.Comment), userID)
 		if err != nil {
 			if errors.Is(err, errValidation) {
 				writeJSON(w, http.StatusBadRequest, map[string]any{"error": strings.TrimPrefix(err.Error(), errValidation.Error()+": ")})
@@ -35904,11 +35924,18 @@ func emarketApplyMove(db *sql.DB, shopID, productID, warehouseID, toWarehouseID 
 		if err := emarketStockDelta(tx, productID, warehouseID, qty, 0); err != nil {
 			return 0, err
 		}
-	case "shipment", "writeoff":
+	case "writeoff":
 		if err := checkWarehouse(warehouseID, true); err != nil {
 			return 0, err
 		}
 		if err := emarketStockDelta(tx, productID, warehouseID, -qty, 0); err != nil {
+			return 0, err
+		}
+	case "shipment":
+		if err := checkWarehouse(warehouseID, true); err != nil {
+			return 0, err
+		}
+		if err := emarketStockDelta(tx, productID, warehouseID, -qty, -qty); err != nil {
 			return 0, err
 		}
 	case "adjustment":
@@ -35966,6 +35993,65 @@ func emarketApplyMove(db *sql.DB, shopID, productID, warehouseID, toWarehouseID 
 		return 0, err
 	}
 	return moveID, nil
+}
+
+// emarketReserveOrderLine — резерв одной позиции заказа на первичном складе: min(qty, доступно).
+// Непокрытый остаток (доступно < qty) остаётся предзаказом и не резервируется.
+func emarketReserveOrderLine(db *sql.DB, shopID, orderID, listingID int64, qty float64, actorID int64) {
+	var productID int64
+	if err := db.QueryRow(`SELECT product_id FROM emarket_listing_product WHERE listing_id=$1`, listingID).Scan(&productID); err != nil {
+		return
+	}
+	var whID int64
+	_ = db.QueryRow(`SELECT id FROM emarket_warehouses WHERE shop_id=$1 ORDER BY is_primary DESC, sort, id LIMIT 1`, shopID).Scan(&whID)
+	if whID == 0 {
+		return
+	}
+	var available float64
+	_ = db.QueryRow(`SELECT COALESCE(qty-reserved_qty,0) FROM emarket_stock WHERE product_id=$1 AND warehouse_id=$2`, productID, whID).Scan(&available)
+	toReserve := qty
+	if toReserve > available {
+		toReserve = available
+	}
+	if toReserve <= 0 {
+		return
+	}
+	if _, err := emarketApplyMove(db, shopID, productID, whID, 0, "reserve", toReserve, "order", &orderID, "Резерв по заказу", actorID); err != nil {
+		log.Printf("[wms/reserve order=%d listing=%d] %v", orderID, listingID, err)
+	}
+}
+
+// emarketSettleOrderReserves — по нетто-резерву заказа (Σreserve−Σrelease−Σshipment) применяет
+// release (при отмене) или shipment (при подтверждении оплаты) по каждой паре товар/склад.
+func emarketSettleOrderReserves(db *sql.DB, shopID, orderID int64, moveType string, actorID int64) {
+	rows, err := db.Query(`SELECT product_id, warehouse_id,
+		SUM(CASE type WHEN 'reserve' THEN qty WHEN 'release' THEN -qty WHEN 'shipment' THEN -qty ELSE 0 END) AS net
+		FROM emarket_stock_moves
+		WHERE ref_type='order' AND ref_id=$1 AND warehouse_id IS NOT NULL
+		GROUP BY product_id, warehouse_id
+		HAVING SUM(CASE type WHEN 'reserve' THEN qty WHEN 'release' THEN -qty WHEN 'shipment' THEN -qty ELSE 0 END) > 0`, orderID)
+	if err != nil {
+		log.Printf("[wms/settle order=%d] %v", orderID, err)
+		return
+	}
+	type rline struct {
+		pid, wid int64
+		qty      float64
+	}
+	var lines []rline
+	for rows.Next() {
+		var l rline
+		if err := rows.Scan(&l.pid, &l.wid, &l.qty); err != nil {
+			continue
+		}
+		lines = append(lines, l)
+	}
+	rows.Close()
+	for _, l := range lines {
+		if _, err := emarketApplyMove(db, shopID, l.pid, l.wid, 0, moveType, l.qty, "order", &orderID, "", actorID); err != nil {
+			log.Printf("[wms/settle %s order=%d product=%d] %v", moveType, orderID, l.pid, err)
+		}
+	}
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
