@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <script src="/assets/utils.js"></script>
+<script src="/assets/confirm-modal.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -191,8 +192,7 @@ img{max-width:100%}
 .state p{font-size:14px}
 .sk{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--t);color:#fff;padding:11px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* EM-TOAST-UNIFY: локальный .toast удалён */
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -204,7 +204,6 @@ img{max-width:100%}
 <main class="main" id="msMain"></main>
 <aside class="right" id="msRight"></aside>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
 const API='/api';
@@ -213,7 +212,7 @@ function darken(hex,f){f=f||.78;const n=parseInt(hex.slice(1),16);let r=(n>>16)&
 function hexA(hex,a){const n=parseInt(hex.slice(1),16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function letter(s){return((s||'?').trim()[0]||'?').toUpperCase();}
-function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+/* EM-TOAST-UNIFY: глобальная window.showToast */
 
 const ICONS={
   truck:'<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
@@ -493,14 +492,14 @@ function setRevStars(n){
   document.querySelectorAll('#revStars .rev-star').forEach(s=>{s.classList.toggle('on',parseInt(s.dataset.n)<=n);});
 }
 async function submitReview(shopId){
-  if(!REV_RATING){showToast('Поставьте оценку');return;}
+  if(!REV_RATING){showToast('Поставьте оценку','warn');return;}
   const text=(document.getElementById('revText')||{}).value||'';
   try{
     const r=await lastopFetch(API+'/emarket/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({shop_id:shopId,rating:REV_RATING,text:text.trim()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Ошибка');}
-    showToast('Спасибо за отзыв!');
+    showToast('Спасибо за отзыв!','success');
     loadReviews(shopId,REV_BLOCK_IDX);
-  }catch(e){showToast(e.message||'Не удалось отправить отзыв');}
+  }catch(e){showToast(e.message||'Не удалось отправить отзыв','error');}
 }
 async function deleteReview(reviewId,shopId){
   const ok=await lastopConfirm({title:'Удалить отзыв?',danger:true,confirmText:'Удалить'});
@@ -508,9 +507,9 @@ async function deleteReview(reviewId,shopId){
   try{
     const r=await lastopFetch(API+'/emarket/reviews?id='+reviewId,{method:'DELETE'});
     if(!r.ok)throw 0;
-    showToast('Отзыв удалён');
+    showToast('Отзыв удалён','success');
     loadReviews(shopId,REV_BLOCK_IDX);
-  }catch(e){showToast('Не удалось удалить');}
+  }catch(e){showToast('Не удалось удалить','error');}
 }
 
 async function submitLead(e){
@@ -532,7 +531,7 @@ async function submitLead(e){
     document.getElementById('leadOk').style.display='block';
   }catch(err){
     if(btn){btn.disabled=false;btn.textContent='Отправить';}
-    showToast('Не удалось отправить заявку, попробуйте позже');
+    showToast('Не удалось отправить заявку, попробуйте позже','error');
   }
   return false;
 }

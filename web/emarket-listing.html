@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <script src="/assets/utils.js"></script>
+<script src="/assets/confirm-modal.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -121,8 +122,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .sk{background:var(--bg);border-radius:var(--r);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--t);color:#fff;padding:11px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all .25s;pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* EM-TOAST-UNIFY: локальный .toast удалён — используется глобальный window.lastopToast */
 </style>
 <link rel="stylesheet" href="/assets/dark-theme.css">
 </head>
@@ -134,13 +134,12 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 <main class="main" id="ldMain"></main>
 <aside class="right" id="ldRight"></aside>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
 const API='/api';
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function letter(s){return((s||'?').trim()[0]||'?').toUpperCase();}
-function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2600);}
+/* EM-TOAST-UNIFY: глобальная window.showToast из confirm-modal.js — поддерживает 'success'/'error'/'warn' */
 function priceHTML(p,cur){
   if(p==null||p===0)return '<div class="ld-price neg">Цена договорная</div>';
   var sym=cur==='USD'?'$':cur==='EUR'?'€':'₽';
@@ -299,10 +298,10 @@ async function addToCart(){
   btn.disabled=true;
   try{
     var r=await lastopFetch(API+'/emarket/cart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id,quantity:1})});
-    if(r.status===401){showToast('Войдите, чтобы добавлять в корзину');return;}
-    if(!r.ok){showToast('Не удалось добавить в корзину');return;}
-    showToast('Добавлено в корзину');
-  }catch(e){showToast('Сеть недоступна');}
+    if(r.status===401){showToast('Войдите, чтобы добавлять в корзину','warn');return;}
+    if(!r.ok){showToast('Не удалось добавить в корзину','error');return;}
+    showToast('Добавлено в корзину','success');
+  }catch(e){showToast('Сеть недоступна','error');}
   finally{btn.disabled=false;}
 }
 async function toggleSave(){
@@ -316,15 +315,15 @@ async function toggleSave(){
     }else{
       r=await lastopFetch(API+'/emarket/saved',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id})});
     }
-    if(r.status===401){showToast('Войдите, чтобы сохранять');return;}
-    if(!r.ok){showToast('Не удалось сохранить');return;}
+    if(r.status===401){showToast('Войдите, чтобы сохранять','warn');return;}
+    if(!r.ok){showToast('Не удалось сохранить','error');return;}
     LD.saved=!LD.saved;
     btn.classList.toggle('saved',LD.saved);
     btn.title=LD.saved?'Убрать из сохранённого':'Сохранить';
     var path=btn.querySelector('path');
     if(path)path.setAttribute('fill',LD.saved?'currentColor':'none');
-    showToast(LD.saved?'Добавлено в сохранённое':'Убрано из сохранённого');
-  }catch(e){showToast('Сеть недоступна');}
+    showToast(LD.saved?'Добавлено в сохранённое':'Убрано из сохранённого','success');
+  }catch(e){showToast('Сеть недоступна','error');}
   finally{btn.disabled=false;}
 }
 function contactSeller(){
@@ -338,7 +337,7 @@ function contactSeller(){
   }
 }
 function openLeadModal(){
-  if(!LD.shop||!LD.shop.slug){showToast('Магазин недоступен');return;}
+  if(!LD.shop||!LD.shop.slug){showToast('Магазин недоступен','warn');return;}
   var subj=document.getElementById('leadModalSubject');
   if(subj&&LD.listing)subj.innerHTML='По позиции: <b style="color:var(--t)">'+esc(LD.listing.title||'')+'</b>';
   var form=document.getElementById('leadForm'),ok=document.getElementById('leadFormOk');
@@ -371,7 +370,7 @@ async function submitListingLead(e){
     document.getElementById('leadFormOk').style.display='block';
   }catch(err){
     if(btn){btn.disabled=false;btn.textContent='Отправить заявку';}
-    showToast('Не удалось отправить заявку, попробуйте позже');
+    showToast('Не удалось отправить заявку, попробуйте позже','error');
   }
   return false;
 }

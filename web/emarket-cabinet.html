@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <script src="/assets/utils.js"></script>
+<script src="/assets/confirm-modal.js"></script>
 <script src="/assets/dark-theme-init.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1062,9 +1063,9 @@ const ORDER_EVENT_LABELS={
   payment_change:'Смена оплаты',
 };
 
-function orderToastSafe(msg){
-  if(window.lastopToast){try{window.lastopToast(msg);return;}catch(_){}}
-  if(window.toast){try{window.toast(msg);return;}catch(_){}}
+function orderToastSafe(msg, type){
+  if(window.lastopToast){try{window.lastopToast(msg, type||'info');return;}catch(_){}}
+  if(window.toast){try{window.toast(msg, type);return;}catch(_){}}
 }
 
 function fmtOrderMoney(n,cur){
@@ -1207,7 +1208,7 @@ function exportOrdersCSV(){
     a.download='orders-'+(new Date().toISOString().slice(0,10))+'.csv';
     document.body.appendChild(a);a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
-  }).catch(()=>orderToastSafe('Не удалось экспортировать'));
+  }).catch(()=>orderToastSafe('Не удалось экспортировать','error'));
 }
 
 function renderShopOrderCard(o){
@@ -1374,10 +1375,10 @@ async function saveShopNote(publicID, value){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({shop_note:value||''})
     });
-    if(!r.ok){orderToastSafe('Не удалось сохранить заметку');return;}
+    if(!r.ok){orderToastSafe('Не удалось сохранить заметку','error');return;}
     const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
     if(o)o.shop_note=value||'';
-  }catch{orderToastSafe('Ошибка соединения');}
+  }catch{orderToastSafe('Ошибка соединения','error');}
 }
 
 function openChatWithBuyer(buyerPID){
@@ -1394,7 +1395,7 @@ async function patchOrderStatus(publicID,status){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({status:status})
     });
-    if(!r.ok){orderToastSafe('Не удалось изменить статус');return;}
+    if(!r.ok){orderToastSafe('Не удалось изменить статус','error');return;}
     if(o){
       o.status=status;
       o.status_label=(ORDER_STATUSES.find(s=>s.key===status)||{}).label||status;
@@ -1419,8 +1420,8 @@ async function patchOrderStatus(publicID,status){
       if(window.LastopSelect&&LastopSelect.refresh)LastopSelect.refresh();
       loadOrderEvents(publicID);
     }
-    orderToastSafe('Статус заказа обновлён');
-  }catch{orderToastSafe('Ошибка соединения');}
+    orderToastSafe('Статус заказа обновлён','success');
+  }catch{orderToastSafe('Ошибка соединения','error');}
 }
 async function patchOrderPayment(publicID,payment){
   const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
@@ -1430,7 +1431,7 @@ async function patchOrderPayment(publicID,payment){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({payment_status:payment})
     });
-    if(!r.ok){orderToastSafe('Не удалось изменить статус оплаты');return;}
+    if(!r.ok){orderToastSafe('Не удалось изменить статус оплаты','error');return;}
     if(o){
       o.payment_status=payment;
       o.payment_status_label=(ORDER_PAYMENTS.find(p=>p.key===payment)||{}).label||payment;
@@ -1442,8 +1443,8 @@ async function patchOrderPayment(publicID,payment){
       if(window.LastopSelect&&LastopSelect.refresh)LastopSelect.refresh();
       loadOrderEvents(publicID);
     }
-    orderToastSafe('Статус оплаты обновлён');
-  }catch{orderToastSafe('Ошибка соединения');}
+    orderToastSafe('Статус оплаты обновлён','success');
+  }catch{orderToastSafe('Ошибка соединения','error');}
 }
 
 /* ════════════ ВКЛАДКА: ЛИСТИНГИ ════════════ */
