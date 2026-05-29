@@ -167,6 +167,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
       <button class="admin-tab" data-tab="dicts"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Категории</button>
       <button class="admin-tab" data-tab="emads"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Реклама E-market</button>
       <button class="admin-tab" data-tab="emaccess"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Доступ E-market</button>
+      <button class="admin-tab" data-tab="emshops"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Магазины E-market</button>
     </div>
     <div class="ov-body" id="paneOverview">
       <div class="ov-grid" id="overviewGrid"></div>
@@ -410,6 +411,18 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
         </div>
       </div>
     </div>
+    <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmShops">
+      <div class="panel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div class="panel-title" style="margin-bottom:6px">Магазины E-market</div>
+        <div style="font-size:12px;color:var(--gmt);margin-bottom:12px">Управление флагами «Рекомендуем» (звезда на витрине) и «Проверенный продавец» (синяя галочка рядом с именем магазина). Verified-флаг ставится после проверки реквизитов, ИНН, отзывов и качества обслуживания.</div>
+        <div class="users-toolbar" style="margin-bottom:10px">
+          <input id="emShopsSearch" class="lt-input" placeholder="Поиск по названию или slug…" oninput="emShopsFilter(this.value)" style="flex:1;min-width:200px">
+        </div>
+        <div id="emShopsList" style="flex:1;overflow-y:auto">
+          <div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>
+        </div>
+      </div>
+    </div>
     <div style="display:none;flex-direction:column;gap:10px;flex:1;min-height:0" id="paneEmAds">
       <div class="users-toolbar">
         <select id="emAdPlacement" data-lt-select onchange="loadEmAds()">
@@ -585,7 +598,7 @@ async function loadAnalytics(){
 }
 function refreshModerationBadge(){loadModerationCount();}
 async function loadModerationCount(){try{var r=await lastopFetch('/api/admin/moderation-queue');if(!r.ok)return;var d=await r.json();var n=(d.items||[]).length;var b=document.getElementById('moderationBadge');if(b){if(n){b.textContent=n;b.style.display='inline-block';}else{b.style.display='none';}}}catch(e){}}
-function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';document.getElementById('paneEmAccess').style.display=name==='emaccess'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();if(name==='emaccess')loadEmAccess();}
+function switchTab(name){currentTab=name;document.querySelectorAll('.admin-tab').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});document.getElementById('paneOverview').style.display=name==='overview'?'flex':'none';document.getElementById('paneModeration').style.display=name==='moderation'?'flex':'none';document.getElementById('paneFunnel').style.display=name==='funnel'?'flex':'none';document.getElementById('paneUsers').style.display=name==='users'?'flex':'none';document.getElementById('paneCompanies').style.display=name==='companies'?'flex':'none';document.getElementById('paneCommunities').style.display=name==='communities'?'flex':'none';document.getElementById('paneAudit').style.display=name==='audit'?'flex':'none';document.getElementById('paneComplaints').style.display=name==='complaints'?'flex':'none';document.getElementById('paneHidden').style.display=name==='hidden'?'flex':'none';document.getElementById('paneAds').style.display=name==='ads'?'flex':'none';document.getElementById('paneSections').style.display=name==='sections'?'flex':'none';document.getElementById('paneSanctions').style.display=name==='sanctions'?'flex':'none';document.getElementById('paneDicts').style.display=name==='dicts'?'flex':'none';document.getElementById('paneEmAds').style.display=name==='emads'?'flex':'none';document.getElementById('paneEmAccess').style.display=name==='emaccess'?'flex':'none';document.getElementById('paneEmShops').style.display=name==='emshops'?'flex':'none';if(name==='sanctions')loadSanctions();if(name==='dicts'){loadDicts();dictSyncParentPicker();}if(name==='overview'){loadOverview();loadModerationCount();loadAnalytics();}if(name==='moderation'){loadModeration();}if(name==='funnel')loadFunnel();if(name==='users')loadUsers();if(name==='companies')loadCompanies();if(name==='communities')loadCommunities();if(name==='audit')loadAudit();if(name==='complaints')loadComplaints();if(name==='hidden')loadHidden();if(name==='ads'){loadAds();setTimeout(function(){['adTitle','adBody'].forEach(function(i){var el=document.getElementById(i);if(el&&!el._adBound){el._adBound=true;el.addEventListener('input',renderAdPreview);}});},200);}if(name==='sections')loadSections();if(name==='emads')loadEmAds();if(name==='emaccess')loadEmAccess();if(name==='emshops')loadEmShops();}
 async function loadSanctions(){
   var pane=document.getElementById('paneSanctions');
   var tb=document.getElementById('sanctTbody');
@@ -1299,6 +1312,86 @@ var EM_ACCESS_SECTION='companies';
 var _emAccessT=null;
 var EM_TYPE_LABEL={company:'Компания',community:'Сообщество',user:'Пользователь'};
 function loadEmAccess(){EM_ACCESS_SECTION='companies';var s=document.getElementById('emAccessSearch');if(s)s.value='';emAccessSyncTabs();fetchEmAccess();}
+
+var EM_SHOPS_ALL=[];
+var EM_SHOPS_Q='';
+async function loadEmShops(){
+  var list=document.getElementById('emShopsList');
+  if(!list)return;
+  list.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Загрузка…</div>';
+  try{
+    var r=await lastopFetch('/api/admin/emarket/featured');
+    if(!r.ok)throw new Error('http');
+    var d=await r.json();
+    EM_SHOPS_ALL=d.shops||[];
+    renderEmShops();
+  }catch{
+    list.innerHTML='<div style="padding:20px;color:var(--red);font-size:13px">Не удалось загрузить магазины</div>';
+  }
+}
+function emShopsFilter(v){EM_SHOPS_Q=String(v||'').toLowerCase().trim();renderEmShops();}
+function renderEmShops(){
+  var list=document.getElementById('emShopsList');
+  if(!list)return;
+  var shops=EM_SHOPS_ALL;
+  if(EM_SHOPS_Q){
+    shops=shops.filter(function(s){
+      var n=(s.name||'').toLowerCase();
+      var sl=(s.slug||'').toLowerCase();
+      return n.indexOf(EM_SHOPS_Q)>=0||sl.indexOf(EM_SHOPS_Q)>=0;
+    });
+  }
+  if(!shops.length){
+    list.innerHTML='<div style="padding:20px;color:var(--gmt);font-size:13px">Магазинов нет</div>';
+    return;
+  }
+  var rows=shops.map(function(s){
+    var logo=s.logo_url
+      ? '<img src="'+esc(s.logo_url)+'" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover">'
+      : '<div style="width:36px;height:36px;border-radius:8px;background:var(--gl);color:var(--g);display:grid;place-items:center;font-weight:800;font-size:14px">'+esc((s.name||'?')[0].toUpperCase())+'</div>';
+    var statusColor=s.status==='active'?'var(--g)':(s.status==='blocked'?'var(--red)':'var(--gmt)');
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--bdr)">'
+      +logo
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.name)+'</div>'
+        +'<div style="font-size:11px;color:var(--gmt);margin-top:2px">/'+esc(s.slug||'')+(s.region?' · '+esc(s.region):'')+' · <span style="color:'+statusColor+';font-weight:600">'+esc(s.status||'')+'</span></div>'
+      +'</div>'
+      +'<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--tm);user-select:none">'
+        +'<input type="checkbox"'+(s.is_featured?' checked':'')+' onchange="toggleShopFeatured('+s.id+',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:#F0A030">'
+        +'<span>Рекомендуем</span>'
+      +'</label>'
+      +'<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--tm);user-select:none">'
+        +'<input type="checkbox"'+(s.is_verified?' checked':'')+' onchange="toggleShopVerified('+s.id+',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:#1E8AE6">'
+        +'<span>Проверенный</span>'
+      +'</label>'
+    +'</div>';
+  }).join('');
+  list.innerHTML=rows;
+}
+async function toggleShopFeatured(shopID, val){
+  try{
+    var r=await lastopFetch('/api/admin/emarket/featured',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({shop_id:shopID,is_featured:val})});
+    if(!r.ok)throw new Error('http');
+    var s=EM_SHOPS_ALL.find(function(x){return x.id===shopID;});
+    if(s)s.is_featured=val;
+    if(typeof showToast==='function')showToast(val?'Магазин отмечен как «Рекомендуем»':'Метка «Рекомендуем» снята');
+  }catch{
+    if(typeof showToast==='function')showToast('Ошибка сохранения');
+    loadEmShops();
+  }
+}
+async function toggleShopVerified(shopID, val){
+  try{
+    var r=await lastopFetch('/api/admin/emarket/featured',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({shop_id:shopID,is_verified:val})});
+    if(!r.ok)throw new Error('http');
+    var s=EM_SHOPS_ALL.find(function(x){return x.id===shopID;});
+    if(s)s.is_verified=val;
+    if(typeof showToast==='function')showToast(val?'Магазин помечен как проверенный':'Отметка «Проверенный» снята');
+  }catch{
+    if(typeof showToast==='function')showToast('Ошибка сохранения');
+    loadEmShops();
+  }
+}
 function emAccessSwitch(section){
   EM_ACCESS_SECTION=section;
   var s=document.getElementById('emAccessSearch');if(s)s.value='';

@@ -151,7 +151,9 @@ img{max-width:100%}
 .ms-header-logo img{width:100%;height:100%;object-fit:cover}
 .ms-header-logo span{font-size:20px;font-weight:800;color:var(--acc)}
 .ms-header.dark .ms-header-logo span{color:#fff}
-.ms-header-name{font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--t)}
+.ms-header-name{font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--t);display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ms-verify-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#1E8AE6;color:#fff;flex-shrink:0}
+.ms-verify-badge svg{width:12px;height:12px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .ms-header.dark .ms-header-name{color:#fff}
 .ms-header-tag{font-size:13px;color:var(--gmt);margin-top:2px}
 .ms-header.dark .ms-header-tag{color:rgba(255,255,255,.85)}
@@ -281,7 +283,8 @@ function shopHeader(shop){
     const rc=shop.reviews_count||0;
     rating='<div class="ms-header-rating" onclick="goToReviews()" title="К отзывам"><span class="ms-hr-star">★</span> '+Number(shop.rating).toFixed(1)+(rc?' <span class="ms-hr-cnt">· '+rc+' '+plural(rc,'отзыв','отзыва','отзывов')+'</span>':'')+'</div>';
   }
-  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+rating+'</div></div>';
+  const verify=shop.is_verified?'<span class="ms-verify-badge" title="Проверенный продавец"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>':'';
+  return '<div class="ms-header'+(dark?' dark':'')+'"><div class="ms-header-logo">'+logo+'</div><div class="ms-header-info"><div class="ms-header-name">'+esc(shop.name)+verify+'</div>'+(shop.tagline?'<div class="ms-header-tag">'+esc(shop.tagline)+'</div>':'')+rating+'</div></div>';
 }
 function plural(n,one,few,many){const v=n%10,h=n%100;if(h>=11&&h<=19)return many;if(v===1)return one;if(v>=2&&v<=4)return few;return many;}
 function goToReviews(){
