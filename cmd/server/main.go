@@ -1474,9 +1474,9 @@ const htmlInject = `<script src="/assets/utils.js"></script>
 <script src="/assets/ws.js" defer></script>
 <script src="/assets/cookie-banner.js" defer></script>
 <script src="/assets/lt-select.js" defer></script>
+<script src="/assets/share-modal.js" defer></script>
 <link rel="stylesheet" href="/assets/share-modal.css">
 <script src="/assets/confirm-modal.js" defer></script>
-<script src="/assets/share-modal.js" defer></script>
 <script src="/assets/modal-guard.js" defer></script>
 <script src="/assets/rich-editor.js" defer></script>
 <script src="/assets/calendar-modal.js" defer></script>
