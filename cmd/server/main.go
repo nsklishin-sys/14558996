@@ -13850,6 +13850,7 @@ func main() {
 				"characteristics": chars, "category_key": catKey, "price": priceVal, "currency": currency,
 				"payment_method": payment, "photos": photos, "rating": rating, "reviews_count": reviews,
 				"views_count": views + 1, "status": status, "created_at": created, "is_saved": isSaved,
+				"stock": emarketListingStock(db, listingID, shopID),
 			}})
 		case http.MethodPut:
 			userID, ok := authenticatedUserID(w, r, sessions)
@@ -14358,7 +14359,11 @@ func main() {
 		}
 		args = append(args, limit, offset)
 		limOff := "LIMIT $" + strconv.Itoa(len(args)-1) + " OFFSET $" + strconv.Itoa(len(args))
-		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, status, created_at
+		var wmsOn bool
+		_ = db.QueryRow(`SELECT COALESCE(wms_enabled,FALSE) FROM emarket_shops WHERE id=$1`, shopID).Scan(&wmsOn)
+		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, status, created_at,
+			COALESCE((SELECT SUM(s.qty-s.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock s ON s.product_id=lp.product_id WHERE lp.listing_id=emarket_listings.id),0),
+			EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=emarket_listings.id)
 			FROM emarket_listings WHERE `+whereSQL+` ORDER BY `+orderSQL+` `+limOff, args...)
 		if err != nil {
 			log.Printf("[emarket/shop-listings] %v", err)
@@ -14374,7 +14379,9 @@ func main() {
 			var rating float64
 			var reviews, views int
 			var created time.Time
-			if err := rows.Scan(&id, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &status, &created); err != nil {
+			var wmsAvail float64
+			var wmsLinked bool
+			if err := rows.Scan(&id, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &status, &created, &wmsAvail, &wmsLinked); err != nil {
 				continue
 			}
 			var photos any
@@ -14383,11 +14390,15 @@ func main() {
 			if price.Valid {
 				priceVal = price.Float64
 			}
-			items = append(items, map[string]any{
+			item := map[string]any{
 				"id": id, "kind": kind, "title": title, "description": desc, "category_key": catKey,
 				"price": priceVal, "currency": currency, "photos": photos, "rating": rating,
 				"reviews_count": reviews, "views_count": views, "status": status, "created_at": created,
-			})
+			}
+			if wmsOn && wmsLinked {
+				item["stock"] = map[string]any{"tracked": true, "available": wmsAvail, "in_stock": wmsAvail > 0}
+			}
+			items = append(items, item)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"listings": items, "total": total})
 	})
@@ -36161,6 +36172,28 @@ func emarketSettleOrderReserves(db *sql.DB, shopID, orderID int64, moveType stri
 			log.Printf("[wms/settle %s order=%d product=%d] %v", moveType, orderID, l.pid, err)
 		}
 	}
+}
+
+// emarketListingStock — статус наличия листинга по привязанному SKU.
+// Возвращает nil, если магазин не ведёт склад или листинг не привязан к товару.
+func emarketListingStock(db *sql.DB, listingID, shopID int64) any {
+	var wmsOn bool
+	_ = db.QueryRow(`SELECT COALESCE(wms_enabled,FALSE) FROM emarket_shops WHERE id=$1`, shopID).Scan(&wmsOn)
+	if !wmsOn {
+		return nil
+	}
+	var linked bool
+	_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=$1)`, listingID).Scan(&linked)
+	if !linked {
+		return nil
+	}
+	var available sql.NullFloat64
+	_ = db.QueryRow(`SELECT SUM(s.qty - s.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock s ON s.product_id=lp.product_id WHERE lp.listing_id=$1`, listingID).Scan(&available)
+	av := 0.0
+	if available.Valid {
+		av = available.Float64
+	}
+	return map[string]any{"tracked": true, "available": av, "in_stock": av > 0}
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
