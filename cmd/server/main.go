@@ -5184,6 +5184,31 @@ func main() {
 				handleChatError(w, err)
 				return
 			}
+			// CHAT-READ-LIVE: вещаем всем участникам, что юзер дочитал до MessageID
+			go func(convPID string, readerID, msgID int64) {
+				var cid int64
+				if err := db.QueryRow(`SELECT id FROM chat_conversations WHERE public_id=$1`, convPID).Scan(&cid); err != nil {
+					return
+				}
+				rows, err := db.Query(`SELECT user_id FROM chat_participants WHERE conversation_id=$1`, cid)
+				if err != nil {
+					return
+				}
+				defer rows.Close()
+				payload := map[string]any{
+					"conversation_public_id":  convPID,
+					"reader_user_id":          readerID,
+					"last_read_message_id":    msgID,
+					"read_at":                 time.Now().UTC(),
+				}
+				for rows.Next() {
+					var uid int64
+					if err := rows.Scan(&uid); err != nil {
+						continue
+					}
+					wsHub.Send(uid, "chat:read", payload)
+				}
+			}(publicID, userID, req.MessageID)
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 			return
 		}
