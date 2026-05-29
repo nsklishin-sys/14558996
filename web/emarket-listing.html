@@ -351,10 +351,10 @@ var LR_RATING=0, LR_MINE=null;
 async function loadListingReviews(){
   var box=document.getElementById('ldRevBody');
   if(!box||!LD.id)return;
-  var canReview=false, reviews=[]; LR_MINE=null;
+  var canReview=false, isOwner=false, reviews=[]; LR_MINE=null;
   try{
     var r=await fetch(API+'/emarket/reviews?listing_id='+LD.id,{credentials:'include'});
-    if(r.ok){var d=await r.json();reviews=d.reviews||[];canReview=!!d.can_review;LR_MINE=d.my_review||null;}
+    if(r.ok){var d=await r.json();reviews=d.reviews||[];canReview=!!d.can_review;isOwner=!!d.is_owner;LR_MINE=d.my_review||null;}
   }catch(e){}
   var html='';
   if(canReview){
@@ -365,6 +365,8 @@ async function loadListingReviews(){
       +'<div class="lr-stars" id="lrStars">'+stars+'</div>'
       +'<textarea class="lr-ta" id="lrText" placeholder="Поделитесь впечатлением о '+(LD.listing&&LD.listing.kind==="service"?"услуге":"товаре")+'…">'+(LR_MINE?esc(LR_MINE.text||''):'')+'</textarea>'
       +'<button class="lr-send" onclick="submitListingReview()">'+(LR_MINE?'Обновить отзыв':'Отправить отзыв')+'</button></div>';
+  }else if(isOwner){
+    html+='<div class="lr-note">Это позиция вашего магазина — отзывы оставляют покупатели после выполненного заказа. Владелец оценку не ставит.</div>';
   }else{
     html+='<div class="lr-note">Отзыв можно оставить после выполненного заказа этой позиции.</div>';
   }

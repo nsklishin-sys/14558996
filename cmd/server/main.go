@@ -12125,11 +12125,11 @@ func main() {
 					})
 				}
 				canReview := false
+				isOwner := false
 				var myReview map[string]any
 				if uid, ok := optionalAuthenticatedUserID(r, sessions); ok && uid > 0 {
 					var lShopID int64
 					_ = db.QueryRow(`SELECT shop_id FROM emarket_listings WHERE id=$1`, listingID).Scan(&lShopID)
-					isOwner := false
 					if lShopID > 0 {
 						var ot string
 						var oid int64
@@ -12148,7 +12148,7 @@ func main() {
 						myReview = map[string]any{"id": mrID, "rating": mrRating, "text": mrText}
 					}
 				}
-				writeJSON(w, http.StatusOK, map[string]any{"reviews": reviews, "can_review": canReview, "my_review": myReview})
+				writeJSON(w, http.StatusOK, map[string]any{"reviews": reviews, "can_review": canReview, "is_owner": isOwner, "my_review": myReview})
 				return
 			}
 			// Публичный список отзывов магазина: ?shop_id=
