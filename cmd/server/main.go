@@ -6602,7 +6602,7 @@ func main() {
 	mux.HandleFunc("/api/admin/emarket/featured", adminAuditMiddleware(db, sessions, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			rows, err := db.Query(`SELECT id, name, slug, logo_url, rating, reviews_count, region, is_featured, COALESCE(is_verified,FALSE), status
+			rows, err := db.Query(`SELECT id, name, slug, COALESCE(NULLIF(logo_url,''), site_logo_url, '') AS logo_url, rating, reviews_count, region, is_featured, COALESCE(is_verified,FALSE), status
 				FROM emarket_shops WHERE status<>'blocked' ORDER BY is_featured DESC, is_verified DESC, rating DESC, name LIMIT 200`)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -8591,7 +8591,7 @@ func main() {
 		var verified, sitePublished bool
 		var rating float64
 		var reviews int
-		err := db.QueryRow(`SELECT id, slug, name, COALESCE(logo_url,''), COALESCE(is_verified,FALSE), COALESCE(site_published,FALSE), COALESCE(rating,0), COALESCE(reviews_count,0)
+		err := db.QueryRow(`SELECT id, slug, name, COALESCE(NULLIF(logo_url,''), site_logo_url, ''), COALESCE(is_verified,FALSE), COALESCE(site_published,FALSE), COALESCE(rating,0), COALESCE(reviews_count,0)
 			FROM emarket_shops WHERE owner_type=$1 AND owner_id=$2 AND status<>'blocked' LIMIT 1`,
 			ownerType, ownerID).Scan(&id, &slug, &name, &logo, &verified, &sitePublished, &rating, &reviews)
 		if err == sql.ErrNoRows {
@@ -13397,6 +13397,7 @@ func main() {
 			args = append(args, v)
 			conds = append(conds, fmt.Sprintf("region=$%d", len(args)))
 		}
+		// EM-LOGO-FALLBACK ниже — в SELECT используется COALESCE(NULLIF(logo_url,''), site_logo_url, '')
 		order := "created_at DESC"
 		if q.Get("sort") == "rating" {
 			order = "rating DESC, reviews_count DESC, created_at DESC"
@@ -13409,7 +13410,7 @@ func main() {
 		if offset < 0 {
 			offset = 0
 		}
-		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, COALESCE(tagline,''), COALESCE(direction,''), logo_url, cover_url, rating, reviews_count, region, is_featured, COALESCE(is_verified,FALSE), COALESCE(accent_color,'green'), created_at
+		sqlStr := `SELECT id, owner_type, owner_id, name, slug, description, COALESCE(tagline,''), COALESCE(direction,''), COALESCE(NULLIF(logo_url,''), site_logo_url, '') AS logo_url, cover_url, rating, reviews_count, region, is_featured, COALESCE(is_verified,FALSE), COALESCE(accent_color,'green'), created_at
 			FROM emarket_shops WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
 		rows, err := db.Query(sqlStr, args...)
 		if err != nil {
@@ -13442,7 +13443,7 @@ func main() {
 
 	// LASTOP рекомендует — избранные магазины
 	mux.HandleFunc("/api/emarket/featured-shops", func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`SELECT id, name, slug, logo_url, cover_url, description, COALESCE(tagline,''), COALESCE(direction,''), rating, reviews_count, region, COALESCE(accent_color,'green'), COALESCE(is_verified,FALSE)
+		rows, err := db.Query(`SELECT id, name, slug, COALESCE(NULLIF(logo_url,''), site_logo_url, '') AS logo_url, cover_url, description, COALESCE(tagline,''), COALESCE(direction,''), rating, reviews_count, region, COALESCE(accent_color,'green'), COALESCE(is_verified,FALSE)
 			FROM emarket_shops WHERE status='active' AND is_featured=TRUE ORDER BY rating DESC, created_at DESC LIMIT 12`)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Ошибка")
