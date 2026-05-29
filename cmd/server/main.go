@@ -13856,6 +13856,155 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/api/emarket/stock/move", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		var req struct {
+			ProductID     int64   `json:"product_id"`
+			WarehouseID   int64   `json:"warehouse_id"`
+			ToWarehouseID int64   `json:"to_warehouse_id"`
+			Type          string  `json:"type"`
+			Qty           float64 `json:"qty"`
+			Comment       string  `json:"comment"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if req.ProductID == 0 || req.WarehouseID == 0 {
+			writeError(w, http.StatusBadRequest, "product_id и warehouse_id обязательны")
+			return
+		}
+		switch req.Type {
+		case "receipt", "writeoff", "adjustment", "transfer":
+		default:
+			writeError(w, http.StatusBadRequest, "Недопустимый тип операции")
+			return
+		}
+		if req.Type == "adjustment" {
+			if req.Qty < 0 {
+				writeError(w, http.StatusBadRequest, "Количество не может быть отрицательным")
+				return
+			}
+		} else if req.Qty <= 0 {
+			writeError(w, http.StatusBadRequest, "Количество должно быть больше нуля")
+			return
+		}
+		var shopID int64
+		if err := db.QueryRow(`SELECT shop_id FROM emarket_products WHERE id=$1 AND deleted_at IS NULL`, req.ProductID).Scan(&shopID); err != nil {
+			writeError(w, http.StatusNotFound, "Товар не найден")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+			return
+		}
+		var srcOK bool
+		_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_warehouses WHERE id=$1 AND shop_id=$2)`, req.WarehouseID, shopID).Scan(&srcOK)
+		if !srcOK {
+			writeError(w, http.StatusBadRequest, "Склад не принадлежит магазину")
+			return
+		}
+		var toPtr *int64
+		if req.Type == "transfer" {
+			if req.ToWarehouseID == 0 || req.ToWarehouseID == req.WarehouseID {
+				writeError(w, http.StatusBadRequest, "Некорректный склад-получатель")
+				return
+			}
+			var dstOK bool
+			_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_warehouses WHERE id=$1 AND shop_id=$2)`, req.ToWarehouseID, shopID).Scan(&dstOK)
+			if !dstOK {
+				writeError(w, http.StatusBadRequest, "Склад-получатель не принадлежит магазину")
+				return
+			}
+			toPtr = &req.ToWarehouseID
+		}
+		tx, txErr := db.Begin()
+		if txErr != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer tx.Rollback()
+		if err := emarketApplyMove(tx, shopID, req.ProductID, req.WarehouseID, toPtr, req.Type, req.Qty, "manual", nil, strings.TrimSpace(req.Comment), userID); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		if cerr := tx.Commit(); cerr != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		var qty, reserved float64
+		_ = db.QueryRow(`SELECT COALESCE(qty,0), COALESCE(reserved_qty,0) FROM emarket_stock WHERE product_id=$1 AND warehouse_id=$2`, req.ProductID, req.WarehouseID).Scan(&qty, &reserved)
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "qty": qty, "reserved_qty": reserved, "available": qty - reserved})
+	})
+
+	mux.HandleFunc("/api/emarket/stock/moves", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		productID, _ := strconv.ParseInt(r.URL.Query().Get("product_id"), 10, 64)
+		if productID == 0 {
+			writeError(w, http.StatusBadRequest, "product_id обязателен")
+			return
+		}
+		var shopID int64
+		if err := db.QueryRow(`SELECT shop_id FROM emarket_products WHERE id=$1`, productID).Scan(&shopID); err != nil {
+			writeError(w, http.StatusNotFound, "Товар не найден")
+			return
+		}
+		userID, ok := authenticatedUserID(w, r, sessions)
+		if !ok {
+			return
+		}
+		if err := emarketCheckPermission(db, userID, shopID, "listings"); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+			return
+		}
+		limit := 50
+		if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+		offset := 0
+		if n, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && n > 0 {
+			offset = n
+		}
+		rows, err := db.Query(`SELECT m.id, m.type, m.qty, m.comment, m.ref_type, m.created_at,
+			COALESCE(w.name,''), COALESCE(tw.name,''), COALESCE(u.full_name,'')
+			FROM emarket_stock_moves m
+			LEFT JOIN emarket_warehouses w ON w.id=m.warehouse_id
+			LEFT JOIN emarket_warehouses tw ON tw.id=m.to_warehouse_id
+			LEFT JOIN users u ON u.id=m.actor_id
+			WHERE m.product_id=$1 ORDER BY m.created_at DESC, m.id DESC LIMIT $2 OFFSET $3`, productID, limit, offset)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		items := []map[string]any{}
+		for rows.Next() {
+			var id int64
+			var mtype, comment, refType, whName, toWhName, actorName string
+			var qty float64
+			var created time.Time
+			if err := rows.Scan(&id, &mtype, &qty, &comment, &refType, &created, &whName, &toWhName, &actorName); err != nil {
+				continue
+			}
+			items = append(items, map[string]any{
+				"id": id, "type": mtype, "qty": qty, "comment": comment, "ref_type": refType,
+				"warehouse": whName, "to_warehouse": toWhName, "actor": actorName,
+				"created_at": created.Format(time.RFC3339),
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"moves": items})
+	})
+
 	mux.HandleFunc("/api/emarket/shop-listings", func(w http.ResponseWriter, r *http.Request) {
 		shopID, _ := strconv.ParseInt(r.URL.Query().Get("shop_id"), 10, 64)
 		if shopID == 0 {
@@ -35424,6 +35573,94 @@ func renderShopQR(text string, fg color.RGBA, logoBytes []byte, size int) ([]byt
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// emarketStockDelta — атомарный upsert остатка (дельты к qty и reserved_qty).
+func emarketStockDelta(tx *sql.Tx, productID, warehouseID int64, dQty, dRes float64) error {
+	_, err := tx.Exec(`INSERT INTO emarket_stock (product_id, warehouse_id, qty, reserved_qty, updated_at)
+		VALUES ($1,$2,$3,$4,now())
+		ON CONFLICT (product_id, warehouse_id) DO UPDATE SET qty=emarket_stock.qty+$3, reserved_qty=emarket_stock.reserved_qty+$4, updated_at=now()`,
+		productID, warehouseID, dQty, dRes)
+	return err
+}
+
+// emarketApplyMove — единая точка изменения остатков. Пишет строку журнала и обновляет emarket_stock.
+// Типы: receipt (приход), writeoff (списание), adjustment (qty = целевое абсолютное),
+// transfer (перемещение на toWarehouseID), reserve/release/shipment (системные, для заказов).
+// actorID=0 → actor NULL; toWarehouseID/refID nil → NULL.
+func emarketApplyMove(tx *sql.Tx, shopID, productID, warehouseID int64, toWarehouseID *int64, moveType string, qty float64, refType string, refID *int64, comment string, actorID int64) error {
+	var curQty, curRes float64
+	_ = tx.QueryRow(`SELECT COALESCE(qty,0), COALESCE(reserved_qty,0) FROM emarket_stock WHERE product_id=$1 AND warehouse_id=$2`, productID, warehouseID).Scan(&curQty, &curRes)
+	var dQty, dRes float64
+	switch moveType {
+	case "receipt":
+		dQty = qty
+	case "writeoff":
+		if curQty-qty < curRes {
+			return fmt.Errorf("недостаточно свободного остатка для списания")
+		}
+		dQty = -qty
+	case "adjustment":
+		if qty < curRes {
+			return fmt.Errorf("новое количество меньше зарезервированного (%g)", curRes)
+		}
+		dQty = qty - curQty
+	case "reserve":
+		if (curQty - curRes) < qty {
+			return fmt.Errorf("недостаточно доступного остатка")
+		}
+		dRes = qty
+	case "release":
+		if curRes-qty < 0 {
+			dRes = -curRes
+		} else {
+			dRes = -qty
+		}
+	case "shipment":
+		if curQty < qty {
+			return fmt.Errorf("недостаточно остатка для отгрузки")
+		}
+		dQty = -qty
+		if curRes >= qty {
+			dRes = -qty
+		} else {
+			dRes = -curRes
+		}
+	case "transfer":
+		if toWarehouseID == nil || *toWarehouseID == 0 {
+			return fmt.Errorf("не указан склад-получатель")
+		}
+		if curQty-qty < curRes {
+			return fmt.Errorf("недостаточно свободного остатка для перемещения")
+		}
+		dQty = -qty
+	default:
+		return fmt.Errorf("неизвестный тип движения")
+	}
+	if err := emarketStockDelta(tx, productID, warehouseID, dQty, dRes); err != nil {
+		return err
+	}
+	if moveType == "transfer" {
+		if err := emarketStockDelta(tx, productID, *toWarehouseID, qty, 0); err != nil {
+			return err
+		}
+	}
+	var toWH any
+	if toWarehouseID != nil {
+		toWH = *toWarehouseID
+	}
+	var ref any
+	if refID != nil {
+		ref = *refID
+	}
+	var actor any
+	if actorID > 0 {
+		actor = actorID
+	}
+	_, err := tx.Exec(`INSERT INTO emarket_stock_moves (shop_id, product_id, warehouse_id, to_warehouse_id, type, qty, ref_type, ref_id, comment, actor_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		shopID, productID, warehouseID, toWH, moveType, qty, refType, ref, comment, actor)
+	return err
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
