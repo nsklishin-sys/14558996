@@ -57,13 +57,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-featured-h svg{width:18px;height:18px;fill:#F0A030;stroke:none}
 .em-featured-h .ttl{font-size:15px;font-weight:900;color:var(--t)}
 .em-featured-h .sub{font-size:11px;color:var(--gmt);margin-left:2px}
-.em-featured-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
-.em-featured-scroll::-webkit-scrollbar{height:5px}.em-featured-scroll::-webkit-scrollbar-thumb{background:var(--gb);border-radius:99px}
 /* единая карточка магазина — визитка компании, используется и в ленте, и в «LASTOP рекомендует» */
 .em-feat-card{display:none}
 .em-feat-cover,.em-feat-badge,.em-feat-body,.em-feat-logo,.em-feat-name,.em-feat-rating{display:none}
-.em-featured-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
-.em-featured-scroll .em-shop-card{min-width:300px;max-width:300px;scroll-snap-align:start;flex-shrink:0}
+.em-featured-scroll{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 
 /* ── Тулбар: вкладки + поиск ── */
 .em-tabs{display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
@@ -118,7 +115,7 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 /* ── Сетка ── */
 .em-feedwrap{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:16px;flex-shrink:0}
 .em-feedwrap .em-card,.em-feedwrap .em-shop-card{border-color:var(--bdr);box-shadow:0 1px 4px rgba(30,138,76,.06)}
-.em-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;flex-shrink:0}
+.em-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;flex-shrink:0}
 .em-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);overflow:hidden;cursor:pointer;transition:all .18s;display:flex;flex-direction:column}
 .em-card:hover{box-shadow:var(--shm);transform:translateY(-2px);border-color:var(--gb)}
 .em-card-img{aspect-ratio:16/10;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;overflow:hidden}
