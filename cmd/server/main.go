@@ -21372,6 +21372,107 @@ CREATE TABLE IF NOT EXISTS emarket_listing_product (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS emarket_listing_product_product_idx ON emarket_listing_product(product_id);
+
+-- ═══ WMS-1f: структуры под обмен с 1С (CommerceML 2) ═══
+
+-- Дерево категорий каталога (1С «Группы»), иерархия по parent_id, маппинг по external_id (GUID).
+CREATE TABLE IF NOT EXISTS emarket_product_categories (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    parent_id BIGINT REFERENCES emarket_product_categories(id) ON DELETE SET NULL,
+    name TEXT NOT NULL DEFAULT '',
+    external_id TEXT NOT NULL DEFAULT '',
+    sort INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_product_categories_shop_idx ON emarket_product_categories(shop_id, sort);
+CREATE INDEX IF NOT EXISTS emarket_product_categories_parent_idx ON emarket_product_categories(parent_id);
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_product_categories_extid_idx ON emarket_product_categories(shop_id, external_id) WHERE external_id <> '';
+
+-- Единицы измерения (1С «ЕдиницыИзмерения»), code = код ОКЕИ.
+CREATE TABLE IF NOT EXISTS emarket_units (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    full_name TEXT NOT NULL DEFAULT '',
+    code TEXT NOT NULL DEFAULT '',
+    external_id TEXT NOT NULL DEFAULT '',
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_units_shop_idx ON emarket_units(shop_id);
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_units_extid_idx ON emarket_units(shop_id, external_id) WHERE external_id <> '';
+
+-- Типы цен (1С «ТипыЦен»: Розничная/Оптовая/…).
+CREATE TABLE IF NOT EXISTS emarket_price_types (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT '',
+    external_id TEXT NOT NULL DEFAULT '',
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    sort INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_price_types_shop_idx ON emarket_price_types(shop_id, sort);
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_price_types_extid_idx ON emarket_price_types(shop_id, external_id) WHERE external_id <> '';
+
+-- Цены товара по типам цен (многотиповое ценообразование из 1С).
+CREATE TABLE IF NOT EXISTS emarket_product_prices (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES emarket_products(id) ON DELETE CASCADE,
+    price_type_id BIGINT NOT NULL REFERENCES emarket_price_types(id) ON DELETE CASCADE,
+    price NUMERIC(14,2) NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'RUB',
+    UNIQUE (product_id, price_type_id)
+);
+CREATE INDEX IF NOT EXISTS emarket_product_prices_product_idx ON emarket_product_prices(product_id);
+
+-- Картинки SKU (из выгрузки 1С и/или загруженные вручную).
+CREATE TABLE IF NOT EXISTS emarket_product_images (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES emarket_products(id) ON DELETE CASCADE,
+    url TEXT NOT NULL DEFAULT '',
+    sort INT NOT NULL DEFAULT 0,
+    external_ref TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS emarket_product_images_product_idx ON emarket_product_images(product_id, sort);
+
+-- Состояние и настройки обмена с 1С (одна строка на магазин).
+CREATE TABLE IF NOT EXISTS emarket_1c_exchange (
+    shop_id BIGINT PRIMARY KEY REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    exchange_login TEXT NOT NULL DEFAULT '',
+    exchange_password_hash TEXT NOT NULL DEFAULT '',
+    session_token TEXT NOT NULL DEFAULT '',
+    session_expires TIMESTAMPTZ,
+    catalog_sync BOOLEAN NOT NULL DEFAULT TRUE,
+    price_sync BOOLEAN NOT NULL DEFAULT TRUE,
+    stock_sync BOOLEAN NOT NULL DEFAULT TRUE,
+    order_sync BOOLEAN NOT NULL DEFAULT TRUE,
+    last_import_at TIMESTAMPTZ,
+    last_export_at TIMESTAMPTZ,
+    last_status TEXT NOT NULL DEFAULT '',
+    last_log TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Доп. поля номенклатуры под 1С.
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS category_id BIGINT REFERENCES emarket_product_categories(id) ON DELETE SET NULL;
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS unit_id BIGINT REFERENCES emarket_units(id) ON DELETE SET NULL;
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS emarket_products_category_idx ON emarket_products(category_id) WHERE category_id IS NOT NULL;
+
+-- GUID склада из 1С (маппинг складов).
+ALTER TABLE emarket_warehouses ADD COLUMN IF NOT EXISTS external_id TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS emarket_warehouses_extid_idx ON emarket_warehouses(shop_id, external_id) WHERE external_id <> '';
+
+-- Маппинг заказа в 1С (для выгрузки заказов order_sync).
+ALTER TABLE emarket_orders ADD COLUMN IF NOT EXISTS external_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_orders ADD COLUMN IF NOT EXISTS exported_at TIMESTAMPTZ;
 CREATE TABLE IF NOT EXISTS emarket_ads (
   id BIGSERIAL PRIMARY KEY,
   placement TEXT NOT NULL DEFAULT 'banner',
