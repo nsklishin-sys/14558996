@@ -90,6 +90,9 @@ img{max-width:100%}
 .ms-prod-body{padding:12px}
 .ms-prod-title{font-size:13px;font-weight:600;line-height:1.35;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ms-prod-price{font-size:15px;font-weight:800;color:var(--acc)}
+.ms-prod-stock{font-size:11px;font-weight:700;margin-top:5px}
+.ms-prod-stock.out{color:#9A5B12}
+.ms-prod-stock.in{color:#1E8A4C}
 
 .ms-revs{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 @media(max-width:680px){.ms-revs{grid-template-columns:1fr}}
@@ -449,10 +452,11 @@ async function loadProducts(shopId,blockIdx,limit){
     const box=document.getElementById('msprods-'+blockIdx);
     if(!box)return;
     if(!items.length){box.innerHTML='<div style="color:var(--tm);font-size:14px">Пока нет товаров</div>';return;}
+    const stockTag=x=>{const st=x&&x.stock;if(!st||!st.tracked)return '';return st.in_stock?'':'<div class="ms-prod-stock out">Нет в наличии · предзаказ</div>';};
     box.innerHTML=items.map(x=>{
       const img=(Array.isArray(x.photos)&&x.photos.length)?'<img src="'+esc(x.photos[0])+'" alt="">':'<div class="ph"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>';
       const price=(x.price==null||x.price===0)?'Договорная':(Number(x.price).toLocaleString('ru-RU')+' '+(x.currency==='USD'?'$':x.currency==='EUR'?'€':'₽'));
-      return '<div class="ms-prod" onclick="location.href=\'/emarket-listing?id='+x.id+'\'"><div class="ms-prod-img">'+img+'</div><div class="ms-prod-body"><div class="ms-prod-title">'+esc(x.title)+'</div><div class="ms-prod-price">'+price+'</div></div></div>';
+      return '<div class="ms-prod" onclick="location.href=\'/emarket-listing?id='+x.id+'\'"><div class="ms-prod-img">'+img+'</div><div class="ms-prod-body"><div class="ms-prod-title">'+esc(x.title)+'</div><div class="ms-prod-price">'+price+'</div>'+stockTag(x)+'</div></div>';
     }).join('');
   }catch(e){
     const box=document.getElementById('msprods-'+blockIdx);
