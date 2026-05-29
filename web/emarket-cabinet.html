@@ -2049,7 +2049,7 @@ async function saveShop(){
 }
 function shareShopCab(){
   if(!SHOP)return;
-  window.lastopShare({title:SHOP.name||'Магазин',url:location.origin+'/shop/'+SHOP.slug,description:SHOP.tagline||SHOP.description||''});
+  window.lastopShare({title:SHOP.name||'Магазин',url:location.origin+'/shop/'+SHOP.slug,description:SHOP.tagline||SHOP.description||'',qrSrc:'/api/emarket/shop-qr?id='+SHOP.id});
 }
 function updateCabHeader(){
   const nameEl=document.querySelector('.cab-name');

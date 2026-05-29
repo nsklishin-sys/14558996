@@ -293,7 +293,7 @@ function shopHeader(shop){
 function plural(n,one,few,many){const v=n%10,h=n%100;if(h>=11&&h<=19)return many;if(v===1)return one;if(v>=2&&v<=4)return few;return many;}
 function shareShop(){
   if(!CUR_SHOP)return;
-  window.lastopShare({title:CUR_SHOP.name||'Магазин',url:location.href,description:CUR_SHOP.tagline||CUR_SHOP.description||''});
+  window.lastopShare({title:CUR_SHOP.name||'Магазин',url:location.href,description:CUR_SHOP.tagline||CUR_SHOP.description||'',qrSrc:'/api/emarket/shop-qr?id='+CUR_SHOP.id});
 }
 function goToReviews(){
   const el=document.querySelector('[data-reviews-block]');
