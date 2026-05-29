@@ -384,6 +384,16 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   </div>
 </div>
 
+<div class="lm-bg" id="orderModalBg" onclick="if(event.target===this)closeOrderModal()">
+  <div class="lm-box" style="max-width:680px">
+    <div class="lm-head">
+      <div class="lm-head-t" id="orderModalTitle">Заказ</div>
+      <button class="lm-x" onclick="closeOrderModal()">×</button>
+    </div>
+    <div id="orderModalBody"></div>
+  </div>
+</div>
+
 <div class="lm-bg" id="staffModalBg" onclick="if(event.target===this)closeStaffAdd()">
   <div class="lm-box">
     <div class="lm-head">
@@ -1114,13 +1124,7 @@ async function loadShopOrders(reset){
         const el=document.querySelector('[data-order-id="'+target+'"]');
         if(el){
           el.scrollIntoView({behavior:'smooth',block:'center'});
-          el.classList.add('open');
-          const chev=el.querySelector('.order-chev');
-          if(chev)chev.style.transform='rotate(180deg)';
-          loadOrderEvents(target);
-          if(window.markNotifsReadBySource){
-            window.markNotifsReadBySource(['emarket_order_new','emarket_order_status','emarket_order_payment'], target);
-          }
+          openOrderModal(target);
         }
       },250);
     }
@@ -1144,7 +1148,7 @@ function renderShopOrders(){
   const head=
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">'
       +'<input id="orderSearchInput" placeholder="Поиск по № заказа, покупателю, комментарию…" value="'+esc(ORDER_Q)+'" style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t)" oninput="onOrderSearch(this.value)">'
-      +'<select class="lt-select" onchange="setOrderSort(this.value)" style="padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'
+      +'<select data-lt-select onchange="setOrderSort(this.value)" style="min-width:160px">'
         +'<option value="date_desc"'+(ORDER_SORT==='date_desc'?' selected':'')+'>Сначала новые</option>'
         +'<option value="date_asc"'+(ORDER_SORT==='date_asc'?' selected':'')+'>Сначала старые</option>'
         +'<option value="amount_desc"'+(ORDER_SORT==='amount_desc'?' selected':'')+'>Сумма убыв.</option>'
@@ -1219,28 +1223,13 @@ function renderShopOrderCard(o){
     +'<div style="color:var(--gmt);font-size:11px">'+it.quantity+'×'+fmtOrderMoney(it.price,it.currency)+'</div>'
     +'</div>').join('');
   const moreItems=items.length>5?('<div style="font-size:11px;color:var(--gmt);padding-left:40px">и ещё '+(items.length-5)+'</div>'):'';
-  // Развёрнутая часть (история, заметка продавца, кнопка чата)
-  const chatBtn=o.buyer_public_id
-    ? '<button onclick="openChatWithBuyer(\''+esc(o.buyer_public_id)+'\')" style="padding:6px 12px;border:1.5px solid var(--gb);border-radius:var(--rm);background:var(--gl);color:var(--g);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Написать в чат</button>'
-    : '';
-  const expandHTML='<div class="lead-expand" id="order-expand-'+esc(o.public_id)+'" style="margin-top:10px;padding-top:12px;border-top:1px dashed var(--bdr)">'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+chatBtn+'</div>'
-    +'<div style="margin-bottom:12px">'
-      +'<label style="display:block;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Заметка продавца <span style="text-transform:none;font-weight:500;font-size:10px;color:var(--gmt)">(покупателю не видна)</span></label>'
-      +'<textarea id="order-note-'+esc(o.public_id)+'" rows="2" maxlength="2000" placeholder="Внутренняя заметка…" style="width:100%;padding:8px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:12px;background:var(--w);color:var(--t);resize:vertical;line-height:1.4" oninput="onShopNoteInput(\''+esc(o.public_id)+'\',this.value)">'+esc(o.shop_note||'')+'</textarea>'
-    +'</div>'
-    +'<div>'
-      +'<div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">История</div>'
-      +'<div id="order-events-'+esc(o.public_id)+'" style="font-size:12px;color:var(--tm);line-height:1.6"><span style="color:var(--gmt)">Загрузка…</span></div>'
-    +'</div>'
-  +'</div>';
   return '<div class="lead-card" data-order-id="'+esc(o.public_id)+'" style="padding:14px 16px">'
-    +'<div onclick="toggleOrderExpand(\''+esc(o.public_id)+'\')" style="cursor:pointer">'
+    +'<div onclick="openOrderModal(\''+esc(o.public_id)+'\')" style="cursor:pointer">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
-        +'<span style="font-family:&quot;SF Mono&quot;,Menlo,monospace;font-size:12px;font-weight:700;color:var(--t)">№ '+esc(o.public_id)+'</span>'
+        +'<span style="font-family:\'SF Mono\',Menlo,monospace;font-size:12px;font-weight:700;color:var(--t)">№ '+esc(o.public_id)+'</span>'
         +'<span style="font-size:11px;color:var(--gmt)">'+esc(fmtOrderDate(o.created_at))+'</span>'
         +'<span style="margin-left:auto;font-size:13px;font-weight:800;color:var(--t)">'+fmtOrderMoney(o.total_amount,o.currency)+'</span>'
-        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);transition:transform .15s" class="order-chev"><polyline points="6 9 12 15 18 9"/></svg>'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt)"><polyline points="9 18 15 12 9 6"/></svg>'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:var(--gp);border-radius:var(--rm)">'
         +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
@@ -1250,27 +1239,90 @@ function renderShopOrderCard(o){
       +(o.comment?'<div style="background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--t);line-height:1.5"><strong style="color:var(--g);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Комментарий:</strong> '+esc(o.comment)+'</div>':'')
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--bdr)">'
-      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Статус заказа<select class="lt-select" onchange="patchOrderStatus(\''+esc(o.public_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+statusOpts+'</select></label>'
-      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Оплата<select class="lt-select" onchange="patchOrderPayment(\''+esc(o.public_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--bdr);border-radius:var(--rm);font-family:inherit;font-size:13px;background:var(--w);color:var(--t);font-weight:600">'+paymentOpts+'</select></label>'
+      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Статус заказа<select data-lt-select onchange="patchOrderStatus(\''+esc(o.public_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-top:4px;width:100%">'+statusOpts+'</select></label>'
+      +'<label style="flex:1;min-width:160px;font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em">Оплата<select data-lt-select onchange="patchOrderPayment(\''+esc(o.public_id)+'\',this.value)" onclick="event.stopPropagation()" style="margin-top:4px;width:100%">'+paymentOpts+'</select></label>'
     +'</div>'
-    +expandHTML
   +'</div>';
 }
 
-function toggleOrderExpand(publicID){
-  const card=document.querySelector('[data-order-id="'+publicID+'"]');
-  if(!card)return;
-  const wasOpen=card.classList.contains('open');
-  card.classList.toggle('open');
-  const chev=card.querySelector('.order-chev');
-  if(chev)chev.style.transform=card.classList.contains('open')?'rotate(180deg)':'';
-  if(!wasOpen){
-    // открыли — лениво грузим события + гасим уведомления конкретного заказа
-    loadOrderEvents(publicID);
-    if(window.markNotifsReadBySource){
-      window.markNotifsReadBySource(['emarket_order_new','emarket_order_status','emarket_order_payment'], publicID);
-    }
+let ORDER_MODAL_PID=null;
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&ORDER_MODAL_PID){closeOrderModal();}
+});
+
+function openOrderModal(publicID){
+  const o=SHOP_ORDERS.find(x=>x.public_id===publicID);
+  if(!o)return;
+  ORDER_MODAL_PID=publicID;
+  document.getElementById('orderModalTitle').textContent='Заказ № '+publicID;
+  document.getElementById('orderModalBody').innerHTML=renderOrderModalBody(o);
+  document.getElementById('orderModalBg').style.display='flex';
+  document.body.style.overflow='hidden';
+  // прогон lt-select по новым селектам в модалке
+  if(window.LastopSelect&&LastopSelect.refresh)LastopSelect.refresh();
+  // лениво грузим историю
+  loadOrderEvents(publicID);
+  // гасим уведомления конкретного заказа
+  if(window.markNotifsReadBySource){
+    window.markNotifsReadBySource(['emarket_order_new','emarket_order_status','emarket_order_payment'], publicID);
   }
+}
+
+function closeOrderModal(){
+  document.getElementById('orderModalBg').style.display='none';
+  document.body.style.overflow='';
+  ORDER_MODAL_PID=null;
+}
+
+function renderOrderModalBody(o){
+  const items=o.items||[];
+  const statusOpts=ORDER_STATUSES.map(s=>'<option value="'+s.key+'"'+(s.key===o.status?' selected':'')+'>'+s.label+'</option>').join('');
+  const paymentOpts=ORDER_PAYMENTS.map(p=>'<option value="'+p.key+'"'+(p.key===o.payment_status?' selected':'')+'>'+p.label+'</option>').join('');
+  const itemsHTML=items.map(it=>{
+    const lineTotal=(Number(it.price)||0)*(Number(it.quantity)||0);
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)">'
+      +'<div style="width:40px;height:40px;border-radius:8px;background:var(--gl);color:var(--g);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;overflow:hidden">'
+      +(it.photo?'<img src="'+esc(it.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover">':esc((it.title||'?')[0].toUpperCase()))
+      +'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.title||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--gmt);margin-top:2px">'+fmtOrderMoney(it.price,it.currency)+' × '+(it.quantity||0)+'</div>'
+      +'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:var(--t);flex-shrink:0">'+fmtOrderMoney(lineTotal,it.currency)+'</div>'
+    +'</div>';
+  }).join('');
+  const payBlock=(o.payment_status==='pending'&&o.payment_url)
+    ? '<div style="margin-bottom:14px;padding:10px 12px;background:var(--gl);border:1px solid var(--gb);border-radius:var(--rm);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:140px"><div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.05em">Ссылка на оплату</div>'
+      +'<div style="font-size:11px;color:var(--gmt);word-break:break-all;margin-top:2px">'+esc(o.payment_url)+'</div></div>'
+      +'<a href="'+esc(o.payment_url)+'" target="_blank" rel="noopener" style="padding:7px 14px;background:var(--g);color:#fff;border-radius:var(--rm);font-size:12px;font-weight:700;text-decoration:none">Открыть ↗</a>'
+    +'</div>'
+    : '';
+  const buyerBlock='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:var(--gp);border-radius:var(--rm)">'
+    +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="color:var(--gmt);flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+    +'<span style="flex:1;font-size:13px;font-weight:600;color:var(--t)">'+esc(o.buyer_name||'Покупатель')+'</span>'
+    +(o.buyer_public_id?'<button onclick="openChatWithBuyer(\''+esc(o.buyer_public_id)+'\')" style="padding:6px 12px;border:1.5px solid var(--gb);border-radius:var(--rm);background:var(--w);color:var(--g);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>В чат</button>':'')
+  +'</div>';
+  return '<div style="font-size:11px;color:var(--gmt);margin-bottom:14px">'+esc(fmtOrderDate(o.created_at))+'</div>'
+    +buyerBlock
+    +'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Состав</div>'
+    +'<div>'+itemsHTML+'</div>'
+    +'<div style="display:flex;justify-content:space-between;padding:10px 0 4px;border-top:2px solid var(--bdr);margin-top:4px">'
+      +'<span style="font-size:13px;font-weight:700;color:var(--t)">Итого</span>'
+      +'<span style="font-size:15px;font-weight:800;color:var(--t)">'+fmtOrderMoney(o.total_amount,o.currency)+'</span>'
+    +'</div></div>'
+    +payBlock
+    +(o.comment?'<div style="margin-bottom:14px;background:var(--gp);border-radius:var(--rm);padding:10px 12px;font-size:13px;color:var(--t);line-height:1.5"><div style="font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Комментарий покупателя</div>'+esc(o.comment)+'</div>':'')
+    +'<div class="lm-2col" style="margin-bottom:14px">'
+      +'<div class="lm-row" style="margin-bottom:0"><label class="lm-label">Статус заказа</label><select data-lt-select class="lm-select" onchange="patchOrderStatus(\''+esc(o.public_id)+'\',this.value)">'+statusOpts+'</select></div>'
+      +'<div class="lm-row" style="margin-bottom:0"><label class="lm-label">Оплата</label><select data-lt-select class="lm-select" onchange="patchOrderPayment(\''+esc(o.public_id)+'\',this.value)">'+paymentOpts+'</select></div>'
+    +'</div>'
+    +'<div class="lm-row"><label class="lm-label">Заметка продавца <span style="text-transform:none;font-weight:500;font-size:10px;color:var(--gmt)">(покупателю не видна)</span></label>'
+      +'<textarea class="lm-area" id="order-note-'+esc(o.public_id)+'" maxlength="2000" placeholder="Внутренняя заметка…" oninput="onShopNoteInput(\''+esc(o.public_id)+'\',this.value)">'+esc(o.shop_note||'')+'</textarea>'
+    +'</div>'
+    +'<div class="lm-row" style="margin-bottom:0"><label class="lm-label">История</label>'
+      +'<div id="order-events-'+esc(o.public_id)+'" style="font-size:12px;color:var(--tm);line-height:1.6"><span style="color:var(--gmt)">Загрузка…</span></div>'
+    +'</div>';
 }
 
 async function loadOrderEvents(publicID){
@@ -1362,6 +1414,11 @@ async function patchOrderStatus(publicID,status){
     delete ORDER_EVENTS_CACHE[publicID];
     updateOrdersBadge();
     renderShopOrders();
+    if(ORDER_MODAL_PID===publicID){
+      document.getElementById('orderModalBody').innerHTML=renderOrderModalBody(o);
+      if(window.LastopSelect&&LastopSelect.refresh)LastopSelect.refresh();
+      loadOrderEvents(publicID);
+    }
     orderToastSafe('Статус заказа обновлён');
   }catch{orderToastSafe('Ошибка соединения');}
 }
@@ -1380,6 +1437,11 @@ async function patchOrderPayment(publicID,payment){
     }
     delete ORDER_EVENTS_CACHE[publicID];
     renderShopOrders();
+    if(ORDER_MODAL_PID===publicID){
+      document.getElementById('orderModalBody').innerHTML=renderOrderModalBody(o);
+      if(window.LastopSelect&&LastopSelect.refresh)LastopSelect.refresh();
+      loadOrderEvents(publicID);
+    }
     orderToastSafe('Статус оплаты обновлён');
   }catch{orderToastSafe('Ошибка соединения');}
 }
