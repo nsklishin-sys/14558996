@@ -324,6 +324,34 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
   .cab-tab span.tab-label{display:none}
   .cab-tab svg{width:18px;height:18px}
 }
+
+/* ── WMS: вкладка Склад ── */
+.wms-wh-list{display:flex;flex-direction:column;gap:8px}
+.wms-wh{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bdr);border-radius:var(--rm);background:var(--gp)}
+.wms-wh-nm{font-weight:700;color:var(--t);font-size:13px}
+.wms-wh-ad{font-size:11px;color:var(--gmt)}
+.wms-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:99px;background:var(--gl);color:var(--g)}
+.wms-tbl{width:100%;border-collapse:collapse}
+.wms-tbl th{text-align:left;font-size:10px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.wms-tbl td{padding:8px;border-bottom:1px solid var(--bdr);font-size:13px;color:var(--t);vertical-align:middle}
+.wms-row{cursor:pointer}
+.wms-row:hover{background:var(--gp)}
+.wms-thumb{width:34px;height:34px;border-radius:8px;object-fit:cover;display:block;border:1px solid var(--bdr)}
+.wms-thumb-ph{width:34px;height:34px;border-radius:8px;background:var(--gp);border:1px solid var(--bdr);display:grid;place-items:center;color:var(--gb)}
+.wms-av{font-weight:800;color:var(--g)}
+.wms-low{color:var(--red)}
+.wms-pill{display:inline-block;font-size:10px;font-weight:700;color:var(--gmt);background:var(--gp);border:1px solid var(--bdr);border-radius:99px;padding:1px 7px}
+.wms-stock-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
+.wms-ops{display:flex;gap:5px;flex-wrap:wrap}
+.wms-opbtn{font-family:inherit;font-size:11px;font-weight:700;border:1.5px solid var(--bdr);background:var(--w);color:var(--tm);border-radius:var(--r);padding:5px 9px;cursor:pointer;transition:all .15s}
+.wms-opbtn:hover{background:var(--gp);color:var(--g);border-color:var(--gb)}
+.wms-jrnl{font-size:12px;color:var(--tm);display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--bdr)}
+.wms-jrnl-t{font-weight:700}
+.wms-mv-receipt{color:#3B6D11}
+.wms-mv-shipment,.wms-mv-writeoff{color:#C0392B}
+.wms-mv-reserve{color:#185FA5}
+.wms-mv-release{color:#7A776E}
+.wms-mv-adjustment,.wms-mv-transfer{color:#8060C0}
 </style>
 <script src="/assets/profile-context.js" defer></script>
 </head>
@@ -352,6 +380,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 
 </div>
 
+<div class="lm-bg" id="wmsWhModalBg" onclick="if(event.target===this)wmsCloseModal('wmsWhModalBg')"><div class="lm-box" style="max-width:440px" id="wmsWhBody"></div></div>
+<div class="lm-bg" id="wmsPrModalBg" onclick="if(event.target===this)wmsCloseModal('wmsPrModalBg')"><div class="lm-box" id="wmsPrBody"></div></div>
+<div class="lm-bg" id="wmsStockModalBg" onclick="if(event.target===this)wmsCloseModal('wmsStockModalBg')"><div class="lm-box" style="max-width:600px" id="wmsStockBody"></div></div>
+<div class="lm-bg" id="wmsOpModalBg" onclick="if(event.target===this)wmsCloseModal('wmsOpModalBg')"><div class="lm-box" style="max-width:440px" id="wmsOpBody"></div></div>
 <div class="lm-bg" id="listingModalBg" onclick="if(event.target===this)closeListingModal()">
   <div class="lm-box">
     <div class="lm-head">
@@ -503,7 +535,7 @@ async function init(){
   }
   renderShell();
   const _qTab=new URLSearchParams(location.search).get('tab');
-  switchTab(['leads','orders','listings','analytics','settings'].includes(_qTab)?_qTab:'leads');
+  switchTab(['leads','orders','listings','warehouse','analytics','settings'].includes(_qTab)?_qTab:'leads');
   updateTabTitle(0);
   startLeadPolling();
 }
@@ -666,6 +698,7 @@ function renderShell(){
       +'<button class="cab-tab active" id="tabBtn-leads" onclick="switchTab(\'leads\')"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg><span class="tab-label">Заявки</span><span class="cab-tab-badge" id="leadsBadge" style="display:none">0</span></button>'
       +'<button class="cab-tab" id="tabBtn-orders" onclick="switchTab(\'orders\')"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg><span class="tab-label">Заказы</span><span class="cab-tab-badge" id="ordersBadge" style="display:none">0</span></button>'
       +'<button class="cab-tab" id="tabBtn-listings" onclick="switchTab(\'listings\')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="tab-label">Листинги</span></button>'
+      +'<button class="cab-tab" id="tabBtn-warehouse" onclick="switchTab(\'warehouse\')"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21V12h6v9"/></svg><span class="tab-label">Склад</span></button>'
       +'<button class="cab-tab" id="tabBtn-analytics" onclick="switchTab(\'analytics\')"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="tab-label">Аналитика</span></button>'
       +'<button class="cab-tab" id="tabBtn-settings" onclick="switchTab(\'settings\')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="tab-label">Настройки</span></button>'
     +'</div>'
@@ -673,6 +706,7 @@ function renderShell(){
     +'<div class="cab-panel active" id="panel-leads"></div>'
     +'<div class="cab-panel" id="panel-orders"></div>'
     +'<div class="cab-panel" id="panel-listings"></div>'
+    +'<div class="cab-panel" id="panel-warehouse"></div>'
     +'<div class="cab-panel" id="panel-analytics"></div>'
     +'<div class="cab-panel" id="panel-settings"></div>';
 
@@ -697,7 +731,7 @@ function onShopChange(id){
 /* ── переключение вкладок ── */
 function switchTab(tab){
   ACTIVE_TAB=tab;
-  ['leads','orders','listings','analytics','settings'].forEach(t=>{
+  ['leads','orders','listings','warehouse','analytics','settings'].forEach(t=>{
     const btn=document.getElementById('tabBtn-'+t);
     const pan=document.getElementById('panel-'+t);
     if(btn)btn.classList.toggle('active',t===tab);
@@ -706,6 +740,7 @@ function switchTab(tab){
   if(tab==='leads')loadLeads();
   else if(tab==='orders')loadShopOrders();
   else if(tab==='listings')loadListings();
+  else if(tab==='warehouse')loadWarehouse();
   else if(tab==='analytics')renderAnalytics();
   else if(tab==='settings')renderSettings();
 }
@@ -2347,6 +2382,305 @@ function skeletons(n){
   }
   return h;
 }
+
+/* ════════════ ВКЛАДКА: СКЛАД (WMS) ════════════ */
+let WMS_ON=false, WMS_WAREHOUSES=[], WMS_PRODUCTS=[], WMS_Q='', WMS_QT=null;
+let WMS_EDIT_PID=0, WMS_STOCK_PID=0, WMS_STOCK=null, WMS_LISTINGS=null;
+const WMS_MV={receipt:'Приём',shipment:'Отгрузка',writeoff:'Списание',adjustment:'Корректировка',reserve:'Резерв',release:'Снятие резерва',transfer:'Перемещение'};
+function wmsMoney(n,cur){const v=Number(n||0);return v.toLocaleString('ru-RU',{maximumFractionDigits:2})+(cur?(' '+({RUB:'₽',USD:'$',EUR:'€'}[cur]||cur)):'');}
+function wmsNum(n){const v=Number(n||0);return (Math.round(v*1000)/1000).toLocaleString('ru-RU',{maximumFractionDigits:3});}
+function wmsOpenModal(id){const e=document.getElementById(id);if(e)e.style.display='flex';}
+function wmsCloseModal(id){const e=document.getElementById(id);if(e)e.style.display='none';}
+
+async function loadWarehouse(){
+  const pan=document.getElementById('panel-warehouse');
+  pan.innerHTML=skeletons(2);
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/wms');
+    const d=await r.json(); WMS_ON=!!(d&&d.wms_enabled);
+  }catch(e){WMS_ON=false;}
+  if(!WMS_ON){renderWmsOff(pan);return;}
+  await Promise.all([wmsLoadWarehouses(),wmsLoadProducts()]);
+  renderWmsOn(pan);
+}
+
+function renderWmsOff(pan){
+  pan.innerHTML='<div class="cab-section" style="text-align:center">'
+    +'<div class="cab-section-h" style="justify-content:center"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 9h18"/><path d="M9 21V12h6v9"/></svg>Онлайн-склад</div>'
+    +'<div class="cab-section-d" style="max-width:520px;margin:6px auto 0">Листинги работают и без склада. Включите склад, чтобы вести остатки по нескольким складам, резервировать товар под заказы и синхронизировать каталог и цены с 1С.</div>'
+    +'<button class="lead-btn lead-btn-pri" style="margin-top:16px" id="wmsOnBtn" onclick="wmsToggle(true)">Включить склад</button>'
+    +'</div>';
+}
+
+async function wmsToggle(on){
+  const btn=document.getElementById('wmsOnBtn');
+  if(btn){btn.disabled=true;btn.textContent='…';}
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/wms',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({wms_enabled:!!on})});
+    if(!r.ok)throw 0;
+    loadWarehouse();
+  }catch(e){if(window.toast)toast('Не удалось изменить режим','info');if(btn){btn.disabled=false;btn.textContent='Включить склад';}}
+}
+
+async function wmsLoadWarehouses(){
+  try{const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/warehouses');const d=await r.json();WMS_WAREHOUSES=(d&&d.warehouses)||[];}
+  catch(e){WMS_WAREHOUSES=[];}
+}
+async function wmsLoadProducts(){
+  const p=new URLSearchParams();if(WMS_Q)p.set('q',WMS_Q);p.set('limit','200');
+  try{const r=await lastopFetch(API+'/emarket/products?shop_id='+SHOP.id+'&'+p.toString());const d=await r.json();WMS_PRODUCTS=(d&&d.products)||[];}
+  catch(e){WMS_PRODUCTS=[];}
+}
+
+function renderWmsOn(pan){
+  pan.innerHTML=
+    '<div class="cab-section">'
+      +'<div class="cab-section-h" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21V12h6v9"/></svg>Склады</span>'
+        +'<button class="lead-btn" onclick="wmsOpenWh(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Склад</button></div>'
+      +'<div class="wms-wh-list" id="wmsWhList"></div>'
+      +'<button class="lead-btn" style="margin-top:12px;border-style:dashed" onclick="wmsToggle(false)">Выключить режим склада</button>'
+    +'</div>'
+    +'<div class="cab-section">'
+      +'<div class="cab-section-h" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>Номенклатура</span>'
+        +'<button class="lead-btn lead-btn-pri" onclick="wmsOpenProduct(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Товар</button></div>'
+      +'<div class="lm-row" style="margin:10px 0 4px"><input class="lm-input" id="wmsSearch" placeholder="Поиск по названию, артикулу, штрихкоду…" value="'+esc(WMS_Q)+'" oninput="wmsSearchInput(this.value)"></div>'
+      +'<div id="wmsProdWrap"></div>'
+    +'</div>';
+  renderWmsWarehouses();
+  renderWmsProducts();
+}
+
+function renderWmsWarehouses(){
+  const box=document.getElementById('wmsWhList');if(!box)return;
+  if(!WMS_WAREHOUSES.length){box.innerHTML='<div class="cab-section-d">Складов пока нет. Добавьте хотя бы один — на него будут поступать товары и резервироваться заказы.</div>';return;}
+  box.innerHTML=WMS_WAREHOUSES.map(w=>'<div class="wms-wh">'
+    +'<div style="flex:1;min-width:0"><div class="wms-wh-nm">'+esc(w.name)+(w.is_primary?' <span class="wms-badge">основной</span>':'')+'</div>'+(w.address?'<div class="wms-wh-ad">'+esc(w.address)+'</div>':'')+'</div>'
+    +'<button class="wms-opbtn" onclick="wmsOpenWh('+w.id+')">Изменить</button>'
+    +'<button class="wms-opbtn" onclick="wmsDeleteWh('+w.id+',\''+esc(w.name).replace(/'/g,"\\'")+'\')">Удалить</button>'
+    +'</div>').join('');
+}
+
+function renderWmsProducts(){
+  const box=document.getElementById('wmsProdWrap');if(!box)return;
+  if(!WMS_PRODUCTS.length){box.innerHTML='<div class="cab-section-d" style="padding:14px 0">'+(WMS_Q?'Ничего не найдено.':'Номенклатуры пока нет. Добавьте первый товар.')+'</div>';return;}
+  box.innerHTML='<div style="overflow-x:auto"><table class="wms-tbl"><thead><tr>'
+    +'<th></th><th>Название</th><th>Артикул</th><th>Ед.</th><th>Цена</th><th>Доступно</th><th>Резерв</th>'
+    +'</tr></thead><tbody>'
+    +WMS_PRODUCTS.map(p=>{
+      const thumb=p.image_url?'<img class="wms-thumb" src="'+esc(p.image_url)+'" alt="">':'<div class="wms-thumb-ph"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>';
+      const avCls=p.low_stock?'wms-av wms-low':'wms-av';
+      return '<tr class="wms-row" onclick="wmsOpenStock('+p.id+')">'
+        +'<td>'+thumb+'</td>'
+        +'<td><div style="font-weight:700">'+esc(p.name)+'</div>'+(p.category?'<div class="wms-wh-ad">'+esc(p.category)+'</div>':'')+'</td>'
+        +'<td>'+(p.sku?esc(p.sku):'<span class="wms-wh-ad">—</span>')+'</td>'
+        +'<td>'+esc(p.unit||'шт')+'</td>'
+        +'<td>'+(p.price?wmsMoney(p.price,p.currency):'<span class="wms-wh-ad">—</span>')+'</td>'
+        +'<td class="'+avCls+'">'+wmsNum(p.available)+(p.low_stock?' ⚠':'')+'</td>'
+        +'<td>'+(p.reserved_qty>0?'<span class="wms-pill">'+wmsNum(p.reserved_qty)+'</span>':'<span class="wms-wh-ad">0</span>')+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+}
+
+function wmsSearchInput(v){WMS_Q=v;clearTimeout(WMS_QT);WMS_QT=setTimeout(async()=>{await wmsLoadProducts();renderWmsProducts();},350);}
+
+/* ── СКЛАД: модалка ── */
+function wmsOpenWh(id){
+  const w=id?WMS_WAREHOUSES.find(x=>x.id===id):null;
+  document.getElementById('wmsWhBody').innerHTML=
+    '<div class="lm-head"><div class="lm-head-t">'+(id?'Изменить склад':'Новый склад')+'</div><button class="lm-x" onclick="wmsCloseModal(\'wmsWhModalBg\')">×</button></div>'
+    +'<div class="lm-row"><label class="lm-label">Название *</label><input class="lm-input" id="wmsWhName" maxlength="120" value="'+esc(w?w.name:'')+'"></div>'
+    +'<div class="lm-row"><label class="lm-label">Адрес</label><input class="lm-input" id="wmsWhAddr" maxlength="200" value="'+esc(w?w.address:'')+'"></div>'
+    +'<div class="lm-row"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--t)"><input type="checkbox" id="wmsWhPrimary"'+(w&&w.is_primary?' checked':'')+'> Основной склад (резерв заказов идёт сюда)</label></div>'
+    +'<div class="lm-foot"><button class="lead-btn" onclick="wmsCloseModal(\'wmsWhModalBg\')">Отмена</button><button class="lead-btn lead-btn-pri" id="wmsWhSave" onclick="wmsSaveWh('+(id||0)+')">'+(id?'Сохранить':'Создать')+'</button></div>';
+  wmsOpenModal('wmsWhModalBg');
+}
+async function wmsSaveWh(id){
+  const name=document.getElementById('wmsWhName').value.trim();
+  if(!name){if(window.toast)toast('Укажите название','info');return;}
+  const body={name,address:document.getElementById('wmsWhAddr').value.trim(),is_primary:document.getElementById('wmsWhPrimary').checked};
+  const btn=document.getElementById('wmsWhSave');btn.disabled=true;btn.textContent='…';
+  try{
+    const url=API+'/emarket/shops/'+SHOP.id+'/warehouses'+(id?'/'+id:'');
+    const r=await lastopFetch(url,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw 0;
+    wmsCloseModal('wmsWhModalBg');await wmsLoadWarehouses();renderWmsWarehouses();
+  }catch(e){if(window.toast)toast('Не удалось сохранить','info');btn.disabled=false;btn.textContent=id?'Сохранить':'Создать';}
+}
+async function wmsDeleteWh(id,name){
+  const ok=await lastopConfirm({title:'Удалить склад?',message:'«'+name+'» будет удалён. Склад с ненулевыми остатками удалить нельзя.',danger:true,confirmText:'Удалить'});
+  if(!ok)return;
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/warehouses/'+id,{method:'DELETE'});
+    if(r.status===409){const d=await r.json().catch(()=>({}));if(window.toast)toast(d.error||'На складе есть остатки','info');return;}
+    if(!r.ok)throw 0;
+    await wmsLoadWarehouses();renderWmsWarehouses();
+  }catch(e){if(window.toast)toast('Не удалось удалить','info');}
+}
+
+/* ── ТОВАР (SKU): модалка ── */
+let WMS_PR_IMG='';
+function wmsOpenProduct(id){
+  WMS_EDIT_PID=id;
+  const p=id?WMS_PRODUCTS.find(x=>x.id===id):null;
+  WMS_PR_IMG=(p&&p.image_url)||'';
+  document.getElementById('wmsPrBody').innerHTML=
+    '<div class="lm-head"><div class="lm-head-t">'+(id?'Изменить товар':'Новый товар')+'</div><button class="lm-x" onclick="wmsCloseModal(\'wmsPrModalBg\')">×</button></div>'
+    +'<div class="lm-row"><label class="lm-label">Фото</label><div class="se-media" id="wmsPrImgWrap"></div></div>'
+    +'<div class="lm-row"><label class="lm-label">Название *</label><input class="lm-input" id="wmsPrName" maxlength="200" value="'+esc(p?p.name:'')+'"></div>'
+    +'<div class="lm-2col"><div class="lm-row"><label class="lm-label">Артикул (SKU)</label><input class="lm-input" id="wmsPrSku" maxlength="120" value="'+esc(p?p.sku:'')+'"></div>'
+      +'<div class="lm-row"><label class="lm-label">Штрихкод</label><input class="lm-input" id="wmsPrBarcode" maxlength="120" value="'+esc(p?p.barcode:'')+'"></div></div>'
+    +'<div class="lm-2col"><div class="lm-row"><label class="lm-label">Единица</label><input class="lm-input" id="wmsPrUnit" maxlength="40" placeholder="шт" value="'+esc(p?p.unit:'')+'"></div>'
+      +'<div class="lm-row"><label class="lm-label">Категория</label><input class="lm-input" id="wmsPrCategory" maxlength="120" value="'+esc(p?p.category:'')+'"></div></div>'
+    +'<div class="lm-2col"><div class="lm-row"><label class="lm-label">Цена</label><input class="lm-input" id="wmsPrPrice" type="number" min="0" step="0.01" value="'+(p&&p.price?p.price:'')+'"></div>'
+      +'<div class="lm-row"><label class="lm-label">Ставка НДС, %</label><input class="lm-input" id="wmsPrVat" type="number" min="0" max="100" step="0.01" value="'+(p&&p.vat_rate?p.vat_rate:'')+'"></div></div>'
+    +'<div class="lm-2col"><div class="lm-row"><label class="lm-label">Порог «мало»</label><input class="lm-input" id="wmsPrLow" type="number" min="0" step="0.001" value="'+(p&&p.low_stock_threshold?p.low_stock_threshold:'')+'"></div>'
+      +'<div class="lm-row"><label class="lm-label">Код 1С (external_id)</label><input class="lm-input" id="wmsPrExt" maxlength="120" value="'+esc(p?p.external_id:'')+'"></div></div>'
+    +'<div class="lm-row"><label class="lm-label">Описание</label><textarea class="lm-area" id="wmsPrDesc" maxlength="2000">'+esc(p?p.description:'')+'</textarea></div>'
+    +'<div class="lm-foot">'
+      +(id?'<button class="lead-btn" style="margin-right:auto;color:var(--red);border-color:#E8C9C4" onclick="wmsDeleteProduct('+id+')">Удалить</button>':'')
+      +'<button class="lead-btn" onclick="wmsCloseModal(\'wmsPrModalBg\')">Отмена</button>'
+      +'<button class="lead-btn lead-btn-pri" id="wmsPrSave" onclick="wmsSaveProduct('+(id||0)+')">'+(id?'Сохранить':'Создать')+'</button></div>';
+  wmsRenderPrImg();
+  wmsOpenModal('wmsPrModalBg');
+}
+function wmsRenderPrImg(){
+  const wrap=document.getElementById('wmsPrImgWrap');if(!wrap)return;
+  const prev=WMS_PR_IMG?'<div class="se-media-prev"><img src="'+esc(WMS_PR_IMG)+'" alt=""><button type="button" onclick="WMS_PR_IMG=\'\';wmsRenderPrImg()">×</button></div>':'';
+  wrap.innerHTML=prev+'<label class="se-media-add"'+(WMS_PR_IMG?' style="display:none"':'')+'><input type="file" accept="image/*" style="display:none" onchange="wmsUploadPrImg(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label>';
+}
+async function wmsUploadPrImg(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  try{const r=await lastopFetch(API+'/upload',{method:'POST',body:fd});const d=await r.json();if(d&&d.url){WMS_PR_IMG=d.url;wmsRenderPrImg();}else if(window.toast)toast('Не удалось загрузить','info');}
+  catch(e){if(window.toast)toast('Не удалось загрузить','info');}
+  input.value='';
+}
+async function wmsSaveProduct(id){
+  const name=document.getElementById('wmsPrName').value.trim();
+  if(!name){if(window.toast)toast('Укажите название','info');return;}
+  const numv=x=>{const v=parseFloat(String(x).replace(',','.'));return isNaN(v)?0:v;};
+  const body={
+    name,sku:document.getElementById('wmsPrSku').value.trim(),barcode:document.getElementById('wmsPrBarcode').value.trim(),
+    unit:document.getElementById('wmsPrUnit').value.trim(),category:document.getElementById('wmsPrCategory').value.trim(),
+    price:numv(document.getElementById('wmsPrPrice').value),vat_rate:numv(document.getElementById('wmsPrVat').value),
+    low_stock_threshold:numv(document.getElementById('wmsPrLow').value),external_id:document.getElementById('wmsPrExt').value.trim(),
+    description:document.getElementById('wmsPrDesc').value.trim(),image_url:WMS_PR_IMG
+  };
+  const btn=document.getElementById('wmsPrSave');btn.disabled=true;btn.textContent='…';
+  try{
+    const url=API+'/emarket/products'+(id?'/'+id:'');
+    if(!id)body.shop_id=SHOP.id;
+    const r=await lastopFetch(url,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.status===409){const d=await r.json().catch(()=>({}));if(window.toast)toast(d.error||'Артикул занят','info');btn.disabled=false;btn.textContent=id?'Сохранить':'Создать';return;}
+    if(!r.ok)throw 0;
+    wmsCloseModal('wmsPrModalBg');await wmsLoadProducts();renderWmsProducts();
+  }catch(e){if(window.toast)toast('Не удалось сохранить','info');btn.disabled=false;btn.textContent=id?'Сохранить':'Создать';}
+}
+async function wmsDeleteProduct(id){
+  const p=WMS_PRODUCTS.find(x=>x.id===id);
+  const ok=await lastopConfirm({title:'Удалить товар?',message:'«'+(p?p.name:'позиция')+'» будет удалён из номенклатуры. История движений сохранится.',danger:true,confirmText:'Удалить'});
+  if(!ok)return;
+  try{const r=await lastopFetch(API+'/emarket/products/'+id,{method:'DELETE'});if(!r.ok)throw 0;wmsCloseModal('wmsPrModalBg');await wmsLoadProducts();renderWmsProducts();}
+  catch(e){if(window.toast)toast('Не удалось удалить','info');}
+}
+
+/* ── ОСТАТКИ И ДВИЖЕНИЯ: модалка по товару ── */
+async function wmsOpenStock(pid){
+  WMS_STOCK_PID=pid;
+  document.getElementById('wmsStockBody').innerHTML='<div class="lm-head"><div class="lm-head-t">Остатки</div><button class="lm-x" onclick="wmsCloseModal(\'wmsStockModalBg\')">×</button></div>'+skeletons(2);
+  wmsOpenModal('wmsStockModalBg');
+  let prod=null,stock=[];
+  try{const r=await lastopFetch(API+'/emarket/products/'+pid);const d=await r.json();prod=d.product;stock=d.stock||[];}catch(e){}
+  WMS_STOCK=stock;
+  if(!prod){document.getElementById('wmsStockBody').innerHTML='<div class="cab-section-d">Не удалось загрузить.</div>';return;}
+  let moves=[];try{const r=await lastopFetch(API+'/emarket/stock/moves?shop_id='+SHOP.id+'&product_id='+pid+'&limit=30');const d=await r.json();moves=d.moves||[];}catch(e){}
+  const stockRows=stock.length?stock.map(s=>'<div class="wms-stock-row">'
+      +'<div style="flex:1;min-width:120px"><div style="font-weight:700;font-size:13px">'+esc(s.warehouse_name)+'</div>'
+        +'<div class="wms-wh-ad">доступно <b class="wms-av">'+wmsNum(s.available)+'</b> · в резерве '+wmsNum(s.reserved_qty)+' · всего '+wmsNum(s.qty)+'</div></div>'
+      +'<div class="wms-ops">'
+        +'<button class="wms-opbtn" onclick="wmsOp(\'receipt\','+s.warehouse_id+')">Приём</button>'
+        +'<button class="wms-opbtn" onclick="wmsOp(\'writeoff\','+s.warehouse_id+')">Списание</button>'
+        +'<button class="wms-opbtn" onclick="wmsOp(\'adjustment\','+s.warehouse_id+')">Инвентаризация</button>'
+        +(WMS_WAREHOUSES.length>1?'<button class="wms-opbtn" onclick="wmsOp(\'transfer\','+s.warehouse_id+')">Перемещение</button>':'')
+      +'</div></div>').join('')
+    :'<div class="cab-section-d">Сначала добавьте склад.</div>';
+  const journal=moves.length?moves.map(m=>'<div class="wms-jrnl"><span class="wms-jrnl-t wms-mv-'+esc(m.type)+'">'+(WMS_MV[m.type]||esc(m.type))+'</span>'
+      +'<span>'+wmsNum(m.qty)+'</span>'
+      +'<span class="wms-wh-ad" style="flex:1">'+esc(m.warehouse||'')+(m.to_warehouse?(' → '+esc(m.to_warehouse)):'')+(m.comment?(' · '+esc(m.comment)):'')+'</span>'
+      +'<span class="wms-wh-ad">'+wmsDate(m.created_at)+'</span></div>').join('')
+    :'<div class="cab-section-d">Движений ещё не было.</div>';
+  document.getElementById('wmsStockBody').innerHTML=
+    '<div class="lm-head"><div class="lm-head-t">'+esc(prod.name)+(prod.sku?' <span class="wms-pill">'+esc(prod.sku)+'</span>':'')+'</div><button class="lm-x" onclick="wmsCloseModal(\'wmsStockModalBg\')">×</button></div>'
+    +'<div class="cab-section-h" style="font-size:13px">Остатки по складам</div>'
+    +'<div style="margin-bottom:16px">'+stockRows+'</div>'
+    +'<div class="cab-section-h" style="font-size:13px">Привязка к листингу</div>'
+    +'<div class="lm-row" id="wmsLinkRow"><div class="wms-wh-ad">Загрузка…</div></div>'
+    +'<div class="cab-section-h" style="font-size:13px">Журнал движений</div>'
+    +'<div>'+journal+'</div>'
+    +'<div class="lm-foot"><button class="lead-btn lead-btn-pri" onclick="wmsCloseModal(\'wmsStockModalBg\');wmsOpenProduct('+pid+')">Редактировать товар</button></div>';
+  wmsRenderLink(pid);
+}
+function wmsDate(s){if(!s)return'';try{const d=new Date(s);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});}catch(e){return'';}}
+
+async function wmsRenderLink(pid){
+  const row=document.getElementById('wmsLinkRow');if(!row)return;
+  if(!WMS_LISTINGS){try{const r=await lastopFetch(API+'/emarket/shop-listings?shop_id='+SHOP.id+'&mine=1&limit=200');const d=await r.json();WMS_LISTINGS=(d&&d.listings)||[];}catch(e){WMS_LISTINGS=[];}}
+  const opts='<option value="">— выбрать листинг —</option>'+WMS_LISTINGS.map(l=>'<option value="'+l.id+'">'+esc(l.title||('Листинг #'+l.id))+'</option>').join('');
+  row.innerHTML='<div style="display:flex;gap:8px;align-items:center"><select class="lm-select" id="wmsLinkSel" style="flex:1">'+opts+'</select>'
+    +'<button class="lead-btn" onclick="wmsLink('+pid+')">Привязать</button></div>'
+    +'<div class="wms-wh-ad" style="margin-top:6px">Свяжите листинг с этим товаром, чтобы на карточке показывалось наличие со склада.</div>';
+}
+async function wmsLink(pid){
+  const sel=document.getElementById('wmsLinkSel');const lid=sel&&sel.value;
+  if(!lid){if(window.toast)toast('Выберите листинг','info');return;}
+  try{const r=await lastopFetch(API+'/emarket/listings/'+lid+'/product',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:pid})});
+    if(!r.ok)throw 0;if(window.toast)toast('Листинг привязан','success');}
+  catch(e){if(window.toast)toast('Не удалось привязать','info');}
+}
+
+/* ── ОПЕРАЦИЯ движения: модалка ── */
+function wmsOp(type,whID){
+  const titles={receipt:'Приём на склад',writeoff:'Списание со склада',adjustment:'Инвентаризация',transfer:'Перемещение'};
+  const cur=WMS_STOCK?WMS_STOCK.find(s=>s.warehouse_id===whID):null;
+  const curQty=cur?cur.qty:0;
+  const qtyLabel=type==='adjustment'?'Фактический остаток':'Количество';
+  const whName=cur?cur.warehouse_name:'';
+  let toSel='';
+  if(type==='transfer'){
+    const opts=WMS_WAREHOUSES.filter(w=>w.id!==whID).map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('');
+    toSel='<div class="lm-row"><label class="lm-label">Склад-получатель</label><select class="lm-select" id="wmsOpTo">'+opts+'</select></div>';
+  }
+  document.getElementById('wmsOpBody').innerHTML=
+    '<div class="lm-head"><div class="lm-head-t">'+titles[type]+'</div><button class="lm-x" onclick="wmsCloseModal(\'wmsOpModalBg\')">×</button></div>'
+    +'<div class="cab-section-d" style="margin-bottom:12px">Склад: <b>'+esc(whName)+'</b>'+(type==='adjustment'?(' · текущий остаток: <b>'+wmsNum(curQty)+'</b>'):'')+'</div>'
+    +'<div class="lm-row"><label class="lm-label">'+qtyLabel+' *</label><input class="lm-input" id="wmsOpQty" type="number" min="0" step="0.001" value="'+(type==='adjustment'?curQty:'')+'"></div>'
+    +toSel
+    +'<div class="lm-row"><label class="lm-label">Комментарий</label><input class="lm-input" id="wmsOpComment" maxlength="200"></div>'
+    +'<div class="lm-foot"><button class="lead-btn" onclick="wmsCloseModal(\'wmsOpModalBg\')">Отмена</button>'
+      +'<button class="lead-btn lead-btn-pri" id="wmsOpApply" onclick="wmsApplyOp(\''+type+'\','+whID+','+curQty+')">Применить</button></div>';
+  wmsOpenModal('wmsOpModalBg');
+}
+async function wmsApplyOp(type,whID,curQty){
+  const raw=parseFloat(String(document.getElementById('wmsOpQty').value).replace(',','.'));
+  if(isNaN(raw)||raw<0){if(window.toast)toast('Укажите количество','info');return;}
+  let sendType=type, qty=raw, toWh=0;
+  if(type==='adjustment'){qty=raw-Number(curQty||0);if(qty===0){if(window.toast)toast('Остаток не изменился','info');return;}}
+  if(type==='transfer'){const t=document.getElementById('wmsOpTo');toWh=t?parseInt(t.value,10):0;if(!toWh){if(window.toast)toast('Выберите склад-получатель','info');return;}if(raw<=0){if(window.toast)toast('Укажите количество','info');return;}}
+  if((type==='receipt'||type==='writeoff'||type==='transfer')&&raw<=0){if(window.toast)toast('Количество больше нуля','info');return;}
+  const body={shop_id:SHOP.id,product_id:WMS_STOCK_PID,warehouse_id:whID,type:sendType,qty:qty,comment:document.getElementById('wmsOpComment').value.trim()};
+  if(toWh)body.to_warehouse_id=toWh;
+  const btn=document.getElementById('wmsOpApply');btn.disabled=true;btn.textContent='…';
+  try{
+    const r=await lastopFetch(API+'/emarket/stock/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){if(window.toast)toast(d.error||'Операция отклонена','info');btn.disabled=false;btn.textContent='Применить';return;}
+    wmsCloseModal('wmsOpModalBg');
+    await wmsOpenStock(WMS_STOCK_PID);
+    await wmsLoadProducts();renderWmsProducts();
+  }catch(e){if(window.toast)toast('Ошибка операции','info');btn.disabled=false;btn.textContent='Применить';}
+}
+
 </script>
 </body>
 </html>
