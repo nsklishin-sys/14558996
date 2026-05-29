@@ -472,6 +472,8 @@ type chatConversation struct {
 	DisplayColor                   string     `json:"display_color"`
 	DisplayAvatar                  string     `json:"display_avatar"`
 	OtherPublicID                  string     `json:"other_public_id,omitempty"`
+	LastMessageID                  int64      `json:"last_message_id,omitempty"`
+	LastMessageAuthorID            int64      `json:"last_message_author_id,omitempty"`
 	LastMessageText                string     `json:"last_message_text"`
 	LastMessageAuthor              string     `json:"last_message_author"`
 	LastMessageSenderCompanyName   string     `json:"last_message_sender_company_name,omitempty"`
@@ -29994,6 +29996,7 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
        COALESCE(p.pinned,false),COALESCE(p.muted,false),COALESCE(p.role,'member'),
        (SELECT COUNT(*) FROM chat_participants cp WHERE cp.conversation_id=c.id),
        (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id=c.id AND m.id>p.last_read_message_id AND m.author_id<>$1 AND m.is_deleted=FALSE),
+       COALESCE((SELECT m.id FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),0),
        COALESCE((SELECT m.content FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
        (SELECT m.author_id FROM chat_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),
        COALESCE((SELECT u.full_name FROM chat_messages m JOIN users u ON u.id=m.author_id WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1),''),
@@ -30012,7 +30015,7 @@ SELECT c.id,c.public_id,c.type,c.title,c.avatar_url,c.community_id,c.created_at,
 FROM chat_conversations c JOIN chat_participants p ON p.conversation_id=c.id
 LEFT JOIN companies co ON c.owner_kind='company' AND co.id=c.owner_id
 LEFT JOIN communities cm ON c.owner_kind='community' AND cm.id=c.owner_id
-WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &otherLastReadMsgID, &otherLastReadAt, &c.HasCompanyMessage, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
+WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicID, &c.Type, &c.Title, &c.AvatarURL, &c.CommunityID, &c.CreatedAt, &c.LastMessageAt, &ownerKind, &ownerID, &pinned, &muted, &role, &c.MembersCount, &c.UnreadCount, &c.LastMessageID, &lastContent, &lastAuthorID, &lastAuthorName, &lastSenderCompanyName, &lastSenderCommunityName, &otherID, &otherUID, &otherName, &otherPosition, &otherCompany, &otherAvatar, &otherLastReadMsgID, &otherLastReadAt, &c.HasCompanyMessage, &ownerCompanyName, &ownerCommunityName, &ownerCompanyLogo, &ownerCommunityAvatar)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c, errNotFound
@@ -30061,6 +30064,9 @@ WHERE p.user_id=$1 AND c.public_id=$2`, userID, publicID).Scan(&c.ID, &c.PublicI
 	c.LastMessageText = messagePreview(lastContent, 120)
 	c.LastMessageSenderCompanyName = strings.TrimSpace(lastSenderCompanyName)
 	c.LastMessageSenderCommunityName = strings.TrimSpace(lastSenderCommunityName)
+	if lastAuthorID.Valid {
+		c.LastMessageAuthorID = lastAuthorID.Int64
+	}
 	if lastAuthorID.Valid && lastAuthorID.Int64 == userID {
 		c.LastMessageAuthor = "Вы"
 	} else {
