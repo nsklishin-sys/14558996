@@ -187,6 +187,32 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .an-src-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tm)}
 .an-src-row b{margin-left:auto;color:var(--t);font-weight:700}
 .an-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+/* FUNNEL-FRONT: КПИ-блок заказов (синий акцент) */
+.an-cell.cell-blue .an-num{color:#2479C8}
+.an-cell.cell-amber .an-num{color:#E89B27}
+.an-cell-sub{font-size:11px;color:var(--gmt);font-weight:600;margin-top:4px;line-height:1.4}
+/* FUNNEL-FRONT: воронки */
+.an-funnels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.an-funnels{grid-template-columns:1fr}}
+.an-fn{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh)}
+.an-fn-title{font-size:12px;font-weight:800;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.an-fn-title svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.an-fn-step{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--bdr);font-size:13px}
+.an-fn-step:last-child{border-bottom:none}
+.an-fn-step-name{flex:1;font-weight:600;color:var(--t)}
+.an-fn-step-cnt{font-weight:900;color:var(--t);font-variant-numeric:tabular-nums}
+.an-fn-step-rate{font-size:11px;color:var(--gmt);font-weight:700;background:var(--gp);padding:2px 8px;border-radius:99px;font-variant-numeric:tabular-nums}
+.an-fn-bar{height:6px;background:var(--gp);border-radius:99px;overflow:hidden;margin-top:6px}
+.an-fn-bar-fill{height:100%;border-radius:99px;transition:width .4s}
+.an-fn-step.lead .an-fn-bar-fill{background:#E89B27}
+.an-fn-step.order .an-fn-bar-fill{background:#2479C8}
+.an-fn-step.done .an-fn-bar-fill{background:var(--g)}
+/* FUNNEL-FRONT: статусы заказов — стек-бар */
+.an-status-rows{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.an-status-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tm)}
+.an-status-row b{margin-left:auto;color:var(--t);font-weight:700;font-variant-numeric:tabular-nums}
+/* FUNNEL-FRONT: легенда чарта — три серии */
+.an-lg-o::before{background:#2479C8}
 
 /* ── Листинги ── */
 .lst-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);padding:14px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:13px;transition:box-shadow .2s}
@@ -1697,6 +1723,7 @@ function renderAnalytics(){
       +anCell(rating,'Рейтинг')
       +anCell(num(reviews),'Отзывов')
     +'</div>'
+    +'<div class="an-grid" id="anOrdersKpi" style="margin-top:10px"></div>'
     +'<div class="cab-section">'
       +'<div class="an-head">'
         +'<div class="cab-section-h" style="margin-bottom:0"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Активность по дням</div>'
@@ -1706,9 +1733,14 @@ function renderAnalytics(){
           +'<button class="an-pbtn" data-d="90" onclick="setAnDays(90)">90 дней</button>'
         +'</div>'
       +'</div>'
-      +'<div class="an-legend"><span class="an-lg an-lg-v">Просмотры сайта</span><span class="an-lg an-lg-l">Заявки</span></div>'
+      +'<div class="an-legend"><span class="an-lg an-lg-v">Просмотры сайта</span><span class="an-lg an-lg-l">Заявки</span><span class="an-lg an-lg-o">Заказы</span></div>'
       +'<div id="anChart" class="an-chart-wrap"></div>'
     +'</div>'
+    +'<div class="an-funnels">'
+      +'<div class="an-fn"><div class="an-fn-title"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>Воронка лидов</div><div id="anFunnelLead"></div></div>'
+      +'<div class="an-fn"><div class="an-fn-title"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>Воронка заказов</div><div id="anFunnelOrder"></div></div>'
+    +'</div>'
+    +'<div class="cab-section"><div class="cab-section-h"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Статусы заказов за период</div><div id="anStatuses" style="margin-top:6px"></div></div>'
     +'<div class="cab-section"><div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Топ товаров по просмотрам</div><div id="anTop" style="margin-top:12px"></div></div>'
     +'<div class="cab-section"><div class="cab-section-h"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1.05.36 2.07.68 3a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.97.32 1.98.55 3 .68A2 2 0 0 1 22 16.92z"/></svg>Источники заявок</div><div id="anSources" style="margin-top:12px"></div></div>';
   updateAnPeriodBtns();
@@ -1729,6 +1761,10 @@ async function loadAnalytics(){
     if(!r.ok)throw 0;
     const d=await r.json();
     renderAnChart(d.daily||[]);
+    renderAnOrdersKpi(d.orders||{});
+    renderAnFunnel('anFunnelLead',(d.funnels&&d.funnels.lead)||[],'lead');
+    renderAnFunnel('anFunnelOrder',(d.funnels&&d.funnels.order)||[],'order');
+    renderAnStatuses(d.orders||{});
     renderAnTop(d.top_listings||[]);
     renderAnSources(d.lead_sources||{form:0,listing:0});
   }catch(e){
@@ -1740,23 +1776,27 @@ function renderAnChart(daily){
   const box=document.getElementById('anChart');
   if(!box)return;
   if(!daily.length){box.innerHTML='<div class="an-loading">Нет данных за период</div>';return;}
-  const maxV=Math.max(1,...daily.map(d=>Math.max(d.site_views||0,d.leads||0)));
+  const maxV=Math.max(1,...daily.map(d=>Math.max(d.site_views||0,d.leads||0,d.orders||0)));
   const W=Math.max(daily.length*1,1), H=140, pad=4;
   const n=daily.length;
   const slot=100/n;            // % ширины на день
-  const bw=Math.max(slot*0.32,0.4);
+  const bw=Math.max(slot*0.22,0.3);
   let bars='';
   daily.forEach((d,i)=>{
     const x=i*slot;
     const vh=((d.site_views||0)/maxV)*(H-pad);
     const lh=((d.leads||0)/maxV)*(H-pad);
-    const cx1=x+slot*0.5-bw*0.6, cx2=x+slot*0.5+bw*0.1;
+    const oh=((d.orders||0)/maxV)*(H-pad);
+    const cx1=x+slot*0.5-bw*1.6;
+    const cx2=x+slot*0.5-bw*0.5;
+    const cx3=x+slot*0.5+bw*0.6;
     const dt=new Date(d.date);
     const lbl=dt.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
-    const title=lbl+': '+(d.site_views||0)+' просм., '+(d.leads||0)+' заявок';
+    const title=lbl+': '+(d.site_views||0)+' просм., '+(d.leads||0)+' заявок, '+(d.orders||0)+' заказов';
     bars+='<g><title>'+esc(title)+'</title>'
       +'<rect x="'+cx1.toFixed(2)+'%" y="'+(H-vh).toFixed(1)+'" width="'+bw.toFixed(2)+'%" height="'+vh.toFixed(1)+'" rx="1" fill="var(--g)"></rect>'
       +'<rect x="'+cx2.toFixed(2)+'%" y="'+(H-lh).toFixed(1)+'" width="'+bw.toFixed(2)+'%" height="'+lh.toFixed(1)+'" rx="1" fill="#E89B27"></rect>'
+      +'<rect x="'+cx3.toFixed(2)+'%" y="'+(H-oh).toFixed(1)+'" width="'+bw.toFixed(2)+'%" height="'+oh.toFixed(1)+'" rx="1" fill="#2479C8"></rect>'
     +'</g>';
   });
   // подписи: первая, средняя, последняя дата
@@ -1780,6 +1820,79 @@ function renderAnTop(items){
       +'<div class="an-bar-val">'+num(i.views||0)+'</div>'
     +'</div>';
   }).join('');
+}
+
+/* FUNNEL-FRONT: КПИ-блок заказов */
+function fmtMoneyMap(m){
+  const SYM={RUB:'₽',USD:'$',EUR:'€'};
+  const keys=Object.keys(m||{}).sort();
+  if(!keys.length)return '—';
+  return keys.map(c=>Number(m[c]||0).toLocaleString('ru-RU',{maximumFractionDigits:0})+' '+(SYM[c]||c)).join(' · ');
+}
+function renderAnOrdersKpi(o){
+  const box=document.getElementById('anOrdersKpi');
+  if(!box)return;
+  const total=o.total||0, done=o.done||0;
+  const conv=total>0?Math.round(done/total*100):0;
+  const cell=(n,l,cls,sub)=>'<div class="an-cell '+(cls||'')+'"><div class="an-num">'+n+'</div><div class="an-lbl">'+esc(l)+'</div>'+(sub?'<div class="an-cell-sub">'+esc(sub)+'</div>':'')+'</div>';
+  box.innerHTML=
+    cell(num(total),'Заказов за период','cell-blue',(o.cancelled?(o.cancelled+' отменено'):''))
+    +cell(fmtMoneyMap(o.revenue),'Выручка (выполненные)','')
+    +cell(fmtMoneyMap(o.avg_ticket),'Средний чек','cell-amber')
+    +cell(conv+'%','Дошло до «Выполнен»','',done+' из '+total);
+}
+/* FUNNEL-FRONT: воронка */
+function renderAnFunnel(boxId,steps,kind){
+  const box=document.getElementById(boxId);
+  if(!box)return;
+  if(!steps||!steps.length){box.innerHTML='<div class="an-loading" style="padding:8px 0">Пока нет данных</div>';return;}
+  const NAMES={
+    site_views:'Просмотры сайта',
+    listing_views:'Просмотры товаров',
+    leads:'Заявки',
+    orders:'Заказы созданы',
+    orders_done:'Заказы выполнены'
+  };
+  const maxCnt=Math.max(1,...steps.map(s=>s.count||0));
+  box.innerHTML=steps.map((s,i)=>{
+    const rate=s.rate||0;
+    const cnt=s.count||0;
+    const w=Math.round((cnt/maxCnt)*100);
+    const stepCls=(s.step==='orders_done')?'done':(kind==='order'?'order':'lead');
+    const rateBadge=(i===0)?'':'<span class="an-fn-step-rate">'+rate.toFixed(rate<10?1:0)+'%</span>';
+    return '<div class="an-fn-step '+stepCls+'">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<span class="an-fn-step-name">'+esc(NAMES[s.step]||s.step)+'</span>'
+          +'<span class="an-fn-step-cnt">'+num(cnt)+'</span>'
+          +rateBadge
+        +'</div>'
+        +'<div class="an-fn-bar"><div class="an-fn-bar-fill" style="width:'+w+'%"></div></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+/* FUNNEL-FRONT: статусы заказов */
+function renderAnStatuses(o){
+  const box=document.getElementById('anStatuses');
+  if(!box)return;
+  const by=o.by_status||{};
+  const total=o.total||0;
+  if(!total){box.innerHTML='<div class="an-loading" style="padding:8px 0">Пока нет заказов за период</div>';return;}
+  const COLORS={new:'#6B7B83',accepted:'#2479C8',processing:'#E89B27',shipped:'#7C5CC4',done:'var(--g)',cancelled:'#C8392E'};
+  const LABELS={new:'Новые',accepted:'Принятые',processing:'В обработке',shipped:'Отправленные',done:'Выполненные',cancelled:'Отменённые'};
+  const order=['new','accepted','processing','shipped','done','cancelled'];
+  const segs=order.filter(k=>(by[k]||0)>0);
+  const split=segs.map(k=>{
+    const pct=(by[k]/total)*100;
+    return '<div style="width:'+pct.toFixed(2)+'%;background:'+COLORS[k]+'" title="'+LABELS[k]+': '+by[k]+'"></div>';
+  }).join('');
+  const rows=segs.map(k=>{
+    const c=by[k]||0;
+    const pct=Math.round(c/total*100);
+    return '<div class="an-status-row"><span class="an-dot" style="background:'+COLORS[k]+'"></span>'+esc(LABELS[k]||k)+'<b>'+c+' ('+pct+'%)</b></div>';
+  }).join('');
+  box.innerHTML='<div class="an-split">'+split+'</div><div class="an-status-rows">'+rows+'</div>';
 }
 
 function renderAnSources(src){
