@@ -88,6 +88,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-sortmenu button.active{background:var(--gl);color:var(--g);font-weight:700}
 
 /* ── Кнопка фильтров (только в поиске) ── */
+/* EM-CHIPS-FILTERS: чипы для фильтра магазинов по региону и направлению */
+.em-chips-wrap{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.em-chips-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.em-chips-label{font-size:11px;font-weight:700;color:var(--gmt);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;padding-right:4px}
+.em-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border:1.5px solid var(--bdr);border-radius:99px;background:var(--w);font-family:inherit;font-size:12px;font-weight:600;color:var(--tm);cursor:pointer;transition:all .15s;white-space:nowrap}
+.em-chip:hover{border-color:var(--gb);color:var(--g)}
+.em-chip.active{background:var(--g);border-color:var(--g);color:#fff}
+.em-chip .cnt{background:rgba(0,0,0,.06);border-radius:99px;padding:0 6px;font-size:10px;font-weight:800;color:inherit}
+.em-chip.active .cnt{background:rgba(255,255,255,.22)}
 .em-filterbtn{height:42px;padding:0 16px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;white-space:nowrap;flex-shrink:0}
 .em-filterbtn:hover{border-color:var(--gb);color:var(--g)}
 .em-filterbtn.active{background:var(--g);border-color:var(--g);color:#fff}
@@ -262,7 +271,7 @@ function fmtPrice(p,cur){
 }
 /* EM-TOAST-UNIFY: глобальная window.showToast */
 
-var EM={mode:'shops',sort:'',search:'',cat:'',region:'',priceFrom:'',priceTo:'',filtersOpen:false,cats:[],regions:[],carIdx:0,carTimer:null};
+var EM={mode:'shops',sort:'',search:'',cat:'',region:'',direction:'',priceFrom:'',priceTo:'',filtersOpen:false,cats:[],regions:[],directions:[],carIdx:0,carTimer:null};
 var SORT_LABELS={'':'Сначала новые','price_asc':'Дешевле','price_desc':'Дороже','rating':'По рейтингу','popular':'Популярные'};
 var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
 
@@ -301,6 +310,7 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
       '<button class="em-filterbtn" id="emFilterBtn" style="display:none" onclick="toggleFilters()"><svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Фильтры<span class="cnt" id="emFilterCnt" style="display:none">0</span></button>'+
     '</div>'+
     '<div class="em-filters" id="emFilters"></div>'+
+    '<div class="em-chips-wrap" id="emShopChips" style="display:none"></div>'+
     '<div class="em-featured" id="emFeatured" style="display:none"></div>'+
     '<div class="em-sortrow"><div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div></div>'+
     '<div class="em-feedwrap"><div class="em-grid" id="emGrid"></div></div>';
@@ -452,11 +462,14 @@ async function loadDicts(){
   try{
     var rr=await lastopFetch(API+'/emarket/regions');var dr=await rr.json();EM.regions=(dr&&dr.regions)||[];
   }catch(e){EM.regions=[];}
+  try{
+    var rd=await lastopFetch(API+'/emarket/shop-directions');var dd=await rd.json();EM.directions=(dd&&dd.directions)||[];
+  }catch(e){EM.directions=[];}
 }
 
 /* ── Вкладки ── */
 function setMode(m){
-  EM.mode=m; EM.sort=''; EM.search=''; EM.cat=''; EM.region=''; EM.priceFrom=''; EM.priceTo=''; EM.filtersOpen=false;
+  EM.mode=m; EM.sort=''; EM.search=''; EM.cat=''; EM.region=''; EM.direction=''; EM.priceFrom=''; EM.priceTo=''; EM.filtersOpen=false;
   var inp=document.getElementById('emSearch');if(inp)inp.value='';
   ['swShops','swProducts','swServices'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('active');});
   var act=m==='shops'?'swShops':m==='products'?'swProducts':'swServices';
@@ -464,6 +477,7 @@ function setMode(m){
   document.getElementById('emFilters').classList.remove('open');
   document.getElementById('emFilterBtn').classList.remove('active');
   updateSearchUI();
+  renderShopChips();
   renderSortMenu();
   loadFeatured();
   reloadFeed();
@@ -543,12 +557,12 @@ function applyFilters(){
   reloadFeed();
 }
 function resetFilters(){
-  EM.cat='';EM.region='';EM.priceFrom='';EM.priceTo='';
-  renderFilters();updateFilterCount();reloadFeed();
+  EM.cat='';EM.region='';EM.direction='';EM.priceFrom='';EM.priceTo='';
+  renderFilters();renderShopChips();updateFilterCount();reloadFeed();
 }
 function updateFilterCount(){
   var n=0;
-  if(EM.mode==='shops'){if(EM.region)n++;}
+  if(EM.mode==='shops'){if(EM.region)n++;if(EM.direction)n++;}
   else{if(EM.cat)n++;if(EM.priceFrom)n++;if(EM.priceTo)n++;}
   var cnt=document.getElementById('emFilterCnt');
   if(cnt){if(n>0){cnt.textContent=n;cnt.style.display='inline-block';}else{cnt.style.display='none';}}
@@ -588,16 +602,18 @@ async function loadListings(grid){
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 async function loadShops(grid){
+  renderShopChips();
   var qs=[];
   if(EM.search)qs.push('q='+encodeURIComponent(EM.search));
   if(EM.region)qs.push('region='+encodeURIComponent(EM.region));
+  if(EM.direction)qs.push('direction='+encodeURIComponent(EM.direction));
   if(EM.sort)qs.push('sort='+EM.sort);
   try{
     var r=await lastopFetch(API+'/emarket/feed-shops'+(qs.length?'?'+qs.join('&'):''));
     var d=await r.json();
     var items=(d&&d.shops)||[];
     if(!items.length){
-      grid.innerHTML='<div class="em-empty"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg><div class="em-empty-t">Магазинов пока нет</div><div class="em-empty-d">'+((EM.search||EM.region)?'Попробуйте изменить запрос или фильтры.':'Ещё ни один магазин не открыт.')+'</div></div>';
+      grid.innerHTML='<div class="em-empty"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg><div class="em-empty-t">Магазинов пока нет</div><div class="em-empty-d">'+((EM.search||EM.region||EM.direction)?'Попробуйте изменить запрос или фильтры.':'Ещё ни один магазин не открыт.')+'</div></div>';
       return;
     }
     var regMap={};EM.regions.forEach(function(r){regMap[r.key]=r.label;});
@@ -607,6 +623,33 @@ async function loadShops(grid){
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
 
+function renderShopChips(){
+  var wrap=document.getElementById('emShopChips');
+  if(!wrap)return;
+  if(EM.mode!=='shops'){wrap.style.display='none';wrap.innerHTML='';return;}
+  var html='';
+  // Регион
+  if(EM.regions&&EM.regions.length){
+    var rChips='<button class="em-chip'+(EM.region===''?' active':'')+'" onclick="setShopRegion(\'\')">Все</button>';
+    rChips+=EM.regions.map(function(r){
+      return '<button class="em-chip'+(EM.region===r.key?' active':'')+'" onclick="setShopRegion(\''+esc(r.key).replace(/'/g,"\\'")+'\')">'+esc(r.label)+'</button>';
+    }).join('');
+    html+='<div class="em-chips-row"><span class="em-chips-label">Регион</span>'+rChips+'</div>';
+  }
+  // Направление
+  if(EM.directions&&EM.directions.length){
+    var dChips='<button class="em-chip'+(EM.direction===''?' active':'')+'" onclick="setShopDirection(\'\')">Все</button>';
+    dChips+=EM.directions.map(function(d){
+      var cnt=d.count?' <span class="cnt">'+d.count+'</span>':'';
+      return '<button class="em-chip'+(EM.direction===d.key?' active':'')+'" onclick="setShopDirection(\''+esc(d.key).replace(/'/g,"\\'")+'\')">'+esc(d.label)+cnt+'</button>';
+    }).join('');
+    html+='<div class="em-chips-row"><span class="em-chips-label">Направление</span>'+dChips+'</div>';
+  }
+  if(html){wrap.innerHTML=html;wrap.style.display='flex';}
+  else{wrap.style.display='none';wrap.innerHTML='';}
+}
+function setShopRegion(v){EM.region=v;renderShopChips();updateFilterCount();reloadFeed();}
+function setShopDirection(v){EM.direction=v;renderShopChips();updateFilterCount();reloadFeed();}
 function openListing(id){location.href='/emarket-listing?id='+id;}
 function openShop(slug){if(!slug){showToast('Магазин недоступен');return;}location.href='/shop/'+slug;}
 

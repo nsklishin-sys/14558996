@@ -13397,6 +13397,10 @@ func main() {
 			args = append(args, v)
 			conds = append(conds, fmt.Sprintf("region=$%d", len(args)))
 		}
+		if v := strings.TrimSpace(q.Get("direction")); v != "" {
+			args = append(args, v)
+			conds = append(conds, fmt.Sprintf("direction=$%d", len(args)))
+		}
 		// EM-LOGO-FALLBACK ниже — в SELECT используется COALESCE(NULLIF(logo_url,''), site_logo_url, '')
 		order := "created_at DESC"
 		if q.Get("sort") == "rating" {
@@ -13463,6 +13467,28 @@ func main() {
 			shops = append(shops, map[string]any{"id": id, "name": name, "slug": slug, "logo_url": logo, "cover_url": cover, "description": desc, "tagline": tagline, "direction": direction, "rating": rating, "reviews_count": reviews, "region": region, "accent_color": accent, "is_verified": verified})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"shops": shops})
+	})
+
+	// EM-CHIPS-FILTERS: DISTINCT directions из активных магазинов — для чипов в /emarket → Магазины
+	mux.HandleFunc("/api/emarket/shop-directions", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.Query(`SELECT direction, COUNT(*) AS cnt FROM emarket_shops
+			WHERE status='active' AND COALESCE(direction,'') <> ''
+			GROUP BY direction ORDER BY cnt DESC, direction ASC LIMIT 50`)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Ошибка")
+			return
+		}
+		defer rows.Close()
+		items := []map[string]any{}
+		for rows.Next() {
+			var d string
+			var cnt int
+			if err := rows.Scan(&d, &cnt); err != nil {
+				continue
+			}
+			items = append(items, map[string]any{"key": d, "label": d, "count": cnt})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"directions": items})
 	})
 
 	// Список регионов (dictionaries type='emarket_region')
