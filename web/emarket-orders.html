@@ -350,14 +350,15 @@ function renderItemRow(it){
 /* ── Старт ── */
 loadOrders();
 
-/* Глубокая ссылка ?order=o_xxx — подсветить (на будущее, пока просто пометка) */
+/* Глубокая ссылка ?order=o_xxx — прокрутка к заказу + авто-погашение уведомлений по нему */
 const _qOrder=new URLSearchParams(location.search).get('order');
 if(_qOrder){
-  // Зарезервировано: на детальной модалке откроем этот заказ
-  // Пока — просто прокрутка к нему после рендера
   setTimeout(()=>{
     const el=Array.from(document.querySelectorAll('.order-id')).find(e=>e.textContent.includes(_qOrder));
     if(el)el.closest('.order-card').scrollIntoView({behavior:'smooth',block:'center'});
+    if(window.markNotifsReadBySource){
+      window.markNotifsReadBySource(['emarket_order_status','emarket_order_payment'], _qOrder);
+    }
   },300);
 }
 </script>
