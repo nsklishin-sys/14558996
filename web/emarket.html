@@ -132,6 +132,11 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-card-kind{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--gmt)}
 .em-card-title{font-size:14px;font-weight:800;color:var(--t);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .em-card-shop{font-size:11px;color:var(--gmt)}
+.em-card-stock{display:inline-flex;align-items:center;align-self:flex-start;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.02em}
+.em-card-stock.in{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
+.em-card-stock.pre{background:#F1EFE8;color:#5F5E5A;border:1px solid #D3D1C7}
+.em-fcheck{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--t);height:42px}
+.em-fcheck input{width:16px;height:16px;accent-color:var(--g);cursor:pointer}
 .em-card-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:8px}
 .em-card-price{font-size:15px;font-weight:900;color:var(--g)}
 .em-card-price.neg{font-size:12px;font-weight:700;color:var(--gmt)}
@@ -268,7 +273,7 @@ function fmtPrice(p,cur){
 }
 /* EM-TOAST-UNIFY: глобальная window.showToast */
 
-var EM={mode:'shops',sort:'',search:'',cat:'',region:'',direction:'',priceFrom:'',priceTo:'',filtersOpen:false,cats:[],regions:[],directions:[],carIdx:0,carTimer:null};
+var EM={mode:'shops',sort:'',search:'',cat:'',region:'',direction:'',priceFrom:'',priceTo:'',inStock:false,filtersOpen:false,cats:[],regions:[],directions:[],carIdx:0,carTimer:null};
 var SORT_LABELS={'':'Сначала новые','price_asc':'Дешевле','price_desc':'Дороже','rating':'По рейтингу','popular':'Популярные'};
 var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
 
@@ -464,7 +469,7 @@ async function loadDicts(){
 
 /* ── Вкладки ── */
 function setMode(m){
-  EM.mode=m; EM.sort=''; EM.search=''; EM.cat=''; EM.region=''; EM.direction=''; EM.priceFrom=''; EM.priceTo=''; EM.filtersOpen=false;
+  EM.mode=m; EM.sort=''; EM.search=''; EM.cat=''; EM.region=''; EM.direction=''; EM.priceFrom=''; EM.priceTo=''; EM.inStock=false; EM.filtersOpen=false;
   var inp=document.getElementById('emSearch');if(inp)inp.value='';
   ['swShops','swProducts','swServices'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.remove('active');});
   var act=m==='shops'?'swShops':m==='products'?'swProducts':'swServices';
@@ -535,6 +540,7 @@ function renderFilters(){
     var copts='<option value="">Все категории</option>'+EM.cats.map(function(c){return '<option value="'+esc(c.key)+'"'+(EM.cat===c.key?' selected':'')+'>'+esc(c.label)+'</option>';}).join('');
     html+='<div class="em-fgroup"><label>Категория</label><select data-lt-select id="fCat">'+copts+'</select></div>';
     html+='<div class="em-fgroup price"><label>Цена, ₽</label><div class="em-fprice"><input id="fPriceFrom" type="number" min="0" placeholder="от" value="'+esc(EM.priceFrom)+'"><span>—</span><input id="fPriceTo" type="number" min="0" placeholder="до" value="'+esc(EM.priceTo)+'"></div></div>';
+    html+='<div class="em-fgroup"><label>Наличие</label><label class="em-fcheck"><input type="checkbox" id="fInStock"'+(EM.inStock?' checked':'')+'><span>Только в наличии</span></label></div>';
   }
   html+='<div class="em-factions"><button class="em-fbtn-reset" onclick="resetFilters()">Сбросить</button><button class="em-fbtn-apply" onclick="applyFilters()">Применить</button></div>';
   html+='</div>';
@@ -547,18 +553,19 @@ function applyFilters(){
     var ct=document.getElementById('fCat');EM.cat=ct?ct.value:'';
     var pf=document.getElementById('fPriceFrom');EM.priceFrom=pf?pf.value:'';
     var pt=document.getElementById('fPriceTo');EM.priceTo=pt?pt.value:'';
+    var ins=document.getElementById('fInStock');EM.inStock=ins?ins.checked:false;
   }
   updateFilterCount();
   reloadFeed();
 }
 function resetFilters(){
-  EM.cat='';EM.region='';EM.direction='';EM.priceFrom='';EM.priceTo='';
+  EM.cat='';EM.region='';EM.direction='';EM.priceFrom='';EM.priceTo='';EM.inStock=false;
   renderFilters();renderShopFilters();updateFilterCount();reloadFeed();
 }
 function updateFilterCount(){
   var n=0;
   if(EM.mode==='shops'){if(EM.region)n++;if(EM.direction)n++;}
-  else{if(EM.cat)n++;if(EM.priceFrom)n++;if(EM.priceTo)n++;}
+  else{if(EM.cat)n++;if(EM.priceFrom)n++;if(EM.priceTo)n++;if(EM.inStock)n++;}
   var cnt=document.getElementById('emFilterCnt');
   if(cnt){if(n>0){cnt.textContent=n;cnt.style.display='inline-block';}else{cnt.style.display='none';}}
 }
@@ -580,6 +587,7 @@ async function loadListings(grid){
   if(EM.priceFrom)qs.push('price_from='+encodeURIComponent(EM.priceFrom));
   if(EM.priceTo)qs.push('price_to='+encodeURIComponent(EM.priceTo));
   if(EM.sort)qs.push('sort='+EM.sort);
+  if(EM.inStock)qs.push('in_stock=1');
   try{
     var r=await lastopFetch(API+'/emarket/feed-listings?'+qs.join('&'));
     var d=await r.json();
@@ -592,7 +600,8 @@ async function loadListings(grid){
     grid.innerHTML=items.map(function(it){
       var photo=(it.photos&&it.photos.length&&it.photos[0])?'<img src="'+esc(it.photos[0])+'" alt="" onerror="this.style.display=\'none\'">':'<svg class="ph" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
       var rating=it.rating>0?'<span class="em-card-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+Number(it.rating).toFixed(1)+'</span>':'';
-      return '<div class="em-card" onclick="openListing('+it.id+')"><div class="em-card-img">'+photo+'</div><div class="em-card-body"><div class="em-card-kind">'+(it.kind==='service'?'Услуга':'Товар')+'</div><div class="em-card-title">'+esc(it.title)+'</div><div class="em-card-shop">'+esc(it.shop_name||'')+'</div><div class="em-card-foot">'+fmtPrice(it.price,it.currency)+rating+'</div></div></div>';
+      var stock=it.stock?'<div class="em-card-stock '+(it.stock.in_stock?'in':'pre')+'">'+(it.stock.in_stock?'В наличии':'Под заказ')+'</div>':'';
+      return '<div class="em-card" onclick="openListing('+it.id+')"><div class="em-card-img">'+photo+'</div><div class="em-card-body"><div class="em-card-kind">'+(it.kind==='service'?'Услуга':'Товар')+'</div><div class="em-card-title">'+esc(it.title)+'</div><div class="em-card-shop">'+esc(it.shop_name||'')+'</div>'+stock+'<div class="em-card-foot">'+fmtPrice(it.price,it.currency)+rating+'</div></div></div>';
     }).join('');
   }catch(e){grid.innerHTML='<div class="em-empty"><div class="em-empty-t">Не удалось загрузить</div><div class="em-empty-d">Попробуйте обновить страницу.</div></div>';}
 }
