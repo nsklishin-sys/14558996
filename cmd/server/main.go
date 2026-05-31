@@ -14029,7 +14029,7 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			lq := r.URL.Query()
-			conds := []string{"p.shop_id=$1", "p.deleted_at IS NULL"}
+			conds := []string{"p.shop_id=$1", "p.deleted_at IS NULL", "p.parent_id IS NULL"}
 			args := []any{shopID}
 			if s := strings.TrimSpace(lq.Get("q")); s != "" {
 				args = append(args, "%"+s+"%")
@@ -14050,7 +14050,8 @@ func main() {
 			args = append(args, limit, offset)
 			q := `SELECT p.id, p.sku, p.barcode, p.name, p.unit, p.external_id, p.category, p.price, p.currency, p.low_stock_threshold,
 				COALESCE(p.image_url,''),
-				COALESCE(SUM(s.qty),0), COALESCE(SUM(s.reserved_qty),0)
+				COALESCE(SUM(s.qty),0), COALESCE(SUM(s.reserved_qty),0),
+				(SELECT COUNT(*) FROM emarket_products c WHERE c.parent_id=p.id AND c.deleted_at IS NULL)
 				FROM emarket_products p LEFT JOIN emarket_stock s ON s.product_id=p.id
 				WHERE ` + whereSQL + ` GROUP BY p.id ORDER BY p.name LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
 			rows, err := db.Query(q, args...)
@@ -14064,7 +14065,8 @@ func main() {
 				var id int64
 				var sku, barcode, name, unit, extID, category, currency, imageURL string
 				var price, threshold, qty, reserved float64
-				if err := rows.Scan(&id, &sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &threshold, &imageURL, &qty, &reserved); err != nil {
+				var variantCount int
+				if err := rows.Scan(&id, &sku, &barcode, &name, &unit, &extID, &category, &price, &currency, &threshold, &imageURL, &qty, &reserved, &variantCount); err != nil {
 					continue
 				}
 				available := qty - reserved
@@ -14072,7 +14074,8 @@ func main() {
 					"id": id, "sku": sku, "barcode": barcode, "name": name, "unit": unit,
 					"external_id": extID, "category": category, "image_url": imageURL, "price": price, "currency": currency,
 					"low_stock_threshold": threshold, "qty": qty, "reserved_qty": reserved, "available": available,
-					"low_stock": threshold > 0 && available <= threshold,
+					"low_stock":     threshold > 0 && available <= threshold,
+					"variant_count": variantCount, "has_variants": variantCount > 0,
 				})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"products": items, "total": total})
@@ -14336,11 +14339,36 @@ func main() {
 					stock = append(stock, map[string]any{"warehouse_id": wid, "warehouse_name": wname, "qty": qty, "reserved_qty": reserved, "available": qty - reserved})
 				}
 			}
+			dvariants := []map[string]any{}
+			if vrows, verr := db.Query(`SELECT v.id, v.sku, v.barcode, v.name, v.variant_label, v.variant_attrs::text, v.price, v.currency, v.low_stock_threshold, v.variant_sort,
+				COALESCE((SELECT SUM(s.qty) FROM emarket_stock s WHERE s.product_id=v.id),0),
+				COALESCE((SELECT SUM(s.reserved_qty) FROM emarket_stock s WHERE s.product_id=v.id),0)
+				FROM emarket_products v WHERE v.parent_id=$1 AND v.deleted_at IS NULL ORDER BY v.variant_sort, v.id`, productID); verr == nil {
+				defer vrows.Close()
+				for vrows.Next() {
+					var vid int64
+					var vsku, vbar, vname, vlabel, vattrs, vcur string
+					var vprice, vthr, vqty, vres float64
+					var vsort int
+					if err := vrows.Scan(&vid, &vsku, &vbar, &vname, &vlabel, &vattrs, &vprice, &vcur, &vthr, &vsort, &vqty, &vres); err != nil {
+						continue
+					}
+					var attrsAny any
+					_ = json.Unmarshal([]byte(vattrs), &attrsAny)
+					dvariants = append(dvariants, map[string]any{
+						"id": vid, "sku": vsku, "barcode": vbar, "name": vname, "variant_label": vlabel,
+						"variant_attrs": attrsAny, "price": vprice, "currency": vcur, "low_stock_threshold": vthr,
+						"variant_sort": vsort, "qty": vqty, "reserved_qty": vres, "available": vqty - vres,
+						"low_stock": vthr > 0 && (vqty-vres) <= vthr,
+					})
+				}
+			}
 			writeJSON(w, http.StatusOK, map[string]any{"product": map[string]any{
 				"id": productID, "sku": sku, "barcode": barcode, "name": name, "unit": unit,
 				"external_id": extID, "category": category, "price": price, "currency": currency,
 				"weight": weight, "volume": volume, "low_stock_threshold": threshold,
 				"description": description, "vat_rate": vatRate, "image_url": imageURL,
+				"variants": dvariants, "has_variants": len(dvariants) > 0,
 			}, "stock": stock})
 		case http.MethodPut:
 			var req struct {
