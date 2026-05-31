@@ -11184,6 +11184,165 @@ func main() {
 			return
 		}
 
+		if len(parts) >= 2 && parts[1] == "promocodes" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if len(parts) == 2 {
+				switch r.Method {
+				case http.MethodGet:
+					rows, err := db.Query(`SELECT id, code, discount_type, discount_value, min_order, max_uses, used_count, is_active, starts_at, expires_at
+						FROM emarket_promocodes WHERE shop_id=$1 ORDER BY created_at DESC`, shopID)
+					if err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+					defer rows.Close()
+					items := []map[string]any{}
+					for rows.Next() {
+						var (
+							id        int64
+							code      string
+							dtype     string
+							dvalue    float64
+							minOrder  float64
+							maxUses   int
+							usedCount int
+							isActive  bool
+							startsAt  sql.NullTime
+							expiresAt sql.NullTime
+						)
+						if err := rows.Scan(&id, &code, &dtype, &dvalue, &minOrder, &maxUses, &usedCount, &isActive, &startsAt, &expiresAt); err != nil {
+							continue
+						}
+						m := map[string]any{"id": id, "code": code, "discount_type": dtype, "discount_value": dvalue,
+							"min_order": minOrder, "max_uses": maxUses, "used_count": usedCount, "is_active": isActive}
+						if startsAt.Valid {
+							m["starts_at"] = startsAt.Time
+						}
+						if expiresAt.Valid {
+							m["expires_at"] = expiresAt.Time
+						}
+						items = append(items, m)
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"promocodes": items})
+					return
+				case http.MethodPost:
+					var req struct {
+						Code          string  `json:"code"`
+						DiscountType  string  `json:"discount_type"`
+						DiscountValue float64 `json:"discount_value"`
+						MinOrder      float64 `json:"min_order"`
+						MaxUses       int     `json:"max_uses"`
+						IsActive      *bool   `json:"is_active"`
+						StartsAt      string  `json:"starts_at"`
+						ExpiresAt     string  `json:"expires_at"`
+					}
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					code := strings.ToUpper(strings.TrimSpace(req.Code))
+					if code == "" {
+						writeError(w, http.StatusBadRequest, "Код обязателен")
+						return
+					}
+					if req.DiscountType != "percent" && req.DiscountType != "fixed" {
+						req.DiscountType = "percent"
+					}
+					if req.DiscountValue < 0 {
+						req.DiscountValue = 0
+					}
+					active := true
+					if req.IsActive != nil {
+						active = *req.IsActive
+					}
+					var starts, expires any
+					if s := strings.TrimSpace(req.StartsAt); s != "" {
+						starts = s
+					}
+					if s := strings.TrimSpace(req.ExpiresAt); s != "" {
+						expires = s
+					}
+					var newID int64
+					if err := db.QueryRow(`INSERT INTO emarket_promocodes (shop_id, code, discount_type, discount_value, min_order, max_uses, is_active, starts_at, expires_at)
+						VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+						shopID, code, req.DiscountType, req.DiscountValue, req.MinOrder, req.MaxUses, active, starts, expires).Scan(&newID); err != nil {
+						writeError(w, http.StatusBadRequest, "Не удалось создать (возможно, такой код уже есть)")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"id": newID})
+					return
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+					return
+				}
+			}
+			if len(parts) == 3 {
+				promoID, _ := strconv.ParseInt(parts[2], 10, 64)
+				if promoID == 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный id")
+					return
+				}
+				switch r.Method {
+				case http.MethodPut:
+					var req struct {
+						Code          string  `json:"code"`
+						DiscountType  string  `json:"discount_type"`
+						DiscountValue float64 `json:"discount_value"`
+						MinOrder      float64 `json:"min_order"`
+						MaxUses       int     `json:"max_uses"`
+						IsActive      *bool   `json:"is_active"`
+						StartsAt      string  `json:"starts_at"`
+						ExpiresAt     string  `json:"expires_at"`
+					}
+					if err := decodeJSON(w, r, &req); err != nil {
+						writeError(w, http.StatusBadRequest, "Некорректный JSON")
+						return
+					}
+					code := strings.ToUpper(strings.TrimSpace(req.Code))
+					if code == "" {
+						writeError(w, http.StatusBadRequest, "Код обязателен")
+						return
+					}
+					if req.DiscountType != "percent" && req.DiscountType != "fixed" {
+						req.DiscountType = "percent"
+					}
+					active := true
+					if req.IsActive != nil {
+						active = *req.IsActive
+					}
+					var starts, expires any
+					if s := strings.TrimSpace(req.StartsAt); s != "" {
+						starts = s
+					}
+					if s := strings.TrimSpace(req.ExpiresAt); s != "" {
+						expires = s
+					}
+					if _, err := db.Exec(`UPDATE emarket_promocodes SET code=$1, discount_type=$2, discount_value=$3, min_order=$4, max_uses=$5, is_active=$6, starts_at=$7, expires_at=$8
+						WHERE id=$9 AND shop_id=$10`,
+						code, req.DiscountType, req.DiscountValue, req.MinOrder, req.MaxUses, active, starts, expires, promoID, shopID); err != nil {
+						writeError(w, http.StatusBadRequest, "Не удалось обновить")
+						return
+					}
+					writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+					return
+				case http.MethodDelete:
+					_, _ = db.Exec(`DELETE FROM emarket_promocodes WHERE id=$1 AND shop_id=$2`, promoID, shopID)
+					writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+					return
+				default:
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+					return
+				}
+			}
+		}
+
 		if len(parts) >= 2 && parts[1] == "warehouses" {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
@@ -13809,6 +13968,35 @@ func main() {
 			return
 		}
 		writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+	})
+
+	mux.HandleFunc("/api/emarket/promo/validate", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+		if _, ok := authenticatedUserID(w, r, sessions); !ok {
+			return
+		}
+		var req struct {
+			ShopID   int64   `json:"shop_id"`
+			Code     string  `json:"code"`
+			Subtotal float64 `json:"subtotal"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "Некорректный JSON")
+			return
+		}
+		if req.ShopID == 0 {
+			writeError(w, http.StatusBadRequest, "shop_id обязателен")
+			return
+		}
+		discount, _, code, errMsg := emarketValidatePromo(db, req.ShopID, req.Code, req.Subtotal)
+		if errMsg != "" {
+			writeJSON(w, http.StatusOK, map[string]any{"valid": false, "message": errMsg})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"valid": true, "code": code, "discount_amount": discount, "new_total": req.Subtotal - discount})
 	})
 
 	mux.HandleFunc("/api/emarket/listings", func(w http.ResponseWriter, r *http.Request) {
@@ -21755,6 +21943,24 @@ ALTER TABLE emarket_orders ADD COLUMN IF NOT EXISTS shop_note TEXT NOT NULL DEFA
 DO $$ BEGIN
     ALTER TABLE emarket_orders ADD CONSTRAINT emarket_orders_shop_note_check CHECK (char_length(shop_note) <= 2000);
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+-- A2.4: промокоды магазина (скидка на корзину)
+CREATE TABLE IF NOT EXISTS emarket_promocodes (
+    id BIGSERIAL PRIMARY KEY,
+    shop_id BIGINT NOT NULL REFERENCES emarket_shops(id) ON DELETE CASCADE,
+    code TEXT NOT NULL,
+    discount_type TEXT NOT NULL DEFAULT 'percent',
+    discount_value NUMERIC(14,2) NOT NULL DEFAULT 0,
+    min_order NUMERIC(14,2) NOT NULL DEFAULT 0,
+    max_uses INT NOT NULL DEFAULT 0,
+    used_count INT NOT NULL DEFAULT 0,
+    starts_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_promocodes_shop_code_uniq ON emarket_promocodes(shop_id, upper(code));
+ALTER TABLE emarket_orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE emarket_orders ADD COLUMN IF NOT EXISTS promocode TEXT NOT NULL DEFAULT '';
 -- EM-S6-PLUS: история смены статусов и оплаты
 CREATE TABLE IF NOT EXISTS emarket_order_events (
     id BIGSERIAL PRIMARY KEY,
@@ -36449,6 +36655,60 @@ func emarketStockDelta(tx *sql.Tx, productID, warehouseID int64, qtyDelta, reser
 		return fmt.Errorf("%w: недостаточно доступного остатка", errValidation)
 	}
 	return nil
+}
+
+// A2.4: проверка промокода магазина. Возвращает сумму скидки (>=0), id, нормализованный код, либо текст ошибки.
+func emarketValidatePromo(db *sql.DB, shopID int64, code string, subtotal float64) (float64, int64, string, string) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return 0, 0, "", "Введите промокод"
+	}
+	var (
+		id        int64
+		dtype     string
+		dvalue    float64
+		minOrder  float64
+		maxUses   int
+		usedCount int
+		isActive  bool
+		startsAt  sql.NullTime
+		expiresAt sql.NullTime
+	)
+	err := db.QueryRow(`SELECT id, discount_type, discount_value, min_order, max_uses, used_count, is_active, starts_at, expires_at
+		FROM emarket_promocodes WHERE shop_id=$1 AND upper(code)=$2`, shopID, code).
+		Scan(&id, &dtype, &dvalue, &minOrder, &maxUses, &usedCount, &isActive, &startsAt, &expiresAt)
+	if err != nil {
+		return 0, 0, "", "Промокод не найден"
+	}
+	if !isActive {
+		return 0, 0, "", "Промокод неактивен"
+	}
+	now := time.Now()
+	if startsAt.Valid && now.Before(startsAt.Time) {
+		return 0, 0, "", "Промокод ещё не действует"
+	}
+	if expiresAt.Valid && now.After(expiresAt.Time) {
+		return 0, 0, "", "Срок действия промокода истёк"
+	}
+	if maxUses > 0 && usedCount >= maxUses {
+		return 0, 0, "", "Лимит использований промокода исчерпан"
+	}
+	if minOrder > 0 && subtotal < minOrder {
+		return 0, 0, "", fmt.Sprintf("Минимальная сумма заказа для промокода — %.0f", minOrder)
+	}
+	var discount float64
+	if dtype == "percent" {
+		discount = subtotal * dvalue / 100.0
+	} else {
+		discount = dvalue
+	}
+	if discount > subtotal {
+		discount = subtotal
+	}
+	if discount < 0 {
+		discount = 0
+	}
+	return discount, id, code, ""
 }
 
 func emarketApplyMove(db *sql.DB, shopID, productID, warehouseID, toWarehouseID int64, moveType string, qty float64, refType string, refID *int64, comment string, actorID int64) (int64, error) {
