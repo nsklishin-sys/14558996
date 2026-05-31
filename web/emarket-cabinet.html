@@ -52,6 +52,13 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .cab-tab.active{background:var(--g);color:#fff}
 .cab-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--red);color:#fff;font-size:10px;font-weight:800;line-height:1}
 .cab-tab.active .cab-tab-badge{background:rgba(255,255,255,.28)}
+.wms-subtabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.wms-subtab{font-family:inherit;font-size:12px;font-weight:700;color:var(--gmt);background:var(--gp);border:1px solid var(--bdr);border-radius:99px;padding:7px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.wms-subtab:hover{color:var(--g);border-color:var(--gb)}
+.wms-subtab.active{background:var(--g);color:#fff;border-color:var(--g)}
+.wms-subtab svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.wms-subpanel{display:none}
+.wms-subpanel.active{display:block}
 
 /* ── Панель вкладки ── */
 .cab-panel{display:none;flex-direction:column;gap:12px}
@@ -2432,25 +2439,39 @@ async function wmsLoadProducts(){
   catch(e){WMS_PRODUCTS=[];}
 }
 
+var WMS_SUBTAB='nom';
+function wmsSetSubtab(name){
+  WMS_SUBTAB=name;
+  ['nom','wh','1c'].forEach(function(k){
+    var p=document.getElementById('wmsSub-'+k); if(p)p.classList.toggle('active',k===name);
+    var b=document.getElementById('wmsSubBtn-'+k); if(b)b.classList.toggle('active',k===name);
+  });
+}
 function renderWmsOn(pan){
   pan.innerHTML=
-    '<div class="cab-section">'
+    '<div class="wms-subtabs">'
+      +'<button class="wms-subtab" id="wmsSubBtn-nom" onclick="wmsSetSubtab(\'nom\')"><svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg>Номенклатура</button>'
+      +'<button class="wms-subtab" id="wmsSubBtn-wh" onclick="wmsSetSubtab(\'wh\')"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Склады</button>'
+      +'<button class="wms-subtab" id="wmsSubBtn-1c" onclick="wmsSetSubtab(\'1c\')"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><polyline points="21 3 21 9 15 9"/></svg>1С</button>'
+    +'</div>'
+    +'<div class="wms-subpanel" id="wmsSub-wh"><div class="cab-section">'
       +'<div class="cab-section-h" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M3 9l9-6 9 6v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21V12h6v9"/></svg>Склады</span>'
         +'<button class="lead-btn" onclick="wmsOpenWh(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Склад</button></div>'
       +'<div class="wms-wh-list" id="wmsWhList"></div>'
       +'<button class="lead-btn" style="margin-top:12px;border-style:dashed" onclick="wmsToggle(false)">Выключить режим склада</button>'
-    +'</div>'
-    +'<div class="cab-section">'
+    +'</div></div>'
+    +'<div class="wms-subpanel active" id="wmsSub-nom"><div class="cab-section">'
       +'<div class="cab-section-h" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>Номенклатура</span>'
         +'<button class="lead-btn lead-btn-pri" onclick="wmsOpenProduct(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Товар</button></div>'
       +'<div class="lm-row" style="margin:10px 0 4px"><input class="lm-input" id="wmsSearch" placeholder="Поиск по названию, артикулу, штрихкоду…" value="'+esc(WMS_Q)+'" oninput="wmsSearchInput(this.value)"></div>'
       +'<div id="wmsProdWrap"></div>'
-    +'</div>'
-    +'<div class="cab-section">'
+    +'</div></div>'
+    +'<div class="wms-subpanel" id="wmsSub-1c"><div class="cab-section">'
       +'<div class="cab-section-h"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><polyline points="21 3 21 9 15 9"/></svg>Обмен с 1С</span><span id="wms1cBadge"></span></div>'
       +'<div class="cab-section-d" style="margin-bottom:10px">Синхронизация с 1С по протоколу CommerceML: каталог, цены и остатки из 1С на платформу, заказы — обратно в 1С.</div>'
       +'<div id="wms1cBody"></div>'
-    +'</div>';
+    +'</div></div>';
+  wmsSetSubtab(WMS_SUBTAB||'nom');
   renderWmsWarehouses();
   renderWmsProducts();
   wms1cLoad();
