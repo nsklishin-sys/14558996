@@ -13364,11 +13364,13 @@ func main() {
 			return
 		}
 		q := `SELECT c.id, c.listing_id, c.quantity,
-			l.title, l.kind, l.price, l.currency, l.photos, l.status, l.deleted_at,
-			s.id, s.name, s.slug, s.owner_type, s.owner_id, COALESCE(s.payment_url,'')
+			l.title, l.kind, COALESCE(v.price, l.price), l.currency, l.photos, l.status, l.deleted_at,
+			s.id, s.name, s.slug, s.owner_type, s.owner_id, COALESCE(s.payment_url,''),
+			c.variant_id, COALESCE(v.variant_label,'')
 			FROM emarket_cart c
 			JOIN emarket_listings l ON l.id = c.listing_id
 			JOIN emarket_shops s ON s.id = l.shop_id
+			LEFT JOIN emarket_products v ON v.id = c.variant_id AND v.deleted_at IS NULL
 			WHERE c.user_id = $1`
 		args := []any{userID}
 		if body.ShopID > 0 {
@@ -13383,16 +13385,16 @@ func main() {
 			return
 		}
 		type cartRow struct {
-			cartID, listingID, shopID int64
-			quantity                  int
-			title, kind, currency     string
-			price                     float64
-			photoFirst                string
-			available                 bool
-			shopName, shopSlug        string
-			ownerType                 string
-			ownerID                   int64
-			paymentURL                string
+			cartID, listingID, shopID, variantID int64
+			quantity                             int
+			title, kind, currency, variantLabel  string
+			price                                float64
+			photoFirst                           string
+			available                            bool
+			shopName, shopSlug                   string
+			ownerType                            string
+			ownerID                              int64
+			paymentURL                           string
 		}
 		byShop := map[int64][]cartRow{}
 		shopOrder := []int64{}
@@ -13403,7 +13405,8 @@ func main() {
 			var deletedAt sql.NullTime
 			if err := rows.Scan(&c.cartID, &c.listingID, &c.quantity,
 				&c.title, &c.kind, &price, &c.currency, &photosJSON, &listingStatus, &deletedAt,
-				&c.shopID, &c.shopName, &c.shopSlug, &c.ownerType, &c.ownerID, &c.paymentURL); err != nil {
+				&c.shopID, &c.shopName, &c.shopSlug, &c.ownerType, &c.ownerID, &c.paymentURL,
+				&c.variantID, &c.variantLabel); err != nil {
 				continue
 			}
 			if price.Valid {
@@ -13442,20 +13445,23 @@ func main() {
 				continue
 			}
 			type orderItem struct {
-				ListingID int64   `json:"listing_id"`
-				Title     string  `json:"title"`
-				Kind      string  `json:"kind"`
-				Price     float64 `json:"price"`
-				Currency  string  `json:"currency"`
-				Quantity  int     `json:"quantity"`
-				Photo     string  `json:"photo"`
+				ListingID    int64   `json:"listing_id"`
+				VariantID    int64   `json:"variant_id"`
+				VariantLabel string  `json:"variant_label"`
+				Title        string  `json:"title"`
+				Kind         string  `json:"kind"`
+				Price        float64 `json:"price"`
+				Currency     string  `json:"currency"`
+				Quantity     int     `json:"quantity"`
+				Photo        string  `json:"photo"`
 			}
 			snapshot := make([]orderItem, 0, len(items))
 			var total float64
 			currency := "RUB"
 			for _, c := range items {
 				snapshot = append(snapshot, orderItem{
-					ListingID: c.listingID, Title: c.title, Kind: c.kind,
+					ListingID: c.listingID, VariantID: c.variantID, VariantLabel: c.variantLabel,
+					Title: c.title, Kind: c.kind,
 					Price: c.price, Currency: c.currency, Quantity: c.quantity, Photo: c.photoFirst,
 				})
 				total += c.price * float64(c.quantity)
@@ -13483,7 +13489,7 @@ func main() {
 			_ = db.QueryRow(`SELECT COALESCE(wms_enabled,FALSE) FROM emarket_shops WHERE id=$1`, sid).Scan(&wmsOn)
 			if wmsOn {
 				for _, ci := range items {
-					emarketReserveOrderLine(db, sid, orderID, ci.listingID, float64(ci.quantity), userID)
+					emarketReserveOrderLine(db, sid, orderID, ci.listingID, ci.variantID, float64(ci.quantity), userID)
 				}
 			}
 			// EM-S6-PLUS: событие создания заказа
@@ -36584,9 +36590,11 @@ func emarketCheckLowStock(db *sql.DB, shopID, productID, actorID int64) {
 
 // emarketReserveOrderLine — резерв одной позиции заказа на первичном складе: min(qty, доступно).
 // Непокрытый остаток (доступно < qty) остаётся предзаказом и не резервируется.
-func emarketReserveOrderLine(db *sql.DB, shopID, orderID, listingID int64, qty float64, actorID int64) {
+func emarketReserveOrderLine(db *sql.DB, shopID, orderID, listingID, variantID int64, qty float64, actorID int64) {
 	var productID int64
-	if err := db.QueryRow(`SELECT product_id FROM emarket_listing_product WHERE listing_id=$1`, listingID).Scan(&productID); err != nil {
+	if variantID > 0 {
+		productID = variantID
+	} else if err := db.QueryRow(`SELECT product_id FROM emarket_listing_product WHERE listing_id=$1`, listingID).Scan(&productID); err != nil {
 		return
 	}
 	var whID int64
