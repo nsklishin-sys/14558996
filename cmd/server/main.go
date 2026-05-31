@@ -13024,9 +13024,10 @@ func main() {
 			writeJSON(w, http.StatusOK, map[string]any{"items": items})
 
 		case http.MethodPost:
-			// POST /api/emarket/cart — добавить позицию { listing_id, quantity? }
+			// POST /api/emarket/cart — добавить позицию { listing_id, variant_id?, quantity? }
 			var body struct {
 				ListingID int64 `json:"listing_id"`
+				VariantID int64 `json:"variant_id"`
 				Quantity  int   `json:"quantity"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ListingID == 0 {
@@ -13042,12 +13043,24 @@ func main() {
 				writeError(w, http.StatusNotFound, "Товар недоступен")
 				return
 			}
+			// вариант (если указан) должен быть дочерним к товару, привязанному к листингу
+			if body.VariantID != 0 {
+				var okVar bool
+				_ = db.QueryRow(`SELECT EXISTS(
+					SELECT 1 FROM emarket_products v
+					JOIN emarket_listing_product lp ON lp.product_id=v.parent_id
+					WHERE v.id=$1 AND v.deleted_at IS NULL AND lp.listing_id=$2)`, body.VariantID, body.ListingID).Scan(&okVar)
+				if !okVar {
+					writeError(w, http.StatusBadRequest, "Некорректный вариант")
+					return
+				}
+			}
 			_, err := db.Exec(`
-				INSERT INTO emarket_cart (user_id, listing_id, quantity)
-				VALUES ($1, $2, $3)
-				ON CONFLICT (user_id, listing_id) DO UPDATE
+				INSERT INTO emarket_cart (user_id, listing_id, variant_id, quantity)
+				VALUES ($1, $2, $3, $4)
+				ON CONFLICT (user_id, listing_id, variant_id) DO UPDATE
 				SET quantity = emarket_cart.quantity + EXCLUDED.quantity, updated_at = now()`,
-				userID, body.ListingID, body.Quantity)
+				userID, body.ListingID, body.VariantID, body.Quantity)
 			if err != nil {
 				log.Printf("[emarket/cart POST] %v", err)
 				writeError(w, http.StatusInternalServerError, "Ошибка")
@@ -21659,6 +21672,10 @@ CREATE TABLE IF NOT EXISTS emarket_cart (
     UNIQUE (user_id, listing_id)
 );
 CREATE INDEX IF NOT EXISTS emarket_cart_user_idx ON emarket_cart(user_id, created_at DESC);
+-- Вариации: выбранный вариант (дочерний товар). 0 = без варианта.
+ALTER TABLE emarket_cart ADD COLUMN IF NOT EXISTS variant_id BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE emarket_cart DROP CONSTRAINT IF EXISTS emarket_cart_user_id_listing_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS emarket_cart_uniq ON emarket_cart(user_id, listing_id, variant_id);
 
 CREATE TABLE IF NOT EXISTS emarket_drafts (
     id BIGSERIAL PRIMARY KEY,
