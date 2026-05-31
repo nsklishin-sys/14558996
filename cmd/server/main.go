@@ -11256,6 +11256,39 @@ func main() {
 				writeError(w, http.StatusNotFound, "Склад не найден")
 				return
 			}
+			if len(parts) >= 4 && parts[3] == "stock" {
+				if r.Method != http.MethodGet {
+					writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+					return
+				}
+				rows, err := db.Query(`SELECT p.id, p.name, p.sku, p.unit, p.variant_label, p.parent_id, s.qty, s.reserved_qty, p.low_stock_threshold
+					FROM emarket_stock s JOIN emarket_products p ON p.id=s.product_id AND p.deleted_at IS NULL
+					WHERE s.warehouse_id=$1 ORDER BY p.name, p.id`, whID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				defer rows.Close()
+				items := []map[string]any{}
+				for rows.Next() {
+					var id int64
+					var parentID sql.NullInt64
+					var name, sku, unit, vlabel string
+					var qty, reserved, thr float64
+					if err := rows.Scan(&id, &name, &sku, &unit, &vlabel, &parentID, &qty, &reserved, &thr); err != nil {
+						continue
+					}
+					avail := qty - reserved
+					items = append(items, map[string]any{
+						"product_id": id, "name": name, "sku": sku, "unit": unit,
+						"variant_label": vlabel, "is_variant": parentID.Valid,
+						"qty": qty, "reserved_qty": reserved, "available": avail,
+						"low_stock": thr > 0 && avail <= thr,
+					})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"stock": items})
+				return
+			}
 			if r.Method == http.MethodPut {
 				var req struct {
 					Name      string `json:"name"`
