@@ -19576,25 +19576,6 @@ func main() {
 		r2.URL.Path = "/emarket-site.html"
 		shopPageHandler.ServeHTTP(w, r2)
 	})
-	// PRICING-GATE (временно): /pricing виден только админам, остальным — 404.
-	// Снять: удалить этот блок и две mux.HandleFunc ниже.
-	pricingGate := func(w http.ResponseWriter, r *http.Request) {
-		isAdmin := false
-		if token, _ := tokenFromRequest(r); token != "" {
-			if uid, ok := sessions.getUserID(token); ok {
-				_ = db.QueryRow(`SELECT COALESCE(is_admin,FALSE) FROM users WHERE id=$1`, uid).Scan(&isAdmin)
-			}
-		}
-		if !isAdmin {
-			http.NotFound(w, r)
-			return
-		}
-		r2 := r.Clone(r.Context())
-		r2.URL.Path = "/pricing.html"
-		shopPageHandler.ServeHTTP(w, r2)
-	}
-	mux.HandleFunc("/pricing", pricingGate)
-	mux.HandleFunc("/pricing.html", pricingGate)
 	mux.Handle("/", cleanURLRewrite(staticCacheControl(staticSecurity(injectHTML(http.FileServer(http.Dir("./web")))))))
 
 	addr := ":8080"
