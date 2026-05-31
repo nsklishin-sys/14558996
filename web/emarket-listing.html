@@ -68,6 +68,15 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .ld-stock.out{background:#FBEFE0;color:#9A5B12}
 .ld-stock svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ld-stock-sub{font-size:11px;color:var(--gmt);font-weight:600}
+.ld-variants{margin:4px 0 12px}
+.ld-variants-h{font-size:12px;font-weight:700;color:var(--gmt);margin-bottom:6px}
+.ld-variants-row{display:flex;flex-wrap:wrap;gap:8px}
+.ld-variant{font-family:inherit;font-size:13px;font-weight:600;color:var(--t);background:var(--w);border:1.5px solid var(--bdr);border-radius:10px;padding:8px 14px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.ld-variant:hover{border-color:var(--gb)}
+.ld-variant.active{border-color:var(--g);background:var(--gl);color:var(--g)}
+.ld-variant.out{opacity:.5}
+.ld-variant .lv-price{font-size:11px;font-weight:700;color:var(--gmt)}
+.ld-variant.active .lv-price{color:var(--g)}
 .ld-actions{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap}
 .ld-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:var(--rm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .15s}
 .ld-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -180,7 +189,7 @@ function stockHTML(l){
   return '<div class="ld-stock out"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Нет в наличии<span class="ld-stock-sub">· доступен предзаказ</span></div>';
 }
 
-var LD={id:0,listing:null,shop:null,gallery:[],saved:false};
+var LD={id:0,listing:null,shop:null,gallery:[],saved:false,selectedVariant:0};
 
 function getId(){
   var p=new URLSearchParams(location.search);
@@ -268,8 +277,7 @@ function render(){
           +(rating?'<span class="ld-stars"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>'+rating+'</span><span>'+(l.reviews_count||0)+' отзывов</span>':'<span>Нет оценок</span>')
           +'<span>'+(l.views_count||0)+' просмотров</span>'
         +'</div>'
-        +priceHTML(l.price,l.currency)
-        +stockHTML(l)
+        +'<div id="ldBuyArea">'+buyAreaHTML(l)+'</div>'
         +(l.payment_method?'<div class="ld-pay">Оплата: '+esc(l.payment_method)+'</div>':'<div style="height:8px"></div>')
         +'<div class="ld-actions">'
           +'<button class="ld-btn primary" id="ldCartBtn" onclick="addToCart()"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>'+((l.stock&&l.stock.tracked&&!l.stock.in_stock)?'Предзаказ':'В корзину')+'</button>'
@@ -329,12 +337,47 @@ async function loadOther(shopId){
   }catch(e){}
 }
 
+function curVariant(){
+  var l=LD.listing; if(!l||!l.variants||!l.variants.length)return null;
+  return l.variants.find(function(v){return v.id===LD.selectedVariant;})||l.variants[0];
+}
+function fmtVarPrice(p,cur){
+  if(p==null||p==='')return '';
+  var sym={RUB:'₽',USD:'$',EUR:'€'}[cur]||'';
+  return Math.round(p).toLocaleString('ru-RU')+' '+sym;
+}
+function variantSelectorHTML(l){
+  if(!l.variants||!l.variants.length)return '';
+  return '<div class="ld-variants"><div class="ld-variants-h">Вариант</div><div class="ld-variants-row">'
+    +l.variants.map(function(v,idx){
+      var sel=LD.selectedVariant?(v.id===LD.selectedVariant):(idx===0);
+      var out=(v.in_stock===false);
+      return '<button class="ld-variant'+(sel?' active':'')+(out?' out':'')+'" onclick="selectVariant('+v.id+')">'
+        +'<span>'+esc(v.variant_label||'Вариант')+'</span>'
+        +(v.price!=null?'<span class="lv-price">'+fmtVarPrice(v.price,v.currency||l.currency)+(out?' · нет в наличии':'')+'</span>':'')
+        +'</button>';
+    }).join('')
+    +'</div></div>';
+}
+function buyAreaHTML(l){
+  var v=curVariant();
+  var price=v?v.price:l.price;
+  var cur=(v&&v.currency)?v.currency:l.currency;
+  var stockObj=l.stock;
+  if(v&&typeof v.in_stock!=='undefined'){stockObj={tracked:true,available:v.available,in_stock:v.in_stock};}
+  return priceHTML(price,cur)+variantSelectorHTML(l)+stockHTML({stock:stockObj,unit:l.unit});
+}
+function selectVariant(id){
+  LD.selectedVariant=id;
+  var box=document.getElementById('ldBuyArea');
+  if(box)box.innerHTML=buyAreaHTML(LD.listing);
+}
 async function addToCart(){
   var btn=document.getElementById('ldCartBtn');
   if(!btn||btn.disabled)return;
   btn.disabled=true;
   try{
-    var r=await lastopFetch(API+'/emarket/cart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id,quantity:1})});
+    var _v=curVariant();var r=await lastopFetch(API+'/emarket/cart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({listing_id:LD.id,variant_id:_v?_v.id:0,quantity:1})});
     if(r.status===401){showToast('Войдите, чтобы добавлять в корзину','warn');return;}
     if(!r.ok){showToast('Не удалось добавить в корзину','error');return;}
     showToast('Добавлено в корзину','success');
