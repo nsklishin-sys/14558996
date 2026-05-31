@@ -13928,7 +13928,8 @@ func main() {
 				"characteristics": chars, "category_key": catKey, "price": priceVal, "currency": currency,
 				"payment_method": payment, "photos": photos, "rating": rating, "reviews_count": reviews,
 				"views_count": views + 1, "status": status, "created_at": created, "is_saved": isSaved,
-				"stock": emarketListingStock(db, listingID, shopID),
+				"stock":    emarketListingStock(db, listingID, shopID),
+				"variants": emarketListingVariants(db, listingID),
 			}})
 		case http.MethodPut:
 			userID, ok := authenticatedUserID(w, r, sessions)
@@ -14737,7 +14738,7 @@ func main() {
 		var wmsOn bool
 		_ = db.QueryRow(`SELECT COALESCE(wms_enabled,FALSE) FROM emarket_shops WHERE id=$1`, shopID).Scan(&wmsOn)
 		rows, err := db.Query(`SELECT id, kind, title, description, category_key, price, currency, photos::text, rating, reviews_count, views_count, status, created_at,
-			COALESCE((SELECT SUM(s.qty-s.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock s ON s.product_id=lp.product_id WHERE lp.listing_id=emarket_listings.id),0),
+			COALESCE((SELECT SUM(s.qty-s.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock s ON (s.product_id=lp.product_id OR s.product_id IN (SELECT cp.id FROM emarket_products cp WHERE cp.parent_id=lp.product_id AND cp.deleted_at IS NULL)) WHERE lp.listing_id=emarket_listings.id),0),
 			EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=emarket_listings.id)
 			FROM emarket_listings WHERE `+whereSQL+` ORDER BY `+orderSQL+` `+limOff, args...)
 		if err != nil {
@@ -14804,7 +14805,7 @@ func main() {
 			conds = append(conds, fmt.Sprintf("(l.title ILIKE $%d OR l.description ILIKE $%d)", len(args), len(args)))
 		}
 		if q.Get("in_stock") == "1" {
-			conds = append(conds, `NOT (COALESCE(s.wms_enabled,FALSE) AND EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=l.id) AND COALESCE((SELECT SUM(st.qty-st.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock st ON st.product_id=lp.product_id WHERE lp.listing_id=l.id),0) <= 0)`)
+			conds = append(conds, `NOT (COALESCE(s.wms_enabled,FALSE) AND EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=l.id) AND COALESCE((SELECT SUM(st.qty-st.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock st ON (st.product_id=lp.product_id OR st.product_id IN (SELECT cp.id FROM emarket_products cp WHERE cp.parent_id=lp.product_id AND cp.deleted_at IS NULL)) WHERE lp.listing_id=l.id),0) <= 0)`)
 		}
 		order := "l.created_at DESC"
 		switch q.Get("sort") {
@@ -14827,7 +14828,7 @@ func main() {
 		}
 		sqlStr := `SELECT l.id, l.shop_id, s.name, l.kind, l.title, l.description, l.category_key, l.price, l.currency, l.photos::text, l.rating, l.reviews_count, l.views_count, l.created_at,
 			COALESCE(s.wms_enabled,FALSE),
-			COALESCE((SELECT SUM(st.qty-st.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock st ON st.product_id=lp.product_id WHERE lp.listing_id=l.id),0),
+			COALESCE((SELECT SUM(st.qty-st.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock st ON (st.product_id=lp.product_id OR st.product_id IN (SELECT cp.id FROM emarket_products cp WHERE cp.parent_id=lp.product_id AND cp.deleted_at IS NULL)) WHERE lp.listing_id=l.id),0),
 			EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=l.id)
 			FROM emarket_listings l JOIN emarket_shops s ON s.id=l.shop_id
 			WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
@@ -37234,12 +37235,48 @@ func emarketListingStock(db *sql.DB, listingID, shopID int64) any {
 		return nil
 	}
 	var available sql.NullFloat64
-	_ = db.QueryRow(`SELECT SUM(s.qty - s.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock s ON s.product_id=lp.product_id WHERE lp.listing_id=$1`, listingID).Scan(&available)
+	_ = db.QueryRow(`SELECT SUM(s.qty - s.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock s ON (s.product_id=lp.product_id OR s.product_id IN (SELECT cp.id FROM emarket_products cp WHERE cp.parent_id=lp.product_id AND cp.deleted_at IS NULL)) WHERE lp.listing_id=$1`, listingID).Scan(&available)
 	av := 0.0
 	if available.Valid {
 		av = available.Float64
 	}
 	return map[string]any{"tracked": true, "available": av, "in_stock": av > 0}
+}
+
+// emarketListingVariants — варианты (дочерние товары) листинга для витрины.
+// Возвращает [] если у привязанного товара нет вариантов.
+func emarketListingVariants(db *sql.DB, listingID int64) []map[string]any {
+	out := []map[string]any{}
+	var parentID int64
+	if err := db.QueryRow(`SELECT product_id FROM emarket_listing_product WHERE listing_id=$1`, listingID).Scan(&parentID); err != nil {
+		return out
+	}
+	var wmsOn bool
+	_ = db.QueryRow(`SELECT COALESCE(sh.wms_enabled,FALSE) FROM emarket_shops sh JOIN emarket_listings l ON l.shop_id=sh.id WHERE l.id=$1`, listingID).Scan(&wmsOn)
+	rows, err := db.Query(`SELECT v.id, v.variant_label, v.variant_attrs::text, v.price, v.currency,
+		COALESCE((SELECT SUM(st.qty - st.reserved_qty) FROM emarket_stock st WHERE st.product_id=v.id),0)
+		FROM emarket_products v WHERE v.parent_id=$1 AND v.deleted_at IS NULL ORDER BY v.variant_sort, v.id`, parentID)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var vid int64
+		var label, attrs, cur string
+		var price, avail float64
+		if err := rows.Scan(&vid, &label, &attrs, &price, &cur, &avail); err != nil {
+			continue
+		}
+		var attrsAny any
+		_ = json.Unmarshal([]byte(attrs), &attrsAny)
+		m := map[string]any{"id": vid, "variant_label": label, "variant_attrs": attrsAny, "price": price, "currency": cur}
+		if wmsOn {
+			m["available"] = avail
+			m["in_stock"] = avail > 0
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 // emarketResolveOwner — проверяет, что userID вправе действовать от лица owner.
