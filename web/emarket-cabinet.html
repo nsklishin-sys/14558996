@@ -2447,7 +2447,7 @@ function renderWmsOn(pan){
       +'<div id="wmsProdWrap"></div>'
     +'</div>'
     +'<div class="cab-section">'
-      +'<div class="cab-section-h"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><polyline points="21 3 21 9 15 9"/></svg>Обмен с 1С</span></div>'
+      +'<div class="cab-section-h"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><polyline points="21 3 21 9 15 9"/></svg>Обмен с 1С</span><span id="wms1cBadge"></span></div>'
       +'<div class="cab-section-d" style="margin-bottom:10px">Синхронизация с 1С по протоколу CommerceML: каталог, цены и остатки из 1С на платформу, заказы — обратно в 1С.</div>'
       +'<div id="wms1cBody"></div>'
     +'</div>';
@@ -2472,6 +2472,15 @@ function wms1cRender(d){
   box.innerHTML=
     '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--t);margin-bottom:12px"><input type="checkbox" id="wms1cEnabled"'+(d.enabled?' checked':'')+'> Обмен с 1С включён</label>'
     +'<div class="lm-row"><label class="lm-label">URL обмена (узел обмена в 1С)</label><div style="display:flex;gap:8px"><input class="lm-input" id="wms1cUrl" readonly value="'+esc(url)+'" style="flex:1"><button class="wms-opbtn" onclick="wms1cCopyURL()">Копировать</button></div></div>'
+    +'<details style="margin:2px 0 12px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--g);user-select:none">Как настроить обмен в 1С</summary>'
+      +'<div style="font-size:12px;color:var(--gmt);line-height:1.75;margin-top:8px;padding:10px 12px;background:var(--gp);border:1px solid var(--bdr);border-radius:var(--rm)">'
+        +'1. В 1С: <b>Администрирование → Обмен с сайтом</b> (синхронизация с сайтом).<br>'
+        +'2. Создайте узел обмена, тип — <b>CommerceML 2 / 1С-Битрикс</b>.<br>'
+        +'3. В адрес узла вставьте <b>URL обмена</b> выше.<br>'
+        +'4. Укажите <b>логин и пароль</b> из полей ниже.<br>'
+        +'5. Включите выгрузку каталога и цен и загрузку заказов.<br>'
+        +'6. Запустите обмен — результат появится в блоке «Состояние обмена».'
+      +'</div></details>'
     +'<div class="lm-2col"><div class="lm-row"><label class="lm-label">Логин обмена</label><input class="lm-input" id="wms1cLogin" maxlength="120" value="'+esc(d.exchange_login||'')+'" placeholder="например shop_'+SHOP.id+'"></div>'
       +'<div class="lm-row"><label class="lm-label">Пароль обмена</label><input class="lm-input" id="wms1cPwd" type="password" autocomplete="new-password" placeholder="'+(d.has_password?'задан · оставьте пустым':'задайте пароль')+'"></div></div>'
     +'<div class="cab-section-h" style="font-size:13px;margin-top:6px">Что синхронизировать</div>'
@@ -2479,6 +2488,10 @@ function wms1cRender(d){
     +'<div class="cab-section-h" style="font-size:13px;margin-top:10px">Состояние обмена</div>'
     +'<div class="wms-wh-ad" style="line-height:1.8">Последний статус: <b>'+esc(d.last_status||'—')+'</b><br>Импорт из 1С: '+(d.last_import_at?wmsDate(d.last_import_at):'—')+'<br>Выгрузка заказов: '+(d.last_export_at?wmsDate(d.last_export_at):'—')+'</div>'
     +'<div class="lm-foot"><button class="lead-btn lead-btn-pri" id="wms1cSaveBtn" onclick="wms1cSave()">Сохранить настройки</button></div>';
+  var bdg=document.getElementById('wms1cBadge');
+  if(bdg)bdg.innerHTML=d.enabled
+    ?'<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:var(--gl);color:var(--g);border:1px solid var(--gb)">активен</span>'
+    :'<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:#F1EFE8;color:#5F5E5A;border:1px solid #D3D1C7">выключен</span>';
 }
 function wms1cCopyURL(){
   const el=document.getElementById('wms1cUrl'); if(!el)return;
