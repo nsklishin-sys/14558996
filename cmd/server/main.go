@@ -21684,6 +21684,13 @@ ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS description TEXT NOT NULL 
 ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 0;
 ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS low_stock_notified BOOLEAN NOT NULL DEFAULT FALSE;
+-- Вариации товара: вариант = дочерний товар (parent_id указывает на родителя-«зонтик»).
+-- parent_id IS NULL → обычный товар или родитель с вариантами; parent_id SET → вариант.
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS parent_id BIGINT REFERENCES emarket_products(id) ON DELETE CASCADE;
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS variant_label TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS variant_attrs JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS variant_sort INT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS emarket_products_parent_idx ON emarket_products(parent_id) WHERE parent_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS emarket_products_category_idx ON emarket_products(category_id) WHERE category_id IS NOT NULL;
 
 -- GUID склада из 1С (маппинг складов).
