@@ -14616,6 +14616,9 @@ func main() {
 			args = append(args, "%"+v+"%")
 			conds = append(conds, fmt.Sprintf("(l.title ILIKE $%d OR l.description ILIKE $%d)", len(args), len(args)))
 		}
+		if q.Get("in_stock") == "1" {
+			conds = append(conds, `NOT (COALESCE(s.wms_enabled,FALSE) AND EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=l.id) AND COALESCE((SELECT SUM(st.qty-st.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock st ON st.product_id=lp.product_id WHERE lp.listing_id=l.id),0) <= 0)`)
+		}
 		order := "l.created_at DESC"
 		switch q.Get("sort") {
 		case "price_asc":
@@ -14635,7 +14638,10 @@ func main() {
 		if offset < 0 {
 			offset = 0
 		}
-		sqlStr := `SELECT l.id, l.shop_id, s.name, l.kind, l.title, l.description, l.category_key, l.price, l.currency, l.photos::text, l.rating, l.reviews_count, l.views_count, l.created_at
+		sqlStr := `SELECT l.id, l.shop_id, s.name, l.kind, l.title, l.description, l.category_key, l.price, l.currency, l.photos::text, l.rating, l.reviews_count, l.views_count, l.created_at,
+			COALESCE(s.wms_enabled,FALSE),
+			COALESCE((SELECT SUM(st.qty-st.reserved_qty) FROM emarket_listing_product lp JOIN emarket_stock st ON st.product_id=lp.product_id WHERE lp.listing_id=l.id),0),
+			EXISTS(SELECT 1 FROM emarket_listing_product WHERE listing_id=l.id)
 			FROM emarket_listings l JOIN emarket_shops s ON s.id=l.shop_id
 			WHERE ` + strings.Join(conds, " AND ") + ` ORDER BY ` + order + fmt.Sprintf(` LIMIT %d OFFSET %d`, limit, offset)
 		rows, err := db.Query(sqlStr, args...)
@@ -14653,7 +14659,9 @@ func main() {
 			var rating float64
 			var reviews, views int
 			var created time.Time
-			if err := rows.Scan(&id, &shopID, &shopName, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &created); err != nil {
+			var wmsOn, wmsLinked bool
+			var wmsAvail float64
+			if err := rows.Scan(&id, &shopID, &shopName, &kind, &title, &desc, &catKey, &price, &currency, &photosJSON, &rating, &reviews, &views, &created, &wmsOn, &wmsAvail, &wmsLinked); err != nil {
 				continue
 			}
 			var photos any
@@ -14662,11 +14670,15 @@ func main() {
 			if price.Valid {
 				priceVal = price.Float64
 			}
-			items = append(items, map[string]any{
+			item := map[string]any{
 				"id": id, "shop_id": shopID, "shop_name": shopName, "kind": kind, "title": title,
 				"description": desc, "category_key": catKey, "price": priceVal, "currency": currency,
 				"photos": photos, "rating": rating, "reviews_count": reviews, "views_count": views, "created_at": created,
-			})
+			}
+			if wmsOn && wmsLinked {
+				item["stock"] = map[string]any{"tracked": true, "available": wmsAvail, "in_stock": wmsAvail > 0}
+			}
+			items = append(items, item)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"listings": items})
 	})
