@@ -21683,6 +21683,7 @@ ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS unit_id BIGINT REFERENCES 
 ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
 ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 0;
 ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE emarket_products ADD COLUMN IF NOT EXISTS low_stock_notified BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS emarket_products_category_idx ON emarket_products(category_id) WHERE category_id IS NOT NULL;
 
 -- GUID склада из 1С (маппинг складов).
@@ -36312,7 +36313,61 @@ func emarketApplyMove(db *sql.DB, shopID, productID, warehouseID, toWarehouseID 
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
+	emarketCheckLowStock(db, shopID, productID, actorID)
 	return moveID, nil
+}
+
+// emarketCheckLowStock — после изменения остатка шлёт владельцу магазина
+// уведомление о пересечении порога low_stock_threshold (один раз, до пополнения).
+func emarketCheckLowStock(db *sql.DB, shopID, productID, actorID int64) {
+	var name string
+	var threshold, available float64
+	var notified bool
+	if err := db.QueryRow(`SELECT p.name, p.low_stock_threshold, COALESCE(p.low_stock_notified,FALSE),
+		COALESCE((SELECT SUM(s.qty - s.reserved_qty) FROM emarket_stock s WHERE s.product_id=p.id),0)
+		FROM emarket_products p WHERE p.id=$1`, productID).Scan(&name, &threshold, &notified, &available); err != nil {
+		return
+	}
+	if threshold <= 0 {
+		return
+	}
+	if available > threshold {
+		if notified {
+			_, _ = db.Exec(`UPDATE emarket_products SET low_stock_notified=FALSE WHERE id=$1`, productID)
+		}
+		return
+	}
+	if notified {
+		return
+	}
+	var ownerType, shopName string
+	var ownerID int64
+	if err := db.QueryRow(`SELECT owner_type, owner_id, name FROM emarket_shops WHERE id=$1`, shopID).Scan(&ownerType, &ownerID, &shopName); err != nil {
+		return
+	}
+	var recipient int64
+	switch ownerType {
+	case "user":
+		recipient = ownerID
+	case "company":
+		_ = db.QueryRow(`SELECT owner_user_id FROM companies WHERE id=$1`, ownerID).Scan(&recipient)
+	case "community":
+		_ = db.QueryRow(`SELECT creator_id FROM communities WHERE id=$1`, ownerID).Scan(&recipient)
+	}
+	if recipient == 0 {
+		return
+	}
+	availStr := strconv.FormatFloat(available, 'f', -1, 64)
+	thrStr := strconv.FormatFloat(threshold, 'f', -1, 64)
+	_ = createNotification(db, createNotificationParams{
+		RecipientID: recipient, ActorID: actorID,
+		Type:       "emarket_low_stock",
+		SourceType: "emarket_product", SourceID: productID,
+		Anchor:  "/emarket-cabinet?id=" + strconv.FormatInt(shopID, 10) + "&tab=warehouse",
+		Title:   "Низкий остаток: " + name,
+		Preview: "Осталось " + availStr + " (порог " + thrStr + ") в магазине «" + shopName + "»",
+	})
+	_, _ = db.Exec(`UPDATE emarket_products SET low_stock_notified=TRUE WHERE id=$1`, productID)
 }
 
 // emarketReserveOrderLine — резерв одной позиции заказа на первичном складе: min(qty, доступно).
