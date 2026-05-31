@@ -11108,6 +11108,82 @@ func main() {
 			return
 		}
 
+		if len(parts) >= 2 && parts[1] == "1c" {
+			userID, ok := authenticatedUserID(w, r, sessions)
+			if !ok {
+				return
+			}
+			if err := emarketCheckPermission(db, userID, shopID, "settings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			if r.Method == http.MethodGet {
+				var enabled, catalogSync, priceSync, stockSync, orderSync, hasPwd bool
+				var login, lastStatus, lastLog string
+				var lastImport, lastExport sql.NullTime
+				err := db.QueryRow(`SELECT enabled, exchange_login, (exchange_password_hash<>''), catalog_sync, price_sync, stock_sync, order_sync, last_import_at, last_export_at, last_status, last_log FROM emarket_1c_exchange WHERE shop_id=$1`, shopID).
+					Scan(&enabled, &login, &hasPwd, &catalogSync, &priceSync, &stockSync, &orderSync, &lastImport, &lastExport, &lastStatus, &lastLog)
+				if err == sql.ErrNoRows {
+					catalogSync, priceSync, stockSync, orderSync = true, true, true, true
+				} else if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				resp := map[string]any{
+					"enabled": enabled, "exchange_login": login, "has_password": hasPwd,
+					"catalog_sync": catalogSync, "price_sync": priceSync, "stock_sync": stockSync, "order_sync": orderSync,
+					"last_status": lastStatus, "last_log": lastLog,
+					"exchange_path": "/api/emarket/1c-exchange",
+				}
+				if lastImport.Valid {
+					resp["last_import_at"] = lastImport.Time
+				}
+				if lastExport.Valid {
+					resp["last_export_at"] = lastExport.Time
+				}
+				writeJSON(w, http.StatusOK, resp)
+				return
+			}
+			if r.Method == http.MethodPut {
+				var req struct {
+					Enabled       bool   `json:"enabled"`
+					ExchangeLogin string `json:"exchange_login"`
+					Password      string `json:"password"`
+					CatalogSync   bool   `json:"catalog_sync"`
+					PriceSync     bool   `json:"price_sync"`
+					StockSync     bool   `json:"stock_sync"`
+					OrderSync     bool   `json:"order_sync"`
+				}
+				if err := decodeJSON(w, r, &req); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				req.ExchangeLogin = strings.TrimSpace(req.ExchangeLogin)
+				if _, err := db.Exec(`INSERT INTO emarket_1c_exchange (shop_id, enabled, exchange_login, catalog_sync, price_sync, stock_sync, order_sync, updated_at)
+					VALUES ($1,$2,$3,$4,$5,$6,$7,now())
+					ON CONFLICT (shop_id) DO UPDATE SET enabled=$2, exchange_login=$3, catalog_sync=$4, price_sync=$5, stock_sync=$6, order_sync=$7, updated_at=now()`,
+					shopID, req.Enabled, req.ExchangeLogin, req.CatalogSync, req.PriceSync, req.StockSync, req.OrderSync); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				if strings.TrimSpace(req.Password) != "" {
+					hash, herr := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+					if herr != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка хэширования")
+						return
+					}
+					if _, err := db.Exec(`UPDATE emarket_1c_exchange SET exchange_password_hash=$1, updated_at=now() WHERE shop_id=$2`, string(hash), shopID); err != nil {
+						writeError(w, http.StatusInternalServerError, "Ошибка")
+						return
+					}
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+				return
+			}
+			writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			return
+		}
+
 		if len(parts) >= 2 && parts[1] == "warehouses" {
 			userID, ok := authenticatedUserID(w, r, sessions)
 			if !ok {
