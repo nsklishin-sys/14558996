@@ -14134,7 +14134,166 @@ func main() {
 	})
 
 	mux.HandleFunc("/api/emarket/products/", func(w http.ResponseWriter, r *http.Request) {
-		productID, _ := strconv.ParseInt(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/products/"), "/"), 10, 64)
+		rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/emarket/products/"), "/")
+		seg := strings.Split(rest, "/")
+		if len(seg) >= 2 && seg[1] == "variants" {
+			parentID, _ := strconv.ParseInt(seg[0], 10, 64)
+			if parentID == 0 {
+				writeError(w, http.StatusBadRequest, "Некорректный id")
+				return
+			}
+			var vShopID int64
+			var parentName, parentUnit, parentCategory, parentCurrency string
+			if err := db.QueryRow(`SELECT shop_id, name, unit, category, currency FROM emarket_products WHERE id=$1 AND deleted_at IS NULL`, parentID).Scan(&vShopID, &parentName, &parentUnit, &parentCategory, &parentCurrency); err != nil {
+				writeError(w, http.StatusNotFound, "Товар не найден")
+				return
+			}
+			vUserID, vok := authenticatedUserID(w, r, sessions)
+			if !vok {
+				return
+			}
+			if err := emarketCheckPermission(db, vUserID, vShopID, "listings"); err != nil {
+				writeJSON(w, http.StatusForbidden, map[string]any{"error": "нет прав"})
+				return
+			}
+			var variantID int64
+			if len(seg) >= 3 {
+				variantID, _ = strconv.ParseInt(seg[2], 10, 64)
+			}
+			switch r.Method {
+			case http.MethodGet:
+				rows, err := db.Query(`SELECT v.id, v.sku, v.barcode, v.name, v.variant_label, v.variant_attrs::text, v.price, v.currency, v.low_stock_threshold, v.variant_sort,
+					COALESCE((SELECT SUM(s.qty) FROM emarket_stock s WHERE s.product_id=v.id),0),
+					COALESCE((SELECT SUM(s.reserved_qty) FROM emarket_stock s WHERE s.product_id=v.id),0)
+					FROM emarket_products v WHERE v.parent_id=$1 AND v.deleted_at IS NULL ORDER BY v.variant_sort, v.id`, parentID)
+				if err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				defer rows.Close()
+				vitems := []map[string]any{}
+				for rows.Next() {
+					var vid int64
+					var vsku, vbar, vname, vlabel, vattrs, vcur string
+					var vprice, vthr, vqty, vres float64
+					var vsort int
+					if err := rows.Scan(&vid, &vsku, &vbar, &vname, &vlabel, &vattrs, &vprice, &vcur, &vthr, &vsort, &vqty, &vres); err != nil {
+						continue
+					}
+					var attrsAny any
+					_ = json.Unmarshal([]byte(vattrs), &attrsAny)
+					vitems = append(vitems, map[string]any{
+						"id": vid, "sku": vsku, "barcode": vbar, "name": vname, "variant_label": vlabel,
+						"variant_attrs": attrsAny, "price": vprice, "currency": vcur, "low_stock_threshold": vthr,
+						"variant_sort": vsort, "qty": vqty, "reserved_qty": vres, "available": vqty - vres,
+						"low_stock": vthr > 0 && (vqty-vres) <= vthr,
+					})
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"variants": vitems})
+			case http.MethodPost:
+				var vreq struct {
+					Name         string            `json:"name"`
+					SKU          string            `json:"sku"`
+					Barcode      string            `json:"barcode"`
+					VariantLabel string            `json:"variant_label"`
+					VariantAttrs map[string]string `json:"variant_attrs"`
+					Price        float64           `json:"price"`
+					LowStock     float64           `json:"low_stock_threshold"`
+					VariantSort  int               `json:"variant_sort"`
+				}
+				if err := decodeJSON(w, r, &vreq); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				vlabel := strings.TrimSpace(vreq.VariantLabel)
+				vname := strings.TrimSpace(vreq.Name)
+				if vname == "" {
+					if vlabel != "" {
+						vname = parentName + " — " + vlabel
+					} else {
+						vname = parentName
+					}
+				}
+				vsku := strings.TrimSpace(vreq.SKU)
+				if vsku != "" {
+					var exists bool
+					_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_products WHERE shop_id=$1 AND sku=$2 AND deleted_at IS NULL)`, vShopID, vsku).Scan(&exists)
+					if exists {
+						writeJSON(w, http.StatusConflict, map[string]any{"error": "Артикул уже существует"})
+						return
+					}
+				}
+				attrsJSON := []byte("{}")
+				if vreq.VariantAttrs != nil {
+					if b, err := json.Marshal(vreq.VariantAttrs); err == nil {
+						attrsJSON = b
+					}
+				}
+				var vNewID int64
+				if err := db.QueryRow(`INSERT INTO emarket_products (shop_id, parent_id, sku, barcode, name, unit, category, price, currency, low_stock_threshold, variant_label, variant_attrs, variant_sort)
+					VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+					vShopID, parentID, vsku, strings.TrimSpace(vreq.Barcode), vname, parentUnit, parentCategory, vreq.Price, parentCurrency, vreq.LowStock, vlabel, string(attrsJSON), vreq.VariantSort).Scan(&vNewID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "id": vNewID})
+			case http.MethodPut:
+				if variantID == 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный id варианта")
+					return
+				}
+				var vreq struct {
+					Name         string            `json:"name"`
+					SKU          string            `json:"sku"`
+					Barcode      string            `json:"barcode"`
+					VariantLabel string            `json:"variant_label"`
+					VariantAttrs map[string]string `json:"variant_attrs"`
+					Price        float64           `json:"price"`
+					LowStock     float64           `json:"low_stock_threshold"`
+					VariantSort  int               `json:"variant_sort"`
+				}
+				if err := decodeJSON(w, r, &vreq); err != nil {
+					writeError(w, http.StatusBadRequest, "Некорректный JSON")
+					return
+				}
+				vsku := strings.TrimSpace(vreq.SKU)
+				if vsku != "" {
+					var exists bool
+					_ = db.QueryRow(`SELECT EXISTS(SELECT 1 FROM emarket_products WHERE shop_id=$1 AND sku=$2 AND id<>$3 AND deleted_at IS NULL)`, vShopID, vsku, variantID).Scan(&exists)
+					if exists {
+						writeJSON(w, http.StatusConflict, map[string]any{"error": "Артикул уже существует"})
+						return
+					}
+				}
+				attrsJSON := []byte("{}")
+				if vreq.VariantAttrs != nil {
+					if b, err := json.Marshal(vreq.VariantAttrs); err == nil {
+						attrsJSON = b
+					}
+				}
+				if _, err := db.Exec(`UPDATE emarket_products SET sku=$1, barcode=$2, name=$3, price=$4, low_stock_threshold=$5, variant_label=$6, variant_attrs=$7, variant_sort=$8, updated_at=now() WHERE id=$9 AND parent_id=$10 AND deleted_at IS NULL`,
+					vsku, strings.TrimSpace(vreq.Barcode), strings.TrimSpace(vreq.Name), vreq.Price, vreq.LowStock, strings.TrimSpace(vreq.VariantLabel), string(attrsJSON), vreq.VariantSort, variantID, parentID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+			case http.MethodDelete:
+				if variantID == 0 {
+					writeError(w, http.StatusBadRequest, "Некорректный id варианта")
+					return
+				}
+				if _, err := db.Exec(`UPDATE emarket_products SET deleted_at=now(), updated_at=now() WHERE id=$1 AND parent_id=$2`, variantID, parentID); err != nil {
+					writeError(w, http.StatusInternalServerError, "Ошибка")
+					return
+				}
+				_, _ = db.Exec(`DELETE FROM emarket_listing_product WHERE product_id=$1`, variantID)
+				writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
+			default:
+				writeError(w, http.StatusMethodNotAllowed, "Метод не поддерживается")
+			}
+			return
+		}
+		productID, _ := strconv.ParseInt(rest, 10, 64)
 		if productID == 0 {
 			writeError(w, http.StatusBadRequest, "Некорректный id")
 			return
