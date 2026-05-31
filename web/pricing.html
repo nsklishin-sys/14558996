@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script src="/assets/dark-theme-init.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTOP GROUP — Возможности и тарифы</title>
+<meta name="description" content="LASTOP GROUP — возможности и тарифы для компаний. Базовое пользование бесплатно; расширенные функции для юрлиц, ИП и самозанятых.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/shell-layout.css">
+<script>document.documentElement.classList.add('lt-shell');</script>
+<link rel="stylesheet" href="/assets/hover-lift.css">
+<script>document.documentElement.classList.add('hl-on');</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1E8A4C;--gm:#22A05A;--gl:#E8F5EE;--gp:#F0FAF4;--gmt:#5A8A6A;--gb:#C0DECA;
+  --w:#FFF;--bg:#F2F5F3;--t:#1A2A22;--tm:#3A5245;--bdr:#DDE8E2;
+  --red:#E04040;--r:8px;--rm:12px;--rl:18px;--rxl:24px;
+  --sh:0 2px 12px rgba(30,138,76,.07);--shm:0 6px 24px rgba(30,138,76,.13)
+}
+html,body{height:100%;min-height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);font-size:14px}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
+.shell{display:grid;grid-template-columns:240px 1fr 300px;grid-template-rows:56px 1fr;grid-template-areas:"logo topbar topbar" "nav main right";height:100vh;height:100dvh;gap:10px;padding:10px}
+.logo-cell{grid-area:logo;background:var(--w);border-radius:var(--rl);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;padding:0 14px;text-decoration:none;box-shadow:var(--sh);transition:box-shadow .2s}
+.logo-cell:hover{box-shadow:var(--shm)}
+.logo-cell img{height:32px;width:auto;object-fit:contain;flex-shrink:0}
+.main{grid-area:main;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:14px;min-height:0}
+.right{grid-area:right;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+
+.about-header{background:linear-gradient(135deg,#1E8A4C 0%,#176E3C 100%);border-radius:var(--rxl);padding:22px 24px;box-shadow:var(--shm);flex-shrink:0;color:#fff;position:relative;overflow:hidden}
+.about-header::before{content:'';position:absolute;top:-60px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.about-header::after{content:'';position:absolute;bottom:-70px;right:90px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05)}
+.ah-inner{position:relative;z-index:1}
+.ah-badge{display:inline-block;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.16);font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+.about-header h1{font-size:24px;font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
+.about-header p{font-size:14px;color:rgba(255,255,255,.85);line-height:1.6;max-width:680px}
+
+.section-title{font-size:17px;font-weight:800;color:var(--t);margin:6px 0 2px;letter-spacing:-.005em;display:flex;align-items:center;gap:9px}
+.section-title svg{width:19px;height:19px;stroke:var(--g);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.section-sub{font-size:12.5px;color:var(--gmt);margin-bottom:6px;line-height:1.55}
+
+.sec-list{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.sec-item{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rl);box-shadow:var(--sh);overflow:hidden;transition:box-shadow .18s,border-color .18s}
+.sec-item.open{box-shadow:var(--shm);border-color:var(--gb)}
+.sec-head{display:flex;align-items:center;gap:13px;padding:14px 16px;cursor:pointer;user-select:none;transition:background .15s}
+.sec-head:hover{background:var(--gp)}
+.sec-ico{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.sec-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sec-hd{flex:1;min-width:0}
+.sec-name{font-size:14.5px;font-weight:800;color:var(--t);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sec-tagline{font-size:12px;color:var(--gmt);margin-top:2px;line-height:1.4}
+.sec-status{font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
+.sec-status.dev{background:#FFF6E6;color:#8A5A00;border:1px solid #F0DCA0}
+.sec-chevron{width:18px;height:18px;flex-shrink:0;color:var(--gmt);transition:transform .25s}
+.sec-chevron svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sec-item.open .sec-chevron{transform:rotate(180deg)}
+.sec-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.sec-item.open .sec-body{max-height:1400px}
+.sec-body-inner{padding:0 16px 18px 69px;font-size:13px;color:var(--tm);line-height:1.7}
+@media(max-width:560px){.sec-body-inner{padding:0 16px 18px 16px}}
+.sec-body-inner p{margin-bottom:10px}
+.sec-body-inner p:last-child{margin-bottom:0}
+.sec-body-inner .sb-label{font-size:11px;font-weight:800;color:var(--g);letter-spacing:.03em;text-transform:uppercase;margin:14px 0 7px}
+.sec-body-inner ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.sec-body-inner li{position:relative;padding-left:18px;font-size:12.5px;line-height:1.55}
+.sec-body-inner li::before{content:'';position:absolute;left:2px;top:7px;width:5px;height:5px;border-radius:50%;background:var(--g)}
+.sec-body-inner li b{color:var(--t);font-weight:700}
+
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex-shrink:0}
+@media(max-width:900px){.cap-grid{grid-template-columns:1fr}}
+.cap-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:20px}
+.cap-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
+.cap-ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex-shrink:0;color:#fff}
+.cap-ico svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cap-ico.users{background:linear-gradient(135deg,#1E8A4C,#22A05A)}
+.cap-ico.biz{background:linear-gradient(135deg,#185FA5,#3A90C0)}
+.cap-title{font-size:15px;font-weight:800;color:var(--t)}
+.cap-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+.cap-list{list-style:none;display:flex;flex-direction:column;gap:9px}
+.cap-list li{display:flex;gap:10px;font-size:13px;color:var(--tm);line-height:1.5}
+.cap-list li svg{width:16px;height:16px;flex-shrink:0;margin-top:1px;fill:none;stroke:var(--g);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+
+
+.rs-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px}
+.rs-legal-desc{font-size:12px;color:var(--gmt);line-height:1.55;margin:0 0 14px}
+.rs-legal-btn{width:100%;padding:11px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none}
+.rs-legal-btn:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
+.rs-legal-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rs-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
+.rs-ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.rs-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rs-title{font-size:14px;font-weight:800;color:var(--t)}
+.rs-sub{font-size:11px;color:var(--gmt);margin-top:1px}
+.rs-info{display:flex;flex-direction:column;gap:0}
+.rs-row{padding:8px 0;border-bottom:1px solid var(--bdr)}
+.rs-row:last-child{border-bottom:none}
+.rs-label{font-size:10px;font-weight:700;color:var(--gmt);letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px}
+.rs-value{font-size:12.5px;color:var(--t);font-weight:500;line-height:1.5}
+.rs-value.copy{cursor:pointer;transition:color .15s}
+.rs-value.copy:hover{color:var(--g)}
+.rs-value a{color:var(--g);text-decoration:none;font-weight:700}
+.rs-contact-btn{width:100%;padding:12px;border-radius:var(--rm);border:none;background:var(--g);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.rs-contact-btn:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
+.rs-contact-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rs-mail{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:10px;font-size:12px;font-weight:700;color:var(--g);text-decoration:none}
+.rs-mail svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+
+.form-row{margin-bottom:11px}
+.form-label{font-size:10.5px;font-weight:700;color:var(--gmt);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:5px}
+.form-input{width:100%;border:1.5px solid var(--bdr);border-radius:var(--rm);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--t);outline:none;transition:border-color .2s;background:var(--gp)}
+.form-input:focus{border-color:var(--gm);background:var(--w)}
+.form-input::placeholder{color:var(--gmt)}
+textarea.form-input{resize:vertical;min-height:100px;line-height:1.55}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.form-grid2{grid-template-columns:1fr}}
+.btn-pri{padding:11px 22px;border-radius:99px;border:none;background:var(--g);font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.btn-pri:hover{background:var(--gm);transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,138,76,.25)}
+.btn-pri:disabled{background:var(--gb);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-pri svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.form-hint{font-size:11px;color:var(--gmt);margin-top:8px;line-height:1.5}
+.form-hint a{color:var(--g);text-decoration:none}
+.form-hint a:hover{text-decoration:underline}
+
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,18,.45);backdrop-filter:blur(4px);z-index:var(--z-modal,300);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--w);border-radius:var(--rxl);border:1px solid var(--bdr);box-shadow:0 24px 60px rgba(30,138,76,.18);padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:translateY(14px);transition:transform .22s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.modal-head .mh-ico{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--gl),var(--gp));display:grid;place-items:center;color:var(--g);flex-shrink:0}
+.modal-head .mh-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.modal-head .mh-txt{flex:1}
+.modal-head h3{font-size:16px;font-weight:800;color:var(--t)}
+.modal-head .mh-sub{font-size:12px;color:var(--gmt);margin-top:2px}
+.modal-x{width:30px;height:30px;border-radius:var(--r);background:var(--gp);border:none;cursor:pointer;display:grid;place-items:center;color:var(--gmt);transition:background .15s;flex-shrink:0}
+.modal-x:hover{background:var(--gl);color:var(--g)}
+.modal-x svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#1A2A22;color:#fff;padding:10px 20px;border-radius:var(--rm);font-size:13px;font-weight:600;z-index:var(--z-dropdown,400);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;box-shadow:0 12px 28px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--g)}
+.toast.error{background:var(--red)}
+
+/* ── PRICING ── */
+.free-card{background:linear-gradient(135deg,var(--gl),var(--gp));border:1px solid var(--gb);border-radius:var(--rxl);box-shadow:var(--sh);padding:18px 20px;flex-shrink:0}
+.free-head{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.free-ico{width:40px;height:40px;border-radius:11px;background:var(--w);display:grid;place-items:center;color:var(--g);flex-shrink:0;box-shadow:var(--sh)}
+.free-ico svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.free-ttl{font-size:15px;font-weight:800;color:var(--t)}
+.free-sub{font-size:12px;color:var(--gmt);margin-top:1px}
+.free-list{list-style:none;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:760px){.free-list{grid-template-columns:1fr}}
+.free-list li{display:flex;gap:9px;font-size:12.5px;color:var(--tm);line-height:1.5;align-items:flex-start}
+.free-list li svg{width:16px;height:16px;flex-shrink:0;margin-top:1px;fill:none;stroke:var(--g);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.free-list li b{color:var(--t);font-weight:700}
+
+.pkg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;flex-shrink:0}
+@media(max-width:900px){.pkg-grid{grid-template-columns:1fr}}
+.pkg-card{background:var(--w);border:1px solid var(--bdr);border-radius:var(--rxl);box-shadow:var(--sh);padding:20px;display:flex;flex-direction:column;position:relative;transition:box-shadow .18s,transform .18s,border-color .18s}
+.pkg-card:hover{box-shadow:var(--shm);transform:translateY(-2px)}
+.pkg-card.featured{border-color:var(--g);box-shadow:var(--shm)}
+.pkg-badge{position:absolute;top:-11px;left:20px;background:var(--g);color:#fff;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:4px 12px;border-radius:99px;box-shadow:0 4px 12px rgba(30,138,76,.25)}
+.pkg-name{font-size:15px;font-weight:800;color:var(--t)}
+.pkg-price{font-size:23px;font-weight:900;color:var(--t);margin-top:8px;line-height:1}
+.pkg-per{font-size:12px;color:var(--gmt);font-weight:600;margin-top:4px}
+.pkg-note{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;color:var(--g);background:var(--gl);border:1px solid var(--gb);padding:3px 9px;border-radius:99px}
+.pkg-incl{font-size:12.5px;color:var(--tm);line-height:1.55;margin:12px 0 16px;flex:1}
+.pkg-cta{width:100%;padding:10px;border-radius:var(--rm);border:1.5px solid var(--bdr);background:var(--w);color:var(--g);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.pkg-cta:hover{background:var(--gp);border-color:var(--gb)}
+.pkg-card.featured .pkg-cta{background:var(--g);color:#fff;border-color:var(--g)}
+.pkg-card.featured .pkg-cta:hover{background:var(--gm)}
+.pkg-cta svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.pb-label{font-size:11px;font-weight:800;color:var(--g);letter-spacing:.03em;text-transform:uppercase;margin:16px 0 6px}
+.pb-label:first-child{margin-top:0}
+.ptbl{display:flex;flex-direction:column}
+.ptr{display:flex;gap:16px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--bdr)}
+.ptr:last-child{border-bottom:none}
+.ptr-main{flex:1;min-width:0}
+.ptr-name{font-size:13px;font-weight:700;color:var(--t);margin-bottom:3px}
+.ptr-desc{font-size:12px;color:var(--gmt);line-height:1.5}
+.ptr-price{flex-shrink:0;font-size:13px;font-weight:800;color:var(--g);white-space:nowrap;text-align:right;max-width:170px;padding-top:1px}
+.ptr-price.muted{color:var(--gmt);font-weight:700}
+@media(max-width:560px){.ptr{flex-direction:column;gap:5px}.ptr-price{text-align:left;max-width:none}}
+
+.step{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--bdr)}
+.step:last-child{border-bottom:none;padding-bottom:0}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--gl);color:var(--g);font-weight:800;font-size:12px;display:grid;place-items:center;flex-shrink:0}
+.step-t{font-size:12.5px;color:var(--tm);line-height:1.45}
+.step-t b{color:var(--t);font-weight:700}
+.rs-foot-note{font-size:11px;color:var(--gmt);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)}
+</style>
+<link rel="stylesheet" href="/assets/dark-theme.css">
+</head>
+<body>
+<div class="shell">
+<a class="logo-cell" href="/"><img src="/assets/lastop-group-logo.svg" alt="LASTOP GROUP" onerror="this.style.display='none'"></a>
+<header class="topbar"></header>
+<nav class="nav"></nav>
+<main class="main">
+  <section class="about-header">
+    <div class="ah-inner">
+      <span class="ah-badge">Возможности и тарифы</span>
+      <h1>Возможности и тарифы</h1>
+      <p>Пользоваться платформой можно бесплатно. Платные функции подключаются для юридических лиц, ИП и самозанятых — когда нужно расширенное деловое присутствие: собственный магазин, участие в выставках, продвижение или сопровождение. Подключайте только то, что нужно вашим задачам.</p>
+    </div>
+  </section>
+
+  <div class="free-card">
+    <div class="free-head">
+      <div class="free-ico"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><div class="free-ttl">Всегда бесплатно</div><div class="free-sub">Базовое пользование платформой не требует оплаты</div></div>
+    </div>
+    <ul class="free-list">
+      <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><b>Регистрация и аккаунт</b> — личный профиль и доступ к открытым разделам платформы.</span></li>
+      <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><b>Базовая карточка компании</b> — описание, контакты, отрасль, город, присутствие на платформе.</span></li>
+      <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span><b>Просмотр материалов</b> — публикации, компании, мероприятия, вакансии, товары и услуги.</span></li>
+    </ul>
+  </div>
+
+  <h2 class="section-title">
+    <svg viewBox="0 0 24 24"><path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z"/><path d="M3 7l9 4.5L21 7"/><line x1="12" y1="11.5" x2="12" y2="22"/></svg>
+    Готовые пакеты
+  </h2>
+  <p class="section-sub">Удобный старт под типовую задачу. Состав и доплаты можно обсудить под вашу ситуацию.</p>
+
+  <div class="pkg-grid">
+    <div class="pkg-card">
+      <div class="pkg-name">Расширенное присутствие</div>
+      <div class="pkg-price">35 000 ₽</div>
+      <div class="pkg-per">в год · или 3 500 ₽ / месяц</div>
+      <div class="pkg-note">−7 000 ₽ при оплате за год</div>
+      <div class="pkg-incl">Расширенная карточка компании, дополнительные блоки, публикация материалов и деловые функции платформы.</div>
+      <button class="pkg-cta" type="button" onclick="openContact()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Обсудить подключение</button>
+    </div>
+    <div class="pkg-card featured">
+      <span class="pkg-badge">Рекомендуем</span>
+      <div class="pkg-name">Компания + E-market</div>
+      <div class="pkg-price">60 000 ₽</div>
+      <div class="pkg-per">в год</div>
+      <div class="pkg-note">Присутствие и продажи вместе</div>
+      <div class="pkg-incl">Расширенное участие компании на платформе плюс доступ к созданию собственного E-market магазина.</div>
+      <button class="pkg-cta" type="button" onclick="openContact()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Обсудить подключение</button>
+    </div>
+    <div class="pkg-card">
+      <div class="pkg-name">Онлайн-выставка</div>
+      <div class="pkg-price">35 000 ₽</div>
+      <div class="pkg-per">за одну выставку</div>
+      <div class="pkg-incl">Страница участника выставки: описание, материалы, товары или услуги, контакты и форма запроса.</div>
+      <button class="pkg-cta" type="button" onclick="openContact()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Обсудить подключение</button>
+    </div>
+    <div class="pkg-card">
+      <div class="pkg-name">Полное деловое присутствие</div>
+      <div class="pkg-price">от 150 000 ₽</div>
+      <div class="pkg-per">в год</div>
+      <div class="pkg-incl">Расширенное участие, E-market магазин, продвижение, ведение аккаунта и участие в выставке — под ключ.</div>
+      <button class="pkg-cta" type="button" onclick="openContact()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Обсудить подключение</button>
+    </div>
+  </div>
+
+  <h2 class="section-title">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+    Все возможности по задачам
+  </h2>
+  <p class="section-sub">Нажмите на группу, чтобы развернуть состав услуг и цены.</p>
+
+  <div class="sec-list" id="grpList"></div>
+
+</main>
+
+<aside class="right">
+
+  <div class="rs-card">
+    <div class="rs-head">
+      <div class="rs-ico"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div><div class="rs-title">Как подключить</div><div class="rs-sub">Три простых шага</div></div>
+    </div>
+    <div class="step"><div class="step-n">1</div><div class="step-t"><b>Выбираете формат</b> — пакет или отдельные услуги под свою задачу.</div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-t"><b>Оставляете заявку</b> — мы уточняем детали и объём работ.</div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-t"><b>Оформляем</b> — счёт, договор, заявка или оферта, и запускаем.</div></div>
+    <button class="rs-contact-btn" type="button" onclick="openContact()" style="margin-top:14px">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Оставить заявку
+    </button>
+  </div>
+
+  <div class="rs-card">
+    <div class="rs-head">
+      <div class="rs-ico"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div><div class="rs-title">Коротко о ценах</div><div class="rs-sub">Главные ориентиры</div></div>
+    </div>
+    <div class="rs-info">
+      <div class="rs-row"><div class="rs-label">Базовое пользование</div><div class="rs-value" style="color:var(--g);font-weight:700">Бесплатно</div></div>
+      <div class="rs-row"><div class="rs-label">Расширенное участие</div><div class="rs-value">35 000 ₽ / год или 3 500 ₽ / месяц</div></div>
+      <div class="rs-row"><div class="rs-label">Онлайн-выставка</div><div class="rs-value">35 000 ₽ / выставка</div></div>
+      <div class="rs-row"><div class="rs-label">Кому доступно</div><div class="rs-value">Юрлицам, ИП и самозанятым</div></div>
+    </div>
+    <div class="rs-foot-note">Окончательная стоимость зависит от объёма работ, количества материалов и сложности сопровождения. Оплата помесячно, за год, разово или проектно.</div>
+  </div>
+
+  <div class="rs-card">
+    <div class="rs-head">
+      <div class="rs-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div><div class="rs-title">Документы</div><div class="rs-sub">Оферта и правовая база</div></div>
+    </div>
+    <p class="rs-legal-desc">Условия возмездного доступа и полный комплект документов, регулирующих работу платформы и E-маркета.</p>
+    <a href="/legal/" class="rs-legal-btn">Перейти к документации<svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+  </div>
+
+  <div class="rs-card">
+    <div class="rs-head">
+      <div class="rs-ico"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <div><div class="rs-title">Остались вопросы?</div><div class="rs-sub">Ответим в течение дня</div></div>
+    </div>
+    <button class="rs-contact-btn" type="button" onclick="openContact()">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Написать нам
+    </button>
+    <a href="mailto:partner@lastop.ru" class="rs-mail"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>partner@lastop.ru</a>
+  </div>
+
+</aside>
+
+
+</div>
+
+<div class="modal-bg" id="contactModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="mh-ico"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <div class="mh-txt"><h3>Связаться с нами</h3><div class="mh-sub">Напишите — ответим в течение рабочего дня</div></div>
+      <button class="modal-x" type="button" onclick="closeContact()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="form-row"><label class="form-label">Ваше имя</label><input class="form-input" id="cfName" placeholder="Иван Иванов" maxlength="200"></div>
+    <div class="form-grid2">
+      <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="cfEmail" type="email" placeholder="ivan@example.com" maxlength="320"></div>
+      <div class="form-row"><label class="form-label">Тема</label><input class="form-input" id="cfSubject" placeholder="Сотрудничество, вопрос..." maxlength="200"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Сообщение</label><textarea class="form-input" id="cfMessage" placeholder="Расскажите о вашем вопросе или предложении..." maxlength="5000"></textarea></div>
+    <button class="btn-pri" id="cfSubmit" type="button" onclick="submitContact()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить</button>
+    <div class="form-hint">Отправляя форму, вы соглашаетесь с <a href="/privacy" target="_blank">политикой обработки персональных данных</a>.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api';
+const GROUPS=[{"title": "Заявить о себе на платформе", "ico": "<rect x=\"2\" y=\"7\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2\"/>", "tagline": "Расширенное присутствие, ведение профиля и подготовка материалов", "blocks": [{"label": "Расширенное участие компании", "rows": [["Расширенное участие, помесячно", "Расширенная карточка компании, дополнительные информационные блоки, публикация материалов, расширенное описание деятельности, дополнительные деловые функции.", "3 500 ₽ / месяц"], ["Расширенное участие, годовой доступ", "Все возможности расширенного участия при оплате за год. Постоянное деловое присутствие.", "35 000 ₽ / год"]]}, {"label": "Ведение аккаунта компании", "rows": [["Базовое ведение аккаунта", "Обновление информации, 2 публикации в месяц, поддержание актуальности карточки.", "от 15 000 ₽ / месяц"], ["Стандартное ведение аккаунта", "До 4 публикаций в месяц, обновление карточки, оформление материалов, сопровождение активности.", "от 30 000 ₽ / месяц"], ["Расширенное ведение аккаунта", "До 8 публикаций в месяц, подготовка материалов, обновление разделов, работа с товарами, услугами, вакансиями и событиями.", "от 50 000 ₽ / месяц"], ["Индивидуальное сопровождение", "Комплексное ведение профиля, магазина, выставочного участия, публикаций и продвижения.", "от 75 000 ₽ / месяц"]]}, {"label": "Подготовка материалов", "rows": [["Описание компании", "Деловое описание для карточки компании.", "от 7 000 ₽"], ["Описание товара или услуги", "Текст для карточки товара или услуги.", "от 1 000 ₽ / карточка"], ["Рекламная публикация", "Текст для продвижения компании, товара, услуги или события.", "от 10 000 ₽"], ["Презентационный материал", "Структура и текст презентации компании или проекта.", "от 25 000 ₽"], ["Материалы для онлайн-выставки", "Тексты, блоки, структура стенда, описание предложений.", "от 25 000 ₽"], ["Редактура готовых материалов", "Правка текстов, адаптация под формат платформы.", "от 5 000 ₽"]]}]}, {"title": "Продавать через E-market", "ico": "<path d=\"M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z\"/><line x1=\"3\" y1=\"6\" x2=\"21\" y2=\"6\"/><path d=\"M16 10a4 4 0 0 1-8 0\"/>", "tagline": "Создание магазина, наполнение карточками и сопровождение", "blocks": [{"label": "Создание и наполнение магазина", "rows": [["Доступ к созданию магазина", "Создать магазин, разместить товары и услуги, принимать запросы, оформить витрину.", "35 000 ₽ / год"], ["Доступ к магазину, помесячно", "Те же возможности при помесячной оплате.", "3 500 ₽ / месяц"], ["Первичная настройка магазина", "Оформление магазина, базовая структура разделов, настройка категорий, стартовое описание.", "от 15 000 ₽"], ["Добавление карточек", "Размещение товаров, услуг, описаний, характеристик, изображений, условий заказа.", "от 500 ₽ / карточка"], ["Пакет до 20 карточек", "Подготовка и размещение до 20 товаров или услуг.", "от 9 000 ₽"], ["Пакет до 50 карточек", "Подготовка и размещение до 50 товаров или услуг.", "от 20 000 ₽"], ["Пакет до 100 карточек", "Подготовка и размещение до 100 товаров или услуг.", "от 35 000 ₽"], ["Обновление карточек", "Изменение описаний, цен, условий, характеристик, изображений.", "от 300 ₽ / карточка"]]}, {"label": "Ведение магазина", "rows": [["Базовое ведение", "Обновление до 20 карточек, поддержание актуальности, базовые правки.", "от 15 000 ₽ / месяц"], ["Стандартное ведение", "Обновление до 50 карточек, новые позиции, оформление описаний, работа с категориями.", "от 30 000 ₽ / месяц"], ["Расширенное ведение", "Обновление до 100 карточек, регулярная работа с витриной, описания, оформление предложений.", "от 50 000 ₽ / месяц"], ["Комплексное ведение", "Большой ассортимент, регулярные обновления, публикации, продвижение, аналитика интереса.", "от 75 000 ₽ / месяц"]]}]}, {"title": "Участвовать в онлайн-выставках", "ico": "<path d=\"M3 9l9-7 9 7\"/><rect x=\"5\" y=\"9\" width=\"14\" height=\"12\" rx=\"1\"/><path d=\"M9 21V13h6v8\"/>", "tagline": "Размещение на выставке, подготовка и сопровождение стенда", "blocks": [{"label": "Участие в выставке", "rows": [["Размещение на онлайн-выставке", "Страница участника, описание, материалы, товары/услуги, контакты, форма запроса.", "35 000 ₽ / выставка"], ["Расширенное участие в выставке", "Подробная страница, дополнительные материалы, приоритетное представление, расширенный блок товаров, услуг и проектов.", "65 000 ₽ / выставка"], ["Подготовка онлайн-стенда", "Структура стенда, тексты, блоки, материалы, оформление предложений.", "от 25 000 ₽"], ["Ведение стенда во время выставки", "Обновление материалов, публикация новостей, сопровождение запросов, итоговая информация.", "от 20 000 ₽ / выставка"], ["Публикация итогов участия", "Краткий отчёт, итоговый материал, фиксация результатов.", "от 10 000 ₽"], ["Дополнительный блок на стенде", "Отдельный блок под направление, продуктовую группу, проект, услугу или вакансию.", "от 7 000 ₽"], ["Видеоматериал на стенде", "Ролик, презентация, запись выступления или обзор.", "от 5 000 ₽"]]}, {"label": "Сопровождение участия", "rows": [["Подготовка стенда к выставке", "Структура стенда, описание, материалы, изображения, товары, услуги, контакты.", "от 25 000 ₽"], ["Сопровождение во время выставки", "Обновление материалов, публикация информации, фиксация запросов, сопровождение активности.", "от 20 000 ₽"], ["Расширенное сопровождение", "Подготовка материалов, обновления, публикации, участие в программе, итоговая публикация.", "от 45 000 ₽"], ["Полное сопровождение участия", "Подготовка стенда, материалы, продвижение, сопровождение, итоговый отчёт.", "от 70 000 ₽"]]}]}, {"title": "Продвигаться и рекламироваться", "ico": "<path d=\"M3 11l18-5v12L3 14v-3z\"/><path d=\"M11.6 16.8a3 3 0 1 1-5.8-1.6\"/>", "tagline": "Рекламные размещения и продвижение внутри платформы", "blocks": [{"label": "Рекламное размещение", "rows": [["Баннер на главной странице", "Рекламный баннер компании на главной странице платформы.", "100 000 ₽ / месяц"], ["Баннер в тематическом разделе", "Баннер внутри выбранного раздела платформы.", "от 40 000 ₽ / месяц"], ["Баннер внутри онлайн-выставки", "Баннер в пространстве конкретной онлайн-выставки.", "от 50 000 ₽ / выставка"], ["Брендированная зона", "Отдельная брендированная зона компании в выставке или тематическом разделе.", "200 000 ₽ / выставка"], ["Рекламная публикация", "Информационно-рекламный материал о компании, продукте, услуге или событии.", "от 15 000 ₽"], ["Закреплённая публикация", "Публикация с повышенной видимостью в выбранном разделе.", "от 25 000 ₽ / 14 дней"], ["Рекламный блок в подборке", "Включение компании, товара, услуги или вакансии в тематическую подборку.", "от 10 000 ₽"]]}, {"label": "Продвижение внутри платформы", "rows": [["Продвижение карточки компании", "Повышенная видимость компании в выбранной категории или разделе.", "от 15 000 ₽ / месяц"], ["Продвижение E-market магазина", "Повышенная видимость магазина внутри платформы.", "от 20 000 ₽ / месяц"], ["Продвижение товара или услуги", "Выделение конкретного товара или услуги в категории.", "от 7 000 ₽ / месяц"], ["Продвижение вакансии", "Повышенная видимость вакансии.", "от 5 000 ₽ / вакансия / месяц"], ["Продвижение события", "Повышенная видимость вебинара, встречи, презентации или мероприятия.", "от 15 000 ₽"], ["Тематическое продвижение", "Продвижение в рамках отраслевого направления, выставки или деловой подборки.", "от 25 000 ₽ / месяц"]]}]}, {"title": "Нанимать сотрудников", "ico": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><line x1=\"19\" y1=\"8\" x2=\"19\" y2=\"14\"/><line x1=\"22\" y1=\"11\" x2=\"16\" y2=\"11\"/>", "tagline": "Вакансии, кадровый блок и участие в кадровых выставках", "blocks": [{"label": "HR-функции и кадровое продвижение", "rows": [["Размещение вакансии", "Публикация вакансии компании.", "от 2 000 ₽ / вакансия"], ["Продвижение вакансии", "Повышенная видимость вакансии.", "от 5 000 ₽ / месяц"], ["Пакет до 10 вакансий", "Размещение до 10 вакансий.", "от 15 000 ₽"], ["Кадровый блок в профиле", "Раздел о работодателе, вакансиях, стажировках, практике.", "от 10 000 ₽"], ["Кадровая онлайн-выставка", "Компания как работодатель, вакансии, материалы, форма отклика.", "35 000 ₽ / выставка"], ["Расширенное участие в кадровой выставке", "Расширенная страница работодателя, дополнительные материалы, онлайн-сессия или презентация.", "от 65 000 ₽ / выставка"]]}]}, {"title": "Понимать аудиторию", "ico": "<path d=\"M3 3v18h18\"/><rect x=\"7\" y=\"12\" width=\"3\" height=\"6\"/><rect x=\"12\" y=\"8\" width=\"3\" height=\"10\"/><rect x=\"17\" y=\"5\" width=\"3\" height=\"13\"/>", "tagline": "Аналитика и отчётность по присутствию на платформе", "blocks": [{"label": "Аналитика и отчётность", "rows": [["Базовая статистика по компании", "Просмотры карточки, активность пользователей, базовые показатели интереса.", "от 5 000 ₽ / отчёт"], ["Аналитика по E-market магазину", "Просмотры карточек, интерес к товарам и услугам, активность пользователей.", "от 15 000 ₽ / отчёт"], ["Аналитика по онлайн-выставке", "Просмотры стенда, интерес к материалам, запросы, активность аудитории.", "30 000 ₽ / отчёт"], ["Расширенный аналитический отчёт", "Подробный анализ активности, выводы, рекомендации по развитию присутствия.", "от 45 000 ₽ / отчёт"], ["Индивидуальная аналитика", "Отчёт под конкретные задачи, направления, аудитории или кампании.", "по согласованию"]]}]}, {"title": "Проводить онлайн-сессии и вебинары", "ico": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><line x1=\"8\" y1=\"21\" x2=\"16\" y2=\"21\"/><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"21\"/><polygon points=\"10 8 15 10.5 10 13 10 8\"/>", "tagline": "Размещение и организация деловых онлайн-событий", "blocks": [{"label": "Онлайн-сессии, вебинары и встречи", "rows": [["Размещение онлайн-сессии", "Публикация события, описание, регистрация участников, размещение в календаре.", "от 15 000 ₽"], ["Организация вебинара", "Подготовка страницы события, описание, регистрация, техническое сопровождение.", "от 30 000 ₽"], ["Деловая онлайн-встреча", "Встреча между компанией и целевой аудиторией или партнёрами.", "от 25 000 ₽"], ["Виртуальная встреча с экспонентом", "Индивидуальная встреча в рамках онлайн-выставки.", "3 000 ₽ / сессия"], ["Публикация записи мероприятия", "Размещение записи вебинара, встречи или презентации.", "от 7 000 ₽"], ["Итоговый материал по событию", "Текстовый итог, основные выводы, публикация на платформе.", "от 10 000 ₽"]]}]}, {"title": "Готовые пакеты — все варианты", "ico": "<path d=\"M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z\"/><path d=\"M3 7l9 4.5L21 7\"/><line x1=\"12\" y1=\"11.5\" x2=\"12\" y2=\"22\"/>", "tagline": "Комплексные наборы услуг под типовые задачи", "blocks": [{"label": "Комплексные пакеты", "rows": [["Расширенное присутствие", "Годовое расширенное участие компании.", "35 000 ₽ / год"], ["Компания + E-market", "Расширенное участие + доступ к созданию E-market магазина.", "60 000 ₽ / год"], ["Онлайн-выставка", "Размещение компании на одной онлайн-выставке.", "35 000 ₽ / выставка"], ["Онлайн-выставка Плюс", "Расширенное участие в выставке, дополнительные материалы, приоритетное представление.", "65 000 ₽ / выставка"], ["Продвижение", "Расширенное участие + продвижение карточки компании на 1 месяц.", "от 50 000 ₽"], ["Магазин под сопровождением", "E-market магазин + первичная настройка + ведение магазина 1 месяц.", "от 85 000 ₽"], ["Выставка под сопровождением", "Размещение на выставке + подготовка стенда + сопровождение + итоговый материал.", "от 90 000 ₽"], ["Полное деловое присутствие", "Расширенное участие, магазин, продвижение, ведение аккаунта, участие в выставке.", "от 150 000 ₽"], ["Индивидуальный", "Набор услуг под задачи конкретной компании.", "по согласованию"]]}]}, {"title": "Условия и оплата", "ico": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 16v-4\"/><path d=\"M12 8h.01\"/>", "tagline": "Форматы оплаты и документальное оформление", "blocks": [{"label": "Дополнительные условия", "rows": [["Базовое пользование платформой", "Бесплатное."], ["Платные функции", "Доступны юридическим лицам, ИП и самозанятым."], ["Расширенное участие компании", "35 000 ₽ в год или 3 500 ₽ в месяц."], ["Размещение на онлайн-выставке", "35 000 ₽ за одну выставку."], ["Окончательная стоимость", "Зависит от объёма работ, количества материалов, сложности сопровождения, количества товаров, услуг, событий и размещений."], ["Формат оплаты", "Помесячная, годовая, разовая или проектная."], ["Документальное оформление", "Условия фиксируются в счёте, договоре, заявке, оферте или индивидуальном коммерческом предложении."]]}]}];
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderGroups(){
+  const el=document.getElementById('grpList');
+  el.innerHTML=GROUPS.map(function(g,i){
+    var blocks=g.blocks.map(function(b){
+      var rows=b.rows.map(function(r){
+        var price=r.length>2?'<div class="ptr-price'+((r[2]==='по согласованию')?' muted':'')+'">'+esc(r[2])+'</div>':'';
+        return '<div class="ptr"><div class="ptr-main"><div class="ptr-name">'+esc(r[0])+'</div><div class="ptr-desc">'+esc(r[1])+'</div></div>'+price+'</div>';
+      }).join('');
+      var label=b.label?'<div class="pb-label">'+esc(b.label)+'</div>':'';
+      return label+'<div class="ptbl">'+rows+'</div>';
+    }).join('');
+    return '<div class="sec-item" data-idx="'+i+'">'+
+      '<div class="sec-head" onclick="toggleSection('+i+')">'+
+        '<div class="sec-ico"><svg viewBox="0 0 24 24">'+g.ico+'</svg></div>'+
+        '<div class="sec-hd"><div class="sec-name">'+esc(g.title)+'</div><div class="sec-tagline">'+esc(g.tagline)+'</div></div>'+
+        '<div class="sec-chevron"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>'+
+      '</div>'+
+      '<div class="sec-body"><div class="sec-body-inner">'+blocks+'</div></div>'+
+    '</div>';
+  }).join('');
+}
+function toggleSection(i){
+  var item=document.querySelector('.sec-item[data-idx="'+i+'"]');
+  if(item)item.classList.toggle('open');
+}
+
+function openContact(){document.getElementById('contactModal').classList.add('open');}
+function closeContact(){document.getElementById('contactModal').classList.remove('open');}
+document.getElementById('contactModal').addEventListener('click',function(e){if(e.target===this)closeContact();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeContact();});
+
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast '+(type||'')+' show';
+  setTimeout(function(){t.classList.remove('show');},3500);
+}
+
+async function submitContact(){
+  const name=document.getElementById('cfName').value.trim();
+  const email=document.getElementById('cfEmail').value.trim();
+  const subject=document.getElementById('cfSubject').value.trim();
+  const message=document.getElementById('cfMessage').value.trim();
+  if(name.length<2){showToast('Введите имя (минимум 2 символа)','error');return;}
+  if(!email.includes('@')||!email.includes('.')){showToast('Некорректный email','error');return;}
+  if(subject.length<3){showToast('Тема: минимум 3 символа','error');return;}
+  if(message.length<10){showToast('Сообщение: минимум 10 символов','error');return;}
+  const btn=document.getElementById('cfSubmit');
+  btn.disabled=true;btn.textContent='Отправка…';
+  try{
+    const r=await lastopFetch(API+'/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,subject,message})});
+    const d=await r.json().catch(function(){return {};});
+    if(r.ok){
+      showToast('Заявка отправлена! Мы ответим в течение рабочего дня.','success');
+      document.getElementById('cfName').value='';
+      document.getElementById('cfEmail').value='';
+      document.getElementById('cfSubject').value='';
+      document.getElementById('cfMessage').value='';
+      closeContact();
+    }else{showToast(d.error||'Не удалось отправить, попробуйте позже','error');}
+  }catch(e){showToast('Ошибка сети, попробуйте позже','error');}
+  btn.disabled=false;
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="13" height="13"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Отправить';
+}
+
+renderGroups();
+
+</script>
+</body>
+</html>
