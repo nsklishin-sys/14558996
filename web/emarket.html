@@ -135,8 +135,10 @@ html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;backgroun
 .em-card-stock{display:inline-flex;align-items:center;align-self:flex-start;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.02em}
 .em-card-stock.in{background:var(--gl);color:var(--g);border:1px solid var(--gb)}
 .em-card-stock.pre{background:#F1EFE8;color:#5F5E5A;border:1px solid #D3D1C7}
-.em-fcheck{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--t);height:42px}
-.em-fcheck input{width:16px;height:16px;accent-color:var(--g);cursor:pointer}
+.em-stockchip{height:42px;padding:0 16px;border:1.5px solid var(--bdr);border-radius:var(--rm);background:var(--w);font-family:inherit;font-size:13px;font-weight:600;color:var(--tm);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.em-stockchip svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.em-stockchip:hover{border-color:var(--gb);color:var(--g)}
+.em-stockchip.active{background:var(--g);border-color:var(--g);color:#fff}
 .em-card-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:8px}
 .em-card-price{font-size:15px;font-weight:900;color:var(--g)}
 .em-card-price.neg{font-size:12px;font-weight:700;color:var(--gmt)}
@@ -313,7 +315,7 @@ var SHOP_SORT={'':'Сначала новые','rating':'По рейтингу'};
     '</div>'+
     '<div class="em-filters" id="emFilters"></div>'+
     '<div class="em-featured" id="emFeatured" style="display:none"></div>'+
-    '<div class="em-sortrow"><div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div><div class="em-shop-filters" id="emShopFilters"></div></div>'+
+    '<div class="em-sortrow"><div class="em-sortbox"><button class="em-sortbtn" onclick="toggleSortMenu(event)"><svg viewBox="0 0 24 24"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span class="cur" id="emSortCur">Сначала новые</span></button><div class="em-sortmenu" id="emSortMenu"></div></div><button class="em-stockchip" id="emStockChip" style="display:none" onclick="toggleInStock()"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>В наличии</button><div class="em-shop-filters" id="emShopFilters"></div></div>'+
     '<div class="em-feedwrap"><div class="em-grid" id="emGrid"></div></div>';
 
   document.addEventListener('click',function(e){
@@ -477,6 +479,7 @@ function setMode(m){
   document.getElementById('emFilters').classList.remove('open');
   document.getElementById('emFilterBtn').classList.remove('active');
   updateSearchUI();
+  updateStockChip();
   renderShopFilters();
   renderSortMenu();
   loadFeatured();
@@ -495,6 +498,8 @@ function bindSearch(){
     _searchT=setTimeout(reloadFeed,350);
   });
 }
+function toggleInStock(){EM.inStock=!EM.inStock;updateStockChip();reloadFeed();}
+function updateStockChip(){var c=document.getElementById('emStockChip');if(!c)return;c.style.display=(EM.mode==='products'||EM.mode==='services')?'flex':'none';c.classList.toggle('active',!!EM.inStock);}
 // Кнопка «Фильтры» видна только когда есть поисковый запрос
 function updateSearchUI(){
   var fb=document.getElementById('emFilterBtn');
@@ -540,11 +545,11 @@ function renderFilters(){
     var copts='<option value="">Все категории</option>'+EM.cats.map(function(c){return '<option value="'+esc(c.key)+'"'+(EM.cat===c.key?' selected':'')+'>'+esc(c.label)+'</option>';}).join('');
     html+='<div class="em-fgroup"><label>Категория</label><select data-lt-select id="fCat">'+copts+'</select></div>';
     html+='<div class="em-fgroup price"><label>Цена, ₽</label><div class="em-fprice"><input id="fPriceFrom" type="number" min="0" placeholder="от" value="'+esc(EM.priceFrom)+'"><span>—</span><input id="fPriceTo" type="number" min="0" placeholder="до" value="'+esc(EM.priceTo)+'"></div></div>';
-    html+='<div class="em-fgroup"><label>Наличие</label><label class="em-fcheck"><input type="checkbox" id="fInStock"'+(EM.inStock?' checked':'')+'><span>Только в наличии</span></label></div>';
   }
   html+='<div class="em-factions"><button class="em-fbtn-reset" onclick="resetFilters()">Сбросить</button><button class="em-fbtn-apply" onclick="applyFilters()">Применить</button></div>';
   html+='</div>';
   panel.innerHTML=html;
+  if(window.LASTOP_initSelect){panel.querySelectorAll('select[data-lt-select]').forEach(window.LASTOP_initSelect);}
 }
 function applyFilters(){
   if(EM.mode==='shops'){
@@ -553,7 +558,6 @@ function applyFilters(){
     var ct=document.getElementById('fCat');EM.cat=ct?ct.value:'';
     var pf=document.getElementById('fPriceFrom');EM.priceFrom=pf?pf.value:'';
     var pt=document.getElementById('fPriceTo');EM.priceTo=pt?pt.value:'';
-    var ins=document.getElementById('fInStock');EM.inStock=ins?ins.checked:false;
   }
   updateFilterCount();
   reloadFeed();
@@ -565,7 +569,7 @@ function resetFilters(){
 function updateFilterCount(){
   var n=0;
   if(EM.mode==='shops'){if(EM.region)n++;if(EM.direction)n++;}
-  else{if(EM.cat)n++;if(EM.priceFrom)n++;if(EM.priceTo)n++;if(EM.inStock)n++;}
+  else{if(EM.cat)n++;if(EM.priceFrom)n++;if(EM.priceTo)n++;}
   var cnt=document.getElementById('emFilterCnt');
   if(cnt){if(n>0){cnt.textContent=n;cnt.style.display='inline-block';}else{cnt.style.display='none';}}
 }
@@ -646,6 +650,7 @@ function renderShopFilters(){
     parts.push('<select class="em-fselect" data-lt-select onchange="setShopDirection(this.value)">'+dOpts+'</select>');
   }
   wrap.innerHTML=parts.join('');
+  if(window.LASTOP_initSelect){wrap.querySelectorAll('select[data-lt-select]').forEach(window.LASTOP_initSelect);}
 }
 function setShopRegion(v){EM.region=v;updateFilterCount();reloadFeed();}
 function setShopDirection(v){EM.direction=v;updateFilterCount();reloadFeed();}
