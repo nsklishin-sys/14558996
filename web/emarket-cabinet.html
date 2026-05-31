@@ -2445,9 +2445,64 @@ function renderWmsOn(pan){
         +'<button class="lead-btn lead-btn-pri" onclick="wmsOpenProduct(0)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Товар</button></div>'
       +'<div class="lm-row" style="margin:10px 0 4px"><input class="lm-input" id="wmsSearch" placeholder="Поиск по названию, артикулу, штрихкоду…" value="'+esc(WMS_Q)+'" oninput="wmsSearchInput(this.value)"></div>'
       +'<div id="wmsProdWrap"></div>'
+    +'</div>'
+    +'<div class="cab-section">'
+      +'<div class="cab-section-h"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><polyline points="21 3 21 9 15 9"/></svg>Обмен с 1С</span></div>'
+      +'<div class="cab-section-d" style="margin-bottom:10px">Синхронизация с 1С по протоколу CommerceML: каталог, цены и остатки из 1С на платформу, заказы — обратно в 1С.</div>'
+      +'<div id="wms1cBody"></div>'
     +'</div>';
   renderWmsWarehouses();
   renderWmsProducts();
+  wms1cLoad();
+}
+
+async function wms1cLoad(){
+  const box=document.getElementById('wms1cBody'); if(!box)return;
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/1c');
+    const d=await r.json();
+    wms1cRender(d||{});
+  }catch(e){box.innerHTML='<div class="cab-section-d">Не удалось загрузить настройки обмена.</div>';}
+}
+function wms1cRender(d){
+  const box=document.getElementById('wms1cBody'); if(!box)return;
+  const url=location.origin+(d.exchange_path||'/api/emarket/1c-exchange');
+  const labels={catalog:'Каталог (товары и категории) из 1С',price:'Цены из 1С',stock:'Остатки из 1С',order:'Выгрузка заказов в 1С'};
+  const chk=function(k,on){return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--t);padding:5px 0"><input type="checkbox" id="wms1c_'+k+'"'+(on?' checked':'')+'> '+labels[k]+'</label>';};
+  box.innerHTML=
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--t);margin-bottom:12px"><input type="checkbox" id="wms1cEnabled"'+(d.enabled?' checked':'')+'> Обмен с 1С включён</label>'
+    +'<div class="lm-row"><label class="lm-label">URL обмена (узел обмена в 1С)</label><div style="display:flex;gap:8px"><input class="lm-input" id="wms1cUrl" readonly value="'+esc(url)+'" style="flex:1"><button class="wms-opbtn" onclick="wms1cCopyURL()">Копировать</button></div></div>'
+    +'<div class="lm-2col"><div class="lm-row"><label class="lm-label">Логин обмена</label><input class="lm-input" id="wms1cLogin" maxlength="120" value="'+esc(d.exchange_login||'')+'" placeholder="например shop_'+SHOP.id+'"></div>'
+      +'<div class="lm-row"><label class="lm-label">Пароль обмена</label><input class="lm-input" id="wms1cPwd" type="password" autocomplete="new-password" placeholder="'+(d.has_password?'задан · оставьте пустым':'задайте пароль')+'"></div></div>'
+    +'<div class="cab-section-h" style="font-size:13px;margin-top:6px">Что синхронизировать</div>'
+    +chk('catalog',d.catalog_sync)+chk('price',d.price_sync)+chk('stock',d.stock_sync)+chk('order',d.order_sync)
+    +'<div class="cab-section-h" style="font-size:13px;margin-top:10px">Состояние обмена</div>'
+    +'<div class="wms-wh-ad" style="line-height:1.8">Последний статус: <b>'+esc(d.last_status||'—')+'</b><br>Импорт из 1С: '+(d.last_import_at?wmsDate(d.last_import_at):'—')+'<br>Выгрузка заказов: '+(d.last_export_at?wmsDate(d.last_export_at):'—')+'</div>'
+    +'<div class="lm-foot"><button class="lead-btn lead-btn-pri" id="wms1cSaveBtn" onclick="wms1cSave()">Сохранить настройки</button></div>';
+}
+function wms1cCopyURL(){
+  const el=document.getElementById('wms1cUrl'); if(!el)return;
+  navigator.clipboard.writeText(el.value).then(function(){if(window.toast)toast('URL скопирован','success');}).catch(function(){});
+}
+async function wms1cSave(){
+  const body={
+    enabled:document.getElementById('wms1cEnabled').checked,
+    exchange_login:document.getElementById('wms1cLogin').value.trim(),
+    password:document.getElementById('wms1cPwd').value,
+    catalog_sync:document.getElementById('wms1c_catalog').checked,
+    price_sync:document.getElementById('wms1c_price').checked,
+    stock_sync:document.getElementById('wms1c_stock').checked,
+    order_sync:document.getElementById('wms1c_order').checked
+  };
+  if(body.enabled && !body.exchange_login){if(window.toast)toast('Укажите логин обмена','info');return;}
+  if(body.enabled && !body.password && !document.getElementById('wms1cPwd').placeholder.startsWith('задан')){if(window.toast)toast('Задайте пароль обмена','info');return;}
+  const btn=document.getElementById('wms1cSaveBtn'); btn.disabled=true; btn.textContent='Сохранение…';
+  try{
+    const r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/1c',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)throw 0;
+    if(window.toast)toast('Настройки обмена сохранены','success');
+    wms1cLoad();
+  }catch(e){if(window.toast)toast('Не удалось сохранить','info');btn.disabled=false;btn.textContent='Сохранить настройки';}
 }
 
 function renderWmsWarehouses(){
