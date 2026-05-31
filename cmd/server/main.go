@@ -12964,11 +12964,13 @@ func main() {
 		case http.MethodGet:
 			rows, err := db.Query(`
 				SELECT c.id, c.listing_id, c.quantity, c.created_at,
-					l.title, l.kind, l.price, l.currency, l.photos, l.status, l.deleted_at,
-					s.id, s.name, s.slug, s.logo_url, COALESCE(s.accent_color,'green'), s.region
+					l.title, l.kind, COALESCE(v.price, l.price), l.currency, l.photos, l.status, l.deleted_at,
+					s.id, s.name, s.slug, s.logo_url, COALESCE(s.accent_color,'green'), s.region,
+					c.variant_id, COALESCE(v.variant_label,'')
 				FROM emarket_cart c
 				JOIN emarket_listings l ON l.id = c.listing_id
 				JOIN emarket_shops s ON s.id = l.shop_id
+				LEFT JOIN emarket_products v ON v.id = c.variant_id AND v.deleted_at IS NULL
 				WHERE c.user_id = $1
 				ORDER BY s.id, c.created_at DESC`, userID)
 			if err != nil {
@@ -12982,12 +12984,14 @@ func main() {
 				var cartID, listingID, shopID int64
 				var quantity int
 				var created time.Time
-				var title, kind, currency, photosJSON, listingStatus, shopName, shopSlug, shopLogo, accent, region string
+				var title, kind, currency, photosJSON, listingStatus, shopName, shopSlug, shopLogo, accent, region, variantLabel string
+				var variantID int64
 				var price sql.NullFloat64
 				var deletedAt sql.NullTime
 				if err := rows.Scan(&cartID, &listingID, &quantity, &created,
 					&title, &kind, &price, &currency, &photosJSON, &listingStatus, &deletedAt,
-					&shopID, &shopName, &shopSlug, &shopLogo, &accent, &region); err != nil {
+					&shopID, &shopName, &shopSlug, &shopLogo, &accent, &region,
+					&variantID, &variantLabel); err != nil {
 					continue
 				}
 				// первая фотография из photos JSONB-массива
@@ -13003,22 +13007,24 @@ func main() {
 				}
 				available := !deletedAt.Valid && listingStatus == "active"
 				items = append(items, map[string]any{
-					"id":          cartID,
-					"listing_id":  listingID,
-					"quantity":    quantity,
-					"created_at":  created,
-					"title":       title,
-					"kind":        kind,
-					"price":       priceVal,
-					"currency":    currency,
-					"photo":       photo,
-					"available":   available,
-					"shop_id":     shopID,
-					"shop_name":   shopName,
-					"shop_slug":   shopSlug,
-					"shop_logo":   shopLogo,
-					"shop_accent": accent,
-					"shop_region": region,
+					"id":            cartID,
+					"listing_id":    listingID,
+					"quantity":      quantity,
+					"created_at":    created,
+					"title":         title,
+					"kind":          kind,
+					"price":         priceVal,
+					"currency":      currency,
+					"photo":         photo,
+					"available":     available,
+					"variant_id":    variantID,
+					"variant_label": variantLabel,
+					"shop_id":       shopID,
+					"shop_name":     shopName,
+					"shop_slug":     shopSlug,
+					"shop_logo":     shopLogo,
+					"shop_accent":   accent,
+					"shop_region":   region,
 				})
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"items": items})
