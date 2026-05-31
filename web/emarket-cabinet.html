@@ -2639,7 +2639,7 @@ async function wmsSaveProduct(id){
   };
   const btn=document.getElementById('wmsPrSave');btn.disabled=true;btn.textContent='…';
   try{
-    const url=API+'/emarket/products'+(id?'/'+id:'');
+    const url=API+'/emarket/products'+(id?'/'+id:'?shop_id='+SHOP.id);
     if(!id)body.shop_id=SHOP.id;
     const r=await lastopFetch(url,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(r.status===409){const d=await r.json().catch(()=>({}));if(window.toast)toast(d.error||'Артикул занят','info');btn.disabled=false;btn.textContent=id?'Сохранить':'Создать';return;}
