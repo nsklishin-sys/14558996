@@ -2758,8 +2758,8 @@ async function wmsWhLoadStock(whID){
       +wmsWhStat('Позиций',rows.length)+wmsWhStat('Всего',wmsNum(totQty))+wmsWhStat('В резерве',wmsNum(totRes))+wmsWhStat('Мало',low,low>0)+'</div>';
   }
   if(!box)return;
-  if(!rows.length){box.innerHTML='<div class="cab-section-d" style="padding:14px 0">На этом складе пока нет остатков. Оприходуйте товар: откройте товар в Номенклатуре → «Остатки» → Приём.</div>';return;}
-  box.innerHTML='<div style="overflow-x:auto"><table class="wms-tbl"><thead><tr><th>Название</th><th>Артикул</th><th>Ед.</th><th>Доступно</th><th>Резерв</th></tr></thead><tbody>'
+  if(!rows.length){box.innerHTML=wmsWhReceiveBtn()+'<div class="cab-section-d" style="padding:14px 0">На этом складе пока нет остатков. Нажмите «+ Принять товар», выберите позицию и оприходуйте её на этот склад.</div>';return;}
+  box.innerHTML=wmsWhReceiveBtn()+'<div style="overflow-x:auto"><table class="wms-tbl"><thead><tr><th>Название</th><th>Артикул</th><th>Ед.</th><th>Доступно</th><th>Резерв</th></tr></thead><tbody>'
     +rows.map(function(x){
       var nm=esc(x.name)+(x.variant_label?' <span class="wms-pill">'+esc(x.variant_label)+'</span>':'');
       var avCls=x.low_stock?'wms-av wms-low':'wms-av';
@@ -2805,6 +2805,32 @@ async function wmsWhDelete(whID,name){
   if(!ok)return;
   try{var r=await lastopFetch(API+'/emarket/shops/'+SHOP.id+'/warehouses/'+whID,{method:'DELETE'});if(!r.ok)throw 0;await wmsLoadWarehouses();if(WMS_PAN)renderWmsOn(WMS_PAN);}
   catch(e){if(window.toast)toast('Не удалось удалить','info');}
+}
+function wmsWhReceiveBtn(){
+  return '<button class="lead-btn lead-btn-pri" style="margin-bottom:12px" onclick="wmsWhReceive()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Принять товар</button>';
+}
+async function wmsWhReceive(){
+  if(!WMS_PRODUCTS||!WMS_PRODUCTS.length){try{var r=await lastopFetch(API+'/emarket/products?shop_id='+SHOP.id+'&limit=200');var d=await r.json();WMS_PRODUCTS=(d&&d.products)||[];}catch(e){}}
+  document.getElementById('wmsStockBody').innerHTML=
+    '<div class="lm-head"><div class="lm-head-t">Выберите товар для приёмки</div><button class="lm-x" onclick="wmsCloseModal(\'wmsStockModalBg\')">×</button></div>'
+    +'<div class="cab-section-d" style="margin-bottom:8px">Выберите позицию — откроются её остатки по складам, где можно оприходовать на нужный склад.</div>'
+    +'<div class="lm-row"><input class="lm-input" id="wmsRcvSearch" placeholder="Поиск по названию или артикулу…" oninput="wmsWhReceiveFilter(this.value)"></div>'
+    +'<div id="wmsRcvList"></div>';
+  wmsWhReceiveFilter('');
+  wmsOpenModal('wmsStockModalBg');
+  setTimeout(function(){var i=document.getElementById('wmsRcvSearch');if(i)i.focus();},150);
+}
+function wmsWhReceiveFilter(q){
+  q=(q||'').toLowerCase();
+  var box=document.getElementById('wmsRcvList');if(!box)return;
+  var list=(WMS_PRODUCTS||[]).filter(function(p){return !q||(p.name||'').toLowerCase().indexOf(q)>=0||(p.sku||'').toLowerCase().indexOf(q)>=0;});
+  box.innerHTML=list.length?list.map(function(p){
+    return '<div class="wms-row" style="display:flex;gap:8px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="wmsOpenStock('+p.id+')">'
+      +'<div style="flex:1;min-width:0;font-weight:700;font-size:13px">'+esc(p.name)+(p.has_variants?' <span class="wms-pill">варианты</span>':'')+'</div>'
+      +'<span class="wms-wh-ad">'+(p.sku?esc(p.sku):'')+'</span>'
+      +'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+      +'</div>';
+  }).join(''):'<div class="cab-section-d" style="padding:12px 0">Ничего не найдено.</div>';
 }
 
 /* ── ОСТАТКИ И ДВИЖЕНИЯ: модалка по товару ── */
@@ -2900,6 +2926,7 @@ async function wmsApplyOp(type,whID,curQty){
     wmsCloseModal('wmsOpModalBg');
     await wmsOpenStock(WMS_STOCK_PID);
     await wmsLoadProducts();renderWmsProducts();
+    if(typeof WMS_CUR_WH!=='undefined'&&WMS_CUR_WH&&document.getElementById('wmsWhContent')&&WMS_WH_TAB==='stock')wmsWhLoadStock(WMS_CUR_WH);
   }catch(e){if(window.toast)toast('Ошибка операции','info');btn.disabled=false;btn.textContent='Применить';}
 }
 
